@@ -24,27 +24,28 @@ and `fisher_diag`., each with sub-quadratic memory requirements.
 
 """
 
-from typing import Callable
+from typing import Any, Callable
 
-import haiku as hk
 import jax
 from jax.flatten_util import ravel_pytree
 import jax.numpy as jnp
 
+
+# This covers both Jax and Numpy arrays.
+# TODO(b/160876114): use the pytypes defined in Chex.
 Array = jnp.ndarray
-
 # LossFun of type f(params, inputs, targets).
-LossFun = Callable[[hk.Params, Array, Array], Array]
+LossFun = Callable[[Any, Array, Array], Array]
 
 
-def ravel(p: hk.Params) -> Array:
+def ravel(p: Any) -> Array:
   return ravel_pytree(p)[0]
 
 
 def hvp(
     loss: LossFun,
     v: jnp.DeviceArray,
-    params: hk.Params,
+    params: Any,
     inputs: jnp.DeviceArray,
     targets: jnp.DeviceArray,
 ) -> jnp.DeviceArray:
@@ -68,7 +69,7 @@ def hvp(
 
 def hessian_diag(
     loss: LossFun,
-    params: hk.Params,
+    params: Any,
     inputs: jnp.DeviceArray,
     targets: jnp.DeviceArray,
 ) -> jnp.DeviceArray:
@@ -91,7 +92,7 @@ def hessian_diag(
 
 def fisher_diag(
     negative_log_likelihood: LossFun,
-    params: hk.Params,
+    params: Any,
     inputs: jnp.ndarray,
     targets: jnp.ndarray,
 ) -> jnp.DeviceArray:

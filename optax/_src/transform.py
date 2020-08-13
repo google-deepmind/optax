@@ -36,6 +36,10 @@ class GradientTransformation(NamedTuple):
 
 InitUpdate = GradientTransformation
 
+NO_PARAMS_MSG = (
+    'You are using a transformation that requires the current value of'
+    ' parameters, but you are not passing `params` when calling `update`.')
+
 
 class IdentityState(OptState):
   """The `identity` transformation is stateless."""
@@ -112,8 +116,13 @@ def clip_by_global_norm(max_norm) -> GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     g_norm = global_norm(updates)
-    g_norm = jnp.maximum(max_norm, g_norm)
-    updates = jax.tree_multimap(lambda t: (t / g_norm) * max_norm, updates)
+    # TODO(b/163995078): revert back to the following (faster) implementation
+    # once analysed how it affects backprop through update (e.g. meta-gradients)
+    # g_norm = jnp.maximum(max_norm, g_norm)
+    # updates = jax.tree_multimap(lambda t: (t / g_norm) * max_norm, updates)
+    trigger = g_norm < max_norm
+    updates = jax.tree_multimap(
+        lambda t: jnp.where(trigger, t, (t / g_norm) * max_norm), updates)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -294,30 +303,26 @@ def scale(step_size: float) -> GradientTransformation:
   return GradientTransformation(init_fn, update_fn)
 
 
-class ScaleAndDecayState(NamedTuple):
-  """The scale and decay transformation is stateless."""
+class AdditiveWeightDecayState(NamedTuple):
+  """The decay transformation is stateless."""
 
 
-def scale_and_decay(step_size: float,
-                    weight_decay: float = 0.0) -> GradientTransformation:
-  """Scale updates by `step_size`, and decay parameters by `weight_decay`.
+def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
+  """Add parameter scaled by `weight_decay`.
 
   Args:
-    step_size: a scalar corresponding to a fixed scaling factor for updates.
-    weight_decay: a scalar weight decay rate, which is further scaled by the
-      step size.
+    weight_decay: a scalar weight decay rate.
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
   def init_fn(_):
-    return ScaleAndDecayState()
+    return AdditiveWeightDecayState()
 
   def update_fn(updates, state, params):
-    updates = jax.tree_multimap(
-        lambda g, p: (step_size * g - abs(step_size) * weight_decay * p),
-        updates, params)
+    updates = jax.tree_multimap(lambda g, p: g + weight_decay * p, updates,
+                                params)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -351,35 +356,111 @@ def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
   return GradientTransformation(init_fn, update_fn)
 
 
-class ScaleAndDecayByScheduleState(OptState):
-  """Maintains count for scale scheduling."""
+class ScaleByFromageState(OptState):
+  """Maintains count for step-size scheduling."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_and_decay_by_schedule(
-    step_size_fn: Callable[[jnp.ndarray], jnp.ndarray],
-    weight_decay: float = 0.0) -> GradientTransformation:
-  """Scale updates and do weight decay using a custom schedule for `step_size`.
+def _safe_norm(x, min_norm):
+  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
+
+  The gradients of jnp.maximum(jnp.linalg.norm(x), min_norm) at 0.0 is NaN,
+  because jax will evaluate both branches of the jnp.maximum.
+
+  The version in this function will return the correct gradient of 0.0 in this
+  situation.
 
   Args:
-    step_size_fn: a function that takes an update count as input and proposes
-      the step_size to multiply the updates by.
-    weight_decay: a fixed scalar weight decay rate, which is further scaled by
-      the step_size
+    x: jax array.
+    min_norm: lower bound for the returned norm.
+  """
+  norm = jnp.linalg.norm(x)
+  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
+  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
+
+
+def scale_by_fromage(
+    step_size: float = 1e-3,
+    min_norm: float = 1e-6,
+    step_size_factor_fn: Optional[Callable[[jnp.ndarray], jnp.ndarray]] = None,
+    ) -> GradientTransformation:
+  """Scale updates by Frobenius norm of parameters and grads.
+
+  References:
+    [Bernstein et. al 2020](https://arxiv.org/abs/2002.03432)
+
+  Args:
+    step_size: the step_size to multiply the updates by.
+    min_norm: Minimum norm of parameters and gradients, to avoid division by
+      zero and to ensure an update is made to a parameter with zero norm.
+    step_size_factor_fn: a function that takes an update count as input and
+      returns a factor the step_size is multiplied by.
+      Effective learning rate is step_size * step_size_factor_fn(state.count)
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_: Params):
+    return ScaleByFromageState(count=jnp.zeros([], jnp.int32))
+
+  def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
+    lr = step_size
+    if step_size_factor_fn:
+      lr *= step_size_factor_fn(state.count)
+
+    def _scale_update(update, param):
+      update_norm = _safe_norm(update, min_norm)
+      param_norm = _safe_norm(param, min_norm)
+      norm_ratio = param_norm / update_norm
+      mult = jax.lax.rsqrt(1 + lr**2).astype(update.dtype)
+      scaled_update = lr * update * norm_ratio * mult
+      scaled_param_correction = param * (mult - 1.)
+      return scaled_update + scaled_param_correction
+
+    updates = jax.tree_multimap(_scale_update, updates, params)
+    return updates, ScaleByFromageState(count=state.count + 1)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+class ScaleByTrustRatioState(NamedTuple):
+  """The scale and decay trust ratio transformation is stateless."""
+
+
+def scale_by_trust_ratio() -> GradientTransformation:
+  """Scale updates by trust ratio`.
+
+  References:
+    [You et. al 2020](https://arxiv.org/abs/1904.00962)
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
   def init_fn(_):
-    return ScaleAndDecayByScheduleState(count=jnp.zeros([], jnp.int32))
+    return ScaleByTrustRatioState()
 
   def update_fn(updates, state, params):
-    step_size = step_size_fn(state.count)
-    updates = jax.tree_multimap(
-        lambda g, p: (step_size * g - abs(step_size) * weight_decay * p),
-        updates, params)
-    return updates, ScaleAndDecayByScheduleState(count=state.count + 1)
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
+
+    def _scale_update(update, param):
+      param_norm = jnp.linalg.norm(param)
+      update_norm = jnp.linalg.norm(update)
+      trust_ratio = param_norm / update_norm
+
+      # Set trust_ratio to 1 in case where parameters would never be updated.
+      zero_norm = jnp.logical_or(param_norm == 0., update_norm == 0.)
+      safe_trust_ratio = jnp.where(zero_norm, jnp.array(1.0, dtype=param.dtype),
+                                   trust_ratio)
+
+      return update * safe_trust_ratio
+
+    updates = jax.tree_multimap(_scale_update, updates, params)
+    return updates, state
 
   return GradientTransformation(init_fn, update_fn)
 

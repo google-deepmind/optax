@@ -16,22 +16,22 @@
 """Tests for `update.py`."""
 
 from absl.testing import absltest
+import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import update
-from optax._src import utils
 
 
-class UpdateTest(absltest.TestCase):
+class UpdateTest(chex.TestCase):
 
+  @chex.all_variants()
   def test_apply_updates(self):
     params = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     grads = jax.tree_map(lambda t: 2 * t, params)
     exp_params = jax.tree_map(lambda t: 3 * t, params)
-    actual_params = update.apply_updates(params, grads)
+    actual_params = self.variant(update.apply_updates)(params, grads)
 
-    utils.tree_all_close_assert(
+    chex.assert_tree_all_close(
         exp_params, actual_params, atol=1e-10, rtol=1e-5)
 
 

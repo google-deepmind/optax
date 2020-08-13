@@ -17,17 +17,27 @@
 
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
 from optax._src.combine import chain
+from optax._src.control_variates import control_delta_method
+from optax._src.control_variates import control_variates_jacobians
+from optax._src.control_variates import moving_avg_baseline
 from optax._src.schedule import constant_schedule
+from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import polynomial_schedule
 from optax._src.second_order import fisher_diag
 from optax._src.second_order import hessian_diag
 from optax._src.second_order import hvp
+from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
+from optax._src.stochastic_gradient_estimators import pathwise_jacobians
+from optax._src.stochastic_gradient_estimators import score_function_jacobians
 from optax._src.transform import add_noise
+from optax._src.transform import additive_weight_decay
+from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
@@ -42,31 +52,34 @@ from optax._src.transform import InitUpdate  # To be removed
 from optax._src.transform import OptState
 from optax._src.transform import Params
 from optax._src.transform import scale
-from optax._src.transform import scale_and_decay
-from optax._src.transform import scale_and_decay_by_schedule
 from optax._src.transform import scale_by_adam
+from optax._src.transform import scale_by_fromage
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_stddev
-from optax._src.transform import ScaleAndDecayByScheduleState
-from optax._src.transform import ScaleAndDecayState
+from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
+from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
 from optax._src.transform import Updates
 from optax._src.update import apply_updates
+from optax._src.utils import multi_normal
 
 __version__ = "0.0.1"
 
 __all__ = (
     "adam",
     "add_noise",
-    "apply_updates",
+    "additive_weight_decay",
+    "AdditiveWeightDecayState",
     "AddNoiseState",
+    "apply_updates",
     "apply_every",
     "ApplyEvery",
     "chain",
@@ -74,6 +87,7 @@ __all__ = (
     "clip_by_global_norm",
     "ClipByGlobalNormState",
     "ClipState",
+    "cosine_decay_schedule",
     "fisher_diag",
     "global_norm",
     "GradientTransformation",
@@ -81,6 +95,7 @@ __all__ = (
     "hvp",
     "identity",
     "InitUpdate",
+    "lamb",
     "noisy_sgd",
     "OptState",
     "Params",
@@ -88,18 +103,18 @@ __all__ = (
     "polynomial_schedule",
     "rmsprop",
     "scale",
-    "scale_and_decay",
-    "scale_and_decay_by_schedule",
     "scale_by_adam",
+    "scale_by_fromage",
     "scale_by_rms",
     "scale_by_schedule",
     "scale_by_stddev",
-    "ScaleAndDecayByScheduleState",
-    "ScaleAndDecayState",
+    "scale_by_trust_ratio",
     "ScaleByAdamState",
+    "ScaleByFromageState",
     "ScaleByRmsState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
+    "ScaleByTrustRatioState",
     "ScaleState",
     "sgd",
     "trace",

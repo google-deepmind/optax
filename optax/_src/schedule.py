@@ -21,12 +21,13 @@ parameters or the exploration factor used to select actions.
 """
 
 from typing import Dict, Union
+
 from absl import logging
 import jax.numpy as jnp
 
 
 def constant_schedule(value: Union[float, int]):
-  """Construct a constant schedule.
+  """Constructs a constant schedule.
 
   Args:
     value: value to be held constant throughout.
@@ -34,7 +35,7 @@ def constant_schedule(value: Union[float, int]):
   Returns:
     schedule: A function that maps step counts to values.
   """
-  return lambda _: value
+  return lambda count: value
 
 
 def polynomial_schedule(
@@ -43,19 +44,19 @@ def polynomial_schedule(
     power: Union[float, int],
     transition_steps: int,
     transition_begin: int = 0):
-  """Construct a schedule with polynomial transition from init to end value.
+  """Constructs a schedule with polynomial transition from init to end value.
 
   Args:
     init_value: initial value for the scalar to be annealed.
     end_value: end value of the scalar to be annealed.
     power: the power of the polynomial used to transition from init to end.
     transition_steps: number of steps over which annealing takes place,
-      the scalar starts chaning at `transition_begins` steps and completes
-      the transition by `transition_begins + transition_steps` steps.
-      if `transition_steps <= 0`, then the entire annealing process is disabled
-      and the value is held fixed at `init_values`.
-    transition_begin: after how many steps to start annealing (before this
-      many steps the scalar value is held fixed at `init_values`).
+      the scalar starts changing at `transition_begin` steps and completes
+      the transition by `transition_begin + transition_steps` steps.
+      If `transition_steps <= 0`, then the entire annealing process is disabled
+      and the value is held fixed at `init_value`.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at `init_value`).
 
   Returns:
     schedule: A function that maps step counts to values.
@@ -65,11 +66,17 @@ def polynomial_schedule(
         'A polynomial schedule was set with a non-positive `transition_steps` '
         'value; this will result in a constant schedule with value '
         '`init_value`.')
-    return lambda step_count: init_value
+    return lambda count: init_value
+
+  if transition_begin < 0:
+    logging.info(
+        'An exponential schedule was set with a negative `transition_begin` '
+        'value; this will result in `transition_begin` falling back to `0`.')
+    transition_begin = 0
 
   else:
-    def schedule(step_count):
-      count = jnp.clip(step_count - transition_begin, 0, transition_steps)
+    def schedule(count):
+      count = jnp.clip(count - transition_begin, 0, transition_steps)
       frac = 1 - count / transition_steps
       return (init_value - end_value) * (frac**power) + end_value
     return schedule
@@ -101,5 +108,96 @@ def piecewise_constant_schedule(
         indicator = jnp.max([0., jnp.sign(threshold - count)])
         v = v * indicator + (1 - indicator) * scale * v
     return v
+
+  return schedule
+
+
+def exponential_decay(
+    init_value: float,
+    transition_steps: int,
+    decay_rate: float,
+    transition_begin: int = 0,
+    staircase: bool = False):
+  """Constructs a schedule with either cointinuous or discrete exponential decay.
+
+  This function applies an exponential decay function to a provided initial
+  value. The function returns the decayed value as follows:
+
+  ```
+  decayed_value = init_value * decay_rate ^ (count / transition_steps)
+  ```
+
+  If the argument `staircase` is `True`, then `count / transition_steps` is
+  an integer division and the decayed value follows a staircase function.
+
+  Args:
+    init_value: the initial learning rate.
+    transition_steps: must be positive. See the decay computation above.
+    decay_rate: must not be zero. The decay rate.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at `init_value`).
+    staircase: if `True`, decay the values at discrete intervals.
+
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+
+  if transition_steps <= 0:
+    logging.info(
+        'An exponential schedule was set with a non-positive `transition_steps` '
+        'value; this will result in a constant schedule with value '
+        '`init_value`.')
+    return lambda count: init_value
+
+  if decay_rate == 0:
+    logging.info(
+        'An exponential schedule was set with a zero `decay_rate` value; '
+        'this will result in a constant schedule with value `init_value`.')
+    return lambda count: init_value
+
+  if transition_begin < 0:
+    logging.info(
+        'An exponential schedule was set with a negative `transition_begin` '
+        'value; this will result in `transition_begin` falling back to `0`.')
+    transition_begin = 0
+
+  def schedule(count):
+    count -= transition_begin
+    p = count / transition_steps
+    if staircase:
+      p = jnp.floor(p)
+    return jnp.where(
+        count <= 0, init_value, init_value * jnp.power(decay_rate, p))
+
+  return schedule
+
+
+def cosine_decay_schedule(
+    init_value: float,
+    decay_steps: int,
+    alpha: float = 0.0):
+  """Returns a function which implements cosine learning rate decay.
+
+  For more details see:
+    https://openreview.net/forum?id=Skq89Scxx&noteId=Skq89Scxx
+
+  Args:
+    init_value: An initial value `init_v`.
+    decay_steps: Positive integer - the number of steps for which to apply
+      the decay for.
+    alpha: Float. The minimum value of the multiplier used to adjust the
+      learning rate.
+
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  if not decay_steps > 0:
+    raise ValueError('The cosine_decay_schedule requires positive decay_steps!')
+
+  def schedule(count):
+    count = jnp.minimum(count, decay_steps)
+    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
+    decayed = (1 - alpha) * cosine_decay + alpha
+    return init_value * decayed
 
   return schedule

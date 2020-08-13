@@ -16,27 +16,27 @@
 """Tests for `combine.py`."""
 
 from absl.testing import absltest
-from absl.testing import parameterized
 
+import chex
 import jax.numpy as jnp
 
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
-from optax._src import utils
 
 
 STEPS = 50
 LR = 1e-2
 
 
-class ComposeTest(parameterized.TestCase):
+class ComposeTest(chex.TestCase):
 
   def setUp(self):
     super(ComposeTest, self).setUp()
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
+  @chex.all_variants()
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
@@ -48,6 +48,7 @@ class ComposeTest(parameterized.TestCase):
     chained_transforms = combine.chain(*transformations)
     state = chained_transforms.init(chain_params)
 
+    @self.variant
     def update_fn(updates, state):
       return chained_transforms.update(updates, state)
 
@@ -68,7 +69,7 @@ class ComposeTest(parameterized.TestCase):
       states = new_states
 
     # Check equivalence.
-    utils.tree_all_close_assert(manual_params, chain_params, rtol=1e-4)
+    chex.assert_tree_all_close(manual_params, chain_params, rtol=1e-4)
 
 
 if __name__ == '__main__':
