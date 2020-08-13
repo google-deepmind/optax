@@ -16,6 +16,7 @@
 """Gradient transformations."""
 
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+import chex
 import jax
 import jax.numpy as jnp
 
@@ -241,6 +242,23 @@ class ScaleByAdamState(OptState):
   nu: Updates
 
 
+def _safe_int32_increment(count):
+  """Increments int32 counter by one.
+
+  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
+  that when `max_int` is reached the counter stays at `max_int`.
+
+  Args:
+    count: a counter to be incremented.
+
+  Returns:
+    a counter incremented by 1, or max_int if the maximum precision is reached.
+  """
+  chex.assert_type(count, jnp.int32)
+  max_int32_value = jnp.iinfo(jnp.int32).max
+  return jnp.where(count < max_int32_value, count + 1, max_int32_value)
+
+
 def scale_by_adam(
     b1: float = 0.9, b2: float = 0.999,
     eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
@@ -273,7 +291,8 @@ def scale_by_adam(
     nu_hat = jax.tree_multimap(lambda t: t / (1 - b2 ** (state.count + 1)), nu)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
-    return updates, ScaleByAdamState(count=state.count + 1, mu=mu, nu=nu)
+    return updates, ScaleByAdamState(
+        count=_safe_int32_increment(state.count), mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -351,7 +370,8 @@ def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
     del params
     updates = jax.tree_multimap(lambda g: step_size_fn(state.count) * g,
                                 updates)
-    return updates, ScaleByScheduleState(count=state.count + 1)
+    return updates, ScaleByScheduleState(
+        count=_safe_int32_increment(state.count))
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -454,8 +474,8 @@ def scale_by_trust_ratio() -> GradientTransformation:
 
       # Set trust_ratio to 1 in case where parameters would never be updated.
       zero_norm = jnp.logical_or(param_norm == 0., update_norm == 0.)
-      safe_trust_ratio = jnp.where(zero_norm, jnp.array(1.0, dtype=param.dtype),
-                                   trust_ratio)
+      safe_trust_ratio = jnp.where(
+          zero_norm, jnp.array(1.0, dtype=param.dtype), trust_ratio)
 
       return update * safe_trust_ratio
 
@@ -501,7 +521,8 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
     updates = jax.tree_multimap(
         lambda g, n: g + variance * n, updates, noise)
-    return updates, AddNoiseState(count=state.count + 1, rng_key=all_keys[0])
+    return updates, AddNoiseState(
+        count=_safe_int32_increment(state.count), rng_key=all_keys[0])
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -534,6 +555,6 @@ def apply_every(k: int = 1) -> GradientTransformation:
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_multimap(lambda ga: emit * ga, grad_acc)
-    return updates, ApplyEvery(count=state.count + 1, grad_acc=grad_acc)
+    return updates, ApplyEvery(count=(state.count + 1) % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
