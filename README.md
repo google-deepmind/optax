@@ -32,9 +32,7 @@ Chex can be installed with pip directly from github, with the following command:
 
 ## Components
 
-### Gradient Transformations (
-[transform.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
+### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
 
 One of the key building blocks of `optax` is a `GradientTransformation`.
 
@@ -55,9 +53,7 @@ state = tx.init(params)  # init stats
 grads, state = tx.update(grads, state, params)  # transform & update stats.
 ```
 
-### Composing Gradient Transformations (
-[combine.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/combine.py))
+### Composing Gradient Transformations ([combine.py](https://github.com/deepmind/optax/blob/master/optax/_src/combine.py))
 
 The fact that transformations take candidate gradients as input and return
 processed gradients as output (in contrast to returning the updated parameters)
@@ -77,9 +73,7 @@ my_optimiser = chain(
     scale(-learning_rate))
 ```
 
-### Schedules (
-[schedule.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/schedule.py))
+### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/master/optax/_src/schedule.py))
 
 Many popular transformations use time dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
@@ -98,9 +92,7 @@ def polynomial_schedule(
     return schedule
 ```
 
-### Popular optimisers (
-[alias.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/alias.py))
+### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/master/optax/_src/alias.py))
 
 In addition to the low level building blocks we also provide aliases for popular
 optimisers built using these components (e.g. RMSProp, Adam, AdamW, etc, ...).
@@ -116,9 +108,7 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
       scale_and_decay(-learning_rate, weight_decay=weight_decay))
 ```
 
-### Applying updates (
-[update.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/update.py))
+### Applying updates ([update.py](https://github.com/deepmind/optax/blob/master/optax/_src/update.py))
 
 An `apply_updates` function can be used to eventually apply the
 transformed gradients to the set of parameters of interest.
@@ -128,18 +118,14 @@ chain a sequence of transformations of the same gradients, as well as combine
 multiple updates to the same parameters (e.g. in multi-task settings where the
 different tasks may benefit from different sets of gradient transformations).
 
-### Second Order (
-[second_order.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
+### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
 
 Computing the Hessian or Fisher information matrices for neural networks is
 typically intractible due to the quadratic memory requirements. Solving for the
 diagonals of these matrices is often a better solution. The library offers
 functions for computing these diagonals with sub-quadratic memory requirements.
 
-### Stochastic gradient estimators (
-[stochastic_gradient_estimators.py](
-https://github.com/deepmind/optax/blob/master/optax/_src/stochastic_gradient_estimators.py))
+### Stochastic gradient estimators ([stochastic_gradient_estimators.py](https://github.com/deepmind/optax/blob/master/optax/_src/stochastic_gradient_estimators.py))
 
 Stochastic gradient estimators compute Monte Carlo estimates of gradients of
 the expectation of a function under a distribution with respect to the
@@ -177,3 +163,22 @@ Example of how to use the `pathwise_jacobians` estimator:
 ```
 
 where `optim` is an optax optimizer.
+
+## Citing Optax
+
+To cite this repository:
+
+```
+@software{optax2020github,
+  author = {Matteo Hessel and David Budden and Fabio Viola and Mihaela Rosca
+            and Tom Hennigan},
+  title = {Optax: composable gradient transformation and optimisation, in JAX!},
+  url = {http://github.com/deepmind/optax},
+  version = {0.0.1},
+  year = {2020},
+}
+```
+
+In this bibtex entry, the version number is intended to be from
+[optax/\_\_init\_\_.py](https://github.com/deepmind/optax/blob/master/optax/__init__.py),
+and the year corresponds to the project's open-source release.
