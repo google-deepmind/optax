@@ -131,7 +131,7 @@ class AliasTest(chex.TestCase):
     for _ in range(10000):
       params, state = step(params, state)
 
-    chex.assert_tree_all_close(params, final_params, rtol=1e-2, atol=1e-2)
+    chex.assert_tree_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
 
 if __name__ == '__main__':
