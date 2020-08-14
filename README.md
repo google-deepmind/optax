@@ -26,9 +26,13 @@ out of `experimental` as a standalone open-source library, renamed `optax`.
 
 ## Installation
 
-Chex can be installed with pip directly from github, with the following command:
+Optax can be installed with pip directly from github, with the following command:
 
 `pip install git+git://github.com/deepmind/optax.git`
+
+or from PyPI:
+
+`pip install optax`
 
 ## Components
 
