@@ -175,7 +175,7 @@ To cite this repository:
 ```
 @software{optax2020github,
   author = {Matteo Hessel and David Budden and Fabio Viola and Mihaela Rosca
-            and Tom Hennigan},
+            and Eren Sezener and Tom Hennigan},
   title = {Optax: composable gradient transformation and optimisation, in JAX!},
   url = {http://github.com/deepmind/optax},
   version = {0.0.1},
