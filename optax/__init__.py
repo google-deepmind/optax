@@ -15,6 +15,7 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
+from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
 from optax._src.alias import lamb
@@ -56,12 +57,14 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_fromage
 from optax._src.transform import scale_by_rms
+from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
+from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
 from optax._src.transform import ScaleByTrustRatioState
@@ -77,6 +80,7 @@ __version__ = "0.0.1"
 
 __all__ = (
     "adam",
+    "adagrad",
     "add_noise",
     "additive_weight_decay",
     "AdditiveWeightDecayState",
@@ -109,9 +113,11 @@ __all__ = (
     "scale_by_adam",
     "scale_by_fromage",
     "scale_by_rms",
+    "scale_by_rss",
     "scale_by_schedule",
     "scale_by_stddev",
     "scale_by_trust_ratio",
+    "ScaleByRssState",
     "ScaleByAdamState",
     "ScaleByFromageState",
     "ScaleByRmsState",

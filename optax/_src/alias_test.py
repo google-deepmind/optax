@@ -47,6 +47,8 @@ class AliasTest(chex.TestCase):
        optimizers.adam(LR, 0.9, 0.999), 1e-4),
       ('rmsprop', alias.rmsprop(LR, .9, 0.1),
        optimizers.rmsprop(LR, .9, 0.1), 1e-5),
+      ('adagrad', alias.adagrad(LR, 0., 0.,),
+       optimizers.adagrad(LR, 0.), 1e-5),
   )
   def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):
 

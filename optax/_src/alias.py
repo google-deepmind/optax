@@ -20,6 +20,17 @@ from optax._src import transform
 GradientTransformation = transform.GradientTransformation
 
 
+def adagrad(
+    learning_rate: float,
+    initial_accumulator_value: float = 0.1,
+    eps: float = 1e-7) -> GradientTransformation:
+  return combine.chain(
+      transform.scale_by_rss(
+          initial_accumulator_value=initial_accumulator_value, eps=eps),
+      transform.scale(-learning_rate),
+  )
+
+
 def adam(learning_rate: float,
          b1: float = 0.9,
          b2: float = 0.999,

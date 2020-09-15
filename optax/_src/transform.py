@@ -160,6 +160,44 @@ def trace(decay: float, nesterov: bool) -> GradientTransformation:
   return GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByRssState(OptState):
+  """State holding the sum of gradient squares to date."""
+  sum_of_squares: Updates
+
+
+def scale_by_rss(initial_accumulator_value: float = 0.1, eps: float = 1e-7):
+  """Rescale updates by the root of the sum of all squared gradients to date.
+
+  References:
+    [Duchi et al, 2011](https://jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+    [McMahan et al., 2010](https://arxiv.org/abs/1002.4908)
+
+  Args:
+    initial_accumulator_value: Starting value for accumulators, must be >= 0.
+    eps: A small floating point value to avoid zero denominator.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    sum_of_squares = jax.tree_map(
+        lambda t: jnp.full_like(t, initial_accumulator_value), params)
+    return ScaleByRssState(sum_of_squares=sum_of_squares)
+
+  def update_fn(updates, state, params=None):
+    del params
+    sum_of_squares = jax.tree_multimap(
+        lambda g, t: jnp.square(g) + t, updates, state.sum_of_squares)
+    inv_sqrt_g_square = jax.tree_map(
+        lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
+    updates = jax.tree_multimap(
+        lambda scale, g: scale * g, inv_sqrt_g_square, updates)
+    return updates, ScaleByRssState(sum_of_squares=sum_of_squares)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByRmsState(OptState):
   """State for exponential root mean-squared (RMS)-normalized updates."""
   nu: Updates
@@ -343,8 +381,8 @@ def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
     return AdditiveWeightDecayState()
 
   def update_fn(updates, state, params):
-    updates = jax.tree_multimap(lambda g, p: g + weight_decay * p, updates,
-                                params)
+    updates = jax.tree_multimap(
+        lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
