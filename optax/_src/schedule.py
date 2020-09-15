@@ -96,16 +96,18 @@ def piecewise_constant_schedule(
   Returns:
     schedule: A function that maps step counts to values.
   """
-  all_positive = all(scale >= 0. for scale in boundaries_and_scales.values())
-  if not all_positive:
-    raise ValueError(
-        'The `piecewise_constant_schedule` expects non-negative scale factors')
+  if boundaries_and_scales is not None:
+    all_positive = all(scale >= 0. for scale in boundaries_and_scales.values())
+    if not all_positive:
+      raise ValueError(
+          'The `piecewise_constant_schedule` expects non-negative scale '
+          'factors')
 
   def schedule(count):
     v = init_value
     if boundaries_and_scales is not None:
       for threshold, scale in sorted(boundaries_and_scales.items()):
-        indicator = jnp.max([0., jnp.sign(threshold - count)])
+        indicator = jnp.maximum(0., jnp.sign(threshold - count))
         v = v * indicator + (1 - indicator) * scale * v
     return v
 

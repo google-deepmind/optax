@@ -82,7 +82,7 @@ def clip(max_delta) -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda g: jnp.clip(g, -max_delta, max_delta), updates)
     return updates, state
 
@@ -120,9 +120,9 @@ def clip_by_global_norm(max_norm) -> GradientTransformation:
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jax.tree_multimap(lambda t: (t / g_norm) * max_norm, updates)
+    # updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = g_norm < max_norm
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda t: jnp.where(trigger, t, (t / g_norm) * max_norm), updates)
     return updates, state
 
@@ -146,7 +146,7 @@ def trace(decay: float, nesterov: bool) -> GradientTransformation:
   """
 
   def init_fn(params):
-    return TraceState(trace=jax.tree_multimap(jnp.zeros_like, params))
+    return TraceState(trace=jax.tree_map(jnp.zeros_like, params))
 
   def update_fn(updates, state, params=None):
     del params
@@ -185,14 +185,14 @@ def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
   """
 
   def init_fn(params):
-    nu = jax.tree_multimap(jnp.zeros_like, params)  # second moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # second moment
     return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
     nu = _update_moment(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, n: g / (jnp.sqrt(n + eps)), updates, nu)
+        lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -220,8 +220,8 @@ def scale_by_stddev(
   """
 
   def init_fn(params):
-    mu = jax.tree_multimap(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_multimap(jnp.zeros_like, params)  # Second moment
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
@@ -229,7 +229,8 @@ def scale_by_stddev(
     mu = _update_moment(updates, state.mu, decay, 1)
     nu = _update_moment(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, m, n: g / jnp.sqrt(n - jnp.square(m) + eps), updates, mu, nu)
+        lambda g, m, n: g * jax.lax.rsqrt(n - jnp.square(m) + eps), updates, mu,
+        nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -279,20 +280,22 @@ def scale_by_adam(
   """
 
   def init_fn(params):
-    mu = jax.tree_multimap(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_multimap(jnp.zeros_like, params)  # Second moment
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    mu_hat = jax.tree_multimap(lambda t: t / (1 - b1 ** (state.count + 1)), mu)
-    nu_hat = jax.tree_multimap(lambda t: t / (1 - b2 ** (state.count + 1)), nu)
+    count_inc = _safe_int32_increment(state.count)
+    mu_bias_correction = 1 - b1**count_inc
+    nu_bias_correction = 1 - b2**count_inc
+    mu_hat = jax.tree_map(lambda t: t / mu_bias_correction, mu)
+    nu_hat = jax.tree_map(lambda t: t / nu_bias_correction, nu)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
-    return updates, ScaleByAdamState(
-        count=_safe_int32_increment(state.count), mu=mu, nu=nu)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -316,7 +319,7 @@ def scale(step_size: float) -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_multimap(lambda g: step_size * g, updates)
+    updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -368,8 +371,8 @@ def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_multimap(lambda g: step_size_fn(state.count) * g,
-                                updates)
+    step_size = step_size_fn(state.count)
+    updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, ScaleByScheduleState(
         count=_safe_int32_increment(state.count))
 
@@ -514,15 +517,14 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
     del params
     num_vars = len(jax.tree_leaves(updates))
     treedef = jax.tree_structure(updates)
-    variance = eta / (1 + state.count) ** gamma
+    count_inc = _safe_int32_increment(state.count)
+    variance = eta / count_inc**gamma
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
         lambda g, k: jax.random.normal(k, shape=g.shape),
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
-    updates = jax.tree_multimap(
-        lambda g, n: g + variance * n, updates, noise)
-    return updates, AddNoiseState(
-        count=_safe_int32_increment(state.count), rng_key=all_keys[0])
+    updates = jax.tree_multimap(lambda g, n: g + variance * n, updates, noise)
+    return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -544,7 +546,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
   """
 
   def init_fn(params):
-    grad_acc = jax.tree_multimap(jnp.zeros_like, params)
+    grad_acc = jax.tree_map(jnp.zeros_like, params)
     return ApplyEvery(count=jnp.zeros([], jnp.int32), grad_acc=grad_acc)
 
   def update_fn(updates, state, params=None):
@@ -554,7 +556,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
     grad_acc = jax.tree_multimap(
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
-    updates = jax.tree_multimap(lambda ga: emit * ga, grad_acc)
+    updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
     return updates, ApplyEvery(count=(state.count + 1) % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)

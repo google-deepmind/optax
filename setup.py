@@ -22,10 +22,10 @@ from setuptools import setup
 def _get_version():
   with open('optax/__init__.py') as fp:
     for line in fp:
-      if line.startswith('__version__'):
-        g = {}
-        exec(line, g)  # pylint: disable=exec-used
-        return g['__version__']
+      if line.startswith('__version__') and '=' in line:
+        version = line[line.find('=') + 1:].strip(' \'"\n')
+        if version:
+          return version
     raise ValueError('`__version__` not defined in `optax/__init__.py`')
 
 

@@ -65,7 +65,7 @@ class SecondOrderTest(chex.TestCase):
       hess_diag = collections.defaultdict(dict)
       for k0, k1 in itertools.product(params.keys(), ['w', 'b']):
         params_shape = params[k0][k1].shape
-        n_params = jnp.prod(params_shape)
+        n_params = np.prod(params_shape)
         hess_diag[k0][k1] = jnp.diag(hess[k0][k1][k0][k1].reshape(
             n_params, n_params)).reshape(params_shape)
       for k, v in hess_diag.items():

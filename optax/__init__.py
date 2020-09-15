@@ -27,6 +27,7 @@ from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
+from optax._src.schedule import exponential_decay
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import polynomial_schedule
 from optax._src.second_order import fisher_diag
@@ -70,6 +71,7 @@ from optax._src.transform import TraceState
 from optax._src.transform import Updates
 from optax._src.update import apply_updates
 from optax._src.utils import multi_normal
+from optax._src.wrappers import flatten
 
 __version__ = "0.0.1"
 
@@ -88,6 +90,7 @@ __all__ = (
     "ClipByGlobalNormState",
     "ClipState",
     "cosine_decay_schedule",
+    "exponential_decay",
     "fisher_diag",
     "global_norm",
     "GradientTransformation",
@@ -124,7 +127,7 @@ __all__ = (
 
 #  _________________________________________
 # / Please don't use symbols in `_src` they \
-# \ are not part of the Optax public API.   /
+# \ are not part of the Optax public API.    /
 #  -----------------------------------------
 #         \   ^__^
 #          \  (oo)\_______

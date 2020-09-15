@@ -213,13 +213,13 @@ def measure_valued_estimation_mean(
   dist_samples = dist.sample((num_samples,), seed=rng)
 
   pos_rng, neg_rng = jax.random.split(rng)
-  pos_sample = utils.weibull_min(
+  pos_sample = jax.random.weibull_min(
       pos_rng, scale=jnp.sqrt(2.), concentration=2., shape=dist_samples.shape)
 
   if coupling:
     neg_sample = pos_sample
   else:
-    neg_sample = utils.weibull_min(
+    neg_sample = jax.random.weibull_min(
         neg_rng, scale=jnp.sqrt(2.), concentration=2., shape=dist_samples.shape)
 
   # N x D
@@ -278,7 +278,7 @@ def measure_valued_estimation_std(
   pos_rng, neg_rng = jax.random.split(rng)
 
   # The only difference between mean and std gradients is what we sample.
-  pos_sample = utils.double_sided_maxwell(
+  pos_sample = jax.random.double_sided_maxwell(
       pos_rng, loc=0.0, scale=1.0, shape=dist_samples.shape)
   if coupling:
     unif_rvs = jax.random.uniform(neg_rng, dist_samples.shape)

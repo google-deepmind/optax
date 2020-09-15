@@ -83,17 +83,26 @@ Many popular transformations use time dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
 `schedules` that can be used to decay scalars as a function of a `step` count.
 
-For example:
+For example you many use a polynomial schedule (with `power=1`) to decay
+a hyper-parameter linearly over a number of steps:
 
 ```python
-def polynomial_schedule(
-    init_value, end_value, power, transition_steps, transition_begin):
-    def schedule(step_count):
-      count = jnp.clip(
-          step_count - transition_begin, 0, transition_steps)
-      frac = 1 - count / transition_steps
-      return (init_value - end_value) * (frac**power) + end_value
-    return schedule
+schedule_fn = polynomial_schedule(
+    init_value=1., end_value=0., power=1, transition_steps=5)
+
+for step_count in range(6):
+  print(schedule_fn(step_count))  # [1., 0.8, 0.6, 0.4, 0.2, 0.]
+```
+
+Schedules are used by certain gradient transformation, for instance:
+
+```python
+schedule_fn = polynomial_schedule(
+    init_value=-learning_rate, end_value=0., power=1, transition_steps=5)
+optimiser = chain(
+    clip_by_global_norm(max_norm),
+    scale_by_adam(eps=1e-4),
+    scale_by_schedule(schedule_fn))
 ```
 
 ### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/master/optax/_src/alias.py))
@@ -117,10 +126,15 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
 An `apply_updates` function can be used to eventually apply the
 transformed gradients to the set of parameters of interest.
 
-Separating gradient transformations from the parameter update allows to flexibly
-chain a sequence of transformations of the same gradients, as well as combine
-multiple updates to the same parameters (e.g. in multi-task settings where the
-different tasks may benefit from different sets of gradient transformations).
+```python
+updates, state = tx.update(grads, state, params)  # transform & update stats.
+new_params = optax.apply_updates(params, updates)  # update the parameters.
+```
+
+Note that separating gradient transformations from the parameter update is
+critical to support composing sequence of transformations (e.g. `chain`), as
+well as combine multiple updates to the same parameters (e.g. in multi-task
+settings where different tasks need different sets of gradient transformations).
 
 ### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
 

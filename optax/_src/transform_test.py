@@ -16,6 +16,7 @@
 """Tests for `transform.py`."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
@@ -24,17 +25,39 @@ from optax._src import combine
 from optax._src import transform
 from optax._src import update
 
-
 STEPS = 50
 LR = 1e-2
 
 
-class TransformTest(chex.TestCase):
+class TransformTest(parameterized.TestCase):
 
   def setUp(self):
     super(TransformTest, self).setUp()
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+
+  @chex.all_variants
+  @parameterized.named_parameters([
+      ('adam', transform.scale_by_adam),
+      ('rmsprop', transform.scale_by_rms),
+      ('fromage', transform.scale_by_fromage),
+      ('stddev', transform.scale_by_stddev),
+      ('trust_ratio', transform.scale_by_trust_ratio),
+  ])
+  def test_scalers(self, scaler_constr):
+    params = self.init_params
+
+    scaler = scaler_constr()
+    init_fn = self.variant(scaler.init)
+    transform_fn = self.variant(scaler.update)
+
+    state = init_fn(params)
+    chex.assert_tree_all_finite(state)
+
+    updates, state = transform_fn(self.per_step_updates, state, params)
+    chex.assert_tree_all_finite((params, updates, state))
+    jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
+                      updates)
 
   @chex.all_variants()
   def test_scale_by_fromage(self):
