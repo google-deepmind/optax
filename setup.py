@@ -48,6 +48,7 @@ setup(
         'jaxlib>=0.1.37',
         'numpy>=1.18.0',
     ],
+    python_requires='>=3.6',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',

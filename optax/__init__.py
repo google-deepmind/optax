@@ -133,7 +133,7 @@ __all__ = (
 
 #  _________________________________________
 # / Please don't use symbols in `_src` they \
-# \ are not part of the Optax public API.    /
+# \ are not part of the Optax public API.   /
 #  -----------------------------------------
 #         \   ^__^
 #          \  (oo)\_______
