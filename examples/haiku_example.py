@@ -41,8 +41,8 @@ def main(argv):
   network = hk.without_apply_rng(hk.transform(forward_pass, apply_rng=True))
 
   # Some arbitrary loss.
-  def mean_square_loss(x):
-    output = network.apply(x)
+  def mean_square_loss(params, x):
+    output = network.apply(params, x)
     loss = jnp.sum(output**2)
     return loss, loss
 
