@@ -139,7 +139,7 @@ settings where different tasks need different sets of gradient transformations).
 ### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
 
 Computing the Hessian or Fisher information matrices for neural networks is
-typically intractible due to the quadratic memory requirements. Solving for the
+typically intractable due to the quadratic memory requirements. Solving for the
 diagonals of these matrices is often a better solution. The library offers
 functions for computing these diagonals with sub-quadratic memory requirements.
 
