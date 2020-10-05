@@ -295,7 +295,8 @@ def _safe_int32_increment(count):
   """
   chex.assert_type(count, jnp.int32)
   max_int32_value = jnp.iinfo(jnp.int32).max
-  return jnp.where(count < max_int32_value, count + 1, max_int32_value)
+  one = jnp.array(1, dtype=jnp.int32)
+  return jnp.where(count < max_int32_value, count + one, max_int32_value)
 
 
 def scale_by_adam(
@@ -329,8 +330,8 @@ def scale_by_adam(
     count_inc = _safe_int32_increment(state.count)
     mu_bias_correction = 1 - b1**count_inc
     nu_bias_correction = 1 - b2**count_inc
-    mu_hat = jax.tree_map(lambda t: t / mu_bias_correction, mu)
-    nu_hat = jax.tree_map(lambda t: t / nu_bias_correction, nu)
+    mu_hat = jax.tree_map(lambda t: t / mu_bias_correction.astype(t.dtype), mu)
+    nu_hat = jax.tree_map(lambda t: t / nu_bias_correction.astype(t.dtype), nu)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -410,7 +411,8 @@ def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
   def update_fn(updates, state, params=None):
     del params
     step_size = step_size_fn(state.count)
-    updates = jax.tree_map(lambda g: step_size * g, updates)
+    updates = jax.tree_map(
+        lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
         count=_safe_int32_increment(state.count))
 
@@ -481,8 +483,10 @@ def scale_by_fromage(
       scaled_param_correction = param * (mult - 1.)
       return scaled_update + scaled_param_correction
 
+    count_inc = _safe_int32_increment(state.count)
     updates = jax.tree_multimap(_scale_update, updates, params)
-    return updates, ScaleByFromageState(count=state.count + 1)
+
+    return updates, ScaleByFromageState(count=count_inc)
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -559,9 +563,11 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
     variance = eta / count_inc**gamma
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
-        lambda g, k: jax.random.normal(k, shape=g.shape),
+        lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
-    updates = jax.tree_multimap(lambda g, n: g + variance * n, updates, noise)
+    updates = jax.tree_multimap(
+        lambda g, n: g + variance.astype(g.dtype) * n,
+        updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
 
   return GradientTransformation(init_fn, update_fn)
@@ -595,6 +601,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
-    return updates, ApplyEvery(count=(state.count + 1) % k, grad_acc=grad_acc)
+    count_inc = _safe_int32_increment(state.count)
+    return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
