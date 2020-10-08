@@ -73,7 +73,7 @@ class AliasTest(chex.TestCase):
       optax_params = update.apply_updates(optax_params, updates)
 
     # Check equivalence.
-    chex.assert_tree_all_close(jax_params, optax_params, rtol)
+    chex.assert_tree_all_close(jax_params, optax_params, rtol=rtol)
 
   @parameterized.named_parameters(
       ('sgd', alias.sgd(1e-2, 0.0)),
