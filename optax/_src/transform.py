@@ -298,6 +298,10 @@ def _safe_int32_increment(count):
   one = jnp.array(1, dtype=jnp.int32)
   return jnp.where(count < max_int32_value, count + one, max_int32_value)
 
+def _bias_correction(moment, decay, count):
+  """Perform bias correction. This becomes a no-op as count goes to infinity."""
+  bias_correction = 1 - decay**count
+  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
 
 def scale_by_adam(
     b1: float = 0.9, b2: float = 0.999,
@@ -328,10 +332,8 @@ def scale_by_adam(
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
-    mu_bias_correction = 1 - b1**count_inc
-    nu_bias_correction = 1 - b2**count_inc
-    mu_hat = jax.tree_map(lambda t: t / mu_bias_correction.astype(t.dtype), mu)
-    nu_hat = jax.tree_map(lambda t: t / nu_bias_correction.astype(t.dtype), nu)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
