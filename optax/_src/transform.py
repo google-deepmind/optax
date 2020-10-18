@@ -605,3 +605,28 @@ def apply_every(k: int = 1) -> GradientTransformation:
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
+
+
+class CentralState(OptState):
+  """The `centralize` transformation is stateless."""
+
+
+def centralize() -> GradientTransformation:
+  """Centralize gradients.
+
+  References:
+    [Yong et al, 2020](https://arxiv.org/abs/2004.01461)
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return CentralState()
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates = [up - up.mean(tuple(range(1, len(up.shape))), keepdims=True) for up in updates]
+    return updates, state
+
+  return GradientTransformation(init_fn, update_fn)
