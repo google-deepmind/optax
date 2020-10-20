@@ -67,7 +67,7 @@ def _map_variant(variant):
 def _cv_jac_variant(variant):
   return variant(
       control_variates.control_variates_jacobians,
-      static_argnums=(0, 1, 2, 4, 5, 6, 7, 8))
+      static_argnums=(0, 1, 2, 4, 6, 7, 8))
 
 
 class DeltaControlVariateTest(chex.TestCase):

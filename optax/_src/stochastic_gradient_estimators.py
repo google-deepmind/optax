@@ -28,6 +28,8 @@ For more details, see:
 S. Mohamed, M. Rosca, M. Figurnov, A Mnih.
   Monte Carlo Gradient Estimation in Machine Learning. JMLR, 2020.
 """
+
+import math
 from typing import Any, Callable, Sequence
 
 import chex
@@ -214,13 +216,16 @@ def measure_valued_estimation_mean(
 
   pos_rng, neg_rng = jax.random.split(rng)
   pos_sample = jax.random.weibull_min(
-      pos_rng, scale=jnp.sqrt(2.), concentration=2., shape=dist_samples.shape)
+      pos_rng, scale=math.sqrt(2.), concentration=2., shape=dist_samples.shape)
 
   if coupling:
     neg_sample = pos_sample
   else:
     neg_sample = jax.random.weibull_min(
-        neg_rng, scale=jnp.sqrt(2.), concentration=2., shape=dist_samples.shape)
+        neg_rng,
+        scale=math.sqrt(2.),
+        concentration=2.,
+        shape=dist_samples.shape)
 
   # N x D
   positive_diag = mean + std * pos_sample

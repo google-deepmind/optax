@@ -67,13 +67,13 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
 
 
 def _estimator_variant(variant, estimator):
-  return variant(estimator, static_argnums=(0, 2, 3, 4))
+  return variant(estimator, static_argnums=(0, 2, 4))
 
 
 def _measure_valued_variant(variant):
   return variant(
       stochastic_gradient_estimators.measure_valued_jacobians,
-      static_argnums=(0, 2, 3, 4, 5))
+      static_argnums=(0, 2, 4, 5))
 
 
 class GradientEstimatorsTest(chex.TestCase):
