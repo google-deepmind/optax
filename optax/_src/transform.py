@@ -627,7 +627,8 @@ def centralize() -> GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     updates = jax.tree_map(
-        lambda g: g - g.mean(tuple(range(1, len(g.shape))), keepdims=True), updates)
+        lambda g: g - g.mean(tuple(range(1, len(g.shape))), keepdims=True) if len(g.shape) > 1
+          else g, updates)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)

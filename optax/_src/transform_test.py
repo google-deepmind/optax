@@ -154,6 +154,18 @@ class TransformTest(parameterized.TestCase):
       # Check that continuously clipping won't cause numerical issues.
       chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)
 
+  @parameterized.named_parameters([
+      ('1d', [1.0, 2.0], [1.0, 2.0]),
+      ('2d', [[1.0, 2.0], [3.0, 4.0]], [[-0.5000,  0.5000], [-0.5000,  0.5000]]),
+      ('3d', [[[1., 2.], [3., 4.]], [[5., 6.], [7., 8.]]],
+        [[[-1.5000, -0.5000], [ 0.5000,  1.5000]], [[-1.5000, -0.5000], [ 0.5000,  1.5000]]]),
+  ])
+  def test_centralize(self, inputs, outputs):
+    inputs = jnp.asarray(inputs)
+    outputs = jnp.asarray(outputs)
+    centralizer = transform.centralize()
+    centralized_inputs, _ = centralizer.update(inputs, None)
+    chex.assert_tree_all_close(centralized_inputs, outputs)
 
 if __name__ == '__main__':
   absltest.main()
