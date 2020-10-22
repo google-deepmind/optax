@@ -43,6 +43,7 @@ from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
+from optax._src.transform import centralize
 from optax._src.transform import clip
 from optax._src.transform import clip_by_global_norm
 from optax._src.transform import ClipByGlobalNormState
@@ -93,6 +94,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "centralize",
     "chain",
     "clip",
     "clip_by_global_norm",
