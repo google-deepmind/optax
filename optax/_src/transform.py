@@ -397,8 +397,7 @@ def scale_by_belief(
     nu = _update_moment(prediction_error, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_nonzero = jax.tree_map(lambda v: v + eps, nu)
-    nu_hat = _bias_correction(nu_nonzero, b2, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
