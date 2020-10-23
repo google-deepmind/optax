@@ -414,7 +414,7 @@ def scale_by_yogi(
   """Rescale updates according to the Adam algorithm.
 
   References:
-    [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/8186-adaptive-methods-for-nonconvex-optimization)
 
   Args:
     b1: decay rate for the exponentially weighted average of grads.
