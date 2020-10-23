@@ -134,6 +134,7 @@ __all__ = (
     "scale_by_schedule",
     "scale_by_stddev",
     "scale_by_trust_ratio",
+    "scale_by_yogi",
     "ScaleByAdamState",
     "ScaleByFromageState",
     "ScaleByRmsState",
@@ -147,6 +148,7 @@ __all__ = (
     "trace",
     "TraceState",
     "Updates",
+    "yogi",
 )
 
 #  _________________________________________

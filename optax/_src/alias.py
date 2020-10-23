@@ -109,3 +109,14 @@ def sgd(learning_rate: float,
       transform.trace(decay=momentum, nesterov=nesterov),
       transform.scale(-learning_rate),
   )
+
+
+
+def yogi(learning_rate: float,
+              b1: float = 0.9,
+              b2: float = 0.999,
+              eps: float = 1e-8) -> GradientTransformation:
+  return combine.chain(
+      transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
+      transform.scale(-learning_rate),
+  )
