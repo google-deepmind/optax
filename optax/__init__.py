@@ -15,7 +15,6 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
-from optax._src.alias import adabelief
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
@@ -56,7 +55,6 @@ from optax._src.transform import OptState
 from optax._src.transform import Params
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
-from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_fromage
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -83,7 +81,6 @@ from optax._src.wrappers import flatten
 __version__ = "0.0.1"
 
 __all__ = (
-    "adabelief",
     "adagrad",
     "adam",
     "adamw",
@@ -127,7 +124,6 @@ __all__ = (
     "rmsprop",
     "scale",
     "scale_by_adam",
-    "scale_by_belief",
     "scale_by_fromage",
     "scale_by_rms",
     "scale_by_rss",
