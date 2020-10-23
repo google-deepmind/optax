@@ -299,9 +299,16 @@ def _safe_int32_increment(count):
   return jnp.where(count < max_int32_value, count + one, max_int32_value)
 
 
-def scale_by_adam(
-    b1: float = 0.9, b2: float = 0.999,
-    eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
+def _bias_correction(moment, decay, count):
+  """Perform bias correction. This becomes a no-op as count goes to infinity."""
+  bias_correction = 1 - decay**count
+  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
+
+
+def scale_by_adam(b1: float = 0.9,
+                  b2: float = 0.999,
+                  eps: float = 1e-8,
+                  eps_root: float = 0.0) -> GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
@@ -328,10 +335,8 @@ def scale_by_adam(
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
-    mu_bias_correction = 1 - b1**count_inc
-    nu_bias_correction = 1 - b2**count_inc
-    mu_hat = jax.tree_map(lambda t: t / mu_bias_correction.astype(t.dtype), mu)
-    nu_hat = jax.tree_map(lambda t: t / nu_bias_correction.astype(t.dtype), nu)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -360,6 +365,45 @@ def scale(step_size: float) -> GradientTransformation:
     del params
     updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, state
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_belief(
+    b1: float = 0.9, b2: float = 0.999,
+    eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
+  """Rescale updates according to the Adam algorithm.
+
+  References:
+    [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of variance of grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = _update_moment(updates, state.mu, b1, 1)
+    prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
+    nu = _update_moment(prediction_error, state.nu, b2, 2)
+    count_inc = _safe_int32_increment(state.count)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
+    updates = jax.tree_multimap(
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
 

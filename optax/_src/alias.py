@@ -20,6 +20,16 @@ from optax._src import transform
 GradientTransformation = transform.GradientTransformation
 
 
+def adabelief(learning_rate: float,
+              b1: float = 0.9,
+              b2: float = 0.999,
+              eps: float = 1e-8) -> GradientTransformation:
+  return combine.chain(
+      transform.scale_by_belief(b1=b1, b2=b2, eps=eps),
+      transform.scale(-learning_rate),
+  )
+
+
 def adagrad(
     learning_rate: float,
     initial_accumulator_value: float = 0.1,
