@@ -410,7 +410,8 @@ def scale_by_belief(
 
 def scale_by_yogi(
     b1: float = 0.9, b2: float = 0.999,
-    eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
+    eps: float = 1e-3, eps_root: float = 0.0, 
+    initial_accumulator_value: float = 1e-6) -> GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
@@ -428,9 +429,10 @@ def scale_by_yogi(
   """
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
-    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
+    value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
+    mu = jax.tree_map(value_like, params)  # First moment
+    nu = jax.tree_map(value_like, params)  # Second Central moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
