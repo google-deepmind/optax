@@ -58,6 +58,7 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_fromage
+from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
@@ -124,11 +125,13 @@ __all__ = (
     "pathwise_jacobians",
     "piecewise_constant_schedule",
     "polynomial_schedule",
+    "radam",
     "rmsprop",
     "scale",
     "scale_by_adam",
     "scale_by_belief",
     "scale_by_fromage",
+    "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",
     "scale_by_schedule",
