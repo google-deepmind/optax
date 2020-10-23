@@ -412,7 +412,7 @@ def scale_by_radam(b1: float = 0.9,
                   b2: float = 0.999,
                   eps: float = 1e-8,
                   eps_root: float = 0.0,
-                  threshold: float 5.0) -> GradientTransformation:
+                  threshold: float = 5.0) -> GradientTransformation:
   """Rescale updates according to the Rectified Adam algorithm.
 
   References:
@@ -431,6 +431,15 @@ def scale_by_radam(b1: float = 0.9,
   """
 
   ro_inf = 2./(1 - b2) - 1
+  def _radam_update(params):
+    ro = params[0]
+    mu_hat = params[1]
+    nu_hat = params[2]
+    r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
+    updates = jax.tree_multimap(
+      lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    return updates
+
   def init_fn(params):
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
@@ -442,16 +451,17 @@ def scale_by_radam(b1: float = 0.9,
     nu = _update_moment(updates, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
     b2t = b2**count_inc
-    ro = state.ro_inf - 2*count_inc*b2t/(1 - b2t)
+    ro = ro_inf - 2*count_inc*b2t/(1 - b2t)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
-    if ro >= threshold:
-      r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
-      updates = jax.tree_multimap(
-        lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
-    else:
-      updates = mu_hat  
-    
+    # if ro >= threshold:
+    # r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
+    # updates = jax.tree_multimap(
+    #   lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    # else:
+    #   updates = mu_hat  
+    updates = jax.lax.cond(ro >= threshold, _radam_update, lambda _: mu_hat,
+                    (ro, mu_hat, nu_hat))
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
