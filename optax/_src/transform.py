@@ -649,3 +649,35 @@ def apply_every(k: int = 1) -> GradientTransformation:
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
+
+
+def _subtract_mean(g):
+  if len(g.shape) > 1:
+    return g - g.mean(tuple(range(1, len(g.shape))), keepdims=True)
+  else:
+    return g
+
+
+class CentralState(OptState):
+  """The `centralize` transformation is stateless."""
+
+
+def centralize() -> GradientTransformation:
+  """Centralize gradients.
+
+  References:
+    [Yong et al, 2020](https://arxiv.org/abs/2004.01461)
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return CentralState()
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates = jax.tree_map(_subtract_mean, updates)
+    return updates, state
+
+  return GradientTransformation(init_fn, update_fn)
