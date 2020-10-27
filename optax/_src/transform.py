@@ -369,9 +369,16 @@ def scale(step_size: float) -> GradientTransformation:
   return GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByBeliefState(OptState):
+  """State for the rescaling by belief algorithm."""
+  count: jnp.ndarray  # shape=(), dtype=jnp.int32.
+  mu: Updates
+  nu: Updates
+
+
 def scale_by_belief(
     b1: float = 0.9, b2: float = 0.999,
-    eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
+    eps: float = 0., eps_root: float = 1e-16) -> GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
@@ -391,7 +398,7 @@ def scale_by_belief(
   def init_fn(params):
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
-    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
+    return ScaleByBeliefState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
 
   def update_fn(updates, state, params=None):
     del params
@@ -403,7 +410,7 @@ def scale_by_belief(
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
-    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+    return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
 
