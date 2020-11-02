@@ -370,7 +370,7 @@ def scale(step_size: float) -> GradientTransformation:
 
 
 class ScaleByBeliefState(OptState):
-  """State for the rescaling by belief algorithm."""
+  """State for the rescaling by AdaBelief algorithm."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32.
   mu: Updates
   nu: Updates
@@ -379,7 +379,7 @@ class ScaleByBeliefState(OptState):
 def scale_by_belief(
     b1: float = 0.9, b2: float = 0.999,
     eps: float = 0., eps_root: float = 1e-16) -> GradientTransformation:
-  """Rescale updates according to the Adam algorithm.
+  """Rescale updates according to the AdaBelief algorithm.
 
   References:
     [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
