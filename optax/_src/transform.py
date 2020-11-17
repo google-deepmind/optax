@@ -20,6 +20,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
+
 # pylint:disable=no-value-for-parameter
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
@@ -62,10 +63,6 @@ def identity() -> GradientTransformation:
   return GradientTransformation(init_fn, update_fn)
 
 
-def _astype(val, target_val):
-  return jnp.asarray(val, target_val.dtype)
-
-
 class ClipState(OptState):
   """The `clip` transformation is stateless."""
 
@@ -86,8 +83,7 @@ def clip(max_delta) -> GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     updates = jax.tree_map(
-        lambda g: jnp.clip(g, -_astype(max_delta, g), _astype(max_delta, g)),
-        updates)
+        lambda g: jnp.clip(g, -max_delta, max_delta), updates)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -154,7 +150,7 @@ def trace(decay: float, nesterov: bool) -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    f = lambda g, t: g + _astype(decay, g) * t
+    f = lambda g, t: g + decay * t
     update_trace = jax.tree_multimap(f, updates, state.trace)
     updates = (
         jax.tree_multimap(f, updates, update_trace)
@@ -191,13 +187,12 @@ def scale_by_rss(initial_accumulator_value: float = 0.1, eps: float = 1e-7):
 
   def update_fn(updates, state, params=None):
     del params
-    sum_of_squares = jax.tree_multimap(lambda g, t: jnp.square(g) + t, updates,
-                                       state.sum_of_squares)
+    sum_of_squares = jax.tree_multimap(
+        lambda g, t: jnp.square(g) + t, updates, state.sum_of_squares)
     inv_sqrt_g_square = jax.tree_map(
-        lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + _astype(eps, t)), 0.0),
-        sum_of_squares)
-    updates = jax.tree_multimap(lambda scale, g: scale * g, inv_sqrt_g_square,
-                                updates)
+        lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
+    updates = jax.tree_multimap(
+        lambda scale, g: scale * g, inv_sqrt_g_square, updates)
     return updates, ScaleByRssState(sum_of_squares=sum_of_squares)
 
   return GradientTransformation(init_fn, update_fn)
@@ -210,14 +205,11 @@ class ScaleByRmsState(OptState):
 
 def _update_moment(updates, moments, decay, order):
   return jax.tree_multimap(
-      lambda g, t: (1 - _astype(decay, g)) * (g**order) + _astype(decay, g) * t,
-      updates, moments)
+      lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
 def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
-  """Rescale updates by the root of the exp.
-
-  moving avg of the square.
+  """Rescale updates by the root of the exp. moving avg of the square.
 
   References:
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
@@ -238,7 +230,7 @@ def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
     del params
     nu = _update_moment(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, n: g * jax.lax.rsqrt(n + _astype(eps, n)), updates, nu)
+        lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -250,11 +242,9 @@ class ScaleByRStdDevState(OptState):
   nu: Updates
 
 
-def scale_by_stddev(decay: float = 0.9,
-                    eps: float = 1e-8) -> GradientTransformation:
-  """Rescale updates by the root of the centered exp.
-
-  moving average of squares.
+def scale_by_stddev(
+    decay: float = 0.9, eps: float = 1e-8) -> GradientTransformation:
+  """Rescale updates by the root of the centered exp. moving average of squares.
 
   References:
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
@@ -277,8 +267,8 @@ def scale_by_stddev(decay: float = 0.9,
     mu = _update_moment(updates, state.mu, decay, 1)
     nu = _update_moment(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, m, n: g * jax.lax.rsqrt(n - jnp.square(m) + _astype(eps, g)),
-        updates, mu, nu)
+        lambda g, m, n: g * jax.lax.rsqrt(n - jnp.square(m) + eps), updates, mu,
+        nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -348,8 +338,7 @@ def scale_by_adam(b1: float = 0.9,
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
-        lambda m, v: m / (jnp.sqrt(v + _astype(eps_root, v)) + _astype(eps, v)),
-        mu_hat, nu_hat)
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -374,7 +363,7 @@ def scale(step_size: float) -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_map(lambda g: _astype(step_size, g) * g, updates)
+    updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -387,10 +376,9 @@ class ScaleByBeliefState(OptState):
   nu: Updates
 
 
-def scale_by_belief(b1: float = 0.9,
-                    b2: float = 0.999,
-                    eps: float = 0.,
-                    eps_root: float = 1e-16) -> GradientTransformation:
+def scale_by_belief(
+    b1: float = 0.9, b2: float = 0.999,
+    eps: float = 0., eps_root: float = 1e-16) -> GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
 
   References:
@@ -415,14 +403,13 @@ def scale_by_belief(b1: float = 0.9,
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    prediction_error = jax.tree_multimap(lambda g, m: g - m, updates, state.mu)
+    prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
-        lambda m, v: m / (jnp.sqrt(v + _astype(eps_root, v)) + _astype(eps, v)),
-        mu_hat, nu_hat)
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return GradientTransformation(init_fn, update_fn)
@@ -446,8 +433,8 @@ def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
     return AdditiveWeightDecayState()
 
   def update_fn(updates, state, params):
-    updates = jax.tree_multimap(lambda g, p: g + _astype(weight_decay, p) * p,
-                                updates, params)
+    updates = jax.tree_multimap(
+        lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -475,7 +462,8 @@ def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
   def update_fn(updates, state, params=None):
     del params
     step_size = step_size_fn(state.count)
-    updates = jax.tree_map(lambda g: _astype(step_size, g) * g, updates)
+    updates = jax.tree_map(
+        lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
         count=_safe_int32_increment(state.count))
 
@@ -509,7 +497,7 @@ def scale_by_fromage(
     step_size: float = 1e-3,
     min_norm: float = 1e-6,
     step_size_factor_fn: Optional[Callable[[jnp.ndarray], jnp.ndarray]] = None,
-) -> GradientTransformation:
+    ) -> GradientTransformation:
   """Scale updates by Frobenius norm of parameters and grads.
 
   References:
@@ -520,8 +508,8 @@ def scale_by_fromage(
     min_norm: Minimum norm of parameters and gradients, to avoid division by
       zero and to ensure an update is made to a parameter with zero norm.
     step_size_factor_fn: a function that takes an update count as input and
-      returns a factor the step_size is multiplied by. Effective learning rate
-      is step_size * step_size_factor_fn(state.count)
+      returns a factor the step_size is multiplied by.
+      Effective learning rate is step_size * step_size_factor_fn(state.count)
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -582,8 +570,8 @@ def scale_by_trust_ratio() -> GradientTransformation:
 
       # Set trust_ratio to 1 in case where parameters would never be updated.
       zero_norm = jnp.logical_or(param_norm == 0., update_norm == 0.)
-      safe_trust_ratio = jnp.where(zero_norm, jnp.array(1.0, dtype=param.dtype),
-                                   trust_ratio)
+      safe_trust_ratio = jnp.where(
+          zero_norm, jnp.array(1.0, dtype=param.dtype), trust_ratio)
 
       return update * safe_trust_ratio
 
@@ -628,8 +616,9 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
     noise = jax.tree_multimap(
         lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
-    updates = jax.tree_multimap(lambda g, n: g + variance.astype(g.dtype) * n,
-                                updates, noise)
+    updates = jax.tree_multimap(
+        lambda g, n: g + variance.astype(g.dtype) * n,
+        updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
 
   return GradientTransformation(init_fn, update_fn)
@@ -659,8 +648,8 @@ def apply_every(k: int = 1) -> GradientTransformation:
     del params
     c = state.count % k
     acc = c != 0
-    grad_acc = jax.tree_multimap(lambda g, ga: acc * ga + g, updates,
-                                 state.grad_acc)
+    grad_acc = jax.tree_multimap(
+        lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
     count_inc = _safe_int32_increment(state.count)

@@ -33,10 +33,8 @@ class TransformTest(parameterized.TestCase):
 
   def setUp(self):
     super(TransformTest, self).setUp()
-    self.init_params = (jnp.array([1.,
-                                   2.]), jnp.array([3., 4.], dtype=jnp.float64))
-    self.per_step_updates = (jnp.array([500., 5.]),
-                             jnp.array([300., 3.], dtype=jnp.float64))
+    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
+    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
   @chex.all_variants
   @parameterized.named_parameters([
@@ -45,7 +43,6 @@ class TransformTest(parameterized.TestCase):
       ('fromage', transform.scale_by_fromage),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
-      ('typed_params_adam', lambda: transform.scale_by_adam(jnp.float32(0.5))),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params
@@ -61,12 +58,10 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
                       updates)
-    jax.tree_multimap(lambda p, u: chex.assert_type(p, u.dtype), params,
-                      updates)
 
   @chex.all_variants()
   def test_scale_by_fromage(self):
-    schedule = lambda c: 1.0 / (c + 1.0)
+    schedule = lambda c: 1.0/(c + 1.0)
     fromage = transform.scale_by_fromage(step_size_factor_fn=schedule)
     params = self.init_params
     state = fromage.init(params)
@@ -95,7 +90,8 @@ class TransformTest(parameterized.TestCase):
     # optax sgd plus apply every
     optax_sgd_apply_every_params = self.init_params
     sgd_apply_every = combine.chain(
-        transform.apply_every(k=k), transform.trace(decay=0, nesterov=False),
+        transform.apply_every(k=k),
+        transform.trace(decay=0, nesterov=False),
         transform.scale(-LR))
     state_sgd_apply_every = sgd_apply_every.init(optax_sgd_apply_every_params)
     transform_fn = self.variant(sgd_apply_every.update)
@@ -112,12 +108,10 @@ class TransformTest(parameterized.TestCase):
           optax_sgd_apply_every_params, updates_sgd_apply_every)
 
       # Every k steps, check equivalence.
-      if i % k == k - 1:
+      if i % k == k-1:
         chex.assert_tree_all_close(
-            optax_sgd_apply_every_params,
-            optax_sgd_params,
-            atol=1e-6,
-            rtol=1e-5)
+            optax_sgd_apply_every_params, optax_sgd_params,
+            atol=1e-6, rtol=1e-5)
       # Otherwise, check update is zero.
       else:
         chex.assert_tree_all_close(
@@ -126,15 +120,13 @@ class TransformTest(parameterized.TestCase):
   def test_scale(self):
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
-      factor = 0.1**i
+      factor = 0.1 ** i
       rescaler = transform.scale(factor)
       # Apply rescaling.
       scaled_updates, _ = rescaler.update(updates, None)
-
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-
       manual_updates = jax.tree_map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_tree_all_close(scaled_updates, manual_updates)
@@ -148,8 +140,8 @@ class TransformTest(parameterized.TestCase):
     # Clipping at delta=1 should make all updates exactly 1.
     clipper = transform.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(clipped_updates,
-                               jax.tree_map(jnp.ones_like, updates))
+    chex.assert_tree_all_close(
+        clipped_updates, jax.tree_map(jnp.ones_like, updates))
 
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
@@ -165,10 +157,9 @@ class TransformTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
       ('2d', [[1.0, 2.0], [3.0, 4.0]], [[-0.5, 0.5], [-0.5, 0.5]]),
-      ('3d', [[[1., 2.], [3., 4.]], [[5., 6.], [7., 8.]]], [[[-1.5, -0.5],
-                                                             [0.5, 1.5]],
-                                                            [[-1.5, -0.5],
-                                                             [0.5, 1.5]]]),
+      ('3d', [[[1., 2.], [3., 4.]],
+              [[5., 6.], [7., 8.]]], [[[-1.5, -0.5], [0.5, 1.5]],
+                                      [[-1.5, -0.5], [0.5, 1.5]]]),
   ])
   def test_centralize(self, inputs, outputs):
     inputs = jnp.asarray(inputs)
@@ -176,7 +167,6 @@ class TransformTest(parameterized.TestCase):
     centralizer = transform.centralize()
     centralized_inputs, _ = centralizer.update(inputs, None)
     chex.assert_tree_all_close(centralized_inputs, outputs)
-
 
 if __name__ == '__main__':
   absltest.main()
