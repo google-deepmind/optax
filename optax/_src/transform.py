@@ -415,7 +415,7 @@ def scale_by_yogi(
   """Rescale updates according to the Adam algorithm.
 
   References:
-    [Zaheer et al, 2018](https://papers.nips.cc/paper/8186-adaptive-methods-for-nonconvex-optimization)
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html)
 
   Args:
     b1: decay rate for the exponentially weighted average of grads.
@@ -423,6 +423,7 @@ def scale_by_yogi(
     eps: term added to the denominator to improve numerical stability.
     eps_root: term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
+    initial_accumulator_value: The starting value for accumulators. Only positive values are allowed.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -437,7 +438,8 @@ def scale_by_yogi(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    signed_sq = jax.tree_multimap(lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
+    signed_sq = jax.tree_multimap(
+        lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
     nu = _update_moment(signed_sq, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)

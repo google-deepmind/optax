@@ -111,7 +111,6 @@ def sgd(learning_rate: float,
   )
 
 
-
 def yogi(learning_rate: float,
               b1: float = 0.9,
               b2: float = 0.999,
