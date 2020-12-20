@@ -21,6 +21,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamw
 from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
+from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
 from optax._src.combine import chain
