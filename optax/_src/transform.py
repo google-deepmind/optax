@@ -415,7 +415,7 @@ def scale_by_yogi(
   """Rescale updates according to the Adam algorithm.
 
   References:
-    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html)
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
 
   Args:
     b1: decay rate for the exponentially weighted average of grads.
@@ -423,7 +423,8 @@ def scale_by_yogi(
     eps: term added to the denominator to improve numerical stability.
     eps_root: term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    initial_accumulator_value: The starting value for accumulators. Only positive values are allowed.
+    initial_accumulator_value: The starting value for accumulators.
+      Only positive values are allowed.
 
   Returns:
     An (init_fn, update_fn) tuple.
