@@ -415,6 +415,50 @@ def scale_by_belief(
   return GradientTransformation(init_fn, update_fn)
 
 
+def scale_by_yogi(
+    b1: float = 0.9, b2: float = 0.999,
+    eps: float = 1e-3, eps_root: float = 0.0,
+    initial_accumulator_value: float = 1e-6) -> GradientTransformation:
+  """Rescale updates according to the Adam algorithm.
+
+  References:
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of variance of grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    initial_accumulator_value: The starting value for accumulators.
+      Only positive values are allowed.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
+    mu = jax.tree_map(value_like, params)  # First moment
+    nu = jax.tree_map(value_like, params)  # Second Central moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = _update_moment(updates, state.mu, b1, 1)
+    signed_sq = jax.tree_multimap(
+        lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
+    nu = _update_moment(signed_sq, state.nu, b2, 2)
+    count_inc = _safe_int32_increment(state.count)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
+    updates = jax.tree_multimap(
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
 class AdditiveWeightDecayState(NamedTuple):
   """The decay transformation is stateless."""
 

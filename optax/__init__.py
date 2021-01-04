@@ -23,6 +23,7 @@ from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
+from optax._src.alias import yogi
 from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
@@ -64,6 +65,7 @@ from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
+from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
@@ -136,6 +138,7 @@ __all__ = (
     "scale_by_schedule",
     "scale_by_stddev",
     "scale_by_trust_ratio",
+    "scale_by_yogi",
     "ScaleByAdamState",
     "ScaleByFromageState",
     "ScaleByRmsState",
@@ -149,6 +152,7 @@ __all__ = (
     "trace",
     "TraceState",
     "Updates",
+    "yogi",
 )
 
 #  _________________________________________
