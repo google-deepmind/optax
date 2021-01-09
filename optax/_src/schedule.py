@@ -214,7 +214,7 @@ def _cos_interpolate(start: float, end: float, pct: float):
   return end + (start-end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
-def _get_branch_schedule(
+def _piecewise_interpolate_schedule_branch(
     interpolate_fn: Callable,
     init_value: float,
     end_value: float,
@@ -223,11 +223,11 @@ def _get_branch_schedule(
   # NOTE: needs to be a seperate function to avoid Python variable look-up from
   # interfering with the intended thresholds and values.
 
-  def branch_schedule(count):
+  def branch(count):
     pct = (count-start_threshold) / float(end_threshold-start_threshold)
     return interpolate_fn(init_value, end_value, pct)
 
-  return branch_schedule
+  return branch
 
 
 def piecewise_interpolate_schedule(
@@ -268,7 +268,7 @@ def piecewise_interpolate_schedule(
     for threshold, scale in sorted(boundaries_and_scales.items()):
       ind = ind + jnp.uint8(count > threshold)
       value = prev_value * scale
-      branches.append(_get_branch_schedule(
+      branches.append(_piecewise_interpolate_schedule_branch(
           interpolate_fn, prev_value, value, prev_threshold, threshold))
       prev_threshold, prev_value = threshold, value
     branches.append(lambda count: prev_value)
