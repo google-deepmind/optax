@@ -302,5 +302,90 @@ class CosineDecayTest(chex.TestCase):
         np.array(generated_vals), atol=1e-3)
 
 
+class PiecewiseInterpolateTest(chex.TestCase):
+
+  @chex.all_variants()
+  def test_linear_piecewise(self):
+    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+      'linear', 200., {5: 1.5, 10: 0.25}))
+    generated_vals = [schedule_fn(step) for step in range(13)]
+    expected_vals = [200., 220., 240., 260., 280., 300., 255., 210., 165.,
+                     120., 75.,  75.,  75.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  @chex.all_variants()
+  def test_cos_piecewise(self):
+    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+      'cos', 400., {5: 1.2, 3: 0.6, 7: 1.}))
+    generated_vals = [schedule_fn(step) for step in range(9)]
+    expected_vals = [400., 360., 280., 240., 264., 288., 288., 288., 288.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  @chex.all_variants()
+  def test_empty_dict(self):
+    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+      'linear', 13., {}))
+    generated_vals = [schedule_fn(step) for step in range(5)]
+    expected_vals = [13., 13., 13., 13., 13.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  @chex.all_variants()
+  def test_no_dict(self):
+    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+      'cos', 17.))
+    generated_vals = [schedule_fn(step) for step in range(3)]
+    expected_vals = [17., 17., 17.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  def test_invalid_type(self):
+    with self.assertRaises(ValueError):
+      schedule.piecewise_interpolate_schedule('linar', 13.)
+    with self.assertRaises(ValueError):
+      schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
+    with self.assertRaises(ValueError):
+      schedule.piecewise_interpolate_schedule(None, 13., {})
+
+  def test_invalid_scale(self):
+    with self.assertRaises(ValueError):
+      schedule.piecewise_interpolate_schedule('linear', 13., {5: -3})
+
+
+class OneCycleTest(chex.TestCase):
+
+  @chex.all_variants()
+  def test_linear(self):
+    schedule_fn = self.variant(schedule.linear_onecycle(
+        transition_steps=10,
+        peak_value=1000,
+        pct_start=0.3,
+        pct_final=0.7,
+        div_factor=10.,
+        final_div_factor=100.))
+
+    generated_vals = [schedule_fn(step) for step in range(12)]
+    expected_vals = [100., 400., 700., 1000., 775., 550., 325., 100., 67.,
+                     34., 1., 1.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  @chex.all_variants()
+  def test_cos(self):
+    schedule_fn = self.variant(schedule.cos_onecycle(
+        transition_steps=5,
+        peak_value=1000.,
+        pct_start=0.4,
+        div_factor=10.,
+        final_div_factor=100.))
+
+    generated_vals = [schedule_fn(step) for step in range(7)]
+    expected_vals = [100., 550., 1000., 750.25, 250.75, 1., 1.]
+    np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  def test_nonpositive_transition_steps(self):
+    with self.assertRaises(ValueError):
+      schedule.cos_onecycle(transition_steps=0, peak_value=5.)
+    with self.assertRaises(ValueError):
+      schedule.linear_onecycle(transition_steps=0, peak_value=5.)
+
+
 if __name__ == '__main__':
   absltest.main()

@@ -20,9 +20,10 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Dict, Union
+from typing import Dict, Union, Optional, Callable
 
 from absl import logging
+import jax
 import jax.numpy as jnp
 
 
@@ -84,7 +85,7 @@ def polynomial_schedule(
 
 def piecewise_constant_schedule(
     init_value: float,
-    boundaries_and_scales: Dict[int, float] = None):
+    boundaries_and_scales: Optional[Dict[int, float]] = None):
   """Returns a function which implements a piecewise constant schedule.
 
   Args:
@@ -203,3 +204,151 @@ def cosine_decay_schedule(
     return init_value * decayed
 
   return schedule
+
+
+def _linear_interpolate(start: float, end: float, pct: float):
+  return (end-start) * pct + start
+
+
+def _cos_interpolate(start: float, end: float, pct: float):
+  return end + (start-end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
+
+
+def _get_branch_schedule(
+    interpolate_fn: Callable,
+    init_value: float,
+    end_value: float,
+    start_threshold: int,
+    end_threshold: int):
+  # NOTE: needs to be a seperate function to avoid Python variable look-up from
+  # interfering with the intended thresholds and values.
+
+  def branch_schedule(count):
+    pct = (count-start_threshold) / float(end_threshold-start_threshold)
+    return interpolate_fn(init_value, end_value, pct)
+
+  return branch_schedule
+
+
+def piecewise_interpolate_schedule(
+    interpolate_type: str,
+    init_value: float,
+    boundaries_and_scales: Optional[Dict[int, float]] = None):
+  """Returns a function which implements a piecewise interpolated schedule.
+
+  Args:
+    interpolate_type: 'Linear' or 'cos', describing the interpolation strategy.
+    init_value: An initial value `init_v`.
+    boundaries_and_scales: A map from boundaries `b_i` to non-negative scaling
+      factors `f_i`. At boundary step `b_i`, the schedule returns `init_v`
+      scaled by the product of all factors `f_j` such that `b_j` < `b_i`. The
+      values in between each boundary will be interpolated as per `type`.
+
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  if interpolate_type == 'linear':
+    interpolate_fn = _linear_interpolate
+  elif interpolate_type == 'cos':
+    interpolate_fn = _cos_interpolate
+  else:
+    raise ValueError(
+        'The `piecewise_interpolate_schedule` expects \'cos\' or \'linear\' '
+        'for `type`')
+
+  boundaries_and_scales = boundaries_and_scales or {}
+  if not all(scale >= 0. for scale in boundaries_and_scales.values()):
+    raise ValueError(
+        'The `piecewise_interpolate_schedule` expects non-negative scale '
+        'factors')
+
+  def schedule(count):
+    ind, branches = 0, []
+    prev_threshold, prev_value = 0, init_value
+    for threshold, scale in sorted(boundaries_and_scales.items()):
+      ind = ind + jnp.uint8(count > threshold)
+      value = prev_value * scale
+      branches.append(_get_branch_schedule(
+          interpolate_fn, prev_value, value, prev_threshold, threshold))
+      prev_threshold, prev_value = threshold, value
+    branches.append(lambda count: prev_value)
+    return jax.lax.switch(ind, branches, count)
+
+  return schedule
+
+def linear_onecycle(
+    transition_steps: int,
+    peak_value: float,
+    pct_start: float = 0.3,
+    pct_final: float = 0.85,
+    div_factor: float = 25.0,
+    final_div_factor=1e4):
+  """Returns a function which implements the onecycle learning rate schedule.
+
+  This function uses a linear annealing strategy.
+  For more details see: https://arxiv.org/abs/1708.07120
+
+  Args:
+    transition_steps: Number of steps over which annealing takes place.
+    peak_value: Maximum value attained by schedule at pct_start percent
+      of the cycle (in number of steps).
+    pct_start: The percentage of the cycle (in number of steps) spent
+      increasing the learning rate.
+    pct_final: The percentage of the cycle (in number of steps) spent
+      increasing to peak_value then decreasing back to init_value.
+    div_factor: Determines the initial value via init_value =
+      peak_value / div_factor
+    final_div_factor: Determines the final value via final_value =
+      init_value / final_div_factor
+
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  if transition_steps <= 0:
+    raise ValueError(
+        'A linear onecycle schedule was set with a non-positive '
+        '`transition_steps`')
+
+  return piecewise_interpolate_schedule(
+      'linear',
+      peak_value / div_factor,
+      {int(pct_start * transition_steps): div_factor,
+       int(pct_final * transition_steps): 1. / div_factor,
+       transition_steps: 1. / final_div_factor})
+
+
+def cos_onecycle(
+    transition_steps,
+    peak_value,
+    pct_start=0.3,
+    div_factor=25.0,
+    final_div_factor=1e4):
+  """Returns a function which implements the onecycle learning rate schedule.
+
+  This function uses a cosine annealing strategy.
+  For more details see: https://arxiv.org/abs/1708.07120
+
+  Args:
+    transition_steps: Number of steps over which annealing takes place.
+    peak_value: Maximum value attained by schedule at pct_start percent
+      of the cycle (in number of steps).
+    pct_start: The percentage of the cycle (in number of steps) spent
+      increasing the learning rate.
+    div_factor: Determines the initial value via init_value =
+      peak_value / div_factor
+    final_div_factor: Determines the final value via final_value =
+      init_value / final_div_factor
+
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  if transition_steps <= 0:
+    raise ValueError(
+        'A linear onecycle schedule was set with a non-positive '
+        '`transition_steps`')
+
+  return piecewise_interpolate_schedule(
+    'cos',
+    peak_value / div_factor,
+    {int(pct_start * transition_steps): div_factor,
+     int(transition_steps): 1. / (div_factor * final_div_factor)})
