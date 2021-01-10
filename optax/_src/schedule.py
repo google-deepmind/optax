@@ -20,10 +20,9 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Dict, Union, Optional, Callable
+from typing import Dict, Union, Optional
 
 from absl import logging
-import jax
 import jax.numpy as jnp
 
 
@@ -214,22 +213,6 @@ def _cos_interpolate(start: float, end: float, pct: float):
   return end + (start-end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
-def _piecewise_interpolate_schedule_branch(
-    interpolate_fn: Callable,
-    init_value: float,
-    end_value: float,
-    start_threshold: int,
-    end_threshold: int):
-  # NOTE: needs to be a seperate function to avoid Python variable look-up from
-  # interfering with the intended thresholds and values.
-
-  def branch(count):
-    pct = (count-start_threshold) / float(end_threshold-start_threshold)
-    return interpolate_fn(init_value, end_value, pct)
-
-  return branch
-
-
 def piecewise_interpolate_schedule(
     interpolate_type: str,
     init_value: float,
@@ -254,25 +237,26 @@ def piecewise_interpolate_schedule(
   else:
     raise ValueError(
         'The `piecewise_interpolate_schedule` expects \'cos\' or \'linear\' '
-        'for `type`')
+        'for `interpolate_type`')
 
-  boundaries_and_scales = boundaries_and_scales or {}
-  if not all(scale >= 0. for scale in boundaries_and_scales.values()):
-    raise ValueError(
-        'The `piecewise_interpolate_schedule` expects non-negative scale '
-        'factors')
+  if boundaries_and_scales:
+    boundaries, scales = zip(*sorted(boundaries_and_scales.items()))
+    if not all(scale >= 0. for scale in scales):
+      raise ValueError(
+          'The `piecewise_interpolate_schedule` expects non-negative scale '
+          'factors')
+  else:
+    boundaries, scales = (), ()
+
+  bounds = jnp.stack((0,) + boundaries)
+  values = jnp.cumprod(jnp.stack((init_value,) + scales))
+  interval_sizes = (bounds[1:] - bounds[:-1])
 
   def schedule(count):
-    ind, branches = 0, []
-    prev_threshold, prev_value = 0, init_value
-    for threshold, scale in sorted(boundaries_and_scales.items()):
-      ind = ind + jnp.uint8(count > threshold)
-      value = prev_value * scale
-      branches.append(_piecewise_interpolate_schedule_branch(
-          interpolate_fn, prev_value, value, prev_threshold, threshold))
-      prev_threshold, prev_value = threshold, value
-    branches.append(lambda count: prev_value)
-    return jax.lax.switch(ind, branches, count)
+    indicator = (bounds[:-1] <= count) & (count < bounds[1:])
+    pct = (count - bounds[:-1]) / interval_sizes
+    interp_vals = interpolate_fn(values[:-1], values[1:], pct)
+    return (indicator * interp_vals).sum() + (bounds[-1] <= count) * values[-1]
 
   return schedule
 
