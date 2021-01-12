@@ -15,8 +15,9 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple, Union
 
+import jax
 from jax import lax
 import jax.numpy as jnp
 from jax.tree_util import tree_flatten
@@ -25,6 +26,8 @@ from jax.tree_util import tree_unflatten
 import numpy as np
 
 from optax._src import transform
+
+Array = jnp.ndarray
 
 
 def flatten(
@@ -151,3 +154,115 @@ def apply_if_finite(
         inner_state=new_inner_state)
 
   return transform.GradientTransformation(init=init, update=update)
+
+
+def _zeros_tree_like(inp_tree):
+  return jax.tree_map(jnp.zeros_like, inp_tree)
+
+
+class MultiStepsState(NamedTuple):
+  """State of the `GradientTransformation` returned by `MultiSteps`.
+
+  Fields:
+    mini_step: current mini-step counter. At an update, this either increases by
+      1 or is reset to 0.
+    gradient_step: gradient step counter. This only increases after enough
+      mini-steps have been accumulated.
+    inner_opt_state: the state of the wrapped otpimiser.
+    acc_grads: accumulated gradients over multiple mini-steps.
+  """
+  mini_step: Array
+  gradient_step: Array
+  inner_opt_state: Any
+  acc_grads: Any
+
+
+class MultiSteps:
+  """An optimiser wrapper to spread gradient computation over multiple steps.
+
+  This wrapper will allow multiple mini-steps to accumulate their gradients
+  together before applying them. It wraps another optimiser, and makes sure that
+  this optimiser updates its state only when enough mini-steps have been
+  performed. At any other mini-step, the inner optimiser is not used and the
+  updates returned by the wrapper are all 0.
+
+  The number of mini-steps per gradient update is controlled by a function, and
+  it can vary over training. This offers a mean of varying batch size over
+  training.
+  """
+
+  def __init__(self,
+               opt: transform.GradientTransformation,
+               every_k_schedule: Union[int, Callable[[Array], Array]],
+               use_grad_mean: bool = True):
+    """Initialiser.
+
+    Args:
+      opt: the wrapped optimiser.
+      every_k_schedule: an int or f a function.
+        * As a function, it returns how many mini-steps should be accumulated
+          in a single gradient step. Its only argument is the current
+          gradient step count. By varying the returned value, users can vary the
+          overall training batch size.
+        * If an `int`, this is the constant number of mini-steps per gradient
+          update.
+      use_grad_mean: if `True` (the default), gradients accumulated over
+        multiple mini-steps are averaged. Otherwise, they are summed.
+    """
+    self._opt = opt
+    if isinstance(every_k_schedule, int):
+      self._every_k_schedule = lambda step: every_k_schedule
+    else:
+      self._every_k_schedule = every_k_schedule
+    self._use_grad_mean = use_grad_mean
+
+  @property
+  def inner_opt(self):
+    return self._opt
+
+  def init(self, params: Any) -> MultiStepsState:
+    init_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int64),
+                                 gradient_step=jnp.zeros([], dtype=jnp.int64),
+                                 inner_opt_state=self._opt.init(params),
+                                 acc_grads=_zeros_tree_like(params))
+    return init_state
+
+  def update(self, grads: Any, state: MultiStepsState, params: Any = None):
+    """Accumulates gradients and proposes non-zero updates every `k_steps`."""
+    del params
+    k_steps = self._every_k_schedule(state.gradient_step)
+    acc_grads = jax.tree_util.tree_multimap(lambda a, b: a + b, grads,
+                                            state.acc_grads)
+
+    def final_step(args):
+      del args
+      if self._use_grad_mean:
+        grads_for_update = jax.tree_map(lambda x: x / k_steps, acc_grads)
+      else:
+        grads_for_update = acc_grads
+      updates, new_inner_state = self._opt.update(
+          grads_for_update, state.inner_opt_state)
+      new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int64),
+                                  gradient_step=state.gradient_step + 1,
+                                  inner_opt_state=new_inner_state,
+                                  acc_grads=_zeros_tree_like(acc_grads))
+      return updates, new_state
+
+    def mid_step(args):
+      del args
+      updates = _zeros_tree_like(grads)
+      new_state = MultiStepsState(mini_step=state.mini_step + 1,
+                                  gradient_step=state.gradient_step,
+                                  inner_opt_state=state.inner_opt_state,
+                                  acc_grads=acc_grads)
+      return updates, new_state
+
+    updates, new_state = jax.lax.cond(
+        state.mini_step < k_steps - 1, (), mid_step, (), final_step)
+    return updates, new_state
+
+  def has_updated(self, state: MultiStepsState) -> Array:
+    return jnp.logical_and(state.mini_step == 0, state.gradient_step > 0)
+
+  def gradient_transformation(self) -> transform.GradientTransformation:
+    return transform.GradientTransformation(init=self.init, update=self.update)

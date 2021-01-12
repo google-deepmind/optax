@@ -82,6 +82,8 @@ from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
+from optax._src.wrappers import MultiSteps
+from optax._src.wrappers import MultiStepsState
 
 __version__ = "0.0.2"
 
