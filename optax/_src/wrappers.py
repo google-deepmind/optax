@@ -127,18 +127,18 @@ def apply_if_finite(
         total_notfinite=jnp.zeros([], jnp.int64),
         inner_state=inner.init(params))
 
-  def update(grads, state, params=None):
+  def update(updates, state, params=None):
     inner_state = state.inner_state
-    flat_grads = tree_flatten(grads)[0]
+    flat_updates = tree_flatten(updates)[0]
     isfinite = jnp.all(
-        jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_grads]))
+        jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
     notfinite_count = jnp.where(isfinite, jnp.zeros([], jnp.int64),
                                 1 + state.notfinite_count)
 
     def do_update(_):
-      return inner.update(grads, inner_state, params)
+      return inner.update(updates, inner_state, params)
     def reject_update(_):
-      return (tree_map(jnp.zeros_like, grads), inner_state)
+      return (tree_map(jnp.zeros_like, updates), inner_state)
 
     updates, new_inner_state = lax.cond(
         jnp.logical_or(isfinite, notfinite_count > max_consecutive_errors),
