@@ -260,7 +260,7 @@ def piecewise_interpolate_schedule(
 
   return schedule
 
-def linear_onecycle(
+def linear_onecycle_schedule(
     transition_steps: int,
     peak_value: float,
     pct_start: float = 0.3,
@@ -301,7 +301,7 @@ def linear_onecycle(
        transition_steps: 1. / final_div_factor})
 
 
-def cos_onecycle(
+def cosine_onecycle_schedule(
     transition_steps,
     peak_value,
     pct_start=0.3,

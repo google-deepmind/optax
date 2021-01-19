@@ -354,7 +354,7 @@ class OneCycleTest(chex.TestCase):
 
   @chex.all_variants()
   def test_linear(self):
-    schedule_fn = self.variant(schedule.linear_onecycle(
+    schedule_fn = self.variant(schedule.linear_onecycle_schedule(
         transition_steps=10,
         peak_value=1000,
         pct_start=0.3,
@@ -369,7 +369,7 @@ class OneCycleTest(chex.TestCase):
 
   @chex.all_variants()
   def test_cos(self):
-    schedule_fn = self.variant(schedule.cos_onecycle(
+    schedule_fn = self.variant(schedule.cosine_onecycle_schedule(
         transition_steps=5,
         peak_value=1000.,
         pct_start=0.4,
@@ -382,9 +382,9 @@ class OneCycleTest(chex.TestCase):
 
   def test_nonpositive_transition_steps(self):
     with self.assertRaises(ValueError):
-      schedule.cos_onecycle(transition_steps=0, peak_value=5.)
+      schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.)
     with self.assertRaises(ValueError):
-      schedule.linear_onecycle(transition_steps=0, peak_value=5.)
+      schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.)
 
 
 if __name__ == '__main__':
