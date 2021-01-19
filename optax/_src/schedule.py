@@ -209,7 +209,7 @@ def _linear_interpolate(start: float, end: float, pct: float):
   return (end-start) * pct + start
 
 
-def _cos_interpolate(start: float, end: float, pct: float):
+def _cosine_interpolate(start: float, end: float, pct: float):
   return end + (start-end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
@@ -220,7 +220,8 @@ def piecewise_interpolate_schedule(
   """Returns a function which implements a piecewise interpolated schedule.
 
   Args:
-    interpolate_type: 'Linear' or 'cos', describing the interpolation strategy.
+    interpolate_type: 'linear' or 'cosine', specifying the interpolation
+      strategy.
     init_value: An initial value `init_v`.
     boundaries_and_scales: A map from boundaries `b_i` to non-negative scaling
       factors `f_i`. At boundary step `b_i`, the schedule returns `init_v`
@@ -232,8 +233,8 @@ def piecewise_interpolate_schedule(
   """
   if interpolate_type == 'linear':
     interpolate_fn = _linear_interpolate
-  elif interpolate_type == 'cos':
-    interpolate_fn = _cos_interpolate
+  elif interpolate_type == 'cosine':
+    interpolate_fn = _cosine_interpolate
   else:
     raise ValueError(
         'The `piecewise_interpolate_schedule` expects \'cos\' or \'linear\' '
@@ -256,7 +257,7 @@ def piecewise_interpolate_schedule(
     indicator = (bounds[:-1] <= count) & (count < bounds[1:])
     pct = (count - bounds[:-1]) / interval_sizes
     interp_vals = interpolate_fn(values[:-1], values[1:], pct)
-    return (indicator * interp_vals).sum() + (bounds[-1] <= count) * values[-1]
+    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
 
   return schedule
 
@@ -332,7 +333,7 @@ def cosine_onecycle_schedule(
         '`transition_steps`')
 
   return piecewise_interpolate_schedule(
-    'cos',
+    'cosine',
     peak_value / div_factor,
     {int(pct_start * transition_steps): div_factor,
      int(transition_steps): 1. / (div_factor * final_div_factor)})

@@ -316,7 +316,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
   @chex.all_variants()
   def test_cos_piecewise(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
-      'cos', 400., {5: 1.2, 3: 0.6, 7: 1.}))
+      'cosine', 400., {5: 1.2, 3: 0.6, 7: 1.}))
     generated_vals = [schedule_fn(step) for step in range(9)]
     expected_vals = [400., 360., 280., 240., 264., 288., 288., 288., 288.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
@@ -332,7 +332,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
   @chex.all_variants()
   def test_no_dict(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
-      'cos', 17.))
+      'cosine', 17.))
     generated_vals = [schedule_fn(step) for step in range(3)]
     expected_vals = [17., 17., 17.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
@@ -368,7 +368,7 @@ class OneCycleTest(chex.TestCase):
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
   @chex.all_variants()
-  def test_cos(self):
+  def test_cosine(self):
     schedule_fn = self.variant(schedule.cosine_onecycle_schedule(
         transition_steps=5,
         peak_value=1000.,
