@@ -369,10 +369,17 @@ def scale(step_size: float) -> GradientTransformation:
   return GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByBeliefState(OptState):
+  """State for the rescaling by AdaBelief algorithm."""
+  count: jnp.ndarray  # shape=(), dtype=jnp.int32.
+  mu: Updates
+  nu: Updates
+
+
 def scale_by_belief(
     b1: float = 0.9, b2: float = 0.999,
-    eps: float = 1e-8, eps_root: float = 0.0) -> GradientTransformation:
-  """Rescale updates according to the Adam algorithm.
+    eps: float = 0., eps_root: float = 1e-16) -> GradientTransformation:
+  """Rescale updates according to the AdaBelief algorithm.
 
   References:
     [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
@@ -391,13 +398,57 @@ def scale_by_belief(
   def init_fn(params):
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
-    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
+    return ScaleByBeliefState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
 
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
+    count_inc = _safe_int32_increment(state.count)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
+    updates = jax.tree_multimap(
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_yogi(
+    b1: float = 0.9, b2: float = 0.999,
+    eps: float = 1e-3, eps_root: float = 0.0,
+    initial_accumulator_value: float = 1e-6) -> GradientTransformation:
+  """Rescale updates according to the Adam algorithm.
+
+  References:
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of variance of grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    initial_accumulator_value: The starting value for accumulators.
+      Only positive values are allowed.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
+    mu = jax.tree_map(value_like, params)  # First moment
+    nu = jax.tree_map(value_like, params)  # Second Central moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = _update_moment(updates, state.mu, b1, 1)
+    signed_sq = jax.tree_multimap(
+        lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
+    nu = _update_moment(signed_sq, state.nu, b2, 2)
     count_inc = _safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
@@ -676,6 +727,12 @@ class ApplyEvery(OptState):
 def apply_every(k: int = 1) -> GradientTransformation:
   """Accumulate gradients and apply them every k steps.
 
+  Note that if this transformation is part of a chain, the states of the other
+  transformations will still be updated at every step. In particular, using
+  `apply_every` with a batch size of N/2 and k=2 is not necessarily equivalent
+  to not using `apply_every` with a batch size of N. If this equivalence is
+  important for you, consider using the `optax.MultiSteps`.
+
   Args:
     k: emit non-zero gradients every k steps, otherwise accumulate them.
 
@@ -697,5 +754,37 @@ def apply_every(k: int = 1) -> GradientTransformation:
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
     count_inc = _safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def _subtract_mean(g):
+  if len(g.shape) > 1:
+    return g - g.mean(tuple(range(1, len(g.shape))), keepdims=True)
+  else:
+    return g
+
+
+class CentralState(OptState):
+  """The `centralize` transformation is stateless."""
+
+
+def centralize() -> GradientTransformation:
+  """Centralize gradients.
+
+  References:
+    [Yong et al, 2020](https://arxiv.org/abs/2004.01461)
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return CentralState()
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates = jax.tree_map(_subtract_mean, updates)
+    return updates, state
 
   return GradientTransformation(init_fn, update_fn)

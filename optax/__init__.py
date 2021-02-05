@@ -24,6 +24,7 @@ from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
+from optax._src.alias import yogi
 from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
@@ -45,6 +46,7 @@ from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
+from optax._src.transform import centralize
 from optax._src.transform import clip
 from optax._src.transform import clip_by_global_norm
 from optax._src.transform import ClipByGlobalNormState
@@ -65,6 +67,7 @@ from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
+from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
@@ -81,8 +84,10 @@ from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
+from optax._src.wrappers import MultiSteps
+from optax._src.wrappers import MultiStepsState
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __all__ = (
     "adabelief",
@@ -98,6 +103,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "centralize",
     "chain",
     "clip",
     "clip_by_global_norm",
@@ -138,6 +144,7 @@ __all__ = (
     "scale_by_schedule",
     "scale_by_stddev",
     "scale_by_trust_ratio",
+    "scale_by_yogi",
     "ScaleByAdamState",
     "ScaleByFromageState",
     "ScaleByRmsState",
@@ -151,6 +158,7 @@ __all__ = (
     "trace",
     "TraceState",
     "Updates",
+    "yogi",
 )
 
 #  _________________________________________
