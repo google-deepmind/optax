@@ -261,13 +261,14 @@ def piecewise_interpolate_schedule(
 
   return schedule
 
+
 def linear_onecycle_schedule(
     transition_steps: int,
     peak_value: float,
     pct_start: float = 0.3,
     pct_final: float = 0.85,
     div_factor: float = 25.0,
-    final_div_factor=1e4):
+    final_div_factor: float = 1e4):
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a linear annealing strategy.
@@ -303,11 +304,11 @@ def linear_onecycle_schedule(
 
 
 def cosine_onecycle_schedule(
-    transition_steps,
-    peak_value,
-    pct_start=0.3,
-    div_factor=25.0,
-    final_div_factor=1e4):
+    transition_steps: int,
+    peak_value: float,
+    pct_start: float = 0.3,
+    div_factor: float = 25.0,
+    final_div_factor: float = 1e4):
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a cosine annealing strategy.
@@ -333,7 +334,7 @@ def cosine_onecycle_schedule(
         '`transition_steps`')
 
   return piecewise_interpolate_schedule(
-    'cosine',
-    peak_value / div_factor,
-    {int(pct_start * transition_steps): div_factor,
-     int(transition_steps): 1. / (div_factor * final_div_factor)})
+      'cosine',
+      peak_value / div_factor,
+      {int(pct_start * transition_steps): div_factor,
+       int(transition_steps): 1. / (div_factor * final_div_factor)})
