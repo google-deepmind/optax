@@ -343,7 +343,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
     with self.assertRaises(ValueError):
       schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule(None, 13., {})
+      schedule.piecewise_interpolate_schedule(None, 13., {})  # pytype: disable=wrong-arg-types
 
   def test_invalid_scale(self):
     with self.assertRaises(ValueError):
