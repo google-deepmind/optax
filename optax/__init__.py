@@ -30,8 +30,11 @@ from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
+from optax._src.schedule import cosine_onecycle_schedule
 from optax._src.schedule import exponential_decay
+from optax._src.schedule import linear_onecycle_schedule
 from optax._src.schedule import piecewise_constant_schedule
+from optax._src.schedule import piecewise_interpolate_schedule
 from optax._src.schedule import polynomial_schedule
 from optax._src.second_order import fisher_diag
 from optax._src.second_order import hessian_diag
@@ -82,9 +85,6 @@ from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
-from optax._src.wrappers import lookahead
-from optax._src.wrappers import LookaheadParams
-from optax._src.wrappers import LookaheadState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
@@ -114,6 +114,7 @@ __all__ = (
     "control_delta_method",
     "control_variates_jacobians",
     "cosine_decay_schedule",
+    "cosine_onecycle_schedule",
     "exponential_decay",
     "fisher_diag",
     "flatten",
@@ -124,9 +125,7 @@ __all__ = (
     "identity",
     "InitUpdate",
     "lamb",
-    "lookahead",
-    "LookaheadParams",
-    "LookaheadState",
+    "linear_onecycle_schedule",
     "measure_valued_jacobians",
     "moving_avg_baseline",
     "multi_normal",
@@ -135,6 +134,7 @@ __all__ = (
     "Params",
     "pathwise_jacobians",
     "piecewise_constant_schedule",
+    "piecewise_interpolate_schedule",
     "polynomial_schedule",
     "rmsprop",
     "scale",
