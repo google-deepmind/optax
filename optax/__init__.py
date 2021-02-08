@@ -36,6 +36,7 @@ from optax._src.schedule import linear_onecycle_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
 from optax._src.schedule import polynomial_schedule
+from optax._src.schedule import Schedule
 from optax._src.second_order import fisher_diag
 from optax._src.second_order import hessian_diag
 from optax._src.second_order import hvp
@@ -155,6 +156,7 @@ __all__ = (
     "ScaleByScheduleState",
     "ScaleByTrustRatioState",
     "ScaleState",
+    "Schedule",
     "score_function_jacobians",
     "sgd",
     "trace",

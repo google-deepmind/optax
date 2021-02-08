@@ -20,13 +20,17 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Dict, Union, Optional
+from typing import Callable, Dict, Union, Optional
 
 from absl import logging
+import chex
 import jax.numpy as jnp
 
 
-def constant_schedule(value: Union[float, int]):
+Schedule = Callable[[chex.Numeric], chex.Numeric]
+
+
+def constant_schedule(value: Union[float, int]) -> Schedule:
   """Constructs a constant schedule.
 
   Args:
@@ -39,11 +43,11 @@ def constant_schedule(value: Union[float, int]):
 
 
 def polynomial_schedule(
-    init_value: Union[float, int],
-    end_value: Union[float, int],
-    power: Union[float, int],
+    init_value: chex.Scalar,
+    end_value: chex.Scalar,
+    power: chex.Scalar,
     transition_steps: int,
-    transition_begin: int = 0):
+    transition_begin: int = 0) -> Schedule:
   """Constructs a schedule with polynomial transition from init to end value.
 
   Args:
@@ -74,17 +78,16 @@ def polynomial_schedule(
         'value; this will result in `transition_begin` falling back to `0`.')
     transition_begin = 0
 
-  else:
-    def schedule(count):
-      count = jnp.clip(count - transition_begin, 0, transition_steps)
-      frac = 1 - count / transition_steps
-      return (init_value - end_value) * (frac**power) + end_value
-    return schedule
+  def schedule(count):
+    count = jnp.clip(count - transition_begin, 0, transition_steps)
+    frac = 1 - count / transition_steps
+    return (init_value - end_value) * (frac**power) + end_value
+  return schedule
 
 
 def piecewise_constant_schedule(
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None):
+    boundaries_and_scales: Optional[Dict[int, float]] = None) -> Schedule:
   """Returns a function which implements a piecewise constant schedule.
 
   Args:
@@ -119,7 +122,7 @@ def exponential_decay(
     transition_steps: int,
     decay_rate: float,
     transition_begin: int = 0,
-    staircase: bool = False):
+    staircase: bool = False) -> Schedule:
   """Constructs a schedule with either cointinuous or discrete exponential decay.
 
   This function applies an exponential decay function to a provided initial
@@ -177,7 +180,7 @@ def exponential_decay(
 def cosine_decay_schedule(
     init_value: float,
     decay_steps: int,
-    alpha: float = 0.0):
+    alpha: float = 0.0) -> Schedule:
   """Returns a function which implements cosine learning rate decay.
 
   For more details see:
@@ -216,7 +219,7 @@ def _cosine_interpolate(start: float, end: float, pct: float):
 def piecewise_interpolate_schedule(
     interpolate_type: str,
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None):
+    boundaries_and_scales: Optional[Dict[int, float]] = None) -> Schedule:
   """Returns a function which implements a piecewise interpolated schedule.
 
   Args:
@@ -268,7 +271,7 @@ def linear_onecycle_schedule(
     pct_start: float = 0.3,
     pct_final: float = 0.85,
     div_factor: float = 25.0,
-    final_div_factor: float = 1e4):
+    final_div_factor: float = 1e4) -> Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a linear annealing strategy.
@@ -308,7 +311,7 @@ def cosine_onecycle_schedule(
     peak_value: float,
     pct_start: float = 0.3,
     div_factor: float = 25.0,
-    final_div_factor: float = 1e4):
+    final_div_factor: float = 1e4) -> Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a cosine annealing strategy.
