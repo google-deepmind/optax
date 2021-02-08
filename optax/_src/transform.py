@@ -477,6 +477,8 @@ def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
     return AdditiveWeightDecayState()
 
   def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
     updates = jax.tree_multimap(
         lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
