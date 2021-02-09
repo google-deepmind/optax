@@ -83,6 +83,7 @@ class AliasTest(chex.TestCase):
       ('rmsprop', alias.rmsprop(1e-1)),
       ('fromage', transform.scale_by_fromage(-1e-2)),
       ('adabelief', alias.adabelief(1e-1)),
+      ('radam', alias.radam(1e-1)),
       ('yogi', alias.yogi(1.0)),
   )
   def test_parabel(self, opt):
@@ -114,6 +115,7 @@ class AliasTest(chex.TestCase):
       ('rmsprop', alias.rmsprop(5e-3)),
       ('fromage', transform.scale_by_fromage(-5e-3)),
       ('adabelief', alias.adabelief(1e-1)),
+      ('radam', alias.radam(1e-3)),
       ('yogi', alias.yogi(1.0)),
   )
   def test_rosenbrock(self, opt):

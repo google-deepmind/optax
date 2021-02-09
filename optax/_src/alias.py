@@ -87,6 +87,17 @@ def noisy_sgd(learning_rate: float,
   )
 
 
+def radam(learning_rate: float,
+          b1: float = 0.9,
+          b2: float = 0.999,
+          eps: float = 1e-8,
+          threshold: float = 5.0) -> GradientTransformation:
+  return combine.chain(
+      transform.scale_by_radam(b1=b1, b2=b2, eps=eps, threshold=threshold),
+      transform.scale(-learning_rate),
+  )
+
+
 def rmsprop(learning_rate: float,
             decay: float = 0.9,
             eps: float = 1e-8,

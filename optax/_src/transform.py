@@ -459,6 +459,60 @@ def scale_by_yogi(
   return GradientTransformation(init_fn, update_fn)
 
 
+def scale_by_radam(b1: float = 0.9,
+                   b2: float = 0.999,
+                   eps: float = 1e-8,
+                   eps_root: float = 0.0,
+                   threshold: float = 5.0) -> GradientTransformation:
+  """Rescale updates according to the Rectified Adam algorithm.
+
+  References:
+    [Liu et al, 2020](https://arxiv.org/abs/1908.03265)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of squared grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    threshold: Threshold for variance tractability
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  ro_inf = 2./(1 - b2) - 1
+  def _radam_update(params):
+    ro = params[0]
+    mu_hat = params[1]
+    nu_hat = params[2]
+    r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
+    updates = jax.tree_multimap(
+        lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    return updates
+
+  def init_fn(params):
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = _update_moment(updates, state.mu, b1, 1)
+    nu = _update_moment(updates, state.nu, b2, 2)
+    count_inc = _safe_int32_increment(state.count)
+    b2t = b2**count_inc
+    ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    nu_hat = _bias_correction(nu, b2, count_inc)
+    updates = jax.lax.cond(
+        ro >= threshold, _radam_update, lambda _: mu_hat,
+        (ro, mu_hat, nu_hat))
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
 class AdditiveWeightDecayState(NamedTuple):
   """The decay transformation is stateless."""
 
