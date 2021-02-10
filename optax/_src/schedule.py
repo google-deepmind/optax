@@ -68,8 +68,7 @@ def polynomial_schedule(
   if transition_steps <= 0:
     logging.info(
         'A polynomial schedule was set with a non-positive `transition_steps` '
-        'value; this will result in a constant schedule with value '
-        '`init_value`.')
+        'value; this results in a constant schedule with value `init_value`.')
     return lambda count: init_value
 
   if transition_begin < 0:
@@ -103,8 +102,7 @@ def piecewise_constant_schedule(
     all_positive = all(scale >= 0. for scale in boundaries_and_scales.values())
     if not all_positive:
       raise ValueError(
-          'The `piecewise_constant_schedule` expects non-negative scale '
-          'factors')
+          '`piecewise_constant_schedule` expects non-negative scale factors')
 
   def schedule(count):
     v = init_value
@@ -239,16 +237,13 @@ def piecewise_interpolate_schedule(
   elif interpolate_type == 'cosine':
     interpolate_fn = _cosine_interpolate
   else:
-    raise ValueError(
-        'The `piecewise_interpolate_schedule` expects \'cos\' or \'linear\' '
-        'for `interpolate_type`')
+    raise ValueError('`interpolate_type` must be either \'cos\' or \'linear\'')
 
   if boundaries_and_scales:
     boundaries, scales = zip(*sorted(boundaries_and_scales.items()))
     if not all(scale >= 0. for scale in scales):
       raise ValueError(
-          'The `piecewise_interpolate_schedule` expects non-negative scale '
-          'factors')
+          '`piecewise_interpolate_schedule` expects non-negative scale factors')
   else:
     boundaries, scales = (), ()
 
