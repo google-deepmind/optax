@@ -88,6 +88,9 @@ from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
+from optax._src.wrappers import lookahead
+from optax._src.wrappers import LookaheadParams
+from optax._src.wrappers import LookaheadState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
@@ -128,6 +131,9 @@ __all__ = (
     "identity",
     "InitUpdate",
     "lamb",
+    "lookahead",
+    "LookaheadParams",
+    "LookaheadState",
     "linear_onecycle_schedule",
     "measure_valued_jacobians",
     "moving_avg_baseline",
