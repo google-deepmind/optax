@@ -44,9 +44,10 @@ def adagrad(
 def adam(learning_rate: float,
          b1: float = 0.9,
          b2: float = 0.999,
-         eps: float = 1e-8) -> GradientTransformation:
+         eps: float = 1e-8,
+         eps_root: float = 0.0) -> GradientTransformation:
   return combine.chain(
-      transform.scale_by_adam(b1=b1, b2=b2, eps=eps),
+      transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.scale(-learning_rate),
   )
 
@@ -55,9 +56,10 @@ def adamw(learning_rate: float,
           b1: float = 0.9,
           b2: float = 0.999,
           eps: float = 1e-8,
+          eps_root: float = 0.0,
           weight_decay: float = 1e-4) -> GradientTransformation:
   return combine.chain(
-      transform.scale_by_adam(b1=b1, b2=b2, eps=eps),
+      transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.additive_weight_decay(weight_decay),
       transform.scale(-learning_rate),
   )
@@ -67,9 +69,10 @@ def lamb(learning_rate: float,
          b1: float = 0.9,
          b2: float = 0.999,
          eps: float = 1e-6,
+         eps_root: float = 0.0,
          weight_decay: float = 0.) -> GradientTransformation:
   return combine.chain(
-      transform.scale_by_adam(b1=b1, b2=b2, eps=eps),
+      transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.additive_weight_decay(weight_decay),
       transform.scale_by_trust_ratio(),
       transform.scale(-learning_rate),
