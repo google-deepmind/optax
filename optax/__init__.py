@@ -58,7 +58,6 @@ from optax._src.transform import ClipState
 from optax._src.transform import global_norm
 from optax._src.transform import GradientTransformation
 from optax._src.transform import identity
-from optax._src.transform import InitUpdate  # To be removed
 from optax._src.transform import OptState
 from optax._src.transform import Params
 from optax._src.transform import scale
@@ -129,7 +128,6 @@ __all__ = (
     "hessian_diag",
     "hvp",
     "identity",
-    "InitUpdate",
     "lamb",
     "lookahead",
     "LookaheadParams",

@@ -35,8 +35,6 @@ class GradientTransformation(NamedTuple):
       [Updates, OptState, Optional[Params]], Tuple[Updates, OptState]]
 
 
-InitUpdate = GradientTransformation
-
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of'
     ' parameters, but you are not passing `params` when calling `update`.')
