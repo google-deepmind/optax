@@ -120,8 +120,9 @@ def exponential_decay(
     transition_steps: int,
     decay_rate: float,
     transition_begin: int = 0,
-    staircase: bool = False) -> Schedule:
-  """Constructs a schedule with either cointinuous or discrete exponential decay.
+    staircase: bool = False,
+    end_value: Optional[float] = None) -> Schedule:
+  """Constructs a schedule with either continuous or discrete exponential decay.
 
   This function applies an exponential decay function to a provided initial
   value. The function returns the decayed value as follows:
@@ -140,6 +141,9 @@ def exponential_decay(
     transition_begin: must be positive. After how many steps to start annealing
       (before this many steps the scalar value is held fixed at `init_value`).
     staircase: if `True`, decay the values at discrete intervals.
+    end_value: the value at which the exponential decay stops. When
+      `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
+      an upper bound. Has no effect when `decay_rate' = 0.
 
   Returns:
     schedule: A function that maps step counts to values.
@@ -147,8 +151,8 @@ def exponential_decay(
 
   if transition_steps <= 0:
     logging.info(
-        'An exponential schedule was set with a non-positive `transition_steps` '
-        'value; this will result in a constant schedule with value '
+        'An exponential schedule was set with a non-positive `transition_steps`'
+        ' value; this will result in a constant schedule with value '
         '`init_value`.')
     return lambda count: init_value
 
@@ -164,13 +168,19 @@ def exponential_decay(
         'value; this will result in `transition_begin` falling back to `0`.')
     transition_begin = 0
 
+  if end_value is not None:
+    clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum
+
   def schedule(count):
     count -= transition_begin
     p = count / transition_steps
     if staircase:
       p = jnp.floor(p)
-    return jnp.where(
+    decayed_value = jnp.where(
         count <= 0, init_value, init_value * jnp.power(decay_rate, p))
+    if end_value is not None:
+      decayed_value = clip_fn(decayed_value, end_value)
+    return decayed_value
 
   return schedule
 
