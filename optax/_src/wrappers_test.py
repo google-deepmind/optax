@@ -330,5 +330,118 @@ class LookaheadTest(chex.TestCase):
     chex.assert_tree_all_close(final_params.slow, correct_result)
 
 
+class MaskedTest(chex.TestCase):
+  """Tests for the lookahead optimizer."""
+
+  @chex.all_variants
+  @parameterized.parameters(
+      lambda: transform.scale(-1.),  # stateless test
+      _build_sgd  # stateful test
+  )
+  def test_masked(self, opt_builder):
+    mask = {'a': True,
+            'b': [False, True],
+            'c': {'d': True, 'e': (False, True)}}
+    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+
+    # Negate the updates wherever the mask is True
+    def masked_negate(updates):
+      return jax.tree_util.tree_multimap(
+        lambda upd, m: -upd if m else upd, updates, mask)
+    correct_updates = masked_negate(input_updates)
+
+    init_fn, update_fn = wrappers.mask(opt_builder(), mask)
+    update_fn = self.variant(update_fn)
+    state = init_fn(params)
+    updates, state = update_fn(input_updates, state, params)
+    chex.assert_tree_all_close(updates, correct_updates)
+
+    # Check repeated application, this time with no params.
+    correct_updates = masked_negate(correct_updates)
+    updates, state = update_fn(updates, state)
+    chex.assert_tree_all_close(updates, correct_updates)
+
+  @chex.all_variants
+  @parameterized.parameters(
+      lambda: transform.scale(-1.),  # stateless test
+      _build_sgd  # stateful test
+  )
+  def test_prefix_mask(self, opt_builder):
+    """Test when the mask is a prefix of the updates PyTree."""
+    mask = {'a': True, 'b': False, 'c': {'d': False, 'e': True}}
+    params = {'a': 1, 'b': {'f': 2}, 'c': {'d': 3, 'e': ([4, 5], 6)}}
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+
+    # Negate the updates wherever the mask (or mask parent) is True
+    def _masked_sgd_on_updates(m, upd):
+      return jax.tree_util.tree_map(lambda x: -x, upd) if m else upd
+    correct_updates = jax.tree_util.tree_multimap(
+        _masked_sgd_on_updates, mask, input_updates)
+
+    init_fn, update_fn = wrappers.mask(opt_builder(), mask)
+    update_fn = self.variant(update_fn)
+    state = init_fn(params)
+    updates, state = update_fn(input_updates, state, params)
+    chex.assert_tree_all_close(updates, correct_updates)
+
+    # Check repeated application, this time with no params.
+    correct_updates = jax.tree_util.tree_multimap(
+        _masked_sgd_on_updates, mask, correct_updates)
+    updates, state = update_fn(updates, state)
+    chex.assert_tree_all_close(updates, correct_updates)
+
+  @chex.all_variants
+  def test_update_requires_params(self):
+    weight_decay = 0.1
+    mask = {'a': True,
+            'b': [False, True],
+            'c': {'d': True, 'e': (False, True)}}
+    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+
+    correct_updates = jax.tree_util.tree_multimap(
+        lambda m, u, p: u + weight_decay * p if m else u,
+        mask, input_updates, params)
+
+    init_fn, update_fn = wrappers.mask(
+      transform.additive_weight_decay(weight_decay), mask)
+    update_fn = self.variant(update_fn)
+
+    state = init_fn(params)
+    updates, state = update_fn(input_updates, state, params)
+    chex.assert_tree_all_close(updates, correct_updates)
+
+    params = update.apply_updates(params, updates)
+
+    # Test repeated application
+    new_correct_updates = jax.tree_util.tree_multimap(
+        lambda m, u, p: u + weight_decay * p if m else u,
+        mask, correct_updates, params)
+    updates, state = update_fn(correct_updates, state, params)
+    chex.assert_tree_all_close(updates, new_correct_updates)
+
+  @parameterized.parameters(list, tuple, dict)
+  def test_empty(self, container):
+    init_fn, update_fn = wrappers.mask(_build_sgd(), container())
+    update_fn(container(), init_fn(container()))
+
+  @parameterized.parameters(True, False)
+  def test_tree_mismatch_fails(self, extra_key_in_mask):
+    mask = {'a': True,
+            'b': [False, True],
+            'c': {'d': True, 'e': (False, True)}}
+    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
+
+    if extra_key_in_mask:
+      mask['c']['extra'] = True
+    else:
+      params['c']['extra'] = 7
+
+    init_fn = wrappers.mask(_build_sgd(), mask)[0]
+    with self.assertRaises(ValueError):
+      init_fn(params)
+
+
 if __name__ == '__main__':
   absltest.main()
