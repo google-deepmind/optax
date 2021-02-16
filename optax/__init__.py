@@ -183,7 +183,3 @@ __all__ = (
 #                 ||----w |
 #                 ||     ||
 #
-try:
-  del _src  # pylint: disable=undefined-variable
-except NameError:
-  pass

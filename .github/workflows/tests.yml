@@ -1,0 +1,58 @@
+name: tests
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build-and-test:
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+
+    strategy:
+      matrix:
+        python-version: ["3.6", "3.7", "3.8"]
+        os: [macos-latest, ubuntu-latest]
+
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v1"
+        with:
+            python-version: "${{ matrix.python-version }}"
+      - name: Install dependencies
+        run: |
+          set -xe
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install flake8 pytest pytype
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-test.txt
+        shell: bash
+      - name: Lint with flake8
+        run: |
+          set -xe
+          # stop the build if there are Python syntax errors or undefined names
+          cd optax
+          flake8 `find -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+          cd ..
+      - name: Build
+        run: |
+          set -xe
+          python -VV
+          python setup.py install
+        shell: bash
+      - name: Check types with pytype
+        run: |
+          set -xe
+          pytype --version
+          pytype `find optax/_src/ -name "*py" | xargs` -k
+        shell: bash
+      - name: Run tests
+        run: |
+          set -xe
+          # Change directory to avoid importing the package from repo root.
+          mkdir _testing && cd _testing
+          python -m pytest --pyargs optax
+          cd ..
+        shell: bash
