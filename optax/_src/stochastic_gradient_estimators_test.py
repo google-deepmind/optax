@@ -205,7 +205,7 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x* weights)
+    function = lambda x: jnp.sum(x * weights)
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale],
         utils.multi_normal, rng, num_samples)
@@ -244,7 +244,7 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x* weights) ** 2
+    function = lambda x: jnp.sum(x * weights) ** 2
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale],
         utils.multi_normal, rng, num_samples)

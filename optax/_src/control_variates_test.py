@@ -90,7 +90,7 @@ class DeltaControlVariateTest(chex.TestCase):
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
-    expected_cv_value = jnp.sum(dist_samples** 2) / num_samples
+    expected_cv_value = jnp.sum(dist_samples**2) / num_samples
 
     # This should be an analytical computation, the result needs to be
     # accurate.
@@ -450,9 +450,9 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(_cross_prod([
-      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10 **6),
-      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10 **5),
-      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10 **5)],
+      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10**6),
+      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10**5),
+      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10**5)],
                                         [control_variates.control_delta_method,
                                          control_variates.moving_avg_baseline]))
   def testWeightedLinearFunction(
@@ -509,9 +509,9 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(_cross_prod([
-      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10 **5),
-      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10 **5),
-      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10 **5)],
+      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10**5),
+      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10**5),
+      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10**5)],
                                         [control_variates.control_delta_method,
                                          control_variates.moving_avg_baseline]))
   def testNonPolynomialFunction(

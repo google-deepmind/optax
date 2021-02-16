@@ -72,7 +72,7 @@ class MultiNormalDiagFromLogScale():
   def log_prob(self, x):
     log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
     # Sum over parameter axes.
-    sum_axis = [-(i +1) for i in range(len(self._param_shape))]
+    sum_axis = [-(i + 1) for i in range(len(self._param_shape))]
     return jnp.sum(log_prob, axis=sum_axis)
 
   @property

@@ -236,7 +236,7 @@ class TestOptimizerState(transform.OptState):
   is_reset: bool = True
 
 
-def test_optimizer(step_size: float) -> transform.GradientTransformation:
+def _test_optimizer(step_size: float) -> transform.GradientTransformation:
   """Fast optimizer for the lookahead tests."""
 
   # Use SGD for simplicity but add non-trivial optimizer state so that the
@@ -281,7 +281,7 @@ class LookaheadTest(chex.TestCase):
     """Tests the lookahead optimizer in an analytically tractable setting."""
     sync_period = 3
     optimizer = wrappers.lookahead(
-        test_optimizer(-0.5), sync_period=sync_period, slow_step_size=1 / 3)
+        _test_optimizer(-0.5), sync_period=sync_period, slow_step_size=1 / 3)
 
     final_params, _ = self.loop(optimizer, 2 * sync_period,
                                 self.synced_initial_params)
@@ -295,7 +295,7 @@ class LookaheadTest(chex.TestCase):
   def test_lookahead_state_reset(self, reset_state):
     """Checks that lookahead resets the fast optimizer state correctly."""
     num_steps = sync_period = 3
-    fast_optimizer = test_optimizer(-0.5)
+    fast_optimizer = _test_optimizer(-0.5)
     optimizer = wrappers.lookahead(
         fast_optimizer,
         sync_period=sync_period,
@@ -324,7 +324,7 @@ class LookaheadTest(chex.TestCase):
     # These edge cases are important to check since users might use them as
     # simple ways of disabling lookahead in experiments.
     optimizer = wrappers.lookahead(
-        test_optimizer(-1), sync_period, slow_step_size)
+        _test_optimizer(-1), sync_period, slow_step_size)
     final_params, _ = self.loop(
         optimizer, num_steps=2, params=self.synced_initial_params)
     chex.assert_tree_all_close(final_params.slow, correct_result)

@@ -123,7 +123,7 @@ def control_delta_method(
     assert hess_diags.ndim == 1
 
     # Trace (Hessian * Sigma) and we use that Sigma is diagonal.
-    expected_second_order_term = jnp.sum(var_dist * hess_diags) /2.
+    expected_second_order_term = jnp.sum(var_dist * hess_diags) / 2.
 
     expected_control_variate = function(mean_dist)
     expected_control_variate += expected_second_order_term
