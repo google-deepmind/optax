@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
         os: [macos-latest, ubuntu-latest]
 
     steps:
@@ -46,7 +46,10 @@ jobs:
         run: |
           set -xe
           pytype --version
-          pytype `find optax/_src/ -name "*py" | xargs` -k
+          if [[ `python -c 'import sys; print(sys.version_info.minor)'` -le 8 ]]
+          then
+            pytype `find optax/_src/ -name '*.py' | xargs` -k
+          fi
         shell: bash
       - name: Run tests
         run: |
