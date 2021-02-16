@@ -58,6 +58,7 @@ setup(
         os.path.join(_CURRENT_DIR, 'requirements', 'requirements.txt')),
     tests_require=_parse_requirements(
         os.path.join(_CURRENT_DIR, 'requirements', 'requirements-test.txt')),
+    zip_safe=False,  # Required for full installation.
     python_requires='>=3.6',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
