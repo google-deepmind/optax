@@ -83,6 +83,8 @@ from optax._src.transform import trace
 from optax._src.transform import TraceState
 from optax._src.transform import Updates
 from optax._src.update import apply_updates
+from optax._src.update import incremental_update
+from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
@@ -128,6 +130,7 @@ __all__ = (
     "hessian_diag",
     "hvp",
     "identity",
+    "incremental_update",
     "lamb",
     "lookahead",
     "LookaheadParams",
@@ -140,6 +143,7 @@ __all__ = (
     "OptState",
     "Params",
     "pathwise_jacobians",
+    "periodic_update",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",

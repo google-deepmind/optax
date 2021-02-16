@@ -29,10 +29,41 @@ class UpdateTest(chex.TestCase):
     params = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     grads = jax.tree_map(lambda t: 2 * t, params)
     exp_params = jax.tree_map(lambda t: 3 * t, params)
-    actual_params = self.variant(update.apply_updates)(params, grads)
+    new_params = self.variant(update.apply_updates)(params, grads)
 
     chex.assert_tree_all_close(
-        exp_params, actual_params, atol=1e-10, rtol=1e-5)
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
+
+  @chex.all_variants()
+  def test_incremental_update(self):
+    params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
+    params_2 = jax.tree_map(lambda t: 2 * t, params_1)
+    exp_params = jax.tree_map(lambda t: 1.5 * t, params_1)
+    new_params = self.variant(
+        update.incremental_update)(params_2, params_1, 0.5)
+
+    chex.assert_tree_all_close(
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
+
+  @chex.all_variants()
+  def test_periodic_update(self):
+    params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
+    params_2 = jax.tree_map(lambda t: 2 * t, params_1)
+
+    update_period = 5
+    update_fn = self.variant(update.periodic_update)
+
+    for j in range(3):
+      for i in range(1, update_period):
+        new_params = update_fn(
+            params_2, params_1, j*update_period+i, update_period)
+        chex.assert_tree_all_close(
+            params_1, new_params, atol=1e-10, rtol=1e-5)
+
+      new_params = update_fn(
+          params_2, params_1, (j+1)*update_period, update_period)
+      chex.assert_tree_all_close(
+          params_2, new_params, atol=1e-10, rtol=1e-5)
 
 
 if __name__ == '__main__':
