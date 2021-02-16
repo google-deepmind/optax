@@ -54,8 +54,10 @@ setup(
     author_email='optax-dev@google.com',
     keywords='reinforcement-learning python machine learning',
     packages=find_namespace_packages(exclude=['*_test.py']),
-    install_requires=_parse_requirements('requirements.txt'),
-    tests_require=_parse_requirements('requirements-test.txt'),
+    install_requires=_parse_requirements(
+        os.path.join(_CURRENT_DIR, 'requirements', 'requirements.txt')),
+    tests_require=_parse_requirements(
+        os.path.join(_CURRENT_DIR, 'requirements', 'requirements-test.txt')),
     python_requires='>=3.6',
     classifiers=[
         'Development Status :: 5 - Production/Stable',

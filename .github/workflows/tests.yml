@@ -26,8 +26,8 @@ jobs:
           set -xe
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install flake8 pytest pytype
-          python -m pip install -r requirements.txt
-          python -m pip install -r requirements-test.txt
+          python -m pip install -r requirements/requirements.txt
+          python -m pip install -r requirements/requirements-test.txt
         shell: bash
       - name: Lint with flake8
         run: |
