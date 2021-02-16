@@ -1,5 +1,7 @@
 # Optax
 
+![CI status](https://github.com/deepmind/optax/workflows/tests/badge.svg)
+
 ## Introduction
 
 Optax is a gradient processing and optimization library for JAX.
