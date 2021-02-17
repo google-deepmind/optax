@@ -38,13 +38,13 @@ def main(argv):
   def forward_pass(x):
     return hk.Linear(10)(x)
 
-  network = hk.without_apply_rng(hk.transform(forward_pass, apply_rng=True))
+  network = hk.without_apply_rng(hk.transform(forward_pass))
 
   # Some arbitrary loss.
   def mean_square_loss(params, x):
     output = network.apply(params, x)
     loss = jnp.sum(output**2)
-    return loss, loss
+    return loss
 
   # Construct a simple Adam optimiser using the transforms in optax.
   # You could also just use the `optax.adam` alias, but we show here how
@@ -64,10 +64,10 @@ def main(argv):
 
   # Minimise the loss.
   for step in range(n_training_steps):
-    # Get input.
+    # Get input. Learn to minimize the input to 0.
     data = jax.random.normal(next(key_seq), [batch_size, input_size])
     # Compute gradient and loss.
-    grad, loss = jax.grad(mean_square_loss, has_aux=True)(params, data)
+    loss, grad = jax.value_and_grad(mean_square_loss)(params, data)
     print(f'Loss[{step}] = {loss}')
     # Transform the gradients using the optimiser.
     updates, opt_state = opt_update(grad, opt_state, params)
