@@ -330,15 +330,15 @@ class LookaheadTest(chex.TestCase):
     chex.assert_tree_all_close(final_params.slow, correct_result)
 
 
-class MaskedTest(chex.TestCase):
-  """Tests for the lookahead optimizer."""
+class MaskTest(chex.TestCase):
+  """Tests for the mask wrapper."""
 
   @chex.all_variants
   @parameterized.parameters(
       lambda: transform.scale(-1.),  # stateless test
       _build_sgd  # stateful test
   )
-  def test_masked(self, opt_builder):
+  def test_mask(self, opt_builder):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
