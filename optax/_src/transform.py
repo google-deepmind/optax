@@ -132,6 +132,9 @@ def unitwise_norm(x):
   if len(jnp.squeeze(x).shape) <= 1:  # Scalars and vectors
     axis = None
     keepdims = False
+  # Note that this assumes parameters with a shape of length 3 are multihead
+  # linear parameters--if you wish to apply AGC to 1D convs, you may need
+  # to modify this line.
   elif len(x.shape) in [2, 3]:  # Linear layers of shape IO or multihead linear
     axis = 0
     keepdims = True

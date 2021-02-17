@@ -44,6 +44,7 @@ from optax._src.second_order import hvp
 from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
 from optax._src.stochastic_gradient_estimators import pathwise_jacobians
 from optax._src.stochastic_gradient_estimators import score_function_jacobians
+from optax._src.transform import adaptive_grad_clip
 from optax._src.transform import add_noise
 from optax._src.transform import additive_weight_decay
 from optax._src.transform import AdditiveWeightDecayState
@@ -102,6 +103,7 @@ __all__ = (
     "adagrad",
     "adam",
     "adamw",
+    "adaptive_grad_clip",
     "add_noise",
     "additive_weight_decay",
     "AdditiveWeightDecayState",
