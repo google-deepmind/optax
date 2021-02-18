@@ -569,11 +569,11 @@ def scale_by_radam(b1: float = 0.9,
   return GradientTransformation(init_fn, update_fn)
 
 
-class AdditiveWeightDecayState(NamedTuple):
+class AddDecayedWeightsState(NamedTuple):
   """The decay transformation is stateless."""
 
 
-def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
+def add_decayed_weights(weight_decay: float = 0.0) -> GradientTransformation:
   """Add parameter scaled by `weight_decay`.
 
   Args:
@@ -584,7 +584,7 @@ def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
   """
 
   def init_fn(_):
-    return AdditiveWeightDecayState()
+    return AddDecayedWeightsState()
 
   def update_fn(updates, state, params):
     if params is None:
@@ -594,6 +594,11 @@ def additive_weight_decay(weight_decay: float = 0.0) -> GradientTransformation:
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
+
+
+# TODO(b/180608630): Remove deprecated references.
+AdditiveWeightDecayState = AddDecayedWeightsState
+additive_weight_decay = add_decayed_weights
 
 
 class ScaleByScheduleState(OptState):
