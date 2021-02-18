@@ -687,7 +687,7 @@ def scale_by_fromage(
       norm_ratio = param_norm / update_norm
       mult = jax.lax.rsqrt(1 + lr**2).astype(update.dtype)
       scaled_update = lr * update * norm_ratio * mult
-      scaled_param_correction = param * (mult - 1.)
+      scaled_param_correction = param * (1. - mult)
       return scaled_update + scaled_param_correction
 
     count_inc = _safe_int32_increment(state.count)
