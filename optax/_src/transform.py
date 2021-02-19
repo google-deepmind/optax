@@ -654,64 +654,18 @@ def _safe_norm(x, min_norm):
   return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
 
 
-def scale_by_fromage(
-    step_size: float = 1e-3,
-    min_norm: float = 1e-6,
-    step_size_factor_fn: Optional[Callable[[jnp.ndarray], jnp.ndarray]] = None,
-    ) -> GradientTransformation:
-  """Scale updates by Frobenius norm of parameters and grads.
-
-  References:
-    [Bernstein et. al 2020](https://arxiv.org/abs/2002.03432)
-
-  Args:
-    step_size: the step_size to multiply the updates by.
-    min_norm: Minimum norm of parameters and gradients, to avoid division by
-      zero and to ensure an update is made to a parameter with zero norm.
-    step_size_factor_fn: a function that takes an update count as input and
-      returns a factor the step_size is multiplied by.
-      Effective learning rate is step_size * step_size_factor_fn(state.count)
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_: Params):
-    return ScaleByFromageState(count=jnp.zeros([], jnp.int32))
-
-  def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(NO_PARAMS_MSG)
-    lr = step_size
-    if step_size_factor_fn:
-      lr *= step_size_factor_fn(state.count)
-
-    def _scale_update(update, param):
-      update_norm = _safe_norm(update, min_norm)
-      param_norm = _safe_norm(param, min_norm)
-      norm_ratio = param_norm / update_norm
-      mult = jax.lax.rsqrt(1 + lr**2).astype(update.dtype)
-      scaled_update = lr * update * norm_ratio * mult
-      scaled_param_correction = param * (mult - 1.)
-      return scaled_update + scaled_param_correction
-
-    count_inc = _safe_int32_increment(state.count)
-    updates = jax.tree_multimap(_scale_update, updates, params)
-
-    return updates, ScaleByFromageState(count=count_inc)
-
-  return GradientTransformation(init_fn, update_fn)
-
-
 class ScaleByTrustRatioState(NamedTuple):
   """The scale and decay trust ratio transformation is stateless."""
 
 
-def scale_by_trust_ratio() -> GradientTransformation:
+def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
   """Scale updates by trust ratio`.
 
   References:
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
+
+  Args:
+    min_norm: minimum norm for params and gradient norms; by default is zero.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -725,10 +679,13 @@ def scale_by_trust_ratio() -> GradientTransformation:
       raise ValueError(NO_PARAMS_MSG)
 
     def _scale_update(update, param):
-      param_norm = jnp.linalg.norm(param)
-      update_norm = jnp.linalg.norm(update)
+
+      # Clip norms to minimum value, by default no clipping.
+      param_norm = _safe_norm(param, min_norm)
+      update_norm = _safe_norm(update, min_norm)
       trust_ratio = param_norm / update_norm
 
+      # If no minimum norm clipping is used
       # Set trust_ratio to 1 in case where parameters would never be updated.
       zero_norm = jnp.logical_or(param_norm == 0., update_norm == 0.)
       safe_trust_ratio = jnp.where(

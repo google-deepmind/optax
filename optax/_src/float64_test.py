@@ -41,18 +41,17 @@ ALL_MODULES = [
      dict(weight_decay=0.1)),
     ('scale_by_schedule', transform.scale_by_schedule,
      dict(step_size_fn=lambda x: x * 0.1)),
-    ('scale_by_fromage', transform.scale_by_fromage, {}),
     ('scale_by_trust_ratio', transform.scale_by_trust_ratio, {}),
     ('add_noise', transform.add_noise, dict(eta=1.0, gamma=0.1, seed=42)),
     ('apply_every_k', transform.apply_every, {}),
     ('adagrad', alias.adagrad, dict(learning_rate=0.1)),
     ('adam', alias.adam, dict(learning_rate=0.1)),
     ('adamw', alias.adamw, dict(learning_rate=0.1)),
+    ('fromage', alias.fromage, dict(learning_rate=0.1)),
     ('lamb', alias.lamb, dict(learning_rate=0.1)),
     ('noisy_sgd', alias.noisy_sgd, dict(learning_rate=0.1)),
     ('rmsprop', alias.rmsprop, dict(learning_rate=0.1)),
     ('sgd', alias.sgd, dict(learning_rate=0.1)),
-
 ]
 
 

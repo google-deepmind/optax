@@ -17,9 +17,11 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import chex
 import jax
 import jax.numpy as jnp
+
 from optax._src import alias
 from optax._src import combine
 from optax._src import transform
@@ -40,7 +42,6 @@ class TransformTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
       ('rmsprop', transform.scale_by_rms),
-      ('fromage', transform.scale_by_fromage),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
   ])
@@ -58,23 +59,6 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
                       updates)
-
-  @chex.all_variants()
-  def test_scale_by_fromage(self):
-    schedule = lambda c: 1.0/(c + 1.0)
-    fromage = transform.scale_by_fromage(step_size_factor_fn=schedule)
-    params = self.init_params
-    state = fromage.init(params)
-    previous_norm = jnp.inf
-    transform_fn = self.variant(fromage.update)
-
-    for _ in range(STEPS):
-      # Apply a step of fromage
-      updates, state = transform_fn(self.per_step_updates, state, params)
-      # Updates should get smaller due to the the learning schedule.
-      norm = transform.global_norm(updates)
-      self.assertLess(norm, previous_norm)
-      previous_norm = norm
 
   @chex.all_variants()
   def test_apply_every(self):
@@ -167,6 +151,7 @@ class TransformTest(parameterized.TestCase):
     centralizer = transform.centralize()
     centralized_inputs, _ = centralizer.update(inputs, None)
     chex.assert_tree_all_close(centralized_inputs, outputs)
+
 
 if __name__ == '__main__':
   absltest.main()

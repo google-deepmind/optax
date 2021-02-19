@@ -15,8 +15,11 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
+import jax.numpy as jnp
 from optax._src import combine
 from optax._src import transform
+
+
 GradientTransformation = transform.GradientTransformation
 
 
@@ -65,6 +68,16 @@ def adamw(learning_rate: float,
   )
 
 
+def fromage(learning_rate: float,
+            min_norm: float = 1e-6) -> GradientTransformation:
+  mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
+  return combine.chain(
+      transform.scale_by_trust_ratio(min_norm),
+      transform.scale(-learning_rate * mult),
+      transform.add_decayed_weights((mult - 1)),
+  )
+
+
 def lamb(learning_rate: float,
          b1: float = 0.9,
          b2: float = 0.999,
@@ -73,7 +86,7 @@ def lamb(learning_rate: float,
          weight_decay: float = 0.) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      transform.additive_weight_decay(weight_decay),
+      transform.add_decayed_weights(weight_decay),
       transform.scale_by_trust_ratio(),
       transform.scale(-learning_rate),
   )

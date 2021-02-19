@@ -24,7 +24,6 @@ from jax.experimental import optimizers
 import jax.numpy as jnp
 
 from optax._src import alias
-from optax._src import transform
 from optax._src import update
 
 
@@ -76,17 +75,19 @@ class AliasTest(chex.TestCase):
     chex.assert_tree_all_close(jax_params, optax_params, rtol=rtol)
 
   @parameterized.named_parameters(
-      ('sgd', alias.sgd(1e-2, 0.0)),
-      ('adam', alias.adam(1e-1)),
-      ('adamw', alias.adamw(1e-1)),
-      ('lamb', alias.adamw(1e-1)),
-      ('rmsprop', alias.rmsprop(1e-1)),
-      ('fromage', transform.scale_by_fromage(-1e-2)),
-      ('adabelief', alias.adabelief(1e-1)),
-      ('radam', alias.radam(1e-1)),
-      ('yogi', alias.yogi(1.0)),
+      ('sgd', lambda: alias.sgd(1e-2, 0.0)),
+      ('adam', lambda: alias.adam(1e-1)),
+      ('adamw', lambda: alias.adamw(1e-1)),
+      ('lamb', lambda: alias.adamw(1e-1)),
+      ('rmsprop', lambda: alias.rmsprop(1e-1)),
+      ('fromage', lambda: alias.fromage(1e-2)),
+      ('adabelief', lambda: alias.adabelief(1e-1)),
+      ('radam', lambda: alias.radam(1e-1)),
+      ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_parabel(self, opt):
+    opt = opt()
+
     initial_params = jnp.array([-1.0, 10.0, 1.0])
     final_params = jnp.array([1.0, -1.0, 1.0])
 
@@ -108,17 +109,19 @@ class AliasTest(chex.TestCase):
     chex.assert_tree_all_close(params, final_params, rtol=1e-2, atol=1e-2)
 
   @parameterized.named_parameters(
-      ('sgd', alias.sgd(2e-3, 0.2)),
-      ('adam', alias.adam(1e-1)),
-      ('adamw', alias.adamw(1e-1)),
-      ('lamb', alias.adamw(1e-1)),
-      ('rmsprop', alias.rmsprop(5e-3)),
-      ('fromage', transform.scale_by_fromage(-5e-3)),
-      ('adabelief', alias.adabelief(1e-1)),
-      ('radam', alias.radam(1e-3)),
-      ('yogi', alias.yogi(1.0)),
+      ('sgd', lambda: alias.sgd(2e-3, 0.2)),
+      ('adam', lambda: alias.adam(1e-1)),
+      ('adamw', lambda: alias.adamw(1e-1)),
+      ('lamb', lambda: alias.adamw(1e-1)),
+      ('rmsprop', lambda: alias.rmsprop(5e-3)),
+      ('fromage', lambda: alias.fromage(5e-3)),
+      ('adabelief', lambda: alias.adabelief(1e-1)),
+      ('radam', lambda: alias.radam(1e-3)),
+      ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_rosenbrock(self, opt):
+    opt = opt()
+
     a = 1.0
     b = 100.0
     initial_params = jnp.array([0.0, 0.0])

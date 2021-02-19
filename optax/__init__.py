@@ -19,6 +19,7 @@ from optax._src.alias import adabelief
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
@@ -66,7 +67,6 @@ from optax._src.transform import Params
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
-from optax._src.transform import scale_by_fromage
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -131,6 +131,7 @@ __all__ = (
     "exponential_decay",
     "fisher_diag",
     "flatten",
+    "fromage",
     "global_norm",
     "GradientTransformation",
     "hessian_diag",
@@ -158,7 +159,6 @@ __all__ = (
     "scale",
     "scale_by_adam",
     "scale_by_belief",
-    "scale_by_fromage",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",
