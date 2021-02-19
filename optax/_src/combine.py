@@ -40,6 +40,10 @@ def chain(*args: GradientTransformation) -> GradientTransformation:
     return [fn(params) for fn in init_fns]
 
   def update_fn(updates, state, params=None):
+    if len(update_fns) != len(state):
+      raise ValueError('The number of updates and states has to be the same in '
+                       'chain! Make sure you have called init first!')
+
     new_state = []
     for s, fn in zip(state, update_fns):
       updates, new_s = fn(updates, s, params)
