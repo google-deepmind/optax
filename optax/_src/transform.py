@@ -836,8 +836,8 @@ def scale_by_sm3(b1: float = 0.9,
   def update_fn(updates, state, params=None):
     del params
     nu = jax.tree_multimap(functools.partial(broadcast_into, updates.ndim),
-        nu, jnp.arange(state.nu))
-    accum = jax.tree_multimap(lambda v, g: jnp.minimum(nu) + g**2, 
+        state.nu, jnp.arange(state.nu))
+    accum = jax.tree_multimap(lambda v, g: jnp.minimum(nu) + g**2,
         nu, updates)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
