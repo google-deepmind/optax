@@ -15,6 +15,7 @@
 # ==============================================================================
 """Gradient transformations."""
 
+import functools
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 import jax
@@ -811,4 +812,37 @@ def centralize() -> GradientTransformation:
     updates = jax.tree_map(_subtract_mean, updates)
     return updates, state
 
+  return GradientTransformation(init_fn, update_fn)
+
+class ScaleBySM3State(OptState):
+  """State for the SM3 algorithm."""
+  mu: Updates
+  nu: Updates
+
+def scale_by_sm3(b1: float = 0.9,
+                 eps: float = 1e-8) -> GradientTransformation:
+  def splice(seq, i, x):
+    lst = list(seq)
+    lst[i:i+1] = x
+    return lst
+
+  def broadcast_into(ndim, x, axis):
+    idx = splice([None] * ndim, axis, [slice(None)])
+    return x[tuple(idx)]
+
+  def init_fn(_):
+    return ScaleBySM3State()
+
+  def update_fn(updates, state, params=None):
+    del params
+    nu = jax.tree_multimap(functools.partial(broadcast_into, updates.ndim),
+        nu, jnp.arange(state.nu))
+    accum = jax.tree_multimap(lambda v, g: jnp.minimum(nu) + g**2, 
+        nu, updates)
+    accum_inv_sqrt = jax.tree_map(
+        lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
+    mu = _update_moment(updates * accum_inv_sqrt, state.mu, b1, 1)
+    nu = [accum.max(splice(range(updates.ndim), j, [])) for j in range(updates.ndim)]
+    return mu, ScaleBySM3State(mu=mu, nu=nu)
+    
   return GradientTransformation(init_fn, update_fn)

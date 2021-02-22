@@ -138,6 +138,13 @@ def sgd(learning_rate: float,
   )
 
 
+def sm3(learning_rate: float,
+        momentum: float = 0.) -> GradientTransformation:
+    return combine.chain(
+        transform.scale_by_sm3(momentum),
+        transform.scale(-learning_rate),
+    )
+
 def yogi(learning_rate: float,
          b1: float = 0.9,
          b2: float = 0.999,
