@@ -29,6 +29,7 @@ from optax._src import update
 
 STEPS = 50
 LR = 1e-2
+LR_SCHED = lambda _: LR  # Trivial constant "schedule".
 
 
 class AliasTest(chex.TestCase):
@@ -47,6 +48,14 @@ class AliasTest(chex.TestCase):
       ('rmsprop', alias.rmsprop(LR, .9, 0.1),
        optimizers.rmsprop(LR, .9, 0.1), 1e-5),
       ('adagrad', alias.adagrad(LR, 0., 0.,),
+       optimizers.adagrad(LR, 0.), 1e-5),
+      ('sgd', alias.sgd(LR_SCHED, 0.0),
+       optimizers.sgd(LR), 1e-5),
+      ('adam', alias.adam(LR_SCHED, 0.9, 0.999, 1e-8),
+       optimizers.adam(LR, 0.9, 0.999), 1e-4),
+      ('rmsprop', alias.rmsprop(LR_SCHED, .9, 0.1),
+       optimizers.rmsprop(LR, .9, 0.1), 1e-5),
+      ('adagrad', alias.adagrad(LR_SCHED, 0., 0.,),
        optimizers.adagrad(LR, 0.), 1e-5),
   )
   def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):

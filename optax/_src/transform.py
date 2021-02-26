@@ -19,6 +19,7 @@ from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import schedule
 
 
 # pylint:disable=no-value-for-parameter
@@ -606,7 +607,7 @@ class ScaleByScheduleState(OptState):
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
+def scale_by_schedule(step_size_fn: schedule.Schedule):
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
