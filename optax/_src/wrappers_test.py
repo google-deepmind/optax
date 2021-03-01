@@ -348,7 +348,7 @@ class MaskTest(chex.TestCase):
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
       return jax.tree_util.tree_multimap(
-        lambda upd, m: -upd if m else upd, updates, mask)
+          lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
     init_fn, update_fn = wrappers.mask(opt_builder(), mask)
@@ -405,7 +405,7 @@ class MaskTest(chex.TestCase):
         mask, input_updates, params)
 
     init_fn, update_fn = wrappers.mask(
-      transform.additive_weight_decay(weight_decay), mask)
+        transform.additive_weight_decay(weight_decay), mask)
     update_fn = self.variant(update_fn)
 
     state = init_fn(params)
