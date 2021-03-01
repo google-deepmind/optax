@@ -330,15 +330,15 @@ class LookaheadTest(chex.TestCase):
     chex.assert_tree_all_close(final_params.slow, correct_result)
 
 
-class MaskTest(chex.TestCase):
-  """Tests for the mask wrapper."""
+class MaskedTest(chex.TestCase):
+  """Tests for the masked wrapper."""
 
   @chex.all_variants
   @parameterized.parameters(
       lambda: transform.scale(-1.),  # stateless test
       _build_sgd  # stateful test
   )
-  def test_mask(self, opt_builder):
+  def test_masked(self, opt_builder):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
@@ -351,7 +351,7 @@ class MaskTest(chex.TestCase):
           lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
-    init_fn, update_fn = wrappers.mask(opt_builder(), mask)
+    init_fn, update_fn = wrappers.masked(opt_builder(), mask)
     update_fn = self.variant(update_fn)
     state = init_fn(params)
     updates, state = update_fn(input_updates, state, params)
@@ -379,7 +379,7 @@ class MaskTest(chex.TestCase):
     correct_updates = jax.tree_util.tree_multimap(
         _masked_sgd_on_updates, mask, input_updates)
 
-    init_fn, update_fn = wrappers.mask(opt_builder(), mask)
+    init_fn, update_fn = wrappers.masked(opt_builder(), mask)
     update_fn = self.variant(update_fn)
     state = init_fn(params)
     updates, state = update_fn(input_updates, state, params)
@@ -404,7 +404,7 @@ class MaskTest(chex.TestCase):
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, input_updates, params)
 
-    init_fn, update_fn = wrappers.mask(
+    init_fn, update_fn = wrappers.masked(
         transform.additive_weight_decay(weight_decay), mask)
     update_fn = self.variant(update_fn)
 
@@ -423,7 +423,7 @@ class MaskTest(chex.TestCase):
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
-    init_fn, update_fn = wrappers.mask(_build_sgd(), container())
+    init_fn, update_fn = wrappers.masked(_build_sgd(), container())
     update_fn(container(), init_fn(container()))
 
   @parameterized.parameters(True, False)
@@ -438,7 +438,7 @@ class MaskTest(chex.TestCase):
     else:
       params['c']['extra'] = 7
 
-    init_fn = wrappers.mask(_build_sgd(), mask)[0]
+    init_fn = wrappers.masked(_build_sgd(), mask)[0]
     with self.assertRaises(ValueError):
       init_fn(params)
 

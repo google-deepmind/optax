@@ -433,13 +433,13 @@ def _lookahead_update(
   return LookaheadParams(fast=fast_updates, slow=slow_updates)
 
 
-class MaskState(NamedTuple):
+class MaskedState(NamedTuple):
   """Maintains inner transform state for masked transformations."""
   inner_state: Any
 
 
-def mask(inner: transform.GradientTransformation,
-         mask: Any) -> transform.GradientTransformation:
+def masked(inner: transform.GradientTransformation,
+           mask: Any) -> transform.GradientTransformation:
   """Mask updates so only a subset of them are computed.
 
   For example, it is common to skip weight decay for BatchNorm scale and all
@@ -448,7 +448,7 @@ def mask(inner: transform.GradientTransformation,
 
   ```
   mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
-  custom_weight_decay = optax.mask(optax.additive_weight_decay(0.001), mask)
+  custom_weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
   ```
 
   For the `inner` transform, state will only be stored for the parameters that
@@ -469,7 +469,7 @@ def mask(inner: transform.GradientTransformation,
   def init_fn(params):
     flat_params = treedef.flatten_up_to(params)
     masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
-    return MaskState(inner_state=inner.init(masked_params))
+    return MaskedState(inner_state=inner.init(masked_params))
 
   def update_fn(updates, state, params=None):
     # Flatten then filter out updates/params not in the mask:
@@ -492,6 +492,6 @@ def mask(inner: transform.GradientTransformation,
       if m: flat_updates[i] = next(new_masked_updates)
 
     new_updates = treedef.unflatten(flat_updates)
-    return new_updates, MaskState(inner_state=new_inner_state)
+    return new_updates, MaskedState(inner_state=new_inner_state)
 
   return transform.GradientTransformation(init_fn, update_fn)
