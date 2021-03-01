@@ -813,3 +813,35 @@ def centralize() -> GradientTransformation:
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
+
+
+class NonNegativeParamsState(OptState):
+  """The `keep_params_nonnegative` transformation is stateless."""
+
+
+def keep_params_nonnegative() -> GradientTransformation:
+  """Modifies the updates to keep parameters non-negative, i.e. >= 0.
+
+  This transformation ensures that parameters after the update will be
+  larger than or equal to zero.
+  In a chain of transformations, this should be the last one.
+
+  WARNING: the transformation expects input params to be non-negative.
+  When params is negative the transformed update will move them to 0.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return NonNegativeParamsState()
+
+  def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
+
+    updates = jax.tree_multimap(
+        lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
+    return updates, state
+
+  return GradientTransformation(init_fn, update_fn)

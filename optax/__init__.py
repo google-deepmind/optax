@@ -62,6 +62,8 @@ from optax._src.transform import ClipState
 from optax._src.transform import global_norm
 from optax._src.transform import GradientTransformation
 from optax._src.transform import identity
+from optax._src.transform import keep_params_nonnegative
+from optax._src.transform import NonNegativeParamsState
 from optax._src.transform import OptState
 from optax._src.transform import Params
 from optax._src.transform import scale
