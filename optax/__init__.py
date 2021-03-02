@@ -97,6 +97,8 @@ from optax._src.wrappers import flatten
 from optax._src.wrappers import lookahead
 from optax._src.wrappers import LookaheadParams
 from optax._src.wrappers import LookaheadState
+from optax._src.wrappers import masked
+from optax._src.wrappers import MaskedState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
@@ -145,6 +147,8 @@ __all__ = (
     "LookaheadParams",
     "LookaheadState",
     "linear_onecycle_schedule",
+    "masked",
+    "MaskedState",
     "measure_valued_jacobians",
     "moving_avg_baseline",
     "multi_normal",

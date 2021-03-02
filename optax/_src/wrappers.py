@@ -431,3 +431,67 @@ def _lookahead_update(
       last_difference)
 
   return LookaheadParams(fast=fast_updates, slow=slow_updates)
+
+
+class MaskedState(NamedTuple):
+  """Maintains inner transform state for masked transformations."""
+  inner_state: Any
+
+
+def masked(inner: transform.GradientTransformation,
+           mask: Any) -> transform.GradientTransformation:
+  """Mask updates so only a subset of them are computed.
+
+  For example, it is common to skip weight decay for BatchNorm scale and all
+  bias parameters. In many networks, these are the only parameters with only
+  one dimension. So, you may mask these out as follows:
+
+  ```
+  mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
+  custom_weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
+  ```
+
+  For the `inner` transform, state will only be stored for the parameters that
+  have a mask value of `True`.
+
+  Args:
+    inner: Inner transformation to mask.
+    mask: A PyTree with the same structure as the parameters or is a prefix of
+      the parameter PyTree. The leaves should be booleans which are `True` for
+      leaves/subtrees you want to apply the transformation to, and `False` for
+      those you want to skip.
+
+  Returns:
+    New GradientTransformation wrapping `inner`.
+  """
+  flat_mask, treedef = tree_flatten(mask)
+
+  def init_fn(params):
+    flat_params = treedef.flatten_up_to(params)
+    masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
+    return MaskedState(inner_state=inner.init(masked_params))
+
+  def update_fn(updates, state, params=None):
+    # Flatten then filter out updates/params not in the mask:
+    flat_updates = treedef.flatten_up_to(updates)
+    masked_updates = [g for g, m in zip(flat_updates, flat_mask) if m]
+
+    if params:
+      flat_params = treedef.flatten_up_to(params)
+      masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
+    else:
+      masked_params = None
+
+    # Compute new updates
+    new_masked_updates, new_inner_state = inner.update(
+        masked_updates, state.inner_state, masked_params)
+
+    # Incorporate new_masked_updates into flat_updates, then unflatten
+    new_masked_updates = iter(new_masked_updates)
+    for i, m in enumerate(flat_mask):
+      if m: flat_updates[i] = next(new_masked_updates)
+
+    new_updates = treedef.unflatten(flat_updates)
+    return new_updates, MaskedState(inner_state=new_inner_state)
+
+  return transform.GradientTransformation(init_fn, update_fn)
