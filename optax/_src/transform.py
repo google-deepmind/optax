@@ -857,20 +857,22 @@ def scale_by_sm3(b1: float = 0.9,
                  eps: float = 1e-8) -> GradientTransformation:
   def splice(seq, i, x):
     lst = list(seq)
-    lst[i:i+1] = x
+    lst[i] = x
     return lst
 
   def broadcast_into(ndim, x, axis):
     idx = splice([None] * ndim, axis, [slice(None)])
     return x[tuple(idx)]
 
-  def init_fn(_):
-    return ScaleBySM3State()
+  def init_fn(params):
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
+    return ScaleBySM3State(mu, nu)
 
   def update_fn(updates, state, params=None):
     del params
     nu = jax.tree_multimap(functools.partial(broadcast_into, updates.ndim),
-        state.nu, jnp.arange(state.nu))
+        state.nu, jnp.arange(state.nu.ndim))
     accum = jax.tree_multimap(lambda v, g: jnp.minimum(nu) + g**2,
         nu, updates)
     accum_inv_sqrt = jax.tree_map(
