@@ -25,6 +25,7 @@ from optax._src import schedule
 # pylint:disable=no-value-for-parameter
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
+ScalarOrSchedule = Union[float, schedule.Schedule]
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 
@@ -397,6 +398,60 @@ def scale_by_adam(b1: float = 0.9,
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
+  if callable(learning_rate):
+    return scale_by_schedule(lambda count: -learning_rate(count))
+  return scale(-learning_rate)
+
+
+class MetaScaleState(OptState):
+  """The meta-learned scale transformation is stateless."""
+  meta_params: Params
+  meta_opt: GradientTransformation
+  meta_opt_state: OptState
+
+
+def meta_scale(step_size: float,
+               meta_step_size: float,
+               meta_loss_fn: Callable[..., float],
+               meta_optimizer: GradientTransformation = None):
+  """Scales update by an automatically learned scalar `meta_step_size`.
+
+  This function would typically be used to automatically learn the learning rate
+  using SGD that is applied to the gradients.
+
+  References:
+    [Xu et al, 2018.](https://arxiv.org/abs/1805.09801)
+
+  Args:
+    step_size: a scalar corresponding to the initial fixed scaling factor
+      for updates.
+    meta_step_size: a scalar corresponding to the fixed scaling factor of the
+      step_size that is learned automaticaly using meta-gradients.
+    meta_loss_fn: the inner loss function used to compute the gradient to
+      optimize the meta_step_size.
+    meta_optimizer: the inner optimizer used to optimize the meta_step_size.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    meta_opt = meta_optimizer or _scale_by_learning_rate(
+        learning_rate=meta_step_size)
+    meta_opt_state = meta_opt.init(step_size)
+    return MetaScaleState(
+        meta_params=step_size,
+        meta_opt=meta_opt,
+        meta_opt_state=meta_opt_state)
+
+  def update_fn(updates, state, params=None):
+    _ = jax.grad(meta_loss_fn)
+    raise NotImplementedError('meta_scale update not yet ready!')
 
   return GradientTransformation(init_fn, update_fn)
 
