@@ -15,17 +15,12 @@
 # ==============================================================================
 """Tests for `alias.py`."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
-
 import chex
 import jax
-from jax.experimental import optimizers
 import jax.numpy as jnp
-
-from optax._src import alias
-from optax._src import update
-
+from absl.testing import absltest, parameterized
+from jax.experimental import optimizers
+from optax._src import alias, update
 
 STEPS = 50
 LR = 1e-2
@@ -83,6 +78,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(1e-2)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
+      ('sm3', lambda: alias.sm3(1e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_parabel(self, opt):
@@ -117,6 +113,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(5e-3)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
+      ('sm3', lambda: alias.sm3(2e-3)),
       ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_rosenbrock(self, opt):

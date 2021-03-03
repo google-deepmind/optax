@@ -17,10 +17,10 @@
 
 import functools
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+
 import chex
 import jax
 import jax.numpy as jnp
-
 
 # pylint:disable=no-value-for-parameter
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
@@ -821,6 +821,18 @@ class ScaleBySM3State(OptState):
 
 def scale_by_sm3(b1: float = 0.9,
                  eps: float = 1e-8) -> GradientTransformation:
+  """Scale updates using sm3`.
+
+  References:
+    [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    eps: term added to the denominator to improve numerical stability.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
   def splice(seq, i, x):
     lst = list(seq)
     lst[i:i+1] = x

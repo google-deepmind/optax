@@ -16,9 +16,7 @@
 """Aliases for popular optimisers."""
 
 import jax.numpy as jnp
-from optax._src import combine
-from optax._src import transform
-
+from optax._src import combine, transform
 
 GradientTransformation = transform.GradientTransformation
 
@@ -139,7 +137,7 @@ def sgd(learning_rate: float,
 
 
 def sm3(learning_rate: float,
-        momentum: float = 0.) -> GradientTransformation:
+        momentum: float = 0.9) -> GradientTransformation:
     return combine.chain(
         transform.scale_by_sm3(momentum),
         transform.scale(-learning_rate),
