@@ -15,45 +15,54 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
+from typing import Union
+
 import jax.numpy as jnp
-from optax._src import combine, transform
+from optax._src import combine, schedule, transform
 
 GradientTransformation = transform.GradientTransformation
+ScalarOrSchedule = Union[float, schedule.Schedule]
 
 
-def adabelief(learning_rate: float,
+def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
+  if callable(learning_rate):
+    return transform.scale_by_schedule(lambda count: -learning_rate(count))
+  return transform.scale(-learning_rate)
+
+
+def adabelief(learning_rate: ScalarOrSchedule,
               b1: float = 0.9,
               b2: float = 0.999,
               eps: float = 1e-8) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
 def adagrad(
-    learning_rate: float,
+    learning_rate: ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_rss(
           initial_accumulator_value=initial_accumulator_value, eps=eps),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
-def adam(learning_rate: float,
+def adam(learning_rate: ScalarOrSchedule,
          b1: float = 0.9,
          b2: float = 0.999,
          eps: float = 1e-8,
          eps_root: float = 0.0) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
-def adamw(learning_rate: float,
+def adamw(learning_rate: ScalarOrSchedule,
           b1: float = 0.9,
           b2: float = 0.999,
           eps: float = 1e-8,
@@ -62,7 +71,7 @@ def adamw(learning_rate: float,
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.additive_weight_decay(weight_decay),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
@@ -71,12 +80,12 @@ def fromage(learning_rate: float,
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
-      transform.scale(-learning_rate * mult),
+      _scale_by_learning_rate(learning_rate * mult),
       transform.add_decayed_weights((mult - 1)),
   )
 
 
-def lamb(learning_rate: float,
+def lamb(learning_rate: ScalarOrSchedule,
          b1: float = 0.9,
          b2: float = 0.999,
          eps: float = 1e-6,
@@ -86,53 +95,53 @@ def lamb(learning_rate: float,
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay),
       transform.scale_by_trust_ratio(),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
-def noisy_sgd(learning_rate: float,
+def noisy_sgd(learning_rate: ScalarOrSchedule,
               eta: float = 0.01,
               gamma: float = 0.55,
               seed: int = 0) -> GradientTransformation:
   return combine.chain(
       transform.trace(decay=0., nesterov=False),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
       transform.add_noise(eta, gamma, seed),
   )
 
 
-def radam(learning_rate: float,
+def radam(learning_rate: ScalarOrSchedule,
           b1: float = 0.9,
           b2: float = 0.999,
           eps: float = 1e-8,
           threshold: float = 5.0) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_radam(b1=b1, b2=b2, eps=eps, threshold=threshold),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
-def rmsprop(learning_rate: float,
+def rmsprop(learning_rate: ScalarOrSchedule,
             decay: float = 0.9,
             eps: float = 1e-8,
             centered: bool = False) -> GradientTransformation:
   if centered:
     return combine.chain(
         transform.scale_by_stddev(decay=decay, eps=eps),
-        transform.scale(-learning_rate),
+        _scale_by_learning_rate(learning_rate),
     )
   return combine.chain(
       transform.scale_by_rms(decay=decay, eps=eps),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
-def sgd(learning_rate: float,
+def sgd(learning_rate: ScalarOrSchedule,
         momentum: float = 0.,
         nesterov: bool = False) -> GradientTransformation:
   return combine.chain(
       transform.trace(decay=momentum, nesterov=nesterov),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
@@ -143,11 +152,11 @@ def sm3(learning_rate: float,
         transform.scale(-learning_rate),
     )
 
-def yogi(learning_rate: float,
+def yogi(learning_rate: ScalarOrSchedule,
          b1: float = 0.9,
          b2: float = 0.999,
          eps: float = 1e-3) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
-      transform.scale(-learning_rate),
+      _scale_by_learning_rate(learning_rate),
   )

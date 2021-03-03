@@ -181,8 +181,7 @@ def cosine_decay_schedule(
     alpha: float = 0.0) -> Schedule:
   """Returns a function which implements cosine learning rate decay.
 
-  For more details see:
-    https://openreview.net/forum?id=Skq89Scxx&noteId=Skq89Scxx
+  For more details see: https://arxiv.org/abs/1608.03983
 
   Args:
     init_value: An initial value `init_v`.

@@ -22,52 +22,7 @@ from absl.testing import absltest, parameterized
 from jax.experimental import optimizers
 from optax._src import alias, update
 
-STEPS = 50
-LR = 1e-2
-
-
 class AliasTest(chex.TestCase):
-
-  def setUp(self):
-    super(AliasTest, self).setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
-
-  @chex.all_variants()
-  @parameterized.named_parameters(
-      ('sgd', alias.sgd(LR, 0.0),
-       optimizers.sgd(LR), 1e-5),
-      ('adam', alias.adam(LR, 0.9, 0.999, 1e-8),
-       optimizers.adam(LR, 0.9, 0.999), 1e-4),
-      ('rmsprop', alias.rmsprop(LR, .9, 0.1),
-       optimizers.rmsprop(LR, .9, 0.1), 1e-5),
-      ('adagrad', alias.adagrad(LR, 0., 0.,),
-       optimizers.adagrad(LR, 0.), 1e-5),
-  )
-  def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):
-
-    # experimental/optimizers.py
-    jax_params = self.init_params
-    opt_init, opt_update, get_params = jax_optimizer
-    state = opt_init(jax_params)
-    for i in range(STEPS):
-      state = opt_update(i, self.per_step_updates, state)
-      jax_params = get_params(state)
-
-    # optax
-    optax_params = self.init_params
-    state = optax_optimizer.init(optax_params)
-
-    @self.variant
-    def step(updates, state):
-      return optax_optimizer.update(updates, state)
-
-    for _ in range(STEPS):
-      updates, state = step(self.per_step_updates, state)
-      optax_params = update.apply_updates(optax_params, updates)
-
-    # Check equivalence.
-    chex.assert_tree_all_close(jax_params, optax_params, rtol=rtol)
 
   @parameterized.named_parameters(
       ('sgd', lambda: alias.sgd(1e-2, 0.0)),

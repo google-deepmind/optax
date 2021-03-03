@@ -21,6 +21,7 @@ from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import schedule
 
 # pylint:disable=no-value-for-parameter
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
@@ -607,7 +608,7 @@ class ScaleByScheduleState(OptState):
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_by_schedule(step_size_fn: Callable[[jnp.ndarray], jnp.ndarray]):
+def scale_by_schedule(step_size_fn: schedule.Schedule):
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
@@ -814,6 +815,39 @@ def centralize() -> GradientTransformation:
 
   return GradientTransformation(init_fn, update_fn)
 
+
+class NonNegativeParamsState(OptState):
+  """The `keep_params_nonnegative` transformation is stateless."""
+
+
+def keep_params_nonnegative() -> GradientTransformation:
+  """Modifies the updates to keep parameters non-negative, i.e. >= 0.
+
+  This transformation ensures that parameters after the update will be
+  larger than or equal to zero.
+  In a chain of transformations, this should be the last one.
+
+  WARNING: the transformation expects input params to be non-negative.
+  When params is negative the transformed update will move them to 0.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return NonNegativeParamsState()
+
+  def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
+
+    updates = jax.tree_multimap(
+        lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
+    return updates, state
+
+  return GradientTransformation(init_fn, update_fn)
+
+
 class ScaleBySM3State(OptState):
   """State for the SM3 algorithm."""
   mu: Updates
@@ -821,18 +855,6 @@ class ScaleBySM3State(OptState):
 
 def scale_by_sm3(b1: float = 0.9,
                  eps: float = 1e-8) -> GradientTransformation:
-  """Scale updates using sm3`.
-
-  References:
-    [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
-
-  Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    eps: term added to the denominator to improve numerical stability.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
   def splice(seq, i, x):
     lst = list(seq)
     lst[i:i+1] = x

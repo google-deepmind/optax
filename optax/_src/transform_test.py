@@ -152,6 +152,40 @@ class TransformTest(parameterized.TestCase):
     centralized_inputs, _ = centralizer.update(inputs, None)
     chex.assert_tree_all_close(centralized_inputs, outputs)
 
+  def test_keep_params_nonnegative(self):
+    grads = (jnp.array([500., -500., 0.]),
+             jnp.array([500., -500., 0.]),
+             jnp.array([500., -500., 0.]))
+
+    params = (jnp.array([-1., -1., -1.]),
+              jnp.array([1., 1., 1.]),
+              jnp.array([0., 0., 0.]))
+
+    # vanilla sgd
+    opt = combine.chain(
+        transform.trace(decay=0, nesterov=False), transform.scale(-LR))
+    opt_state = opt.init(params)
+
+    updates, _ = opt.update(grads, opt_state, params)
+    new_params = update.apply_updates(params, updates)
+
+    chex.assert_tree_all_close(new_params, (jnp.array([-6., 4., -1.]),
+                                            jnp.array([-4., 6., 1.]),
+                                            jnp.array([-5., 5., 0.])))
+
+    # sgd with keeping parameters non-negative
+    opt = combine.chain(
+        transform.trace(decay=0, nesterov=False), transform.scale(-LR),
+        transform.keep_params_nonnegative())
+    opt_state = opt.init(params)
+
+    updates, _ = opt.update(grads, opt_state, params)
+    new_params = update.apply_updates(params, updates)
+
+    chex.assert_tree_all_close(new_params, (jnp.array([0., 4., 0.]),
+                                            jnp.array([0., 6., 1.]),
+                                            jnp.array([0., 5., 0.])))
+
 
 if __name__ == '__main__':
   absltest.main()
