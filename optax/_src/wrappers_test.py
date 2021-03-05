@@ -443,5 +443,57 @@ class MaskedTest(chex.TestCase):
       init_fn(params)
 
 
+class MaybeUpdateTest(chex.TestCase):
+  """Tests for the maybe_update wrapper."""
+
+  NUM_STEPS = 3
+
+  @chex.all_variants
+  def test_stateless_inner(self):
+    params = jnp.zeros([])
+    grads = jnp.ones([])
+
+    def should_update(step):
+      return step < MaybeUpdateTest.NUM_STEPS
+
+    opt = wrappers.maybe_update(transform.scale(2.), should_update)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    for _ in range(MaybeUpdateTest.NUM_STEPS):
+      updates, state = update_fn(grads, state)
+      self.assertEqual(updates, 2.)
+    # Further updates stop calling the inner optimiser.
+    for _ in range(5):
+      updates, state = update_fn(grads, state)
+      self.assertEqual(updates, 1.)
+
+  @chex.all_variants
+  def test_statefull_inner(self):
+    params = jnp.zeros([])
+    grads_with_nan = jnp.array(float('nan'))
+    grads = jnp.ones([])
+
+    def should_update(step):
+      return step < MaybeUpdateTest.NUM_STEPS
+
+    opt = wrappers.maybe_update(transform.zero_nans(), should_update)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    for _ in range(MaybeUpdateTest.NUM_STEPS - 1):
+      updates, state = update_fn(grads_with_nan, state)
+      self.assertEqual(updates, 0.)
+      self.assertEqual(state.inner_state.found_nan, True)
+    updates, state = update_fn(grads, state)
+    self.assertEqual(updates, 1.)
+    self.assertEqual(state.inner_state.found_nan, False)
+    # Further updates stop calling the inner optimiser.
+    for _ in range(5):
+      updates, state = update_fn(grads_with_nan, state)
+      # Warning: do not use assertEqual with a NaN as NaN == NaN returns False.
+      self.assertTrue(jnp.isnan(updates))
+      # Inner state is not be updated.
+      self.assertEqual(state.inner_state.found_nan, False)
+
+
 if __name__ == '__main__':
   absltest.main()

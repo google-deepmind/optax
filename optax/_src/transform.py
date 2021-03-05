@@ -845,3 +845,44 @@ def keep_params_nonnegative() -> GradientTransformation:
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
+
+
+class ZeroNansState(OptState):
+  """Contains a tree.
+
+  The entry `found_nan` has the same tree structure as that of the parameters.
+  Each leaf is a single boolean which contains True iff a NaN was detected in
+  the corresponding parameter array at the last call to `update`.
+  """
+  found_nan: Any
+
+
+def zero_nans() -> GradientTransformation:
+  """A transformation which replaces NaNs with 0.
+
+  Zeroing values in gradients is guaranteed to produce a direction of
+  non-increasing loss.
+
+  The state of the transformation has the same tree structure as that of the
+  parameters. Each leaf is a single boolean which contains True iff a NaN was
+  detected in the corresponding parameter array at the last call to `update`.
+  This state is not used by the transformation internally, but lets users be
+  aware when NaNs have been zeroed out.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+
+  def init_fn(params):
+    return ZeroNansState(
+        jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
+
+  def update_fn(updates, opt_state, params=None):
+    del params
+    opt_state = ZeroNansState(
+        jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
+    updates = jax.tree_map(
+        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
+    return updates, opt_state
+
+  return GradientTransformation(init=init_fn, update=update_fn)

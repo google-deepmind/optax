@@ -87,6 +87,8 @@ from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
 from optax._src.transform import Updates
+from optax._src.transform import zero_nans
+from optax._src.transform import ZeroNansState
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -99,6 +101,8 @@ from optax._src.wrappers import LookaheadParams
 from optax._src.wrappers import LookaheadState
 from optax._src.wrappers import masked
 from optax._src.wrappers import MaskedState
+from optax._src.wrappers import maybe_update
+from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 

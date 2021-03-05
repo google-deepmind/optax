@@ -495,3 +495,51 @@ def masked(inner: transform.GradientTransformation,
     return new_updates, MaskedState(inner_state=new_inner_state)
 
   return transform.GradientTransformation(init_fn, update_fn)
+
+
+class MaybeUpdateState(NamedTuple):
+  """Maintains inner transform state and adds a step counter."""
+  inner_state: Any
+  step: Array
+
+
+def maybe_update(
+    inner: transform.GradientTransformation,
+    should_update_fn: Callable[[Array], Array]
+) -> transform.GradientTransformation:
+  """Calls the inner update function only at certain steps.
+
+  Creates a transformation wrapper which counts the number of times the `update`
+  function has been called. This counter is passed to the `should_update_fn` to
+  decide when to call the inner update function.
+
+  When not calling the inner update function, the `updates` and the inner state
+  are left untouched and just passed through. The step counter is increased
+  regardless.
+
+  Args:
+    inner: the inner transformation.
+    should_update_fn: this function takes in a step counter (array of shape []
+      and dtype int64), and returns a boolean array of shape [].
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def init_fn(params):
+    return MaybeUpdateState(inner_state=inner.init(params),
+                            step=jnp.zeros([], dtype=jnp.int64))
+
+  def update_fn(updates, state, params=None):
+
+    def do_update(_):
+      return inner.update(updates, state.inner_state, params)
+
+    def reject_update(_):
+      return updates, state.inner_state
+
+    updates, new_inner_state = lax.cond(
+        should_update_fn(state.step), do_update, reject_update, operand=None)
+    return updates, MaybeUpdateState(new_inner_state, state.step + 1)
+
+  return transform.GradientTransformation(init_fn, update_fn)
