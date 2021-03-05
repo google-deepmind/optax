@@ -27,13 +27,20 @@ OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
+# Function used to initialise the transformation's state.
+TransformInitFn = Callable[
+    [Params],
+    Union[OptState, Sequence[OptState]]]
+# Function used to apply a transformation.
+TransformUpdateFn = Callable[
+    [Updates, OptState, Optional[Params]],
+    Tuple[Updates, OptState]]
+
 
 class GradientTransformation(NamedTuple):
   """Optax transformations consists of a function pair: (initialise, update)."""
-  init: Callable[  # Function used to initialise the transformation's state.
-      [Params], Union[OptState, Sequence[OptState]]]
-  update: Callable[  # Function used to apply a transformation.
-      [Updates, OptState, Optional[Params]], Tuple[Updates, OptState]]
+  init: TransformInitFn
+  update: TransformUpdateFn
 
 
 NO_PARAMS_MSG = (

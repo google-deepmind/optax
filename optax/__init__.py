@@ -86,6 +86,8 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
+from optax._src.transform import TransformInitFn
+from optax._src.transform import TransformUpdateFn
 from optax._src.transform import Updates
 from optax._src.transform import zero_nans
 from optax._src.transform import ZeroNansState
@@ -189,6 +191,8 @@ __all__ = (
     "sgd",
     "trace",
     "TraceState",
+    "TransformInitFn",
+    "TransformUpdateFn",
     "Updates",
     "yogi",
 )
