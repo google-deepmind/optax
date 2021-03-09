@@ -234,6 +234,47 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
+  @chex.all_variants()
+  @parameterized.parameters(
+      (0.2, 0.1, False), (1.0, 0.1, False), (2.0, 3.0, False),
+      (0.2, 0.1, True), (1.0, 0.1, True), (2.0, 3.0, True))
+  def test_end_value_with_staircase(self, decay_rate, end_value, staircase):
+    # Get schedule function.
+    init_value = 1.
+    num_steps = 11
+    transition_steps = 2
+    transition_begin = 3
+    schedule_fn = self.variant(
+        schedule.exponential_decay(
+            init_value=init_value, transition_steps=transition_steps,
+            decay_rate=decay_rate, transition_begin=transition_begin,
+            staircase=staircase, end_value=end_value))
+
+    # Test that generated values equal the expected schedule values.
+    def _staircased(count):
+      p = count / transition_steps
+      if staircase:
+        p = np.floor(p)
+      return p
+
+    generated_vals = []
+    for count in range(num_steps + transition_begin):
+      generated_vals.append(schedule_fn(count))
+    expected_vals = np.array(
+        [init_value] * transition_begin + [
+            init_value * np.power(decay_rate, _staircased(count))
+            for count in range(num_steps)
+        ],
+        dtype=np.float32)
+
+    if decay_rate < 1.0:
+      expected_vals = np.maximum(expected_vals, end_value)
+    else:
+      expected_vals = np.minimum(expected_vals, end_value)
+
+    np.testing.assert_allclose(
+        expected_vals, np.array(generated_vals), atol=1e-3)
+
 
 class CosineDecayTest(chex.TestCase):
 
