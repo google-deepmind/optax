@@ -23,7 +23,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import alias
-from optax._src import schedule
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
@@ -494,57 +493,6 @@ class MaybeUpdateTest(chex.TestCase):
       self.assertTrue(jnp.isnan(updates))
       # Inner state is not be updated.
       self.assertEqual(state.inner_state.found_nan, False)
-
-
-class ScheduleHyperParamsTest(chex.TestCase):
-  """Tests for the schedule_hyperparams wrapper."""
-
-  @chex.all_variants
-  def test_updates(self):
-    optim = wrappers.schedule_hyperparams(
-        transform.scale,
-        step_size=schedule.piecewise_constant_schedule(
-            3.0, {2: 5, 8: 2, 13: 1.5}))
-
-    params = [jnp.zeros([], dtype=jnp.float32)]
-    state = optim.init(params)
-    update_fn = self.variant(optim.update)
-    expected_step_size = [3.0]*2 + [15.0]*6 + [30.0]*5 + [45.0]*3
-
-    grads = [jnp.ones([], dtype=jnp.float32)]
-    for i in range(15):
-      updates, state = update_fn(grads, state, params=params)
-      np.testing.assert_almost_equal(updates[0], expected_step_size[i+1])
-
-  @chex.all_variants
-  def test_hyperparams_state(self):
-    optim = wrappers.schedule_hyperparams(
-        alias.sgd,
-        momentum=schedule.piecewise_constant_schedule(
-            0.8, {4: 0.5, 10: 1.25}),
-        learning_rate=schedule.piecewise_constant_schedule(
-            0.2, {3: 0.1, 5: 0.5, 7: 0.3}),
-        nesterov=True)
-
-    params = [jnp.zeros([2, 3]) for _ in range(3)]
-    state = optim.init(params)
-    update_fn = self.variant(optim.update)
-
-    expected_mom = [0.8]*4 + [0.4]*6 + [0.5]*2
-    expected_lr = [0.2]*3 + [0.02]*2 + [0.01]*2 + [0.003]*5
-    for i in range(12):
-      np.testing.assert_almost_equal(state.hyperparams['momentum'],
-                                     expected_mom[i])
-      np.testing.assert_almost_equal(state.hyperparams['learning_rate'],
-                                     expected_lr[i])
-      self.assertTrue(state.hyperparams['nesterov'])
-      _, state = update_fn(params, state)
-
-    np.testing.assert_almost_equal(state.hyperparams['momentum'],
-                                   expected_mom[-1])
-    np.testing.assert_almost_equal(state.hyperparams['learning_rate'],
-                                   expected_lr[-1])
-    self.assertTrue(state.hyperparams['nesterov'])
 
 
 if __name__ == '__main__':

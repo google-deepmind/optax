@@ -107,8 +107,8 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
-from optax._src.wrappers import schedule_hyperparams
-from optax._src.wrappers import ScheduleHyperParamsState
+from optax._src.schedule import schedule_hyperparams
+from optax._src.schedule import ScheduleHyperParamsState
 
 __version__ = "0.0.2"
 

@@ -16,9 +16,11 @@
 """Gradient transformations."""
 
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+
+import chex
 import jax
 import jax.numpy as jnp
-from optax._src import schedule
+
 from optax._src import utils
 
 
@@ -596,7 +598,7 @@ class ScaleByScheduleState(OptState):
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_by_schedule(step_size_fn: schedule.Schedule):
+def scale_by_schedule(step_size_fn: Callable[[chex.Numeric], chex.Numeric]):
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
