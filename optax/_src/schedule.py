@@ -349,7 +349,7 @@ def cosine_onecycle_schedule(
        int(transition_steps): 1. / (div_factor * final_div_factor)})
 
 
-class ScheduleHyperParamsState(transform.OptState):
+class ScheduleHyperparamsState(transform.OptState):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.array  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
@@ -392,7 +392,7 @@ def schedule_hyperparams(
   def init_fn(params):
     count = jnp.zeros([], jnp.int32)
     hparams = schedule_fn(count)
-    return ScheduleHyperParamsState(
+    return ScheduleHyperparamsState(
         count=count,
         hyperparams=hparams,
         inner_state=inner_factory(**hparams).init(params))
@@ -402,7 +402,7 @@ def schedule_hyperparams(
     hparams = schedule_fn(count_inc)
     updates, inner_state = inner_factory(**hparams).update(
         updates, state.inner_state, params)
-    return updates, ScheduleHyperParamsState(
+    return updates, ScheduleHyperparamsState(
         count=count_inc,
         hyperparams=hparams,
         inner_state=inner_state)

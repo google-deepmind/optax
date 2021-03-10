@@ -108,7 +108,7 @@ from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 from optax._src.schedule import schedule_hyperparams
-from optax._src.schedule import ScheduleHyperParamsState
+from optax._src.schedule import ScheduleHyperparamsState
 
 __version__ = "0.0.2"
 
@@ -190,7 +190,7 @@ __all__ = (
     "ScaleState",
     "Schedule",
     "schedule_hyperparams",
-    "ScheduleHyperParamsState",
+    "ScheduleHyperparamsState",
     "score_function_jacobians",
     "sgd",
     "trace",
