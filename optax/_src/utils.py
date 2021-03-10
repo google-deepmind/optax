@@ -15,6 +15,7 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
@@ -25,6 +26,24 @@ def tile_second_to_last_dim(a):
   a = jnp.expand_dims(a, axis=-1)
 
   return jnp.expand_dims(ones, axis=-2) * a
+
+
+def safe_int32_increment(count):
+  """Increments int32 counter by one.
+
+  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
+  that when `max_int` is reached the counter stays at `max_int`.
+
+  Args:
+    count: a counter to be incremented.
+
+  Returns:
+    a counter incremented by 1, or max_int if the maximum precision is reached.
+  """
+  chex.assert_type(count, jnp.int32)
+  max_int32_value = jnp.iinfo(jnp.int32).max
+  one = jnp.array(1, dtype=jnp.int32)
+  return jnp.where(count < max_int32_value, count + one, max_int32_value)
 
 
 def set_diags(a, new_diags):

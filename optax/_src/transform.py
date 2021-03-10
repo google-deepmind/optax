@@ -16,10 +16,10 @@
 """Gradient transformations."""
 
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import schedule
+from optax._src import utils
 
 
 # pylint:disable=no-value-for-parameter
@@ -345,24 +345,6 @@ class ScaleByAdamState(OptState):
   nu: Updates
 
 
-def _safe_int32_increment(count):
-  """Increments int32 counter by one.
-
-  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
-  that when `max_int` is reached the counter stays at `max_int`.
-
-  Args:
-    count: a counter to be incremented.
-
-  Returns:
-    a counter incremented by 1, or max_int if the maximum precision is reached.
-  """
-  chex.assert_type(count, jnp.int32)
-  max_int32_value = jnp.iinfo(jnp.int32).max
-  one = jnp.array(1, dtype=jnp.int32)
-  return jnp.where(count < max_int32_value, count + one, max_int32_value)
-
-
 def _bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
   bias_correction = 1 - decay**count
@@ -398,7 +380,7 @@ def scale_by_adam(b1: float = 0.9,
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -469,7 +451,7 @@ def scale_by_belief(
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -513,7 +495,7 @@ def scale_by_yogi(
     signed_sq = jax.tree_multimap(
         lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
     nu = _update_moment(signed_sq, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -564,7 +546,7 @@ def scale_by_radam(b1: float = 0.9,
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
     mu_hat = _bias_correction(mu, b1, count_inc)
@@ -634,7 +616,7 @@ def scale_by_schedule(step_size_fn: schedule.Schedule):
     updates = jax.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
-        count=_safe_int32_increment(state.count))
+        count=utils.safe_int32_increment(state.count))
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -736,7 +718,7 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
     del params
     num_vars = len(jax.tree_leaves(updates))
     treedef = jax.tree_structure(updates)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     variance = eta / count_inc**gamma
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
@@ -784,7 +766,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
