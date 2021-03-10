@@ -15,7 +15,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from typing import Any, Callable, NamedTuple, Tuple, Union
+from typing import Any, Callable, Dict, NamedTuple, Tuple, Union
 
 from absl import logging
 import jax
@@ -27,6 +27,7 @@ from jax.tree_util import tree_unflatten
 import numpy as np
 
 from optax._src import transform
+from optax._src import utils
 
 Array = jnp.ndarray
 
@@ -541,5 +542,64 @@ def maybe_update(
     updates, new_inner_state = lax.cond(
         should_update_fn(state.step), do_update, reject_update, operand=None)
     return updates, MaybeUpdateState(new_inner_state, state.step + 1)
+
+  return transform.GradientTransformation(init_fn, update_fn)
+
+
+class ScheduleHyperParamsState(NamedTuple):
+  """Maintains inner transform state, hyperparameters, and step count."""
+  count: Array  # shape=(), dtype=jnp.int32
+  hyperparams: Dict[str, Array]
+  inner_state: transform.OptState
+
+
+def schedule_hyperparams(
+    inner: Callable[..., transform.GradientTransformation],
+    **schedule: Union[Callable[[Array], Array], Any]
+) -> transform.GradientTransformation:
+  """Wrapper that schedules hyperparameters for the inner GradientTransform.
+
+  For example, to use SGD with an exponential decay for the learning rate,
+  piecewise constant schedule for momentum, and Nesterov momentum:
+  ```
+  scheduled_sgd = optax.schedule_hyperparams(
+      optax.sgd,
+      learning_rate=optax.exponential_decay(...),
+      momentum=optax.piecewise_constant_schedule(...),
+      nesterov=True)
+  ```
+
+  Args:
+    inner: a function that returns the inner `optax.GradientTransformation`
+      given the hyperparameters.
+    **schedule: for each scheduled hyperparameter, there should be a function
+      that returns the hyperparameter value given a step count. For each
+      constant hyperparameter, there should be a corresponding value. The names
+      of these arguments must match the corresponding arguments for `inner`.
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def schedule_fn(count):
+    return {k: (f(count) if callable(f) else f) for k, f in schedule.items()}
+
+  def init_fn(params):
+    count = jnp.zeros([], jnp.int32)
+    hparams = schedule_fn(count)
+    return ScheduleHyperParamsState(
+        count=count,
+        hyperparams=hparams,
+        inner_state=inner(**hparams).init(params))
+
+  def update_fn(updates, state, params=None):
+    count_inc = utils.safe_int32_increment(state.count)
+    hparams = schedule_fn(count_inc)
+    updates, inner_state = inner(**hparams).update(
+        updates, state.inner_state, params)
+    return updates, ScheduleHyperParamsState(
+        count=count_inc,
+        hyperparams=hparams,
+        inner_state=inner_state)
 
   return transform.GradientTransformation(init_fn, update_fn)
