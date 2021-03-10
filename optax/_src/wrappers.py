@@ -554,13 +554,14 @@ class ScheduleHyperParamsState(NamedTuple):
 
 
 def schedule_hyperparams(
-    inner: Callable[..., transform.GradientTransformation],
-    **schedule: Union[Callable[[Array], Array], Any]
+    inner_factory: Callable[..., transform.GradientTransformation],
+    **hyperparams: Union[Callable[[Array], Array], Any]
 ) -> transform.GradientTransformation:
   """Wrapper that schedules hyperparameters for the inner GradientTransform.
 
   For example, to use SGD with an exponential decay for the learning rate,
   piecewise constant schedule for momentum, and Nesterov momentum:
+
   ```
   scheduled_sgd = optax.schedule_hyperparams(
       optax.sgd,
@@ -570,19 +571,20 @@ def schedule_hyperparams(
   ```
 
   Args:
-    inner: a function that returns the inner `optax.GradientTransformation`
-      given the hyperparameters.
-    **schedule: for each scheduled hyperparameter, there should be a function
+    inner_factory: a function that returns the inner
+      `optax.GradientTransformation` given the hyperparameters.
+    **hyperparams: for each scheduled hyperparameter, there should be a function
       that returns the hyperparameter value given a step count. For each
       constant hyperparameter, there should be a corresponding value. The names
-      of these arguments must match the corresponding arguments for `inner`.
+      of these arguments must match the corresponding arguments for
+      `inner_factory`.
 
   Returns:
     An `optax.GradientTransformation`.
   """
 
   def schedule_fn(count):
-    return {k: (f(count) if callable(f) else f) for k, f in schedule.items()}
+    return {k: (f(count) if callable(f) else f) for k, f in hyperparams.items()}
 
   def init_fn(params):
     count = jnp.zeros([], jnp.int32)
@@ -590,12 +592,12 @@ def schedule_hyperparams(
     return ScheduleHyperParamsState(
         count=count,
         hyperparams=hparams,
-        inner_state=inner(**hparams).init(params))
+        inner_state=inner_factory(**hparams).init(params))
 
   def update_fn(updates, state, params=None):
     count_inc = utils.safe_int32_increment(state.count)
     hparams = schedule_fn(count_inc)
-    updates, inner_state = inner(**hparams).update(
+    updates, inner_state = inner_factory(**hparams).update(
         updates, state.inner_state, params)
     return updates, ScheduleHyperParamsState(
         count=count_inc,
