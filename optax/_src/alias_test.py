@@ -38,6 +38,9 @@ class AliasTest(chex.TestCase):
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
       ('yogi', lambda: alias.yogi(1.0)),
+      ('meta_sgd', lambda: alias.meta_sgd(1e-2, alias.adam(1e-4), 3)),
+      ('meta_adam', lambda: alias.meta_adam(1e-1, alias.adam(1e-4), 3)),
+      ('meta_rmsprop', lambda: alias.meta_rmsprop(1e-1, alias.adam(1e-4), 3)),
   )
   def test_parabel(self, opt):
     opt = opt()
@@ -72,6 +75,9 @@ class AliasTest(chex.TestCase):
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
       ('yogi', lambda: alias.yogi(1.0)),
+      ('meta_sgd', lambda: alias.meta_sgd(1e-3, alias.adam(1e-4), 3)),
+      ('meta_adam', lambda: alias.meta_adam(1e-2, alias.adam(1e-4), 3)),
+      ('meta_rmsprop', lambda: alias.meta_rmsprop(1e-3, alias.adam(1e-4), 3)),
   )
   def test_rosenbrock(self, opt):
     opt = opt()

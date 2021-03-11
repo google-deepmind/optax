@@ -33,6 +33,22 @@ def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
   return transform.scale(-learning_rate)
 
 
+def _scale_by_metagradient_learning_rate(step_size: float,
+                                         meta_optimizer: GradientTransformation,
+                                         meta_update_freq: int,
+                                         num_updates: int):
+  if callable(step_size):
+    raise ValueError(
+        f'Learning rate ({step_size}) was passed in as a schedule instead '
+        'of a fixed float; meta-gradient gradient transformations do not '
+        'currently support learning on top of learning rate schedules.')
+  return transform.scale_by_metagradient(
+      step_size=step_size,
+      meta_optimizer=meta_optimizer,
+      meta_update_freq=meta_update_freq,
+      num_updates=num_updates)
+
+
 def adabelief(learning_rate: ScalarOrSchedule,
               b1: float = 0.9,
               b2: float = 0.999,
@@ -155,4 +171,72 @@ def yogi(learning_rate: ScalarOrSchedule,
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
+  )
+
+
+def meta_sgd(learning_rate: float,
+             meta_optimizer: GradientTransformation,
+             num_updates: int,
+             meta_update_freq: int = 2,
+             momentum: float = 0.,
+             nesterov: bool = False,
+             ) -> GradientTransformation:
+  """Meta-gradient variant of SGD."""
+  return combine.chain(
+      transform.trace(decay=momentum, nesterov=nesterov),
+      _scale_by_metagradient_learning_rate(
+          step_size=learning_rate,
+          meta_optimizer=meta_optimizer,
+          meta_update_freq=meta_update_freq,
+          num_updates=num_updates),
+      transform.scale(-1),
+  )
+
+
+def meta_rmsprop(learning_rate: float,
+                 meta_optimizer: GradientTransformation,
+                 num_updates: int,
+                 meta_update_freq: int = 2,
+                 decay: float = 0.9,
+                 eps: float = 1e-8,
+                 centered: bool = False) -> GradientTransformation:
+  """Meta-gradient variant of RMSProp."""
+  if centered:
+    return combine.chain(
+        transform.scale_by_stddev(decay=decay, eps=eps),
+        _scale_by_metagradient_learning_rate(
+            step_size=learning_rate,
+            meta_optimizer=meta_optimizer,
+            meta_update_freq=meta_update_freq,
+            num_updates=num_updates),
+        transform.scale(-1),
+    )
+  return combine.chain(
+      transform.scale_by_rms(decay=decay, eps=eps),
+      _scale_by_metagradient_learning_rate(
+          step_size=learning_rate,
+          meta_optimizer=meta_optimizer,
+          meta_update_freq=meta_update_freq,
+          num_updates=num_updates),
+      transform.scale(-1),
+  )
+
+
+def meta_adam(learning_rate: float,
+              meta_optimizer: GradientTransformation,
+              num_updates: int,
+              meta_update_freq: int = 2,
+              b1: float = 0.9,
+              b2: float = 0.999,
+              eps: float = 1e-8,
+              eps_root: float = 0.0) -> GradientTransformation:
+  """Meta-gradient variant of Adam."""
+  return combine.chain(
+      transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
+      _scale_by_metagradient_learning_rate(
+          step_size=learning_rate,
+          meta_optimizer=meta_optimizer,
+          meta_update_freq=meta_update_freq,
+          num_updates=num_updates),
+      transform.scale(-1),
   )

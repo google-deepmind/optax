@@ -15,6 +15,7 @@
 # ==============================================================================
 """Tests for `transform.py`."""
 
+import functools
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -36,6 +37,7 @@ class TransformTest(parameterized.TestCase):
   def setUp(self):
     super(TransformTest, self).setUp()
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
+    self.meta_optimizer = alias.sgd(learning_rate=LR)
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
   @chex.all_variants
@@ -43,6 +45,12 @@ class TransformTest(parameterized.TestCase):
       ('adam', transform.scale_by_adam),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
+      ('metagradient',
+       functools.partial(
+           transform.scale_by_metagradient,
+           step_size=1e-2,
+           meta_optimizer=alias.sgd(learning_rate=1e-2),
+           num_updates=4,)),
       ('trust_ratio', transform.scale_by_trust_ratio),
   ])
   def test_scalers(self, scaler_constr):
@@ -59,6 +67,68 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
                       updates)
+
+  @chex.all_variants
+  @parameterized.named_parameters([
+      ('num_updates_float', LR, 1.5, 2),
+      ('num_updates_zero', LR, 0, 2),
+      ('meta_update_freq_float', LR, 1, 2.5),
+      ('meta_update_freq_one', LR, 1, 1),
+      ('lr_zero', 0, 1, 2),
+  ])
+  def test_metagradient_errors(self, lr, meta_update_freq, num_updates):
+    params = self.init_params
+
+    scaler = transform.scale_by_metagradient(
+        step_size=lr,
+        meta_optimizer=self.meta_optimizer,
+        meta_update_freq=meta_update_freq,
+        num_updates=num_updates)
+    init_fn = self.variant(scaler.init)
+
+    with self.assertRaises(ValueError):
+      init_fn(params)
+
+  @chex.all_variants
+  @parameterized.named_parameters([
+      ('lr_small', LR),
+      ('lr_large', LR * 50),
+  ])
+  def test_metagradient_init(self, lr):
+    params = self.init_params
+    scaler = transform.scale_by_metagradient(
+        step_size=lr, meta_optimizer=self.meta_optimizer, num_updates=4)
+    init_fn = self.variant(scaler.init)
+
+    # Initialize meta-optimizer.
+    state = init_fn(params)
+    self.assertEqual(state.num_steps, 0)
+    chex.assert_tree_all_close(jax.nn.sigmoid(state.meta_param), lr, rtol=2e-7)
+    chex.assert_tree_all_close(state.prev_updates[0],
+                               jax.tree_map(jnp.zeros_like, params))
+
+  @chex.all_variants
+  @parameterized.named_parameters([
+      ('lr_small', LR),
+      ('lr_large', LR * 50),
+  ])
+  def test_metagradient_single_step(self, lr):
+    params = self.init_params
+    scaler = transform.scale_by_metagradient(
+        step_size=lr, meta_optimizer=self.meta_optimizer, num_updates=4)
+    init_fn = self.variant(scaler.init)
+    transform_fn = self.variant(scaler.update)
+
+    # Initialize meta-optimizer.
+    state = init_fn(params)
+
+    # Step meta-optimizer.
+    next_updates, state = transform_fn(self.per_step_updates, state, params)
+    self.assertEqual(state.num_steps, 1)
+    chex.assert_tree_all_close(jax.nn.sigmoid(state.meta_param), lr, rtol=2e-7)
+    chex.assert_tree_all_close(
+        next_updates,
+        jax.tree_map(lambda u: lr * u, self.per_step_updates))
 
   @chex.all_variants()
   def test_apply_every(self):
