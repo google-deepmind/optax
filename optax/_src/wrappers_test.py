@@ -64,10 +64,10 @@ class WrappersTest(parameterized.TestCase):
         sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7)
 
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
-  @parameterized.parameters([
-      _build_sgd,
-      _build_simple_adam,
-  ])
+  @parameterized.named_parameters(
+      ('sgd', _build_sgd),
+      ('adam', _build_simple_adam),
+  )
   def test_apply_if_finite(self, opt_builder):
     one = jnp.ones([])
     nan = jnp.array(jnp.nan)
@@ -334,9 +334,9 @@ class MaskedTest(chex.TestCase):
   """Tests for the masked wrapper."""
 
   @chex.all_variants
-  @parameterized.parameters(
-      lambda: transform.scale(-1.),  # stateless test
-      _build_sgd  # stateful test
+  @parameterized.named_parameters(
+      ('scale', lambda: transform.scale(-1.)),  # stateless test
+      ('sgd', _build_sgd),  # stateful test
   )
   def test_masked(self, opt_builder):
     mask = {'a': True,
@@ -363,9 +363,9 @@ class MaskedTest(chex.TestCase):
     chex.assert_tree_all_close(updates, correct_updates)
 
   @chex.all_variants
-  @parameterized.parameters(
-      lambda: transform.scale(-1.),  # stateless test
-      _build_sgd  # stateful test
+  @parameterized.named_parameters(
+      ('scale', lambda: transform.scale(-1.)),  # stateless test
+      ('sgd', _build_sgd),  # stateful test
   )
   def test_prefix_mask(self, opt_builder):
     """Test when the mask is a prefix of the updates PyTree."""

@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import itertools
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
@@ -22,7 +20,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import control_variates
-from optax._src import stochastic_gradient_estimators
+from optax._src import stochastic_gradient_estimators as sge
 from optax._src import utils
 
 
@@ -49,11 +47,6 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
   np.testing.assert_allclose(
       np.asarray(actual)[non_zero_indices],
       expected[non_zero_indices], rtol, atol)
-
-
-def _cross_prod(items1, items2):
-  prod = itertools.product(items1, items2)
-  return [i1 + (i2,) for i1, i2 in prod]
 
 
 def _map(cv, params, samples, state=None):
@@ -285,14 +278,18 @@ class MovingAverageBaselineTest(chex.TestCase):
 class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod([
-      (1.0, 1.0, stochastic_gradient_estimators.score_function_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.pathwise_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.measure_valued_jacobians)],
-                                        [True, False]))
-  def testQuadraticFunction(
-      self, effective_mean, effective_log_scale, grad_estimator,
-      estimate_cv_coeffs):
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
+          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
+      ], [
+          ('estimate_cv_coeffs', True),
+          ('no_estimate_cv_coeffs', False),
+      ],
+                          named=True))
+  def testQuadraticFunction(self, effective_mean, effective_log_scale,
+                            grad_estimator, estimate_cv_coeffs):
     data_dims = 3
     num_samples = 10**3
 
@@ -334,11 +331,16 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
                   rtol=1e-1, atol=1e-3)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod([
-      (1.0, 1.0, stochastic_gradient_estimators.score_function_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.pathwise_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.measure_valued_jacobians)],
-                                        [True, False]))
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
+          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
+      ], [
+          ('estimate_cv_coeffs', True),
+          ('no_estimate_cv_coeffs', False),
+      ],
+                          named=True))
   def testCubicFunction(
       self, effective_mean, effective_log_scale, grad_estimator,
       estimate_cv_coeffs):
@@ -389,11 +391,16 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
                   rtol=1e-1, atol=1e-3)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod([
-      (1.0, 1.0, stochastic_gradient_estimators.score_function_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.pathwise_jacobians),
-      (1.0, 1.0, stochastic_gradient_estimators.measure_valued_jacobians)],
-                                        [True, False]))
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
+          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
+      ], [
+          ('estimate_cv_coeffs', True),
+          ('no_estimate_cv_coeffs', False),
+      ],
+                          named=True))
   def testForthPowerFunction(
       self, effective_mean, effective_log_scale, grad_estimator,
       estimate_cv_coeffs):
@@ -449,15 +456,21 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 class ConsistencyWithStandardEstimators(chex.TestCase):
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod([
-      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10**6),
-      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10**5),
-      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10**5)],
-                                        [control_variates.control_delta_method,
-                                         control_variates.moving_avg_baseline]))
-  def testWeightedLinearFunction(
-      self, effective_mean, effective_log_scale,
-      grad_estimator, num_samples, control_variate_from_function):
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians,
+           10**6),
+          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians, 10**5),
+          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians,
+           10**5),
+      ], [
+          ('control_delta_method', control_variates.control_delta_method),
+          ('moving_avg_baseline', control_variates.moving_avg_baseline),
+      ],
+                          named=True))
+  def testWeightedLinearFunction(self, effective_mean, effective_log_scale,
+                                 grad_estimator, num_samples,
+                                 control_variate_from_function):
     """Check that the gradients are consistent between estimators."""
     weights = jnp.array([1., 2., 3.], dtype=jnp.float32)
     data_dims = len(weights)
@@ -508,12 +521,18 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
     _assert_equal(log_scale_grads, no_cv_log_scale_grads, rtol=1, atol=5e-2)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod([
-      (1, 1, stochastic_gradient_estimators.score_function_jacobians, 10**5),
-      (1, 1, stochastic_gradient_estimators.pathwise_jacobians, 10**5),
-      (1, 1, stochastic_gradient_estimators.measure_valued_jacobians, 10**5)],
-                                        [control_variates.control_delta_method,
-                                         control_variates.moving_avg_baseline]))
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians,
+           10**5),
+          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians, 10**5),
+          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians,
+           10**5),
+      ], [
+          ('control_delta_method', control_variates.control_delta_method),
+          ('moving_avg_baseline', control_variates.moving_avg_baseline),
+      ],
+                          named=True))
   def testNonPolynomialFunction(
       self, effective_mean, effective_log_scale,
       grad_estimator, num_samples, control_variate_from_function):
