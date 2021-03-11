@@ -22,6 +22,7 @@ from absl.testing import absltest, parameterized
 from jax.experimental import optimizers
 from optax._src import alias, update
 
+
 class AliasTest(chex.TestCase):
 
   @parameterized.named_parameters(
@@ -33,7 +34,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(1e-2)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
-      ('sm3', lambda: alias.sm3(1e-2)),
+      ('sm3', lambda: alias.sm3(8e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_parabel(self, opt):
@@ -68,7 +69,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(5e-3)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
-      ('sm3', lambda: alias.sm3(2e-3)),
+      ('sm3', lambda: alias.sm3(4e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
   )
   def test_rosenbrock(self, opt):
