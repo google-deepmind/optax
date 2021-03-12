@@ -59,6 +59,8 @@ from optax._src.transform import clip
 from optax._src.transform import clip_by_global_norm
 from optax._src.transform import ClipByGlobalNormState
 from optax._src.transform import ClipState
+from optax._src.transform import differentially_private_aggregate
+from optax._src.transform import DifferentiallyPrivateAggregateState
 from optax._src.transform import global_norm
 from optax._src.transform import GradientTransformation
 from optax._src.transform import identity
@@ -138,6 +140,8 @@ __all__ = (
     "control_variates_jacobians",
     "cosine_decay_schedule",
     "cosine_onecycle_schedule",
+    "differentially_private_aggregate",
+    "DifferentiallyPrivateAggregateState",
     "exponential_decay",
     "fisher_diag",
     "flatten",
