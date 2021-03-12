@@ -16,7 +16,6 @@
 """Gradient transformations."""
 
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
-from functools import partial
 
 import chex
 import jax
@@ -895,65 +894,3 @@ def zero_nans() -> GradientTransformation:
     return updates, opt_state
 
   return GradientTransformation(init=init_fn, update=update_fn)
-
-
-class DifferentiallyPrivateAggregateState(OptState):
-  """State containing PRNGKey for differentially_private_aggregate."""
-  rng_key: jnp.array
-
-
-@partial(jax.vmap, in_axes=(0, None))
-def _clip_per_example_grads(grads_flat: Sequence[chex.Array],
-                            l2_norm_clip: float):
-  global_grad_norm = jnp.linalg.norm([
-      jnp.linalg.norm(g.ravel()) for g in grads_flat])
-  divisor = jnp.maximum(global_grad_norm / l2_norm_clip, 1.0)
-  return [g/divisor for g in grads_flat]
-
-
-def differentially_private_aggregate(l2_norm_clip: float,
-                                     noise_multiplier: float,
-                                     seed: int) -> GradientTransformation:
-  """Aggregates gradients based on the DPSGD algorithm.
-
-  Unlike other transforms, `differentially_private_aggregate` expects the input
-  updates to have a batch dimension in the 0th axis. That is, this function
-  expects per-example gradients as input (which are easy to obtain in JAX:
-  simply use `vmap(grad(fn))` instead of `grad(fn)`). It can still be
-  composed with other transformations as long as it is the first in the chain.
-
-  References:
-    [Song et al, 2013](https://cseweb.ucsd.edu/~kamalika/pubs/scs13.pdf)
-
-  Args:
-    l2_norm_clip: maximum L2 norm of the per-example gradients.
-    noise_multiplier: ratio of standard deviation to the clipping norm.
-    seed: initial seed used for the jax.random.PRNGKey
-
-  Returns:
-    A `GradientTransformation`.
-  """
-  noise_std = l2_norm_clip * noise_multiplier
-
-  def init_fn(_):
-    return DifferentiallyPrivateAggregateState(rng_key=jax.random.PRNGKey(seed))
-
-  def update_fn(updates, state, params=None):
-    grads_flat, grads_treedef = jax.tree_flatten(updates)
-
-    if params is not None and any(g.shape[1:] != p.shape
-        for g, p in zip(grads_flat, jax.tree_leaves(params))):
-      raise ValueError(
-          'Unlike other transforms, `differentially_private_aggregate` expects'
-          ' `updates` to have a batch dimension in the 0th axis. That is, this'
-          ' function expects per-example gradients as input.')
-
-    new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat)+1)
-    clipped_grads_flat = _clip_per_example_grads(grads_flat, l2_norm_clip)
-    updates_flat = [
-        (g.sum(0) + noise_std * jax.random.normal(r, g.shape[1:])) / g.shape[0]
-        for r, g in zip(rngs, clipped_grads_flat)]
-    return (jax.tree_unflatten(grads_treedef, updates_flat),
-            DifferentiallyPrivateAggregateState(rng_key=new_key))
-
-  return GradientTransformation(init_fn, update_fn)

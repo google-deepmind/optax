@@ -18,8 +18,10 @@
 from typing import Union
 
 import jax.numpy as jnp
+
 from optax._src import combine
 from optax._src import schedule
+from optax._src import privacy
 from optax._src import transform
 
 
@@ -164,7 +166,7 @@ def dpsgd(learning_rate: ScalarOrSchedule,
           seed: int,
           momentum: float = 0.,
           nesterov: bool = False) -> GradientTransformation:
-  dp_agg = transform.differentially_private_aggregate(
+  dp_agg = privacy.differentially_private_aggregate(
       l2_norm_clip=l2_norm_clip,
       noise_multiplier=noise_multiplier,
       seed=seed)

@@ -31,6 +31,8 @@ from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.privacy import differentially_private_aggregate
+from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
@@ -60,8 +62,6 @@ from optax._src.transform import clip
 from optax._src.transform import clip_by_global_norm
 from optax._src.transform import ClipByGlobalNormState
 from optax._src.transform import ClipState
-from optax._src.transform import differentially_private_aggregate
-from optax._src.transform import DifferentiallyPrivateAggregateState
 from optax._src.transform import global_norm
 from optax._src.transform import GradientTransformation
 from optax._src.transform import identity
