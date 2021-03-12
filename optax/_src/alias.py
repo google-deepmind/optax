@@ -156,3 +156,22 @@ def yogi(learning_rate: ScalarOrSchedule,
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
   )
+
+
+def dpsgd(learning_rate: ScalarOrSchedule,
+          l2_norm_clip: float,
+          noise_multiplier: float,
+          seed: int,
+          momentum: float = 0.,
+          nesterov: bool = False) -> GradientTransformation:
+  dp_agg = transform.differentially_private_aggregate(
+      l2_norm_clip=l2_norm_clip,
+      noise_multiplier=noise_multiplier,
+      seed=seed)
+  if momentum > 0:
+    return combine.chain(
+      dp_agg,
+      transform.trace(decay=momentum, nesterov=nesterov),
+      _scale_by_learning_rate(learning_rate))
+  else:
+    return combine.chain(dp_agg, _scale_by_learning_rate(learning_rate))

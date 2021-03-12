@@ -19,6 +19,7 @@ from optax._src.alias import adabelief
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
@@ -140,6 +141,7 @@ __all__ = (
     "control_variates_jacobians",
     "cosine_decay_schedule",
     "cosine_onecycle_schedule",
+    "dpsgd",
     "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",
     "exponential_decay",
