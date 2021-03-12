@@ -26,9 +26,6 @@ from optax._src import alias
 from optax._src import update
 
 
-_MAX_FLOAT = jnp.finfo(jnp.float32).max
-
-
 class AliasTest(chex.TestCase):
 
   @parameterized.parameters(
@@ -41,7 +38,7 @@ class AliasTest(chex.TestCase):
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
       ('yogi', lambda: alias.yogi(1.0)),
-      ('dpsgd', lambda: alias.dpsgd(1e-2, _MAX_FLOAT, 0., 0))
+      ('dpsgd', lambda: alias.dpsgd(1e-2, 10.0, 0.001, 0))
   )
   def test_parabel(self, opt_name, opt):
     opt = opt()
@@ -78,7 +75,7 @@ class AliasTest(chex.TestCase):
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
       ('yogi', lambda: alias.yogi(1.0)),
-      ('dpsgd', lambda: alias.dpsgd(2e-3, _MAX_FLOAT, 0., 0, 0.2))
+      ('dpsgd', lambda: alias.dpsgd(2e-3, 10., 0.001, 0, 0.2))
   )
   def test_rosenbrock(self, opt_name, opt):
     opt = opt()
