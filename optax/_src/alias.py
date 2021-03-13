@@ -126,16 +126,25 @@ def radam(learning_rate: ScalarOrSchedule,
 
 def rmsprop(learning_rate: ScalarOrSchedule,
             decay: float = 0.9,
+            momentum: float = 0.,
             eps: float = 1e-8,
-            centered: bool = False) -> GradientTransformation:
+            centered: bool = False,
+            nesterov: bool = False,
+            initial_scale: float = 0.) -> GradientTransformation:
   if centered:
     return combine.chain(
-        transform.scale_by_stddev(decay=decay, eps=eps),
+        transform.scale_by_stddev(
+          decay=decay, eps=eps, initial_scale=initial_scale),
         _scale_by_learning_rate(learning_rate),
+        transform.trace(decay=momentum, nesterov=nesterov) if momentum > 0
+          else transform.identity()
     )
   return combine.chain(
-      transform.scale_by_rms(decay=decay, eps=eps),
+      transform.scale_by_rms(
+        decay=decay, eps=eps, initial_scale=initial_scale),
       _scale_by_learning_rate(learning_rate),
+      transform.trace(decay=momentum, nesterov=nesterov) if momentum > 0
+        else transform.identity()
   )
 
 
