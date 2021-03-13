@@ -34,6 +34,8 @@ from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
 from optax._src.schedule import exponential_decay
+from optax._src.schedule import inject_hyperparams
+from optax._src.schedule import InjectHyperparamsState
 from optax._src.schedule import linear_onecycle_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
@@ -107,8 +109,6 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
-from optax._src.schedule import schedule_hyperparams
-from optax._src.schedule import ScheduleHyperparamsState
 
 __version__ = "0.0.2"
 
@@ -150,6 +150,8 @@ __all__ = (
     "hvp",
     "identity",
     "incremental_update",
+    "inject_hyperparams",
+    "InjectHyperparamsState",
     "lamb",
     "lookahead",
     "LookaheadParams",
@@ -189,8 +191,6 @@ __all__ = (
     "ScaleByTrustRatioState",
     "ScaleState",
     "Schedule",
-    "schedule_hyperparams",
-    "ScheduleHyperparamsState",
     "score_function_jacobians",
     "sgd",
     "trace",

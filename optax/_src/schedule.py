@@ -349,24 +349,24 @@ def cosine_onecycle_schedule(
        int(transition_steps): 1. / (div_factor * final_div_factor)})
 
 
-class ScheduleHyperparamsState(transform.OptState):
+class InjectHyperparamsState(transform.OptState):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.array  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
   inner_state: transform.OptState
 
 
-def schedule_hyperparams(
+def inject_hyperparams(
     inner_factory: Callable[..., transform.GradientTransformation],
     **hyperparams: Union[Schedule, Any]
 ) -> transform.GradientTransformation:
-  """Wrapper that schedules hyperparameters for the inner GradientTransform.
+  """Wrapper that injects hyperparameters for the inner GradientTransform.
 
   For example, to use SGD with an exponential decay for the learning rate,
   piecewise constant schedule for momentum, and Nesterov momentum:
 
   ```
-  scheduled_sgd = optax.schedule_hyperparams(
+  scheduled_sgd = optax.inject_hyperparams(
       optax.sgd,
       learning_rate=optax.exponential_decay(...),
       momentum=optax.piecewise_constant_schedule(...),
@@ -392,7 +392,7 @@ def schedule_hyperparams(
   def init_fn(params):
     count = jnp.zeros([], jnp.int32)
     hparams = schedule_fn(count)
-    return ScheduleHyperparamsState(
+    return InjectHyperparamsState(
         count=count,
         hyperparams=hparams,
         inner_state=inner_factory(**hparams).init(params))
@@ -402,7 +402,7 @@ def schedule_hyperparams(
     hparams = schedule_fn(count_inc)
     updates, inner_state = inner_factory(**hparams).update(
         updates, state.inner_state, params)
-    return updates, ScheduleHyperparamsState(
+    return updates, InjectHyperparamsState(
         count=count_inc,
         hyperparams=hparams,
         inner_state=inner_state)

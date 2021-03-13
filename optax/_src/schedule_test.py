@@ -432,12 +432,12 @@ class OneCycleTest(chex.TestCase):
       schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.)
 
 
-class ScheduleHyperparamsTest(chex.TestCase):
-  """Tests for the schedule_hyperparams wrapper."""
+class InjectHyperparamsTest(chex.TestCase):
+  """Tests for the inject_hyperparams wrapper."""
 
   @chex.all_variants
   def test_updates(self):
-    optim = schedule.schedule_hyperparams(
+    optim = schedule.inject_hyperparams(
         transform.scale,  # stateless
         step_size=schedule.piecewise_constant_schedule(
             3.0, {2: 5, 8: 2, 13: 1.5}))
@@ -454,7 +454,7 @@ class ScheduleHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_hyperparams_state(self):
-    optim = schedule.schedule_hyperparams(
+    optim = schedule.inject_hyperparams(
         alias.sgd,  # stateful
         momentum=schedule.piecewise_constant_schedule(
             0.8, {4: 0.5, 10: 1.25}),
@@ -485,10 +485,10 @@ class ScheduleHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_constant_hyperparams(self):
-    optim = schedule.schedule_hyperparams(alias.adam,
-                                          b1=0.0,
-                                          b2=0.0,
-                                          learning_rate=2.0)
+    optim = schedule.inject_hyperparams(alias.adam,
+                                        b1=0.0,
+                                        b2=0.0,
+                                        learning_rate=2.0)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
     state = optim.init(params)
