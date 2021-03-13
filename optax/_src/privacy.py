@@ -52,7 +52,7 @@ def differentially_private_aggregate(
   long as it is the first in the chain.
 
   References:
-    [Song et al, 2013](https://cseweb.ucsd.edu/~kamalika/pubs/scs13.pdf)
+    [Abadi et al, 2016](https://arxiv.org/abs/1607.00133)
 
   Args:
     l2_norm_clip: maximum L2 norm of the per-example gradients.
