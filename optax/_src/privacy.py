@@ -15,10 +15,6 @@
 # ==============================================================================
 """Differential Privacy utilities."""
 
-from typing import Sequence
-from functools import partial
-
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -28,15 +24,6 @@ from optax._src import transform
 class DifferentiallyPrivateAggregateState(transform.OptState):
   """State containing PRNGKey for differentially_private_aggregate."""
   rng_key: jnp.array
-
-
-@partial(jax.vmap, in_axes=(0, None))
-def _clip_per_example_grads(grads_flat: Sequence[chex.Array],
-                            l2_norm_clip: float):
-  global_grad_norm = jnp.linalg.norm([
-      jnp.linalg.norm(g.ravel()) for g in grads_flat])
-  divisor = jnp.maximum(global_grad_norm / l2_norm_clip, 1.0)
-  return [g/divisor for g in grads_flat]
 
 
 def differentially_private_aggregate(
@@ -68,21 +55,23 @@ def differentially_private_aggregate(
     return DifferentiallyPrivateAggregateState(rng_key=jax.random.PRNGKey(seed))
 
   def update_fn(updates, state, params=None):
+    del params
     grads_flat, grads_treedef = jax.tree_flatten(updates)
+    batch_size = grads_flat[0].shape[0]
 
-    if params is not None and any(g.shape[1:] != p.shape
-        for g, p in zip(grads_flat, jax.tree_leaves(params))):
+    if any(g.ndim == 0 or batch_size != g.shape[0] for g in grads_flat):
       raise ValueError(
           'Unlike other transforms, `differentially_private_aggregate` expects'
           ' `updates` to have a batch dimension in the 0th axis. That is, this'
           ' function expects per-example gradients as input.')
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat)+1)
-    clipped_grads_flat = _clip_per_example_grads(grads_flat, l2_norm_clip)
-    updates_flat = [
-        (g.sum(0) + noise_std * jax.random.normal(r, g.shape[1:])) / g.shape[0]
-        for r, g in zip(rngs, clipped_grads_flat)]
-    return (jax.tree_unflatten(grads_treedef, updates_flat),
+    global_grad_norms = jax.vmap(transform.global_norm)(grads_flat)
+    divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
+    clipped = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads_flat]
+    noised = [(g + noise_std * jax.random.normal(r, g.shape)) / batch_size
+              for g, r in zip(clipped, rngs)]
+    return (jax.tree_unflatten(grads_treedef, noised),
             DifferentiallyPrivateAggregateState(rng_key=new_key))
 
   return transform.GradientTransformation(init_fn, update_fn)
