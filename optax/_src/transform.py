@@ -639,6 +639,118 @@ def scale_by_schedule(step_size_fn: schedule.Schedule):
   return GradientTransformation(init_fn, update_fn)
 
 
+def _inverse_sigmoid(x: float):
+  chex.assert_scalar_in(x, 0, 1, included=True)
+  return jnp.log(x / (1. - x))
+
+
+class ScaleByMetagradientState(OptState):
+  """State for the scale-by-metagradient updates."""
+  num_steps: int
+  meta_param: Params  # lr = sigmoid(meta_param)
+  prev_updates: Updates
+  meta_opt_state: OptState
+
+
+def scale_by_metagradient(
+    step_size: float,
+    meta_optimizer: GradientTransformation,
+    num_updates: int,
+    meta_update_freq: int = 2,
+) -> GradientTransformation:
+  """Scales update by an automatically learned scalar `step_size`.
+
+  We scale the gradient updates by an automatically tuned step_size. The
+  initial value for this step size is passed in, and is optimized by a
+  meta-optimizer with a fixed meta-step-size.
+
+  References:
+    [Xu et al, 2018.](https://arxiv.org/abs/1805.09801)
+
+  Args:
+    step_size: a scalar corresponding to the initial fixed scaling factor
+      for updates.
+    meta_optimizer: the inner optimizer used to optimize the step_size.
+    num_updates: the number of total parameter updates that are combined to
+      compute the meta-gradient, including the current update and the last n-1
+      updates; the performance usually improves as more previous gradient
+      updates are used, so a higher number (e.g. 4 or 5) is recommended over 1.
+      In some cases, the meta-gradient computed with only 1 past update can be
+      anti-correlated with the true gradient.
+    meta_update_freq: how often we update the meta-parameter.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    if (meta_update_freq < 2) or (not isinstance(meta_update_freq, int)):
+      raise ValueError(f'meta_update_freq {meta_update_freq} must be an '
+                       'integer greater than 1 in order to properly update the '
+                       'meta-parameter.')
+    if (num_updates < 1) or (not isinstance(num_updates, int)):
+      raise ValueError(f'num_updates {num_updates} must be an integer greater '
+                       'than 0 in order to properly update the meta-parameter.')
+    if not 0 < step_size < 1:
+      raise ValueError(f'step_size {step_size} must be strictly between 0 and '
+                       '1 as we compute the meta-parameter as the inverse '
+                       'sigmoid of the step_size.')
+
+    meta_param = _inverse_sigmoid(step_size)
+    meta_opt_state = meta_optimizer.init(meta_param)
+    prev_updates = [
+        jax.tree_map(jnp.zeros_like, params) for _ in range(num_updates)
+    ]
+    return ScaleByMetagradientState(
+        num_steps=0,
+        meta_param=meta_param,
+        prev_updates=prev_updates,
+        meta_opt_state=meta_opt_state)
+
+  def update_fn(updates, state, params=None):
+    del params
+    # Compute meta-gradient as (dL/dtheta)^T(\sum_i=1^N dL_i/dtheta_i).
+    prev_updates = state.prev_updates
+    sum_updates = jax.tree_multimap(lambda *args: sum(args), *prev_updates)
+    chex.assert_tree_all_equal_shapes(sum_updates, updates)
+    meta_grad = sum([
+        jnp.sum(x) for x in jax.tree_leaves(
+            jax.tree_multimap(lambda pu, u: -jnp.dot(jnp.transpose(pu), u),
+                              sum_updates, updates))
+    ])
+    meta_grad = state.meta_param * (1 - state.meta_param) * meta_grad / (
+        meta_update_freq - 1)
+
+    # Update meta-optimizer state and meta_grad according to meta_optimizer.
+    meta_updates, new_meta_opt_state = meta_optimizer.update(
+        meta_grad, state.meta_opt_state, None)
+
+    # Apply updates using meta-optimizer to compute new_step_size.
+    new_meta_param = jax.tree_multimap(lambda p, u: p + u, state.meta_param,
+                                       meta_updates)
+    new_meta_param = jax.lax.cond(state.num_steps % meta_update_freq == 0,
+                                  lambda _: new_meta_param,
+                                  lambda _: state.meta_param,
+                                  operand=None)
+
+    # Update list of updates.
+    prev_updates.append(updates)
+    prev_updates.pop(0)
+
+    # Update meta-state.
+    state = ScaleByMetagradientState(
+        num_steps=state.num_steps + 1,
+        meta_param=new_meta_param,
+        prev_updates=prev_updates,
+        meta_opt_state=new_meta_opt_state)
+
+    updates = jax.tree_map(lambda g: jax.nn.sigmoid(new_meta_param) * g,
+                           updates)
+    return updates, state
+
+  return GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByFromageState(OptState):
   """Maintains count for step-size scheduling."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32

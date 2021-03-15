@@ -21,6 +21,9 @@ from optax._src.alias import adam
 from optax._src.alias import adamw
 from optax._src.alias import fromage
 from optax._src.alias import lamb
+from optax._src.alias import meta_adam
+from optax._src.alias import meta_rmsprop
+from optax._src.alias import meta_sgd
 from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
@@ -69,6 +72,7 @@ from optax._src.transform import Params
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_metagradient
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -78,6 +82,7 @@ from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByFromageState
+from optax._src.transform import ScaleByMetagradientState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
@@ -156,6 +161,9 @@ __all__ = (
     "masked",
     "MaskedState",
     "measure_valued_jacobians",
+    "meta_adam",
+    "meta_rmsprop",
+    "meta_sgd",
     "moving_avg_baseline",
     "multi_normal",
     "noisy_sgd",
@@ -171,6 +179,7 @@ __all__ = (
     "scale",
     "scale_by_adam",
     "scale_by_belief",
+    "scale_by_metagradient",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",
@@ -180,6 +189,7 @@ __all__ = (
     "scale_by_yogi",
     "ScaleByAdamState",
     "ScaleByFromageState",
+    "ScaleByMetagradientState",
     "ScaleByRmsState",
     "ScaleByRssState",
     "ScaleByRStdDevState",
