@@ -15,7 +15,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
 from optax._src import combine
@@ -126,7 +126,7 @@ def radam(learning_rate: ScalarOrSchedule,
 
 def rmsprop(learning_rate: ScalarOrSchedule,
             decay: float = 0.9,
-            momentum: float = 0.,
+            momentum: Optional[float] = None,
             eps: float = 1e-8,
             centered: bool = False,
             nesterov: bool = False,
@@ -136,15 +136,15 @@ def rmsprop(learning_rate: ScalarOrSchedule,
         transform.scale_by_stddev(
           decay=decay, eps=eps, initial_scale=initial_scale),
         _scale_by_learning_rate(learning_rate),
-        transform.trace(decay=momentum, nesterov=nesterov) if momentum > 0
-          else transform.identity()
+        transform.trace(decay=momentum, nesterov=nesterov)
+          if momentum is not None else transform.identity()
     )
   return combine.chain(
       transform.scale_by_rms(
         decay=decay, eps=eps, initial_scale=initial_scale),
       _scale_by_learning_rate(learning_rate),
-      transform.trace(decay=momentum, nesterov=nesterov) if momentum > 0
-        else transform.identity()
+      transform.trace(decay=momentum, nesterov=nesterov)
+        if momentum is not None else transform.identity()
   )
 
 
