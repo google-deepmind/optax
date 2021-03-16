@@ -23,7 +23,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax._src import alias
 from optax._src import schedule
 from optax._src import transform
 
@@ -437,8 +436,7 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_updates(self):
-    optim = schedule.inject_hyperparams(
-        transform.scale,  # stateless
+    optim = schedule.inject_hyperparams(transform.scale)(  # stateless
         step_size=schedule.piecewise_constant_schedule(
             3.0, {2: 5, 8: 2, 13: 1.5}))
 
@@ -454,12 +452,9 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_hyperparams_state(self):
-    optim = schedule.inject_hyperparams(
-        alias.sgd,  # stateful
-        momentum=schedule.piecewise_constant_schedule(
+    optim = schedule.inject_hyperparams(transform.trace)(  # stateful
+        decay=schedule.piecewise_constant_schedule(
             0.8, {4: 0.5, 10: 1.25}),
-        learning_rate=schedule.piecewise_constant_schedule(
-            0.2, {3: 0.1, 5: 0.5, 7: 0.3}),
         nesterov=True)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
@@ -467,41 +462,44 @@ class InjectHyperparamsTest(chex.TestCase):
     update_fn = self.variant(optim.update)
 
     expected_mom = [0.8]*4 + [0.4]*6 + [0.5]*2
-    expected_lr = [0.2]*3 + [0.02]*2 + [0.01]*2 + [0.003]*5
     grads = jax.tree_map(jnp.ones_like, params)
     for i in range(12):
-      np.testing.assert_almost_equal(state.hyperparams['momentum'],
+      np.testing.assert_almost_equal(state.hyperparams['decay'],
                                      expected_mom[i])
-      np.testing.assert_almost_equal(state.hyperparams['learning_rate'],
-                                     expected_lr[i])
-      self.assertTrue(state.hyperparams['nesterov'])
       _, state = update_fn(grads, state)
 
-    np.testing.assert_almost_equal(state.hyperparams['momentum'],
+    np.testing.assert_almost_equal(state.hyperparams['decay'],
                                    expected_mom[-1])
-    np.testing.assert_almost_equal(state.hyperparams['learning_rate'],
-                                   expected_lr[-1])
-    self.assertTrue(state.hyperparams['nesterov'])
 
   @chex.all_variants
   def test_constant_hyperparams(self):
-    optim = schedule.inject_hyperparams(alias.adam,
-                                        b1=0.0,
-                                        b2=0.0,
-                                        learning_rate=2.0)
+    optim = schedule.inject_hyperparams(transform.scale_by_adam)(b1=0., b2=0.)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
     state = optim.init(params)
     update_fn = self.variant(optim.update)
 
     grads = jax.tree_map(jnp.ones_like, params)
-    expected_updates = jax.tree_map(lambda x: -2.0*x, grads)
     for _ in range(5):
       updates, state = update_fn(grads, state, params)
       np.testing.assert_almost_equal(state.hyperparams['b1'], 0.0)
       np.testing.assert_almost_equal(state.hyperparams['b2'], 0.0)
-      np.testing.assert_almost_equal(state.hyperparams['learning_rate'], 2.0)
-      chex.assert_tree_all_close(updates, expected_updates)
+      assert 'eps' in state.hyperparams
+      chex.assert_tree_all_close(updates, grads)
+
+  @chex.all_variants
+  def test_overriding_hyperparam(self):
+    optim = schedule.inject_hyperparams(transform.clip_by_global_norm)(0.1)
+    params = jnp.zeros((3, 5, 7))
+    state = optim.init(params)
+    update_fn = self.variant(optim.update)
+
+    grads = jnp.ones_like(params)
+    for i in range(5):
+      state.hyperparams['max_norm'] = i
+      updates, state = update_fn(grads, state)
+      assert np.isclose(jnp.linalg.norm(updates.ravel()), i)
+
 
 
 if __name__ == '__main__':

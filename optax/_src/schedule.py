@@ -20,7 +20,9 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Any, Callable, Dict, Union, Optional
+from typing import Callable, Dict, Union, Optional
+import functools
+import inspect
 
 from absl import logging
 import chex
@@ -351,60 +353,80 @@ def cosine_onecycle_schedule(
 
 class InjectHyperparamsState(transform.OptState):
   """Maintains inner transform state, hyperparameters, and step count."""
-  count: jnp.array  # shape=(), dtype=jnp.int32
+  count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
   inner_state: transform.OptState
 
 
 def inject_hyperparams(
-    inner_factory: Callable[..., transform.GradientTransformation],
-    **hyperparams: Union[Schedule, Any]
-) -> transform.GradientTransformation:
-  """Wrapper that injects hyperparameters for the inner GradientTransform.
+    inner_factory: Callable[..., transform.GradientTransformation]
+) -> Callable[..., transform.GradientTransformation]:
+  """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
-  For example, to use SGD with an exponential decay for the learning rate,
-  piecewise constant schedule for momentum, and Nesterov momentum:
+  This wrapper allows you to pass schedules (i.e. a function that returns a
+  numeric value given a step count) instead of constants for
+  hyperparameters.  You may only schedule numeric hyperparameters (i.e. boolean
+  flags cannot be scheduled).
+
+  For example, to use `scale_by_adam` with a piecewise linear
+  schedule for beta_1 and constant for beta_2:
 
   ```
-  scheduled_sgd = optax.inject_hyperparams(
-      optax.sgd,
-      learning_rate=optax.exponential_decay(...),
-      momentum=optax.piecewise_constant_schedule(...),
-      nesterov=True)
+  scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+      b1=optax.piecewise_linear_schedule(...),
+      b2=0.99)
   ```
+
+  You may manually change numeric hyperparameters that were not scheduled
+  through the `hyperparams` dict in the InjectHyperparamState:
+
+  ```
+  state = scheduled_adam.init(params)
+  updates, state = scheduled_adam.update(grads, state)
+  state.hyperparams['b2'] = 0.95
+  updates, state = scheduled_adam.update(updates, state)  # uses b2 = 0.95
+  ```
+
+  Manually overriding scheduled hyperparameters and will have no effect (e.g.
+  in the code sample above, you cannot manually adjust `b1`).
 
   Args:
     inner_factory: a function that returns the inner
       `optax.GradientTransformation` given the hyperparameters.
-    **hyperparams: for each scheduled hyperparameter, there should be a function
-      that returns the hyperparameter value given a step count. For each
-      constant hyperparameter, there should be a corresponding value. The names
-      of these arguments must match the corresponding arguments for
-      `inner_factory`.
 
   Returns:
-    An `optax.GradientTransformation`.
+    A callable that returns a `optax.GradientTransformation`. This callable
+    accepts the same arguments as `inner_factor`, except you may provide
+    schedules in place of the constant arguments.
   """
+  @functools.wraps(inner_factory)
+  def wrapped_transform(*args, **kwargs) -> transform.GradientTransformation:
+    hyperparams = inspect.getcallargs(inner_factory, *args, **kwargs)
 
-  def schedule_fn(count):
-    return {k: (f(count) if callable(f) else f) for k, f in hyperparams.items()}
+    numeric_hps, other_hps = {}, {}
+    for name, val in hyperparams.items():
+      # Uses type(val) == int check so bool flags aren't counted as numeric.
+      if isinstance(val, (float, jnp.ndarray, Callable)) or type(val) == int:
+        numeric_hps[name] = val
+      else:
+        other_hps[name] = val
 
-  def init_fn(params):
-    count = jnp.zeros([], jnp.int32)
-    hparams = schedule_fn(count)
-    return InjectHyperparamsState(
-        count=count,
-        hyperparams=hparams,
-        inner_state=inner_factory(**hparams).init(params))
+    def schedule_fn(count):
+      return {k: f(count) for k, f in numeric_hps.items() if callable(f)}
 
-  def update_fn(updates, state, params=None):
-    count_inc = utils.safe_int32_increment(state.count)
-    hparams = schedule_fn(count_inc)
-    updates, inner_state = inner_factory(**hparams).update(
-        updates, state.inner_state, params)
-    return updates, InjectHyperparamsState(
-        count=count_inc,
-        hyperparams=hparams,
-        inner_state=inner_state)
+    def init_fn(params):
+      count = jnp.zeros([], jnp.int32)
+      hparams = {**numeric_hps, **schedule_fn(count)}
+      return InjectHyperparamsState(
+          count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
-  return transform.GradientTransformation(init_fn, update_fn)
+    def update_fn(updates, state, params=None):
+      count_inc = utils.safe_int32_increment(state.count)
+      hparams = {**state.hyperparams, **schedule_fn(count_inc)}
+      updates, inner_state = inner_factory(**other_hps, **hparams).update(
+          updates, state.inner_state, params)
+      return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
+
+    return transform.GradientTransformation(init_fn, update_fn)
+
+  return wrapped_transform
