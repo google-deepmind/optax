@@ -57,9 +57,9 @@ def differentially_private_aggregate(
   def update_fn(updates, state, params=None):
     del params
     grads_flat, grads_treedef = jax.tree_flatten(updates)
-    batch_size = grads_flat[0].shape[0]
+    bsize = grads_flat[0].shape[0]
 
-    if any(g.ndim == 0 or batch_size != g.shape[0] for g in grads_flat):
+    if any(g.ndim == 0 or bsize != g.shape[0] for g in grads_flat):
       raise ValueError(
           'Unlike other transforms, `differentially_private_aggregate` expects'
           ' `updates` to have a batch dimension in the 0th axis. That is, this'
@@ -69,7 +69,7 @@ def differentially_private_aggregate(
     global_grad_norms = jax.vmap(transform.global_norm)(grads_flat)
     divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
     clipped = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads_flat]
-    noised = [(g + noise_std * jax.random.normal(r, g.shape)) / batch_size
+    noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
               for g, r in zip(clipped, rngs)]
     return (jax.tree_unflatten(grads_treedef, noised),
             DifferentiallyPrivateAggregateState(rng_key=new_key))

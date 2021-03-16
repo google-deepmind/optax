@@ -15,7 +15,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
 
@@ -164,16 +164,14 @@ def dpsgd(learning_rate: ScalarOrSchedule,
           l2_norm_clip: float,
           noise_multiplier: float,
           seed: int,
-          momentum: float = 0.,
+          momentum: Optional[float] = None,
           nesterov: bool = False) -> GradientTransformation:
-  dp_agg = privacy.differentially_private_aggregate(
-      l2_norm_clip=l2_norm_clip,
-      noise_multiplier=noise_multiplier,
-      seed=seed)
-  if momentum > 0:
-    return combine.chain(
-      dp_agg,
-      transform.trace(decay=momentum, nesterov=nesterov),
-      _scale_by_learning_rate(learning_rate))
-  else:
-    return combine.chain(dp_agg, _scale_by_learning_rate(learning_rate))
+  return combine.chain(
+      privacy.differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
+  )
