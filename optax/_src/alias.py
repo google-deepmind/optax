@@ -27,132 +27,137 @@ GradientTransformation = transform.GradientTransformation
 ScalarOrSchedule = Union[float, schedule.Schedule]
 
 
-def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
-  if callable(learning_rate):
-    return transform.scale_by_schedule(lambda count: -learning_rate(count))
-  return transform.scale(-learning_rate)
-
-
+@schedule.inject_hyperparams
 def adabelief(learning_rate: ScalarOrSchedule,
-              b1: float = 0.9,
-              b2: float = 0.999,
-              eps: float = 1e-8) -> GradientTransformation:
+              b1: ScalarOrSchedule = 0.9,
+              b2: ScalarOrSchedule = 0.999,
+              eps: ScalarOrSchedule = 1e-8) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def adagrad(
     learning_rate: ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
-    eps: float = 1e-7) -> GradientTransformation:
+    eps: ScalarOrSchedule = 1e-7) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_rss(
           initial_accumulator_value=initial_accumulator_value, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def adam(learning_rate: ScalarOrSchedule,
-         b1: float = 0.9,
-         b2: float = 0.999,
-         eps: float = 1e-8,
-         eps_root: float = 0.0) -> GradientTransformation:
+         b1: ScalarOrSchedule = 0.9,
+         b2: ScalarOrSchedule = 0.999,
+         eps: ScalarOrSchedule = 1e-8,
+         eps_root: ScalarOrSchedule = 0.0) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def adamw(learning_rate: ScalarOrSchedule,
-          b1: float = 0.9,
-          b2: float = 0.999,
-          eps: float = 1e-8,
-          eps_root: float = 0.0,
-          weight_decay: float = 1e-4) -> GradientTransformation:
+          b1: ScalarOrSchedule = 0.9,
+          b2: ScalarOrSchedule = 0.999,
+          eps: ScalarOrSchedule = 1e-8,
+          eps_root: ScalarOrSchedule = 0.0,
+          weight_decay: ScalarOrSchedule = 1e-4) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.additive_weight_decay(weight_decay),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
-def fromage(learning_rate: float,
-            min_norm: float = 1e-6) -> GradientTransformation:
+@schedule.inject_hyperparams
+def fromage(learning_rate: ScalarOrSchedule,
+            min_norm: ScalarOrSchedule = 1e-6) -> GradientTransformation:
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
-      _scale_by_learning_rate(learning_rate * mult),
+      transform.scale(-learning_rate),
       transform.add_decayed_weights((mult - 1)),
   )
 
 
+@schedule.inject_hyperparams
 def lamb(learning_rate: ScalarOrSchedule,
-         b1: float = 0.9,
-         b2: float = 0.999,
-         eps: float = 1e-6,
-         eps_root: float = 0.0,
-         weight_decay: float = 0.) -> GradientTransformation:
+         b1: ScalarOrSchedule = 0.9,
+         b2: ScalarOrSchedule = 0.999,
+         eps: ScalarOrSchedule = 1e-6,
+         eps_root: ScalarOrSchedule = 0.0,
+         weight_decay: ScalarOrSchedule = 0.) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay),
       transform.scale_by_trust_ratio(),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def noisy_sgd(learning_rate: ScalarOrSchedule,
-              eta: float = 0.01,
-              gamma: float = 0.55,
+              eta: ScalarOrSchedule = 0.01,
+              gamma: ScalarOrSchedule = 0.55,
               seed: int = 0) -> GradientTransformation:
   return combine.chain(
       transform.trace(decay=0., nesterov=False),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
       transform.add_noise(eta, gamma, seed),
   )
 
 
+@schedule.inject_hyperparams
 def radam(learning_rate: ScalarOrSchedule,
-          b1: float = 0.9,
-          b2: float = 0.999,
-          eps: float = 1e-8,
-          threshold: float = 5.0) -> GradientTransformation:
+          b1: ScalarOrSchedule = 0.9,
+          b2: ScalarOrSchedule = 0.999,
+          eps: ScalarOrSchedule = 1e-8,
+          threshold: ScalarOrSchedule = 5.0) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_radam(b1=b1, b2=b2, eps=eps, threshold=threshold),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def rmsprop(learning_rate: ScalarOrSchedule,
-            decay: float = 0.9,
-            eps: float = 1e-8,
+            decay: ScalarOrSchedule = 0.9,
+            eps: ScalarOrSchedule = 1e-8,
             centered: bool = False) -> GradientTransformation:
   if centered:
     return combine.chain(
         transform.scale_by_stddev(decay=decay, eps=eps),
-        _scale_by_learning_rate(learning_rate),
+        transform.scale(-learning_rate),
     )
   return combine.chain(
       transform.scale_by_rms(decay=decay, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def sgd(learning_rate: ScalarOrSchedule,
-        momentum: float = 0.,
+        momentum: ScalarOrSchedule = 0.,
         nesterov: bool = False) -> GradientTransformation:
   return combine.chain(
       transform.trace(decay=momentum, nesterov=nesterov),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
 
 
+@schedule.inject_hyperparams
 def yogi(learning_rate: ScalarOrSchedule,
-         b1: float = 0.9,
-         b2: float = 0.999,
-         eps: float = 1e-3) -> GradientTransformation:
+         b1: ScalarOrSchedule = 0.9,
+         b2: ScalarOrSchedule = 0.999,
+         eps: ScalarOrSchedule = 1e-3) -> GradientTransformation:
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale(-learning_rate),
   )
