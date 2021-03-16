@@ -15,7 +15,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
 from optax._src import combine
@@ -139,15 +139,13 @@ def rmsprop(learning_rate: ScalarOrSchedule,
 
 
 def sgd(learning_rate: ScalarOrSchedule,
-        momentum: float = 0.,
+        momentum: Optional[float] = None,
         nesterov: bool = False) -> GradientTransformation:
-  if momentum > 0.:
-    return combine.chain(
-        transform.trace(decay=momentum, nesterov=nesterov),
-        _scale_by_learning_rate(learning_rate)
-    )
-  else:
-    return _scale_by_learning_rate(learning_rate)
+  return combine.chain(
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
+  )
 
 
 def yogi(learning_rate: ScalarOrSchedule,
