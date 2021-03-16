@@ -26,6 +26,7 @@ import inspect
 
 from absl import logging
 import chex
+import jax
 import jax.numpy as jnp
 
 from optax._src import transform
@@ -351,6 +352,13 @@ def cosine_onecycle_schedule(
        int(transition_steps): 1. / (div_factor * final_div_factor)})
 
 
+def _convert_floats(x, dtype):
+  """Convert float-like inputs to dtype, rest pass through."""
+  if jax.dtypes.scalar_type_of(x) == float:
+    return jnp.asarray(x, dtype=dtype)
+  return x
+
+
 class InjectHyperparamsState(transform.OptState):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
@@ -403,26 +411,33 @@ def inject_hyperparams(
   def wrapped_transform(*args, **kwargs) -> transform.GradientTransformation:
     hyperparams = inspect.getcallargs(inner_factory, *args, **kwargs)
 
-    numeric_hps, other_hps = {}, {}
-    for name, val in hyperparams.items():
+    sched_hps, numeric_hps, other_hps =  {}, {}, {}
+    for name, value in hyperparams.items():
+      if callable(value):
+        sched_hps[name] = value
       # Uses type(val) == int check so bool flags aren't counted as numeric.
-      if isinstance(val, (float, jnp.ndarray, Callable)) or type(val) == int:
-        numeric_hps[name] = val
+      elif isinstance(value, (float, jnp.ndarray)) or type(value) == int:
+        numeric_hps[name] = jnp.asarray(value)
       else:
-        other_hps[name] = val
+        other_hps[name] = value
 
-    def schedule_fn(count):
-      return {k: f(count) for k, f in numeric_hps.items() if callable(f)}
+    def schedule_fn(count, dtype):
+      return {k: _convert_floats(f(count), dtype) for k, f in sched_hps.items()}
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      hparams = {**numeric_hps, **schedule_fn(count)}
+      dtype = next(iter(jax.tree_leaves(params))).dtype
+      hparams = {k: _convert_floats(v, dtype) for k, v in numeric_hps.items()}
+      hparams.update(schedule_fn(count, dtype))
       return InjectHyperparamsState(
           count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
     def update_fn(updates, state, params=None):
       count_inc = utils.safe_int32_increment(state.count)
-      hparams = {**state.hyperparams, **schedule_fn(count_inc)}
+      dtype = next(iter(jax.tree_leaves(updates))).dtype
+      hparams = {k: _convert_floats(v, dtype)
+                 for k, v in state.hyperparams.items()}
+      hparams.update(schedule_fn(count_inc, dtype))
       updates, inner_state = inner_factory(**other_hps, **hparams).update(
           updates, state.inner_state, params)
       return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
