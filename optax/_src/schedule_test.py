@@ -441,7 +441,7 @@ class InjectHyperparamsTest(chex.TestCase):
             3.0, {2: 5, 8: 2, 13: 1.5}))
 
     params = [jnp.zeros([], dtype=jnp.float32)]
-    state = optim.init(params)
+    state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
     expected_step_size = [3.0]*2 + [15.0]*6 + [30.0]*5 + [45.0]*3
 
@@ -458,7 +458,7 @@ class InjectHyperparamsTest(chex.TestCase):
         nesterov=True)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
-    state = optim.init(params)
+    state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
 
     expected_mom = [0.8]*4 + [0.4]*6 + [0.5]*2
@@ -476,7 +476,7 @@ class InjectHyperparamsTest(chex.TestCase):
     optim = schedule.inject_hyperparams(transform.scale_by_adam)(b1=0., b2=0.)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
-    state = optim.init(params)
+    state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
 
     grads = jax.tree_map(jnp.ones_like, params)
@@ -484,6 +484,8 @@ class InjectHyperparamsTest(chex.TestCase):
       updates, state = update_fn(grads, state, params)
       np.testing.assert_almost_equal(state.hyperparams['b1'], 0.0)
       np.testing.assert_almost_equal(state.hyperparams['b2'], 0.0)
+      np.testing.assert_almost_equal(state.hyperparams['eps'], 1e-8)
+      np.testing.assert_almost_equal(state.hyperparams['eps_root'], 0.0)
       assert 'eps' in state.hyperparams
       chex.assert_tree_all_close(updates, grads)
 
@@ -491,7 +493,7 @@ class InjectHyperparamsTest(chex.TestCase):
   def test_overriding_hyperparam(self):
     optim = schedule.inject_hyperparams(transform.clip_by_global_norm)(0.1)
     params = jnp.zeros((3, 5, 7))
-    state = optim.init(params)
+    state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
 
     grads = jnp.ones_like(params)
@@ -499,7 +501,6 @@ class InjectHyperparamsTest(chex.TestCase):
       state.hyperparams['max_norm'] = i
       updates, state = update_fn(grads, state)
       assert np.isclose(jnp.linalg.norm(updates.ravel()), i)
-
 
 
 if __name__ == '__main__':

@@ -409,24 +409,24 @@ def inject_hyperparams(
   """
   @functools.wraps(inner_factory)
   def wrapped_transform(*args, **kwargs) -> transform.GradientTransformation:
-    hyperparams = inspect.getcallargs(inner_factory, *args, **kwargs)
+    bound_arguments = inspect.signature(inner_factory).bind(*args, **kwargs)
+    bound_arguments.apply_defaults()
 
     sched_hps, numeric_hps, other_hps =  {}, {}, {}
-    for name, value in hyperparams.items():
-      if callable(value):
-        sched_hps[name] = value
-      # Uses type(val) == int check so bool flags aren't counted as numeric.
-      elif isinstance(value, (float, jnp.ndarray)) or type(value) == int:
-        numeric_hps[name] = jnp.asarray(value)
+    for name, v in bound_arguments.arguments.items():
+      if callable(v):
+        sched_hps[name] = v
+      elif isinstance(v, (int, float, jnp.ndarray)) and not isinstance(v, bool):
+        numeric_hps[name] = jnp.asarray(v)
       else:
-        other_hps[name] = value
+        other_hps[name] = v
 
     def schedule_fn(count, dtype):
       return {k: _convert_floats(f(count), dtype) for k, f in sched_hps.items()}
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      dtype = next(iter(jax.tree_leaves(params))).dtype
+      dtype = getattr(next(iter(jax.tree_leaves(params)), None), 'dtype', None)
       hparams = {k: _convert_floats(v, dtype) for k, v in numeric_hps.items()}
       hparams.update(schedule_fn(count, dtype))
       return InjectHyperparamsState(
@@ -434,7 +434,7 @@ def inject_hyperparams(
 
     def update_fn(updates, state, params=None):
       count_inc = utils.safe_int32_increment(state.count)
-      dtype = next(iter(jax.tree_leaves(updates))).dtype
+      dtype = getattr(next(iter(jax.tree_leaves(updates)), None), 'dtype', None)
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
       hparams.update(schedule_fn(count_inc, dtype))
