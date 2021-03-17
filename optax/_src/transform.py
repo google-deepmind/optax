@@ -274,7 +274,8 @@ def _update_moment(updates, moments, decay, order):
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
-def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
+def scale_by_rms(
+    decay: float = 0.9, eps: float = 1e-8, initial_scale: float = 0.):
   """Rescale updates by the root of the exp. moving avg of the square.
 
   References:
@@ -283,13 +284,15 @@ def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
   Args:
     decay: decay rate for the exponentially weighted average of squared grads.
     eps: term added to the denominator to improve numerical stability.
+    initial_scale: initial value for second moment
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
   def init_fn(params):
-    nu = jax.tree_map(jnp.zeros_like, params)  # second moment
+    nu = jax.tree_map(
+        lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
@@ -309,7 +312,8 @@ class ScaleByRStdDevState(OptState):
 
 
 def scale_by_stddev(
-    decay: float = 0.9, eps: float = 1e-8) -> GradientTransformation:
+    decay: float = 0.9, eps: float = 1e-8,
+    initial_scale: float = 0.) -> GradientTransformation:
   """Rescale updates by the root of the centered exp. moving average of squares.
 
   References:
@@ -318,6 +322,7 @@ def scale_by_stddev(
   Args:
     decay: decay rate for the exponentially weighted average of squared grads.
     eps: term added to the denominator to improve numerical stability.
+    initial_scale: initial value for second moment
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -325,7 +330,8 @@ def scale_by_stddev(
 
   def init_fn(params):
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    nu = jax.tree_map(
+        lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):

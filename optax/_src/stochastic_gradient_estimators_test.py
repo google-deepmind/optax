@@ -13,15 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import itertools
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from optax._src import stochastic_gradient_estimators
+from optax._src import stochastic_gradient_estimators as sge
 from optax._src import utils
 
 
@@ -30,21 +28,16 @@ np.random.seed(42)
 
 
 _estimator_to_num_samples = {
-    stochastic_gradient_estimators.score_function_jacobians: 5 * 10**5,
-    stochastic_gradient_estimators.measure_valued_jacobians: 10**5,
-    stochastic_gradient_estimators.pathwise_jacobians: 5 * 10**4,
+    sge.score_function_jacobians: 5 * 10**5,
+    sge.measure_valued_jacobians: 10**5,
+    sge.pathwise_jacobians: 5 * 10**4,
 }
 
 _weighted_estimator_to_num_samples = {
-    stochastic_gradient_estimators.score_function_jacobians: 5 * 10**6,
-    stochastic_gradient_estimators.measure_valued_jacobians: 5 * 10**5,
-    stochastic_gradient_estimators.pathwise_jacobians: 5 * 10**4,
+    sge.score_function_jacobians: 5 * 10**6,
+    sge.measure_valued_jacobians: 5 * 10**5,
+    sge.pathwise_jacobians: 5 * 10**4,
 }
-
-
-def _cross_prod(items1, items2):
-  prod = itertools.product(items1, items2)
-  return [i1 + (i2,) for i1, i2 in prod]
 
 
 def _ones(dims):
@@ -72,21 +65,25 @@ def _estimator_variant(variant, estimator):
 
 def _measure_valued_variant(variant):
   return variant(
-      stochastic_gradient_estimators.measure_valued_jacobians,
+      sge.measure_valued_jacobians,
       static_argnums=(0, 2, 4, 5))
 
 
 class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [(0.1,), (0.5,), (0.9,)],
-      [
-          stochastic_gradient_estimators.score_function_jacobians,
-          stochastic_gradient_estimators.pathwise_jacobians,
-          stochastic_gradient_estimators.measure_valued_jacobians,
-      ],))
-  def testConstantFunction(self, constant, estimator):
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('0.1', 0.1),
+          ('0.5', 0.5),
+          ('0.9', 0.9),
+      ],
+                          named=True))
+  def testConstantFunction(self, estimator, constant):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
 
@@ -116,13 +113,18 @@ class GradientEstimatorsTest(chex.TestCase):
     _assert_equal(log_scale_grads, expected_log_scale_grads, atol=5e-3)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [(0.5, -1.), (0.7, 0.0), (0.8, 0.1)],
-      [
-          stochastic_gradient_estimators.score_function_jacobians,
-          stochastic_gradient_estimators.pathwise_jacobians,
-          stochastic_gradient_estimators.measure_valued_jacobians]))
-  def testLinearFunction(self, effective_mean, effective_log_scale, estimator):
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('0.5_-1.', 0.5, -1.),
+          ('0.7_0.0)', 0.7, 0.0),
+          ('0.8_0.1', 0.8, 0.1),
+      ],
+                          named=True))
+  def testLinearFunction(self, estimator, effective_mean, effective_log_scale):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)
@@ -148,15 +150,17 @@ class GradientEstimatorsTest(chex.TestCase):
     _assert_equal(log_scale_grads, expected_log_scale_grads)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [(1.0, 0.3)],
-      [
-          stochastic_gradient_estimators.score_function_jacobians,
-          stochastic_gradient_estimators.pathwise_jacobians,
-          stochastic_gradient_estimators.measure_valued_jacobians,
-      ]))
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('1.0_0.3', 1.0, 0.3),
+      ],
+                          named=True))
   def testQuadraticFunction(
-      self, effective_mean, effective_log_scale, estimator):
+      self, estimator, effective_mean, effective_log_scale):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)
@@ -184,18 +188,19 @@ class GradientEstimatorsTest(chex.TestCase):
     _assert_equal(log_scale_grads, expected_log_scale_grads, atol=5e-2)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [([1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
-       ([1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
-       ([1.0, 2.0, 3.], [0.1, 0.2, 0.1], [10., 5., 1.])
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('case_1', [1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
+          ('case_2', [1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
+          ('case_3', [1.0, 2.0, 3.], [0.1, 0.2, 0.1], [10., 5., 1.]),
       ],
-      [
-          stochastic_gradient_estimators.score_function_jacobians,
-          stochastic_gradient_estimators.pathwise_jacobians,
-          stochastic_gradient_estimators.measure_valued_jacobians,
-      ]))
+                          named=True))
   def testWeightedLinear(
-      self, effective_mean, effective_log_scale, weights, estimator):
+      self, estimator, effective_mean, effective_log_scale, weights):
     num_samples = _weighted_estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)
 
@@ -225,16 +230,19 @@ class GradientEstimatorsTest(chex.TestCase):
     _assert_equal(log_scale_grads, expected_log_scale_grads, atol=5e-2)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [([1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
-       ([1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
-       ([1.0, 2.0, 3.], [0.1, 0.2, 0.1], [3., 5., 1.])
+  @parameterized.named_parameters(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
       ], [
-          stochastic_gradient_estimators.score_function_jacobians,
-          stochastic_gradient_estimators.pathwise_jacobians,
-          stochastic_gradient_estimators.measure_valued_jacobians,]))
+          ('case_1', [1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
+          ('case_2', [1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
+          ('case_3', [1.0, 2.0, 3.], [0.1, 0.2, 0.1], [3., 5., 1.]),
+      ],
+                          named=True))
   def testWeightedQuadratic(
-      self, effective_mean, effective_log_scale, weights, estimator):
+      self, estimator, effective_mean, effective_log_scale, weights):
     num_samples = _weighted_estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)
 
@@ -267,17 +275,25 @@ class GradientEstimatorsTest(chex.TestCase):
         log_scale_grads, expected_log_scale_grads, atol=1e-1, rtol=1e-1)
 
   @chex.all_variants
-  @parameterized.parameters(_cross_prod(
-      [([1.0], [1.0], lambda x: jnp.sum(jnp.cos(x))),
-       # Need to ensure that the mean is not too close to 0.
-       ([10.0], [0.0], lambda x: jnp.sum(jnp.log(x))),
-       ([1.0, 2.0], [1.0, -2],
-        lambda x: jnp.sum(jnp.cos(2 * x))),
-       ([1.0, 2.0], [1.0, -2],
-        lambda x: jnp.cos(jnp.sum(2 * x))),
-      ], [True, False]))
-  def testNonPolynomialFunctionConsistencyWithPathwise(
-      self, effective_mean, effective_log_scale, function, coupling):
+  @parameterized.named_parameters(
+      chex.params_product(
+          [
+              ('_sum_cos_x', [1.0], [1.0], lambda x: jnp.sum(jnp.cos(x))),
+              # Need to ensure that the mean is not too close to 0.
+              ('_sum_log_x', [10.0], [0.0], lambda x: jnp.sum(jnp.log(x))),
+              ('_sum_cos_2x', [1.0, 2.0], [1.0, -2
+                                          ], lambda x: jnp.sum(jnp.cos(2 * x))),
+              ('_cos_sum_2x', [1.0, 2.0], [1.0, -2
+                                          ], lambda x: jnp.cos(jnp.sum(2 * x))),
+          ],
+          [
+              ('coupling', True),
+              ('nocoupling', False),
+          ],
+          named=True))
+  def testNonPolynomialFunctionConsistencyWithPathwise(self, effective_mean,
+                                                       effective_log_scale,
+                                                       function, coupling):
     num_samples = 10**5
     rng = jax.random.PRNGKey(1)
     measure_rng, pathwise_rng = jax.random.split(rng)
@@ -301,9 +317,9 @@ class GradientEstimatorsTest(chex.TestCase):
         measure_valued_log_scale_jacobians, axis=0)
 
     pathwise_jacobians = _estimator_variant(
-        self.variant, stochastic_gradient_estimators.pathwise_jacobians)(
-            function, [mean, log_scale],
-            utils.multi_normal, pathwise_rng, num_samples)
+        self.variant, sge.pathwise_jacobians)(function, [mean, log_scale],
+                                              utils.multi_normal, pathwise_rng,
+                                              num_samples)
 
     pathwise_mean_jacobians = pathwise_jacobians[0]
     chex.assert_shape(pathwise_mean_jacobians, (num_samples, data_dims))
