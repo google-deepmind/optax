@@ -15,7 +15,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
 from optax._src import combine
@@ -107,7 +107,6 @@ def noisy_sgd(learning_rate: ScalarOrSchedule,
               gamma: float = 0.55,
               seed: int = 0) -> GradientTransformation:
   return combine.chain(
-      transform.trace(decay=0., nesterov=False),
       _scale_by_learning_rate(learning_rate),
       transform.add_noise(eta, gamma, seed),
   )
@@ -140,11 +139,12 @@ def rmsprop(learning_rate: ScalarOrSchedule,
 
 
 def sgd(learning_rate: ScalarOrSchedule,
-        momentum: float = 0.,
+        momentum: Optional[float] = None,
         nesterov: bool = False) -> GradientTransformation:
   return combine.chain(
-      transform.trace(decay=momentum, nesterov=nesterov),
-      _scale_by_learning_rate(learning_rate),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
   )
 
 
