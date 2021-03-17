@@ -18,7 +18,9 @@
 from typing import Union, Optional
 
 import jax.numpy as jnp
+
 from optax._src import combine
+from optax._src import privacy
 from optax._src import schedule
 from optax._src import transform
 
@@ -190,4 +192,21 @@ def yogi(learning_rate: ScalarOrSchedule,
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
+  )
+
+
+def dpsgd(learning_rate: ScalarOrSchedule,
+          l2_norm_clip: float,
+          noise_multiplier: float,
+          seed: int,
+          momentum: Optional[float] = None,
+          nesterov: bool = False) -> GradientTransformation:
+  return combine.chain(
+      privacy.differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
   )

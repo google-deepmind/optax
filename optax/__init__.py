@@ -19,6 +19,7 @@ from optax._src.alias import adabelief
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
@@ -30,6 +31,8 @@ from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.privacy import differentially_private_aggregate
+from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
@@ -138,6 +141,9 @@ __all__ = (
     "control_variates_jacobians",
     "cosine_decay_schedule",
     "cosine_onecycle_schedule",
+    "dpsgd",
+    "differentially_private_aggregate",
+    "DifferentiallyPrivateAggregateState",
     "exponential_decay",
     "fisher_diag",
     "flatten",
