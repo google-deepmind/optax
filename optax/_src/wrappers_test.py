@@ -335,25 +335,29 @@ class MaskedTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      ('scale', lambda: transform.scale(-1.)),  # stateless test
-      ('sgd', _build_sgd),  # stateful test
+      ('scale', lambda: transform.scale(-1.), True),  # stateless test
+      ('sgd', _build_sgd, False),  # stateful test
+      ('scale', lambda: transform.scale(-1.), True),  # stateless test
+      ('sgd', _build_sgd, False),  # stateful test
   )
-  def test_masked(self, opt_builder):
+  def test_masked(self, opt_builder, use_fn):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
-    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
-    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+    mask_arg = lambda _: mask if use_fn else mask
+    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = jax.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
-      return jax.tree_util.tree_multimap(
+      return jax.tree_multimap(
           lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
-    init_fn, update_fn = wrappers.masked(opt_builder(), mask)
+    init_fn, update_fn = wrappers.masked(opt_builder(), mask_arg)
     update_fn = self.variant(update_fn)
-    state = init_fn(params)
+    state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
     chex.assert_tree_all_close(updates, correct_updates)
 
@@ -370,23 +374,24 @@ class MaskedTest(chex.TestCase):
   def test_prefix_mask(self, opt_builder):
     """Test when the mask is a prefix of the updates PyTree."""
     mask = {'a': True, 'b': False, 'c': {'d': False, 'e': True}}
-    params = {'a': 1, 'b': {'f': 2}, 'c': {'d': 3, 'e': ([4, 5], 6)}}
-    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+    params = {'a': 1., 'b': {'f': 2.}, 'c': {'d': 3., 'e': ([4., 5.], 6.)}}
+    params = jax.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask (or mask parent) is True
     def _masked_sgd_on_updates(m, upd):
-      return jax.tree_util.tree_map(lambda x: -x, upd) if m else upd
-    correct_updates = jax.tree_util.tree_multimap(
+      return jax.tree_map(lambda x: -x, upd) if m else upd
+    correct_updates = jax.tree_multimap(
         _masked_sgd_on_updates, mask, input_updates)
 
     init_fn, update_fn = wrappers.masked(opt_builder(), mask)
     update_fn = self.variant(update_fn)
-    state = init_fn(params)
+    state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
     chex.assert_tree_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
-    correct_updates = jax.tree_util.tree_multimap(
+    correct_updates = jax.tree_multimap(
         _masked_sgd_on_updates, mask, correct_updates)
     updates, state = update_fn(updates, state)
     chex.assert_tree_all_close(updates, correct_updates)
@@ -397,10 +402,11 @@ class MaskedTest(chex.TestCase):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
-    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
-    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
+    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = jax.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_map(lambda x: x/10., params)
 
-    correct_updates = jax.tree_util.tree_multimap(
+    correct_updates = jax.tree_multimap(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, input_updates, params)
 
@@ -408,14 +414,14 @@ class MaskedTest(chex.TestCase):
         transform.additive_weight_decay(weight_decay), mask)
     update_fn = self.variant(update_fn)
 
-    state = init_fn(params)
+    state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
     chex.assert_tree_all_close(updates, correct_updates)
 
     params = update.apply_updates(params, updates)
 
     # Test repeated application
-    new_correct_updates = jax.tree_util.tree_multimap(
+    new_correct_updates = jax.tree_multimap(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, correct_updates, params)
     updates, state = update_fn(correct_updates, state, params)
@@ -426,21 +432,40 @@ class MaskedTest(chex.TestCase):
     init_fn, update_fn = wrappers.masked(_build_sgd(), container())
     update_fn(container(), init_fn(container()))
 
-  @parameterized.parameters(True, False)
-  def test_tree_mismatch_fails(self, extra_key_in_mask):
+  @parameterized.parameters(
+    (False, False), (False, True), (True, False), (True, True))
+  def test_tree_mismatch_fails(self, extra_key_in_mask, use_fn):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
-    params = {'a': 1, 'b': [2, 3], 'c': {'d': 4, 'e': (5, 6)}}
+    mask_arg = lambda _: mask if use_fn else mask
+    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = jax.tree_map(jnp.asarray, params)
 
     if extra_key_in_mask:
       mask['c']['extra'] = True
     else:
       params['c']['extra'] = 7
 
-    init_fn = wrappers.masked(_build_sgd(), mask)[0]
+    init_fn = wrappers.masked(_build_sgd(), mask_arg)[0]
     with self.assertRaises(ValueError):
       init_fn(params)
+
+  @chex.all_variants
+  def test_mask_fn(self):
+    params = {'a': jnp.ones((1, 2)), 'b': (jnp.ones((1,)), np.ones((1, 2, 3)))}
+    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
+    init_fn, update_fn = wrappers.masked(transform.add_decayed_weights(0.1),
+                                         mask_fn)
+    update_fn = self.variant(update_fn)
+
+    state = self.variant(init_fn)(params)
+    grads = jax.tree_map(lambda x: x*2, params)
+    updates, state = update_fn(grads, state, params)
+    np.testing.assert_allclose(updates['a'], grads['a'] + 0.1*params['a'])
+    np.testing.assert_allclose(updates['b'][0], grads['b'][0])
+    np.testing.assert_allclose(updates['b'][1],
+                               grads['b'][1] + 0.1*params['b'][1])
 
 
 class MaybeUpdateTest(chex.TestCase):

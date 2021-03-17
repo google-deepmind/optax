@@ -29,6 +29,7 @@ import numpy as np
 from optax._src import transform
 
 Array = jnp.ndarray
+PyTree = Any
 
 
 def flatten(
@@ -439,12 +440,21 @@ class MaskedState(NamedTuple):
 
 
 def masked(inner: transform.GradientTransformation,
-           mask: Any) -> transform.GradientTransformation:
+           mask: Union[PyTree, Callable[[transform.Params], PyTree]]
+) -> transform.GradientTransformation:
   """Mask updates so only a subset of them are computed.
 
   For example, it is common to skip weight decay for BatchNorm scale and all
   bias parameters. In many networks, these are the only parameters with only
-  one dimension. So, you may mask these out as follows:
+  one dimension. So, you may create a mask function to mask these out as
+  follows:
+
+  ```
+  mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim != 1, p)
+  custom_weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
+  ```
+
+  You may alternatively create the mask pytree upfront:
 
   ```
   mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
@@ -456,22 +466,24 @@ def masked(inner: transform.GradientTransformation,
 
   Args:
     inner: Inner transformation to mask.
-    mask: A PyTree with the same structure as the parameters or is a prefix of
-      the parameter PyTree. The leaves should be booleans which are `True` for
-      leaves/subtrees you want to apply the transformation to, and `False` for
-      those you want to skip.
+    mask: A PyTree with the same structure as (or is a prefix of) the
+    parameters PyTree, or a Callable that returns such a pytree given the
+    parameters/updates. The leaves should be booleans which are `True` for
+    leaves/subtrees you want to apply the transformation to, and `False` for
+    those you want to skip.
 
   Returns:
     New GradientTransformation wrapping `inner`.
   """
-  flat_mask, treedef = tree_flatten(mask)
-
   def init_fn(params):
+    flat_mask, treedef = tree_flatten(mask(params) if callable(mask) else mask)
     flat_params = treedef.flatten_up_to(params)
     masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
     return MaskedState(inner_state=inner.init(masked_params))
 
   def update_fn(updates, state, params=None):
+    flat_mask, treedef = tree_flatten(mask(updates) if callable(mask) else mask)
+
     # Flatten then filter out updates/params not in the mask:
     flat_updates = treedef.flatten_up_to(updates)
     masked_updates = [g for g, m in zip(flat_updates, flat_mask) if m]
