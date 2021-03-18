@@ -34,22 +34,6 @@ def global_norm(updates: base.Updates) -> base.Updates:
       sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
 
 
-def safe_norm(x, min_norm):
-  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
-
-  The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
-  because jax will evaluate both branches of the `jnp.maximum`. This function
-  will instead return the correct gradient of 0.0 also in such setting.
-
-  Args:
-    x: jax array.
-    min_norm: lower bound for the returned norm.
-  """
-  norm = jnp.linalg.norm(x)
-  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
-
-
 def safe_int32_increment(count):
   """Increments int32 counter by one.
 
@@ -66,6 +50,88 @@ def safe_int32_increment(count):
   max_int32_value = jnp.iinfo(jnp.int32).max
   one = jnp.array(1, dtype=jnp.int32)
   return jnp.where(count < max_int32_value, count + one, max_int32_value)
+
+
+def safe_norm(x, min_norm):
+  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
+
+  The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
+  because jax will evaluate both branches of the `jnp.maximum`. This function
+  will instead return the correct gradient of 0.0 also in such setting.
+
+  Args:
+    x: jax array.
+    min_norm: lower bound for the returned norm.
+  """
+  norm = jnp.linalg.norm(x)
+  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
+  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
+
+
+def merge_small_dims(shape_to_merge, max_dim):
+  """Merge small dimensions.
+
+  If there are some small dimensions, we collapse them:
+  e.g. [1, 2, 512, 1, 2048, 1, 3, 4] --> [1024, 2048, 12] if max_dim = 1024
+       [1, 2, 768, 1, 2048] --> [2, 768, 2048]
+
+  Args:
+    shape_to_merge: Shape to merge small dimensions.
+    max_dim: Maximal dimension of output shape used in merging.
+
+  Returns:
+    Merged shape.
+  """
+  resulting_shape = []
+  product = 1
+  for d in shape_to_merge:
+    if product * d <= max_dim:
+      product *= d
+    else:
+      if product > 1:
+        resulting_shape.append(product)
+      product = d
+  if product > 1:
+    resulting_shape.append(product)
+  return resulting_shape
+
+
+def pad_matrix(mat, max_size):
+  """Pad a matrix to a max_size.
+
+  Args:
+    mat: a matrix to pad.
+    max_size: matrix size requested.
+
+  Returns:
+    Given M returns [[M, 0], [0, I]]
+  """
+  size = mat.shape[0]
+  assert size <= max_size
+  if size == max_size:
+    return mat
+  pad_size = max_size - size
+  zs1 = jnp.zeros([size, pad_size], dtype=mat.dtype)
+  zs2 = jnp.zeros([pad_size, size], dtype=mat.dtype)
+  eye = jnp.eye(pad_size, dtype=mat.dtype)
+  mat = jnp.concatenate([mat, zs1], 1)
+  mat = jnp.concatenate([mat, jnp.concatenate([zs2, eye], 1)], 0)
+  return mat
+
+
+def efficient_cond(predicate, compute_fn, init_state, *args, **kwargs):
+  """Avoids wasteful buffer allocation with XLA."""
+
+  def _iter_body(unused_state):
+    results = compute_fn(*args, **kwargs)
+    return tuple([False] + list(results))
+
+  def _iter_condition(state):
+    return state[0]
+
+  results = jax.lax.while_loop(
+      _iter_condition, _iter_body, tuple([predicate] + init_state))
+  return tuple(results[1:])
 
 
 def set_diags(a, new_diags):

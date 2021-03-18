@@ -49,6 +49,9 @@ from optax._src.constrain import ZeroNansState
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.distributed_shampoo import distributed_shampoo
+from optax._src.distributed_shampoo import GraftingType
+from optax._src.distributed_shampoo import ShampooState
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
 from optax._src.lookahead import lookahead
@@ -157,12 +160,14 @@ __all__ = (
     "dpsgd",
     "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",
+    "distributed_shampoo",
     "exponential_decay",
     "fisher_diag",
     "flatten",
     "fromage",
     "global_norm",
     "GradientTransformation",
+    "GraftingType",
     "hessian_diag",
     "huber_loss",
     "hvp",
@@ -214,6 +219,7 @@ __all__ = (
     "Schedule",
     "score_function_jacobians",
     "sgd",
+    "ShampooState",
     "sigmoid_binary_cross_entropy",
     "smooth_labels",
     "softmax_cross_entropy",
