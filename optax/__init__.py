@@ -31,6 +31,8 @@ from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.linear_algebra import matrix_inverse_pth_root
+from optax._src.linear_algebra import power_iteration
 from optax._src.privacy import differentially_private_aggregate
 from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
@@ -163,6 +165,7 @@ __all__ = (
     "LookaheadParams",
     "LookaheadState",
     "linear_onecycle_schedule",
+    "matrix_inverse_pth_root",
     "masked",
     "MaskedState",
     "measure_valued_jacobians",
@@ -176,6 +179,7 @@ __all__ = (
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
+    "power_iteration",
     "radam",
     "rmsprop",
     "scale",

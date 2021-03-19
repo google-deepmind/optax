@@ -127,6 +127,7 @@ def radam(learning_rate: ScalarOrSchedule,
   )
 
 
+@schedule.inject_hyperparams
 def rmsprop(
     learning_rate: ScalarOrSchedule,
     decay: ScalarOrSchedule = 0.9,
@@ -196,6 +197,24 @@ def yogi(learning_rate: ScalarOrSchedule,
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       transform.scale(-learning_rate),
+  )
+
+
+@schedule.inject_hyperparams
+def dpsgd(learning_rate: ScalarOrSchedule,
+          l2_norm_clip: ScalarOrSchedule,
+          noise_multiplier: ScalarOrSchedule,
+          seed: int,
+          momentum: Optional[ScalarOrSchedule] = None,
+          nesterov: bool = False) -> GradientTransformation:
+  return combine.chain(
+      privacy.differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      transform.scale(-learning_rate)
   )
 
 
