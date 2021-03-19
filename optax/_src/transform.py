@@ -21,6 +21,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import schedule
+from optax._src import utils
 
 
 # pylint:disable=no-value-for-parameter
@@ -651,24 +652,6 @@ class ScaleByFromageState(OptState):
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def _safe_norm(x, min_norm):
-  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
-
-  The gradients of jnp.maximum(jnp.linalg.norm(x), min_norm) at 0.0 is NaN,
-  because jax will evaluate both branches of the jnp.maximum.
-
-  The version in this function will return the correct gradient of 0.0 in this
-  situation.
-
-  Args:
-    x: jax array.
-    min_norm: lower bound for the returned norm.
-  """
-  norm = jnp.linalg.norm(x)
-  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
-
-
 class ScaleByTrustRatioState(NamedTuple):
   """The scale and decay trust ratio transformation is stateless."""
 
@@ -696,8 +679,8 @@ def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
     def _scale_update(update, param):
 
       # Clip norms to minimum value, by default no clipping.
-      param_norm = _safe_norm(param, min_norm)
-      update_norm = _safe_norm(update, min_norm)
+      param_norm = utils.safe_norm(param, min_norm)
+      update_norm = utils.safe_norm(update, min_norm)
       trust_ratio = param_norm / update_norm
 
       # If no minimum norm clipping is used

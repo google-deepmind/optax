@@ -23,8 +23,23 @@ import jax.scipy.stats.norm as multivariate_normal
 def tile_second_to_last_dim(a):
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
-
   return jnp.expand_dims(ones, axis=-2) * a
+
+
+def safe_norm(x, min_norm):
+  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
+
+  The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
+  because jax will evaluate both branches of the `jnp.maximum`. This function
+  will instead return the correct gradient of 0.0 also in such setting.
+
+  Args:
+    x: jax array.
+    min_norm: lower bound for the returned norm.
+  """
+  norm = jnp.linalg.norm(x)
+  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
+  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
 
 
 def set_diags(a, new_diags):
