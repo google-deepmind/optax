@@ -17,6 +17,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import functools
 
 import chex
 import jax
@@ -25,6 +26,7 @@ import numpy as np
 
 from optax._src import schedule
 from optax._src import transform
+from optax._src import wrappers
 
 
 class ConstantTest(chex.TestCase):
@@ -501,6 +503,43 @@ class InjectHyperparamsTest(chex.TestCase):
       state.hyperparams['max_norm'] = i
       updates, state = update_fn(grads, state)
       assert np.isclose(jnp.linalg.norm(updates.ravel()), i)
+
+  @chex.all_variants
+  @parameterized.named_parameters(('string', 'mask'), ('list', ['mask']))
+  def test_static_args(self, static_args):
+    @functools.partial(schedule.inject_hyperparams, static_args=static_args)
+    def custom_optim(learning_rate, mask):
+      return wrappers.masked(transform.scale(-learning_rate), mask)
+
+    optim = custom_optim(
+        0.1, functools.partial(jax.tree_map, lambda x: x.ndim > 1))
+    params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
+    grads = params
+    state = self.variant(optim.init)(params)
+    updates, state = self.variant(optim.update)(grads, state)
+    expected_updates = jax.tree_map(lambda x: -0.1 * x if x.ndim > 1 else x,
+                                    grads)
+
+    assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
+    chex.assert_tree_all_close(updates, expected_updates)
+
+  @chex.all_variants
+  @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
+  def test_numeric_static_args(self, static_args):
+    optim = schedule.inject_hyperparams(
+        transform.scale_by_adam, static_args=static_args)(b1=0.9, b2=0.95)
+
+    params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
+    grads = params
+    state = self.variant(optim.init)(params)
+    _, state = self.variant(optim.update)(grads, state)
+
+    assert not set(state.hyperparams.keys()).intersection(set(static_args))
+
+  @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
+  def test_static_args_error(self, static_args):
+    with self.assertRaises(ValueError):
+      schedule.inject_hyperparams(transform.scale, static_args=static_args)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Callable, Dict, Union, Optional
+from typing import Callable, Dict, Union, Optional, Iterable
 import functools
 import inspect
 
@@ -367,7 +367,8 @@ class InjectHyperparamsState(transform.OptState):
 
 
 def inject_hyperparams(
-    inner_factory: Callable[..., transform.GradientTransformation]
+    inner_factory: Callable[..., transform.GradientTransformation],
+    static_args: Union[str, Iterable[str]] = ()
 ) -> Callable[..., transform.GradientTransformation]:
   """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
@@ -401,25 +402,41 @@ def inject_hyperparams(
   Args:
     inner_factory: a function that returns the inner
       `optax.GradientTransformation` given the hyperparameters.
+    static_args: a string or iterable of strings specifying which
+      callable parameters are not schedules. inject_hyperparams treats all
+      callables as schedules by default, so if a hyperparameter is a
+      non-schedule callable, you must specify that using this argument.
 
   Returns:
     A callable that returns a `optax.GradientTransformation`. This callable
     accepts the same arguments as `inner_factor`, except you may provide
     schedules in place of the constant arguments.
   """
+  static_args = ({static_args} if isinstance(static_args, str) else
+                 set(static_args))
+  inner_signature = inspect.signature(inner_factory)
+
+  if not static_args.issubset(inner_signature.parameters):
+    raise ValueError(
+      '`static_args` must specify a subset of `inner_factory`\'s parameters. '
+      f'Given `static_args`: {static_args}. `inner_factory` parameters: '
+      f'{set(inner_signature.parameters.keys())}')
+
   @functools.wraps(inner_factory)
   def wrapped_transform(*args, **kwargs) -> transform.GradientTransformation:
-    bound_arguments = inspect.signature(inner_factory).bind(*args, **kwargs)
+    bound_arguments = inner_signature.bind(*args, **kwargs)
     bound_arguments.apply_defaults()
 
     sched_hps, numeric_hps, other_hps =  {}, {}, {}
-    for name, v in bound_arguments.arguments.items():
-      if callable(v):
-        sched_hps[name] = v
-      elif isinstance(v, (int, float, jnp.ndarray)) and not isinstance(v, bool):
-        numeric_hps[name] = jnp.asarray(v)
+    for name, value in bound_arguments.arguments.items():
+      if name in static_args or isinstance(value, bool):
+        other_hps[name] = value
+      elif callable(value):
+        sched_hps[name] = value
+      elif isinstance(value, (int, float, jnp.ndarray)):
+        numeric_hps[name] = jnp.asarray(value)
       else:
-        other_hps[name] = v
+        other_hps[name] = value
 
     def schedule_fn(count, dtype):
       return {k: _convert_floats(f(count), dtype) for k, f in sched_hps.items()}
