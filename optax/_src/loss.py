@@ -48,7 +48,7 @@ def l2_loss(
   Returns:
     the squared error loss.
   """
-  chex.assert_type([predictions, targets], float)
+  chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
   return 0.5 * (errors)**2
 
@@ -74,7 +74,7 @@ def huber_loss(
   Returns:
     a vector of same shape of `x`.
   """
-  chex.assert_type([predictions, targets], float)
+  chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
   # 0.5 * err^2                  if |err| <= d
   # 0.5 * d^2 + d * (|err| - d)  if |err| > d
