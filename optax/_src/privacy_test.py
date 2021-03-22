@@ -28,7 +28,7 @@ from optax._src import privacy
 class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
   def setUp(self):
-    super(DifferentiallyPrivateAggregateTest, self).setUp()
+    super().setUp()
     self.batch_size = 8
     self.params = {'key_a': (jnp.zeros((2, 3, 4)), jnp.zeros([])),
                    'key_b': jnp.zeros((6, 7))}

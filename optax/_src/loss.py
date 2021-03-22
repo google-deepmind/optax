@@ -22,6 +22,7 @@ mean or sum losses across batch dimensions.
 """
 
 from typing import Optional
+
 import chex
 import jax
 import jax.numpy as jnp

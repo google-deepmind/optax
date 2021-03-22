@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Tests for `stochastic_gradient_estimators.py`."""
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import stochastic_gradient_estimators as sge
 from optax._src import utils
 
@@ -45,8 +48,10 @@ def _ones(dims):
 
 
 def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
+  """Asserts that arrays are equal."""
   # Note: assert_allclose does not check shapes
-  assert actual.shape == expected.shape
+  chex.assert_equal_shape((actual, expected))
+
   # We get around the bug https://github.com/numpy/numpy/issues/13801
   zero_indices = np.argwhere(expected == 0)
   if not np.all(np.abs(actual[zero_indices]) <= atol):

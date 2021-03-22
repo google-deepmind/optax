@@ -28,7 +28,7 @@ from optax._src import loss
 class L2LossTest(parameterized.TestCase):
 
   def setUp(self):
-    super(L2LossTest, self).setUp()
+    super().setUp()
     self.ys = jnp.array([-2., -1., 0.5, 1.])
     self.ts = jnp.array([-1.5, 0., -1, 1.])
     # compute expected outputs in numpy.
@@ -48,7 +48,7 @@ class L2LossTest(parameterized.TestCase):
 class HuberLossTest(parameterized.TestCase):
 
   def setUp(self):
-    super(HuberLossTest, self).setUp()
+    super().setUp()
     self.ys = np.array([-2.0, 0.5, 0., 0.5, 2.0, 4.0, 132.])
     self.ts = np.array([0.0, -0.5, 0., 1., 1.0, 2.0, 0.3])
     # computed expected outputs manually.
@@ -70,7 +70,7 @@ class HuberLossTest(parameterized.TestCase):
 class SmoothLabelsTest(parameterized.TestCase):
 
   def setUp(self):
-    super(SmoothLabelsTest, self).setUp()
+    super().setUp()
     self.ts = np.array([[0., 1., 0.], [1., 0., 0.]], dtype=np.float32)
     # compute expected outputs in numpy.
     self.exp_alpha_zero = self.ts
@@ -107,7 +107,7 @@ class SmoothLabelsTest(parameterized.TestCase):
 class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
   def setUp(self):
-    super(SoftmaxCrossEntropyTest, self).setUp()
+    super().setUp()
     self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
     self.ts = np.array([[0., 1., 0.], [1., 0., 0.]], dtype=np.float32)
     # taken expected outputs from rlax.
@@ -170,7 +170,7 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
 class CosineDistanceTest(parameterized.TestCase):
 
   def setUp(self):
-    super(CosineDistanceTest, self).setUp()
+    super().setUp()
     self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
     self.ts = np.array([[0., 1.2, 0.2], [1., -0.3, 0.]], dtype=np.float32)
     # computed expected output from `scipy`.

@@ -315,11 +315,11 @@ def control_variates_jacobians(
       lambda x: expected_value_cv(x, control_variate_state))(params)
 
   jacobians = []
-  for param_index in range(len(params)):
-    assert function_jacobians[param_index].shape == (num_samples, data_dim)
-    assert cv_jacobians[param_index].shape == (num_samples, data_dim)
-    assert cv_param_grads[param_index].shape == (data_dim,)
-    assert expected_value_grads[param_index].shape == (data_dim,)
+  for param_index, param in enumerate(params):
+    chex.assert_shape(function_jacobians[param_index], (num_samples, data_dim))
+    chex.assert_shape(cv_jacobians[param_index], (num_samples, data_dim))
+    chex.assert_shape(cv_param_grads[param_index], (data_dim,))
+    chex.assert_shape(expected_value_grads[param_index], (data_dim,))
 
     cv_coeff = cv_coeffs[param_index]
     # \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
@@ -330,8 +330,7 @@ def control_variates_jacobians(
     # \nabla_{\theta} E_{p(x; \theta)}]
     param_jacobians += cv_coeff * expected_value_grads[param_index]
 
-    assert param_jacobians.shape == (num_samples,) + params[param_index].shape
-
+    chex.assert_shape(param_jacobians, (num_samples,) + param.shape)
     jacobians.append(param_jacobians)
 
   return jacobians, control_variate_state

@@ -379,12 +379,14 @@ class PiecewiseInterpolateTest(chex.TestCase):
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
   def test_invalid_type(self):
+    # pytype: disable=wrong-arg-types
     with self.assertRaises(ValueError):
       schedule.piecewise_interpolate_schedule('linar', 13.)
     with self.assertRaises(ValueError):
       schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule(None, 13., {})  # pytype: disable=wrong-arg-types
+      schedule.piecewise_interpolate_schedule(None, 13., {})
+    # pytype: enable=wrong-arg-types
 
   def test_invalid_scale(self):
     with self.assertRaises(ValueError):

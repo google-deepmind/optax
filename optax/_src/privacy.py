@@ -21,6 +21,7 @@ import jax.numpy as jnp
 from optax._src import transform
 
 
+# pylint:disable=no-value-for-parameter
 class DifferentiallyPrivateAggregateState(transform.OptState):
   """State containing PRNGKey for `differentially_private_aggregate`."""
   rng_key: jnp.array

@@ -270,6 +270,7 @@ class MultiSteps:
     return transform.GradientTransformation(init=self.init, update=self.update)
 
 
+# pylint:disable=no-value-for-parameter
 class LookaheadState(transform.OptState):
   """State of the `GradientTransformation` returned by `lookahead`.
 
