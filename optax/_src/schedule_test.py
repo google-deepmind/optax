@@ -15,13 +15,19 @@
 # ==============================================================================
 """Tests for `schedule.py`."""
 
+import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
+import jax
+import jax.numpy as jnp
 import numpy as np
 
 from optax._src import schedule
+from optax._src import transform
+from optax._src import wrappers
 
 
 class ConstantTest(chex.TestCase):
@@ -234,6 +240,47 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
+  @chex.all_variants()
+  @parameterized.parameters(
+      (0.2, 0.1, False), (1.0, 0.1, False), (2.0, 3.0, False),
+      (0.2, 0.1, True), (1.0, 0.1, True), (2.0, 3.0, True))
+  def test_end_value_with_staircase(self, decay_rate, end_value, staircase):
+    # Get schedule function.
+    init_value = 1.
+    num_steps = 11
+    transition_steps = 2
+    transition_begin = 3
+    schedule_fn = self.variant(
+        schedule.exponential_decay(
+            init_value=init_value, transition_steps=transition_steps,
+            decay_rate=decay_rate, transition_begin=transition_begin,
+            staircase=staircase, end_value=end_value))
+
+    # Test that generated values equal the expected schedule values.
+    def _staircased(count):
+      p = count / transition_steps
+      if staircase:
+        p = np.floor(p)
+      return p
+
+    generated_vals = []
+    for count in range(num_steps + transition_begin):
+      generated_vals.append(schedule_fn(count))
+    expected_vals = np.array(
+        [init_value] * transition_begin + [
+            init_value * np.power(decay_rate, _staircased(count))
+            for count in range(num_steps)
+        ],
+        dtype=np.float32)
+
+    if decay_rate < 1.0:
+      expected_vals = np.maximum(expected_vals, end_value)
+    else:
+      expected_vals = np.minimum(expected_vals, end_value)
+
+    np.testing.assert_allclose(
+        expected_vals, np.array(generated_vals), atol=1e-3)
+
 
 class CosineDecayTest(chex.TestCase):
 
@@ -338,12 +385,14 @@ class PiecewiseInterpolateTest(chex.TestCase):
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
   def test_invalid_type(self):
+    # pytype: disable=wrong-arg-types
     with self.assertRaises(ValueError):
       schedule.piecewise_interpolate_schedule('linar', 13.)
     with self.assertRaises(ValueError):
       schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule(None, 13., {})  # pytype: disable=wrong-arg-types
+      schedule.piecewise_interpolate_schedule(None, 13., {})
+    # pytype: enable=wrong-arg-types
 
   def test_invalid_scale(self):
     with self.assertRaises(ValueError):
@@ -385,6 +434,115 @@ class OneCycleTest(chex.TestCase):
       schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.)
     with self.assertRaises(ValueError):
       schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.)
+
+
+class InjectHyperparamsTest(chex.TestCase):
+  """Tests for the inject_hyperparams wrapper."""
+
+  @chex.all_variants
+  def test_updates(self):
+    optim = schedule.inject_hyperparams(transform.scale)(  # stateless
+        step_size=schedule.piecewise_constant_schedule(
+            3.0, {2: 5, 8: 2, 13: 1.5}))
+
+    params = [jnp.zeros([], dtype=jnp.float32)]
+    state = self.variant(optim.init)(params)
+    update_fn = self.variant(optim.update)
+    expected_step_size = [3.0]*2 + [15.0]*6 + [30.0]*5 + [45.0]*3
+
+    grads = [jnp.ones([], dtype=jnp.float32)]
+    for i in range(15):
+      updates, state = update_fn(grads, state, params=params)
+      np.testing.assert_almost_equal(updates[0], expected_step_size[i+1])
+
+  @chex.all_variants
+  def test_hyperparams_state(self):
+    optim = schedule.inject_hyperparams(transform.trace)(  # stateful
+        decay=schedule.piecewise_constant_schedule(
+            0.8, {4: 0.5, 10: 1.25}),
+        nesterov=True)
+
+    params = [jnp.zeros([2, 3]) for _ in range(3)]
+    state = self.variant(optim.init)(params)
+    update_fn = self.variant(optim.update)
+
+    expected_mom = [0.8]*4 + [0.4]*6 + [0.5]*2
+    grads = jax.tree_map(jnp.ones_like, params)
+    for i in range(12):
+      np.testing.assert_almost_equal(state.hyperparams['decay'],
+                                     expected_mom[i])
+      _, state = update_fn(grads, state)
+
+    np.testing.assert_almost_equal(state.hyperparams['decay'],
+                                   expected_mom[-1])
+
+  @chex.all_variants
+  def test_constant_hyperparams(self):
+    optim = schedule.inject_hyperparams(transform.scale_by_adam)(b1=0., b2=0.)
+
+    params = [jnp.zeros([2, 3]) for _ in range(3)]
+    state = self.variant(optim.init)(params)
+    update_fn = self.variant(optim.update)
+
+    grads = jax.tree_map(jnp.ones_like, params)
+    for _ in range(5):
+      updates, state = update_fn(grads, state, params)
+      np.testing.assert_almost_equal(state.hyperparams['b1'], 0.0)
+      np.testing.assert_almost_equal(state.hyperparams['b2'], 0.0)
+      np.testing.assert_almost_equal(state.hyperparams['eps'], 1e-8)
+      np.testing.assert_almost_equal(state.hyperparams['eps_root'], 0.0)
+      assert 'eps' in state.hyperparams
+      chex.assert_tree_all_close(updates, grads)
+
+  @chex.all_variants
+  def test_overriding_hyperparam(self):
+    optim = schedule.inject_hyperparams(transform.clip_by_global_norm)(0.1)
+    params = jnp.zeros((3, 5, 7))
+    state = self.variant(optim.init)(params)
+    update_fn = self.variant(optim.update)
+
+    grads = jnp.ones_like(params)
+    for i in range(5):
+      state.hyperparams['max_norm'] = i
+      updates, state = update_fn(grads, state)
+      assert np.isclose(jnp.linalg.norm(updates.ravel()), i)
+
+  @chex.all_variants
+  @parameterized.named_parameters(('string', 'mask'), ('list', ['mask']))
+  def test_static_args(self, static_args):
+    @functools.partial(schedule.inject_hyperparams, static_args=static_args)
+    def custom_optim(learning_rate, mask):
+      return wrappers.masked(transform.scale(-learning_rate), mask)
+
+    optim = custom_optim(
+        0.1, functools.partial(jax.tree_map, lambda x: x.ndim > 1))
+    params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
+    grads = params
+    state = self.variant(optim.init)(params)
+    updates, state = self.variant(optim.update)(grads, state)
+    expected_updates = jax.tree_map(lambda x: -0.1 * x if x.ndim > 1 else x,
+                                    grads)
+
+    assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
+    chex.assert_tree_all_close(updates, expected_updates)
+
+  @chex.all_variants
+  @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
+  def test_numeric_static_args(self, static_args):
+    optim = schedule.inject_hyperparams(
+        transform.scale_by_adam, static_args=static_args)(b1=0.9, b2=0.95)
+
+    params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
+    grads = params
+    state = self.variant(optim.init)(params)
+    _, state = self.variant(optim.update)(grads, state)
+
+    assert not set(state.hyperparams.keys()).intersection(set(static_args))
+
+  @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
+  def test_static_args_error(self, static_args):
+    with self.assertRaises(ValueError):
+      schedule.inject_hyperparams(transform.scale, static_args=static_args)
 
 
 if __name__ == '__main__':

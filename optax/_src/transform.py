@@ -21,20 +21,27 @@ from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 import jax
 import jax.numpy as jnp
-from optax._src import schedule
+from optax._src import utils
 
 # pylint:disable=no-value-for-parameter
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
+# Function used to initialise the transformation's state.
+TransformInitFn = Callable[
+    [Params],
+    Union[OptState, Sequence[OptState]]]
+# Function used to apply a transformation.
+TransformUpdateFn = Callable[
+    [Updates, OptState, Optional[Params]],
+    Tuple[Updates, OptState]]
+
 
 class GradientTransformation(NamedTuple):
   """Optax transformations consists of a function pair: (initialise, update)."""
-  init: Callable[  # Function used to initialise the transformation's state.
-      [Params], Union[OptState, Sequence[OptState]]]
-  update: Callable[  # Function used to apply a transformation.
-      [Updates, OptState, Optional[Params]], Tuple[Updates, OptState]]
+  init: TransformInitFn
+  update: TransformUpdateFn
 
 
 NO_PARAMS_MSG = (
@@ -266,7 +273,8 @@ def _update_moment(updates, moments, decay, order):
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
-def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
+def scale_by_rms(
+    decay: float = 0.9, eps: float = 1e-8, initial_scale: float = 0.):
   """Rescale updates by the root of the exp. moving avg of the square.
 
   References:
@@ -275,13 +283,15 @@ def scale_by_rms(decay: float = 0.9, eps: float = 1e-8):
   Args:
     decay: decay rate for the exponentially weighted average of squared grads.
     eps: term added to the denominator to improve numerical stability.
+    initial_scale: initial value for second moment
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
   def init_fn(params):
-    nu = jax.tree_map(jnp.zeros_like, params)  # second moment
+    nu = jax.tree_map(
+        lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
@@ -301,7 +311,8 @@ class ScaleByRStdDevState(OptState):
 
 
 def scale_by_stddev(
-    decay: float = 0.9, eps: float = 1e-8) -> GradientTransformation:
+    decay: float = 0.9, eps: float = 1e-8,
+    initial_scale: float = 0.) -> GradientTransformation:
   """Rescale updates by the root of the centered exp. moving average of squares.
 
   References:
@@ -310,6 +321,7 @@ def scale_by_stddev(
   Args:
     decay: decay rate for the exponentially weighted average of squared grads.
     eps: term added to the denominator to improve numerical stability.
+    initial_scale: initial value for second moment
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -317,7 +329,8 @@ def scale_by_stddev(
 
   def init_fn(params):
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    nu = jax.tree_map(
+        lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
@@ -339,22 +352,8 @@ class ScaleByAdamState(OptState):
   nu: Updates
 
 
-def _safe_int32_increment(count):
-  """Increments int32 counter by one.
-
-  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
-  that when `max_int` is reached the counter stays at `max_int`.
-
-  Args:
-    count: a counter to be incremented.
-
-  Returns:
-    a counter incremented by 1, or max_int if the maximum precision is reached.
-  """
-  chex.assert_type(count, jnp.int32)
-  max_int32_value = jnp.iinfo(jnp.int32).max
-  one = jnp.array(1, dtype=jnp.int32)
-  return jnp.where(count < max_int32_value, count + one, max_int32_value)
+# TODO(b/183478923): remove legacy reference.
+_safe_int32_increment = utils.safe_int32_increment
 
 
 def _bias_correction(moment, decay, count):
@@ -392,7 +391,7 @@ def scale_by_adam(b1: float = 0.9,
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -463,7 +462,7 @@ def scale_by_belief(
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -507,7 +506,7 @@ def scale_by_yogi(
     signed_sq = jax.tree_multimap(
         lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
     nu = _update_moment(signed_sq, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -558,7 +557,7 @@ def scale_by_radam(b1: float = 0.9,
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
     mu_hat = _bias_correction(mu, b1, count_inc)
@@ -608,7 +607,7 @@ class ScaleByScheduleState(OptState):
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_by_schedule(step_size_fn: schedule.Schedule):
+def scale_by_schedule(step_size_fn: Callable[[chex.Numeric], chex.Numeric]):
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
@@ -628,7 +627,7 @@ def scale_by_schedule(step_size_fn: schedule.Schedule):
     updates = jax.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
-        count=_safe_int32_increment(state.count))
+        count=utils.safe_int32_increment(state.count))
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -636,24 +635,6 @@ def scale_by_schedule(step_size_fn: schedule.Schedule):
 class ScaleByFromageState(OptState):
   """Maintains count for step-size scheduling."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-
-
-def _safe_norm(x, min_norm):
-  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
-
-  The gradients of jnp.maximum(jnp.linalg.norm(x), min_norm) at 0.0 is NaN,
-  because jax will evaluate both branches of the jnp.maximum.
-
-  The version in this function will return the correct gradient of 0.0 in this
-  situation.
-
-  Args:
-    x: jax array.
-    min_norm: lower bound for the returned norm.
-  """
-  norm = jnp.linalg.norm(x)
-  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
 
 
 class ScaleByTrustRatioState(NamedTuple):
@@ -683,8 +664,8 @@ def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
     def _scale_update(update, param):
 
       # Clip norms to minimum value, by default no clipping.
-      param_norm = _safe_norm(param, min_norm)
-      update_norm = _safe_norm(update, min_norm)
+      param_norm = utils.safe_norm(param, min_norm)
+      update_norm = utils.safe_norm(update, min_norm)
       trust_ratio = param_norm / update_norm
 
       # If no minimum norm clipping is used
@@ -730,7 +711,7 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
     del params
     num_vars = len(jax.tree_leaves(updates))
     treedef = jax.tree_structure(updates)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     variance = eta / count_inc**gamma
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
@@ -778,7 +759,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
-    count_inc = _safe_int32_increment(state.count)
+    count_inc = utils.safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return GradientTransformation(init_fn, update_fn)
@@ -879,3 +860,44 @@ def scale_by_sm3(b1: float = 0.9,
     return mu, ScaleBySM3State(mu=mu, nu=nu)
     
   return GradientTransformation(init_fn, update_fn)
+
+
+class ZeroNansState(OptState):
+  """Contains a tree.
+
+  The entry `found_nan` has the same tree structure as that of the parameters.
+  Each leaf is a single boolean which contains True iff a NaN was detected in
+  the corresponding parameter array at the last call to `update`.
+  """
+  found_nan: Any
+
+
+def zero_nans() -> GradientTransformation:
+  """A transformation which replaces NaNs with 0.
+
+  Zeroing values in gradients is guaranteed to produce a direction of
+  non-increasing loss.
+
+  The state of the transformation has the same tree structure as that of the
+  parameters. Each leaf is a single boolean which contains True iff a NaN was
+  detected in the corresponding parameter array at the last call to `update`.
+  This state is not used by the transformation internally, but lets users be
+  aware when NaNs have been zeroed out.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+
+  def init_fn(params):
+    return ZeroNansState(
+        jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
+
+  def update_fn(updates, opt_state, params=None):
+    del params
+    opt_state = ZeroNansState(
+        jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
+    updates = jax.tree_map(
+        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
+    return updates, opt_state
+
+  return GradientTransformation(init=init_fn, update=update_fn)

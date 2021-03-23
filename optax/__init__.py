@@ -19,6 +19,7 @@ from optax._src.alias import adabelief
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import noisy_sgd
@@ -31,10 +32,22 @@ from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.linear_algebra import matrix_inverse_pth_root
+from optax._src.linear_algebra import power_iteration
+from optax._src.loss import cosine_distance
+from optax._src.loss import huber_loss
+from optax._src.loss import l2_loss
+from optax._src.loss import sigmoid_binary_cross_entropy
+from optax._src.loss import smooth_labels
+from optax._src.loss import softmax_cross_entropy
+from optax._src.privacy import differentially_private_aggregate
+from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
 from optax._src.schedule import exponential_decay
+from optax._src.schedule import inject_hyperparams
+from optax._src.schedule import InjectHyperparamsState
 from optax._src.schedule import linear_onecycle_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
@@ -89,7 +102,11 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
+from optax._src.transform import TransformInitFn
+from optax._src.transform import TransformUpdateFn
 from optax._src.transform import Updates
+from optax._src.transform import zero_nans
+from optax._src.transform import ZeroNansState
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -102,10 +119,12 @@ from optax._src.wrappers import LookaheadParams
 from optax._src.wrappers import LookaheadState
 from optax._src.wrappers import masked
 from optax._src.wrappers import MaskedState
+from optax._src.wrappers import maybe_update
+from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
-__version__ = "0.0.2"
+__version__ = "0.0.5"
 
 __all__ = (
     "adabelief",
@@ -134,7 +153,11 @@ __all__ = (
     "control_delta_method",
     "control_variates_jacobians",
     "cosine_decay_schedule",
+    "cosine_distance",
     "cosine_onecycle_schedule",
+    "dpsgd",
+    "differentially_private_aggregate",
+    "DifferentiallyPrivateAggregateState",
     "exponential_decay",
     "fisher_diag",
     "flatten",
@@ -142,14 +165,19 @@ __all__ = (
     "global_norm",
     "GradientTransformation",
     "hessian_diag",
+    "huber_loss",
     "hvp",
     "identity",
     "incremental_update",
+    "inject_hyperparams",
+    "InjectHyperparamsState",
     "lamb",
     "lookahead",
     "LookaheadParams",
     "LookaheadState",
+    "l2_loss",
     "linear_onecycle_schedule",
+    "matrix_inverse_pth_root",
     "masked",
     "MaskedState",
     "measure_valued_jacobians",
@@ -163,6 +191,7 @@ __all__ = (
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
+    "power_iteration",
     "radam",
     "rmsprop",
     "scale",
@@ -188,9 +217,15 @@ __all__ = (
     "Schedule",
     "score_function_jacobians",
     "sgd",
+
     "sm3",
+    "sigmoid_binary_cross_entropy",
+    "smooth_labels",
+    "softmax_cross_entropy",
     "trace",
     "TraceState",
+    "TransformInitFn",
+    "TransformUpdateFn",
     "Updates",
     "yogi",
 )

@@ -173,7 +173,7 @@ def measure_valued_jacobians(
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
   """
-  if dist_builder != utils.multi_normal:
+  if dist_builder is not utils.multi_normal:
     raise ValueError(
         'Unsupported distribution builder for measure_valued_jacobians!')
   dist = dist_builder(*params)
@@ -247,7 +247,7 @@ def measure_valued_estimation_mean(
   vmaped_function = jax.vmap(jax.vmap(function, 1, 0))
   grads = (vmaped_function(positive) - vmaped_function(negative)) / c
 
-  assert grads.shape == (num_samples,) + std.shape
+  chex.assert_shape(grads, (num_samples,) + std.shape)
   return grads
 
 
@@ -313,6 +313,6 @@ def measure_valued_estimation_std(
   vmaped_function = jax.vmap(jax.vmap(function, 1, 0))
   grads = (vmaped_function(positive) - vmaped_function(negative)) / c
 
-  assert grads.shape == (num_samples,) + std.shape
+  chex.assert_shape(grads, (num_samples,) + std.shape)
   return grads
 

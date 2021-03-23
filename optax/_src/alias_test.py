@@ -25,19 +25,21 @@ from optax._src import alias, update
 
 class AliasTest(chex.TestCase):
 
-  @parameterized.named_parameters(
+  @parameterized.parameters(
       ('sgd', lambda: alias.sgd(1e-2, 0.0)),
       ('adam', lambda: alias.adam(1e-1)),
       ('adamw', lambda: alias.adamw(1e-1)),
       ('lamb', lambda: alias.adamw(1e-1)),
       ('rmsprop', lambda: alias.rmsprop(1e-1)),
+      ('rmsprop_momentum', lambda: alias.rmsprop(5e-2, momentum=0.9)),
       ('fromage', lambda: alias.fromage(1e-2)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
       ('sm3', lambda: alias.sm3(8e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
+      ('dpsgd', lambda: alias.dpsgd(1e-2, 10.0, 0.001, 0))
   )
-  def test_parabel(self, opt):
+  def test_parabel(self, opt_name, opt):
     opt = opt()
 
     initial_params = jnp.array([-1.0, 10.0, 1.0])
@@ -49,7 +51,9 @@ class AliasTest(chex.TestCase):
 
     @jax.jit
     def step(params, state):
-      updates, state = opt.update(get_updates(params), state, params)
+      updates = get_updates(params)
+      if opt_name == 'dpsgd': updates = updates[None]
+      updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state
 
@@ -60,19 +64,21 @@ class AliasTest(chex.TestCase):
 
     chex.assert_tree_all_close(params, final_params, rtol=1e-2, atol=1e-2)
 
-  @parameterized.named_parameters(
+  @parameterized.parameters(
       ('sgd', lambda: alias.sgd(2e-3, 0.2)),
       ('adam', lambda: alias.adam(1e-1)),
       ('adamw', lambda: alias.adamw(1e-1)),
       ('lamb', lambda: alias.adamw(1e-1)),
       ('rmsprop', lambda: alias.rmsprop(5e-3)),
+      ('rmsprop_momentum', lambda: alias.rmsprop(5e-3, momentum=0.9)),
       ('fromage', lambda: alias.fromage(5e-3)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
       ('sm3', lambda: alias.sm3(4e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
+      ('dpsgd', lambda: alias.dpsgd(2e-3, 10., 0.001, 0, 0.2))
   )
-  def test_rosenbrock(self, opt):
+  def test_rosenbrock(self, opt_name, opt):
     opt = opt()
 
     a = 1.0
@@ -86,7 +92,9 @@ class AliasTest(chex.TestCase):
 
     @jax.jit
     def step(params, state):
-      updates, state = opt.update(get_updates(params), state, params)
+      updates = get_updates(params)
+      if opt_name == 'dpsgd': updates = updates[None]
+      updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state
 

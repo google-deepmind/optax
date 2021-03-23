@@ -34,7 +34,7 @@ LR = 1e-2
 class TransformTest(parameterized.TestCase):
 
   def setUp(self):
-    super(TransformTest, self).setUp()
+    super().setUp()
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
@@ -185,6 +185,51 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_close(new_params, (jnp.array([0., 4., 0.]),
                                             jnp.array([0., 6., 1.]),
                                             jnp.array([0., 5., 0.])))
+
+  @chex.all_variants
+  def test_zero_nans(self):
+    params = (jnp.zeros([3]), jnp.zeros([3]), jnp.zeros([3]))
+
+    opt = transform.zero_nans()
+    opt_state = self.variant(opt.init)(params)
+    update_fn = self.variant(opt.update)
+
+    equality_comp = lambda a, b: bool(jnp.all(jnp.equal(a, b)))
+    chex.assert_tree_all_equal_comparator(equality_comp, opt_state,
+                                          (jnp.array(False),) * 3)
+
+    # Check an upate with nans
+    grads_with_nans = (jnp.ones([3]),
+                       jnp.array([1., float('nan'), float('nan')]),
+                       jnp.array([float('nan'), 1., 1.]))
+    updates, opt_state = update_fn(grads_with_nans, opt_state)
+    chex.assert_tree_all_equal_comparator(
+        equality_comp, opt_state,
+        (jnp.array(False), jnp.array(True), jnp.array(True)))
+    chex.assert_tree_all_equal_comparator(
+        equality_comp, updates,
+        (jnp.ones([3]), jnp.array([1., 0., 0.]), jnp.array([0., 1., 1.])))
+
+    # Check an upate with nans and infs
+    grads_with_nans_infs = (jnp.ones([3]),
+                            jnp.array([1., float('nan'), float('nan')]),
+                            jnp.array([float('inf'), 1., 1.]))
+    updates, opt_state = update_fn(grads_with_nans_infs, opt_state)
+    chex.assert_tree_all_equal_comparator(
+        equality_comp, opt_state,
+        (jnp.array(False), jnp.array(True), jnp.array(False)))
+    chex.assert_tree_all_equal_comparator(
+        equality_comp, updates,
+        (jnp.ones([3]), jnp.array([1., 0., 0.]),
+         jnp.array([float('inf'), 1., 1.])))
+
+    # Check an upate with only good values
+    grads = (jnp.ones([3]), jnp.ones([3]), jnp.ones([3]))
+    updates, opt_state = update_fn(grads, opt_state)
+    chex.assert_tree_all_equal_comparator(
+        equality_comp, opt_state,
+        (jnp.array(False), jnp.array(False), jnp.array(False)))
+    chex.assert_tree_all_equal_comparator(equality_comp, updates, grads)
 
 
 if __name__ == '__main__':

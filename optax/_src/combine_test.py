@@ -32,7 +32,7 @@ LR = 1e-2
 class ComposeTest(chex.TestCase):
 
   def setUp(self):
-    super(ComposeTest, self).setUp()
+    super().setUp()
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 

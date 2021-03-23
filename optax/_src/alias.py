@@ -15,10 +15,15 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
-from optax._src import combine, schedule, transform
+
+from optax._src import combine
+from optax._src import privacy
+from optax._src import schedule
+from optax._src import transform
+
 
 GradientTransformation = transform.GradientTransformation
 ScalarOrSchedule = Union[float, schedule.Schedule]
@@ -104,7 +109,6 @@ def noisy_sgd(learning_rate: ScalarOrSchedule,
               gamma: float = 0.55,
               seed: int = 0) -> GradientTransformation:
   return combine.chain(
-      transform.trace(decay=0., nesterov=False),
       _scale_by_learning_rate(learning_rate),
       transform.add_noise(eta, gamma, seed),
   )
@@ -121,27 +125,63 @@ def radam(learning_rate: ScalarOrSchedule,
   )
 
 
-def rmsprop(learning_rate: ScalarOrSchedule,
-            decay: float = 0.9,
-            eps: float = 1e-8,
-            centered: bool = False) -> GradientTransformation:
+def rmsprop(
+    learning_rate: ScalarOrSchedule,
+    decay: float = 0.9,
+    eps: float = 1e-8,
+    initial_scale: float = 0.,
+    centered: bool = False,
+    momentum: Optional[float] = None,
+    nesterov: bool = False
+) -> GradientTransformation:
+  """A flexible RmsProp optimiser.
+
+  RmsProp is an SGD variant with learning rate adaptation. The `learning_rate`
+  used for each weight is scaled by a suitable estimate of the magnitude of the
+  gradients on previous steps. Several variants of RmsProp can be found
+  in the literature. This alias provides an easy to configure RmsProp
+  optimiser that can be used to switch between several of these variants.
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    decay: the decay used to track the magnitude of previous gradients.
+    eps: a small numerical constant to avoid dividing by zero when rescaling.
+    initial_scale: (default `0.`), initialisation of accumulators tracking the
+      magnitude of previous updates. PyTorch uses `0`, TF1 uses `1`. When
+      reproducing results from a paper, verify the value used by the authors.
+    centered: (default `False`), whether the second moment or the variance of
+      the past gradients is used to rescale the latest gradients.
+    momentum: (default `None`), the `decay` rate used by the momentum term,
+      when it is set to `None`, then momentum is not used at all.
+    nesterov (default `False`): whether nesterov momentum is used.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
   if centered:
     return combine.chain(
-        transform.scale_by_stddev(decay=decay, eps=eps),
+        transform.scale_by_stddev(
+            decay=decay, eps=eps, initial_scale=initial_scale),
         _scale_by_learning_rate(learning_rate),
+        (transform.trace(decay=momentum, nesterov=nesterov)
+         if momentum is not None else transform.identity())
     )
   return combine.chain(
-      transform.scale_by_rms(decay=decay, eps=eps),
+      transform.scale_by_rms(
+          decay=decay, eps=eps, initial_scale=initial_scale),
       _scale_by_learning_rate(learning_rate),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity())
   )
 
 
 def sgd(learning_rate: ScalarOrSchedule,
-        momentum: float = 0.,
+        momentum: Optional[float] = None,
         nesterov: bool = False) -> GradientTransformation:
   return combine.chain(
-      transform.trace(decay=momentum, nesterov=nesterov),
-      _scale_by_learning_rate(learning_rate),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
   )
 
 
@@ -159,4 +199,21 @@ def yogi(learning_rate: ScalarOrSchedule,
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
+  )
+
+
+def dpsgd(learning_rate: ScalarOrSchedule,
+          l2_norm_clip: float,
+          noise_multiplier: float,
+          seed: int,
+          momentum: Optional[float] = None,
+          nesterov: bool = False) -> GradientTransformation:
+  return combine.chain(
+      privacy.differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else transform.identity()),
+      _scale_by_learning_rate(learning_rate)
   )
