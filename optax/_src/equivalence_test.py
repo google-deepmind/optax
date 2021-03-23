@@ -19,6 +19,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
+from flax import optim
 from jax.experimental import optimizers
 import jax.numpy as jnp
 
@@ -87,6 +88,64 @@ class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
 
     # Check equivalence.
     chex.assert_tree_all_close(jax_params, optax_params, rtol=rtol)
+
+
+class FlaxOptimizersEquivalenceTest(chex.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
+    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+
+  @parameterized.named_parameters(
+      ('sgd',
+       alias.sgd(LR),
+       optim.GradientDescent(LR)),
+      ('momentum',
+       alias.sgd(LR, momentum=0.9),
+       optim.Momentum(LR, beta=0.9)),  # Different names.
+      ('nesterov_momentum',
+       alias.sgd(LR, momentum=0.9, nesterov=True),
+       optim.Momentum(LR, beta=0.9, nesterov=True)),
+      ('rmsprop',
+       alias.rmsprop(LR),
+       optim.RMSProp(LR)),
+      ('centered_rmsprop',
+       alias.rmsprop(LR, centered=True),
+       optim.RMSProp(LR, centered=True)),
+      ('adam',
+       alias.adam(LR),
+       optim.Adam(LR)),
+      ('adam_w',
+       alias.adamw(LR, weight_decay=1e-4),
+       optim.Adam(LR, weight_decay=1e-4)),  # Different name.
+      ('adagrad',
+       alias.adagrad(LR, initial_accumulator_value=0.),  # Different default!
+       optim.Adagrad(LR)),
+      ('lamb',
+       alias.lamb(LR),
+       optim.LAMB(LR)),
+  )
+  def test_flax_optim_equivalence(self, optax_optimizer, flax_optimizer):
+
+    # flax/optim
+    flax_params = self.init_params
+    flax_optimizer = flax_optimizer.create(flax_params)
+    for _ in range(STEPS):
+      flax_optimizer = flax_optimizer.apply_gradient(
+          self.per_step_updates)
+      flax_params = flax_optimizer.target
+
+    # optax
+    optax_params = self.init_params
+    state = optax_optimizer.init(optax_params)
+    for _ in range(STEPS):
+      updates, state = optax_optimizer.update(
+          self.per_step_updates, state, optax_params)
+      optax_params = update.apply_updates(optax_params, updates)
+
+    # Check equivalence.
+    chex.assert_tree_all_close(flax_params, optax_params, rtol=1e-4)
 
 
 if __name__ == '__main__':
