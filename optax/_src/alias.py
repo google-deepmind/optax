@@ -15,15 +15,10 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union, Optional
+from typing import Optional, Union
 
 import jax.numpy as jnp
-
-from optax._src import combine
-from optax._src import privacy
-from optax._src import schedule
-from optax._src import transform
-
+from optax._src import combine, privacy, schedule, transform
 
 GradientTransformation = transform.GradientTransformation
 ScalarOrSchedule = Union[float, schedule.Schedule]
@@ -187,10 +182,10 @@ def sgd(learning_rate: ScalarOrSchedule,
 
 def sm3(learning_rate: float,
         momentum: float = 0.9) -> GradientTransformation:
-    return combine.chain(
-        transform.scale_by_sm3(momentum),
-        transform.scale(-learning_rate),
-    )
+  return combine.chain(
+      transform.scale_by_sm3(momentum),
+      transform.scale(-learning_rate),
+  )
 
 def yogi(learning_rate: ScalarOrSchedule,
          b1: float = 0.9,

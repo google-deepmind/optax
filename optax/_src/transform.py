@@ -15,7 +15,6 @@
 # ==============================================================================
 """Gradient transformations."""
 
-import functools
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 
 import chex
@@ -836,21 +835,27 @@ class ScaleBySM3State(OptState):
 
 def scale_by_sm3(b1: float = 0.9,
                  eps: float = 1e-8) -> GradientTransformation:
-  def splice(seq, i, x):
-    lst = list(seq)
-    lst[i] = x
-    return lst
+  """Scale updates by sm3`.
+
+  References:
+    [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    eps: term added to the denominator to improve numerical stability.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
+    mu = jax.tree_map(jnp.zeros_like, params)
+    nu = jax.tree_map(jnp.zeros_like, params)
     return ScaleBySM3State(mu, nu)
 
   def update_fn(updates, state, params=None):
     del params
     nu = state.nu
-    # jax.tree_multimap(functools.partial(broadcast_into, len(updates.shape)),
-        # state.nu, jnp.arange(state.nu.ndim))
     accum = jax.tree_multimap(lambda v, g: jnp.min(v) + g**2, nu, updates)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
@@ -858,7 +863,7 @@ def scale_by_sm3(b1: float = 0.9,
     nu = jnp.array([accum.max(j) for j in range(updates.ndim)])
 
     return mu, ScaleBySM3State(mu=mu, nu=nu)
-    
+
   return GradientTransformation(init_fn, update_fn)
 
 

@@ -211,7 +211,7 @@ __all__ = (
     "ScaleByRssState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
-    "ScaleBySM3State", 
+    "ScaleBySM3State",
     "ScaleByTrustRatioState",
     "ScaleState",
     "Schedule",
