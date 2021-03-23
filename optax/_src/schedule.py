@@ -448,7 +448,7 @@ def inject_hyperparams(
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
       hparams.update(schedule_fn(count, dtype))
-      return InjectHyperparamsState(
+      return InjectHyperparamsState(  # pylint:disable=too-many-function-args
           count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
     def update_fn(updates, state, params=None):
@@ -459,7 +459,10 @@ def inject_hyperparams(
       hparams.update(schedule_fn(count_inc, dtype))
       updates, inner_state = inner_factory(**other_hps, **hparams).update(
           updates, state.inner_state, params)
+
+      # pylint:disable=too-many-function-args
       return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
+      # pylint:enable=too-many-function-args
 
     return transform.GradientTransformation(init_fn, update_fn)
 
