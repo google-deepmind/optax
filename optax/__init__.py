@@ -45,6 +45,8 @@ from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
 from optax._src.schedule import exponential_decay
+from optax._src.schedule import inject_hyperparams
+from optax._src.schedule import InjectHyperparamsState
 from optax._src.schedule import linear_onecycle_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
@@ -164,6 +166,8 @@ __all__ = (
     "hvp",
     "identity",
     "incremental_update",
+    "inject_hyperparams",
+    "InjectHyperparamsState",
     "lamb",
     "lookahead",
     "LookaheadParams",
