@@ -148,7 +148,7 @@ def exponential_decay(
     staircase: if `True`, decay the values at discrete intervals.
     end_value: the value at which the exponential decay stops. When
       `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
-      an upper bound. Has no effect when `decay_rate' = 0.
+      an upper bound. Has no effect when `decay_rate` = 0.
 
   Returns:
     schedule: A function that maps step counts to values.
