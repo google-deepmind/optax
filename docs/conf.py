@@ -30,7 +30,6 @@ import inspect
 import os
 import sys
 import typing
-import optax
 
 
 def _add_annotations_import(path):
@@ -66,6 +65,7 @@ typing.get_type_hints = lambda obj, *unused: obj.__annotations__
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
+import optax
 import sphinxcontrib.katex as katex
 
 # -- Project information -----------------------------------------------------
