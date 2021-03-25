@@ -183,6 +183,8 @@ def adaptive_grad_clip(clipping, eps=1e-3) -> GradientTransformation:
     return ClipByGlobalNormState()
 
   def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(NO_PARAMS_MSG)
     g_norm = jax.tree_map(unitwise_norm, updates)
     p_norm = jax.tree_map(unitwise_norm, params)
     # Maximum allowable norm
