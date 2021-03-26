@@ -27,11 +27,6 @@ from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
 from optax._src.alias import yogi
-from optax._src.clipping import adaptive_grad_clip
-from optax._src.clipping import clip
-from optax._src.clipping import clip_by_global_norm
-from optax._src.clipping import ClipByGlobalNormState
-from optax._src.clipping import ClipState
 from optax._src.combine import chain
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
@@ -63,6 +58,7 @@ from optax._src.second_order import hvp
 from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
 from optax._src.stochastic_gradient_estimators import pathwise_jacobians
 from optax._src.stochastic_gradient_estimators import score_function_jacobians
+from optax._src.transform import adaptive_grad_clip
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
@@ -72,6 +68,11 @@ from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
 from optax._src.transform import centralize
+from optax._src.transform import clip
+from optax._src.transform import clip_by_global_norm
+from optax._src.transform import ClipByGlobalNormState
+from optax._src.transform import ClipState
+from optax._src.transform import global_norm
 from optax._src.transform import GradientTransformation
 from optax._src.transform import identity
 from optax._src.transform import keep_params_nonnegative
@@ -106,7 +107,6 @@ from optax._src.transform import ZeroNansState
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
-from optax._src.utils import global_norm
 from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState

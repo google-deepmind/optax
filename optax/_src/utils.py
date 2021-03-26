@@ -43,12 +43,6 @@ def safe_norm(x, min_norm):
   return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
 
 
-def global_norm(updates: chex.ArrayTree) -> chex.Array:
-  """Global norm across a nested structure of parameters or updates."""
-  return jnp.sqrt(
-      sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
-
-
 def safe_int32_increment(count):
   """Increments int32 counter by one.
 
