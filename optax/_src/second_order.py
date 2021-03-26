@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Functions for computing diagonals of Hessians & Fisher info of Haiku modules.
+"""Functions for computing diagonals of Hessians & Fisher info of parameters.
 
 Computing the Hessian or Fisher information matrices for neural networks is
 typically intractible due to the quadratic memory requirements. Solving for the
@@ -54,7 +54,7 @@ def hvp(
   Args:
     loss: the loss function.
     v: a vector of size `ravel(params)`.
-    params: parameters of a Haiku module.
+    params: model parameters.
     inputs: inputs at which `loss` is evaluated.
     targets: targets at which `loss` is evaluated.
 
@@ -77,7 +77,7 @@ def hessian_diag(
 
   Args:
     loss: the loss function.
-    params: parameters of a Haiku module.
+    params: model parameters.
     inputs: inputs at which `loss` is evaluated.
     targets: targets at which `loss` is evaluated.
 
@@ -100,7 +100,7 @@ def fisher_diag(
 
   Args:
     negative_log_likelihood: the negative log likelihood function.
-    params: parameters of a Haiku module.
+    params: model parameters.
     inputs: inputs at which `negative_log_likelihood` is evaluated.
     targets: targets at which `negative_log_likelihood` is evaluated.
 
