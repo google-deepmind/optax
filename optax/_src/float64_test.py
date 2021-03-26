@@ -22,14 +22,15 @@ import jax
 from jax.config import config
 import jax.numpy as jnp
 from optax._src import alias
+from optax._src import clipping
 from optax._src import transform
 from optax._src import update
 
 
 ALL_MODULES = [
     ('identity', transform.identity, {}),
-    ('clip', transform.clip, dict(max_delta=1.0)),
-    ('clip_by_global_norm', transform.clip_by_global_norm, dict(max_norm=1.0)),
+    ('clip', clipping.clip, dict(max_delta=1.0)),
+    ('clip_by_global_norm', clipping.clip_by_global_norm, dict(max_norm=1.0)),
     ('trace', transform.trace, dict(decay=0.5, nesterov=False)),
     ('trace_with_nesterov', transform.trace, dict(decay=0.5, nesterov=True)),
     ('scale_by_rss', transform.scale_by_rss, {}),

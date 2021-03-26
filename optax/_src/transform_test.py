@@ -115,29 +115,6 @@ class TransformTest(parameterized.TestCase):
       # Check the rescaled updates match.
       chex.assert_tree_all_close(scaled_updates, manual_updates)
 
-  def test_clip(self):
-    updates = self.per_step_updates
-    # For a sufficiently high delta the update should not be changed.
-    clipper = transform.clip(1e6)
-    clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(clipped_updates, clipped_updates)
-    # Clipping at delta=1 should make all updates exactly 1.
-    clipper = transform.clip(1.)
-    clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(
-        clipped_updates, jax.tree_map(jnp.ones_like, updates))
-
-  def test_clip_by_global_norm(self):
-    updates = self.per_step_updates
-    for i in range(1, STEPS + 1):
-      clipper = transform.clip_by_global_norm(1. / i)
-      updates, _ = clipper.update(updates, None)
-      # Check that the clipper actually works and global norm is <= max_norm
-      self.assertAlmostEqual(transform.global_norm(updates), 1. / i, places=6)
-      updates_step, _ = clipper.update(self.per_step_updates, None)
-      # Check that continuously clipping won't cause numerical issues.
-      chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)
-
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
       ('2d', [[1.0, 2.0], [3.0, 4.0]], [[-0.5, 0.5], [-0.5, 0.5]]),

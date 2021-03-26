@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import transform
+from optax._src import utils
 
 
 # pylint:disable=no-value-for-parameter
@@ -67,7 +68,7 @@ def differentially_private_aggregate(
           ' function expects per-example gradients as input.')
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat)+1)
-    global_grad_norms = jax.vmap(transform.global_norm)(grads_flat)
+    global_grad_norms = jax.vmap(utils.global_norm)(grads_flat)
     divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
     clipped = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads_flat]
     noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
