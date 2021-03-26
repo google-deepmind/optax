@@ -251,7 +251,7 @@ multi_normal
 .. autofunction:: multi_normal
 
 Apply Updates
--------------
+=============
 
 .. autosummary::
     apply_updates
@@ -406,7 +406,7 @@ losses
 
 
 Linear Algebra Operators
--------------------------
+========================
 
 .. currentmodule:: optax
 
@@ -500,7 +500,7 @@ hvp
 
 
 Control Variates
-----------------
+================
 
 .. currentmodule:: optax
 
@@ -529,7 +529,7 @@ moving_avg_baseline
 
 
 Stochastic Gradient Estimators
-------------------------------
+==============================
 
 .. currentmodule:: optax
 
