@@ -20,6 +20,8 @@ from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 import jax
 import jax.numpy as jnp
+
+from optax._src import clipping
 from optax._src import utils
 
 
@@ -27,6 +29,7 @@ from optax._src import utils
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
+
 
 # Function used to initialise the transformation's state.
 TransformInitFn = Callable[
@@ -744,3 +747,11 @@ def zero_nans() -> GradientTransformation:
     return updates, opt_state
 
   return GradientTransformation(init=init_fn, update=update_fn)
+
+
+# Aliases for checkpoint backward compatibility
+ClipState = clipping.ClipState
+clip = clipping.clip
+ClipByGlobalNormState = clipping.ClipByGlobalNormState
+clip_by_global_norm = clipping.clip_by_global_norm
+adaptive_grad_clip = clipping.adaptive_grad_clip
