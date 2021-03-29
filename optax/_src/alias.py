@@ -44,8 +44,8 @@ def adabelief(
 
   AdaBelief is an adaptive learning rate optimiser that focuses on fast
   convergence, generalisation, and stability. It adapts the step size depending
-  on its "belief" in the gradient direction — the optimiser adaptively scales the
-  step size by the difference between the predicted and observed gradients.
+  on its "belief" in the gradient direction — the optimiser adaptively scales
+  the step size by the difference between the predicted and observed gradients.
   AdaBelief is a modified version of Adam and contains the same number of
   parameters.
 
