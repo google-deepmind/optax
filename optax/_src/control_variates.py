@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,13 +58,14 @@ from typing import Any, Callable, Sequence, Tuple
 import chex
 import jax
 import jax.numpy as jnp
-from optax._src import transform
+
+from optax._src import base
 
 
 CvState = Any
-ComputeCv = Callable[[transform.Params, chex.Array, CvState], float]
-CvExpectedValue = Callable[[transform.Params, CvState], CvState]
-UpdateCvState = Callable[[transform.Params, chex.Array, CvState], CvState]
+ComputeCv = Callable[[base.Params, chex.Array, CvState], float]
+CvExpectedValue = Callable[[base.Params, CvState], CvState]
+UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = Tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
@@ -92,7 +92,7 @@ def control_delta_method(
   """
 
   def delta(
-      params: transform.Params,
+      params: base.Params,
       sample: chex.Array,
       state: CvState = None) -> chex.Array:
     """"Second order expansion of `function` at the mean of the input dist."""
@@ -111,7 +111,7 @@ def control_delta_method(
     return control_variate
 
   def expected_value_delta(
-      params: transform.Params, state: CvState) -> float:
+      params: base.Params, state: CvState) -> float:
     """"Expected value of second order expansion of `function` at dist mean."""
     del state
     mean_dist = params[0]
@@ -130,7 +130,7 @@ def control_delta_method(
     return expected_control_variate
 
   def update_state(
-      params: transform.Params,
+      params: base.Params,
       samples: chex.Array,
       state: CvState = None) -> CvState:
     """"No state kept, so no operation is done."""
@@ -166,7 +166,7 @@ def moving_avg_baseline(
     state.
   """
   def moving_avg(
-      params: transform.Params,
+      params: base.Params,
       samples: chex.Array,
       state: CvState = None) -> CvState:
     """"Return the moving average."""
@@ -174,13 +174,13 @@ def moving_avg_baseline(
     return state[0]
 
   def expected_value_moving_avg(
-      params: transform.Params, state: CvState) -> chex.Array:
+      params: base.Params, state: CvState) -> chex.Array:
     """"Return the moving average."""
     del params
     return state[0]
 
   def update_state(
-      params: transform.Params,
+      params: base.Params,
       samples: chex.Array,
       state: CvState = None) -> CvState:
     """"Update the moving average."""
@@ -213,7 +213,7 @@ def control_variates_jacobians(
     control_variate_from_function: Callable[[Callable[[chex.Array], float]],
                                             ControlVariate],
     grad_estimator: Callable[..., jnp.array],
-    params: transform.Params,
+    params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
@@ -341,7 +341,7 @@ def estimate_control_variate_coefficients(
     control_variate_from_function: Callable[[Callable[[chex.Array], float]],
                                             ControlVariate],
     grad_estimator: Callable[..., jnp.array],
-    params: transform.Params,
+    params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,

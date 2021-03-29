@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +24,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from optax._src import clipping
 from optax._src import schedule
 from optax._src import transform
 from optax._src import wrappers
@@ -496,7 +496,7 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_overriding_hyperparam(self):
-    optim = schedule.inject_hyperparams(transform.clip_by_global_norm)(0.1)
+    optim = schedule.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
     params = jnp.zeros((3, 5, 7))
     state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)

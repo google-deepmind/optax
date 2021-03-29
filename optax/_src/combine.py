@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +14,12 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
-from optax._src import transform
-GradientTransformation = transform.GradientTransformation
+from optax._src import base
 
 
-def chain(*args: GradientTransformation) -> GradientTransformation:
+def chain(
+    *args: base.GradientTransformation
+) -> base.GradientTransformation:
   """Applies a list of chainable update transformations.
 
   Given a sequence of chainable transforms, `chain` returns an `init_fn`
@@ -50,4 +50,4 @@ def chain(*args: GradientTransformation) -> GradientTransformation:
       new_state.append(new_s)
     return updates, new_state
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)

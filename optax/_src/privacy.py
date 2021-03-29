@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +17,12 @@
 import jax
 import jax.numpy as jnp
 
-from optax._src import transform
+from optax._src import base
+from optax._src import utils
 
 
 # pylint:disable=no-value-for-parameter
-class DifferentiallyPrivateAggregateState(transform.OptState):
+class DifferentiallyPrivateAggregateState(base.OptState):
   """State containing PRNGKey for `differentially_private_aggregate`."""
   rng_key: jnp.array
 
@@ -30,7 +30,8 @@ class DifferentiallyPrivateAggregateState(transform.OptState):
 def differentially_private_aggregate(
     l2_norm_clip: float,
     noise_multiplier: float,
-    seed: int) -> transform.GradientTransformation:
+    seed: int
+) -> base.GradientTransformation:
   """Aggregates gradients based on the DPSGD algorithm.
 
   WARNING: Unlike other transforms, `differentially_private_aggregate` expects
@@ -67,7 +68,7 @@ def differentially_private_aggregate(
           ' function expects per-example gradients as input.')
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat)+1)
-    global_grad_norms = jax.vmap(transform.global_norm)(grads_flat)
+    global_grad_norms = jax.vmap(utils.global_norm)(grads_flat)
     divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
     clipped = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads_flat]
     noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
@@ -75,4 +76,4 @@ def differentially_private_aggregate(
     return (jax.tree_unflatten(grads_treedef, noised),
             DifferentiallyPrivateAggregateState(rng_key=new_key))
 
-  return transform.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)

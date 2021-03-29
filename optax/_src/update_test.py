@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +15,11 @@
 """Tests for `update.py`."""
 
 from absl.testing import absltest
+
 import chex
 import jax
 import jax.numpy as jnp
+
 from optax._src import update
 
 
