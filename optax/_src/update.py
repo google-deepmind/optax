@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +17,11 @@
 import chex
 import jax
 import jax.numpy as jnp
-from optax._src import transform
 
-Params = transform.Params
-Updates = transform.Updates
+from optax._src import base
 
 
-def apply_updates(params: Params, updates: Updates) -> Params:
+def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   """Applies an update to the corresponding parameters.
 
   This is a utility functions that applies an update to a set of parameters, and
@@ -46,8 +43,10 @@ def apply_updates(params: Params, updates: Updates) -> Params:
 
 
 def incremental_update(
-    new_tensors: Params, old_tensors: Params,
-    step_size: chex.Numeric) -> Params:
+    new_tensors: base.Params,
+    old_tensors: base.Params,
+    step_size: chex.Numeric
+) -> base.Params:
   """Incrementally update parameters via polyak averaging.
 
   Polyak averaging tracks an (exponential moving) average of the past
@@ -70,8 +69,11 @@ def incremental_update(
 
 
 def periodic_update(
-    new_tensors: Params, old_tensors: Params,
-    steps: chex.Array, update_period: int) -> Params:
+    new_tensors: base.Params,
+    old_tensors: base.Params,
+    steps: chex.Array,
+    update_period: int
+) -> base.Params:
   """Periodically update all parameters with new values.
 
   A slow copy of a model's parameters, updated every K actual updates, can be

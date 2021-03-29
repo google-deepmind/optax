@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,193 +14,27 @@
 # ==============================================================================
 """Gradient transformations."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+
+from optax._src import base
+from optax._src import clipping
 from optax._src import utils
 
-
 # pylint:disable=no-value-for-parameter
-OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
-Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
-Updates = Params  # Gradient updates are of the same type as parameters.
-
-# Function used to initialise the transformation's state.
-TransformInitFn = Callable[
-    [Params],
-    Union[OptState, Sequence[OptState]]]
-# Function used to apply a transformation.
-TransformUpdateFn = Callable[
-    [Updates, OptState, Optional[Params]],
-    Tuple[Updates, OptState]]
 
 
-class GradientTransformation(NamedTuple):
-  """Optax transformations consists of a function pair: (initialise, update)."""
-  init: TransformInitFn
-  update: TransformUpdateFn
-
-
-NO_PARAMS_MSG = (
-    'You are using a transformation that requires the current value of'
-    ' parameters, but you are not passing `params` when calling `update`.')
-
-
-class IdentityState(OptState):
-  """The `identity` transformation is stateless."""
-
-
-def identity() -> GradientTransformation:
-  """Stateless identity transformation that leaves input gradients untouched.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return IdentityState()
-
-  def update_fn(updates, state, params=None):
-    del params
-    return updates, state
-
-  return GradientTransformation(init_fn, update_fn)
-
-
-class ClipState(OptState):
-  """The `clip` transformation is stateless."""
-
-
-def clip(max_delta) -> GradientTransformation:
-  """Clip updates element-wise, to be between -max_delta and +max_delta.
-
-  Args:
-    max_delta: the maximum absolute value for each element in the update.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return ClipState()
-
-  def update_fn(updates, state, params=None):
-    del params
-    updates = jax.tree_map(
-        lambda g: jnp.clip(g, -max_delta, max_delta), updates)
-    return updates, state
-
-  return GradientTransformation(init_fn, update_fn)
-
-
-def global_norm(updates: Updates) -> Updates:
-  return jnp.sqrt(
-      sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
-
-
-class ClipByGlobalNormState(OptState):
-  """The `clip_by_global_norm` transformation is stateless."""
-
-
-def clip_by_global_norm(max_norm) -> GradientTransformation:
-  """Clip updates using their global norm.
-
-  References:
-    [Pascanu et al, 2012](https://arxiv.org/abs/1211.5063)
-
-  Args:
-    max_norm: the maximum global norm for an update.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return ClipByGlobalNormState()
-
-  def update_fn(updates, state, params=None):
-    del params
-    g_norm = global_norm(updates)
-    # TODO(b/163995078): revert back to the following (faster) implementation
-    # once analysed how it affects backprop through update (e.g. meta-gradients)
-    # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
-    trigger = g_norm < max_norm
-    updates = jax.tree_map(
-        lambda t: jnp.where(trigger, t, (t / g_norm) * max_norm), updates)
-    return updates, state
-
-  return GradientTransformation(init_fn, update_fn)
-
-
-def unitwise_norm(x):
-  """Computes norms of each output unit separately."""
-  if len(jnp.squeeze(x).shape) <= 1:  # Scalars and vectors
-    axis = None
-    keepdims = False
-  # Note that this assumes parameters with a shape of length 3 are multihead
-  # linear parameters--if you wish to apply AGC to 1D convs, you may need
-  # to modify this line.
-  elif len(x.shape) in [2, 3]:  # Linear layers of shape IO or multihead linear
-    axis = 0
-    keepdims = True
-  elif len(x.shape) == 4:  # Conv kernels of shape HWIO
-    axis = [0, 1, 2,]
-    keepdims = True
-  else:
-    raise ValueError(f'Got a parameter with shape not in [1, 2, 3, 4]! {x}')
-  return jnp.sum(x ** 2, axis=axis, keepdims=keepdims) ** 0.5
-
-
-def unitwise_clip(g_norm, max_norm, grad):
-  """Applies gradient clipping unit-wise."""
-  trigger = g_norm < max_norm
-  # This little max(., 1e-6) is distinct from the normal eps and just prevents
-  # division by zero. It technically should be impossible to engage.
-  clipped_grad = grad * (max_norm / jnp.maximum(g_norm, 1e-6))
-  return jnp.where(trigger, grad, clipped_grad)
-
-
-def adaptive_grad_clip(clipping, eps=1e-3) -> GradientTransformation:
-  """Clip updates to be at most clipping * parameter_norm, unit-wise.
-
-  References:
-    [Brock, Smith, De, Simonyan 2021] High-Performance Large-Scale Image
-    Recognition Without Normalization. (https://arxiv.org/abs/2102.06171)
-
-  Args:
-    clipping: Maximum allowed ratio of update norm to parameter norm.
-    eps: epsilon term to prevent clipping of zero-initialized params.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return ClipByGlobalNormState()
-
-  def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(NO_PARAMS_MSG)
-    g_norm = jax.tree_map(unitwise_norm, updates)
-    p_norm = jax.tree_map(unitwise_norm, params)
-    # Maximum allowable norm
-    max_norm = jax.tree_map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
-    # If grad norm > clipping * param_norm, rescale
-    updates = jax.tree_multimap(unitwise_clip, g_norm, max_norm, updates)
-    return updates, state
-
-  return GradientTransformation(init_fn, update_fn)
-
-
-class TraceState(OptState):
+class TraceState(base.OptState):
   """Holds an aggregation of past updates."""
-  trace: Params
+  trace: base.Params
 
 
-def trace(decay: float, nesterov: bool) -> GradientTransformation:
+def trace(
+    decay: float,
+    nesterov: bool = False
+) -> base.GradientTransformation:
   """Compute a trace of past updates.
 
   Args:
@@ -224,15 +57,18 @@ def trace(decay: float, nesterov: bool) -> GradientTransformation:
         if nesterov else update_trace)
     return updates, TraceState(trace=update_trace)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRssState(OptState):
+class ScaleByRssState(base.OptState):
   """State holding the sum of gradient squares to date."""
-  sum_of_squares: Updates
+  sum_of_squares: base.Updates
 
 
-def scale_by_rss(initial_accumulator_value: float = 0.1, eps: float = 1e-7):
+def scale_by_rss(
+    initial_accumulator_value: float = 0.1,
+    eps: float = 1e-7
+) -> base.GradientTransformation:
   """Rescale updates by the root of the sum of all squared gradients to date.
 
   References:
@@ -262,12 +98,12 @@ def scale_by_rss(initial_accumulator_value: float = 0.1, eps: float = 1e-7):
         lambda scale, g: scale * g, inv_sqrt_g_square, updates)
     return updates, ScaleByRssState(sum_of_squares=sum_of_squares)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRmsState(OptState):
+class ScaleByRmsState(base.OptState):
   """State for exponential root mean-squared (RMS)-normalized updates."""
-  nu: Updates
+  nu: base.Updates
 
 
 def _update_moment(updates, moments, decay, order):
@@ -276,7 +112,10 @@ def _update_moment(updates, moments, decay, order):
 
 
 def scale_by_rms(
-    decay: float = 0.9, eps: float = 1e-8, initial_scale: float = 0.):
+    decay: float = 0.9,
+    eps: float = 1e-8,
+    initial_scale: float = 0.
+) -> base.GradientTransformation:
   """Rescale updates by the root of the exp. moving avg of the square.
 
   References:
@@ -303,18 +142,20 @@ def scale_by_rms(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRStdDevState(OptState):
+class ScaleByRStdDevState(base.OptState):
   """State for centered exponential moving average of squares of updates."""
-  mu: Updates
-  nu: Updates
+  mu: base.Updates
+  nu: base.Updates
 
 
 def scale_by_stddev(
-    decay: float = 0.9, eps: float = 1e-8,
-    initial_scale: float = 0.) -> GradientTransformation:
+    decay: float = 0.9,
+    eps: float = 1e-8,
+    initial_scale: float = 0.
+) -> base.GradientTransformation:
   """Rescale updates by the root of the centered exp. moving average of squares.
 
   References:
@@ -344,14 +185,14 @@ def scale_by_stddev(
         nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByAdamState(OptState):
+class ScaleByAdamState(base.OptState):
   """State for the Adam algorithm."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32.
-  mu: Updates
-  nu: Updates
+  mu: base.Updates
+  nu: base.Updates
 
 
 # TODO(b/183478923): remove legacy reference.
@@ -364,10 +205,12 @@ def _bias_correction(moment, decay, count):
   return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
 
 
-def scale_by_adam(b1: float = 0.9,
-                  b2: float = 0.999,
-                  eps: float = 1e-8,
-                  eps_root: float = 0.0) -> GradientTransformation:
+def scale_by_adam(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0
+) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
@@ -400,14 +243,15 @@ def scale_by_adam(b1: float = 0.9,
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleState(NamedTuple):
-  """The scale transformation is stateless."""
+ScaleState = base.EmptyState
 
 
-def scale(step_size: float) -> GradientTransformation:
+def scale(
+    step_size: float
+) -> base.GradientTransformation:
   """Scale updates by some fixed scalar `step_size`.
 
   Args:
@@ -425,19 +269,22 @@ def scale(step_size: float) -> GradientTransformation:
     updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByBeliefState(OptState):
+class ScaleByBeliefState(base.OptState):
   """State for the rescaling by AdaBelief algorithm."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32.
-  mu: Updates
-  nu: Updates
+  mu: base.Updates
+  nu: base.Updates
 
 
 def scale_by_belief(
-    b1: float = 0.9, b2: float = 0.999,
-    eps: float = 0., eps_root: float = 1e-16) -> GradientTransformation:
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 0.,
+    eps_root: float = 1e-16
+) -> base.GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
 
   References:
@@ -471,14 +318,17 @@ def scale_by_belief(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def scale_by_yogi(
-    b1: float = 0.9, b2: float = 0.999,
-    eps: float = 1e-3, eps_root: float = 0.0,
-    initial_accumulator_value: float = 1e-6) -> GradientTransformation:
-  """Rescale updates according to the Adam algorithm.
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-3,
+    eps_root: float = 0.0,
+    initial_accumulator_value: float = 1e-6
+) -> base.GradientTransformation:
+  """Rescale updates according to the Yogi algorithm.
 
   References:
     [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
@@ -515,14 +365,16 @@ def scale_by_yogi(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-def scale_by_radam(b1: float = 0.9,
-                   b2: float = 0.999,
-                   eps: float = 1e-8,
-                   eps_root: float = 0.0,
-                   threshold: float = 5.0) -> GradientTransformation:
+def scale_by_radam(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    threshold: float = 5.0
+) -> base.GradientTransformation:
   """Rescale updates according to the Rectified Adam algorithm.
 
   References:
@@ -569,14 +421,15 @@ def scale_by_radam(b1: float = 0.9,
         (ro, mu_hat, nu_hat))
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class AddDecayedWeightsState(NamedTuple):
-  """The decay transformation is stateless."""
+AddDecayedWeightsState = base.EmptyState
 
 
-def add_decayed_weights(weight_decay: float = 0.0) -> GradientTransformation:
+def add_decayed_weights(
+    weight_decay: float = 0.0
+) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
 
   Args:
@@ -591,12 +444,12 @@ def add_decayed_weights(weight_decay: float = 0.0) -> GradientTransformation:
 
   def update_fn(updates, state, params):
     if params is None:
-      raise ValueError(NO_PARAMS_MSG)
+      raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_multimap(
         lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 # TODO(b/180608630): Remove deprecated references.
@@ -604,12 +457,14 @@ AdditiveWeightDecayState = AddDecayedWeightsState
 additive_weight_decay = add_decayed_weights
 
 
-class ScaleByScheduleState(OptState):
+class ScaleByScheduleState(base.OptState):
   """Maintains count for scale scheduling."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
 
-def scale_by_schedule(step_size_fn: Callable[[chex.Numeric], chex.Numeric]):
+def scale_by_schedule(
+    step_size_fn: base.Schedule
+) -> base.GradientTransformation:
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
@@ -631,10 +486,10 @@ def scale_by_schedule(step_size_fn: Callable[[chex.Numeric], chex.Numeric]):
     return updates, ScaleByScheduleState(
         count=utils.safe_int32_increment(state.count))
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByFromageState(OptState):
+class ScaleByFromageState(base.OptState):
   """Maintains count for step-size scheduling."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
 
@@ -643,7 +498,9 @@ class ScaleByTrustRatioState(NamedTuple):
   """The scale and decay trust ratio transformation is stateless."""
 
 
-def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
+def scale_by_trust_ratio(
+    min_norm: float = 0.0
+) -> base.GradientTransformation:
   """Scale updates by trust ratio`.
 
   References:
@@ -661,7 +518,7 @@ def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
 
   def update_fn(updates, state, params):
     if params is None:
-      raise ValueError(NO_PARAMS_MSG)
+      raise ValueError(base.NO_PARAMS_MSG)
 
     def _scale_update(update, param):
 
@@ -681,16 +538,20 @@ def scale_by_trust_ratio(min_norm: float = 0.0) -> GradientTransformation:
     updates = jax.tree_multimap(_scale_update, updates, params)
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class AddNoiseState(OptState):
+class AddNoiseState(base.OptState):
   """State for adding gradient noise. Contains a count for annealing."""
   count: jnp.ndarray
   rng_key: jnp.ndarray
 
 
-def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
+def add_noise(
+    eta: float,
+    gamma: float,
+    seed: int
+) -> base.GradientTransformation:
   """Add gradient noise.
 
   References:
@@ -724,16 +585,18 @@ def add_noise(eta: float, gamma: float, seed: int) -> GradientTransformation:
         updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class ApplyEvery(OptState):
+class ApplyEvery(base.OptState):
   """Contains a counter and a gradient accumulator."""
   count: jnp.ndarray
-  grad_acc: Updates
+  grad_acc: base.Updates
 
 
-def apply_every(k: int = 1) -> GradientTransformation:
+def apply_every(
+    k: int = 1
+) -> base.GradientTransformation:
   """Accumulate gradients and apply them every k steps.
 
   Note that if this transformation is part of a chain, the states of the other
@@ -764,7 +627,7 @@ def apply_every(k: int = 1) -> GradientTransformation:
     count_inc = utils.safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def _subtract_mean(g):
@@ -774,11 +637,10 @@ def _subtract_mean(g):
     return g
 
 
-class CentralState(OptState):
-  """The `centralize` transformation is stateless."""
+CentralState = base.EmptyState
 
 
-def centralize() -> GradientTransformation:
+def centralize() -> base.GradientTransformation:
   """Centralize gradients.
 
   References:
@@ -796,77 +658,24 @@ def centralize() -> GradientTransformation:
     updates = jax.tree_map(_subtract_mean, updates)
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
-class NonNegativeParamsState(OptState):
-  """The `keep_params_nonnegative` transformation is stateless."""
+# TODO(b/183800387): remove legacy aliases.
+# These legacy aliases are here for checkpoint compatibility
+# To be removed once checkpoints have updated.
 
-
-def keep_params_nonnegative() -> GradientTransformation:
-  """Modifies the updates to keep parameters non-negative, i.e. >= 0.
-
-  This transformation ensures that parameters after the update will be
-  larger than or equal to zero.
-  In a chain of transformations, this should be the last one.
-
-  WARNING: the transformation expects input params to be non-negative.
-  When params is negative the transformed update will move them to 0.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return NonNegativeParamsState()
-
-  def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(NO_PARAMS_MSG)
-
-    updates = jax.tree_multimap(
-        lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
-    return updates, state
-
-  return GradientTransformation(init_fn, update_fn)
-
-
-class ZeroNansState(OptState):
-  """Contains a tree.
-
-  The entry `found_nan` has the same tree structure as that of the parameters.
-  Each leaf is a single boolean which contains True iff a NaN was detected in
-  the corresponding parameter array at the last call to `update`.
-  """
-  found_nan: Any
-
-
-def zero_nans() -> GradientTransformation:
-  """A transformation which replaces NaNs with 0.
-
-  Zeroing values in gradients is guaranteed to produce a direction of
-  non-increasing loss.
-
-  The state of the transformation has the same tree structure as that of the
-  parameters. Each leaf is a single boolean which contains True iff a NaN was
-  detected in the corresponding parameter array at the last call to `update`.
-  This state is not used by the transformation internally, but lets users be
-  aware when NaNs have been zeroed out.
-
-  Returns:
-    A `GradientTransformation`.
-  """
-
-  def init_fn(params):
-    return ZeroNansState(
-        jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
-
-  def update_fn(updates, opt_state, params=None):
-    del params
-    opt_state = ZeroNansState(
-        jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
-    updates = jax.tree_map(
-        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
-    return updates, opt_state
-
-  return GradientTransformation(init=init_fn, update=update_fn)
+# clip = clipping.clip
+ClipState = clipping.ClipState
+# clip_by_global_norm = clipping.clip_by_global_norm
+ClipByGlobalNormState = clipping.ClipByGlobalNormState
+# global_norm = utils.global_norm
+# identity = base.identity
+IdentityState = base.EmptyState
+# keep_params_nonnegative = constrain.keep_params_nonnegative
+# NonNegativeParamsState = constrain.NonNegativeParamsState
+# OptState = base.OptState
+# Params = base.Params
+# Updates = base.Updates
+# zero_nans = constrain.zero_nans
+# ZeroNansState = constrain.ZeroNansState

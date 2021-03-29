@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +16,15 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import chex
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import alias
+from optax._src import constrain
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
@@ -228,108 +230,6 @@ class WrappersTest(parameterized.TestCase):
       self.assertTrue(ms_opt.has_updated(opt_state))
 
 
-class TestOptimizerState(transform.OptState):
-  """Fast optimizer state for the lookahead tests."""
-  aggregate_grads: transform.Params
-  # Include a variable with non-zero initial value to check that it is reset
-  # correctly by the lookahead optimizer.
-  is_reset: bool = True
-
-
-def _test_optimizer(step_size: float) -> transform.GradientTransformation:
-  """Fast optimizer for the lookahead tests."""
-
-  # Use SGD for simplicity but add non-trivial optimizer state so that the
-  # resetting behaviour of lookahead can be tested.
-  def init_fn(params):
-    aggregate_grads = jax.tree_map(jnp.zeros_like, params)
-    return TestOptimizerState(aggregate_grads, is_reset=True)
-
-  def update_fn(updates, state, params=None):
-    del params  # unused by the test optimizer
-    aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
-    updates = jax.tree_map(lambda u: step_size * u, updates)
-    return updates, TestOptimizerState(aggregate_grads, is_reset=False)
-
-  return transform.GradientTransformation(init_fn, update_fn)
-
-
-class LookaheadTest(chex.TestCase):
-  """Tests for the lookahead optimizer."""
-
-  def setUp(self):
-    super().setUp()
-    self.grads = {'x': 2., 'y': -2}
-    self.initial_params = {'x': 3., 'y': -3}
-    self.synced_initial_params = wrappers.LookaheadParams.init_synced(
-        self.initial_params)
-
-  def loop(self, optimizer, num_steps, params):
-    """Performs a given number of optimizer steps."""
-    init_fn, update_fn = optimizer
-    # Use the chex variant to check various function versions (jit, pmap, etc).
-    step = self.variant(update_fn)
-    opt_state = self.variant(init_fn)(params)
-    for _ in range(num_steps):
-      updates, opt_state = step(self.grads, opt_state, params)
-      params = update.apply_updates(params, updates)
-
-    return params, opt_state
-
-  @chex.all_variants
-  def test_lookahead(self):
-    """Tests the lookahead optimizer in an analytically tractable setting."""
-    sync_period = 3
-    optimizer = wrappers.lookahead(
-        _test_optimizer(-0.5), sync_period=sync_period, slow_step_size=1 / 3)
-
-    final_params, _ = self.loop(optimizer, 2 * sync_period,
-                                self.synced_initial_params)
-    # x steps must be: 3 -> 2 -> 1 -> 2 (sync) -> 1 -> 0 -> 1 (sync).
-    # Similarly for y (with sign flipped).
-    correct_final_params = {'x': 1, 'y': -1}
-    chex.assert_tree_all_close(final_params.slow, correct_final_params)
-
-  @chex.all_variants
-  @parameterized.parameters([False], [True])
-  def test_lookahead_state_reset(self, reset_state):
-    """Checks that lookahead resets the fast optimizer state correctly."""
-    num_steps = sync_period = 3
-    fast_optimizer = _test_optimizer(-0.5)
-    optimizer = wrappers.lookahead(
-        fast_optimizer,
-        sync_period=sync_period,
-        slow_step_size=0.5,
-        reset_state=reset_state)
-
-    _, opt_state = self.loop(optimizer, num_steps, self.synced_initial_params)
-    fast_state = opt_state.fast_state
-    if reset_state:
-      correct_state = fast_optimizer.init(self.initial_params)
-    else:
-      _, correct_state = self.loop(fast_optimizer, num_steps,
-                                   self.initial_params)
-
-    chex.assert_tree_all_close(fast_state, correct_state)
-
-  @chex.all_variants
-  @parameterized.parameters(
-      [1, 0.5, {'x': 1., 'y': -1.}],
-      [1, 0, {'x': 3., 'y': -3.}],
-      [1, 1, {'x': -1., 'y': 1.}],
-      [2, 1, {'x': -1., 'y': 1.}])  # pyformat: disable
-  def test_lookahead_edge_cases(self, sync_period, slow_step_size,
-                                correct_result):
-    """Checks special cases of the lookahed optimizer parameters."""
-    # These edge cases are important to check since users might use them as
-    # simple ways of disabling lookahead in experiments.
-    optimizer = wrappers.lookahead(
-        _test_optimizer(-1), sync_period, slow_step_size)
-    final_params, _ = self.loop(
-        optimizer, num_steps=2, params=self.synced_initial_params)
-    chex.assert_tree_all_close(final_params.slow, correct_result)
-
-
 class MaskedTest(chex.TestCase):
   """Tests for the masked wrapper."""
 
@@ -501,7 +401,7 @@ class MaybeUpdateTest(chex.TestCase):
     def should_update(step):
       return step < MaybeUpdateTest.NUM_STEPS
 
-    opt = wrappers.maybe_update(transform.zero_nans(), should_update)
+    opt = wrappers.maybe_update(constrain.zero_nans(), should_update)
     state = opt.init(params)
     update_fn = self.variant(opt.update)
     for _ in range(MaybeUpdateTest.NUM_STEPS - 1):

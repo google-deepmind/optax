@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +18,13 @@ from typing import Union, Optional
 
 import jax.numpy as jnp
 
+from optax._src import base
 from optax._src import combine
 from optax._src import privacy
-from optax._src import schedule
 from optax._src import transform
 
 
-GradientTransformation = transform.GradientTransformation
-ScalarOrSchedule = Union[float, schedule.Schedule]
+ScalarOrSchedule = Union[float, base.Schedule]
 
 
 def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
@@ -39,7 +37,7 @@ def adabelief(
     learning_rate: ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
-    eps: float = 1e-8) -> GradientTransformation:
+    eps: float = 1e-8) -> base.GradientTransformation:
   """The AdaBelief optimiser.
 
   AdaBelief is an adaptive learning rate optimiser that focuses on fast
@@ -71,7 +69,8 @@ def adabelief(
 def adagrad(
     learning_rate: ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
-    eps: float = 1e-7) -> GradientTransformation:
+    eps: float = 1e-7
+) -> base.GradientTransformation:
   """The Adagrad optimizer.
 
   Adagrad is an algorithm for gradient based optimisation that anneals the
@@ -87,8 +86,8 @@ def adagrad(
   Args:
     learning_rate: this is a fixed global scaling factor.
     initial_accumulator_value: initialisation for the accumulator.
-    eps: a small constant applied to denominator outside of the square root
-      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps: a small constant applied to denominator inside of the square root
+      (as in RMSProp) to avoid dividing by zero when rescaling.
 
   Returns:
     the corresponding `GradientTransformation`.
@@ -105,7 +104,8 @@ def adam(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-    eps_root: float = 0.0) -> GradientTransformation:
+    eps_root: float = 0.0
+) -> base.GradientTransformation:
   """The classic Adam optimiser.
 
   Adam is an SGD variant with learning rate adaptation. The `learning_rate`
@@ -140,7 +140,8 @@ def adamw(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    weight_decay: float = 1e-4) -> GradientTransformation:
+    weight_decay: float = 1e-4
+) -> base.GradientTransformation:
   """Adam with weight decay regularization.
 
   AdamW uses weight decay to regularise learning towards small weights, as
@@ -178,7 +179,8 @@ def adamw(
 
 def fromage(
     learning_rate: float,
-    min_norm: float = 1e-6) -> GradientTransformation:
+    min_norm: float = 1e-6
+) -> base.GradientTransformation:
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
@@ -193,7 +195,8 @@ def lamb(
     b2: float = 0.999,
     eps: float = 1e-6,
     eps_root: float = 0.0,
-    weight_decay: float = 0.) -> GradientTransformation:
+    weight_decay: float = 0.
+) -> base.GradientTransformation:
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay),
@@ -206,7 +209,8 @@ def noisy_sgd(
     learning_rate: ScalarOrSchedule,
     eta: float = 0.01,
     gamma: float = 0.55,
-    seed: int = 0) -> GradientTransformation:
+    seed: int = 0
+) -> base.GradientTransformation:
   r"""A variant of SGD with added noise.
 
   It has been found that adding noise to the gradients can improve
@@ -237,7 +241,8 @@ def radam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    threshold: float = 5.0) -> GradientTransformation:
+    threshold: float = 5.0
+) -> base.GradientTransformation:
   """The Rectified Adam optimiser.
 
   The adaptive learning rate in Adam has undesirably large variance in early
@@ -277,7 +282,7 @@ def rmsprop(
     centered: bool = False,
     momentum: Optional[float] = None,
     nesterov: bool = False
-) -> GradientTransformation:
+) -> base.GradientTransformation:
   """A flexible RMSProp optimiser.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
@@ -313,21 +318,22 @@ def rmsprop(
             decay=decay, eps=eps, initial_scale=initial_scale),
         _scale_by_learning_rate(learning_rate),
         (transform.trace(decay=momentum, nesterov=nesterov)
-         if momentum is not None else transform.identity())
+         if momentum is not None else base.identity())
     )
   return combine.chain(
       transform.scale_by_rms(
           decay=decay, eps=eps, initial_scale=initial_scale),
       _scale_by_learning_rate(learning_rate),
       (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else transform.identity())
+       if momentum is not None else base.identity())
   )
 
 
 def sgd(
     learning_rate: ScalarOrSchedule,
     momentum: Optional[float] = None,
-    nesterov: bool = False) -> GradientTransformation:
+    nesterov: bool = False
+) -> base.GradientTransformation:
   """A canonical Stochastic Gradient Descent optimiser.
 
   This implements stochastic gradient descent. It also includes support for
@@ -348,7 +354,7 @@ def sgd(
   """
   return combine.chain(
       (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else transform.identity()),
+       if momentum is not None else base.identity()),
       _scale_by_learning_rate(learning_rate)
   )
 
@@ -357,7 +363,8 @@ def yogi(
     learning_rate: ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
-    eps: float = 1e-3) -> GradientTransformation:
+    eps: float = 1e-3
+) -> base.GradientTransformation:
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
@@ -370,7 +377,8 @@ def dpsgd(
     noise_multiplier: float,
     seed: int,
     momentum: Optional[float] = None,
-    nesterov: bool = False) -> GradientTransformation:
+    nesterov: bool = False
+) -> base.GradientTransformation:
   """The DPSGD optimiser.
 
   Differential privacy is a standard for privacy guarantees of algorithms
@@ -403,6 +411,6 @@ def dpsgd(
           noise_multiplier=noise_multiplier,
           seed=seed),
       (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else transform.identity()),
+       if momentum is not None else base.identity()),
       _scale_by_learning_rate(learning_rate)
   )

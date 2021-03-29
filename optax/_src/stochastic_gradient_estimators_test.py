@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import chex
 import jax
 import jax.numpy as jnp
