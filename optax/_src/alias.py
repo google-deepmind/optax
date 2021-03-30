@@ -38,6 +38,28 @@ def adabelief(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8) -> base.GradientTransformation:
+  """The AdaBelief optimiser.
+
+  AdaBelief is an adaptive learning rate optimiser that focuses on fast
+  convergence, generalisation, and stability. It adapts the step size depending
+  on its "belief" in the gradient direction — the optimiser adaptively scales
+  the step size by the difference between the predicted and observed gradients.
+  AdaBelief is a modified version of Adam and contains the same number of
+  parameters.
+
+  References:
+    [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the second moment of past gradients.
+    eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
@@ -87,7 +109,7 @@ def adam(
   """The classic Adam optimiser.
 
   Adam is an SGD variant with learning rate adaptation. The `learning_rate`
-  used for each weight is computed from estimates of first and second order
+  used for each weight is computed from estimates of first- and second-order
   moments of the gradients (using suitable exponential moving averages).
 
   References:
