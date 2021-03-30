@@ -18,11 +18,7 @@ from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
-
-from optax._src import base
-from optax._src import clipping
-from optax._src import utils
-
+from optax._src import base, clipping, utils
 
 # pylint:disable=no-value-for-parameter
 
@@ -662,45 +658,13 @@ def centralize() -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class NonNegativeParamsState(OptState):
-  """The `keep_params_nonnegative` transformation is stateless."""
-
-
-def keep_params_nonnegative() -> GradientTransformation:
-  """Modifies the updates to keep parameters non-negative, i.e. >= 0.
-
-  This transformation ensures that parameters after the update will be
-  larger than or equal to zero.
-  In a chain of transformations, this should be the last one.
-
-  WARNING: the transformation expects input params to be non-negative.
-  When params is negative the transformed update will move them to 0.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-
-  def init_fn(_):
-    return NonNegativeParamsState()
-
-  def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(NO_PARAMS_MSG)
-
-    updates = jax.tree_multimap(
-        lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
-    return updates, state
-
-  return base.GradientTransformation(init_fn, update_fn)
-
-
-class ScaleBySM3State(OptState):
+class ScaleBySM3State(base.OptState):
   """State for the SM3 algorithm."""
-  mu: Updates
-  nu: Updates
+  mu: base.Updates
+  nu: base.Updates
 
 def scale_by_sm3(b1: float = 0.9,
-                 eps: float = 1e-8) -> GradientTransformation:
+                 eps: float = 1e-8) -> base.GradientTransformation:
   """Scale updates by sm3`.
 
   References:
@@ -725,51 +689,11 @@ def scale_by_sm3(b1: float = 0.9,
     accum = jax.tree_multimap(lambda v, g: jnp.min(v) + g**2, nu, updates)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
-    mu = _update_moment(updates * accum_inv_sqrt, state.mu, b1, 1)
+    up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
+    mu = _update_moment(up, state.mu, b1, 1)
     nu = jnp.array([accum.max(j) for j in range(updates.ndim)])
 
     return mu, ScaleBySM3State(mu=mu, nu=nu)
-
-  return base.GradientTransformation(init_fn, update_fn)
-
-
-class ZeroNansState(OptState):
-  """Contains a tree.
-
-  The entry `found_nan` has the same tree structure as that of the parameters.
-  Each leaf is a single boolean which contains True iff a NaN was detected in
-  the corresponding parameter array at the last call to `update`.
-  """
-  found_nan: Any
-
-
-def zero_nans() -> GradientTransformation:
-  """A transformation which replaces NaNs with 0.
-
-  Zeroing values in gradients is guaranteed to produce a direction of
-  non-increasing loss.
-
-  The state of the transformation has the same tree structure as that of the
-  parameters. Each leaf is a single boolean which contains True iff a NaN was
-  detected in the corresponding parameter array at the last call to `update`.
-  This state is not used by the transformation internally, but lets users be
-  aware when NaNs have been zeroed out.
-
-  Returns:
-    A `GradientTransformation`.
-  """
-
-  def init_fn(params):
-    return ZeroNansState(
-        jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
-
-  def update_fn(updates, opt_state, params=None):
-    del params
-    opt_state = ZeroNansState(
-        jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
-    updates = jax.tree_map(
-        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
-    return updates, opt_state
 
   return base.GradientTransformation(init_fn, update_fn)
 

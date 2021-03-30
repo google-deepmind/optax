@@ -17,12 +17,7 @@
 from typing import Optional, Union
 
 import jax.numpy as jnp
-
-from optax._src import base
-from optax._src import combine
-from optax._src import privacy
-from optax._src import transform
-
+from optax._src import base, combine, privacy, transform
 
 ScalarOrSchedule = Union[float, base.Schedule]
 
@@ -360,7 +355,7 @@ def sgd(
 
 
 def sm3(learning_rate: float,
-        momentum: float = 0.9) -> GradientTransformation:
+        momentum: float = 0.9) -> base.GradientTransformation:
   return combine.chain(
       transform.scale_by_sm3(momentum),
       transform.scale(-learning_rate),

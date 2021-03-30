@@ -14,17 +14,12 @@
 # ==============================================================================
 """Tests of equivalence between optax and other optimiser libraries."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
-
 import chex
+import jax.numpy as jnp
+from absl.testing import absltest, parameterized
 from flax import optim
 from jax.experimental import optimizers
-import jax.numpy as jnp
-
-from optax._src import alias
-from optax._src import update
-
+from optax._src import alias, update
 
 STEPS = 50
 LR = 1e-2
@@ -62,6 +57,7 @@ class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
        optimizers.rmsprop_momentum(LR, .9, 0.1, 0.9), 1e-5),
       ('adagrad', alias.adagrad(LR_SCHED, 0., 0.,),
        optimizers.adagrad(LR, 0.), 1e-5),
+      ('sm3', alias.sm3(LR), optimizers.sm3(LR), 1e-2),
   )
   def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):
 
