@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +25,7 @@ from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp
+
 from optax._src import utils
 
 

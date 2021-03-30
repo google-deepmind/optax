@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,13 +35,13 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from optax._src import transform
+from optax._src import base
 from optax._src import utils
 
 
 def score_function_jacobians(
     function: Callable[[chex.Array], float],
-    params: transform.Params,
+    params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int) -> Sequence[chex.Array]:
@@ -89,7 +88,7 @@ def score_function_jacobians(
 
 def pathwise_jacobians(
     function: Callable[[chex.Array], float],
-    params: transform.Params,
+    params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int) -> Sequence[chex.Array]:
@@ -136,7 +135,7 @@ def pathwise_jacobians(
 
 def measure_valued_jacobians(
     function: Callable[[chex.Array], float],
-    params: transform.Params,
+    params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,

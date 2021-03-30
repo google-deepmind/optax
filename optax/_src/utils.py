@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +19,19 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 
+from optax._src import base
+
 
 def tile_second_to_last_dim(a):
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
+
+
+def global_norm(updates: base.Updates) -> base.Updates:
+  """Compute the global norm across a nested structure of tensors."""
+  return jnp.sqrt(
+      sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
 
 
 def safe_norm(x, min_norm):

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,13 +28,13 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax._src import transform
+from optax._src import base
 from optax._src import utils
 
-Schedule = Callable[[chex.Numeric], chex.Numeric]
 
-
-def constant_schedule(value: Union[float, int]) -> Schedule:
+def constant_schedule(
+    value: Union[float, int]
+) -> base.Schedule:
   """Constructs a constant schedule.
 
   Args:
@@ -52,7 +51,8 @@ def polynomial_schedule(
     end_value: chex.Scalar,
     power: chex.Scalar,
     transition_steps: int,
-    transition_begin: int = 0) -> Schedule:
+    transition_begin: int = 0
+) -> base.Schedule:
   """Constructs a schedule with polynomial transition from init to end value.
 
   Args:
@@ -91,7 +91,8 @@ def polynomial_schedule(
 
 def piecewise_constant_schedule(
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None) -> Schedule:
+    boundaries_and_scales: Optional[Dict[int, float]] = None
+) -> base.Schedule:
   """Returns a function which implements a piecewise constant schedule.
 
   Args:
@@ -126,7 +127,8 @@ def exponential_decay(
     decay_rate: float,
     transition_begin: int = 0,
     staircase: bool = False,
-    end_value: Optional[float] = None) -> Schedule:
+    end_value: Optional[float] = None
+) -> base.Schedule:
   """Constructs a schedule with either continuous or discrete exponential decay.
 
   This function applies an exponential decay function to a provided initial
@@ -148,7 +150,7 @@ def exponential_decay(
     staircase: if `True`, decay the values at discrete intervals.
     end_value: the value at which the exponential decay stops. When
       `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
-      an upper bound. Has no effect when `decay_rate' = 0.
+      an upper bound. Has no effect when `decay_rate` = 0.
 
   Returns:
     schedule: A function that maps step counts to values.
@@ -193,7 +195,8 @@ def exponential_decay(
 def cosine_decay_schedule(
     init_value: float,
     decay_steps: int,
-    alpha: float = 0.0) -> Schedule:
+    alpha: float = 0.0
+) -> base.Schedule:
   """Returns a function which implements cosine learning rate decay.
 
   For more details see: https://arxiv.org/abs/1608.03983
@@ -231,7 +234,8 @@ def _cosine_interpolate(start: float, end: float, pct: float):
 def piecewise_interpolate_schedule(
     interpolate_type: str,
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None) -> Schedule:
+    boundaries_and_scales: Optional[Dict[int, float]] = None
+) -> base.Schedule:
   """Returns a function which implements a piecewise interpolated schedule.
 
   Args:
@@ -280,7 +284,8 @@ def linear_onecycle_schedule(
     pct_start: float = 0.3,
     pct_final: float = 0.85,
     div_factor: float = 25.0,
-    final_div_factor: float = 1e4) -> Schedule:
+    final_div_factor: float = 1e4
+) -> base.Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a linear annealing strategy.
@@ -320,7 +325,8 @@ def cosine_onecycle_schedule(
     peak_value: float,
     pct_start: float = 0.3,
     div_factor: float = 25.0,
-    final_div_factor: float = 1e4) -> Schedule:
+    final_div_factor: float = 1e4
+) -> base.Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a cosine annealing strategy.
@@ -359,17 +365,17 @@ def _convert_floats(x, dtype):
   return x
 
 
-class InjectHyperparamsState(transform.OptState):
+class InjectHyperparamsState(base.OptState):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
-  inner_state: transform.OptState
+  inner_state: base.OptState
 
 
 def inject_hyperparams(
-    inner_factory: Callable[..., transform.GradientTransformation],
+    inner_factory: Callable[..., base.GradientTransformation],
     static_args: Union[str, Iterable[str]] = ()
-) -> Callable[..., transform.GradientTransformation]:
+) -> Callable[..., base.GradientTransformation]:
   """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
   This wrapper allows you to pass schedules (i.e. a function that returns a
@@ -423,7 +429,7 @@ def inject_hyperparams(
         f'{set(inner_signature.parameters.keys())}')
 
   @functools.wraps(inner_factory)
-  def wrapped_transform(*args, **kwargs) -> transform.GradientTransformation:
+  def wrapped_transform(*args, **kwargs) -> base.GradientTransformation:
     bound_arguments = inner_signature.bind(*args, **kwargs)
     bound_arguments.apply_defaults()
 
@@ -448,7 +454,7 @@ def inject_hyperparams(
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
       hparams.update(schedule_fn(count, dtype))
-      return InjectHyperparamsState(
+      return InjectHyperparamsState(  # pylint:disable=too-many-function-args
           count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
     def update_fn(updates, state, params=None):
@@ -459,8 +465,11 @@ def inject_hyperparams(
       hparams.update(schedule_fn(count_inc, dtype))
       updates, inner_state = inner_factory(**other_hps, **hparams).update(
           updates, state.inner_state, params)
-      return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
 
-    return transform.GradientTransformation(init_fn, update_fn)
+      # pylint:disable=too-many-function-args
+      return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
+      # pylint:enable=too-many-function-args
+
+    return base.GradientTransformation(init_fn, update_fn)
 
   return wrapped_transform
