@@ -55,6 +55,7 @@ from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
 from optax._src.loss import cosine_distance
+from optax._src.loss import cosine_similarity
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
 from optax._src.loss import sigmoid_binary_cross_entropy
@@ -154,6 +155,7 @@ __all__ = (
     "cosine_decay_schedule",
     "cosine_distance",
     "cosine_onecycle_schedule",
+    "cosine_similarity",
     "dpsgd",
     "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",

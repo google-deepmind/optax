@@ -172,22 +172,36 @@ class CosineDistanceTest(parameterized.TestCase):
     super().setUp()
     self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
     self.ts = np.array([[0., 1.2, 0.2], [1., -0.3, 0.]], dtype=np.float32)
-    # computed expected output from `scipy`.
+    # distance computed expected output from `scipy 1.20`.
     self.exp = np.array([0.9358251989, 1.0464068465], dtype=np.float32)
 
   @chex.all_variants()
-  def test_scalar(self):
+  def test_scalar_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.cosine_distance)(self.ys[0], self.ts[0]),
         self.exp[0], atol=1e-4)
 
   @chex.all_variants()
-  def test_batched(self):
+  def test_scalar_similarity(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(loss.cosine_similarity)(self.ys[0], self.ts[0]),
+        1. - self.exp[0], atol=1e-4)
+
+  @chex.all_variants()
+  def test_batched_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.cosine_distance)(self.ys, self.ts),
         self.exp, atol=1e-4)
+
+  @chex.all_variants()
+  def test_batched_similarity(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(loss.cosine_similarity)(self.ys, self.ts),
+        1. - self.exp, atol=1e-4)
 
 
 if __name__ == '__main__':

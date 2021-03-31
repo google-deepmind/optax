@@ -166,17 +166,16 @@ def softmax_cross_entropy(
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
 
 
-def cosine_distance(
+def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,
     epsilon: float = 0.,
 ) -> chex.Array:
-  r"""Computes the cosine distance between targets and predictions.
+  r"""Computes the cosine similarity between targets and predictions.
 
   The cosine **similarity** is a measure of similarity between vectors defined
   as the cosine of the angle between them, which is also the inner product of
-  those vectors normalized to have unit norm. The cosine **distance**,
-  implemented here, measures instead the **dissimilarity** as `1 - cos(\theta)`.
+  those vectors normalized to have unit norm.
 
   References:
     [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
@@ -199,5 +198,32 @@ def cosine_distance(
       batched_norm_fn(targets, epsilon), axis=-1)
   unit_predictions = predictions / jnp.expand_dims(
       batched_norm_fn(predictions, epsilon), axis=-1)
+  # return cosine similarity.
+  return jnp.sum(unit_targets * unit_predictions, axis=-1)
+
+
+def cosine_distance(
+    predictions: chex.Array,
+    targets: chex.Array,
+    epsilon: float = 0.,
+) -> chex.Array:
+  r"""Computes the cosine distance between targets and predictions.
+
+  The cosine **distance**, implemented here, measures the **dissimilarity**
+  of two vectors as the opposite of cosine **similarity**: `1 - cos(\theta)`.
+
+  References:
+    [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
+
+  Args:
+    predictions: The predicted vector.
+    targets: Ground truth target vector.
+    epsilon: minimum norm for terms in the denominator of the cosine similarity.
+
+  Returns:
+    cosine similarity values.
+  """
+  chex.assert_equal_shape([targets, predictions])
+  chex.assert_type([targets, predictions], float)
   # cosine distance = 1 - cosine similarity.
-  return 1. - jnp.sum(unit_targets * unit_predictions, axis=-1)
+  return 1. - cosine_similarity(predictions, targets, epsilon)
