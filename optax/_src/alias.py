@@ -365,6 +365,24 @@ def yogi(
     b2: float = 0.999,
     eps: float = 1e-3
 ) -> base.GradientTransformation:
+  """The Yogi optimiser.
+
+  Yogi is an adaptive optimiser, which provides control in tuning the effective
+  learning rate to prevent it from increasing. By doing so, it focuses on
+  addressing the issues of convergence and generalisation in exponential moving
+  average-based adaptive methods (such as Adam and RMSprop). Yogi is a
+  modification of Adam and uses the same parameters.
+
+  References:
+    [Zaheer et al, 2020](http://www.sanjivk.com/yogi_nips2018.pdf)
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the second moment of past gradients.
+    eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+  """
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
