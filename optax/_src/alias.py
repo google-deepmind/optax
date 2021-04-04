@@ -182,6 +182,21 @@ def fromage(
     min_norm: float = 1e-6
 ) -> base.GradientTransformation:
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
+  """The Frobenius matched gradient descent (Fromage) optimiser.
+
+  Fromage is a learning algorithm that does not require learning rate tuning.
+  The optimiser is based on modelling neural network gradients via deep relative
+  trust (a distance function on deep neural networks). Fromage is similar to the
+  LARS optimiser and can work on a range of standard neural network benchmarks,
+  such as natural language Transformers and generative adversarial networks.
+
+  References:
+    [Bernstein et al, 2020](https://arxiv.org/abs/2002.03432)
+  
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    min_norm: a weight decay hyperparameter.
+  """
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
       _scale_by_learning_rate(learning_rate * mult),
