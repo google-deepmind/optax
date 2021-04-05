@@ -195,6 +195,9 @@ def fromage(
   Args:
     learning_rate: this is a fixed global scaling factor.
     min_norm: a weight decay hyperparameter.
+  
+  Returns:
+    the corresponding `GradientTransformation`.
   """
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
