@@ -181,7 +181,6 @@ def fromage(
     learning_rate: float,
     min_norm: float = 1e-6
 ) -> base.GradientTransformation:
-  mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   """The Frobenius matched gradient descent (Fromage) optimiser.
 
   Fromage is a learning algorithm that does not require learning rate tuning.
@@ -197,6 +196,7 @@ def fromage(
     learning_rate: this is a fixed global scaling factor.
     min_norm: a weight decay hyperparameter.
   """
+  mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
       _scale_by_learning_rate(learning_rate * mult),
