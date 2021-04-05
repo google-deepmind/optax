@@ -382,6 +382,9 @@ def yogi(
     b2: the exponential decay rate to track the second moment of past gradients.
     eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
+
+  Returns:
+    the corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
