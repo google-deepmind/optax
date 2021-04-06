@@ -191,11 +191,11 @@ def fromage(
 
   References:
     [Bernstein et al, 2020](https://arxiv.org/abs/2002.03432)
-  
+
   Args:
     learning_rate: this is a fixed global scaling factor.
     min_norm: a weight decay hyperparameter.
-  
+
   Returns:
     the corresponding `GradientTransformation`.
   """
