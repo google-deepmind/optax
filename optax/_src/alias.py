@@ -214,10 +214,10 @@ def lamb(
     b2: the exponential decay rate to track the second moment of past gradients.
     eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0.0`), a small constant applied to denominator inside the
-      square root (as in RMSProp), to avoid dividing by zero when rescaling.
+    eps_root: (default `0.0`), a small constant applied to denominator inside
+      the square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for instance when computing (meta-)gradients through Adam.
-    weight_decay (default `0.`): strength of the weight decay regularization.    
+    weight_decay (default `0.`): strength of the weight decay regularization.
 
   Returns:
     the corresponding `GradientTransformation`.
