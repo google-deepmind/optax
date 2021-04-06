@@ -207,7 +207,7 @@ def lamb(
 
   References:
     [You et al, 2019](https://arxiv.org/abs/1904.00962)
-  
+
   Args:
     learning_rate: this is a fixed global scaling factor.
     b1: the exponential decay rate to track the first moment of past gradients.
