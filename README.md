@@ -12,10 +12,10 @@ that can be easily recombined in custom ways.
 
 Our goals are to:
 
-*   provide simple, well-tested, efficient implementations of core components,
-*   improve research productivity by enabling to easily combine low level
-    ingredients into custom optimiser (or other gradient processing components).
-*   accelerate adoption of new ideas by making it easy for anyone to contribute.
+*   Provide simple, well-tested, efficient implementations of core components.
+*   Improve research productivity by enabling to easily combine low level
+    ingredients into custom optimisers (or other gradient processing components).
+*   Accelerate adoption of new ideas by making it easy for anyone to contribute.
 
 We favour focusing on small composable building blocks that can be effectively
 combined into custom solutions. Others may build upon these basic components
@@ -27,15 +27,21 @@ folder as `jax.experimental.optix`. Given the wide adoption across DeepMind
 of `optix`, and after a few iterations on the API, `optix` was eventually moved
 out of `experimental` as a standalone open-source library, renamed `optax`.
 
+Documentation on Optax can be found at [optax.readthedocs.io](https://optax.readthedocs.io/).
+
 ## Installation
 
 Optax can be installed with pip directly from github, with the following command:
 
-`pip install git+git://github.com/deepmind/optax.git`
+```shell
+pip install git+git://github.com/deepmind/optax.git
+```
 
 or from PyPI:
 
-`pip install optax`
+```shell
+pip install optax
+```
 
 ## Components
 
@@ -45,8 +51,8 @@ One of the key building blocks of `optax` is a `GradientTransformation`.
 
 Each transformation is defined two functions:
 
-*   state = init(params)
-*   grads, state = update(grads, state, params=None)
+*   `state = init(params)`
+*   `grads, state = update(grads, state, params=None)`
 
 The `init` function initializes a (possibly empty) set of statistics (aka state)
 and the `update` function transforms a candidate gradient given some statistics,
@@ -152,8 +158,8 @@ Stochastic gradient estimators compute Monte Carlo estimates of gradients of
 the expectation of a function under a distribution with respect to the
 distribution's parameters.
 
-Unbiased estimators such as the score function estimator (REINFORCE),
-pathwise estimator (reparametrization trick) or measure valued estimator
+Unbiased estimators, such as the score function estimator (REINFORCE),
+pathwise estimator (reparameterization trick) or measure valued estimator,
 are implemented: `score_function_jacobians`, `pathwise_jacobians` and `
 measure_valued_jacobians`. Their applicability (both in terms of functions and
 distributions) is discussed in their respective documentation.
@@ -168,6 +174,7 @@ distribution. These can then be used to update distributional parameters, or
 to assess gradient variance.
 
 Example of how to use the `pathwise_jacobians` estimator:
+
 ```python
   dist_params = [mean, log_scale]
   function = lambda x: jnp.sum(x * weights)
