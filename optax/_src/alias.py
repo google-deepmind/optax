@@ -197,6 +197,31 @@ def lamb(
     eps_root: float = 0.0,
     weight_decay: float = 0.
 ) -> base.GradientTransformation:
+  """The LAMB optimiser.
+
+  LAMB is a general purpose layer-wise adaptive large batch optimiser designed
+  to provide consistent training performance across a wide range of tasks,
+  including those that use attention-based models (such as Transformers) and
+  ResNet-50. The optimiser is able to work with small and large batches sizes.
+  LAMB was inspired by the LARS learning algorithm.
+
+  References:
+    [You et al, 2019](https://arxiv.org/abs/1904.00962)
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the second moment of past gradients.
+    eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: (default `0.0`), a small constant applied to denominator inside
+      the square root (as in RMSProp), to avoid dividing by zero when rescaling.
+      This is needed for instance when computing (meta-)gradients through Adam.
+    weight_decay (default `0.`): strength of the weight decay regularization.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay),
