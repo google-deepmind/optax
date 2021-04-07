@@ -194,7 +194,9 @@ def fromage(
 
   Args:
     learning_rate: this is a fixed global scaling factor.
-    min_norm: a weight decay hyperparameter.
+    min_norm: a minimum value that the norm of the gradients updates and the
+    norm of the layer parameters can be clipped to to avoid dividing by zero
+    when computing the trust ratio (as in the LARS paper).
 
   Returns:
     the corresponding `GradientTransformation`.
