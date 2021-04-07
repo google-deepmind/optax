@@ -202,7 +202,7 @@ def lamb(
   LAMB is a general purpose layer-wise adaptive large batch optimiser designed
   to provide consistent training performance across a wide range of tasks,
   including those that use attention-based models (such as Transformers) and
-  ResNet-50. The optimiser is able to work with small and large batches sizes.
+  ResNet-50. The optimiser is able to work with small and large batch sizes.
   LAMB was inspired by the LARS learning algorithm.
 
   References:
