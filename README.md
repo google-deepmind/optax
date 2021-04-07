@@ -1,6 +1,7 @@
 # Optax
 
 ![CI status](https://github.com/deepmind/optax/workflows/tests/badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/optax/badge/?version=latest)](http://optax.readthedocs.io)
 
 ## Introduction
 
