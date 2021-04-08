@@ -12,46 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""JAX efficiently trains a differentially private conv net on MNIST.
-This script contains a JAX implementation of Differentially Private Stochastic
-Gradient Descent (https://arxiv.org/abs/1607.00133). DPSGD requires clipping
-the per-example parameter gradients, which is non-trivial to implement
-efficiently for convolutional neural networks.  The JAX XLA compiler shines in
-this setting by optimizing the minibatch-vectorized computation for
-convolutional architectures. Train time takes a few seconds per epoch on a
-commodity GPU.
-This code depends on tensorflow_privacy (https://github.com/tensorflow/privacy)
-  Install instructions:
-    $ pip install tensorflow git+https://github.com/tensorflow/privacy.git
+"""Trains a differentially private convolutional neural network on MNIST.
+
+A large portion of this code is forked from the differentially private SGD
+example in the JAX repo:
+https://github.com/google/jax/blob/master/examples/differentially_private_sgd.py
+
+Differentially Private Stochastic Gradient Descent
+(https://arxiv.org/abs/1607.00133) requires clipping the per-example parameter
+gradients, which is non-trivial to implement efficiently for convolutional
+neural networks.  The JAX XLA compiler shines in this setting by optimizing the
+minibatch-vectorized computation for convolutional architectures. Train time
+takes a few seconds per epoch on a commodity GPU.
+
 The results match those in the reference TensorFlow baseline implementation:
-  https://github.com/tensorflow/privacy/tree/master/tutorials
-Example invocations:
+https://github.com/tensorflow/privacy/tree/master/tutorials
+
+Example invocations from within the `examples/` directory:
+
   # this non-private baseline should get ~99% acc
-  python -m examples.differentially_private_sgd \
+  python differentially_private_sgd.py \
     --dpsgd=False \
     --learning_rate=.1 \
-    --epochs=20 \
-   this private baseline should get ~95% acc
-  python -m examples.differentially_private_sgd \
+    --epochs=20
+
+  # this private baseline should get ~95% acc
+  python differentially_private_sgd.py \
    --dpsgd=True \
    --noise_multiplier=1.3 \
    --l2_norm_clip=1.5 \
    --epochs=15 \
-   --learning_rate=.25 \
+   --learning_rate=.25
+
   # this private baseline should get ~96.6% acc
-  python -m examples.differentially_private_sgd \
+  python differentially_private_sgd.py \
    --dpsgd=True \
    --noise_multiplier=1.1 \
    --l2_norm_clip=1.0 \
    --epochs=60 \
-   --learning_rate=.15 \
+   --learning_rate=.15
+
   # this private baseline should get ~97% acc
-  python -m examples.differentially_private_sgd \
+  python differentially_private_sgd.py \
    --dpsgd=True \
    --noise_multiplier=0.7 \
    --l2_norm_clip=1.5 \
    --epochs=45 \
-   --learning_rate=.25 \
+   --learning_rate=.25
 """
 
 import time
@@ -83,11 +90,7 @@ flags.DEFINE_float('noise_multiplier', 1.1,
 flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
 flags.DEFINE_integer('batch_size', 256, 'Batch size')
 flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-flags.DEFINE_integer('seed', 0, 'Seed for jax PRNG')
-flags.DEFINE_integer(
-    'microbatches', None, 'Number of microbatches '
-    '(must evenly divide batch_size)')
-flags.DEFINE_string('model_dir', None, 'Model directory')
+flags.DEFINE_integer('seed', 1337, 'Seed for JAX PRNG')
 flags.DEFINE_float('delta', 1e-5, 'Target delta used to compute privacy spent.')
 
 
@@ -174,8 +177,8 @@ def main(_):
 
     # Determine privacy loss so far
     if FLAGS.dpsgd:
-      steps_per_epoch = NUM_EXAMPLES // FLAGS.batch_size
-      eps = compute_epsilon(epoch * steps_per_epoch, FLAGS.delta)
+      steps = epoch * NUM_EXAMPLES // FLAGS.batch_size
+      eps = compute_epsilon(steps, FLAGS.delta)
       print(f'For delta={FLAGS.delta:.0e}, the current epsilon is: {eps:.2f}.')
     else:
       print('Trained with vanilla non-private SGD optimizer.')
