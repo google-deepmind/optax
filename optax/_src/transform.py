@@ -14,6 +14,7 @@
 # ==============================================================================
 """Gradient transformations."""
 
+from functools import reduce
 from typing import NamedTuple
 
 import jax
@@ -678,22 +679,32 @@ def scale_by_sm3(b1: float = 0.9,
     An (init_fn, update_fn) tuple.
   """
 
+  def zeros_for_dim(p):
+   return [jnp.zeros([s]) for s in p.shape]
+
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)
+    mu = jax.tree_map(zeros_for_dim, params)
     nu = jax.tree_map(jnp.zeros_like, params)
     return ScaleBySM3State(mu, nu)
 
+  def _expanded_shape(shape, axis):
+    # Replaces a `shape` of [M, N, K] with 1 in all dimensions except for i.
+    # For eg: i = 1 returns [1, N, 1].
+    rank = len(shape)
+    return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
+
   def update_fn(updates, state, params=None):
     del params
-    nu = state.nu
-    accum = jax.tree_multimap(lambda v, g: jnp.min(v) + g**2, nu, updates)
+    mu = jax.tree_multimap(lambda g, v: [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)], updates, state.mu)
+    accum = jax.tree_multimap(lambda g, v: g**2 + reduce(jnp.minimum, v), updates, mu)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
-    mu = _update_moment(up, state.mu, b1, 1)
-    nu = jnp.array([accum.max(j) for j in range(updates.ndim)])
+    nu = _update_moment(up, state.nu, b1, 1)
+    #TODO mu
+    mu = jax.tree_multimap(lambda g, v: g**2 + reduce(jnp.minimum, v), updates, mu)
 
-    return mu, ScaleBySM3State(mu=mu, nu=nu)
+    return nu, ScaleBySM3State(mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
 
