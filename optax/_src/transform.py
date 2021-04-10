@@ -694,18 +694,23 @@ def scale_by_sm3(b1: float = 0.9,
     return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
 
   def other_axes(idx, ndim):
-        return list(range(idx)) + list(range(idx+1, ndim))
+    return list(range(idx)) + list(range(idx+1, ndim))
 
   def update_fn(updates, state, params=None):
     del params
-    mu = jax.tree_multimap(lambda g, v: [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)], updates, state.mu)
-    accum = jax.tree_multimap(lambda g, v: g**2 + reduce(jnp.minimum, v), updates, mu)
+    mu = jax.tree_multimap(lambda g, v:
+                          [jnp.reshape(v[i], _expanded_shape(g.shape, i))
+                          for i in range(g.ndim)],
+                          updates, state.mu)
+    accum = jax.tree_multimap(lambda g, v: g**2 + reduce(jnp.minimum, v),
+                              updates, mu)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
     nu = _update_moment(up, state.nu, b1, 1)
     #TODO mu
-    mu = jax.tree_map(lambda g: [jnp.max(g, axis=other_axes(i, g.ndim)) for i in range(g.ndim)], updates)
+    mu = jax.tree_map(lambda g: [jnp.max(g, axis=other_axes(i, g.ndim))
+                      for i in range(g.ndim)], accum)
 
     return nu, ScaleBySM3State(mu=mu, nu=nu)
 
