@@ -34,7 +34,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(1e-2)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
-      ('sm3', lambda: alias.sm3(5e-1)),
+      ('sm3', lambda: alias.sm3(5.1)),
       ('yogi', lambda: alias.yogi(1.0)),
       ('dpsgd', lambda: alias.dpsgd(1e-2, 10.0, 0.001, 0))
   )
@@ -73,7 +73,7 @@ class AliasTest(chex.TestCase):
       ('fromage', lambda: alias.fromage(5e-3)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
-      ('sm3', lambda: alias.sm3(5e-2)),
+      ('sm3', lambda: alias.sm3(2e-2)),
       ('yogi', lambda: alias.yogi(1.0)),
       ('dpsgd', lambda: alias.dpsgd(2e-3, 10., 0.001, 0, 0.2))
   )
