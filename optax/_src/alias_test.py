@@ -18,7 +18,6 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import absltest, parameterized
-from jax.experimental import optimizers
 from optax._src import alias, update
 
 
