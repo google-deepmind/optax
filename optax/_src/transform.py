@@ -702,7 +702,7 @@ def scale_by_sm3(b1: float = 0.9,
     else:
       return coeffs[0]*g**2 + coeffs[1]*reduce(jnp.minimum, v)
 
-  def _new_mu(g):
+  def _new_mu(g, i):
     if g.ndim < 2:
       return g
     else:
@@ -723,7 +723,7 @@ def scale_by_sm3(b1: float = 0.9,
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
     nu = _update_moment(up, state.nu, b1, 1)
-    mu = jax.tree_map(lambda g: [_new_mu(g)
+    mu = jax.tree_map(lambda g: [_new_mu(g, i)
                       for i in range(g.ndim)], accum)
 
     return nu, ScaleBySM3State(mu=mu, nu=nu)
