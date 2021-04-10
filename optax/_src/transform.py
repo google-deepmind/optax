@@ -717,8 +717,7 @@ def scale_by_sm3(b1: float = 0.9,
                           [jnp.reshape(v[i], _expanded_shape(g.shape, i))
                           for i in range(g.ndim)],
                           updates, state.mu)
-    accum = jax.tree_multimap(lambda g, v: _new_accum(g, v),
-                              updates, mu)
+    accum = jax.tree_multimap(_new_accum, updates, mu)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
