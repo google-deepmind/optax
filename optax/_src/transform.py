@@ -665,6 +665,7 @@ class ScaleBySM3State(base.OptState):
   nu: base.Updates
 
 def scale_by_sm3(b1: float = 0.9,
+                 b2: float = 1.0,
                  eps: float = 1e-8) -> base.GradientTransformation:
   """Scale updates by sm3`.
 
@@ -673,6 +674,7 @@ def scale_by_sm3(b1: float = 0.9,
 
   Args:
     b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of squared grads.
     eps: term added to the denominator to improve numerical stability.
 
   Returns:
@@ -693,6 +695,19 @@ def scale_by_sm3(b1: float = 0.9,
     rank = len(shape)
     return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
 
+  def _new_accum(g, v):
+    coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
+    if g.ndim < 2:
+      return coeffs[0]*g**2 + coeffs[1]*v[0]
+    else:
+      return coeffs[0]*g**2 + coeffs[1]*reduce(jnp.minimum, v)
+
+  def _new_mu(g):
+    if g.ndim < 2:
+      return g
+    else:
+      return jnp.max(g, axis=other_axes(i, g.ndim))
+
   def other_axes(idx, ndim):
     return list(range(idx)) + list(range(idx+1, ndim))
 
@@ -702,14 +717,13 @@ def scale_by_sm3(b1: float = 0.9,
                           [jnp.reshape(v[i], _expanded_shape(g.shape, i))
                           for i in range(g.ndim)],
                           updates, state.mu)
-    accum = jax.tree_multimap(lambda g, v: g**2 + reduce(jnp.minimum, v),
+    accum = jax.tree_multimap(lambda g, v: _new_accum(g, v),
                               updates, mu)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
     nu = _update_moment(up, state.nu, b1, 1)
-    #TODO mu
-    mu = jax.tree_map(lambda g: [jnp.max(g, axis=other_axes(i, g.ndim))
+    mu = jax.tree_map(lambda g: [_new_mu(g)
                       for i in range(g.ndim)], accum)
 
     return nu, ScaleBySM3State(mu=mu, nu=nu)
