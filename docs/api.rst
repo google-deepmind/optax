@@ -165,6 +165,9 @@ Optax Transforms and States
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: adaptive_grad_clip
+.. autoclass:: AdaptiveGradClipState
+  :members:
+
 .. autofunction:: add_decayed_weights
 .. autofunction:: add_noise
 .. autoclass:: AddDecayedWeightsState
@@ -386,6 +389,7 @@ Common Losses
 .. autosummary::
 
     cosine_distance
+    cosine_similarity
     huber_loss
     l2_loss
     sigmoid_binary_cross_entropy
@@ -397,11 +401,12 @@ losses
 ~~~~~~~
 
 .. autofunction:: cosine_distance
+.. autofunction:: cosine_similarity
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
-.. autofunction:: softmax_cross_entropy
+.. autofunction:: softmax_cross_entropy"
 
 
 
