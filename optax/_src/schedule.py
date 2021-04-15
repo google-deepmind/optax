@@ -183,12 +183,12 @@ def exponential_decay(
     clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum
 
   def schedule(count):
-    count -= transition_begin
-    p = count / transition_steps
+    decreased_count = count - transition_begin
+    p = decreased_count / transition_steps
     if staircase:
       p = jnp.floor(p)
     decayed_value = jnp.where(
-        count <= 0, init_value, init_value * jnp.power(decay_rate, p))
+        decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p))
     if end_value is not None:
       decayed_value = clip_fn(decayed_value, end_value)
     return decayed_value

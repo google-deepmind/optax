@@ -281,6 +281,26 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
+  @chex.all_variants()
+  def test_immutable_count(self):
+    """Checks constant schedule for exponential decay schedule."""
+    num_steps = 5
+    # Get schedule function.
+    init_value = 32.
+    schedule_fn = self.variant(
+        schedule.exponential_decay(
+            init_value=init_value, transition_steps=1,
+            decay_rate=0.5))
+    # Test that generated values equal the expected schedule values.
+    generated_vals = []
+    for count in range(num_steps):
+      # Jax arrays are read-only in ChexVariantType.WITHOUT_DEVICE.
+      immutable_count = jnp.array(count, dtype=jnp.float32)
+      generated_vals.append(schedule_fn(immutable_count))
+    expected_vals = np.array([32, 16, 8, 4, 2], dtype=np.float32)
+    np.testing.assert_allclose(
+        expected_vals, np.array(generated_vals), atol=1e-3)
+
 
 class CosineDecayTest(chex.TestCase):
 
