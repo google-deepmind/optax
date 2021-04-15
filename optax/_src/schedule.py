@@ -21,7 +21,7 @@ parameters or the exploration factor used to select actions.
 
 import functools
 import inspect
-from typing import Callable, Dict, Union, Optional, Iterable
+from typing import Callable, Dict, Union, Optional, Iterable, Sequence
 
 from absl import logging
 import chex
@@ -87,6 +87,10 @@ def polynomial_schedule(
     frac = 1 - count / transition_steps
     return (init_value - end_value) * (frac**power) + end_value
   return schedule
+
+
+# Alias polynomial schedule to linear schedule for convenience.
+linear_schedule = functools.partial(polynomial_schedule, power=1)
 
 
 def piecewise_constant_schedule(
@@ -356,6 +360,101 @@ def cosine_onecycle_schedule(
       peak_value / div_factor,
       {int(pct_start * transition_steps): div_factor,
        int(transition_steps): 1. / (div_factor * final_div_factor)})
+
+
+def join_schedules(schedules: Sequence[base.Schedule],
+                   boundaries: Sequence[int]) -> base.Schedule:
+  """Sequentially apply multiple schedules.
+
+  Args:
+    schedules: A list of callables (expected to be optax schedules). Each
+      schedule will receive a step count indicating the number of steps since
+      the previous boundary transition.
+    boundaries: A list of integers (of length one less than schedules) that
+      indicate when to transition between schedules.
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  def schedule(step: jnp.DeviceArray) -> jnp.DeviceArray:
+    output = schedules[0](step)
+    for boundary, schedule in zip(boundaries, schedules[1:]):
+      output = jnp.where(step < boundary, output, schedule(step - boundary))
+    return output
+  return schedule
+
+
+def warmup_cosine_decay_schedule(
+    init_value: float,
+    peak_value: float,
+    warmup_steps: int,
+    decay_steps: int,
+    end_value: float = 0.0
+) -> base.Schedule:
+  """Linear warmup followed by cosine decay.
+
+  Args:
+    init_value: Initial value for the scalar to be annealed.
+    peak_value: Peak value for scalar to be annealed at end of warmup.
+    warmup_steps: Positive integer, the length of the linear warmup.
+    decay_steps: Positive integer, the total length of the schedule. Note that
+      this includes the warmup time, so the number of steps during which cosine
+      annealing is applied is `decay_steps - warmup_steps`.
+    end_value: End value of the scalar to be annealed.
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  schedules = [
+      linear_schedule(
+          init_value=init_value,
+          end_value=peak_value,
+          transition_steps=warmup_steps),
+      cosine_decay_schedule(
+          init_value=peak_value,
+          decay_steps=decay_steps - warmup_steps,
+          alpha=end_value)]
+  return join_schedules(schedules, [warmup_steps])
+
+
+def warmup_exponential_decay_schedule(
+    init_value: float,
+    peak_value: float,
+    warmup_steps: int,
+    transition_steps: int,
+    decay_rate: float,
+    transition_begin: int = 0,
+    staircase: bool = False,
+    end_value: Optional[float] = None
+) -> base.Schedule:
+  """Linear warmup followed by exponential decay.
+
+  Args:
+    init_value: Initial value for the scalar to be annealed.
+    peak_value: Peak value for scalar to be annealed at end of warmup.
+    warmup_steps: Positive integer, the length of the linear warmup.
+    transition_steps: must be positive. See the decay computation above.
+    decay_rate: must not be zero. The decay rate.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at `init_value`).
+    staircase: if `True`, decay the values at discrete intervals.
+    end_value: the value at which the exponential decay stops. When
+      `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
+      an upper bound. Has no effect when `decay_rate` = 0.
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  schedules = [
+      linear_schedule(
+          init_value=init_value,
+          end_value=peak_value,
+          transition_steps=warmup_steps),
+      exponential_decay(
+          init_value=peak_value,
+          transition_steps=transition_steps,
+          decay_rate=decay_rate,
+          transition_begin=transition_begin,
+          staircase=staircase,
+          end_value=end_value)]
+  return join_schedules(schedules, [warmup_steps])
 
 
 def _convert_floats(x, dtype):

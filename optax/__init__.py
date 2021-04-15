@@ -69,10 +69,14 @@ from optax._src.schedule import cosine_onecycle_schedule
 from optax._src.schedule import exponential_decay
 from optax._src.schedule import inject_hyperparams
 from optax._src.schedule import InjectHyperparamsState
+from optax._src.schedule import join_schedules
 from optax._src.schedule import linear_onecycle_schedule
+from optax._src.schedule import linear_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
 from optax._src.schedule import polynomial_schedule
+from optax._src.schedule import warmup_cosine_decay_schedule
+from optax._src.schedule import warmup_exponential_decay_schedule
 from optax._src.second_order import fisher_diag
 from optax._src.second_order import hessian_diag
 from optax._src.second_order import hvp
@@ -172,12 +176,14 @@ __all__ = (
     "incremental_update",
     "inject_hyperparams",
     "InjectHyperparamsState",
+    "join_schedules",
     "lamb",
     "lookahead",
     "LookaheadParams",
     "LookaheadState",
     "l2_loss",
     "linear_onecycle_schedule",
+    "linear_schedule",
     "matrix_inverse_pth_root",
     "masked",
     "MaskedState",
@@ -224,6 +230,8 @@ __all__ = (
     "TransformInitFn",
     "TransformUpdateFn",
     "Updates",
+    "warmup_cosine_decay_schedule",
+    "warmup_exponential_decay_schedule",
     "yogi",
 )
 
