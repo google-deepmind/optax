@@ -369,6 +369,27 @@ class CosineDecayTest(chex.TestCase):
         np.array(generated_vals), atol=1e-3)
 
 
+class WarmupCosineDecayTest(chex.TestCase):
+
+  @chex.all_variants()
+  @parameterized.named_parameters(
+      ('with end value', 10, 0.5, 1e-4),
+      ('without end value', 5, 3, 0.),)
+  def test_limits(self, init_value, peak_value, end_value):
+    """Check cosine schedule decay for the entire training schedule."""
+    schedule_fn = self.variant(schedule.warmup_cosine_decay_schedule(
+        init_value=init_value,
+        peak_value=peak_value,
+        warmup_steps=100,
+        decay_steps=1000,
+        end_value=end_value,
+    ))
+
+    np.testing.assert_allclose(init_value, schedule_fn(0))
+    np.testing.assert_allclose(peak_value, schedule_fn(100))
+    np.testing.assert_allclose(end_value, schedule_fn(1000), rtol=1e-3)
+
+
 class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants()
