@@ -66,15 +66,11 @@ import warnings
 
 from absl import app
 from absl import flags
-
-import jax
-import jax.numpy as jnp
-from jax.experimental import stax
-import optax
-
 import datasets
-
-# https://github.com/tensorflow/privacy
+import jax
+from jax.experimental import stax
+import jax.numpy as jnp
+import optax
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
