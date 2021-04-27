@@ -46,8 +46,8 @@ def safe_norm(x, min_norm):
     min_norm: lower bound for the returned norm.
   """
   norm = jnp.linalg.norm(x)
-  x = jnp.where(norm < min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm < min_norm, min_norm, jnp.linalg.norm(x))
+  x = jnp.where(norm <= min_norm, jnp.ones_like(x), x)
+  return jnp.where(norm <= min_norm, min_norm, jnp.linalg.norm(x))
 
 
 def safe_int32_increment(count):
