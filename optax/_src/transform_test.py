@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax._src import alias
 from optax._src import combine
@@ -58,6 +59,24 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
                       updates)
+
+  @chex.all_variants()
+  def test_ema(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
+    ema = transform.ema(decay=decay)
+    state = ema.init(values[0])
+
+    transform_fn = self.variant(ema.update)
+    mean, state = transform_fn(values[0], state)
+    np.testing.assert_allclose(mean, values[0], atol=1e-4)
+
+    mean, state = transform_fn(values[1], state)
+    np.testing.assert_allclose(
+        mean,
+        (d * (1 - d) * values[0] + (1 - d) * values[1]) / (1 - d**2), atol=1e-4)
 
   @chex.all_variants()
   def test_apply_every(self):

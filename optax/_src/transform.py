@@ -15,8 +15,9 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple
+from typing import Any, NamedTuple, Optional
 
+import chex
 import jax
 import jax.numpy as jnp
 
@@ -34,29 +35,99 @@ class TraceState(base.OptState):
 
 def trace(
     decay: float,
-    nesterov: bool = False
+    nesterov: bool = False,
+    accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """Compute a trace of past updates.
+
+  Note: `trace` and `ema` have very similar but distinct updates;
+  `trace = trace + decay * t`, while `ema = (1-decay) * ema + decay * t`.
+  Both are frequently found in the optimisation literature.
 
   Args:
     decay: the decay rate for the tracing of past updates.
     nesterov: whether to use Nesterov momentum.
+    accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
+      then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
+  accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
+
   def init_fn(params):
-    return TraceState(trace=jax.tree_map(jnp.zeros_like, params))
+    return TraceState(
+        trace=jax.tree_map(
+            lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
 
   def update_fn(updates, state, params=None):
     del params
     f = lambda g, t: g + decay * t
-    update_trace = jax.tree_multimap(f, updates, state.trace)
+    new_trace = jax.tree_multimap(f, updates, state.trace)
     updates = (
-        jax.tree_multimap(f, updates, update_trace)
-        if nesterov else update_trace)
-    return updates, TraceState(trace=update_trace)
+        jax.tree_multimap(f, updates, new_trace) if nesterov else new_trace)
+    new_trace = utils.cast_tree(new_trace, accumulator_dtype)
+    return updates, TraceState(trace=new_trace)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def _update_moment(updates, moments, decay, order):
+  """Compute the exponential moving average of the `order-th` moment."""
+  return jax.tree_multimap(
+      lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
+
+
+def _bias_correction(moment, decay, count):
+  """Perform bias correction. This becomes a no-op as count goes to infinity."""
+  bias_correction = 1 - decay**count
+  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
+
+
+class EmaState(base.OptState):
+  """Holds an exponential moving average of past updates."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  ema: base.Params
+
+
+def ema(
+    decay: float,
+    debias: bool = True,
+    accumulator_dtype: Optional[Any] = None
+) -> base.GradientTransformation:
+  """Compute an exponential moving average of past updates.
+
+  Note: `trace` and `ema` have very similar but distinct updates;
+  `ema = (1-decay) * ema + decay * t`, while `trace = trace + decay * t`.
+  Both are frequently found in the optimisation literature.
+
+  Args:
+    decay: the decay rate for the exponential moving average.
+    debias: whether to debias the transformed gradient.
+    accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
+      then the `dtype` is inferred from `params` and `updates`.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
+
+  def init_fn(params):
+    return EmaState(
+        count=jnp.zeros([], jnp.int32),
+        ema=jax.tree_map(
+            lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
+
+  def update_fn(updates, state, params=None):
+    del params
+    new_ema = _update_moment(updates, state.ema, decay, order=1)
+    count_inc = utils.safe_int32_increment(state.count)
+    if debias:
+      updates = _bias_correction(new_ema, decay, count_inc)
+    new_ema = utils.cast_tree(new_ema, accumulator_dtype)
+    return updates, EmaState(count=count_inc, ema=new_ema)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -105,11 +176,6 @@ def scale_by_rss(
 class ScaleByRmsState(base.OptState):
   """State for exponential root mean-squared (RMS)-normalized updates."""
   nu: base.Updates
-
-
-def _update_moment(updates, moments, decay, order):
-  return jax.tree_multimap(
-      lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
 def scale_by_rms(
@@ -191,19 +257,9 @@ def scale_by_stddev(
 
 class ScaleByAdamState(base.OptState):
   """State for the Adam algorithm."""
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32.
+  count: chex.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
-
-
-# TODO(b/183478923): remove legacy reference.
-_safe_int32_increment = utils.safe_int32_increment
-
-
-def _bias_correction(moment, decay, count):
-  """Perform bias correction. This becomes a no-op as count goes to infinity."""
-  bias_correction = 1 - decay**count
-  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
 
 
 def scale_by_adam(
@@ -275,7 +331,7 @@ def scale(
 
 class ScaleByBeliefState(base.OptState):
   """State for the rescaling by AdaBelief algorithm."""
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32.
+  count: chex.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -460,7 +516,7 @@ additive_weight_decay = add_decayed_weights
 
 class ScaleByScheduleState(base.OptState):
   """Maintains count for scale scheduling."""
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32
+  count: chex.Array  # shape=(), dtype=jnp.int32
 
 
 def scale_by_schedule(
@@ -492,7 +548,7 @@ def scale_by_schedule(
 
 class ScaleByFromageState(base.OptState):
   """Maintains count for step-size scheduling."""
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32
+  count: chex.Array  # shape=(), dtype=jnp.int32
 
 
 class ScaleByTrustRatioState(NamedTuple):
@@ -544,8 +600,8 @@ def scale_by_trust_ratio(
 
 class AddNoiseState(base.OptState):
   """State for adding gradient noise. Contains a count for annealing."""
-  count: jnp.ndarray
-  rng_key: jnp.ndarray
+  count: chex.Array
+  rng_key: chex.PRNGKey
 
 
 def add_noise(
@@ -591,7 +647,7 @@ def add_noise(
 
 class ApplyEvery(base.OptState):
   """Contains a counter and a gradient accumulator."""
-  count: jnp.ndarray
+  count: chex.Array
   grad_acc: base.Updates
 
 
@@ -740,6 +796,7 @@ def scale_by_sm3(
 # These legacy aliases are here for checkpoint compatibility
 # To be removed once checkpoints have updated.
 
+_safe_int32_increment = utils.safe_int32_increment
 # clip = clipping.clip
 ClipState = clipping.ClipState
 # clip_by_global_norm = clipping.clip_by_global_norm

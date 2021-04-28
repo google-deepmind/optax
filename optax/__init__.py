@@ -93,6 +93,8 @@ from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
 from optax._src.transform import centralize
+from optax._src.transform import ema
+from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
@@ -166,6 +168,8 @@ __all__ = (
     "dpsgd",
     "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",
+    "ema",
+    "EmaState",
     "exponential_decay",
     "fisher_diag",
     "flatten",

@@ -28,6 +28,21 @@ def tile_second_to_last_dim(a):
   return jnp.expand_dims(ones, axis=-2) * a
 
 
+def canonicalize_dtype(dtype):
+  """Canonicalise a dtype, skip if None."""
+  if dtype is not None:
+    return jax.dtypes.canonicalize_dtype(dtype)
+  return dtype
+
+
+def cast_tree(tree, dtype):
+  """Cast tree to given dtype, skip if None."""
+  if dtype is not None:
+    return jax.tree_map(lambda t: t.astype(dtype), tree)
+  else:
+    return tree
+
+
 def global_norm(updates: base.Updates) -> base.Updates:
   """Compute the global norm across a nested structure of tensors."""
   return jnp.sqrt(
