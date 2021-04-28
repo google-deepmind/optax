@@ -14,9 +14,18 @@
 # ==============================================================================
 """Linear algebra utilities used in optimisation."""
 
+import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
+
+from optax._src import base
+
+
+def global_norm(updates: base.Updates) -> base.Updates:
+  """Compute the global norm across a nested structure of tensors."""
+  return jnp.sqrt(
+      sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
 
 
 def power_iteration(

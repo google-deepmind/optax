@@ -29,7 +29,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
 
 
 def constant_schedule(
@@ -557,7 +557,7 @@ def inject_hyperparams(
           count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
     def update_fn(updates, state, params=None):
-      count_inc = utils.safe_int32_increment(state.count)
+      count_inc = numerics.safe_int32_increment(state.count)
       dtype = getattr(next(iter(jax.tree_leaves(updates)), None), 'dtype', None)
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}

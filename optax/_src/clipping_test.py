@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import clipping
-from optax._src import utils
+from optax._src import linear_algebra
 
 STEPS = 50
 LR = 1e-2
@@ -52,7 +52,8 @@ class ClippingTest(absltest.TestCase):
       clipper = clipping.clip_by_global_norm(1. / i)
       updates, _ = clipper.update(updates, None)
       # Check that the clipper actually works and global norm is <= max_norm
-      self.assertAlmostEqual(utils.global_norm(updates), 1. / i, places=6)
+      self.assertAlmostEqual(
+          linear_algebra.global_norm(updates), 1. / i, places=6)
       updates_step, _ = clipper.update(self.per_step_updates, None)
       # Check that continuously clipping won't cause numerical issues.
       chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)

@@ -23,6 +23,7 @@ import jax.numpy as jnp
 
 from optax._src import base
 from optax._src import clipping
+from optax._src import numerics
 from optax._src import utils
 
 # pylint:disable=no-value-for-parameter
@@ -293,7 +294,7 @@ def scale_by_adam(
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -368,7 +369,7 @@ def scale_by_belief(
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -415,7 +416,7 @@ def scale_by_yogi(
     signed_sq = jax.tree_multimap(
         lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
     nu = _update_moment(signed_sq, state.nu, b2, 2)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
@@ -468,7 +469,7 @@ def scale_by_radam(
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
     mu_hat = _bias_correction(mu, b1, count_inc)
@@ -541,7 +542,7 @@ def scale_by_schedule(
     updates = jax.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
-        count=utils.safe_int32_increment(state.count))
+        count=numerics.safe_int32_increment(state.count))
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -580,8 +581,8 @@ def scale_by_trust_ratio(
     def _scale_update(update, param):
 
       # Clip norms to minimum value, by default no clipping.
-      param_norm = utils.safe_norm(param, min_norm)
-      update_norm = utils.safe_norm(update, min_norm)
+      param_norm = numerics.safe_norm(param, min_norm)
+      update_norm = numerics.safe_norm(update, min_norm)
       trust_ratio = param_norm / update_norm
 
       # If no minimum norm clipping is used
@@ -631,7 +632,7 @@ def add_noise(
     del params
     num_vars = len(jax.tree_leaves(updates))
     treedef = jax.tree_structure(updates)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     variance = eta / count_inc**gamma
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
@@ -681,7 +682,7 @@ def apply_every(
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -795,19 +796,8 @@ def scale_by_sm3(
 # TODO(b/183800387): remove legacy aliases.
 # These legacy aliases are here for checkpoint compatibility
 # To be removed once checkpoints have updated.
-
-_safe_int32_increment = utils.safe_int32_increment
-# clip = clipping.clip
+_safe_int32_increment = numerics.safe_int32_increment
+safe_int32_increment = numerics.safe_int32_increment
 ClipState = clipping.ClipState
-# clip_by_global_norm = clipping.clip_by_global_norm
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
-# global_norm = utils.global_norm
-# identity = base.identity
 IdentityState = base.EmptyState
-# keep_params_nonnegative = constrain.keep_params_nonnegative
-# NonNegativeParamsState = constrain.NonNegativeParamsState
-# OptState = base.OptState
-# Params = base.Params
-# Updates = base.Updates
-# zero_nans = constrain.zero_nans
-# ZeroNansState = constrain.ZeroNansState

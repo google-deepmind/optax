@@ -14,12 +14,12 @@
 # ==============================================================================
 """Utility functions for testing."""
 
-import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 
-from optax._src import base
+from optax._src import linear_algebra
+from optax._src import numerics
 
 
 def tile_second_to_last_dim(a):
@@ -41,46 +41,6 @@ def cast_tree(tree, dtype):
     return jax.tree_map(lambda t: t.astype(dtype), tree)
   else:
     return tree
-
-
-def global_norm(updates: base.Updates) -> base.Updates:
-  """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(
-      sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
-
-
-def safe_norm(x, min_norm):
-  """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
-
-  The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
-  because jax will evaluate both branches of the `jnp.maximum`. This function
-  will instead return the correct gradient of 0.0 also in such setting.
-
-  Args:
-    x: jax array.
-    min_norm: lower bound for the returned norm.
-  """
-  norm = jnp.linalg.norm(x)
-  x = jnp.where(norm <= min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm <= min_norm, min_norm, jnp.linalg.norm(x))
-
-
-def safe_int32_increment(count):
-  """Increments int32 counter by one.
-
-  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
-  that when `max_int` is reached the counter stays at `max_int`.
-
-  Args:
-    count: a counter to be incremented.
-
-  Returns:
-    a counter incremented by 1, or max_int if the maximum precision is reached.
-  """
-  chex.assert_type(count, jnp.int32)
-  max_int32_value = jnp.iinfo(jnp.int32).max
-  one = jnp.array(1, dtype=jnp.int32)
-  return jnp.where(count < max_int32_value, count + one, max_int32_value)
 
 
 def set_diags(a, new_diags):
@@ -138,3 +98,9 @@ class MultiNormalDiagFromLogScale():
   @property
   def params(self):
     return [self._mean, self._log_scale]
+
+
+# TODO(b/183800387): remove legacy aliases.
+safe_norm = numerics.safe_norm
+safe_int32_increment = numerics.safe_int32_increment
+global_norm = linear_algebra.global_norm

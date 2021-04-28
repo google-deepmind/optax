@@ -16,12 +16,22 @@
 
 from absl.testing import absltest
 
+import jax.numpy as jnp
 import numpy as np
 from optax._src import linear_algebra
 import scipy
 
 
 class LinearAlgebraTest(absltest.TestCase):
+
+  def test_global_norm(self):
+    flat_updates = jnp.array([2., 4., 3., 5.], dtype=jnp.float32)
+    nested_updates = dict(
+        a=jnp.array([2., 4.], dtype=jnp.float32),
+        b=jnp.array([3., 5.], dtype=jnp.float32))
+    np.testing.assert_array_equal(
+        jnp.sqrt(jnp.sum(flat_updates**2)),
+        linear_algebra.global_norm(nested_updates))
 
   def test_matrix_inverse_pth_root(self):
     """Test for matrix inverse pth root."""

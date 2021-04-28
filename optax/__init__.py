@@ -50,6 +50,7 @@ from optax._src.constrain import ZeroNansState
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
 from optax._src.lookahead import lookahead
@@ -120,7 +121,6 @@ from optax._src.transform import TraceState
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
-from optax._src.utils import global_norm
 from optax._src.utils import multi_normal
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState

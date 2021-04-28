@@ -18,7 +18,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import utils
+from optax._src import linear_algebra
 
 # pylint:disable=no-value-for-parameter
 
@@ -69,7 +69,7 @@ def clip_by_global_norm(max_norm) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = utils.global_norm(updates)
+    g_norm = linear_algebra.global_norm(updates)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
