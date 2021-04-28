@@ -37,9 +37,11 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
     nodes must match that of `params`.
 
   Returns:
-    Updated parameters, with same structure and shape as `params`.
+    Updated parameters, with same structure, shape and type as `params`.
   """
-  return jax.tree_multimap(lambda p, u: p + u, params, updates)
+  return jax.tree_multimap(
+      lambda p, u: jnp.asarray(p + u).astype(jnp.asarray(p).dtype),
+      params, updates)
 
 
 def incremental_update(

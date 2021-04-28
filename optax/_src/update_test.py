@@ -36,6 +36,18 @@ class UpdateTest(chex.TestCase):
         exp_params, new_params, atol=1e-10, rtol=1e-5)
 
   @chex.all_variants()
+  def test_apply_updates_mixed_precision(self):
+    params = (
+        {'a': jnp.ones((3, 2), dtype=jnp.bfloat16)},
+        jnp.ones((1,), dtype=jnp.bfloat16))
+    grads = jax.tree_map(
+        lambda t: (2 * t).astype(jnp.float32), params)
+    new_params = self.variant(update.apply_updates)(params, grads)
+
+    for leaf in jax.tree_leaves(new_params):
+      assert leaf.dtype == jnp.bfloat16
+
+  @chex.all_variants()
   def test_incremental_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     params_2 = jax.tree_map(lambda t: 2 * t, params_1)
