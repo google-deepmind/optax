@@ -25,6 +25,7 @@ from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import sgd
+from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
@@ -99,6 +100,7 @@ from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
+from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
@@ -108,6 +110,7 @@ from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
+from optax._src.transform import ScaleBySM3State
 from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
@@ -208,6 +211,7 @@ __all__ = (
     "scale_by_rms",
     "scale_by_rss",
     "scale_by_schedule",
+    "scale_by_sm3",
     "scale_by_stddev",
     "scale_by_trust_ratio",
     "scale_by_yogi",
@@ -217,11 +221,13 @@ __all__ = (
     "ScaleByRssState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
+    "ScaleBySM3State",
     "ScaleByTrustRatioState",
     "ScaleState",
     "Schedule",
     "score_function_jacobians",
     "sgd",
+    "sm3",
     "sigmoid_binary_cross_entropy",
     "smooth_labels",
     "softmax_cross_entropy",

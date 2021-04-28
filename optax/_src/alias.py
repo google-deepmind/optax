@@ -14,7 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Union, Optional
+from typing import Optional, Union
 
 import jax.numpy as jnp
 
@@ -401,6 +401,14 @@ def sgd(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
       _scale_by_learning_rate(learning_rate)
+  )
+
+
+def sm3(learning_rate: float,
+        momentum: float = 0.9) -> base.GradientTransformation:
+  return combine.chain(
+      transform.scale_by_sm3(momentum),
+      transform.scale(-learning_rate),
   )
 
 

@@ -14,6 +14,7 @@
 # ==============================================================================
 """Gradient transformations."""
 
+import functools
 from typing import NamedTuple
 
 import jax
@@ -657,6 +658,80 @@ def centralize() -> base.GradientTransformation:
     del params
     updates = jax.tree_map(_subtract_mean, updates)
     return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+class ScaleBySM3State(base.OptState):
+  """State for the SM3 algorithm."""
+  mu: base.Updates
+  nu: base.Updates
+
+
+def scale_by_sm3(
+    b1: float = 0.9,
+    b2: float = 1.0,
+    eps: float = 1e-8
+) -> base.GradientTransformation:
+  """Scale updates by sm3`.
+
+  References:
+    [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of squared grads.
+    eps: term added to the denominator to improve numerical stability.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def zeros_for_dim(p):
+    return [jnp.zeros([s]) for s in p.shape]
+
+  def init_fn(params):
+    mu = jax.tree_map(zeros_for_dim, params)
+    nu = jax.tree_map(jnp.zeros_like, params)
+    return ScaleBySM3State(mu, nu)
+
+  def _expanded_shape(shape, axis):
+    # Replaces a `shape` of [M, N, K] with 1 in all dimensions except for i.
+    # For eg: i = 1 returns [1, N, 1].
+    rank = len(shape)
+    return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
+
+  def _new_accum(g, v):
+    coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
+    if g.ndim < 2:
+      return coeffs[0]*g**2 + coeffs[1]*v[0]
+    else:
+      return coeffs[0]*g**2 + coeffs[1]*functools.reduce(jnp.minimum, v)
+
+  def _new_mu(g, i):
+    if g.ndim < 2:
+      return g
+    else:
+      return jnp.max(g, axis=other_axes(i, g.ndim))
+
+  def other_axes(idx, ndim):
+    return list(range(idx)) + list(range(idx+1, ndim))
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = jax.tree_multimap(
+        lambda g, v:  # pylint:disable=g-long-lambda
+        [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)],
+        updates, state.mu)
+    accum = jax.tree_multimap(_new_accum, updates, mu)
+    accum_inv_sqrt = jax.tree_map(
+        lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
+    up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
+    nu = _update_moment(up, state.nu, b1, 1)
+    mu = jax.tree_map(
+        lambda g: [_new_mu(g, i) for i in range(g.ndim)], accum)
+
+    return nu, ScaleBySM3State(mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
 

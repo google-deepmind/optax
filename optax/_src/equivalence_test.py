@@ -62,6 +62,7 @@ class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
        optimizers.rmsprop_momentum(LR, .9, 0.1, 0.9), 1e-5),
       ('adagrad', alias.adagrad(LR_SCHED, 0., 0.,),
        optimizers.adagrad(LR, 0.), 1e-5),
+      ('sm3', alias.sm3(LR), optimizers.sm3(LR), 1e-2),
   )
   def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):
 
