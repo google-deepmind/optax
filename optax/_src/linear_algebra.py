@@ -119,7 +119,7 @@ def matrix_inverse_pth_root(
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
   _, max_ev = power_iteration(
       matrix=matrix, num_iters=100,
-      error_tolerance=matrix.shape[0], precision=precision)
+      error_tolerance=1e-6, precision=precision)
   ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)
 
   def _unrolled_mat_pow_1(mat_m):
