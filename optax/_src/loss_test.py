@@ -204,5 +204,38 @@ class CosineDistanceTest(parameterized.TestCase):
         1. - self.exp, atol=1e-4)
 
 
+class LogCoshTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    # Test large values for overflow
+    self.ys = jnp.array([500, -2., -1., 0.5, 1.])
+    self.ts = jnp.array([-200, -1.5, 0., -1, 1.])
+    # computed using tensorflow.keras.losses.log_cosh v2.4.1
+    self.exp = jnp.array([699.3068, 0.12011445, 0.4337809, 0.85544014, 0.])
+    self.exp_ys_only = jnp.array(
+        [499.30685, 1.3250027, 0.4337809, 0.12011451, 0.43378082])
+
+  @chex.all_variants
+  def test_scalar(self):
+    out = self.variant(loss.log_cosh)(self.ys[0], self.ts[0])
+    np.testing.assert_allclose(out, self.exp[0], rtol=1e-6, atol=1e-6)
+
+  @chex.all_variants
+  def test_batched(self):
+    out = self.variant(loss.log_cosh)(self.ys, self.ts)
+    np.testing.assert_allclose(out, self.exp, rtol=1e-6, atol=1e-6)
+
+  @chex.all_variants
+  def test_scalar_predictions_only(self):
+    out = self.variant(loss.log_cosh)(self.ys[0])
+    np.testing.assert_allclose(out, self.exp_ys_only[0], rtol=1e-6, atol=1e-6)
+
+  @chex.all_variants
+  def test_batched_predictions_only(self):
+    out = self.variant(loss.log_cosh)(self.ys)
+    np.testing.assert_allclose(out, self.exp_ys_only, rtol=1e-6, atol=1e-6)
+
+
 if __name__ == '__main__':
   absltest.main()
