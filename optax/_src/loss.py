@@ -239,8 +239,7 @@ def log_cosh(
   for large x.  It is a twice differentiable alternative to the Huber loss.
 
   References:
-    [Neuneier & Zimmermann, 2012](
-        https://link.springer.com/chapter/10.1007/978-3-642-35289-8_23)
+    [Chen et al, 2019](https://openreview.net/pdf?id=rkglvsC9Ym)
 
   Args:
     predictions: a vector of arbitrary shape.
