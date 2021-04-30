@@ -241,17 +241,7 @@ Optax Transforms and States
 .. autoclass:: ZeroNansState
     :members:
 
-Gradient Transformations Utilities
-===================================
 
-.. autosummary::
-    multi_normal
-
-
-multi_normal
-~~~~~~~~~~~~
-
-.. autofunction:: multi_normal
 
 Apply Updates
 =============

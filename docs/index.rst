@@ -32,7 +32,11 @@ Installation
 See https://github.com/google/jax#pip-installation for instructions on
 installing JAX.
 
-We suggest installing the latest version of Optax by running::
+We suggest installing the latest release of Optax by running:
+
+    $ pip install optax
+
+You may also install directly from GitHub with:
 
     $ pip install git+https://github.com/deepmind/optax
 
