@@ -404,8 +404,32 @@ def sgd(
   )
 
 
-def sm3(learning_rate: float,
-        momentum: float = 0.9) -> base.GradientTransformation:
+def sm3(
+    learning_rate: float,
+    momentum: float = 0.9
+) -> base.GradientTransformation:
+  """The SM3 optimiser.
+
+  SM3 (Square-root of Minima of Sums of Maxima of Squared-gradients Method) is a
+  memory-efficient adaptive optimiser designed to decrease memory overhead when
+  training very large models, such as the Transformer for machine translation,
+  BERT for language modelling, and AmoebaNet-D for image classification. SM3: 1)
+  applies to tensors of arbitrary dimensions and any predefined cover of the
+  parameters; 2) adapts the learning rates in an adaptive and data-driven manner
+  (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
+  guarantees in stochastic convex optimization settings.
+
+  References:
+    [Anil et al, 2019](https://arxiv.org/abs/1901.11150)
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    momentum: the `decay` rate used by the momentum term (when it is not set to
+      `None`, then momentum is not used at all).
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
   return combine.chain(
       transform.scale_by_sm3(momentum),
       transform.scale(-learning_rate),
