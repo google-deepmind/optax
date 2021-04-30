@@ -131,7 +131,7 @@ def sigmoid_binary_cross_entropy(logits, labels):
   Returns:
     a sigmoid cross entropy loss.
   """
-  chex.assert_equal_shape([logits, labels])
+  chex.assert_is_broadcastable(logits.shape, labels.shape)
   chex.assert_type([logits, labels], float)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
@@ -161,7 +161,7 @@ def softmax_cross_entropy(
   Returns:
     the cross entropy loss.
   """
-  chex.assert_equal_shape([logits, labels])
+  chex.assert_is_broadcastable(logits.shape, labels.shape)
   chex.assert_type([logits, labels], float)
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
 
@@ -188,8 +188,8 @@ def cosine_similarity(
   Returns:
     cosine similarity values.
   """
-  chex.assert_equal_shape([targets, predictions])
-  chex.assert_type([targets, predictions], float)
+  chex.assert_is_broadcastable(predictions.shape, targets.shape)
+  chex.assert_type([predictions, targets], float)
   # vectorize norm fn, to treat all dimensions except the last as batch dims.
   batched_norm_fn = jnp.vectorize(
       utils.safe_norm, signature='(k)->()', excluded={1})
@@ -223,7 +223,7 @@ def cosine_distance(
   Returns:
     cosine similarity values.
   """
-  chex.assert_equal_shape([targets, predictions])
-  chex.assert_type([targets, predictions], float)
+  chex.assert_is_broadcastable(predictions.shape, targets.shape)
+  chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
   return 1. - cosine_similarity(predictions, targets, epsilon)
