@@ -90,7 +90,15 @@ def polynomial_schedule(
 
 
 # Alias polynomial schedule to linear schedule for convenience.
-linear_schedule = functools.partial(polynomial_schedule, power=1)
+def linear_schedule(
+    init_value: chex.Scalar,
+    end_value: chex.Scalar,
+    transition_steps: int,
+    transition_begin: int = 0
+) -> base.Schedule:
+  return polynomial_schedule(
+      init_value=init_value, end_value=end_value, power=1,
+      transition_steps=transition_steps, transition_begin=transition_begin)
 
 
 def piecewise_constant_schedule(
