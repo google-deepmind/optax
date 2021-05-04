@@ -465,6 +465,31 @@ def warmup_exponential_decay_schedule(
   return join_schedules(schedules, [warmup_steps])
 
 
+def sgdr_schedule(cosine_kwargs: Iterable[Dict[str, chex.Numeric]]
+                  ) -> base.Schedule:
+  """SGD with warm restarts, from Loschilov & Hutter (arXiv:1608.03983).
+
+  This learning rate schedule applies multiple joined cosine decay cycles.
+  For more details see: https://arxiv.org/abs/1608.03983
+
+  Args:
+    cosine_kwargs: An Iterable of dicts, where each element specifies the
+      arguments to pass to each cosine decay cycle. The `decay_steps` kwarg
+      will specify how long each cycle lasts for, and therefore when to
+      transition to the next cycle.
+  Returns:
+    schedule: A function that maps step counts to values.
+  """
+  boundaries = []
+  schedules = []
+  step = 0
+  for kwargs in cosine_kwargs:
+    schedules += [warmup_cosine_decay_schedule(**kwargs)]
+    boundaries += [step + kwargs['decay_steps']]
+    step += kwargs['decay_steps']
+  return join_schedules(schedules, boundaries[:-1])
+
+
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
   if jax.dtypes.scalar_type_of(x) == float:

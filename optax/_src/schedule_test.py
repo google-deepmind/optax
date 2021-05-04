@@ -390,6 +390,24 @@ class WarmupCosineDecayTest(chex.TestCase):
     np.testing.assert_allclose(end_value, schedule_fn(1000), rtol=1e-3)
 
 
+class SGDRTest(chex.TestCase):
+
+  @chex.all_variants()
+  @parameterized.named_parameters(
+      ('with step decay', 1.6, 0.8, 0.4),
+      ('without step_decay', 1.6, 1.6, 1.6),)
+  def test_limits(self, lr0, lr1, lr2):
+    """Check cosine schedule decay for the entire training schedule."""
+    lr_kwargs = []
+    for step, lr in zip([2e3, 3e3, 5e3], [lr0, lr1, lr2]):
+      lr_kwargs += [dict(decay_steps=int(step), peak_value=lr,
+                         init_value=0, end_value=0.0, warmup_steps=500)]
+    schedule_fn = self.variant(schedule.sgdr_schedule(lr_kwargs))
+    np.testing.assert_allclose(lr0, schedule_fn(500))
+    np.testing.assert_allclose(lr1, schedule_fn(2500))
+    np.testing.assert_allclose(lr2, schedule_fn(5500))
+
+
 class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants()
