@@ -77,6 +77,7 @@ from optax._src.schedule import linear_schedule
 from optax._src.schedule import piecewise_constant_schedule
 from optax._src.schedule import piecewise_interpolate_schedule
 from optax._src.schedule import polynomial_schedule
+from optax._src.schedule import sgdr_schedule
 from optax._src.schedule import warmup_cosine_decay_schedule
 from optax._src.schedule import warmup_exponential_decay_schedule
 from optax._src.second_order import fisher_diag
@@ -231,6 +232,7 @@ __all__ = (
     "Schedule",
     "score_function_jacobians",
     "sgd",
+    "sgdr_schedule",
     "sm3",
     "sigmoid_binary_cross_entropy",
     "smooth_labels",
