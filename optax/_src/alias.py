@@ -48,7 +48,7 @@ def adabelief(
   parameters.
 
   References:
-    [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
+    Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -81,7 +81,7 @@ def adagrad(
   during training and the learning rate eventually becomes vanishingly small.
 
   References:
-    [Duchi et al, 2011](https://jmlr.org/papers/v12/duchi11a.html)
+    Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -113,7 +113,7 @@ def adam(
   moments of the gradients (using suitable exponential moving averages).
 
   References:
-    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -154,7 +154,7 @@ def adamw(
   variant where `additive_weight_decay` is applied only to a subset of `params`.
 
   References:
-    [Loshchilov et al, 2019](https://arxiv.org/abs/1711.05101)
+    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -190,7 +190,7 @@ def fromage(
   such as natural language Transformers and generative adversarial networks.
 
   References:
-    [Bernstein et al, 2020](https://arxiv.org/abs/2002.03432)
+    Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -226,7 +226,7 @@ def lamb(
   LAMB was inspired by the LARS learning algorithm.
 
   References:
-    [You et al, 2019](https://arxiv.org/abs/1904.00962)
+    You et al, 2019: https://arxiv.org/abs/1904.00962
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -262,7 +262,7 @@ def noisy_sgd(
   both the training error and the generalisation error in very deep networks.
 
   References:
-    [Neelakantan et al, 2014](https://arxiv.org/abs/1511.06807)
+    Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -296,7 +296,7 @@ def radam(
   by analytically reducing the large variance.
 
   References:
-    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -337,9 +337,9 @@ def rmsprop(
   optimiser that can be used to switch between several of these variants.
 
   References:
-    [Tieleman and Hinton, 2012](
-        www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
-    [Graves, 2013](https://arxiv.org/abs/1308.0850)
+    Tieleman and Hinton, 2012:
+        www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+    Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -386,7 +386,7 @@ def sgd(
   using stochastic gradient descent to train deep neural networks.
 
   References:
-    [Sutskever et al, 2013](http://proceedings.mlr.press/v28/sutskever13.pdf)
+    Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -420,7 +420,7 @@ def sm3(
   guarantees in stochastic convex optimization settings.
 
   References:
-    [Anil et al, 2019](https://arxiv.org/abs/1901.11150)
+    Anil et al, 2019: https://arxiv.org/abs/1901.11150
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -451,7 +451,7 @@ def yogi(
   modification of Adam and uses the same parameters.
 
   References:
-    [Zaheer et al, 2020](http://www.sanjivk.com/yogi_nips2018.pdf)
+    Zaheer et al, 2020: http://www.sanjivk.com/yogi_nips2018.pdf
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -489,7 +489,7 @@ def dpsgd(
   gradients as input (which are easy to obtain in JAX using `jax.vmap`).
 
   References:
-    [Abadi et al, 2016](https://arxiv.org/abs/1607.00133)
+    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
 
   Args:
     learning_rate: this is a fixed global scaling factor.
