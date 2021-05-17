@@ -61,6 +61,7 @@ from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
+from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
@@ -190,6 +191,7 @@ __all__ = (
     "InjectHyperparamsState",
     "join_schedules",
     "lamb",
+    "log_cosh",
     "lookahead",
     "LookaheadParams",
     "LookaheadState",

@@ -227,3 +227,29 @@ def cosine_distance(
   chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
   return 1. - cosine_similarity(predictions, targets, epsilon)
+
+
+def log_cosh(
+    predictions: chex.Array,
+    targets: Optional[chex.Array] = None,
+) -> chex.Array:
+  """Calculates the log-cosh loss for a set of predictions.
+
+  log(cosh(x)) is approximately `(x**2) / 2` for small x and `abs(x) - log(2)`
+  for large x.  It is a twice differentiable alternative to the Huber loss.
+
+  References:
+    [Chen et al, 2019](https://openreview.net/pdf?id=rkglvsC9Ym)
+
+  Args:
+    predictions: a vector of arbitrary shape.
+    targets: a vector of shape compatible with predictions; if not provided
+      then it is assumed to be zero.
+
+  Returns:
+    the log-cosh loss.
+  """
+  chex.assert_type([predictions], float)
+  errors = (predictions - targets) if (targets is not None) else predictions
+  # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
