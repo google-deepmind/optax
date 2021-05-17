@@ -48,6 +48,30 @@ def clip(max_delta) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
+def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
+  """Clip updates to a max rms for the gradient of each param vector or matrix.
+
+  Args:
+    threshold: the maximum rms for the gradient of each param vector or matrix.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return base.EmptyState()
+
+  def update_fn(updates, state, params=None):
+    del params
+    def _clip_fn(u):
+      clip_denom = (jnp.maximum(1.0, jnp.sqrt(jnp.mean(u ** 2)) / threshold))
+      return u / clip_denom
+    updates = jax.tree_map(_clip_fn, updates)
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 ClipByGlobalNormState = base.EmptyState
 
 

@@ -39,6 +39,7 @@ from optax._src.base import Updates
 from optax._src.clipping import adaptive_grad_clip
 from optax._src.clipping import AdaptiveGradClipState
 from optax._src.clipping import clip
+from optax._src.clipping import clip_by_block_rms
 from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
@@ -157,6 +158,7 @@ __all__ = (
     "centralize",
     "chain",
     "clip",
+    "clip_by_block_rms",
     "clip_by_global_norm",
     "ClipByGlobalNormState",
     "ClipState",
