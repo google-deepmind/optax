@@ -127,9 +127,9 @@ def ema(
     new_ema = _update_moment(updates, state.ema, decay, order=1)
     count_inc = utils.safe_int32_increment(state.count)
     if debias:
-      updates = _bias_correction(new_ema, decay, count_inc)
-    new_ema = utils.cast_tree(new_ema, accumulator_dtype)
-    return updates, EmaState(count=count_inc, ema=new_ema)
+      new_ema = _bias_correction(new_ema, decay, count_inc)
+    state_ema = utils.cast_tree(new_ema, accumulator_dtype)
+    return new_ema, EmaState(count=count_inc, ema=state_ema)
 
   return base.GradientTransformation(init_fn, update_fn)
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
+
 """Tests for `transform.py`."""
 
 from absl.testing import absltest
@@ -99,6 +101,24 @@ class TransformTest(parameterized.TestCase):
     decay = 0.9
     d = decay
 
+    ema = transform.ema(decay=decay, debias=False)
+    state = ema.init(values[0])  # init to zeroes
+
+    transform_fn = self.variant(ema.update)
+    mean, state = transform_fn(values[0], state)
+    np.testing.assert_allclose(mean, (1-d) * values[0], atol=1e-4)
+
+    mean, state = transform_fn(values[1], state)
+    np.testing.assert_allclose(
+        mean,
+        (1 - d) * (values[1] + d * values[0]), atol=1e-2)
+
+  @chex.all_variants()
+  def test_ema_debias(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
     ema = transform.ema(decay=decay)
     state = ema.init(values[0])
 
@@ -109,7 +129,8 @@ class TransformTest(parameterized.TestCase):
     mean, state = transform_fn(values[1], state)
     np.testing.assert_allclose(
         mean,
-        (d * (1 - d) * values[0] + (1 - d) * values[1]) / (1 - d**2), atol=1e-4)
+        ((1 - d) * values[1] + d * values[0]) / (1 - d**2),
+        atol=1e-2)
 
   @chex.all_variants()
   def test_apply_every(self):
