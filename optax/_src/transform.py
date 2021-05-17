@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import Any, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 import chex
 import jax
@@ -25,6 +25,7 @@ from optax._src import base
 from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
+from optax._src import wrappers
 
 # pylint:disable=no-value-for-parameter
 
@@ -510,12 +511,17 @@ AddDecayedWeightsState = base.EmptyState
 
 
 def add_decayed_weights(
-    weight_decay: float = 0.0
+    weight_decay: float = 0.0,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
 
   Args:
     weight_decay: a scalar weight decay rate.
+    mask: a tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -531,6 +537,11 @@ def add_decayed_weights(
         lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
+  # If mask is not `None`, apply mask to the gradient transformation.
+  # E.g. it is common to skip weight decay on bias units and batch stats.
+  if mask is not None:
+    return wrappers.masked(
+        base.GradientTransformation(init_fn, update_fn), mask)
   return base.GradientTransformation(init_fn, update_fn)
 
 

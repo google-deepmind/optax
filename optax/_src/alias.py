@@ -14,7 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimisers."""
 
-from typing import Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
 
@@ -140,7 +140,8 @@ def adamw(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    weight_decay: float = 1e-4
+    weight_decay: float = 1e-4,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Adam with weight decay regularization.
 
@@ -166,13 +167,17 @@ def adamw(
       square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for instance when computing (meta-)gradients through Adam.
     weight_decay: strength of the weight decay regularization.
+    mask: a tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
 
   Returns:
     the corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      transform.additive_weight_decay(weight_decay),
+      transform.add_decayed_weights(weight_decay, mask),
       _scale_by_learning_rate(learning_rate),
   )
 

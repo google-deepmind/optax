@@ -301,11 +301,10 @@ def masked(
 
   Args:
     inner: Inner transformation to mask.
-    mask: A PyTree with the same structure as (or is a prefix of) the
-    parameters PyTree, or a Callable that returns such a pytree given the
-    parameters/updates. The leaves should be booleans which are `True` for
-    leaves/subtrees you want to apply the transformation to, and `False` for
-    those you want to skip.
+    mask: a PyTree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
 
   Returns:
     New GradientTransformation wrapping `inner`.

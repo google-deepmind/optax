@@ -62,6 +62,38 @@ class TransformTest(parameterized.TestCase):
                       updates)
 
   @chex.all_variants()
+  def test_add_decayed_weights(self):
+    # Define a transform that add decayed weights.
+    # We can define a mask either as a pytree, or as a function that
+    # returns the pytree. Below we define the pytree directly.
+    mask = (True, dict(a=True, b=False))
+    tx = transform.add_decayed_weights(0.1, mask=mask)
+    # Define input updates and weights.
+    updates = (
+        jnp.zeros((2,), dtype=jnp.float32),
+        dict(
+            a=jnp.zeros((2,), dtype=jnp.float32),
+            b=jnp.zeros((2,), dtype=jnp.float32),))
+    weights = (
+        jnp.ones((2,), dtype=jnp.float32),
+        dict(
+            a=jnp.ones((2,), dtype=jnp.float32),
+            b=jnp.ones((2,), dtype=jnp.float32),))
+    # This mask means that we will add decayed weights to the first two
+    # terms in the input updates, but not to the last element.
+    expected_tx_updates = (
+        0.1*jnp.ones((2,), dtype=jnp.float32),
+        dict(
+            a=0.1*jnp.ones((2,), dtype=jnp.float32),
+            b=jnp.zeros((2,), dtype=jnp.float32),))
+    # Apply transform
+    state = tx.init(weights)
+    transform_fn = self.variant(tx.update)
+    new_updates, _ = transform_fn(updates, state, weights)
+    # Assert output as expected.
+    chex.assert_tree_all_close(new_updates, expected_tx_updates)
+
+  @chex.all_variants()
   def test_ema(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
