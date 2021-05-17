@@ -43,7 +43,7 @@ def trace(
   """Compute a trace of past updates.
 
   Note: `trace` and `ema` have very similar but distinct updates;
-  `trace = trace + decay * t`, while `ema = (1-decay) * ema + decay * t`.
+  `trace = decay * trace + t`, while `ema = decay * ema + (1-decay) * t`.
   Both are frequently found in the optimisation literature.
 
   Args:
@@ -101,7 +101,7 @@ def ema(
   """Compute an exponential moving average of past updates.
 
   Note: `trace` and `ema` have very similar but distinct updates;
-  `ema = (1-decay) * ema + decay * t`, while `trace = trace + decay * t`.
+  `ema = decay * ema + (1-decay) * t`, while `trace = decay * trace + t`.
   Both are frequently found in the optimisation literature.
 
   Args:
