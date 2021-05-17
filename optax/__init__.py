@@ -100,6 +100,7 @@ from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_param_norm
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -171,6 +172,7 @@ __all__ = (
     "DifferentiallyPrivateAggregateState",
     "ema",
     "EmaState",
+    "EmptyState",
     "exponential_decay",
     "fisher_diag",
     "flatten",
@@ -212,6 +214,7 @@ __all__ = (
     "scale",
     "scale_by_adam",
     "scale_by_belief",
+    "scale_by_param_norm",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",

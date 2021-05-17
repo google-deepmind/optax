@@ -44,6 +44,7 @@ class TransformTest(parameterized.TestCase):
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
+      ('param_norm', transform.scale_by_param_norm),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params

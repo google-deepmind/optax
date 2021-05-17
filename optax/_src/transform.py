@@ -330,6 +330,30 @@ def scale(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+def scale_by_param_norm(
+    min_scale: float = 1e-3
+) -> base.GradientTransformation:
+  """Scale updates for each layer by the norm of that layer's parameters.
+
+  Args:
+    min_scale: minimum scaling factor.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(_):
+    return base.EmptyState()
+
+  def update_fn(updates, state, params):
+    updates = jax.tree_multimap(
+        lambda u, p: u * numerics.safe_norm(p, min_scale),
+        updates, params)
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByBeliefState(base.OptState):
   """State for the rescaling by AdaBelief algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.
@@ -508,11 +532,6 @@ def add_decayed_weights(
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
-
-
-# TODO(b/180608630): Remove deprecated references.
-AdditiveWeightDecayState = AddDecayedWeightsState
-additive_weight_decay = add_decayed_weights
 
 
 class ScaleByScheduleState(base.OptState):
@@ -798,6 +817,8 @@ def scale_by_sm3(
 # To be removed once checkpoints have updated.
 _safe_int32_increment = numerics.safe_int32_increment
 safe_int32_increment = numerics.safe_int32_increment
+AdditiveWeightDecayState = AddDecayedWeightsState
+additive_weight_decay = add_decayed_weights
 ClipState = clipping.ClipState
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
 IdentityState = base.EmptyState
