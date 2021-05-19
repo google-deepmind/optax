@@ -51,6 +51,9 @@ def clip(max_delta) -> base.GradientTransformation:
 def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   """Clip updates to a max rms for the gradient of each param vector or matrix.
 
+  A `block` is here a weight vector (e.g. in a Linear layer) or a weight matrix
+  (e.g. in a convolutional layer) appearing as a leaf in the grads/param pytree.
+
   Args:
     threshold: the maximum rms for the gradient of each param vector or matrix.
 

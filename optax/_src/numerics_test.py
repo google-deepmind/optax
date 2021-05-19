@@ -52,6 +52,16 @@ class NumericsTest(chex.TestCase):
     g = dnorm_dx(float32_array(0.), float32_array(3.))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
+  @chex.all_variants()
+  def test_safe_rms(self):
+    drms_dx = self.variant(jax.grad(numerics.safe_root_mean_squares))
+    # Test gradient is 0. in 0. when zero min rms is used.
+    g = drms_dx(float32_array(0.), float32_array(0.))
+    np.testing.assert_array_equal(g, jnp.zeros_like(g))
+    # Test gradient is 0. in 0. when non zero min rms is used.
+    g = drms_dx(float32_array(0.), float32_array(3.))
+    np.testing.assert_array_equal(g, jnp.zeros_like(g))
+
 
 if __name__ == '__main__':
   absltest.main()

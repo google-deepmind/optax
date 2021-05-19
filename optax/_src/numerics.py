@@ -34,6 +34,22 @@ def safe_norm(x, min_norm):
   return jnp.where(norm <= min_norm, min_norm, jnp.linalg.norm(x))
 
 
+def safe_root_mean_squares(x, min_rms):
+  """Returns jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm) with correct grads.
+
+  The gradients of `jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm)` at 0.0
+  is `NaN`, because jax will evaluate both branches of the `jnp.maximum`. This
+  function will instead return the correct gradient of 0.0 also in such setting.
+
+  Args:
+    x: jax array.
+    min_rms: lower bound for the returned norm.
+  """
+  rms = jnp.sqrt(jnp.mean(x ** 2))
+  x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
+  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(x ** 2)))
+
+
 def safe_int32_increment(count):
   """Increments int32 counter by one.
 
