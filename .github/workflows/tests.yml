@@ -56,7 +56,7 @@ jobs:
           pytype --version
           if [[ `python -c 'import sys; print(sys.version_info.minor)'` -le 8 ]]
           then
-            pytype `find optax/_src/ -name '*.py' | xargs` -k
+            pytype `find optax/_src/ -name '*.py' | xargs` -k -d import-error
           fi
         shell: bash
       - name: Run tests
