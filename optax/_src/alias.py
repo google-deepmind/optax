@@ -323,7 +323,7 @@ def radam(
       _scale_by_learning_rate(learning_rate),
   )
 
-
+# pylint: disable=line-too-long
 def rmsprop(
     learning_rate: ScalarOrSchedule,
     decay: float = 0.9,
@@ -342,8 +342,7 @@ def rmsprop(
   optimiser that can be used to switch between several of these variants.
 
   References:
-    Tieleman and Hinton, 2012:
-        www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+    Tieleman and Hinton, 2012: www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
     Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
@@ -377,7 +376,7 @@ def rmsprop(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity())
   )
-
+# pylint: enable=line-too-long
 
 def sgd(
     learning_rate: ScalarOrSchedule,
