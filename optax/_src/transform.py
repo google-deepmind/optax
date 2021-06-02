@@ -862,4 +862,3 @@ AdditiveWeightDecayState = AddDecayedWeightsState
 additive_weight_decay = add_decayed_weights
 ClipState = clipping.ClipState
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
-IdentityState = base.EmptyState
