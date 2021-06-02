@@ -55,7 +55,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ZeroNansState(base.OptState):
+class ZeroNansState(base.State):
   """Contains a tree.
 
   The entry `found_nan` has the same tree structure as that of the parameters.

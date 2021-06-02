@@ -25,7 +25,7 @@ from optax._src import base
 # pylint:disable=no-value-for-parameter
 
 
-class LookaheadState(base.OptState):
+class LookaheadState(base.State):
   """State of the `GradientTransformation` returned by `lookahead`.
 
   Attributes:
@@ -33,7 +33,7 @@ class LookaheadState(base.OptState):
     steps_since_sync: Number of fast optimizer steps taken since slow and fast
       parameters were synchronized.
   """
-  fast_state: base.OptState
+  fast_state: base.TransformState
   steps_since_sync: jnp.ndarray
 
 

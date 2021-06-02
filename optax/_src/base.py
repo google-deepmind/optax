@@ -24,17 +24,23 @@ NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
 
-OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
+
+State = NamedTuple  # The states of optax's building blocks are namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 
+# An optax transformation's state is typically a (possibly empty) namedtuple,
+# or a sequence of namedtuples for chained gradient transformations.
+# User-defined transformationa may however use different nested structures.
+TransformState = Union[
+    State, Sequence[State], Any]
 TransformInitFn = Callable[
     [Params],
-    Union[OptState, Sequence[OptState]]]
+    TransformState]
 TransformUpdateFn = Callable[
-    [Updates, OptState, Optional[Params]],
-    Tuple[Updates, OptState]]
+    [Updates, TransformState, Optional[Params]],
+    Tuple[Updates, TransformState]]
 Schedule = Callable[
     [chex.Numeric],
     chex.Numeric]
@@ -46,7 +52,7 @@ class GradientTransformation(NamedTuple):
   update: TransformUpdateFn
 
 
-class EmptyState(OptState):
+class EmptyState(State):
   """An empty state for the simplest stateless transformations."""
 
 
@@ -66,3 +72,6 @@ def identity() -> GradientTransformation:
 
   return GradientTransformation(init_fn, update_fn)
 
+
+# TODO(b/183800387): remove legacy aliases.
+OptState = NamedTuple

@@ -22,7 +22,7 @@ from optax._src import linear_algebra
 
 
 # pylint:disable=no-value-for-parameter
-class DifferentiallyPrivateAggregateState(base.OptState):
+class DifferentiallyPrivateAggregateState(base.State):
   """State containing PRNGKey for `differentially_private_aggregate`."""
   rng_key: jnp.array
 

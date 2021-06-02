@@ -497,11 +497,11 @@ def _convert_floats(x, dtype):
   return x
 
 
-class InjectHyperparamsState(base.OptState):
+class InjectHyperparamsState(base.State):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
-  inner_state: base.OptState
+  inner_state: base.TransformState
 
 
 def inject_hyperparams(

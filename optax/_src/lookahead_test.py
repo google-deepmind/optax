@@ -32,7 +32,7 @@ def _build_sgd():
   return alias.sgd(1.)
 
 
-class TestOptimizerState(base.OptState):
+class TestOptimizerState(base.State):
   """Fast optimizer state for the lookahead tests."""
   aggregate_grads: base.Params
   # Include a variable with non-zero initial value to check that it is reset
