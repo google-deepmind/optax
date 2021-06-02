@@ -24,7 +24,10 @@ NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
 
-OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
+# The library's transformation states are typically (possibly empty) namedtuples
+# or a sequence of namedtuples as in chained gradient transformations.
+# Users may however use different nested structured for a transform's state.
+OptState = Union[NamedTuple, Sequence[NamedTuple], Any]
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
