@@ -94,8 +94,10 @@ class FlaxOptimizersEquivalenceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    self.init_params = (
+        jnp.array([1., 0.1, 1., 2.]), jnp.array([3., 4.]))
+    self.per_step_updates = (
+        jnp.array([0., 0.3, 500., 5.]), jnp.array([300., 3.]))
 
   @parameterized.named_parameters(
       ('sgd',
@@ -125,6 +127,13 @@ class FlaxOptimizersEquivalenceTest(chex.TestCase):
       ('lamb',
        alias.lamb(LR),
        optim.LAMB(LR)),
+      ('lars',
+       alias.lars(
+           LR, weight_decay=.5, trust_coefficient=0.003,
+           momentum=0.9, eps=1e-3),
+       optim.LARS(
+           LR, weight_decay=.5, trust_coefficient=0.003,
+           beta=0.9, eps=1e-3)),
   )
   def test_flax_optim_equivalence(self, optax_optimizer, flax_optimizer):
 

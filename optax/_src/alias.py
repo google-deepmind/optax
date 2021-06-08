@@ -22,9 +22,11 @@ from optax._src import base
 from optax._src import combine
 from optax._src import privacy
 from optax._src import transform
+from optax._src import wrappers
 
 
 ScalarOrSchedule = Union[float, base.Schedule]
+MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
 def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
@@ -214,13 +216,62 @@ def fromage(
   )
 
 
+def lars(
+    learning_rate: ScalarOrSchedule,
+    weight_decay: float = 0.,
+    weight_decay_mask: MaskOrFn = True,
+    trust_coefficient: float = 0.001,
+    eps: float = 0.,
+    trust_ratio_mask: MaskOrFn = True,
+    momentum: float = 0.9,
+    nesterov: bool = False,
+) -> base.GradientTransformation:
+  """The LARS optimiser.
+
+  LAMB is a layer-wise adaptive optimiser introduced to help scale SGD to
+  larger batch sizes. LARS later inspired the LAMB optimiser.
+
+  References:
+    You et al, 2017: https://arxiv.org/abs/1708.03888
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    weight_decay (default `0.`): strength of the weight decay regularization.
+    weight_decay_mask: a tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
+    trust_coefficient: a multiplier for the trust ratio.
+    eps: optional additive constant in the trust ratio denominator.
+    trust_ratio_mask: a tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
+    momentum: the decay rate for momentum.
+    nesterov: whether to use Nesterov momentum.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
+      wrappers.masked(
+          inner=transform.scale_by_trust_ratio(
+              trust_coefficient=trust_coefficient, eps=eps),
+          mask=trust_ratio_mask),
+      _scale_by_learning_rate(learning_rate),
+      transform.trace(decay=momentum, nesterov=nesterov),
+  )
+
+
 def lamb(
     learning_rate: ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-6,
     eps_root: float = 0.0,
-    weight_decay: float = 0.
+    weight_decay: float = 0.,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """The LAMB optimiser.
 
@@ -243,13 +294,17 @@ def lamb(
       the square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for instance when computing (meta-)gradients through Adam.
     weight_decay (default `0.`): strength of the weight decay regularization.
+    mask: a tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
 
   Returns:
     the corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      transform.add_decayed_weights(weight_decay),
+      transform.add_decayed_weights(weight_decay=weight_decay, mask=mask),
       transform.scale_by_trust_ratio(),
       _scale_by_learning_rate(learning_rate),
   )

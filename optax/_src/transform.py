@@ -617,7 +617,9 @@ class ScaleByTrustRatioState(NamedTuple):
 
 
 def scale_by_trust_ratio(
-    min_norm: float = 0.0
+    min_norm: float = 0.0,
+    trust_coefficient: float = 1.,
+    eps: float = 0.,
 ) -> base.GradientTransformation:
   """Scale updates by trust ratio`.
 
@@ -626,6 +628,8 @@ def scale_by_trust_ratio(
 
   Args:
     min_norm: minimum norm for params and gradient norms; by default is zero.
+    trust_coefficient: a multiplier for the trust ratio.
+    eps: additive constant added to the denominator for numerical stability.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -643,7 +647,7 @@ def scale_by_trust_ratio(
       # Clip norms to minimum value, by default no clipping.
       param_norm = numerics.safe_norm(param, min_norm)
       update_norm = numerics.safe_norm(update, min_norm)
-      trust_ratio = param_norm / update_norm
+      trust_ratio = trust_coefficient * param_norm / (update_norm + eps)
 
       # If no minimum norm clipping is used
       # Set trust_ratio to 1 in case where parameters would never be updated.

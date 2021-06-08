@@ -21,6 +21,7 @@ from optax._src.alias import adamw
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
+from optax._src.alias import lars
 from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
@@ -192,6 +193,7 @@ __all__ = (
     "InjectHyperparamsState",
     "join_schedules",
     "lamb",
+    "lars",
     "log_cosh",
     "lookahead",
     "LookaheadParams",
