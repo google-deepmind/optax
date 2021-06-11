@@ -431,14 +431,18 @@ class MultiTransformTest(chex.TestCase):
   """Tests for the multi_transform wrapper."""
 
   @chex.all_variants
-  def test_multi_transform(self):
+  @parameterized.parameters(True, False)
+  def test_multi_transform(self, use_fn):
     params = {'a1': 1., 'b1': 2., 'z1': {'a2': 3., 'z2': {'c1': 4.}}}
     params = jax.tree_map(jnp.asarray, params)
     input_updates = jax.tree_map(lambda x: x / 10.0, params)
     tx_dict = {'a': transform.scale(-1.0),
                'b': transform.ema(0.0),  # stateful
                'c': transform.scale(2.0)}
-    tx = wrappers.multi_transform(tx_dict, _map_keys_fn(lambda k, _: k[0]))
+    param_labels = _map_keys_fn(lambda k, _: k[0])
+    if not use_fn:
+      param_labels = param_labels(params)
+    tx = wrappers.multi_transform(tx_dict, param_labels)
     update_fn = self.variant(tx.update)
     state = self.variant(tx.init)(params)
 
@@ -462,8 +466,9 @@ class MultiTransformTest(chex.TestCase):
     self.assertEqual(updates, container())
 
   @chex.all_variants
-  @parameterized.parameters(True, False)
-  def test_labels_mismatch(self, use_extra_label):
+  @parameterized.parameters(
+    (False, False), (False, True), (True, False), (True, True))
+  def test_labels_mismatch(self, use_extra_label, use_fn):
     # The labels from label_fn must be a subet of the keys for the tx.
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
     params = jax.tree_map(jnp.asarray, params)
@@ -474,7 +479,7 @@ class MultiTransformTest(chex.TestCase):
 
     init_fn, update_fn = wrappers.multi_transform(
         {0: _build_sgd(), 1: _build_simple_adam(), 2: transform.trace(1.0)},
-        lambda _: label_tree)
+        (lambda _: label_tree) if use_fn else label_tree)
 
     if use_extra_label:
       with self.assertRaises(ValueError):
