@@ -132,7 +132,7 @@ def sigmoid_binary_cross_entropy(logits, labels):
     a sigmoid cross entropy loss.
   """
   chex.assert_is_broadcastable(logits.shape, labels.shape)
-  chex.assert_type([logits, labels], float)
+  chex.assert_type([logits], float)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
@@ -162,7 +162,7 @@ def softmax_cross_entropy(
     the cross entropy loss.
   """
   chex.assert_is_broadcastable(logits.shape, labels.shape)
-  chex.assert_type([logits, labels], float)
+  chex.assert_type([logits], float)
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
 
 
