@@ -322,7 +322,7 @@ def masked(
     flat_updates = treedef.flatten_up_to(updates)
     masked_updates = [g for g, m in zip(flat_updates, flat_mask) if m]
 
-    if params:
+    if params is not None:
       flat_params = treedef.flatten_up_to(params)
       masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
     else:
