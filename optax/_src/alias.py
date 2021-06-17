@@ -19,7 +19,9 @@ from typing import Any, Callable, Optional, Union
 import jax.numpy as jnp
 
 from optax._src import base
+from optax._src import clipping
 from optax._src import combine
+from optax._src import factorized
 from optax._src import privacy
 from optax._src import transform
 from optax._src import wrappers
@@ -29,10 +31,11 @@ ScalarOrSchedule = Union[float, base.Schedule]
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
-def _scale_by_learning_rate(learning_rate: ScalarOrSchedule):
+def _scale_by_learning_rate(learning_rate: ScalarOrSchedule, flip_sign=True):
+  m = -1 if flip_sign else 1
   if callable(learning_rate):
-    return transform.scale_by_schedule(lambda count: -learning_rate(count))
-  return transform.scale(-learning_rate)
+    return transform.scale_by_schedule(lambda count: m * learning_rate(count))
+  return transform.scale(m * learning_rate)
 
 
 def adabelief(
@@ -66,6 +69,75 @@ def adabelief(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
   )
+
+
+def adafactor(
+    learning_rate: Optional[ScalarOrSchedule] = None,
+    min_dim_size_to_factor: int = 128,
+    decay_rate: float = 0.8,
+    decay_offset: int = 0,
+    multiply_by_parameter_scale: float = True,
+    clipping_threshold: Optional[float] = 1.0,
+    momentum: Optional[float] = None,
+    dtype_momentum: Any = jnp.float32,
+    weight_decay_rate: Optional[float] = None,
+    eps: float = 1e-30,
+    factored: bool = True,
+    ) -> base.GradientTransformation:
+  """The Adafactor optimiser.
+
+  Adafactor is an adaptive learning rate optimiser that focuses on fast
+  training of large scale neural networks. It saves memory by using a factored
+  estimate of the second order moments used to scale gradients.
+
+  References:
+    Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
+
+  Args:
+      learning_rate: (float) a step size. Note: the natural scale for
+        Adafactor's LR is markedly different from Adam, one doesn't use the
+        1/sqrt(hidden) correction for this optim with attention-based models.
+      min_dim_size_to_factor: (int) only factor the statistics if two array
+        dimensions have at least this size.
+      decay_rate: (float) controls second-moment exponential decay schedule.
+      decay_offset: (int) for finetuning, one may set this to the starting
+        step number of the finetuning phase.
+      multiply_by_parameter_scale: (bool): if True, then scale learning_rate by
+        parameter norm. if False, provided learning_rate is absolute step size.
+      clipping_threshold: (float>=1) optional value; if None, clipping disabled.
+      momentum: (float) optional value between 0 and 1, enables
+        momentum and uses extra memory if non-None! None by default.
+      dtype_momentum: (dtype) dtype of momentum buffers.
+      weight_decay_rate: (float) optional rate at which to decay weights.
+      eps: (float) regularization constant for root mean squared gradient.
+      factored: (bool) whether to use factored second-moment estimates.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
+  # The core of the algorithm is a procedure for rescaling gradients
+  # by a factored estimate of the root mean squared gradients.
+  # This reduces memory compared to algorithms such as Adam or RmsProp,
+  # by not having to hold a separate estimate for each weight.
+  tx = [
+      factorized.scale_by_factored_rms(
+          factored, decay_rate, decay_offset, min_dim_size_to_factor, eps)]
+  # This basic rescaling is typically combined with one or more of the following
+  # transformation (all can be disabled via adafactor's constructor args).
+  if clipping_threshold is not None:
+    tx.append(clipping.clip_by_block_rms(clipping_threshold))
+  if learning_rate is not None:
+    tx.append(_scale_by_learning_rate(learning_rate, flip_sign=False))
+  if multiply_by_parameter_scale:
+    tx.append(transform.scale_by_param_block_rms())
+  if momentum is not None:
+    tx.append(
+        transform.ema(momentum, debias=False, accumulator_dtype=dtype_momentum))
+  if weight_decay_rate is not None:
+    tx.append(transform.add_decayed_weights(weight_decay_rate))
+  # In gradient "descent" we follow the negative gradient.
+  tx.append(transform.scale(-1))
+  return combine.chain(*tx)
 
 
 def adagrad(

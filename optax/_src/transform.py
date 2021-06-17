@@ -47,7 +47,7 @@ def trace(
   Both are frequently found in the optimisation literature.
 
   Args:
-    decay: the decay rate for the tracing of past updates.
+    decay: the decay rate for the trace of past updates.
     nesterov: whether to use Nesterov momentum.
     accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
       then the `dtype` is inferred from `params` and `updates`.

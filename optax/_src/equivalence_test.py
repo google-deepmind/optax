@@ -35,8 +35,8 @@ class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4., 5.]))
+    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3., 1.]))
 
   @chex.all_variants()
   @parameterized.named_parameters(
@@ -134,6 +134,21 @@ class FlaxOptimizersEquivalenceTest(chex.TestCase):
        optim.LARS(
            LR, weight_decay=.5, trust_coefficient=0.003,
            beta=0.9, eps=1e-3)),
+      ('adafactor',
+       alias.adafactor(
+           learning_rate=LR / 10.,
+           factored=True,
+           multiply_by_parameter_scale=True,
+           clipping_threshold=1.0,
+           decay_rate=0.8,
+           min_dim_size_to_factor=2),
+       optim.Adafactor(
+           learning_rate=LR / 10.,
+           factored=True,
+           multiply_by_parameter_scale=True,
+           clipping_threshold=1.0,
+           decay_rate=0.8,
+           min_dim_size_to_factor=2)),
   )
   def test_flax_optim_equivalence(self, optax_optimizer, flax_optimizer):
 
@@ -154,7 +169,7 @@ class FlaxOptimizersEquivalenceTest(chex.TestCase):
       optax_params = update.apply_updates(optax_params, updates)
 
     # Check equivalence.
-    chex.assert_tree_all_close(flax_params, optax_params, rtol=1e-4)
+    chex.assert_tree_all_close(flax_params, optax_params, rtol=2e-4)
 
 
 if __name__ == '__main__':

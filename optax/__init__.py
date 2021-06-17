@@ -15,6 +15,7 @@
 """Optax: composable gradient processing and optimization, in JAX."""
 
 from optax._src.alias import adabelief
+from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
@@ -52,6 +53,9 @@ from optax._src.constrain import ZeroNansState
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
+from optax._src.factorized import FactoredParameterStats
+from optax._src.factorized import FactoredState
+from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
@@ -142,6 +146,7 @@ __version__ = "0.0.8"
 
 __all__ = (
     "adabelief",
+    "adafactor",
     "adagrad",
     "adam",
     "adamw",
@@ -179,6 +184,8 @@ __all__ = (
     "EmaState",
     "EmptyState",
     "exponential_decay",
+    "FactoredState",
+    "FactoredParameterStats",
     "fisher_diag",
     "flatten",
     "fromage",

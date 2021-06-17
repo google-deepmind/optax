@@ -24,6 +24,9 @@ NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
 
+
+Shape = Sequence[int]
+
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
 Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
