@@ -276,6 +276,7 @@ Combining Optimizers
 .. autosummary::
 
     chain
+    multi_transform
 
 chain
 ~~~~~
@@ -283,7 +284,10 @@ chain
 .. autofunction:: chain
 
 
+multi_transform
+~~~~~~~~~~~~~~~
 
+.. autofunction:: multi_transform
 
 Optimizer Wrappers
 ====================

@@ -70,6 +70,47 @@ def multi_transform(
 ) -> base.GradientTransformation:
   """Partitions params and applies a different transformation to each subset.
 
+  Below is an example where we apply Adam to the weights and SGD to the biases
+  of a 2-layer neural network::
+
+    import optax
+    import jax
+    import jax.numpy as jnp
+
+    def map_nested_fn(fn):
+      '''Recursively apply `fn` to the key-value pairs of a nested dict'''
+      def map_fn(nested_dict):
+        return {k: (map_fn(v) if isinstance(v, dict) else fn(k, v))
+                for k, v in nested_dict.items()}
+      return map_fn
+
+    params = {'linear_1': {'w': jnp.zeros((5, 6)), 'b': jnp.zeros(5)},
+              'linear_2': {'w': jnp.zeros((6, 1)), 'b': jnp.zeros(1)}}
+    gradients = jax.tree_map(jnp.ones_like, params)  # dummy gradients
+
+    label_fn = map_nested_fn(lambda k, _: k)
+    tx = optax.multi_transform({'w': optax.adam(1.0), 'b': optax.sgd(1.0)},
+                               label_fn)
+    state = tx.init(params)
+    updates, new_state = tx.update(gradients, state, params)
+    new_params = optax.apply_updates(params, updates)
+
+  Instead of providing a ``label_fn``, you may provide a PyTree of labels
+  directly.  Also, this PyTree may be a prefix of the parameters PyTree. This
+  is demonstrated in the GAN pseudocode below::
+
+    generator_params = ...
+    discriminator_params = ...
+    all_params = (generator_params, discriminator_params)
+    param_labels = ('generator', 'discriminator')
+
+    tx = optax.multi_transform(
+        {'generator': optax.adam(0.1), 'discriminator': optax.adam(0.5)},
+        param_labels)
+
+  If you would like to not optimize some parameters, you may wrap
+  ``optax.multi_transform`` with :func:`optax.masked`.
+
   Args:
     transforms: A mapping from labels to transformations. Each transformation
       will be only be applied to parameters with the same label.
@@ -79,7 +120,7 @@ def multi_transform(
       (therefore the values at the leaves must be a subset of the keys).
 
   Returns:
-    An `optax.GradientTransformation`.
+    An ``optax.GradientTransformation``.
   """
   def make_mask(labels, group):
     return jax.tree_map(lambda label: label == group, labels)
