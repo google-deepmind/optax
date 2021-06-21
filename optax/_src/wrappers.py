@@ -14,7 +14,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from typing import Any, Callable, NamedTuple, Union, Mapping, Hashable
+from typing import Any, Callable, NamedTuple, Union
 
 import jax
 from jax import lax
@@ -387,54 +387,5 @@ def maybe_update(
     updates, new_inner_state = lax.cond(
         should_update_fn(state.step), do_update, reject_update, operand=None)
     return updates, MaybeUpdateState(new_inner_state, state.step + 1)
-
-  return base.GradientTransformation(init_fn, update_fn)
-
-
-class MultiTransformState(NamedTuple):
-  inner_states: Mapping[Hashable, NamedTuple]
-
-
-def multi_transform(
-    transforms: Mapping[Hashable, base.GradientTransformation],
-    param_labels: Union[PyTree, Callable[[PyTree], PyTree]]
-) -> base.GradientTransformation:
-  """Partitions params and applies a different transformation to each subset.
-
-  Args:
-    transforms: A mapping from labels to transformations. Each transformation
-      will be only be applied to parameters with the same label.
-    param_labels: A PyTree that is the same shape or a prefix of the
-      parameters/updates (or a function that returns one given the parameters as
-      input). The leaves of this PyTree correspond to the keys of the transforms
-      (therefore the values at the leaves must be a subset of the keys).
-
-  Returns:
-    An `optax.GradientTransformation`.
-  """
-  def make_mask(labels, group):
-    return jax.tree_map(lambda label: label == group, labels)
-
-  def init_fn(params):
-    labels = param_labels(params) if callable(param_labels) else param_labels
-
-    label_set = set(jax.tree_leaves(labels))
-    if not label_set.issubset(transforms.keys()):
-      raise ValueError('Some parameters have no corresponding transformation.\n'
-                       f'Parameter labels: {list(sorted(label_set))} \n'
-                       f'Transforms keys: {list(sorted(transforms.keys()))} \n')
-
-    inner_states = {group: masked(tx, make_mask(labels, group)).init(params)
-                    for group, tx in transforms.items()}
-    return MultiTransformState(inner_states)
-
-  def update_fn(updates, state, params=None):
-    labels = param_labels(updates) if callable(param_labels) else param_labels
-    new_inner_state = {}
-    for group, tx in transforms.items():
-      masked_tx = masked(tx, make_mask(labels, group))
-      updates, new_inner_state[group] = masked_tx.update(
-          updates, state.inner_states[group], params)
-    return updates, MultiTransformState(new_inner_state)
 
   return base.GradientTransformation(init_fn, update_fn)
