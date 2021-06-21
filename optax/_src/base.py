@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 
 # pylint:disable=no-value-for-parameter
@@ -28,7 +28,7 @@ NO_PARAMS_MSG = (
 Shape = Sequence[int]
 
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
-Params = Any  # Parameters are arbitrary nests of `jnp.ndarrays`.
+Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 
