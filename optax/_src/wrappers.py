@@ -282,32 +282,28 @@ def masked(
   For example, it is common to skip weight decay for BatchNorm scale and all
   bias parameters. In many networks, these are the only parameters with only
   one dimension. So, you may create a mask function to mask these out as
-  follows:
+  follows::
 
-  ```
-  mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim != 1, p)
-  custom_weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
-  ```
+    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim != 1, p)
+    weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
 
-  You may alternatively create the mask pytree upfront:
+  You may alternatively create the mask pytree upfront::
 
-  ```
-  mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
-  custom_weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
-  ```
+    mask = jax.tree_map(lambda x: x.ndim != 1, params)
+    weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
 
-  For the `inner` transform, state will only be stored for the parameters that
-  have a mask value of `True`.
+  For the ``inner`` transform, state will only be stored for the parameters that
+  have a mask value of ``True``.
 
   Args:
     inner: Inner transformation to mask.
     mask: a PyTree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the transformation to, and `False` for those you want to skip.
+      The leaves should be booleans, ``True`` for leaves/subtrees you want to
+      apply the transformation to, and ``False`` for those you want to skip.
 
   Returns:
-    New GradientTransformation wrapping `inner`.
+    New GradientTransformation wrapping ``inner``.
   """
   def init_fn(params):
     flat_mask, treedef = tree_flatten(mask(params) if callable(mask) else mask)
