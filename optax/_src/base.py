@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Callable, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 import chex
 
 # pylint:disable=no-value-for-parameter
@@ -25,6 +25,7 @@ NO_PARAMS_MSG = (
     'parameters, but you are not passing `params` when calling `update`.')
 
 
+PyTree = Any
 Shape = Sequence[int]
 
 OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.

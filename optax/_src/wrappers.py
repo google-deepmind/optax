@@ -27,7 +27,6 @@ import numpy as np
 from optax._src import base
 
 Array = jnp.ndarray
-PyTree = Any
 
 
 def flatten(
@@ -275,7 +274,7 @@ class MaskedState(NamedTuple):
 
 def masked(
     inner: base.GradientTransformation,
-    mask: Union[PyTree, Callable[[base.Params], PyTree]]
+    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
 ) -> base.GradientTransformation:
   """Mask updates so only a subset of them are computed.
 
@@ -385,4 +384,3 @@ def maybe_update(
     return updates, MaybeUpdateState(new_inner_state, state.step + 1)
 
   return base.GradientTransformation(init_fn, update_fn)
-

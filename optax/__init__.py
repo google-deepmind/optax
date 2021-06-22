@@ -46,6 +46,8 @@ from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
 from optax._src.combine import chain
+from optax._src.combine import multi_transform
+from optax._src.combine import MultiTransformState
 from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans
@@ -211,6 +213,8 @@ __all__ = (
     "matrix_inverse_pth_root",
     "masked",
     "MaskedState",
+    "multi_transform",
+    "MultiTransformState",
     "measure_valued_jacobians",
     "moving_avg_baseline",
     "multi_normal",
