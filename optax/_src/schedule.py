@@ -515,39 +515,35 @@ def inject_hyperparams(
   hyperparameters. You may only schedule numeric hyperparameters (i.e. boolean
   flags cannot be scheduled).
 
-  For example, to use `scale_by_adam` with a piecewise linear
-  schedule for beta_1 and constant for beta_2:
+  For example, to use ``scale_by_adam`` with a piecewise linear
+  schedule for beta_1 and constant for beta_2::
 
-  ```
-  scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
-      b1=optax.piecewise_linear_schedule(...),
-      b2=0.99)
-  ```
+    scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+        b1=optax.piecewise_linear_schedule(...),
+        b2=0.99)
 
   You may manually change numeric hyperparameters that were not scheduled
-  through the `hyperparams` dict in the InjectHyperparamState:
+  through the ``hyperparams`` dict in the ``InjectHyperparamState``::
 
-  ```
-  state = scheduled_adam.init(params)
-  updates, state = scheduled_adam.update(grads, state)
-  state.hyperparams['b2'] = 0.95
-  updates, state = scheduled_adam.update(updates, state)  # uses b2 = 0.95
-  ```
+    state = scheduled_adam.init(params)
+    updates, state = scheduled_adam.update(grads, state)
+    state.hyperparams['b2'] = 0.95
+    updates, state = scheduled_adam.update(updates, state)  # uses b2 = 0.95
 
   Manually overriding scheduled hyperparameters will have no effect (e.g.
-  in the code sample above, you cannot manually adjust `b1`).
+  in the code sample above, you cannot manually adjust ``b1``).
 
   Args:
     inner_factory: a function that returns the inner
-      `optax.GradientTransformation` given the hyperparameters.
+      ``optax.GradientTransformation`` given the hyperparameters.
     static_args: a string or iterable of strings specifying which
       callable parameters are not schedules. inject_hyperparams treats all
       callables as schedules by default, so if a hyperparameter is a
       non-schedule callable, you must specify that using this argument.
 
   Returns:
-    A callable that returns a `optax.GradientTransformation`. This callable
-    accepts the same arguments as `inner_factor`, except you may provide
+    A callable that returns a ``optax.GradientTransformation``. This callable
+    accepts the same arguments as ``inner_factory``, except you may provide
     schedules in place of the constant arguments.
   """
   static_args = ({static_args} if isinstance(static_args, str) else
