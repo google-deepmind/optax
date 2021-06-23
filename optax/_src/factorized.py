@@ -124,6 +124,8 @@ def scale_by_factored_rms(
 
   def update_fn(grads, state, params):
     """Apply gradient transformation."""
+    if params is None:
+      raise ValueError(base.NO_PARAMS_MSG)
 
     def _update(grad, stats, param, step):
       shape = param.shape

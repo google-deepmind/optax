@@ -350,6 +350,8 @@ def scale_by_param_block_norm(
     return base.EmptyState()
 
   def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_multimap(
         lambda u, p: u * numerics.safe_norm(p, min_scale),
         updates, params)
@@ -377,6 +379,8 @@ def scale_by_param_block_rms(
     return base.EmptyState()
 
   def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_map(
         lambda u, p: u * numerics.safe_root_mean_squares(p, min_scale),
         updates, params)
