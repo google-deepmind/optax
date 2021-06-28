@@ -24,6 +24,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax._src import alias
+from optax._src import combine
 from optax._src import constrain
 from optax._src import transform
 from optax._src import update
@@ -177,7 +178,13 @@ class WrappersTest(parameterized.TestCase):
     loss_init, loss_apply = hk.without_apply_rng(hk.transform(get_loss))
     params = loss_init(jax.random.PRNGKey(1915), data)
 
-    ms_opt = wrappers.MultiSteps(alias.adam(1e-4), k_steps)
+    ms_opt = wrappers.MultiSteps(
+        # Use a non-trivial inner optimiser:
+        # * it has a state,
+        # * it requires the params for the update.
+        combine.chain(transform.scale_by_adam(),
+                      transform.additive_weight_decay(1e-2),
+                      transform.scale(-1e-4)), k_steps)
     opt_init, opt_update = ms_opt.gradient_transformation()
 
     # Put the training in one function, to check that the update is indeed

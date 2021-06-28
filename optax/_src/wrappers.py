@@ -228,7 +228,6 @@ class MultiSteps:
 
   def update(self, grads: Any, state: MultiStepsState, params: Any = None):
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
-    del params
     k_steps = self._every_k_schedule(state.gradient_step)
     acc_grads = jax.tree_util.tree_multimap(lambda a, b: a + b, grads,
                                             state.acc_grads)
@@ -240,7 +239,7 @@ class MultiSteps:
       else:
         grads_for_update = acc_grads
       updates, new_inner_state = self._opt.update(
-          grads_for_update, state.inner_opt_state)
+          grads_for_update, state.inner_opt_state, params=params)
       new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int64),
                                   gradient_step=state.gradient_step + 1,
                                   inner_opt_state=new_inner_state,
