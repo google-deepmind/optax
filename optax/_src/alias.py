@@ -91,7 +91,7 @@ def adafactor(
   estimate of the second order moments used to scale gradients.
 
   References:
-    Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
+    Noam Shazeer & Stern, 2018: https://arxiv.org/abs/1804.04235
 
   Args:
       learning_rate: (float) a step size. Note: the natural scale for
