@@ -248,7 +248,10 @@ class MultiSteps:
 
     def mid_step(args):
       del args
-      updates = _zeros_tree_like(grads)
+      updates_shape_dtype, _ = jax.eval_shape(
+          self._opt.update, acc_grads, state.inner_opt_state, params=params)
+      updates = jax.tree_map(lambda sd: jnp.zeros(sd.shape, sd.dtype),
+                             updates_shape_dtype)
       new_state = MultiStepsState(mini_step=state.mini_step + 1,
                                   gradient_step=state.gradient_step,
                                   inner_opt_state=state.inner_opt_state,
