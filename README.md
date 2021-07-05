@@ -43,6 +43,42 @@ or from PyPI:
 pip install optax
 ```
 
+## Quickstart
+
+Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api.html#Common-Optimizers) and
+[loss functions](https://optax.readthedocs.io/en/latest/api.html#common-losses).
+For example the following code snippet uses the Adam optimizer from `optax.adam`
+and the mean squared error from `optax.l2_loss`. We initialize the optimizer
+state using the `init` function and `params` of the model.
+
+```python
+optimizer = optax.adam(learning_rate)
+# Obtain the `opt_state` that contains statistics for the optimizer.
+params = {'w': jnp.ones((num_weights,))}
+opt_state = optimizer.init(params)
+```
+
+To write the update loop we need a loss function that can be differentiated by
+Jax (with `jax.grad` in this
+example) to obtain the gradients.
+
+```python
+compute_loss = lambda params, x, y: optax.l2_loss(params['w'].dot(x), y)
+grads = jax.grad(compute_loss)(params, xs, ys)
+```
+
+The gradients are then converted via `optimizer.update` to obtain the updates
+that should be applied to the current params to obtain the new ones.
+`optax.apply_updates` is a convinience utility to do this.
+
+```python
+updates, opt_state = optimizer.update(grads, opt_state)
+params = optax.apply_updates(params, updates)
+```
+
+You can continue the quick start in [the Optax quickstart notebook.](https://github.com/deepmind/optax/blob/master/optax/examples/quick_start.ipynb)
+
+
 ## Components
 
 ### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
