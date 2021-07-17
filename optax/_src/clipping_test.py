@@ -53,8 +53,8 @@ class ClippingTest(absltest.TestCase):
       clipper = clipping.clip_by_block_rms(1. / i)
       # Check that the clipper actually works and block rms is <= threshold
       updates, _ = clipper.update(updates, None)
-      self.assertAlmostEqual(rmf_fn(updates[0]), 1. / i)
-      self.assertAlmostEqual(rmf_fn(updates[1]), 1. / i)
+      self.assertAlmostEqual(rmf_fn(updates[0]), 1. / i, places=6)
+      self.assertAlmostEqual(rmf_fn(updates[1]), 1. / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
       chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)

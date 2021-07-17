@@ -67,7 +67,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     def _clip_fn(u):
-      clip_denom = (jnp.maximum(1.0, jnp.sqrt(jnp.mean(u ** 2)) / threshold))
+      clip_denom = (jnp.maximum(1.0, jnp.sqrt(jnp.mean(u.conj() * u)) / threshold))
       return u / clip_denom
     updates = jax.tree_map(_clip_fn, updates)
     return updates, state
@@ -125,7 +125,7 @@ def unitwise_norm(x):
     keepdims = True
   else:
     raise ValueError(f'Got a parameter with shape not in [1, 2, 3, 4]! {x}')
-  return jnp.sum(x ** 2, axis=axis, keepdims=keepdims) ** 0.5
+  return jnp.sqrt(jnp.sum(x.conj() * x, axis=axis, keepdims=keepdims))
 
 
 def unitwise_clip(g_norm, max_norm, grad):
