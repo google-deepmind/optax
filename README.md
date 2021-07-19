@@ -128,7 +128,7 @@ Many popular transformations use time dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
 `schedules` that can be used to decay scalars as a function of a `step` count.
 
-For example you many use a polynomial schedule (with `power=1`) to decay
+For example you may use a polynomial schedule (with `power=1`) to decay
 a hyper-parameter linearly over a number of steps:
 
 ```python
