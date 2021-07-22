@@ -439,10 +439,11 @@ def warmup_exponential_decay_schedule(
     init_value: Initial value for the scalar to be annealed.
     peak_value: Peak value for scalar to be annealed at end of warmup.
     warmup_steps: Positive integer, the length of the linear warmup.
-    transition_steps: must be positive. See the decay computation above.
+    transition_steps: must be positive. See `exponential_decay` for more
+      details.
     decay_rate: must not be zero. The decay rate.
     transition_begin: must be positive. After how many steps to start annealing
-      (before this many steps the scalar value is held fixed at `init_value`).
+      (before this many steps the scalar value is held fixed at `peak_value`).
     staircase: if `True`, decay the values at discrete intervals.
     end_value: the value at which the exponential decay stops. When
       `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
