@@ -55,7 +55,6 @@ from optax._src.constrain import ZeroNansState
 from optax._src.control_variates import control_delta_method
 from optax._src.control_variates import control_variates_jacobians
 from optax._src.control_variates import moving_avg_baseline
-from optax._src.factorized import FactoredParameterStats
 from optax._src.factorized import FactoredState
 from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
@@ -187,7 +186,6 @@ __all__ = (
     "EmptyState",
     "exponential_decay",
     "FactoredState",
-    "FactoredParameterStats",
     "fisher_diag",
     "flatten",
     "fromage",

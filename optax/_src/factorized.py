@@ -14,7 +14,8 @@
 # ==============================================================================
 """Factorized optimizers."""
 
-from typing import Any, NamedTuple, Optional, Tuple
+import dataclasses
+from typing import Optional, Tuple
 
 import chex
 import jax
@@ -60,8 +61,10 @@ def _factored_dims(
   return int(sorted_dims[-2]), int(sorted_dims[-1])
 
 
-class FactoredParameterStats(NamedTuple):
-  """Stats associated to each parameter of the model."""
+@dataclasses.dataclass
+class _UpdateResult:
+  """Opaque containter that is not traversed by jax.tree_multimap."""
+  update: chex.Array  # the update to apply to params
   v_row: chex.Array  # used for factored params.
   v_col: chex.Array  # used for factored params.
   v: chex.Array  # used for params where factoring is skipped.
@@ -70,7 +73,9 @@ class FactoredParameterStats(NamedTuple):
 class FactoredState(base.OptState):
   """Overall state of the gradient transformation."""
   count: chex.Array  # number of update steps.
-  stats: Any  # Statistics held for each parameter.
+  v_row: chex.ArrayTree  # Tree of factored params.
+  v_col: chex.ArrayTree  # Tree of factored params.
+  v: chex.ArrayTree  # Tree for params where factoring is skipped.
 
 
 def scale_by_factored_rms(
@@ -101,51 +106,63 @@ def scale_by_factored_rms(
     the corresponding `GradientTransformation`.
   """
 
+  def _to_state(count: chex.Array, result_tree):
+    """Maps from a tree of (factored) values to separate trees of values."""
+    return FactoredState(
+        count=count,
+        v_row=jax.tree_map(lambda o: o.v_row, result_tree),
+        v_col=jax.tree_map(lambda o: o.v_col, result_tree),
+        v=jax.tree_map(lambda o: o.v, result_tree))
+
   def init_fn(params):
     """Initialise the optimiser's state."""
 
     def _init(param):
       shape = param.shape
-      stats = {k: jnp.zeros((1,)) for k in ['v_row', 'v_col', 'v']}
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
         vr_shape = np.delete(shape, d0)
         vc_shape = np.delete(shape, d1)
-        stats['v_row'] = jnp.zeros(vr_shape, dtype=jnp.float32)
-        stats['v_col'] = jnp.zeros(vc_shape, dtype=jnp.float32)
+        return _UpdateResult(
+            update=jnp.zeros((1,)),
+            v_row=jnp.zeros(vr_shape),
+            v_col=jnp.zeros(vc_shape),
+            v=jnp.zeros((1,)))
       else:
-        stats['v'] = jnp.zeros(param.shape, dtype=jnp.float32)
-      return FactoredParameterStats(**stats)
+        return _UpdateResult(
+            update=jnp.zeros((1,)),
+            v_row=jnp.zeros((1,)),
+            v_col=jnp.zeros((1,)),
+            v=jnp.zeros(param.shape))
 
-    return FactoredState(
-        count=jnp.zeros([], jnp.int32),
-        stats=jax.tree_map(_init, params))
+    return _to_state(jnp.zeros([], jnp.int32), jax.tree_map(_init, params))
 
   def update_fn(grads, state, params):
     """Apply gradient transformation."""
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    def _update(grad, stats, param, step):
+    def _update(grad, v_row, v_col, v, param, step):
       shape = param.shape
       grad = grad.astype(jnp.float32)
       decay_rate_t = _decay_rate_pow(step - step_offset, decay_rate)
 
       # Scaled by factorized second moment statistics.
-      new_stats = {k: jnp.zeros((1,)) for k in ['v_row', 'v_col', 'v']}
+      new_v_row = jnp.zeros((1,))
+      new_v_col = jnp.zeros((1,))
+      new_v = jnp.zeros((1,))
+
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
         grad_sqr = grad * grad + epsilon
         new_v_row = (
-            decay_rate_t * stats.v_row +
+            decay_rate_t * v_row +
             (1. - decay_rate_t) * jnp.mean(grad_sqr, axis=d0))
         new_v_col = (
-            decay_rate_t * stats.v_col +
+            decay_rate_t * v_col +
             (1. - decay_rate_t) * jnp.mean(grad_sqr, axis=d1))
-        new_stats['v_row'] = new_v_row
-        new_stats['v_col'] = new_v_col
         reduced_d1 = d1-1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -156,24 +173,17 @@ def scale_by_factored_rms(
             jnp.expand_dims(col_factor, axis=d1))
       else:
         grad_sqr = grad * grad + epsilon
-        new_v = decay_rate_t * stats.v + (1. - decay_rate_t) * grad_sqr
-        new_stats['v'] = new_v
+        new_v = decay_rate_t * v + (1. - decay_rate_t) * grad_sqr
         update = grad * (new_v)**-0.5
 
-      return update, FactoredParameterStats(**new_stats)
+      return _UpdateResult(update, new_v_row, new_v_col, new_v)
 
     # Transform grad and compute new per-parameter stats.
-    output = jax.tree_multimap(
-        lambda g, s, p: _update(g, s, p, state.count),
-        grads, state.stats, params)
+    output = jax.tree_multimap(lambda *args: _update(*args, state.count), grads,
+                               state.v_row, state.v_col, state.v, params)
 
     # Unpack updates / stats and return.
-    treedef = jax.tree_structure(grads)
-    updates_flat, stats_flat = list(zip(*treedef.flatten_up_to(output)))
-    updates = jax.tree_unflatten(treedef, updates_flat)
-    stats = jax.tree_unflatten(treedef, stats_flat)
-    return updates, FactoredState(
-        count=utils.safe_int32_increment(state.count),
-        stats=stats)
+    updates = jax.tree_map(lambda o: o.update, output)
+    return updates, _to_state(utils.safe_int32_increment(state.count), output)
 
   return base.GradientTransformation(init_fn, update_fn)
