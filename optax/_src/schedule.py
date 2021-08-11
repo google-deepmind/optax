@@ -256,7 +256,7 @@ def piecewise_interpolate_schedule(
     init_value: An initial value `init_v`.
     boundaries_and_scales: A map from boundaries `b_i` to non-negative scaling
       factors `f_i`. At boundary step `b_i`, the schedule returns `init_v`
-      scaled by the product of all factors `f_j` such that `b_j` < `b_i`. The
+      scaled by the product of all factors `f_j` such that `b_j` <= `b_i`. The
       values in between each boundary will be interpolated as per `type`.
 
   Returns:
