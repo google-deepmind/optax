@@ -399,7 +399,7 @@ class ScaleByBeliefState(base.OptState):
 def scale_by_belief(
     b1: float = 0.9,
     b2: float = 0.999,
-    eps: float = 0.,
+    eps: float = 1e-16,
     eps_root: float = 1e-16
 ) -> base.GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
@@ -428,11 +428,12 @@ def scale_by_belief(
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
+    nu = jax.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
-        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+        lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
