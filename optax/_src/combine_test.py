@@ -49,6 +49,7 @@ class ComposeTest(chex.TestCase):
     chain_params = self.init_params
     chained_transforms = combine.chain(*transformations)
     state = chained_transforms.init(chain_params)
+    self.assertIsInstance(state, tuple)
 
     @self.variant
     def update_fn(updates, state):
@@ -56,6 +57,7 @@ class ComposeTest(chex.TestCase):
 
     for _ in range(STEPS):
       updates, state = update_fn(self.per_step_updates, state)
+      self.assertIsInstance(state, tuple)
       chain_params = update.apply_updates(chain_params, updates)
 
     # Manually apply sequence of transformations.
