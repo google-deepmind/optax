@@ -107,6 +107,21 @@ class AliasTest(chex.TestCase):
 
     chex.assert_tree_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
+  @parameterized.named_parameters([
+    ('float32', 'float32'),
+    ('bfloat16', 'bfloat16'),
+  ])
+  def test_explicit_dtype(self, dtype):
+    tx = alias.sgd(0.1, momentum=0.9, accumulator_dtype=dtype)
+    trace_state, _ = tx.init(jnp.array([0.0, 0.0]))
+    self.assertEqual(jax.dtypes.canonicalize_dtype(dtype), trace_state.trace.dtype)
+    tx = alias.adam(0.1, mu_dtype=dtype)
+    adam_state, _ = tx.init(jnp.array([0.0, 0.0]))
+    self.assertEqual(jax.dtypes.canonicalize_dtype(dtype), adam_state.mu.dtype)
+    tx = alias.adamw(0.1, mu_dtype=dtype)
+    adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
+    self.assertEqual(jax.dtypes.canonicalize_dtype(dtype), adam_state.mu.dtype)
+ 
 
 if __name__ == '__main__':
   absltest.main()
