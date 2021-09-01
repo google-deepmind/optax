@@ -49,8 +49,8 @@ def trace(
   Args:
     decay: the decay rate for the trace of past updates.
     nesterov: whether to use Nesterov momentum.
-    accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
-      then the `dtype` is inferred from `params` and `updates`.
+    accumulator_dtype: optional `dtype` to be used for the accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -268,7 +268,8 @@ def scale_by_adam(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-    eps_root: float = 0.0
+    eps_root: float = 0.0,
+    mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
@@ -281,13 +282,18 @@ def scale_by_adam(
     eps: term added to the denominator to improve numerical stability.
     eps_root: term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype is inferred from `params` and `updates`.
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    mu = jax.tree_map(  # First moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
@@ -296,7 +302,7 @@ def scale_by_adam(
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = _update_moment(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
+    mu_hat = utils.cast_tree(_bias_correction(mu, b1, count_inc), mu_dtype)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
