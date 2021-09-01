@@ -11,6 +11,7 @@ Common Optimizers
     adamw
     fromage
     lamb
+    lars
     noisy_sgd
     dpsgd
     radam
@@ -48,6 +49,11 @@ Lamb
 ~~~~
 
 .. autofunction:: lamb
+
+Lars
+~~~~
+
+.. autofunction:: lars
 
 Noisy SGD
 ~~~~~~~~~
