@@ -278,7 +278,7 @@ def masked(
     inner: base.GradientTransformation,
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
 ) -> base.GradientTransformation:
-  """Mask updates so only a subset of them are computed.
+  """Mask updates so only some are transformed, the rest are passed through.
 
   For example, it is common to skip weight decay for BatchNorm scale and all
   bias parameters. In many networks, these are the only parameters with only
@@ -298,10 +298,10 @@ def masked(
 
   Args:
     inner: Inner transformation to mask.
-    mask: a PyTree with same structure as (or a prefix of) the params PyTree,
-      or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, ``True`` for leaves/subtrees you want to
-      apply the transformation to, and ``False`` for those you want to skip.
+    mask: a PyTree with same structure as (or a prefix of) the params PyTree, or
+      a Callable that returns such a pytree given the params/updates. The leaves
+      should be booleans, ``True`` for leaves/subtrees you want to apply the
+      transformation to, and ``False`` for those you want to skip.
 
   Returns:
     New GradientTransformation wrapping ``inner``.
