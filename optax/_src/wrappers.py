@@ -379,7 +379,7 @@ def maybe_update(
       return inner.update(updates, state.inner_state, params)
 
     def reject_update(_):
-      return updates, state.inner_state
+      return jax.tree_map(jnp.zeros_like, updates), state.inner_state
 
     updates, new_inner_state = lax.cond(
         should_update_fn(state.step), do_update, reject_update, operand=None)
