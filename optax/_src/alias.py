@@ -468,6 +468,7 @@ def rmsprop(
     momentum: Optional[float] = None,
     nesterov: bool = False
 ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   """A flexible RMSProp optimiser.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
@@ -477,8 +478,7 @@ def rmsprop(
   optimiser that can be used to switch between several of these variants.
 
   References:
-    Tieleman and Hinton, 2012:
-        www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+    Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
     Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
@@ -497,6 +497,7 @@ def rmsprop(
   Returns:
     the corresponding `GradientTransformation`.
   """
+  # pylint: enable=line-too-long
   if centered:
     return combine.chain(
         transform.scale_by_stddev(
