@@ -114,7 +114,7 @@ def lookahead(
       updates: base.Updates, state: LookaheadState,
       params: LookaheadParams) -> Tuple[LookaheadParams, LookaheadState]:
     updates, fast_state = fast_optimizer.update(updates, state.fast_state,
-                                                params)
+                                                params.fast)
 
     sync_next = (state.steps_since_sync == sync_period - 1)
     updates = _lookahead_update(updates, sync_next, params, slow_step_size)
