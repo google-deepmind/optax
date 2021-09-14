@@ -112,7 +112,7 @@ def adafactor(
       weight_decay_rate: (float) optional rate at which to decay weights.
       eps: (float) regularization constant for root mean squared gradient.
       factored: (bool) whether to use factored second-moment estimates.
-      mask: a tree with same structure as (or a prefix of) the params PyTree,
+      weight_decay_mask: a tree with same structure as (or a prefix of) the params PyTree,
         or a Callable that returns such a pytree given the params/updates.
         The leaves should be booleans, `True` for leaves/subtrees you want to
         apply the transformation to, and `False` for those you want to skip.
