@@ -83,6 +83,7 @@ def adafactor(
     weight_decay_rate: Optional[float] = None,
     eps: float = 1e-30,
     factored: bool = True,
+    weight_decay_mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     ) -> base.GradientTransformation:
   """The Adafactor optimiser.
 
@@ -111,6 +112,10 @@ def adafactor(
       weight_decay_rate: (float) optional rate at which to decay weights.
       eps: (float) regularization constant for root mean squared gradient.
       factored: (bool) whether to use factored second-moment estimates.
+      mask: a tree with same structure as (or a prefix of) the params PyTree,
+        or a Callable that returns such a pytree given the params/updates.
+        The leaves should be booleans, `True` for leaves/subtrees you want to
+        apply the transformation to, and `False` for those you want to skip.
 
   Returns:
     the corresponding `GradientTransformation`.
@@ -134,7 +139,7 @@ def adafactor(
     tx.append(
         transform.ema(momentum, debias=False, accumulator_dtype=dtype_momentum))
   if weight_decay_rate is not None:
-    tx.append(transform.add_decayed_weights(weight_decay_rate))
+    tx.append(transform.add_decayed_weights(weight_decay_rate, mask=weight_decay_mask))
   # In gradient "descent" we follow the negative gradient.
   tx.append(transform.scale(-1))
   return combine.chain(*tx)
