@@ -124,9 +124,9 @@ def apply_if_finite(
 
   def init(params):
     return ApplyIfFiniteState(
-        notfinite_count=jnp.zeros([], jnp.int64),
+        notfinite_count=jnp.zeros([], jnp.int32),
         last_finite=jnp.array(True, jnp.bool_),
-        total_notfinite=jnp.zeros([], jnp.int64),
+        total_notfinite=jnp.zeros([], jnp.int32),
         inner_state=inner.init(params))
 
   def update(updates, state, params=None):
@@ -134,7 +134,7 @@ def apply_if_finite(
     flat_updates = tree_flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
-    notfinite_count = jnp.where(isfinite, jnp.zeros([], jnp.int64),
+    notfinite_count = jnp.where(isfinite, jnp.zeros([], jnp.int32),
                                 1 + state.notfinite_count)
 
     def do_update(_):
@@ -220,8 +220,8 @@ class MultiSteps:
     return self._opt
 
   def init(self, params: Any) -> MultiStepsState:
-    init_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int64),
-                                 gradient_step=jnp.zeros([], dtype=jnp.int64),
+    init_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int32),
+                                 gradient_step=jnp.zeros([], dtype=jnp.int32),
                                  inner_opt_state=self._opt.init(params),
                                  acc_grads=_zeros_tree_like(params))
     return init_state
@@ -240,7 +240,7 @@ class MultiSteps:
         grads_for_update = acc_grads
       updates, new_inner_state = self._opt.update(
           grads_for_update, state.inner_opt_state, params=params)
-      new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int64),
+      new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int32),
                                   gradient_step=state.gradient_step + 1,
                                   inner_opt_state=new_inner_state,
                                   acc_grads=_zeros_tree_like(acc_grads))
@@ -363,7 +363,7 @@ def maybe_update(
   Args:
     inner: the inner transformation.
     should_update_fn: this function takes in a step counter (array of shape []
-      and dtype int64), and returns a boolean array of shape [].
+      and dtype int32), and returns a boolean array of shape [].
 
   Returns:
     An `optax.GradientTransformation`.
@@ -371,7 +371,7 @@ def maybe_update(
 
   def init_fn(params):
     return MaybeUpdateState(inner_state=inner.init(params),
-                            step=jnp.zeros([], dtype=jnp.int64))
+                            step=jnp.zeros([], dtype=jnp.int32))
 
   def update_fn(updates, state, params=None):
 
