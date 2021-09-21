@@ -45,8 +45,7 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
   # We get around the bug https://github.com/numpy/numpy/issues/13801
   zero_indices = np.argwhere(expected == 0)
   if not np.all(np.abs(actual[zero_indices]) <= atol):
-    raise AssertionError('Larger than {} diff in {}'.format(
-        atol, actual[zero_indices]))
+    raise AssertionError(f'Larger than {atol} diff in {actual[zero_indices]}')
 
   non_zero_indices = np.argwhere(expected != 0)
   np.testing.assert_allclose(
