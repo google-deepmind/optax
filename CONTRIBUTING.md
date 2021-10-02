@@ -22,6 +22,15 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+Please make sure that your pull request is in the correct format.
+You can run:
+
+```bash
+pylint --rcfile=.pylintrc optax/__init__.py optax/_src/base.py optax/_src/control_variates.py optax/_src/privacy.py optax/_src/utils.py optax/_src/combine.py optax/_src/lookahead.py optax/_src/factorized.py optax/_src/alias.py optax/_src/numerics.py optax/_src/update.py optax/_src/loss.py optax/_src/transform.py optax/_src/second_order.py optax/_src/linear_algebra.py optax/_src/stochastic_gradient_estimators.py optax/_src/schedule.py optax/_src/wrappers.py optax/_src/test_utils.py optax/_src/constrain.py optax/_src/clipping.py
+```
+
+to verify that all linting tests pass.
+
 ## Community Guidelines
 
 This project follows [Google's Open Source Community
