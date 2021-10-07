@@ -21,48 +21,6 @@ jobs:
       - uses: "actions/setup-python@v1"
         with:
             python-version: "${{ matrix.python-version }}"
-      - name: Install dependencies
-        run: |
-          set -xe
-          pip install --upgrade pip setuptools wheel
-          pip install flake8 pytest-xdist pytype pylint pylint-exit
-          pip install -r requirements/requirements.txt
-          pip install -r requirements/requirements-test.txt
-        shell: bash
-      - name: Lint with flake8
-        run: |
-          set -xe
-          flake8 `find optax -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
-      - name: Lint with pylint
-        run: |
-          set -xe
-          # Fail on errors, warning, conventions and refactoring messages.
-          PYLINT_ARGS="-efail -wfail -cfail -rfail"
-
-          # Lint modules and tests separately.
-          pylint --rcfile=.pylintrc `find optax -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
-
-          # Disable `protected-access` warnings for tests.
-          pylint --rcfile=.pylintrc `find optax -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
-      - name: Build
-        run: |
-          set -xe
-          python -VV
-          python setup.py sdist
-          pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
-          pip install optax*.whl
-        shell: bash
-      - name: Check types with pytype
-        run: |
-          set -xe
-          pytype --version
-          pytype `find optax/_src/ -name '*.py' | xargs` -k -d import-error
-        shell: bash
-      - name: Run tests
-        run: |
-          set -xe
-          # Change directory to avoid importing the package from repo root.
-          mkdir _testing && cd _testing
-          python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs optax
-          cd ..
+      - name: Run CI tests
+        run: bash test.sh
         shell: bash

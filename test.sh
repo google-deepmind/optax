@@ -14,7 +14,7 @@
 # ==============================================================================
 
 # Runs CI tests on a local machine.
-set -euo pipefail
+set -xeuo pipefail
 
 # Install deps in a virtual env.
 readonly VENV_DIR=/tmp/optax-env
@@ -53,5 +53,6 @@ mkdir _testing && cd _testing
 python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs optax
 cd ..
 
+set +u
 deactivate
 echo "All tests passed. Congrats!"
