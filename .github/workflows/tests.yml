@@ -48,16 +48,15 @@ jobs:
         run: |
           set -xe
           python -VV
-          python setup.py install
+          python setup.py sdist
+          pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
+          pip install optax*.whl
         shell: bash
       - name: Check types with pytype
         run: |
           set -xe
           pytype --version
-          if [[ `python -c 'import sys; print(sys.version_info.minor)'` -le 8 ]]
-          then
-            pytype `find optax/_src/ -name '*.py' | xargs` -k -d import-error
-          fi
+          pytype `find optax/_src/ -name '*.py' | xargs` -k -d import-error
         shell: bash
       - name: Run tests
         run: |

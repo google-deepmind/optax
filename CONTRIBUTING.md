@@ -22,6 +22,12 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+## Testing
+
+Please make sure that your PR passes all tests by running `bash test.sh` on your
+local machine. Also, you can run only tests that are affected by your code
+changes, but you will need to select them manually.
+
 ## Community Guidelines
 
 This project follows [Google's Open Source Community
