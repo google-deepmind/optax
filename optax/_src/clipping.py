@@ -67,7 +67,8 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     def _clip_fn(u):
-      clip_denom = (jnp.maximum(1.0, jnp.sqrt(jnp.mean((u.conj() * u).real)) / threshold))
+      clip_denom = jnp.maximum(
+          1.0, jnp.sqrt(jnp.mean((u.conj() * u).real)) / threshold)
       return u / clip_denom
     updates = jax.tree_map(_clip_fn, updates)
     return updates, state
