@@ -68,7 +68,7 @@ from absl import app
 from absl import flags
 import datasets
 import jax
-from jax.experimental import stax
+from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
