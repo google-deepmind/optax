@@ -14,6 +14,7 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
@@ -98,6 +99,43 @@ class MultiNormalDiagFromLogScale():
   @property
   def params(self):
     return [self._mean, self._log_scale]
+
+
+@jax.custom_vjp
+def _scale_gradient(inputs: chex.Array, scale: float)  -> chex.ArrayTree:
+  """Internal gradient scaling implementation."""
+  del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
+  return inputs
+
+
+def _scale_gradient_fwd(inputs, scale):
+  return _scale_gradient(inputs, scale), scale
+
+
+def _scale_gradient_bwd(scale, g):
+  return (jax.tree_map(lambda g_: g_ * scale, g), None)
+
+
+_scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
+
+
+def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+  """Scales gradients for the backwards pass.
+
+  Args:
+    inputs: A nested array.
+    scale: The scale factor for the gradient on the backwards pass.
+
+  Returns:
+    An array of the same structure as `inputs`, with scaled backward gradient.
+  """
+  # Special case scales of 1. and 0. for more efficiency.
+  if scale == 1.:
+    return inputs
+  elif scale == 0.:
+    return jax.lax.stop_gradient(inputs)
+  else:
+    return _scale_gradient(inputs, scale)
 
 
 # TODO(b/183800387): remove legacy aliases.

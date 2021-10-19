@@ -133,6 +133,7 @@ from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
+from optax._src.utils import scale_gradient
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
@@ -246,6 +247,7 @@ __all__ = (
     "scale_by_stddev",
     "scale_by_trust_ratio",
     "scale_by_yogi",
+    "scale_gradient",
     "scale",
     "ScaleByAdamState",
     "ScaleByFromageState",
