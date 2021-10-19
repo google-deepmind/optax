@@ -24,6 +24,7 @@ from jax.tree_util import tree_map
 from jax.tree_util import tree_unflatten
 import numpy as np
 
+from optax._src import numerics
 from optax._src import base
 
 Array = jnp.ndarray
@@ -124,9 +125,9 @@ def apply_if_finite(
 
   def init(params):
     return ApplyIfFiniteState(
-        notfinite_count=jnp.zeros([], jnp.int32),
+        notfinite_count=jnp.zeros([], numerics.safe_int32_increment),
         last_finite=jnp.array(True, jnp.bool_),
-        total_notfinite=jnp.zeros([], jnp.int32),
+        total_notfinite=jnp.zeros([], numerics.safe_int32_increment),
         inner_state=inner.init(params))
 
   def update(updates, state, params=None):
@@ -134,7 +135,8 @@ def apply_if_finite(
     flat_updates = tree_flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
-    notfinite_count = jnp.where(isfinite, jnp.zeros([], jnp.int32),
+    notfinite_count = jnp.where(isfinite,
+                                jnp.zeros([], numerics.safe_int32_increment),
                                 1 + state.notfinite_count)
 
     def do_update(_):
@@ -220,10 +222,11 @@ class MultiSteps:
     return self._opt
 
   def init(self, params: Any) -> MultiStepsState:
-    init_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int32),
-                                 gradient_step=jnp.zeros([], dtype=jnp.int32),
-                                 inner_opt_state=self._opt.init(params),
-                                 acc_grads=_zeros_tree_like(params))
+    init_state = MultiStepsState(
+      mini_step=jnp.zeros([], dtype=numerics.safe_int32_increment),
+      gradient_step=jnp.zeros([], dtype=numerics.safe_int32_increment),
+      inner_opt_state=self._opt.init(params),
+      acc_grads=_zeros_tree_like(params))
     return init_state
 
   def update(self, grads: Any, state: MultiStepsState, params: Any = None):
@@ -240,10 +243,11 @@ class MultiSteps:
         grads_for_update = acc_grads
       updates, new_inner_state = self._opt.update(
           grads_for_update, state.inner_opt_state, params=params)
-      new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int32),
-                                  gradient_step=state.gradient_step + 1,
-                                  inner_opt_state=new_inner_state,
-                                  acc_grads=_zeros_tree_like(acc_grads))
+      new_state = MultiStepsState(
+        mini_step=jnp.zeros([], dtype=numerics.safe_int32_increment),
+        gradient_step=state.gradient_step + 1,
+        inner_opt_state=new_inner_state,
+        acc_grads=_zeros_tree_like(acc_grads))
       return updates, new_state
 
     def mid_step(args):
@@ -370,8 +374,9 @@ def maybe_update(
   """
 
   def init_fn(params):
-    return MaybeUpdateState(inner_state=inner.init(params),
-                            step=jnp.zeros([], dtype=jnp.int32))
+    return MaybeUpdateState(
+      inner_state=inner.init(params),
+      step=jnp.zeros([], dtype=numerics.safe_int32_increment))
 
   def update_fn(updates, state, params=None):
 
