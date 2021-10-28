@@ -35,6 +35,7 @@ from optax._src.base import identity
 from optax._src.base import OptState
 from optax._src.base import Params
 from optax._src.base import Schedule
+from optax._src.base import set_to_zero
 from optax._src.base import TransformInitFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
@@ -260,6 +261,7 @@ __all__ = (
     "ScaleState",
     "Schedule",
     "score_function_jacobians",
+    "set_to_zero",
     "sgd",
     "sgdr_schedule",
     "sigmoid_binary_cross_entropy",

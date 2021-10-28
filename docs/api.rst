@@ -159,6 +159,7 @@ Gradient Transforms
     ScaleByTrustRatioState
     ScaleBySM3State
     ScaleState
+    set_to_zero
     trace
     TraceState
     TransformInitFn
@@ -280,6 +281,8 @@ Optax Transforms and States
 
 .. autoclass:: ScaleState
     :members:
+
+.. autofunction:: set_to_zero
 
 .. autofunction:: trace
 .. autoclass:: TraceState

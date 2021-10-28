@@ -15,7 +15,10 @@
 """Base interfaces and datatypes."""
 
 from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+
 import chex
+import jax
+import jax.numpy as jnp
 
 # pylint:disable=no-value-for-parameter
 
@@ -57,6 +60,12 @@ class EmptyState(OptState):
 def identity() -> GradientTransformation:
   """Stateless identity transformation that leaves input gradients untouched.
 
+  This function passes through the *gradient updates* unchanged.
+
+  Note, this should not to be confused with `set_to_zero`, which maps the input
+  updates to zero - which is the transform required for the *model parameters*
+  to be left unchanged when the updates are applied to them.
+
   Returns:
     An (init_fn, update_fn) tuple.
   """
@@ -70,3 +79,29 @@ def identity() -> GradientTransformation:
 
   return GradientTransformation(init_fn, update_fn)
 
+
+def set_to_zero() -> GradientTransformation:
+  """Stateless transformation that maps input gradients to zero.
+
+  The resulting update function, when called, will return a tree of zeros
+  matching the shape of the input gradients. This means that when the updates
+  returned from this transformation are applied to the model parameters, the
+  model parameters will remain unchanged.
+
+  This can be used in combination with `multi_transform` to keep some parts of
+  the tree of model parameters fixed while applying gradient updates to other
+  parts of the tree.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    del params
+    return EmptyState()
+
+  def update_fn(updates, state, params=None):
+    del params  # Unused by the zero transform.
+    return jax.tree_map(jnp.zeros_like, updates), state
+
+  return GradientTransformation(init_fn, update_fn)
