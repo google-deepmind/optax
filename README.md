@@ -81,6 +81,10 @@ You can continue the quick start in [the Optax quickstart notebook.](https://git
 
 ## Components
 
+We refer to the [docs](https://optax.readthedocs.io/en/latest/index.html)
+for a detailed list of available Optax components. Here, we highlight
+the main categories of buiilding blocks provided by Optax.
+
 ### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
 
 One of the key building blocks of `optax` is a `GradientTransformation`.
@@ -121,6 +125,28 @@ my_optimiser = chain(
     scale_by_adam(eps=1e-4),
     scale(-learning_rate))
 ```
+
+### Wrapping Gradient Transformations ([wrappers.py]
+(https://github.com/deepmind/optax/blob/master/optax/_src/wrappers.py))
+
+Optax also provides several wrappers that take a `GradientTransformation` as
+input and return a new `GradientTransformation` that modifies the behaviour
+of the inner transformation in a specific way.
+
+For instance the `flatten` wrapper flattens gradients into a single large vector
+before applying the inner GradientTransformation. The transformed updated are
+then unflattened before being returned to the user. This can be used to reduce
+the overhead of performing many calculations on lots of small variables,
+at the cost of increasing memory usage.
+
+For example:
+```python
+my_optimiser = flatten(adam(learning_rate))
+```
+
+Other examples of wrappers include accumulating gradients over multiple steps,
+or applying the inner transformation only to specific parameters or at
+specific steps.
 
 ### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/master/optax/_src/schedule.py))
 
@@ -168,8 +194,13 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
 
 ### Applying updates ([update.py](https://github.com/deepmind/optax/blob/master/optax/_src/update.py))
 
-An `apply_updates` function can be used to eventually apply the
-transformed gradients to the set of parameters of interest.
+After transforming an update using a `GradientTransformation` or any custom
+manipulation of the update, you will typically apply the update to a set
+of parameters. This can be done trivially using `tree_multimap`. 
+
+For convenience, we expose an `apply_updates` function to apply updates to
+parameters. The function just adds the updates and the parameters together,
+i.e. `tree_multimap(lambda p, u: p + u, params, updates)`.
 
 ```python
 updates, state = tx.update(grads, state, params)  # transform & update stats.
@@ -180,6 +211,24 @@ Note that separating gradient transformations from the parameter update is
 critical to support composing sequence of transformations (e.g. `chain`), as
 well as combine multiple updates to the same parameters (e.g. in multi-task
 settings where different tasks need different sets of gradient transformations).
+
+### Losses ([loss.py](https://github.com/deepmind/optax/blob/master/optax/_src/loss.py))
+
+Optax provides a number of standard losses used in deep learning, such as
+`l2_loss`, `softmax_cross_entropy`, `cosine_distance`, etc.
+
+```python
+loss = huber_loss(predictions, targets)
+```
+
+The losses accept batches as inputs, however they perform no reduction across
+the batch dimension(s). This is trivial to do in JAX, for example:
+
+```python
+avg_loss = jnp.mean(huber_loss(predictions, targets))
+sum_loss = jnp.sum(huber_loss(predictions, targets))
+
+```
 
 ### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
 
