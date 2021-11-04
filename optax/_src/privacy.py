@@ -14,6 +14,8 @@
 # ==============================================================================
 """Differential Privacy utilities."""
 
+from typing import NamedTuple
+
 import jax
 import jax.numpy as jnp
 
@@ -22,7 +24,7 @@ from optax._src import linear_algebra
 
 
 # pylint:disable=no-value-for-parameter
-class DifferentiallyPrivateAggregateState(base.OptState):
+class DifferentiallyPrivateAggregateState(NamedTuple):
   """State containing PRNGKey for `differentially_private_aggregate`."""
   rng_key: jnp.array
 

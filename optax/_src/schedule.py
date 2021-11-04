@@ -21,7 +21,7 @@ parameters or the exploration factor used to select actions.
 
 import functools
 import inspect
-from typing import Callable, Dict, Union, Optional, Iterable, Sequence
+from typing import Callable, Dict, Union, NamedTuple, Optional, Iterable, Sequence
 
 from absl import logging
 import chex
@@ -498,7 +498,7 @@ def _convert_floats(x, dtype):
   return x
 
 
-class InjectHyperparamsState(base.OptState):
+class InjectHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]

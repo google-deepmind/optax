@@ -25,7 +25,7 @@ from optax._src import base
 # pylint:disable=no-value-for-parameter
 
 
-class LookaheadState(base.OptState):
+class LookaheadState(NamedTuple):
   """State of the `GradientTransformation` returned by `lookahead`.
 
   Attributes:

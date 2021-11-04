@@ -30,7 +30,7 @@ from optax._src import wrappers
 # pylint:disable=no-value-for-parameter
 
 
-class TraceState(base.OptState):
+class TraceState(NamedTuple):
   """Holds an aggregation of past updates."""
   trace: base.Params
 
@@ -87,7 +87,7 @@ def _bias_correction(moment, decay, count):
   return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
 
 
-class EmaState(base.OptState):
+class EmaState(NamedTuple):
   """Holds an exponential moving average of past updates."""
   count: chex.Array  # shape=(), dtype=jnp.int32.
   ema: base.Params
@@ -134,7 +134,7 @@ def ema(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRssState(base.OptState):
+class ScaleByRssState(NamedTuple):
   """State holding the sum of gradient squares to date."""
   sum_of_squares: base.Updates
 
@@ -175,7 +175,7 @@ def scale_by_rss(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRmsState(base.OptState):
+class ScaleByRmsState(NamedTuple):
   """State for exponential root mean-squared (RMS)-normalized updates."""
   nu: base.Updates
 
@@ -214,7 +214,7 @@ def scale_by_rms(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByRStdDevState(base.OptState):
+class ScaleByRStdDevState(NamedTuple):
   """State for centered exponential moving average of squares of updates."""
   mu: base.Updates
   nu: base.Updates
@@ -257,7 +257,7 @@ def scale_by_stddev(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByAdamState(base.OptState):
+class ScaleByAdamState(NamedTuple):
   """State for the Adam algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
@@ -395,7 +395,7 @@ def scale_by_param_block_rms(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByBeliefState(base.OptState):
+class ScaleByBeliefState(NamedTuple):
   """State for the rescaling by AdaBelief algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
@@ -585,7 +585,7 @@ def add_decayed_weights(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByScheduleState(base.OptState):
+class ScaleByScheduleState(NamedTuple):
   """Maintains count for scale scheduling."""
   count: chex.Array  # shape=(), dtype=jnp.int32
 
@@ -617,7 +617,7 @@ def scale_by_schedule(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByFromageState(base.OptState):
+class ScaleByFromageState(NamedTuple):
   """Maintains count for step-size scheduling."""
   count: chex.Array  # shape=(), dtype=jnp.int32
 
@@ -673,7 +673,7 @@ def scale_by_trust_ratio(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class AddNoiseState(base.OptState):
+class AddNoiseState(NamedTuple):
   """State for adding gradient noise. Contains a count for annealing."""
   count: chex.Array
   rng_key: chex.PRNGKey
@@ -720,7 +720,7 @@ def add_noise(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ApplyEvery(base.OptState):
+class ApplyEvery(NamedTuple):
   """Contains a counter and a gradient accumulator."""
   count: chex.Array
   grad_acc: base.Updates
@@ -793,7 +793,7 @@ def centralize() -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleBySM3State(base.OptState):
+class ScaleBySM3State(NamedTuple):
   """State for the SM3 algorithm."""
   mu: base.Updates
   nu: base.Updates
