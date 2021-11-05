@@ -15,7 +15,7 @@
 """Factorized optimizers."""
 
 import dataclasses
-from typing import Optional, Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import chex
 import jax
@@ -70,7 +70,7 @@ class _UpdateResult:
   v: chex.Array  # used for params where factoring is skipped.
 
 
-class FactoredState(base.OptState):
+class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
   count: chex.Array  # number of update steps.
   v_row: chex.ArrayTree  # Tree of factored params.

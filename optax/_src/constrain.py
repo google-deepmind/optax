@@ -14,7 +14,7 @@
 # ==============================================================================
 """Gradient transformations used to enforce specific constraints."""
 
-from typing import Any
+from typing import Any, NamedTuple
 
 import jax
 import jax.numpy as jnp
@@ -55,7 +55,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ZeroNansState(base.OptState):
+class ZeroNansState(NamedTuple):
   """Contains a tree.
 
   The entry `found_nan` has the same tree structure as that of the parameters.

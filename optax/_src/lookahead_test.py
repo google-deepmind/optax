@@ -15,13 +15,13 @@
 # ==============================================================================
 """Tests for `lookahead.py`."""
 
+from typing import NamedTuple
+
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
@@ -32,7 +32,7 @@ def _build_sgd():
   return alias.sgd(1.)
 
 
-class TestOptimizerState(base.OptState):
+class TestOptimizerState(NamedTuple):
   """Fast optimizer state for the lookahead tests."""
   aggregate_grads: base.Params
   # Include a variable with non-zero initial value to check that it is reset
