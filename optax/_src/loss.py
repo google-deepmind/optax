@@ -42,12 +42,12 @@ def l2_loss(
     [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
 
   Args:
-    predictions: a vector of arbitrary shape.
-    targets: a vector of shape compatible with predictions; if not provides
-      then it is assumed to be zero.
+    predictions: a vector of arbitrary shape `[...]`.
+    targets: a vector with shape broadcastable to that of `predictions`;
+      if not provided then it is assumed to be a vector of zeros.
 
   Returns:
-    the squared error loss.
+    elementwise squared differences, with same shape as `predictions`.
   """
   chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
@@ -67,13 +67,13 @@ def huber_loss(
     [Huber, 1964](www.projecteuclid.org/download/pdf_1/euclid.aoms/1177703732)
 
   Args:
-    predictions: a vector of arbitrary shape.
-    targets: a vector of shape compatible with predictions; if not provides
-      then it is assumed to be zero.
+    predictions: a vector of arbitrary shape `[...]`.
+    targets: a vector with shape broadcastable to that of `predictions`;
+      if not provided then it is assumed to be a vector of zeros.
     delta: the bounds for the huber loss transformation, defaults at 1.
 
   Returns:
-    a vector of same shape of `x`.
+    elementwise huber losses, with the same shape of `predictions`.
   """
   chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
@@ -125,11 +125,12 @@ def sigmoid_binary_cross_entropy(logits, labels):
     [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
 
   Args:
-    logits: unnormalized log probabilities.
-    labels: the probability for that class.
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: The target probabilities for each class, must have a shape
+        broadcastable to that of `logits`;
 
   Returns:
-    a sigmoid cross entropy loss.
+    cross entropy for each binary class prediction, shape `[..., num_classes]`.
   """
   chex.assert_type([logits], float)
   log_p = jax.nn.log_sigmoid(logits)
@@ -153,12 +154,14 @@ def softmax_cross_entropy(
     [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
 
   Args:
-    logits: unnormalized log probabilities.
-    labels: a valid probability distribution (non-negative, sum to 1), e.g a
-      one hot encoding of which class is the correct one for each input.
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g a
+      one hot encoding specifying the correct class for each input;
+      must have a shape broadcastable to `[..., num_classes]``
 
   Returns:
-    the cross entropy loss.
+    cross entropy between each prediction and the corresponding target
+    distributions, with shape `[...]`.
   """
   chex.assert_type([logits], float)
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
@@ -179,12 +182,12 @@ def cosine_similarity(
     [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
 
   Args:
-    predictions: The predicted vector.
-    targets: Ground truth target vector.
+    predictions: The predicted vectors, with shape `[..., dim]`.
+    targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
 
   Returns:
-    cosine similarity values.
+    cosine similarity measures, with shape `[...]`.
   """
   chex.assert_type([predictions, targets], float)
   # vectorize norm fn, to treat all dimensions except the last as batch dims.
@@ -213,12 +216,12 @@ def cosine_distance(
     [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
 
   Args:
-    predictions: The predicted vector.
-    targets: Ground truth target vector.
+    predictions: The predicted vectors, with shape `[..., dim]`.
+    targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
 
   Returns:
-    cosine similarity values.
+    cosine distances, with shape `[...]`.
   """
   chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
@@ -238,12 +241,12 @@ def log_cosh(
     [Chen et al, 2019](https://openreview.net/pdf?id=rkglvsC9Ym)
 
   Args:
-    predictions: a vector of arbitrary shape.
-    targets: a vector of shape compatible with predictions; if not provided
-      then it is assumed to be zero.
+    predictions: a vector of arbitrary shape `[...]`.
+    targets: a vector with shape broadcastable to that of `predictions`;
+      if not provided then it is assumed to be a vector of zeros.
 
   Returns:
-    the log-cosh loss.
+    the log-cosh loss, with same shape as `predictions`.
   """
   chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
