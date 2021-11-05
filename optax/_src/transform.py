@@ -405,7 +405,7 @@ class ScaleByBeliefState(NamedTuple):
 def scale_by_belief(
     b1: float = 0.9,
     b2: float = 0.999,
-    eps: float = 0.,
+    eps: float = 1e-16,
     eps_root: float = 1e-16
 ) -> base.GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
@@ -417,8 +417,9 @@ def scale_by_belief(
     b1: decay rate for the exponentially weighted average of grads.
     b2: decay rate for the exponentially weighted average of variance of grads.
     eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
+    eps_root: term added to the second moment of the prediction error to
+      improve numerical stability. If backpropagating gradients through the
+      gradient transformation (e.g. for meta-learning), this must be non-zero.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -434,11 +435,12 @@ def scale_by_belief(
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment(prediction_error, state.nu, b2, 2)
+    nu = jax.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
-        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+        lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
