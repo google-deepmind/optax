@@ -22,6 +22,7 @@ from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
@@ -49,8 +50,10 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     aggregate_grads = jax.tree_map(jnp.zeros_like, params)
     return TestOptimizerState(aggregate_grads, is_reset=True)
 
-  def update_fn(updates, state, params=None):
-    del params  # unused by the test optimizer
+  def update_fn(updates, state, params):
+    # The test optimizer does not use the parameters, but we check that they
+    # have been passed correctly.
+    chex.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree_map(lambda u: step_size * u, updates)
     return updates, TestOptimizerState(aggregate_grads, is_reset=False)
@@ -63,8 +66,8 @@ class LookaheadTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.grads = {'x': 2., 'y': -2}
-    self.initial_params = {'x': 3., 'y': -3}
+    self.grads = {'x': np.array(2.), 'y': np.array(-2.)}
+    self.initial_params = {'x': np.array(3.), 'y': np.array(-3.)}
     self.synced_initial_params = lookahead.LookaheadParams.init_synced(
         self.initial_params)
 
@@ -118,10 +121,10 @@ class LookaheadTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      [1, 0.5, {'x': 1., 'y': -1.}],
-      [1, 0, {'x': 3., 'y': -3.}],
-      [1, 1, {'x': -1., 'y': 1.}],
-      [2, 1, {'x': -1., 'y': 1.}])  # pyformat: disable
+      [1, 0.5, {'x': np.array(1.), 'y': np.array(-1.)}],
+      [1, 0, {'x': np.array(3.), 'y': np.array(-3.)}],
+      [1, 1, {'x': np.array(-1.), 'y': np.array(1.)}],
+      [2, 1, {'x': np.array(-1.), 'y': np.array(1.)}])  # pyformat: disable
   def test_lookahead_edge_cases(self, sync_period, slow_step_size,
                                 correct_result):
     """Checks special cases of the lookahed optimizer parameters."""
