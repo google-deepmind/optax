@@ -53,7 +53,7 @@ class GradientTransformation(NamedTuple):
   update: TransformUpdateFn
 
 
-class EmptyState(OptState):
+class EmptyState(NamedTuple):
   """An empty state for the simplest stateless transformations."""
 
 
