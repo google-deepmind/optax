@@ -92,7 +92,9 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
+    'sphinx_rtd_theme',
     'coverage_check',
+    'myst_nb',  # This is used for the .ipynb notebooks
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -182,3 +184,4 @@ intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
 }
 
+source_suffix = ['.rst', '.md', '.ipynb']
