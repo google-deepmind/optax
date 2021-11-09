@@ -6,3 +6,5 @@ sphinx-autodoc-typehints==1.11.1
 IPython==7.16.1
 ipykernel==5.3.4
 pandoc==1.0.2
+myst_nb==0.13.1
+docutils==0.16

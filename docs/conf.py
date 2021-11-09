@@ -92,7 +92,9 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
+    'sphinx_rtd_theme',
     'coverage_check',
+    'myst_nb',  # This is used for the .ipynb notebooks
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -123,6 +125,11 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 # html_favicon = '_static/favicon.ico'
+
+# -- Options for myst -------------------------------------------------------
+
+jupyter_execute_notebooks = 'force'
+execution_allow_errors = False
 
 # -- Options for katex ------------------------------------------------------
 
@@ -182,3 +189,4 @@ intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
 }
 
+source_suffix = ['.rst', '.md', '.ipynb']

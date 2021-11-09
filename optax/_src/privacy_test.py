@@ -76,7 +76,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state, self.params)
-      chex.assert_tree_all_close(updates, expected_tree)
+      chex.assert_tree_all_close(updates, expected_tree, rtol=2e-7)
 
   @chex.all_variants
   @parameterized.parameters((3.0, 2.0), (1.0, 5.0), (100.0, 4.0), (1.0, 90.0))

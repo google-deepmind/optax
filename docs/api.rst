@@ -6,6 +6,7 @@ Common Optimizers
 .. autosummary::
 
     adabelief
+    adafactor
     adagrad
     adam
     adamw
@@ -17,6 +18,7 @@ Common Optimizers
     radam
     rmsprop
     sgd
+    sm3
     yogi
 
 
@@ -29,6 +31,11 @@ AdaGrad
 ~~~~~~~
 
 .. autofunction:: adagrad
+
+AdaFactor
+~~~~~~~~~
+
+.. autofunction:: adafactor
 
 Adam
 ~~~~
@@ -54,6 +61,12 @@ Lars
 ~~~~
 
 .. autofunction:: lars
+
+SM3
+~~~
+
+.. autofunction:: sm3
+
 
 Noisy SGD
 ~~~~~~~~~
@@ -108,9 +121,14 @@ Gradient Transforms
     ApplyEvery
     centralize
     clip
+    clip_by_block_rms
     clip_by_global_norm
     ClipByGlobalNormState
     ClipState
+    ema
+    EmaState
+    EmptyState
+    FactoredState
     global_norm
     GradientTransformation
     identity
@@ -121,10 +139,14 @@ Gradient Transforms
     scale
     scale_by_adam
     scale_by_belief
+    scale_by_factored_rms
+    scale_by_param_block_norm
+    scale_by_param_block_rms
     scale_by_radam
     scale_by_rms
     scale_by_rss
     scale_by_schedule
+    scale_by_sm3
     scale_by_stddev
     scale_by_trust_ratio
     scale_by_yogi
@@ -135,7 +157,9 @@ Gradient Transforms
     ScaleByRStdDevState
     ScaleByScheduleState
     ScaleByTrustRatioState
+    ScaleBySM3State
     ScaleState
+    set_to_zero
     trace
     TraceState
     TransformInitFn
@@ -192,11 +216,22 @@ Optax Transforms and States
 
 .. autofunction:: centralize
 .. autofunction:: clip
+.. autofunction:: clip_by_block_rms
 .. autofunction:: clip_by_global_norm
 .. autoclass:: ClipByGlobalNormState
     :members:
 
 .. autoclass:: ClipState
+    :members:
+
+.. autofunction:: ema
+.. autoclass:: EmaState
+    :members:
+
+.. autoclass:: EmptyState
+    :members:
+
+.. autoclass:: FactoredState
     :members:
 
 .. autofunction:: global_norm
@@ -208,10 +243,14 @@ Optax Transforms and States
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_belief
+.. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_param_block_norm
+.. autofunction:: scale_by_param_block_rms
 .. autofunction:: scale_by_radam
 .. autofunction:: scale_by_rms
 .. autofunction:: scale_by_rss
 .. autofunction:: scale_by_schedule
+.. autofunction:: scale_by_sm3
 .. autofunction:: scale_by_stddev
 .. autofunction:: scale_by_trust_ratio
 .. autofunction:: scale_by_yogi
@@ -227,10 +266,14 @@ Optax Transforms and States
 .. autoclass:: ScaleByRssState
     :members:
 
+
 .. autoclass:: ScaleByRStdDevState
     :members:
 
 .. autoclass:: ScaleByScheduleState
+    :members:
+
+.. autoclass:: ScaleBySM3State
     :members:
 
 .. autoclass:: ScaleByTrustRatioState
@@ -238,6 +281,8 @@ Optax Transforms and States
 
 .. autoclass:: ScaleState
     :members:
+
+.. autofunction:: set_to_zero
 
 .. autofunction:: trace
 .. autoclass:: TraceState
@@ -290,10 +335,13 @@ chain
 .. autofunction:: chain
 
 
-multi_transform
+Multi Transform
 ~~~~~~~~~~~~~~~
 
 .. autofunction:: multi_transform
+.. autoclass::  MultiTransformState
+   :members:
+
 
 Optimizer Wrappers
 ====================
@@ -316,14 +364,10 @@ Optimizer Wrappers
     MultiStepsState
 
 
-apply_if_finite
+Apply if Finite
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction::  apply_if_finite
-
-
-ApplyIfFiniteState
-~~~~~~~~~~~~~~~~~~~
 
 .. autoclass::  ApplyIfFiniteState
    :members:
@@ -335,19 +379,13 @@ flatten
 .. autofunction:: flatten
 
 
-lookahead
+Lookahead
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction::  lookahead
 
-LookaheadParams
-~~~~~~~~~~~~~~~~~
-
 .. autoclass::  LookaheadParams
    :members:
-
-LookaheadState
-~~~~~~~~~~~~~~~~~
 
 .. autoclass::  LookaheadState
    :members:
@@ -366,18 +404,18 @@ Masked Update
 Maybe Update
 ~~~~~~~~~~~~~~
 
-.. autofunction::maybe_update
-.. autoclass::MaybeUpdateState
+.. autofunction:: maybe_update
+.. autoclass:: MaybeUpdateState
    :members:
 
 
 Multi-step Update
 ~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass::MultiSteps
+.. autoclass:: MultiSteps
    :members:
 
-.. autoclass::MultiStepsState
+.. autoclass:: MultiStepsState
    :members:
 
 
@@ -392,18 +430,20 @@ Common Losses
     cosine_similarity
     huber_loss
     l2_loss
+    log_cosh
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
 
 
-losses
+Losses
 ~~~~~~~
 
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
+.. autofunction:: log_cosh
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
@@ -418,8 +458,13 @@ Linear Algebra Operators
 .. autosummary::
 
     matrix_inverse_pth_root
+    multi_normal
     power_iteration
 
+
+multi_normal
+~~~~~~~~~~~~
+.. autofunction:: multi_normal
 
 matrix_inverse_pth_root
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -444,25 +489,35 @@ Optimizer Schedules
     cosine_decay_schedule
     cosine_onecycle_schedule
     exponential_decay
+    join_schedules
     linear_onecycle_schedule
+    linear_schedule
     piecewise_constant_schedule
     piecewise_interpolate_schedule
     polynomial_schedule
+    sgdr_schedule
+    warmup_cosine_decay_schedule
+    warmup_exponential_decay_schedule
     Schedule
     InjectHyperparamsState
     inject_hyperparams
 
-schedules
+Schedules
 ~~~~~~~~~
 
 .. autofunction:: constant_schedule
 .. autofunction:: cosine_decay_schedule
 .. autofunction:: cosine_onecycle_schedule
 .. autofunction:: exponential_decay
+.. autofunction:: join_schedules
 .. autofunction:: linear_onecycle_schedule
+.. autofunction:: linear_schedule
 .. autofunction:: piecewise_constant_schedule
 .. autofunction:: piecewise_interpolate_schedule
 .. autofunction:: polynomial_schedule
+.. autofunction:: sgdr_schedule
+.. autofunction:: warmup_cosine_decay_schedule
+.. autofunction:: warmup_exponential_decay_schedule
 .. autofunction:: inject_hyperparams
 
 .. autoclass:: Schedule
@@ -579,3 +634,25 @@ differentially_private_aggregate
 
 .. autoclass:: DifferentiallyPrivateAggregateState
    :members:
+
+
+
+General Utilities
+=====================================
+
+.. currentmodule:: optax
+
+.. autosummary::
+
+    multi_normal
+    scale_gradient
+
+multi_normal
+~~~~~~~~~~~
+
+.. autofunction:: multi_normal
+
+scale_gradient
+~~~~~~~~~~~~~~~~~
+
+.. autofunction:: scale_gradient
