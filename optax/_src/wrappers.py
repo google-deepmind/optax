@@ -25,6 +25,7 @@ from jax.tree_util import tree_unflatten
 import numpy as np
 
 from optax._src import base
+from optax._src import numerics
 
 Array = jnp.ndarray
 
@@ -134,8 +135,10 @@ def apply_if_finite(
     flat_updates = tree_flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
-    notfinite_count = jnp.where(isfinite, jnp.zeros([], jnp.int32),
-                                1 + state.notfinite_count)
+    notfinite_count = jnp.where(
+      isfinite,
+      jnp.zeros([], jnp.int32),
+      numerics.safe_int32_increment(state.notfinite_count))
 
     def do_update(_):
       return inner.update(updates, inner_state, params)
@@ -240,10 +243,11 @@ class MultiSteps:
         grads_for_update = acc_grads
       updates, new_inner_state = self._opt.update(
           grads_for_update, state.inner_opt_state, params=params)
-      new_state = MultiStepsState(mini_step=jnp.zeros([], dtype=jnp.int32),
-                                  gradient_step=state.gradient_step + 1,
-                                  inner_opt_state=new_inner_state,
-                                  acc_grads=_zeros_tree_like(acc_grads))
+      new_state = MultiStepsState(
+        mini_step=jnp.zeros([], dtype=jnp.int32),
+        gradient_step=numerics.safe_int32_increment(state.gradient_step),
+        inner_opt_state=new_inner_state,
+        acc_grads=_zeros_tree_like(acc_grads))
       return updates, new_state
 
     def mid_step(args):
@@ -252,10 +256,11 @@ class MultiSteps:
           self._opt.update, acc_grads, state.inner_opt_state, params=params)
       updates = jax.tree_map(lambda sd: jnp.zeros(sd.shape, sd.dtype),
                              updates_shape_dtype)
-      new_state = MultiStepsState(mini_step=state.mini_step + 1,
-                                  gradient_step=state.gradient_step,
-                                  inner_opt_state=state.inner_opt_state,
-                                  acc_grads=acc_grads)
+      new_state = MultiStepsState(
+        mini_step=numerics.safe_int32_increment(state.mini_step),
+        gradient_step=state.gradient_step,
+        inner_opt_state=state.inner_opt_state,
+        acc_grads=acc_grads)
       return updates, new_state
 
     updates, new_state = jax.lax.cond(
@@ -383,6 +388,7 @@ def maybe_update(
 
     updates, new_inner_state = lax.cond(
         should_update_fn(state.step), do_update, reject_update, operand=None)
-    return updates, MaybeUpdateState(new_inner_state, state.step + 1)
+    return updates, MaybeUpdateState(new_inner_state,
+                                     numerics.safe_int32_increment(state.step))
 
   return base.GradientTransformation(init_fn, update_fn)
