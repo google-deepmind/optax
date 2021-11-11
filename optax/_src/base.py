@@ -14,37 +14,40 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
-
-# pylint:disable=no-value-for-parameter
+import typing_extensions
 
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
 
-
 PyTree = Any
 Shape = Sequence[int]
 
-OptState = NamedTuple  # Transformation states are (possibly empty) namedtuples.
+OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
+TransformInitFn = Callable[[Params], OptState]
+Schedule = Callable[[chex.Numeric], chex.Numeric]
 
 
-TransformInitFn = Callable[
-    [Params],
-    Union[OptState, Sequence[OptState]]]
-TransformUpdateFn = Callable[
-    [Updates, OptState, Optional[Params]],
-    Tuple[Updates, OptState]]
-Schedule = Callable[
-    [chex.Numeric],
-    chex.Numeric]
+class TransformUpdateFn(typing_extensions.Protocol):
+  """A callable type for computing a new parameters and opt_state pair.
+
+  The params argument is optional, but must be provided when using a
+  transformation that requires access to it.
+  """
+
+  def __call__(self,
+               updates: Updates,
+               state: OptState,
+               params: Optional[Params] = None) -> Tuple[Updates, OptState]:
+    ...
 
 
 class GradientTransformation(NamedTuple):

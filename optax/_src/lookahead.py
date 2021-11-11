@@ -134,7 +134,7 @@ def lookahead(
 
 def _lookahead_update(
     updates: base.Updates, sync_next: bool, params: LookaheadParams,
-    slow_step_size: float) -> base.GradientTransformation:
+    slow_step_size: float) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 
   References:

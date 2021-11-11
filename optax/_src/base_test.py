@@ -25,6 +25,24 @@ from optax._src import base
 
 class BaseTest(chex.TestCase):
 
+  def test_typing(self):
+    """Ensure that the type annotations work for the update function."""
+
+    def f(updates, opt_state, params=None):
+      del params
+      return updates, opt_state
+
+    def g(f: base.TransformUpdateFn):
+      updates = np.zeros([])
+      params = np.zeros([])
+      opt_state = np.zeros([])
+
+      f(updates, opt_state)
+      f(updates, opt_state, params)
+      f(updates, opt_state, params=params)
+
+    g(f)
+
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
     """Tests that zero transform returns a tree of zeros of correct shape."""
