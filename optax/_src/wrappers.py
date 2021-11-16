@@ -152,7 +152,11 @@ def apply_if_finite(
     return updates, ApplyIfFiniteState(
         notfinite_count=notfinite_count,
         last_finite=isfinite,
-        total_notfinite=jnp.logical_not(isfinite) + state.total_notfinite,
+        total_notfinite=jnp.where(
+          isfinite,
+          state.total_notfinite,
+          numerics.safe_int32_increment(state.total_notfinite)
+        ),
         inner_state=new_inner_state)
 
   return base.GradientTransformation(init=init, update=update)
