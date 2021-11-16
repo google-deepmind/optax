@@ -72,6 +72,9 @@ from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
+from optax._src.numerics import safe_int32_increment
+from optax._src.numerics import safe_norm
+from optax._src.numerics import safe_root_mean_squares
 from optax._src.privacy import differentially_private_aggregate
 from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
@@ -235,6 +238,9 @@ __all__ = (
     "power_iteration",
     "radam",
     "rmsprop",
+    "safe_int32_increment",
+    "safe_norm",
+    "safe_root_mean_squares",
     "scale_by_adam",
     "scale_by_belief",
     "scale_by_factored_rms",

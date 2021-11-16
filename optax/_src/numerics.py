@@ -18,7 +18,7 @@ import chex
 import jax.numpy as jnp
 
 
-def safe_norm(x, min_norm):
+def safe_norm(x: chex.Array, min_norm: chex.Numeric) -> chex.Array:
   """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
 
   The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
@@ -28,13 +28,16 @@ def safe_norm(x, min_norm):
   Args:
     x: jax array.
     min_norm: lower bound for the returned norm.
+
+  Returns:
+    The safe norm of the input vector, accounting for correct gradient.
   """
   norm = jnp.linalg.norm(x)
   x = jnp.where(norm <= min_norm, jnp.ones_like(x), x)
   return jnp.where(norm <= min_norm, min_norm, jnp.linalg.norm(x))
 
 
-def safe_root_mean_squares(x, min_rms):
+def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
   """Returns jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm) with correct grads.
 
   The gradients of `jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm)` at 0.0
@@ -44,13 +47,16 @@ def safe_root_mean_squares(x, min_rms):
   Args:
     x: jax array.
     min_rms: lower bound for the returned norm.
+
+  Returns:
+    The safe RMS of the input vector, accounting for correct gradient.
   """
   rms = jnp.sqrt(jnp.mean(x ** 2))
   x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(x ** 2)))
 
 
-def safe_int32_increment(count):
+def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
   """Increments int32 counter by one.
 
   Normally `max_int + 1` would overflow to `min_int`. This functions ensures
@@ -60,7 +66,7 @@ def safe_int32_increment(count):
     count: a counter to be incremented.
 
   Returns:
-    a counter incremented by 1, or max_int if the maximum precision is reached.
+    A counter incremented by 1, or max_int if the maximum precision is reached.
   """
   chex.assert_type(count, jnp.int32)
   max_int32_value = jnp.iinfo(jnp.int32).max
