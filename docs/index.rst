@@ -23,6 +23,13 @@ for instructions on installing JAX.
 
 
 .. toctree::
+   :caption: Examples
+   :maxdepth: 1
+
+   meta_learning
+
+
+.. toctree::
    :caption: API Documentation
    :maxdepth: 2
 
