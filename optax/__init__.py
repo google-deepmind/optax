@@ -148,7 +148,7 @@ from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
-__version__ = "0.0.91"
+__version__ = "0.1.0"
 
 __all__ = (
     "adabelief",
