@@ -66,11 +66,11 @@ import warnings
 
 from absl import app
 from absl import flags
-import datasets
 import jax
 from jax.experimental import stax
 import jax.numpy as jnp
 import optax
+from optax.examples import datasets
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
@@ -128,7 +128,6 @@ def test_step(params, batch):
 
 def main(_):
   train_dataset = datasets.load_image_dataset('mnist', FLAGS.batch_size)
-  train_dataset = list(train_dataset.as_numpy_iterator())
   test_dataset = datasets.load_image_dataset('mnist', NUM_EXAMPLES,
                                              datasets.Split.TEST)
   full_test_batch = next(test_dataset.as_numpy_iterator())
@@ -162,7 +161,7 @@ def main(_):
   print('\nStarting training...')
   for epoch in range(1, FLAGS.epochs + 1):
     start_time = time.time()
-    for batch in train_dataset:
+    for batch in train_dataset.as_numpy_iterator():
       params, opt_state = train_step(params, opt_state, batch)
     epoch_time = time.time() - start_time
     print(f'Epoch {epoch} in {epoch_time:0.2f} seconds.')

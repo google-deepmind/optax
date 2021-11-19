@@ -61,4 +61,4 @@ def load_image_dataset(dataset_name: str,
   if shuffle:
     dataset = dataset.shuffle(buffer_size)
 
-  return dataset.batch(batch_size)
+  return dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
