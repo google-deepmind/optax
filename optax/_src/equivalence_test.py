@@ -19,7 +19,7 @@ from absl.testing import parameterized
 
 import chex
 from flax import optim
-from jax.experimental import optimizers
+from jax.example_libraries import optimizers
 import jax.numpy as jnp
 
 from optax._src import alias
@@ -31,7 +31,7 @@ LR = 1e-2
 LR_SCHED = lambda _: LR  # Trivial constant "schedule".
 
 
-class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
+class OptimizersEquivalenceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -66,7 +66,7 @@ class ExperimentalOptimizersEquivalenceTest(chex.TestCase):
   )
   def test_jax_optimizer_equivalent(self, optax_optimizer, jax_optimizer, rtol):
 
-    # experimental/optimizers.py
+    # example_libraries/optimizers.py
     jax_params = self.init_params
     opt_init, opt_update, get_params = jax_optimizer
     state = opt_init(jax_params)

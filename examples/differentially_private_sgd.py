@@ -67,7 +67,7 @@ import warnings
 from absl import app
 from absl import flags
 import jax
-from jax.experimental import stax
+from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
 from optax.examples import datasets
