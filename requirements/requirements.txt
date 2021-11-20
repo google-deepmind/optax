@@ -1,7 +1,6 @@
 absl-py>=0.7.1
 chex>=0.0.4
-dataclasses>=0.7; python_version>="3.6" and python_version<"3.7"
 jax>=0.1.55
 jaxlib>=0.1.37
 numpy>=1.18.0
-typing_extensions~=3.10.0
+typing_extensions>=3.10.0
