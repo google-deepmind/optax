@@ -362,6 +362,8 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
+    split_complex
+    SplitComplexState
 
 
 Apply if Finite
@@ -416,6 +418,15 @@ Multi-step Update
    :members:
 
 .. autoclass:: MultiStepsState
+   :members:
+
+
+Split Complex
+~~~~~~~~~~~~~~
+
+.. autofunction::  split_complex
+
+.. autoclass::  SplitComplexState
    :members:
 
 
