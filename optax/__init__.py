@@ -123,6 +123,7 @@ from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
@@ -257,6 +258,7 @@ __all__ = (
     "scale_gradient",
     "scale",
     "ScaleByAdamState",
+    "ScaleByBeliefState",
     "ScaleByFromageState",
     "ScaleByRmsState",
     "ScaleByRssState",
