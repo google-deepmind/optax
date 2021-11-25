@@ -14,7 +14,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from typing import Any, Callable, NamedTuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
 import jax
 from jax import lax
@@ -231,10 +231,14 @@ class MultiSteps:
         acc_grads=_zeros_tree_like(params))
     return init_state
 
-  def update(self, grads: Any, state: MultiStepsState, params: Any = None):
+  def update(self,
+             updates: base.Updates,
+             state: MultiStepsState,
+             params: Optional[base.Params] = None
+             ) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
-    acc_grads = jax.tree_util.tree_multimap(lambda a, b: a + b, grads,
+    acc_grads = jax.tree_util.tree_multimap(lambda a, b: a + b, updates,
                                             state.acc_grads)
 
     def final_step(args):
