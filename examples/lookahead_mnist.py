@@ -23,7 +23,10 @@ import jax
 from jax import random
 import jax.numpy as jnp
 import optax
-from optax.examples import datasets
+
+# pylint: disable=g-bad-import-order
+import datasets  # Located in the examples folder.
+# pylint: enable=g-bad-import-order
 
 flags.DEFINE_float('learning_rate', 0.002, 'Learning rate of fast optimizer.')
 flags.DEFINE_float('slow_step_size', 0.5,

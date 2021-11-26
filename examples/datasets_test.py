@@ -18,9 +18,12 @@ from typing import Iterable, List
 from absl.testing import absltest
 from absl.testing.absltest import mock
 import numpy as np
-from optax.examples import datasets
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
+# pylint: disable=g-bad-import-order
+import datasets  # Located in the examples folder.
+# pylint: enable=g-bad-import-order
 
 
 def _batch_array(array: np.ndarray, batch_size: int) -> List[np.array]:

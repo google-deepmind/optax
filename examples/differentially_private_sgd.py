@@ -70,9 +70,12 @@ import jax
 from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
-from optax.examples import datasets
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+
+# pylint: disable=g-bad-import-order
+import datasets  # Located in the examples folder.
+# pylint: enable=g-bad-import-order
 
 NUM_EXAMPLES = 60_000
 FLAGS = flags.FLAGS

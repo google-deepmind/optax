@@ -17,9 +17,12 @@ from absl.testing import absltest
 from absl.testing import flagsaver
 from absl.testing.absltest import mock
 import numpy as np
-from optax.examples import datasets
-from optax.examples import lookahead_mnist
 import tensorflow as tf
+
+# pylint: disable=g-bad-import-order
+import datasets  # Located in the examples folder.
+import lookahead_mnist  # Located in the examples folder.
+# pylint: enable=g-bad-import-order
 
 
 class LookaheadMnistTest(absltest.TestCase):
