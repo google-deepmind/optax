@@ -13,6 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for optax.examples.lookahead_mnist."""
+import sys
+
+from absl import flags
 from absl.testing import absltest
 from absl.testing import flagsaver
 from absl.testing.absltest import mock
@@ -23,6 +26,9 @@ import tensorflow as tf
 import datasets  # Located in the examples folder.
 import lookahead_mnist  # Located in the examples folder.
 # pylint: enable=g-bad-import-order
+
+# Flags aren't parsed automatically when running with pytest.
+flags.FLAGS(sys.argv)
 
 
 class LookaheadMnistTest(absltest.TestCase):

@@ -27,7 +27,8 @@ def _preprocess_image_dataset(element: Mapping[str, tf.Tensor],
                               num_labels: int) -> Dict[str, tf.Tensor]:
   """Casts image to floats in the range [0,1] and one-hot encodes the label."""
   rescaled_image = tf.cast(element['image'], tf.float32) / 255.
-  one_hot_label = tf.one_hot(tf.cast(element['label'], tf.int32), num_labels)
+  one_hot_label = tf.one_hot(
+      tf.cast(element['label'], tf.int32), num_labels, on_value=1, off_value=0)
   return {'image': rescaled_image, 'label': one_hot_label}
 
 

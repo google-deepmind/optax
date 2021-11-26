@@ -27,17 +27,18 @@ pip install --upgrade pip setuptools wheel
 pip install flake8 pytest-xdist pytype pylint pylint-exit
 pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-test.txt
+pip install -r requirements/requirements-examples.txt
 
 # Lint with flake8.
-flake8 `find optax -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+flake8 `find optax examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
 # Fail on errors, warning, conventions and refactoring messages.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
 # Lint modules and tests separately.
-pylint --rcfile=.pylintrc `find optax -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find optax -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
 
 # Build the package.
 python setup.py sdist
@@ -45,13 +46,18 @@ pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
 pip install optax*.whl
 
 # Check types with pytype.
-pytype `find optax/_src/ -name '*.py' | xargs` -k -d import-error
+pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
 mkdir _testing && cd _testing
 python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs optax
 cd ..
+
+cd examples
+python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" .
+cd ..
+
 
 set +u
 deactivate

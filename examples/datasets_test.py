@@ -26,7 +26,7 @@ import datasets  # Located in the examples folder.
 # pylint: enable=g-bad-import-order
 
 
-def _batch_array(array: np.ndarray, batch_size: int) -> List[np.array]:
+def _batch_array(array: np.ndarray, batch_size: int) -> List[np.ndarray]:
   """Splits an array into batches."""
   split_indices = np.arange(batch_size, array.shape[0], batch_size)
   return np.split(array, split_indices)
