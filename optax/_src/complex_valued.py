@@ -17,6 +17,7 @@
 from dataclasses import dataclass
 from typing import NamedTuple
 
+import chex
 import jax
 import jax.numpy as jnp
 
@@ -27,8 +28,8 @@ from optax._src import base
 @dataclass
 class RealPair:
   """A pair of real arrays split from a complex array."""
-  real: jnp.array
-  imag: jnp.array
+  real: chex.Array
+  imag: chex.Array
 
   def tree_flatten(self):
     return ((self.real, self.imag), None)
@@ -64,12 +65,15 @@ class SplitComplexState(NamedTuple):
 def split_complex(
     inner: base.GradientTransformation
 ) -> base.GradientTransformation:
-  """Splits the complex parameters into pairs of real parameters before sending
-  them to the inner transformation, and merges the pairs of real updates into
-  complex updates afterward.
+  """Splits complex parameters into pairs of real parameters.
+
+  The inner transformation processes real parameters and updates, and the
+  pairs of transformed real updates are merged into complex updates.
+
+  Parameters that are real before `split_complex` are passed through unmodified.
 
   Args:
-    inner: the inner transformation.
+    inner: The inner transformation.
 
   Returns:
     An `optax.GradientTransformation`.

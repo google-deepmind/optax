@@ -26,24 +26,25 @@ from optax._src import complex_valued
 from optax._src import update
 
 
+def _loss_fun_complex_to_real(z):
+  return (z.conj() * z).real.sum()
+
+
+def _loss_fun_real_to_real(params):
+  x, y = params
+  return _loss_fun_complex_to_real(x + y * 1j)
+
+
 class ComplexValuedTest(chex.TestCase):
 
+  @chex.all_variants
   def test_split_complex(self):
-
-    # Complex-to-real loss function
-    def loss_fun_c2r(z):
-      return (z.conj() * z).real.sum()
-
-    # Real-to-real loss function
-    def loss_fun_r2r(params):
-      x, y = params
-      return loss_fun_c2r(x + y * 1j)
 
     def do_update(loss_fun, optimizer, params, opt_state):
       loss, grads = jax.value_and_grad(loss_fun)(params)
       # Complex gradients need to be conjugated before being added to parameters
       grads = jax.tree_map(lambda x: x.conj(), grads)
-      updates, opt_state = optimizer.update(grads, opt_state)
+      updates, opt_state = self.variant(optimizer.update)(grads, opt_state)
       params = update.apply_updates(params, updates)
       return loss, grads, params, opt_state
 
@@ -54,16 +55,16 @@ class ComplexValuedTest(chex.TestCase):
 
     optimizer = alias.adam(learning_rate=1e-2)
     optimizer_complex = complex_valued.split_complex(optimizer)
-    opt_state = optimizer.init((x, y))
-    opt_state_complex = optimizer_complex.init(z)
+    opt_state = self.variant(optimizer.init)((x, y))
+    opt_state_complex = self.variant(optimizer_complex.init)(z)
 
     # Check that the loss, the gradients, and the parameters are the same for
-    # R2R and C2R loss functions in each step
+    # real-to-real and complex-to-real loss functions in each step
     for _ in range(3):
       loss, (gx, gy), (x, y), opt_state = do_update(
-          loss_fun_r2r, optimizer, (x, y), opt_state)
+          _loss_fun_real_to_real, optimizer, (x, y), opt_state)
       loss_complex, gz, z, opt_state_complex = do_update(
-          loss_fun_c2r, optimizer_complex, z, opt_state_complex)
+          _loss_fun_complex_to_real, optimizer_complex, z, opt_state_complex)
       np.testing.assert_allclose(loss, loss_complex)
       np.testing.assert_allclose(gx + gy * 1j, gz)
       np.testing.assert_allclose(x + y * 1j, z)
