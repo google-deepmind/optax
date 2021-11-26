@@ -403,3 +403,45 @@ def maybe_update(
                                      numerics.safe_int32_increment(state.step))
 
   return base.GradientTransformation(init_fn, update_fn)
+
+
+class StatelessState(NamedTuple):
+  """Empty state for the stateless wrapper."""
+
+
+def stateless(
+    f: Union[
+      Callable[[base.Updates, Optional[base.Params]], base.Updates],
+      Callable[[Array, Optional[Array]], Array]],
+    on_leaves: bool=False
+) -> base.GradientTransformation:
+  """Convenience wrapper to create a stateless GradientTransformation.
+
+  This wrapper eliminates the boilerplate needed to create a transformation that
+  does not require saved state between iterations.
+
+  Args:
+    f: Update function that takes in updates (e.g. gradients) and parameters
+      and returns updates. This function may operate on entire pytrees or on
+      individual arrays (i.e. the leaves of updates/params pytrees).
+    on_leaves: When `True`, this wrapper will apply `f` to each leaf of the
+      updates/params pytrees. When `False`, this wrapper will pass the entire
+      updates/params pytrees to `f`.
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def init_fn(_):
+    return StatelessState()
+
+  def update_fn(updates, state, params=None):
+    if not on_leaves:
+      return f(updates, params), state
+    elif params is not None:
+      return tree_map(f, updates, params), state
+    else:
+      f_ = lambda u: f(u, None)
+      return tree_map(f_, updates), state
+
+  return base.GradientTransformation(init_fn, update_fn)

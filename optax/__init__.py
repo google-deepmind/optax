@@ -149,6 +149,8 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
+from optax._src.wrappers import stateless
+from optax._src.wrappers import StatelessState
 
 __version__ = "0.1.0"
 
@@ -276,6 +278,8 @@ __all__ = (
     "sigmoid_binary_cross_entropy",
     "sm3",
     "smooth_labels",
+    "stateless",
+    "StatelessState",
     "softmax_cross_entropy",
     "trace",
     "TraceState",
