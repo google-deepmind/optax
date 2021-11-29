@@ -76,15 +76,37 @@ def trace(
 
 
 def _update_moment(updates, moments, decay, order):
-  """Compute the exponential moving average of the `order-th` moment."""
+  """Compute the exponential moving average of the `order`-th moment."""
   return jax.tree_multimap(
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
+
+
+def _update_moment_norm(updates, moments, decay, order):
+  """Compute the exponential moving average of the `order`-th moment of norm."""
+
+  def orderth_norm(g):
+    if jnp.isrealobj(g):
+      return g ** order
+    else:
+      half_order = order / 2
+      # JAX generates different HLO for int and float `order`
+      if half_order.is_integer():
+        half_order = int(half_order)
+      return numerics.abs_sqr(g) ** half_order
+
+  return jax.tree_multimap(
+      lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
 
 
 def _bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
   bias_correction = 1 - decay**count
   return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
+
+
+def _reject_complex(params):
+  if any(jnp.iscomplexobj(x) for x in jax.tree_leaves(params)):
+    raise TypeError('This transformation does not support complex parameters.')
 
 
 class EmaState(NamedTuple):
@@ -165,7 +187,7 @@ def scale_by_rss(
   def update_fn(updates, state, params=None):
     del params
     sum_of_squares = jax.tree_multimap(
-        lambda g, t: jnp.square(g) + t, updates, state.sum_of_squares)
+        lambda g, t: numerics.abs_sqr(g) + t, updates, state.sum_of_squares)
     inv_sqrt_g_square = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
     updates = jax.tree_multimap(
@@ -206,7 +228,7 @@ def scale_by_rms(
 
   def update_fn(updates, state, params=None):
     del params
-    nu = _update_moment(updates, state.nu, decay, 2)
+    nu = _update_moment_norm(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
@@ -248,10 +270,10 @@ def scale_by_stddev(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, decay, 1)
-    nu = _update_moment(updates, state.nu, decay, 2)
+    nu = _update_moment_norm(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, m, n: g * jax.lax.rsqrt(n - jnp.square(m) + eps), updates, mu,
-        nu)
+        lambda g, m, n: g * jax.lax.rsqrt(n - numerics.abs_sqr(m) + eps),
+        updates, mu, nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -300,7 +322,7 @@ def scale_by_adam(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment(updates, state.nu, b2, 2)
+    nu = _update_moment_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = utils.cast_tree(_bias_correction(mu, b1, count_inc), mu_dtype)
     nu_hat = _bias_correction(nu, b2, count_inc)
@@ -437,7 +459,7 @@ def scale_by_belief(
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
-    nu = _update_moment(prediction_error, state.nu, b2, 2)
+    nu = _update_moment_norm(prediction_error, state.nu, b2, 2)
     nu = jax.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
@@ -483,9 +505,10 @@ def scale_by_yogi(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    signed_sq = jax.tree_multimap(
-        lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
-    nu = _update_moment(signed_sq, state.nu, b2, 2)
+    nu = jax.tree_multimap(
+        lambda g, v: v - (1 - b2) * jnp.sign(v - numerics.abs_sqr(g)) *
+            numerics.abs_sqr(g),
+        updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
@@ -538,7 +561,7 @@ def scale_by_radam(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment(updates, state.nu, b2, 2)
+    nu = _update_moment_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
@@ -832,6 +855,7 @@ def scale_by_sm3(
     return [jnp.zeros([s]) for s in p.shape]
 
   def init_fn(params):
+    _reject_complex(params)
     mu = jax.tree_map(zeros_for_dim, params)
     nu = jax.tree_map(jnp.zeros_like, params)
     return ScaleBySM3State(mu, nu)

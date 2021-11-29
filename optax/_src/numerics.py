@@ -23,6 +23,13 @@ import jax.numpy as jnp
 # TODO(jscholz) Promote these functions to jax core lib?
 
 
+def abs_sqr(x: chex.Array) -> chex.Array:
+  """Returns the squared norm of a (maybe complex) array."""
+  # For real `x`, JAX generates the same HLO from this, `jnp.square(x)`,
+  # `x * x`, or `x**2`
+  return (x.conj() * x).real
+
+
 def safe_norm(x: chex.Array,
               min_norm: chex.Numeric,
               ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
@@ -60,9 +67,9 @@ def safe_norm(x: chex.Array,
 
 
 def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
-  """Returns jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm) with correct grads.
+  """Returns `maximum(sqrt(mean(abs_sqr(x))), min_norm)` with correct grads.
 
-  The gradients of `jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm)` at 0.0
+  The gradients of `maximum(sqrt(mean(abs_sqr(x))), min_norm)` at 0.0
   is `NaN`, because jax will evaluate both branches of the `jnp.maximum`. This
   function will instead return the correct gradient of 0.0 also in such setting.
 
@@ -73,9 +80,9 @@ def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
   Returns:
     The safe RMS of the input vector, accounting for correct gradient.
   """
-  rms = jnp.sqrt(jnp.mean(x ** 2))
+  rms = jnp.sqrt(jnp.mean(abs_sqr(x)))
   x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
-  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(x ** 2)))
+  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sqr(x))))
 
 
 def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
