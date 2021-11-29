@@ -37,6 +37,7 @@ from optax._src.base import OptState
 from optax._src.base import Params
 from optax._src.base import Schedule
 from optax._src.base import set_to_zero
+from optax._src.base import stateless
 from optax._src.base import TransformInitFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
@@ -149,8 +150,6 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
-from optax._src.wrappers import stateless
-from optax._src.wrappers import StatelessState
 
 __version__ = "0.1.0"
 
@@ -279,7 +278,6 @@ __all__ = (
     "sm3",
     "smooth_labels",
     "stateless",
-    "StatelessState",
     "softmax_cross_entropy",
     "trace",
     "TraceState",

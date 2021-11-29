@@ -15,8 +15,12 @@
 """Tests for base.py."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
+
 import chex
 import numpy as np
+import jax
+import jax.numpy as jnp
 
 from optax._src import base
 
@@ -57,6 +61,45 @@ class BaseTest(chex.TestCase):
     """Tests that the zero transform returns an empty state."""
     self.assertEqual(
         self.variant(base.set_to_zero().init)(params=None), base.EmptyState())
+
+
+class StatelessTest(chex.TestCase):
+  """Tests for the stateless transformation."""
+
+  @chex.all_variants
+  @parameterized.parameters(False, True)
+  def test_stateless(self, on_leaves):
+    params = {'a': jnp.zeros((1, 2)), 'b': jnp.ones((1,))}
+    updates = {'a': jnp.ones((1, 2)), 'b': jnp.full((1,), 2.0)}
+
+    if on_leaves:
+      def weight_decay(g, p):
+        return g + 0.1 * p
+    else:
+      def weight_decay(g, p):
+        return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+
+    opt = base.stateless(weight_decay, on_leaves=on_leaves)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    new_updates, new_state = update_fn(updates, state, params)
+    expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.1])}
+    chex.assert_trees_all_close(new_updates, expected_updates)
+
+      # Check repeated application
+    new_updates, _ = update_fn(new_updates, new_state, params)
+    expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.2])}
+    chex.assert_trees_all_close(new_updates, expected_updates)
+
+  @chex.all_variants
+  def test_stateless_no_params(self):
+    updates = {'linear': jnp.full((5, 3), 3.0)}
+    opt = base.stateless(lambda x, _: x*2.0, on_leaves=True)
+    state = opt.init(None)
+    update_fn = self.variant(opt.update)
+    new_updates, _ = update_fn(updates, state)
+    expected_updates = {'linear': jnp.full((5, 3), 6.0)}
+    chex.assert_trees_all_close(new_updates, expected_updates)
 
 
 if __name__ == '__main__':

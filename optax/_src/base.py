@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 
 import chex
 import jax
@@ -136,5 +136,43 @@ def set_to_zero() -> GradientTransformation:
   def update_fn(updates, state, params=None):
     del params  # Unused by the zero transform.
     return jax.tree_map(jnp.zeros_like, updates), state
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def stateless(
+    f: Union[
+      Callable[[Updates, Optional[Params]], Updates],
+      Callable[[chex.Array, Optional[chex.Array]], chex.Array]],
+    on_leaves: bool=False
+) -> GradientTransformation:
+  """Convenience wrapper to create a stateless GradientTransformation.
+
+  This wrapper eliminates the boilerplate needed to create a transformation that
+  does not require saved state between iterations.
+
+  Args:
+    f: Update function that takes in updates (e.g. gradients) and parameters
+      and returns updates. This function may operate on entire pytrees or on
+      individual arrays (i.e. the leaves of updates/params pytrees).
+    on_leaves: When `True`, this wrapper will apply `f` to each leaf of the
+      updates/params pytrees. When `False`, this wrapper will pass the entire
+      updates/params pytrees to `f`.
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def init_fn(_):
+    return EmptyState()
+
+  def update_fn(updates, state, params=None):
+    if not on_leaves:
+      return f(updates, params), state
+    elif params is not None:
+      return jax.tree_map(f, updates, params), state
+    else:
+      f_ = lambda u: f(u, None)
+      return jax.tree_map(f_, updates), state
 
   return GradientTransformation(init_fn, update_fn)
