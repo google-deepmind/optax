@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2021 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
 # ==============================================================================
 """Complex-valued optimization."""
 
-from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 import chex
 import jax
@@ -24,35 +23,30 @@ import jax.numpy as jnp
 from optax._src import base
 
 
-@jax.tree_util.register_pytree_node_class
-@dataclass
-class RealPair:
+class RealPair(NamedTuple):
   """A pair of real arrays split from a complex array."""
   real: chex.Array
-  imag: chex.Array
-
-  def tree_flatten(self):
-    return ((self.real, self.imag), None)
-
-  @classmethod
-  def tree_unflatten(cls, _, children):
-    return cls(*children)
+  imaginary: chex.Array
 
 
-def _is_real_pair(x):
-  return isinstance(x, RealPair)
+def _complex_to_real_pair(x: chex.Array) -> chex.Array:
+  """Splits a complex array into a `RealPair`.
 
-
-def _complex_to_real_pair(x):
+  If `x` is real, it will be passed through unmodified.
+  """
   if jnp.iscomplexobj(x):
     return RealPair(x.real, x.imag)
   else:
     return x
 
 
-def _real_pair_to_complex(x):
-  if _is_real_pair(x):
-    return x.real + x.imag * 1j
+def _real_pair_to_complex(x: Union[chex.Array, RealPair]) -> chex.Array:
+  """Merges a `RealPair` into a complex array.
+
+  If `x` is not a `RealPair`, it will be passed through unmodified.
+  """
+  if isinstance(x, RealPair):
+    return x.real + x.imaginary * 1j
   else:
     return x
 
@@ -65,7 +59,7 @@ class SplitComplexState(NamedTuple):
 def split_complex(
     inner: base.GradientTransformation
 ) -> base.GradientTransformation:
-  """Splits complex parameters into pairs of real parameters.
+  """Splits the real and imaginary components of complex updates into two.
 
   The inner transformation processes real parameters and updates, and the
   pairs of transformed real updates are merged into complex updates.
@@ -90,7 +84,9 @@ def split_complex(
     params = jax.tree_map(_complex_to_real_pair, params)
     updates, inner_state = inner.update(updates, inner_state, params)
     updates = jax.tree_map(
-        _real_pair_to_complex, updates, is_leaf=_is_real_pair)
+        _real_pair_to_complex,
+        updates,
+        is_leaf=lambda x: isinstance(x, RealPair))
     return updates, SplitComplexState(inner_state)
 
   return base.GradientTransformation(init_fn, update_fn)
