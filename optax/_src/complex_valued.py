@@ -29,7 +29,7 @@ class RealPair(NamedTuple):
   imaginary: chex.Array
 
 
-def _complex_to_real_pair(x: chex.Array) -> chex.Array:
+def _complex_to_real_pair(x: chex.Array) -> Union[chex.Array, RealPair]:
   """Splits a complex array into a `RealPair`.
 
   If `x` is real, it will be passed through unmodified.
