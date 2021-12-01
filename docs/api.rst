@@ -362,8 +362,6 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
-    split_complex
-    SplitComplexState
 
 
 Apply if Finite
@@ -418,15 +416,6 @@ Multi-step Update
    :members:
 
 .. autoclass:: MultiStepsState
-   :members:
-
-
-Split Complex
-~~~~~~~~~~~~~~
-
-.. autofunction::  split_complex
-
-.. autoclass::  SplitComplexState
    :members:
 
 
@@ -680,7 +669,7 @@ General Utilities
     scale_gradient
 
 multi_normal
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 .. autofunction:: multi_normal
 
@@ -688,3 +677,23 @@ scale_gradient
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction:: scale_gradient
+
+
+🚧 Experimental
+===============
+
+.. currentmodule:: optax.experimental
+
+.. autosummary::
+
+    split_real_and_imaginary
+    SplitRealAndImaginaryState
+
+
+Complex-Valued Optimization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction::  split_real_and_imaginary
+
+.. autoclass::  SplitRealAndImaginaryState
+   :members:
