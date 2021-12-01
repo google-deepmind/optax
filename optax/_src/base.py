@@ -43,10 +43,12 @@ class TransformUpdateFn(typing_extensions.Protocol):
   transformation that requires access to it.
   """
 
-  def __call__(self,
-               updates: Updates,
-               state: OptState,
-               params: Optional[Params] = None) -> Tuple[Updates, OptState]:
+  def __call__(
+      self,
+      updates: Updates,
+      state: OptState,
+      params: Optional[Params] = None
+    ) -> Tuple[Updates, OptState]:
     ...
 
 
