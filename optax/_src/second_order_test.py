@@ -47,7 +47,7 @@ class SecondOrderTest(chex.TestCase):
           [hk.Linear(10), jax.nn.relu, hk.Linear(NUM_CLASSES)], name='mlp')
       return jax.nn.log_softmax(mlp(z))
 
-    net = hk.without_apply_rng(hk.transform(net_fn, apply_rng=True))
+    net = hk.without_apply_rng(hk.transform(net_fn))
     self.parameters = net.init(jax.random.PRNGKey(0), self.data)
 
     def loss(params, inputs, targets):
