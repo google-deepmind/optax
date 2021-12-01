@@ -14,6 +14,7 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
+from optax import experimental
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
@@ -49,8 +50,6 @@ from optax._src.clipping import ClipState
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
-from optax._src.complex_valued import split_complex
-from optax._src.complex_valued import SplitComplexState
 from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans

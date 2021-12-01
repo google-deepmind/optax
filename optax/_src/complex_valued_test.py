@@ -43,7 +43,7 @@ class ComplexValuedTest(parameterized.TestCase):
       ('adam', transform.scale_by_adam),
       ('param_block_norm', transform.scale_by_param_block_norm),
   ])
-  def test_split_complex(self, scaler_constr):
+  def test_split_real_and_imaginary(self, scaler_constr):
 
     def do_update(loss_fun, optimizer, params, opt_state):
       loss, grads = jax.value_and_grad(loss_fun)(params)
@@ -60,7 +60,7 @@ class ComplexValuedTest(parameterized.TestCase):
     z = x + y * 1j
 
     optimizer = scaler_constr()
-    optimizer_complex = complex_valued.split_complex(optimizer)
+    optimizer_complex = complex_valued.split_real_and_imaginary(optimizer)
     opt_state = self.variant(optimizer.init)((x, y))
     opt_state_complex = self.variant(optimizer_complex.init)(z)
 
