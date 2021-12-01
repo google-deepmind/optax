@@ -419,6 +419,12 @@ Multi-step Update
    :members:
 
 
+Stateless Update
+~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: stateless
+
+
 Common Losses
 ===============
 

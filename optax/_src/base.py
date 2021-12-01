@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
 
 import chex
 import jax
@@ -141,12 +141,10 @@ def set_to_zero() -> GradientTransformation:
 
 
 def stateless(
-    f: Union[
-      Callable[[Updates, Optional[Params]], Updates],
-      Callable[[chex.Array, Optional[chex.Array]], chex.Array]],
+    f: Callable[[Updates, Optional[Params]], Updates],
     on_leaves: bool=False
 ) -> GradientTransformation:
-  """Convenience wrapper to create a stateless GradientTransformation.
+  """Creates a stateless GradientTransformation from an update-like function.
 
   This wrapper eliminates the boilerplate needed to create a transformation that
   does not require saved state between iterations.
@@ -154,7 +152,8 @@ def stateless(
   Args:
     f: Update function that takes in updates (e.g. gradients) and parameters
       and returns updates. This function may operate on entire pytrees or on
-      individual arrays (i.e. the leaves of updates/params pytrees).
+      individual arrays (i.e. the leaves of updates/params pytrees). The
+      parameters may be `None`.
     on_leaves: When `True`, this wrapper will apply `f` to each leaf of the
       updates/params pytrees. When `False`, this wrapper will pass the entire
       updates/params pytrees to `f`.
