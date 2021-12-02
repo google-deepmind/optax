@@ -14,7 +14,11 @@
 # ==============================================================================
 """Tests for optax._src.numerics."""
 
+import functools
+import itertools
+
 from absl.testing import absltest
+from absl.testing import parameterized
 
 import chex
 import jax
@@ -23,9 +27,17 @@ import numpy as np
 
 from optax._src import numerics
 
+_ALL_ORDS = [None, np.inf, -np.inf, 'fro', 'nuc', 0, 1, 2, -2, -2, -1.5, 1.5]
 
 int32_array = lambda i: jnp.array(i, dtype=jnp.int32)
 float32_array = lambda i: jnp.array(i, dtype=jnp.float32)
+
+
+def _invalid_ord_axis_inputs(ord_axis_keepdims):
+  ord_, axis = ord_axis_keepdims[0], ord_axis_keepdims[1]
+  return any(((ord_ == 0 and axis is None),
+              (isinstance(ord_, float) and axis is None),
+              (isinstance(ord_, str) and axis is not None)))
 
 
 class NumericsTest(chex.TestCase):
@@ -43,13 +55,21 @@ class NumericsTest(chex.TestCase):
     np.testing.assert_array_equal(incremented, base)
 
   @chex.all_variants()
-  def test_safe_norm(self):
-    dnorm_dx = self.variant(jax.grad(numerics.safe_norm))
+  @parameterized.parameters(
+      itertools.filterfalse(
+          _invalid_ord_axis_inputs,
+          itertools.product(_ALL_ORDS, [None, 0, 1], [False, True])))
+  def test_safe_norm(self, ord, axis, keepdims):  # pylint: disable=redefined-builtin
+    dnorm_dx = self.variant(
+        jax.jacfwd(
+            functools.partial(
+                numerics.safe_norm, ord=ord, axis=axis, keepdims=keepdims),
+            argnums=0))
     # Test gradient is 0. in 0. when zero min norm is used.
-    g = dnorm_dx(float32_array(0.), float32_array(0.))
+    g = dnorm_dx(float32_array(jnp.zeros((3, 4))), float32_array(0.))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
     # Test gradient is 0. in 0. when non zero min norm is used.
-    g = dnorm_dx(float32_array(0.), float32_array(3.))
+    g = dnorm_dx(float32_array(jnp.zeros((3, 4))), float32_array(3.))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
   @chex.all_variants()

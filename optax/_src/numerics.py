@@ -14,11 +14,20 @@
 # ==============================================================================
 """Utilities to ensure the implementation is safe wrt numerical issues."""
 
+from typing import Optional, Tuple, Union
+
 import chex
 import jax.numpy as jnp
 
 
-def safe_norm(x: chex.Array, min_norm: chex.Numeric) -> chex.Array:
+# TODO(jscholz) Promote these functions to jax core lib?
+
+
+def safe_norm(x: chex.Array,
+              min_norm: chex.Numeric,
+              ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
+              axis: Union[None, Tuple[int, ...], int] = None,
+              keepdims: bool = False) -> chex.Array:
   """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
 
   The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
@@ -28,13 +37,26 @@ def safe_norm(x: chex.Array, min_norm: chex.Numeric) -> chex.Array:
   Args:
     x: jax array.
     min_norm: lower bound for the returned norm.
+    ord: {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional. Order of the norm.
+      inf means numpy’s inf object. The default is None.
+    axis: {None, int, 2-tuple of ints}, optional. If axis is an integer, it
+      specifies the axis of x along which to compute the vector norms. If axis
+      is a 2-tuple, it specifies the axes that hold 2-D matrices, and the matrix
+      norms of these matrices are computed. If axis is None then either a vector
+      norm (when x is 1-D) or a matrix norm (when x is 2-D) is returned. The
+      default is None.
+    keepdims: bool, optional. If this is set to True, the axes which are normed
+      over are left in the result as dimensions with size one. With this option
+      the result will broadcast correctly against the original x.
 
   Returns:
     The safe norm of the input vector, accounting for correct gradient.
   """
-  norm = jnp.linalg.norm(x)
+  norm = jnp.linalg.norm(x, ord=ord, axis=axis, keepdims=True)
   x = jnp.where(norm <= min_norm, jnp.ones_like(x), x)
-  return jnp.where(norm <= min_norm, min_norm, jnp.linalg.norm(x))
+  norm = jnp.squeeze(norm, axis=axis) if not keepdims else norm
+  masked_norm = jnp.linalg.norm(x, ord=ord, axis=axis, keepdims=keepdims)
+  return jnp.where(norm <= min_norm, min_norm, masked_norm)
 
 
 def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
