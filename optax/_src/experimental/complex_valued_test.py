@@ -22,9 +22,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax._src import complex_valued
 from optax._src import transform
 from optax._src import update
+from optax._src.experimental import complex_valued
 
 
 def _loss_fun_complex_to_real(z):
