@@ -14,6 +14,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
+import functools
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
 import jax
@@ -219,6 +220,13 @@ class MultiSteps:
       self._every_k_schedule = every_k_schedule
     self._use_grad_mean = use_grad_mean
 
+    if self._use_grad_mean:
+      # Use Welford algorithm for numerically stable aggregation of mean.
+      self._acc_update = (
+          lambda grad, acc, *, n_acc: acc + (grad - acc) / (n_acc + 1))
+    else:
+      self._acc_update = lambda grad, acc, *, n_acc: grad + acc
+
   @property
   def inner_opt(self):
     return self._opt
@@ -238,17 +246,14 @@ class MultiSteps:
              ) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
-    acc_grads = jax.tree_util.tree_multimap(lambda a, b: a + b, updates,
-                                            state.acc_grads)
+    acc_grads = jax.tree_util.tree_multimap(
+        functools.partial(self._acc_update, n_acc=state.mini_step),
+        updates, state.acc_grads)
 
     def final_step(args):
       del args
-      if self._use_grad_mean:
-        grads_for_update = jax.tree_map(lambda x: x / k_steps, acc_grads)
-      else:
-        grads_for_update = acc_grads
       updates, new_inner_state = self._opt.update(
-          grads_for_update, state.inner_opt_state, params=params)
+          acc_grads, state.inner_opt_state, params=params)
       new_state = MultiStepsState(
           mini_step=jnp.zeros([], dtype=jnp.int32),
           gradient_step=numerics.safe_int32_increment(state.gradient_step),
