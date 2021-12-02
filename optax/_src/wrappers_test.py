@@ -236,6 +236,26 @@ class WrappersTest(parameterized.TestCase):
       _, opt_state = opt_update(grad, opt_state, params)
       self.assertTrue(ms_opt.has_updated(opt_state))
 
+  def test_multi_steps_computes_mean(self):
+    k_steps = 4
+    ms_opt = wrappers.MultiSteps(
+        transform.scale(1.0), k_steps, use_grad_mean=True)
+    opt_init, opt_update = ms_opt.gradient_transformation()
+    params = dict(a=jnp.zeros([]))
+    opt_state = opt_init(params)
+    grads = [dict(a=jnp.ones([]) * i) for i in [1, 2, 3, 4]]
+    self.assertFalse(ms_opt.has_updated(opt_state))
+
+    # First 3 steps don't update.
+    for grad in grads[:-1]:
+      _, opt_state = opt_update(grad, opt_state, params)
+      self.assertFalse(ms_opt.has_updated(opt_state))
+
+    # Actual update.
+    new_params, opt_state = opt_update(grads[-1], opt_state, params)
+    self.assertTrue(ms_opt.has_updated(opt_state))
+    np.testing.assert_array_equal(new_params['a'], 2.5)
+
 
 class MaskedTest(chex.TestCase):
   """Tests for the masked wrapper."""
