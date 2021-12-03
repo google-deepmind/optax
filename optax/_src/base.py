@@ -21,7 +21,6 @@ import jax
 import jax.numpy as jnp
 import typing_extensions
 
-
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
@@ -53,7 +52,36 @@ class TransformUpdateFn(typing_extensions.Protocol):
 
 
 class GradientTransformation(NamedTuple):
-  """Optax transformations consists of a function pair: (initialise, update)."""
+  """A pair of pure functions implementing a gradient transformation.
+
+  Optax optimizers are all implemented as _gradient transformations_.
+  A gradient transformation is defined to be a pair of pure functions, which
+  are combined together in a `NamedTuple` so that they can be referred to by
+  name.
+
+  Since gradient transformations do not contain any internal state, all stateful
+  optimizer properties (such as the current step count when using optimizer
+  scheduels, or  momemtum values) are passed through optax gradient
+  transformations by using the optimizer _state_ pytree. Each time a gradient
+  transformation is applied, a new state is computed and returned, ready to be
+  passed to the next call to the gradient transformation.
+
+  Since gradient transformations are pure, idempotent functions, the only way
+  to change the behaviour of a gradient transformation between steps, is to
+  change the values in the optimizer state. To see an example of mutating the
+  optimizer state in order to control the behaviour of an optax gradient
+  transformation, see the meta-learning example in the optax documentation.
+
+  Attributes:
+    init: A pure function which, when called with an example instance of the
+      parameters whose gradients will be transformed, returns a pytree
+      containing the initial value for the optimizer state.
+    update: A pure function which takes as input a pytree of updates (with the
+      same tree structure as the original params pytree passed to init), the
+      previous optimizer state (which may have been initialized using the init
+      function), and optionally the current params. The update function then
+      returns the computed gradient updates, and a new optimizer state.
+  """
   init: TransformInitFn
   update: TransformUpdateFn
 
