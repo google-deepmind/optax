@@ -58,6 +58,10 @@ cd examples
 python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" .
 cd ..
 
+# Build Sphinx docs.
+pip install -r requirements/requirements-docs.txt
+cd docs && make html
+cd ..
 
 set +u
 deactivate
