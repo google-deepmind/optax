@@ -159,6 +159,8 @@ Gradient Transforms
     ScaleByTrustRatioState
     ScaleBySM3State
     ScaleState
+    stateless
+    stateless_with_tree_map
     set_to_zero
     trace
     TraceState
@@ -228,6 +230,8 @@ Optax Transforms and States
 .. autoclass:: EmaState
     :members:
 
+.. autofunction:: stateless
+.. autofunction:: stateless_with_tree_map
 .. autoclass:: EmptyState
     :members:
 
@@ -417,13 +421,6 @@ Multi-step Update
 
 .. autoclass:: MultiStepsState
    :members:
-
-
-Stateless Update
-~~~~~~~~~~~~~~~~~~
-
-.. autofunction:: stateless
-.. autofunction:: stateless_with_tree_map
 
 
 Common Losses
