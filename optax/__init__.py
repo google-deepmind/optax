@@ -26,6 +26,7 @@ from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
+from optax._src.alias import online_newton_step
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
@@ -251,6 +252,7 @@ __all__ = (
     "MultiTransformState",
     "noisy_sgd",
     "NonNegativeParamsState",
+    "online_newton_step",
     "OptState",
     "Params",
     "pathwise_jacobians",

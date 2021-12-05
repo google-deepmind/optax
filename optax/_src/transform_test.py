@@ -28,6 +28,7 @@ from optax._src import alias
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
+from optax._src.transform import scale_by_online_newton_step
 
 STEPS = 50
 LR = 1e-2
@@ -268,6 +269,83 @@ class TransformTest(parameterized.TestCase):
           lambda g, s=scale: g * s, updates_i_unit)
 
       chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+
+  def test_sherman_morrison(self):
+    rng = jax.random.PRNGKey(42)
+    rng, sub_rng = jax.random.split(rng)
+    a = jax.random.normal(sub_rng, (3, 3))
+
+    rng, sub_rng = jax.random.split(rng)
+    u = jax.random.normal(sub_rng, (3,))
+
+    ref = jnp.linalg.inv(a + jnp.outer(u, u))
+    a_inv = jnp.linalg.inv(a)
+    a_inv = transform.sherman_morrison(a_inv, u)
+    np.testing.assert_allclose(a_inv, ref, rtol=1e-5)
+
+  def test_scale_by_online_newton_step(self):
+    eps = 5.
+    step = scale_by_online_newton_step(eps)
+    rng = jax.random.PRNGKey(42)
+
+    rng, sub_rng = jax.random.split(rng)
+    w = jax.random.normal(sub_rng, (3,))
+
+    params = {'weights': w}
+
+    def fun(params, x):
+      return 0.5 * (params['weights'] @ x)**2
+
+    rng, sub_rng = jax.random.split(rng)
+    x = jax.random.normal(sub_rng, (3,))
+
+    grad = jax.grad(fun)(params, x)
+
+    state = step.init(params)
+    updates, state = step.update(grad, state)
+
+    u = (w @ x) * x
+
+    # check that step.update applied the sherman_morrison
+    ref = transform.sherman_morrison(jnp.eye(3) / eps, u) @ u
+    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
+
+    # check Sherman-Morrison formula
+    ref = jnp.linalg.inv(jnp.eye(3) * eps + jnp.outer(u, u)) @ u
+    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
+
+  def test_scale_by_online_newton_step_with_multidimentional_weights(self):
+    eps = 5.
+    step = scale_by_online_newton_step(eps)
+    rng = jax.random.PRNGKey(42)
+
+    rng, sub_rng = jax.random.split(rng)
+    w = jax.random.normal(sub_rng, (3, 2))
+
+    params = {'weights': w}
+
+    def fun(params, x):
+      return 0.5 * jnp.linalg.norm(params['weights'] * x)**2
+
+    rng, sub_rng = jax.random.split(rng)
+    x = jax.random.normal(sub_rng, (3, 2))
+
+    grad = jax.grad(fun)(params, x)
+
+    state = step.init(params)
+    updates, state = step.update(grad, state)
+
+    u = grad['weights'].flatten()  # (w * x).sum() * x
+
+    # check that step.update applied the sherman_morrison
+    ref = transform.sherman_morrison(jnp.eye(3*2) / eps, u)@u
+    ref = ref.reshape((3, 2))
+    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
+
+    # check Sherman-Morrison formula
+    ref = jnp.linalg.inv(jnp.eye(3*2) * eps + jnp.outer(u, u)) @ u
+    ref = ref.reshape((3, 2))
+    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
 
   def test_scale_by_optimistic_gradient(self):
 

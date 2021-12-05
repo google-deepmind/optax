@@ -142,6 +142,25 @@ class AliasTest(chex.TestCase):
     adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
     self.assertEqual(expected_dtype, adam_state.mu.dtype)
 
+  def test_online_newton_step_decreases_loss(self):
+    """We check that the online newton step update decrease a loss function.
+    """
+
+    def loss(w):
+      return -(w * x).sum() + (w ** 2).sum()
+
+    w = jnp.array([-3.0, 0.0, 2.0])
+    x = jnp.array([2.0, -3.0, 5.0])
+
+    opt = alias.online_newton_step(learning_rate=1.0e-3, eps=1.)
+    grads = jax.grad(loss)(w)
+
+    state = opt.init(w)
+    grads, state = opt.update(grads, state)
+    new_w = update.apply_updates(w, grads)
+
+    self.assertLess(loss(new_w), loss(w))
+
 
 if __name__ == '__main__':
   absltest.main()

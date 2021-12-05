@@ -953,6 +953,57 @@ def scale_by_sm3(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByOnlineNewtonStepState(NamedTuple):
+  """State holding the inverse of the sum of gradient outer products to date."""
+  hessian_inv: base.Updates
+
+
+def sherman_morrison(a_inv, u):
+  """Sherman Morrison formula to compute the inverse of the sum of an invertible
+   matrix and the outer product of two vectors.
+
+   The formula is used in the "Online Newton Step" gradient update method.
+   """
+  den = 1.0 + (u.T @ a_inv @ u)
+  a_inv -= a_inv @ jnp.outer(u, u) @ a_inv / den
+  return a_inv
+
+
+def scale_by_online_newton_step(eps: float) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
+  """Rescale the updates by multiplying them by the inverse of a hessian approximation
+  (see the description of the ONS in Fig. 2 p. 176 of the reference below).
+
+  References:
+    Hazan, E., Agarwal, A. and Kale, S., 2007. Logarithmic regret algorithms for online convex optimization. Machine Learning, 69(2-3), pp.169-192 : https://link.springer.com/content/pdf/10.1007/s10994-007-5016-8.pdf
+
+  Args:
+    eps: A floating point value to avoid zero denominator.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    hessian_inv = jax.tree_map(
+        lambda t: jnp.eye(len(t.flatten()), dtype=t.dtype) / eps, params
+    )
+    return ScaleByOnlineNewtonStepState(hessian_inv=hessian_inv)
+
+  def update_fn(updates, state, params=None):
+    del params
+    flattened_updates = jax.tree_map(lambda x: x.flatten(), updates)
+    hessian_inv = jax.tree_multimap(
+        sherman_morrison, state.hessian_inv, flattened_updates
+    )
+    flattened_updates = jax.tree_multimap(lambda hinv, g: hinv @ g, hessian_inv, flattened_updates)
+    updates = jax.tree_multimap(lambda flat_u, u: flat_u.reshape(u.shape),
+                                flattened_updates, updates)
+    return updates, ScaleByOnlineNewtonStepState(hessian_inv=hessian_inv)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 def scale_by_optimistic_gradient(
     alpha: float = 1.0,
     beta: float = 1.0) -> base.GradientTransformation:
