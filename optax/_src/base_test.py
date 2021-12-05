@@ -15,7 +15,6 @@
 """Tests for base.py."""
 
 from absl.testing import absltest
-from absl.testing import parameterized
 
 import chex
 import numpy as np
@@ -67,39 +66,73 @@ class StatelessTest(chex.TestCase):
   """Tests for the stateless transformation."""
 
   @chex.all_variants
-  @parameterized.parameters(False, True)
-  def test_stateless(self, on_leaves):
+  def test_stateless(self):
     params = {'a': jnp.zeros((1, 2)), 'b': jnp.ones((1,))}
     updates = {'a': jnp.ones((1, 2)), 'b': jnp.full((1,), 2.0)}
 
-    if on_leaves:
-      def weight_decay(g, p):
-        return g + 0.1 * p
-    else:
-      def weight_decay(g, p):
-        return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+    @base.stateless
+    def opt(g, p):
+      return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
-    opt = base.stateless(weight_decay, on_leaves=on_leaves)
     state = opt.init(params)
     update_fn = self.variant(opt.update)
-    new_updates, new_state = update_fn(updates, state, params)
+    new_updates, _ = update_fn(updates, state, params)
     expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.1])}
-    chex.assert_trees_all_close(new_updates, expected_updates)
-
-      # Check repeated application
-    new_updates, _ = update_fn(new_updates, new_state, params)
-    expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.2])}
     chex.assert_trees_all_close(new_updates, expected_updates)
 
   @chex.all_variants
   def test_stateless_no_params(self):
     updates = {'linear': jnp.full((5, 3), 3.0)}
-    opt = base.stateless(lambda x, _: x*2.0, on_leaves=True)
+
+    @base.stateless
+    def opt(g, _):
+      return jax.tree_map(lambda g_: g_ * 2, g)
+
     state = opt.init(None)
     update_fn = self.variant(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
     chex.assert_trees_all_close(new_updates, expected_updates)
+
+  def test_init_returns_emptystate(self):
+    def weight_decay(g, p):
+      return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+
+    opt = base.stateless(weight_decay)
+    state = opt.init(None)
+    self.assertIsInstance(state, base.EmptyState)
+
+
+class StatelessWithTreeMapTest(chex.TestCase):
+  """Tests for the stateless_with_tree_map transformation."""
+
+  @chex.all_variants
+  def test_stateless_with_tree_map(self):
+    params = {'a': jnp.zeros((1, 2)), 'b': jnp.ones((1,))}
+    updates = {'a': jnp.ones((1, 2)), 'b': jnp.full((1,), 2.0)}
+
+    opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    new_updates, _ = update_fn(updates, state, params)
+    expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.1])}
+    chex.assert_trees_all_close(new_updates, expected_updates)
+
+  @chex.all_variants
+  def test_stateless_with_tree_map_no_params(self):
+    updates = {'linear': jnp.full((5, 3), 3.0)}
+
+    opt = base.stateless_with_tree_map(lambda g, _: g * 2.0)
+    state = opt.init(None)
+    update_fn = self.variant(opt.update)
+    new_updates, _ = update_fn(updates, state)
+    expected_updates = {'linear': jnp.full((5, 3), 6.0)}
+    chex.assert_trees_all_close(new_updates, expected_updates)
+
+  def test_init_returns_emptystate(self):
+    opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
+    state = opt.init(None)
+    self.assertIsInstance(state, base.EmptyState)
 
 
 if __name__ == '__main__':

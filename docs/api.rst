@@ -423,6 +423,7 @@ Stateless Update
 ~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: stateless
+.. autofunction:: stateless_with_tree_map
 
 
 Common Losses

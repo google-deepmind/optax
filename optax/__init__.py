@@ -38,6 +38,7 @@ from optax._src.base import Params
 from optax._src.base import Schedule
 from optax._src.base import set_to_zero
 from optax._src.base import stateless
+from optax._src.base import stateless_with_tree_map
 from optax._src.base import TransformInitFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
@@ -278,6 +279,7 @@ __all__ = (
     "sm3",
     "smooth_labels",
     "stateless",
+    "stateless_with_tree_map",
     "softmax_cross_entropy",
     "trace",
     "TraceState",
