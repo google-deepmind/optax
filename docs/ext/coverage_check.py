@@ -44,7 +44,7 @@ class OptaxCoverageCheck(builders.Builder):
 
   def finish(self) -> None:
     documented_objects = frozenset(self.env.domaindata["py"]["objects"])
-    undocumented_objects = optax_public_symbols() - documented_objects
+    undocumented_objects = set(optax_public_symbols()) - documented_objects
     if undocumented_objects:
       undocumented_objects = tuple(sorted(undocumented_objects))
       raise errors.SphinxError(
@@ -55,4 +55,4 @@ class OptaxCoverageCheck(builders.Builder):
 
 def setup(app: application.Sphinx) -> Mapping[str, Any]:
   app.add_builder(OptaxCoverageCheck)
-  return dict(version="0.0.1", parallel_read_safe=True)
+  return dict(version=optax.__version__, parallel_read_safe=True)
