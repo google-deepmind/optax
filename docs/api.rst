@@ -230,8 +230,6 @@ Optax Transforms and States
 .. autoclass:: EmaState
     :members:
 
-.. autofunction:: stateless
-.. autofunction:: stateless_with_tree_map
 .. autoclass:: EmptyState
     :members:
 
@@ -287,6 +285,9 @@ Optax Transforms and States
     :members:
 
 .. autofunction:: set_to_zero
+
+.. autofunction:: stateless
+.. autofunction:: stateless_with_tree_map
 
 .. autofunction:: trace
 .. autoclass:: TraceState
