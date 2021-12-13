@@ -29,6 +29,11 @@ pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-test.txt
 pip install -r requirements/requirements-examples.txt
 
+# Ensure optax was not installed by one of the dependencies above,
+# since if it is, the tests below will be run against that version instead of
+# the branch build.
+pip uninstall -y optax || true
+
 # Lint with flake8.
 flake8 `find optax examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 

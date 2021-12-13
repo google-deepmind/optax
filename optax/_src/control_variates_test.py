@@ -92,7 +92,7 @@ class DeltaControlVariateTest(chex.TestCase):
     # This should be an analytical computation, the result needs to be
     # accurate.
     _assert_equal(avg_cv, expected_cv_value, rtol=1e-1, atol=1e-3)
-    _assert_equal(expected_cv(params, None), expected_cv_value, atol=1e-1)
+    _assert_equal(expected_cv(params, None), expected_cv_value, rtol=0.02)
 
   @chex.all_variants
   @parameterized.parameters([(1.0, 1.0)])
