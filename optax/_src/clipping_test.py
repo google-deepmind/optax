@@ -57,7 +57,7 @@ class ClippingTest(absltest.TestCase):
       self.assertAlmostEqual(rmf_fn(updates[1]), 1. / i)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)
+      chex.assert_tree_all_close(updates, updates_step)
 
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
@@ -69,7 +69,26 @@ class ClippingTest(absltest.TestCase):
           linear_algebra.global_norm(updates), 1. / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step, atol=1e-7, rtol=1e-7)
+      chex.assert_tree_all_close(updates, updates_step)
+
+  def test_adaptive_grad_clip(self):
+    updates = self.per_step_updates
+    params = self.init_params
+    for i in range(1, STEPS + 1):
+      clip_r = 1. / i
+      clipper = clipping.adaptive_grad_clip(clip_r)
+
+      # Check that the clipper actually works and upd_norm is < c * param_norm.
+      updates, _ = clipper.update(updates, None, params)
+      u_norm, p_norm = jax.tree_map(clipping.unitwise_norm, (updates, params))
+      cmp = jax.tree_map(
+          lambda u, p, c=clip_r: u - c * p < 1e-6, u_norm, p_norm)
+      for leaf in jax.tree_leaves(cmp):
+        self.assertTrue(leaf.all())
+
+      # Check that continuously clipping won't cause numerical issues.
+      updates_step, _ = clipper.update(self.per_step_updates, None, params)
+      chex.assert_tree_all_close(updates, updates_step)
 
 
 if __name__ == '__main__':
