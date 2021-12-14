@@ -669,7 +669,7 @@ General Utilities
     scale_gradient
 
 multi_normal
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 .. autofunction:: multi_normal
 
@@ -677,3 +677,23 @@ scale_gradient
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction:: scale_gradient
+
+
+🚧 Experimental
+===============
+
+.. currentmodule:: optax.experimental
+
+.. autosummary::
+
+    split_real_and_imaginary
+    SplitRealAndImaginaryState
+
+
+Complex-Valued Optimization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction::  split_real_and_imaginary
+
+.. autoclass::  SplitRealAndImaginaryState
+   :members:

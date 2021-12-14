@@ -14,6 +14,7 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
+from optax import experimental
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
