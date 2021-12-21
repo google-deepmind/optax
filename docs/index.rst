@@ -3,10 +3,10 @@
 Optax
 -----
 
-Optax is a gradient processing and optimization library for JAX.
-
-Optax is designed to facilitate research by providing building blocks
-that can be easily recombined in custom ways.
+Optax is a gradient processing and optimization library for JAX. It is designed
+to facilitate research by providing building blocks that can be recombined in
+custom ways in order to optimise parametric models such as, but not limited to,
+deep neural networks.
 
 Our goals are to:
 
@@ -65,6 +65,25 @@ for instructions on installing JAX.
 
    api
 
+The Team
+--------
+
+The development of Optax is led by Ross Hemsley, Matteo Hessel, Markus Kunesch
+and Iurii Kemaev. The team relies on outstanding contributions from Research
+Engineers and Research Scientists from throughout
+[DeepMind](https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt) and
+Alphabet. We are also very grateful to Optax's open source community for
+contributing ideas, bug fixes, issues, design docs, and amazing new features.
+
+The work on Optax is part of a wider effort to contribute to making the
+[JAX Ecosystem](https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt)
+the best possible environment for ML/AI research.
+
+Support
+-------
+
+If you are having issues, please let us know by filing an issue on our
+`issue tracker <https://github.com/deepmind/optax/issues>`_.
 
 Contribute
 ----------
@@ -87,12 +106,6 @@ consider creating a Design doc, as done by @wdphy16 in this example:
 
 If in doubt whether or not a proposed change deserves its own design doc,
 just start with opening the issue and we can discuss there.
-
-Support
--------
-
-If you are having issues, please let us know by filing an issue on our
-`issue tracker <https://github.com/deepmind/optax/issues>`_.
 
 License
 -------
