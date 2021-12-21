@@ -138,3 +138,61 @@ def set_to_zero() -> GradientTransformation:
     return jax.tree_map(jnp.zeros_like, updates), state
 
   return GradientTransformation(init_fn, update_fn)
+
+
+def stateless(
+    f: Callable[[Updates, Optional[Params]], Updates],
+) -> GradientTransformation:
+  """Creates a stateless transformation from an update-like function.
+
+  This wrapper eliminates the boilerplate needed to create a transformation that
+  does not require saved state between iterations.
+
+  Args:
+    f: Update function that takes in updates (e.g. gradients) and parameters
+      and returns updates. The parameters may be `None`.
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def init_fn(_):
+    return EmptyState()
+
+  def update_fn(updates, state, params=None):
+    del state
+    return f(updates, params), EmptyState()
+
+  return GradientTransformation(init_fn, update_fn)
+
+
+def stateless_with_tree_map(
+    f: Callable[[chex.Array, Optional[chex.Array]], chex.Array],
+) -> GradientTransformation:
+  """Creates a stateless transformation from an update-like function for arrays.
+
+  This wrapper eliminates the boilerplate needed to create a transformation that
+  does not require saved state between iterations, just like optax.stateless.
+  In addition, this function will apply the tree_map over update/params for you.
+
+  Args:
+    f: Update function that takes in an update array (e.g. gradients) and
+      parameter array and returns an update array. The parameter array may be
+      `None`.
+
+  Returns:
+    An `optax.GradientTransformation`.
+  """
+
+  def init_fn(_):
+    return EmptyState()
+
+  def update_fn(updates, state, params=None):
+    del state
+    if params is not None:
+      return jax.tree_map(f, updates, params), EmptyState()
+    else:
+      f_ = lambda u: f(u, None)
+      return jax.tree_map(f_, updates), EmptyState()
+
+  return GradientTransformation(init_fn, update_fn)

@@ -159,6 +159,8 @@ Gradient Transforms
     ScaleByTrustRatioState
     ScaleBySM3State
     ScaleState
+    stateless
+    stateless_with_tree_map
     set_to_zero
     trace
     TraceState
@@ -283,6 +285,9 @@ Optax Transforms and States
     :members:
 
 .. autofunction:: set_to_zero
+
+.. autofunction:: stateless
+.. autofunction:: stateless_with_tree_map
 
 .. autofunction:: trace
 .. autoclass:: TraceState
