@@ -31,15 +31,38 @@ Shape = Sequence[int]
 OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
-TransformInitFn = Callable[[Params], OptState]
+
 Schedule = Callable[[chex.Numeric], chex.Numeric]
 
 
-class TransformUpdateFn(typing_extensions.Protocol):
-  """A callable type for computing a new parameters and opt_state pair.
+class TransformInitFn(typing_extensions.Protocol):
+  """A callable type for the `init` step of a `GradientTransformation`.
 
-  The params argument is optional, but must be provided when using a
-  transformation that requires access to it.
+  The `init` step takes a tree of `params` and uses these to construct an
+  arbitrary structured initial `state` for the gradient transformation. This
+  may hold statistics of the past updates or any other non static information.
+  """
+
+  def __call__(self, params: Params) -> OptState:
+    """The `init` function.
+
+    Args:
+      params: The initial value of the parameters.
+
+    Returns:
+      The initial state of the gradient transformation.
+    """
+    ...
+
+
+class TransformUpdateFn(typing_extensions.Protocol):
+  """A callable type for the `update` step of a `GradientTransformation`.
+
+  The `update` step takes a tree of candidate parameter `updates` (e.g. their
+  gradient with respect to some loss), an arbitrary structured `state`, and the
+  current `params` of the model being optimised. The `params` argument is
+  optional, it must however be provided when using transformations that require
+  access to the current values of the parameters.
   """
 
   def __call__(
@@ -48,6 +71,16 @@ class TransformUpdateFn(typing_extensions.Protocol):
       state: OptState,
       params: Optional[Params] = None
     ) -> Tuple[Updates, OptState]:
+    """The `update` function.
+
+    Args:
+      updates: A tree of candidate updates.
+      state: The state of the gradient transformation.
+      params: (Optionally) the current value of the parameters.
+
+    Returns:
+      The transformed updates, and the updated state.
+    """
     ...
 
 

@@ -177,6 +177,12 @@ Optax Types
 .. autoclass:: GradientTransformation
     :members:
 
+.. autoclass:: TransformInitFn
+    :members:
+
+.. autoclass:: TransformUpdateFn
+    :members:
+
 .. autoclass:: OptState
     :members:
 
@@ -184,12 +190,6 @@ Optax Types
     :members:
 
 .. autoclass:: Updates
-    :members:
-
-.. autoclass:: TransformInitFn
-    :members:
-
-.. autoclass:: TransformUpdateFn
     :members:
 
 
