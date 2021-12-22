@@ -34,7 +34,8 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return ClipState()
 
   def update_fn(updates, state, params=None):
@@ -59,7 +60,8 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return base.EmptyState()
 
   def update_fn(updates, state, params=None):
@@ -91,7 +93,8 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return ClipByGlobalNormState()
 
   def update_fn(updates, state, params=None):
@@ -160,7 +163,8 @@ def adaptive_grad_clip(clipping: float,
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return AdaptiveGradClipState()
 
   def update_fn(updates, state, params):

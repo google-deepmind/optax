@@ -326,7 +326,8 @@ def scale(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return ScaleState()
 
   def update_fn(updates, state, params=None):
@@ -352,7 +353,8 @@ def scale_by_param_block_norm(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return base.EmptyState()
 
   def update_fn(updates, state, params):
@@ -381,7 +383,8 @@ def scale_by_param_block_rms(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return base.EmptyState()
 
   def update_fn(updates, state, params):
@@ -569,7 +572,8 @@ def add_decayed_weights(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return AddDecayedWeightsState()
 
   def update_fn(updates, state, params):
@@ -605,7 +609,8 @@ def scale_by_schedule(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return ScaleByScheduleState(count=jnp.zeros([], jnp.int32))
 
   def update_fn(updates, state, params=None):
@@ -647,7 +652,8 @@ def scale_by_trust_ratio(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return ScaleByTrustRatioState()
 
   def update_fn(updates, state, params):
@@ -700,7 +706,8 @@ def add_noise(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return AddNoiseState(
         count=jnp.zeros([], jnp.int32), rng_key=jax.random.PRNGKey(seed))
 
@@ -784,7 +791,8 @@ def centralize() -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return CentralState()
 
   def update_fn(updates, state, params=None):

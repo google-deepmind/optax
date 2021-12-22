@@ -55,7 +55,8 @@ def differentially_private_aggregate(
   """
   noise_std = l2_norm_clip * noise_multiplier
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return DifferentiallyPrivateAggregateState(rng_key=jax.random.PRNGKey(seed))
 
   def update_fn(updates, state, params=None):

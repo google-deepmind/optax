@@ -41,7 +41,8 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params):
+    del params
     return NonNegativeParamsState()
 
   def update_fn(updates, state, params):
