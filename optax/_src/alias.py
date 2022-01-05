@@ -210,7 +210,7 @@ def adam(
       square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for example when computing (meta-)gradients through Adam.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     the corresponding `GradientTransformation`.
@@ -256,7 +256,7 @@ def adamw(
       square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for instance when computing (meta-)gradients through Adam.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
     weight_decay: strength of the weight decay regularization.
     mask: a tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
