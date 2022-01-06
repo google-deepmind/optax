@@ -35,8 +35,10 @@ def _preprocess_image_dataset(element: Mapping[str, tf.Tensor],
 def load_image_dataset(dataset_name: str,
                        batch_size: int,
                        split: Split = Split.TRAIN,
+                       *,
                        shuffle: bool = True,
-                       buffer_size: int = 10000) -> tf.data.Dataset:
+                       buffer_size: int = 10000,
+                       cache: bool = True) -> tf.data.Dataset:
   """Loads an pre-processes an image dataset from tensorflow_datasets.
 
   The dataset is pre-processed so as to be ready for training a model: the
@@ -49,6 +51,7 @@ def load_image_dataset(dataset_name: str,
     split: Split of the dataset that should be loaded.
     shuffle: Whether to shuffle the dataset.
     buffer_size: Size of the shuffle buffer.
+    cache: Whether to cache the dataset after pre-processing.
 
   Returns:
     The batched pre-processed dataset.
@@ -59,6 +62,8 @@ def load_image_dataset(dataset_name: str,
   num_labels = int(max_label) + 1
   dataset = dataset.map(
       functools.partial(_preprocess_image_dataset, num_labels=num_labels))
+  if cache:
+    dataset = dataset.cache()
   if shuffle:
     dataset = dataset.shuffle(buffer_size)
 
