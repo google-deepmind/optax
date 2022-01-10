@@ -126,8 +126,7 @@ my_optimiser = chain(
     scale(-learning_rate))
 ```
 
-### Wrapping Gradient Transformations ([wrappers.py]
-(https://github.com/deepmind/optax/blob/master/optax/_src/wrappers.py))
+### Wrapping Gradient Transformations ([wrappers.py](https://github.com/deepmind/optax/blob/master/optax/_src/wrappers.py))
 
 Optax also provides several wrappers that take a `GradientTransformation` as
 input and return a new `GradientTransformation` that modifies the behaviour
