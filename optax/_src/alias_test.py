@@ -27,6 +27,7 @@ from optax._src import update
 
 
 def _setup_parabel(dtype):
+  """Quadratic function as an optimization target."""
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
 
@@ -38,6 +39,7 @@ def _setup_parabel(dtype):
 
 
 def _setup_rosenbrock(dtype):
+  """Rosenbrock function as an optimization target."""
   a = 1.0
   b = 100.0
 
@@ -81,8 +83,8 @@ class AliasTest(chex.TestCase):
   )
   def test_optimization(self, opt_name, opt, target, dtype):
     if opt_name in ['adafactor', 'sm3', 'dpsgd'] and jnp.iscomplexobj(dtype):
-        raise absltest.SkipTest(
-            'This optimizer does not support complex parameters.')
+      raise absltest.SkipTest(
+          'This optimizer does not support complex parameters.')
 
     opt = opt()
     initial_params, final_params, get_updates = target(dtype)
