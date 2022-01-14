@@ -31,6 +31,9 @@ def _setup_parabel(dtype):
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
 
+  if jnp.iscomplexobj(dtype):
+    final_params *= 1 + 1j
+
   @jax.grad
   def get_updates(params):
     return jnp.sum(numerics.abs_sqr(params - final_params))
@@ -42,6 +45,9 @@ def _setup_rosenbrock(dtype):
   """Rosenbrock function as an optimization target."""
   a = 1.0
   b = 100.0
+
+  if jnp.iscomplexobj(dtype):
+    a *= 1 + 1j
 
   initial_params = jnp.array([0.0, 0.0], dtype=dtype)
   final_params = jnp.array([a, a**2], dtype=dtype)
@@ -58,8 +64,7 @@ class AliasTest(chex.TestCase):
 
   @parameterized.product(
       (
-          dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3)),
-          dict(opt_name='sgd_momentum', opt=lambda: alias.sgd(2e-3, 0.2)),
+          dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
           dict(opt_name='adafactor', opt=lambda: alias.adafactor(5e-3)),
           dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
           dict(opt_name='adam', opt=lambda: alias.adam(1e-2)),
@@ -82,7 +87,8 @@ class AliasTest(chex.TestCase):
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if opt_name in ['adafactor', 'sm3', 'dpsgd'] and jnp.iscomplexobj(dtype):
+    if (opt_name in ['adafactor', 'fromage', 'noisy_sgd', 'sm3', 'dpsgd']
+        and jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           'This optimizer does not support complex parameters.')
 
