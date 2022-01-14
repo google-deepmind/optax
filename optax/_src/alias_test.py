@@ -29,11 +29,15 @@ class AliasTest(chex.TestCase):
 
   @parameterized.parameters(
       ('sgd', lambda: alias.sgd(1e-2, 0.0)),
+      ('adafactor', lambda: alias.adafactor(1e-1)),
+      ('adagrad', lambda: alias.adagrad(1.0)),
       ('adam', lambda: alias.adam(1e-1)),
       ('adamw', lambda: alias.adamw(1e-1)),
-      ('lamb', lambda: alias.adamw(1e-1)),
+      ('lars', lambda: alias.lars(1.0)),
+      ('lamb', lambda: alias.lamb(1e-2)),
+      ('noisy_sgd', lambda: alias.noisy_sgd(1e-1)),
       ('rmsprop', lambda: alias.rmsprop(1e-1)),
-      ('rmsprop_momentum', lambda: alias.rmsprop(5e-2, momentum=0.9)),
+      ('rmsprop_momentum', lambda: alias.rmsprop(1e-2, momentum=0.9)),
       ('fromage', lambda: alias.fromage(1e-2)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-1)),
@@ -61,23 +65,27 @@ class AliasTest(chex.TestCase):
 
     params = initial_params
     state = opt.init(params)
-    for _ in range(1000):
+    for _ in range(10000):
       params, state = step(params, state)
 
     chex.assert_tree_all_close(params, final_params, rtol=1e-2, atol=1e-2)
 
   @parameterized.parameters(
       ('sgd', lambda: alias.sgd(2e-3, 0.2)),
+      ('adafactor', lambda: alias.adafactor(1e-2)),
+      ('adagrad', lambda: alias.adagrad(1.0)),
       ('adam', lambda: alias.adam(1e-1)),
       ('adamw', lambda: alias.adamw(1e-1)),
-      ('lamb', lambda: alias.adamw(1e-1)),
+      ('lars', lambda: alias.lars(1.0)),
+      ('lamb', lambda: alias.lamb(1e-3)),
+      ('noisy_sgd', lambda: alias.noisy_sgd(1e-3)),
       ('rmsprop', lambda: alias.rmsprop(5e-3)),
       ('rmsprop_momentum', lambda: alias.rmsprop(5e-3, momentum=0.9)),
       ('fromage', lambda: alias.fromage(5e-3)),
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
       ('sm3', lambda: alias.sm3(1.0)),
-      ('yogi', lambda: alias.yogi(1.0)),
+      ('yogi', lambda: alias.yogi(1e-1)),
       ('dpsgd', lambda: alias.dpsgd(2e-3, 10., 0.001, 0, 0.2))
   )
   def test_rosenbrock(self, opt_name, opt):
