@@ -23,6 +23,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax._src import base
+from optax._src import numerics
 from optax._src import utils
 
 # pylint:disable=no-value-for-parameter
@@ -145,7 +146,6 @@ def scale_by_factored_rms(
 
     def _update(grad, v_row, v_col, v, param, step):
       shape = param.shape
-      grad = grad.astype(jnp.float32)
       decay_rate_t = _decay_rate_pow(step - step_offset, decay_rate)
 
       # Scaled by factorized second moment statistics.
@@ -156,7 +156,7 @@ def scale_by_factored_rms(
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
-        grad_sqr = grad * grad + epsilon
+        grad_sqr = numerics.abs_sqr(grad) + epsilon
         new_v_row = (
             decay_rate_t * v_row +
             (1. - decay_rate_t) * jnp.mean(grad_sqr, axis=d0))
@@ -172,7 +172,7 @@ def scale_by_factored_rms(
             jnp.expand_dims(row_factor, axis=d0) *
             jnp.expand_dims(col_factor, axis=d1))
       else:
-        grad_sqr = grad * grad + epsilon
+        grad_sqr = numerics.abs_sqr(grad) + epsilon
         new_v = decay_rate_t * v + (1. - decay_rate_t) * grad_sqr
         update = grad * (new_v)**-0.5
 

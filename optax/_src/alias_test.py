@@ -81,13 +81,13 @@ class AliasTest(chex.TestCase):
           dict(opt_name='sm3', opt=lambda: alias.sm3(1.0)),
           dict(opt_name='yogi', opt=lambda: alias.yogi(1e-1)),
           dict(opt_name='dpsgd',
-              opt=lambda: alias.dpsgd(2e-3, 10.0, 0.001, 0, 0.2)),
+              opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
       ),
       target=(_setup_parabel, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in ['adafactor', 'fromage', 'noisy_sgd', 'sm3', 'dpsgd']
+    if (opt_name in ['fromage', 'noisy_sgd', 'sm3']
         and jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           'This optimizer does not support complex parameters.')
@@ -110,7 +110,7 @@ class AliasTest(chex.TestCase):
     for _ in range(10000):
       params, state = step(params, state)
 
-    chex.assert_tree_all_close(params, final_params, rtol=1e-2, atol=1e-2)
+    chex.assert_tree_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.named_parameters([
       ('float32', 'float32'),
