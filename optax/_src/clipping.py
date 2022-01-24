@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
+from optax._src import numerics
 from optax._src import linear_algebra
 
 ClipState = base.EmptyState
@@ -68,7 +69,8 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     del params
 
     def _clip_fn(u):
-      clip_denom = (jnp.maximum(1.0, jnp.sqrt(jnp.mean(u*u)) / threshold))
+      clip_denom = jnp.maximum(
+        1.0, jnp.sqrt(jnp.mean(numerics.abs_sqr(u))) / threshold)
       return u / clip_denom
 
     updates = jax.tree_map(_clip_fn, updates)
@@ -117,14 +119,14 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
 def unitwise_norm(x: chex.Array) -> chex.Array:
   """Computes norms of each output unit separately."""
   if jnp.squeeze(x).ndim <= 1:  # Scalars and vectors
-    squared_norm = jnp.sum(x * x, keepdims=True)
+    squared_norm = jnp.sum(numerics.abs_sqr(x), keepdims=True)
   # Note that this assumes parameters with a shape of length 3 are multihead
   # linear parameters--if you wish to apply AGC to 1D convs, you may need
   # to modify this line.
   elif x.ndim in (2, 3):  # Linear layers of shape IO or multihead linear
-    squared_norm = jnp.sum(x * x, axis=0, keepdims=True)
+    squared_norm = jnp.sum(numerics.abs_sqr(x), axis=0, keepdims=True)
   elif x.ndim == 4:  # Conv kernels of shape HWIO
-    squared_norm = jnp.sum(x * x, axis=(0, 1, 2), keepdims=True)
+    squared_norm = jnp.sum(numerics.abs_sqr(x), axis=(0, 1, 2), keepdims=True)
   else:
     raise ValueError(
         f'Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}.')
