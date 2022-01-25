@@ -26,7 +26,7 @@ from optax._src import numerics
 from optax._src import update
 
 
-def _setup_parabel(dtype):
+def _setup_parabola(dtype):
   """Quadratic function as an optimization target."""
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
@@ -62,6 +62,7 @@ def _setup_rosenbrock(dtype):
 
 class AliasTest(chex.TestCase):
 
+  @chex.all_variants
   @parameterized.product(
       (
           dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
@@ -83,14 +84,14 @@ class AliasTest(chex.TestCase):
           dict(opt_name='dpsgd',
               opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
       ),
-      target=(_setup_parabel, _setup_rosenbrock),
+      target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in ['fromage', 'noisy_sgd', 'sm3']
+    if (opt_name in ('fromage', 'noisy_sgd', 'sm3')
         and jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
-          'This optimizer does not support complex parameters.')
+          f'{opt_name} does not support complex parameters.')
 
     opt = opt()
     initial_params, final_params, get_updates = target(dtype)
@@ -101,12 +102,12 @@ class AliasTest(chex.TestCase):
       if opt_name == 'dpsgd': updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       updates = jax.tree_map(lambda x: x.conj(), updates)
-      updates, state = opt.update(updates, state, params)
+      updates, state = self.variant(opt.update)(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state
 
     params = initial_params
-    state = opt.init(params)
+    state = self.variant(opt.init)(params)
     for _ in range(10000):
       params, state = step(params, state)
 
