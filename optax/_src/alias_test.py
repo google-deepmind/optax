@@ -62,7 +62,6 @@ def _setup_rosenbrock(dtype):
 
 class AliasTest(chex.TestCase):
 
-  @chex.all_variants
   @parameterized.product(
       (
           dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
@@ -102,12 +101,12 @@ class AliasTest(chex.TestCase):
       if opt_name == 'dpsgd': updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       updates = jax.tree_map(lambda x: x.conj(), updates)
-      updates, state = self.variant(opt.update)(updates, state, params)
+      updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state
 
     params = initial_params
-    state = self.variant(opt.init)(params)
+    state = opt.init(params)
     for _ in range(10000):
       params, state = step(params, state)
 
