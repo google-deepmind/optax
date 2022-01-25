@@ -77,7 +77,7 @@ class AliasTest(chex.TestCase):
       ('adabelief', lambda: alias.adabelief(1e-1)),
       ('radam', lambda: alias.radam(1e-3)),
       ('sm3', lambda: alias.sm3(1.0)),
-      ('yogi', lambda: alias.yogi(1.0)),
+      ('yogi', lambda: alias.yogi(1e-1)),
       ('dpsgd', lambda: alias.dpsgd(2e-3, 10., 0.001, 0, 0.2))
   )
   def test_rosenbrock(self, opt_name, opt):

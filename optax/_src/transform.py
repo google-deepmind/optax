@@ -483,9 +483,9 @@ def scale_by_yogi(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    signed_sq = jax.tree_multimap(
-        lambda g, v: jnp.sign(v - g**2)*g**2, updates, state.nu)
-    nu = _update_moment(signed_sq, state.nu, b2, 2)
+    nu = jax.tree_multimap(
+        lambda g, v: v - (1 - b2) * jnp.sign(v - g**2) * g**2,
+        updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
