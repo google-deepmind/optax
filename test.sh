@@ -18,6 +18,7 @@ set -xeuo pipefail
 
 # Install deps in a virtual env.
 readonly VENV_DIR=/tmp/optax-env
+rm -rf "${VENV_DIR}"
 python3 -m venv "${VENV_DIR}"
 source "${VENV_DIR}/bin/activate"
 python --version
