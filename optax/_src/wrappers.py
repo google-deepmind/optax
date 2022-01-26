@@ -322,35 +322,25 @@ def masked(
   Returns:
     New GradientTransformation wrapping ``inner``.
   """
+  def mask_pytree(pytree, mask_tree):
+    return tree_map(lambda m, p: p if m else None, mask_tree, pytree)
+
   def init_fn(params):
-    flat_mask, treedef = tree_flatten(mask(params) if callable(mask) else mask)
-    flat_params = treedef.flatten_up_to(params)
-    masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
+    mask_tree = mask(params) if callable(mask) else mask
+    masked_params = mask_pytree(params, mask_tree)
     return MaskedState(inner_state=inner.init(masked_params))
 
   def update_fn(updates, state, params=None):
-    flat_mask, treedef = tree_flatten(mask(updates) if callable(mask) else mask)
+    mask_tree = mask(updates) if callable(mask) else mask
+    masked_updates = mask_pytree(updates, mask_tree)
+    masked_params = None if params is None else mask_pytree(params, mask_tree)
 
-    # Flatten then filter out updates/params not in the mask:
-    flat_updates = treedef.flatten_up_to(updates)
-    masked_updates = [g for g, m in zip(flat_updates, flat_mask) if m]
-
-    if params is not None:
-      flat_params = treedef.flatten_up_to(params)
-      masked_params = [p for p, m in zip(flat_params, flat_mask) if m]
-    else:
-      masked_params = None
-
-    # Compute new updates
     new_masked_updates, new_inner_state = inner.update(
         masked_updates, state.inner_state, masked_params)
 
-    # Incorporate new_masked_updates into flat_updates, then unflatten
-    new_masked_updates = iter(new_masked_updates)
-    for i, m in enumerate(flat_mask):
-      if m: flat_updates[i] = next(new_masked_updates)
-
-    new_updates = treedef.unflatten(flat_updates)
+    new_updates = tree_map(
+      lambda m, new_u, old_u: new_u if m else old_u,
+      mask_tree, new_masked_updates, updates)
     return new_updates, MaskedState(inner_state=new_inner_state)
 
   return base.GradientTransformation(init_fn, update_fn)
