@@ -36,7 +36,7 @@ def _setup_parabola(dtype):
 
   @jax.grad
   def get_updates(params):
-    return jnp.sum(numerics.abs2(params - final_params))
+    return jnp.sum(numerics.abs_sq(params - final_params))
 
   return initial_params, final_params, get_updates
 
@@ -54,8 +54,8 @@ def _setup_rosenbrock(dtype):
 
   @jax.grad
   def get_updates(params):
-    return (numerics.abs2(a - params[0]) +
-        b * numerics.abs2(params[1] - params[0]**2))
+    return (numerics.abs_sq(a - params[0]) +
+        b * numerics.abs_sq(params[1] - params[0]**2))
 
   return initial_params, final_params, get_updates
 

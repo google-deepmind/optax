@@ -26,7 +26,7 @@ from optax._src import numerics
 def global_norm(updates: base.Updates) -> base.Updates:
   """Compute the global norm across a nested structure of tensors."""
   return jnp.sqrt(
-      sum([jnp.sum(numerics.abs2(x)) for x in jax.tree_leaves(updates)]))
+      sum([jnp.sum(numerics.abs_sq(x)) for x in jax.tree_leaves(updates)]))
 
 
 def power_iteration(

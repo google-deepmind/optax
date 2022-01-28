@@ -92,7 +92,7 @@ def _update_moment_per_elem_norm(updates, moments, decay, order):
       # JAX generates different HLO for int and float `order`
       if half_order.is_integer():
         half_order = int(half_order)
-      return numerics.abs2(g) ** half_order
+      return numerics.abs_sq(g) ** half_order
 
   return jax.tree_multimap(
       lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
@@ -187,7 +187,7 @@ def scale_by_rss(
   def update_fn(updates, state, params=None):
     del params
     sum_of_squares = jax.tree_multimap(
-        lambda g, t: numerics.abs2(g) + t, updates, state.sum_of_squares)
+        lambda g, t: numerics.abs_sq(g) + t, updates, state.sum_of_squares)
     inv_sqrt_g_square = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
     updates = jax.tree_multimap(
@@ -272,7 +272,7 @@ def scale_by_stddev(
     mu = _update_moment(updates, state.mu, decay, 1)
     nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
     updates = jax.tree_multimap(
-        lambda g, m, n: g * jax.lax.rsqrt(n - numerics.abs2(m) + eps),
+        lambda g, m, n: g * jax.lax.rsqrt(n - numerics.abs_sq(m) + eps),
         updates, mu, nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
 
@@ -506,8 +506,8 @@ def scale_by_yogi(
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
     nu = jax.tree_multimap(
-        lambda g, v: v - (1 - b2) * jnp.sign(v - numerics.abs2(g)) *
-            numerics.abs2(g),
+        lambda g, v: v - (1 - b2) * jnp.sign(v - numerics.abs_sq(g)) *
+            numerics.abs_sq(g),
         updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
