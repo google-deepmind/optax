@@ -12,15 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities to ensure the implementation is safe wrt numerical issues."""
+"""Utilities to ensure the implementation is safe wrt numerical issues.
+
+Note that complex numbers are also supported, see
+https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+"""
 
 from typing import Optional, Tuple, Union
 
 import chex
 import jax.numpy as jnp
+import numpy as np
 
 
 # TODO(jscholz) Promote these functions to jax core lib?
+
+
+def abs_sq(x: chex.Array) -> chex.Array:
+  """Returns the squared norm of a (maybe complex) array.
+
+  For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
+  or `x**2`.
+
+  Args:
+    x: a (maybe complex) array.
+
+  Returns:
+    The squared norm of `x`.
+  """
+  if not isinstance(x, (np.ndarray, jnp.ndarray)):
+    raise ValueError(f"`abs_sq` accepts only NDarrays, got: {x}.")
+  return (x.conj() * x).real
 
 
 def safe_norm(x: chex.Array,
@@ -60,9 +82,9 @@ def safe_norm(x: chex.Array,
 
 
 def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
-  """Returns jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm) with correct grads.
+  """Returns `maximum(sqrt(mean(abs_sq(x))), min_norm)` with correct grads.
 
-  The gradients of `jnp.maximum(jnp.sqrt(jnp.mean(x**2)), min_norm)` at 0.0
+  The gradients of `maximum(sqrt(mean(abs_sq(x))), min_norm)` at 0.0
   is `NaN`, because jax will evaluate both branches of the `jnp.maximum`. This
   function will instead return the correct gradient of 0.0 also in such setting.
 
@@ -73,9 +95,9 @@ def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
   Returns:
     The safe RMS of the input vector, accounting for correct gradient.
   """
-  rms = jnp.sqrt(jnp.mean(x ** 2))
+  rms = jnp.sqrt(jnp.mean(abs_sq(x)))
   x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
-  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(x ** 2)))
+  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
 def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
@@ -94,4 +116,3 @@ def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
   max_int32_value = jnp.iinfo(jnp.int32).max
   one = jnp.array(1, dtype=jnp.int32)
   return jnp.where(count < max_int32_value, count + one, max_int32_value)
-
