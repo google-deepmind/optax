@@ -744,12 +744,13 @@ def add_noise(
     treedef = jax.tree_structure(updates)
     count_inc = numerics.safe_int32_increment(state.count)
     variance = eta / count_inc**gamma
+    std = jnp.sqrt(variance)
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
     noise = jax.tree_multimap(
         lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
     updates = jax.tree_multimap(
-        lambda g, n: g + variance.astype(g.dtype) * n,
+        lambda g, n: g + std.astype(g.dtype) * n,
         updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
 
