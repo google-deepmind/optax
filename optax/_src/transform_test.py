@@ -212,7 +212,7 @@ class TransformTest(parameterized.TestCase):
     (0.3, 0.54, 234),
     (1.0, 0.56, 314),
   )
-  def test_add_noise(self, eta, gamma, seed):
+  def test_add_noise_has_correct_variance_scaling(self, eta, gamma, seed):
     # Prepare to compare noise with a rescaled unit-variance substitute.
     noise = transform.add_noise(eta, gamma, seed)
     noise_unit = transform.add_noise(1.0, 0.0, seed)
@@ -222,7 +222,7 @@ class TransformTest(parameterized.TestCase):
     state_unit = noise_unit.init(params)
 
     # Check the noise itself by adding it to zeros.
-    updates = jax.tree_map(jnp.zeros_like, self.per_step_updates)
+    updates = jax.tree_map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
       updates_i, state = noise.update(updates, state)
