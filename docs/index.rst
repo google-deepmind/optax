@@ -102,7 +102,7 @@ in the issue tracker. You are also welcome to create new issues. For large
 changes that warrant extensive discussion of the implications for all users
 consider creating a Design doc, as done by @wdphy16 in this example:
 
-- `Complex number support - https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29`_
+- `Complex number support <https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29>`_
 
 If in doubt whether or not a proposed change deserves its own design doc,
 just start with opening the issue and we can discuss there.
