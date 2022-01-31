@@ -16,6 +16,7 @@
 
 import functools
 import itertools
+import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -81,6 +82,30 @@ class NumericsTest(chex.TestCase):
     # Test gradient is 0. in 0. when non zero min rms is used.
     g = drms_dx(float32_array(0.), float32_array(3.))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
+
+  def test_complex_vs_real_abs_sqr(self):
+    # Tests that JAX generates the same HLO from `numerics.abs_sq`,
+    # `jnp.square(x)`, `x * x`,  and `x**2`.
+    real_sq_fns = (lambda x: x**2, lambda x: x * x, jnp.square)
+
+    def _get_hlo_repr(f, x):
+      hlo_string = jax.xla_computation(f)(x).as_hlo_text()
+      return re.sub('HloModule.*?\n', '',
+                    re.sub('ENTRY.*?{', 'ENTRY XXXX', hlo_string))
+
+    # Real arg (same HLO).
+    for real_sq_fn in real_sq_fns:
+      for real_x in (3, 3.0, np.array([4, 5.2])):
+        self.assertEqual(
+            _get_hlo_repr(real_sq_fn, real_x),
+            _get_hlo_repr(numerics.abs_sq, real_x))
+
+    # Complex arg (different HLOs).
+    for real_sq_fn in real_sq_fns:
+      for complex_x in (1j, 3. + 1j, np.array([4 + 1j, 5.2 + 1j])):
+        self.assertNotEqual(
+            _get_hlo_repr(real_sq_fn, complex_x),
+            _get_hlo_repr(numerics.abs_sq, complex_x))
 
 
 if __name__ == '__main__':

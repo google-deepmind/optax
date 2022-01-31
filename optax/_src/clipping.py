@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Gradient clipping transformations."""
+"""Gradient clipping transformations.
+
+Note that complex numbers are also supported, see
+https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+"""
 
 import chex
 import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import numerics
 from optax._src import linear_algebra
+from optax._src import numerics
 
 ClipState = base.EmptyState
 
@@ -70,7 +74,8 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
 
     def _clip_fn(u):
       clip_denom = jnp.maximum(
-        1.0, jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
+          1.0,
+          jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
       return u / clip_denom
 
     updates = jax.tree_map(_clip_fn, updates)

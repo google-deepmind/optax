@@ -55,7 +55,7 @@ def _setup_rosenbrock(dtype):
   @jax.grad
   def get_updates(params):
     return (numerics.abs_sq(a - params[0]) +
-        b * numerics.abs_sq(params[1] - params[0]**2))
+            b * numerics.abs_sq(params[1] - params[0]**2))
 
   return initial_params, final_params, get_updates
 
@@ -67,28 +67,30 @@ class AliasTest(chex.TestCase):
           dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
           dict(opt_name='adafactor', opt=lambda: alias.adafactor(5e-3)),
           dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
-          dict(opt_name='adam', opt=lambda: alias.adam(1e-2)),
-          dict(opt_name='adamw', opt=lambda: alias.adamw(1e-2)),
+          dict(opt_name='adam', opt=lambda: alias.adam(1e-1)),
+          dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
           dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
           dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
           dict(opt_name='noisy_sgd', opt=lambda: alias.noisy_sgd(1e-3)),
           dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
-          dict(opt_name='rmsprop_momentum',
+          dict(
+              opt_name='rmsprop_momentum',
               opt=lambda: alias.rmsprop(5e-3, momentum=0.9)),
           dict(opt_name='fromage', opt=lambda: alias.fromage(5e-3)),
           dict(opt_name='adabelief', opt=lambda: alias.adabelief(1e-2)),
           dict(opt_name='radam', opt=lambda: alias.radam(5e-3)),
           dict(opt_name='sm3', opt=lambda: alias.sm3(1.0)),
           dict(opt_name='yogi', opt=lambda: alias.yogi(1e-1)),
-          dict(opt_name='dpsgd',
+          dict(
+              opt_name='dpsgd',
               opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
       ),
       target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in ('fromage', 'noisy_sgd', 'sm3')
-        and jnp.iscomplexobj(dtype)):
+    if (opt_name in ('fromage', 'noisy_sgd', 'sm3') and
+        jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
 
@@ -98,8 +100,10 @@ class AliasTest(chex.TestCase):
     @jax.jit
     def step(params, state):
       updates = get_updates(params)
-      if opt_name == 'dpsgd': updates = updates[None]
+      if opt_name == 'dpsgd':
+        updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
+      # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_map(lambda x: x.conj(), updates)
       updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)

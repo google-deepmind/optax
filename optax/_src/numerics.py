@@ -12,21 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities to ensure the implementation is safe wrt numerical issues."""
+"""Utilities to ensure the implementation is safe wrt numerical issues.
+
+Note that complex numbers are also supported, see
+https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+"""
 
 from typing import Optional, Tuple, Union
 
 import chex
 import jax.numpy as jnp
+import numpy as np
 
 
 # TODO(jscholz) Promote these functions to jax core lib?
 
 
 def abs_sq(x: chex.Array) -> chex.Array:
-  """Returns the squared norm of a (maybe complex) array."""
-  # For real `x`, JAX generates the same HLO from this, `jnp.square(x)`,
-  # `x * x`, or `x**2`
+  """Returns the squared norm of a (maybe complex) array.
+
+  For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
+  or `x**2`.
+
+  Args:
+    x: a (maybe complex) array.
+
+  Returns:
+    The squared norm of `x`.
+  """
+  if not isinstance(x, (np.ndarray, jnp.ndarray)):
+    raise ValueError(f"`abs_sq` accepts only NDarrays, got: {x}.")
   return (x.conj() * x).real
 
 
@@ -101,4 +116,3 @@ def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
   max_int32_value = jnp.iinfo(jnp.int32).max
   one = jnp.array(1, dtype=jnp.int32)
   return jnp.where(count < max_int32_value, count + one, max_int32_value)
-
