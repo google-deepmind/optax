@@ -130,7 +130,12 @@ class TransformTest(parameterized.TestCase):
     mean, state = transform_fn(values[1], state)
     np.testing.assert_allclose(
         mean,
-        ((1 - d) * values[1] + d * values[0]) / (1 - d**2),
+        ((1 - d) * values[1] + d * (1 - d) * values[0]) / (1 - d**2),
+        atol=1e-2)
+    # The state must not be debiased.
+    np.testing.assert_allclose(
+        state.ema,
+        (1 - d) * values[1] + d * (1 - d) * values[0],
         atol=1e-2)
 
   @chex.all_variants()
