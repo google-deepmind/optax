@@ -18,6 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -236,6 +237,134 @@ class LogCoshTest(parameterized.TestCase):
   def test_batched_predictions_only(self):
     out = self.variant(loss.log_cosh)(self.ys)
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
+
+
+def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
+  indices = jnp.arange(maxlength).reshape((1,) * lengths.ndim + (maxlength,))
+  lengths = jnp.expand_dims(lengths, axis=-1)
+  elem_valid = indices < lengths
+  return np.logical_not(elem_valid).astype(np.float32)
+
+
+def _average_ctc_loss(logprobs: chex.Array, logprob_paddings: chex.Array,
+                      labels: chex.Array,
+                      label_paddings: chex.Array) -> chex.Array:
+  return jnp.average(
+      loss.ctc_loss(logprobs, logprob_paddings, labels,
+                    label_paddings))
+
+class CTCTest(parameterized.TestCase):
+  def setUp(self):
+    super().setUp()
+    np.random.seed(1234)
+
+  @chex.all_variants
+  def test_with_one_to_one_alignment(self):
+    # when inputsteps and outputsteps are equal, no blank will be allowed.
+    batchsize = 8
+    steps = 50
+    nclasses = 40
+    logits = np.random.randn(batchsize, steps, nclasses)
+    labels = np.random.uniform(
+        1, nclasses, size=(batchsize, steps)).astype(np.int32)
+
+    # This function only covers the cases without same-label repetition.
+    # `test_repeat_with_one_to_one_alignment` below complements those cases.
+    # So, redraw the samples for satisfying the non-repetition constraint.
+    for n in range(labels.shape[0]):
+      for t in range(1, labels.shape[1]):
+        while labels[n, t] == labels[n, t - 1]:
+          labels[n, t] = np.random.uniform(1, nclasses)
+
+    per_seq_loss = self.variant(loss.ctc_loss)(
+        logits, np.zeros(logits.shape[:2]), labels, np.zeros(labels.shape))
+
+    logprobs = jax.nn.log_softmax(logits)
+    for b in range(batchsize):
+      p = 0.0
+      for t in range(steps):
+        p += logprobs[b, t, labels[b, t]]
+      np.testing.assert_allclose(jnp.array(-p), per_seq_loss[b],
+                                 rtol=1e-6)
+
+  @chex.all_variants
+  def test_with_one_to_one_alignment_and_paddings(self):
+    batch_size = 5
+    nclasses = 13
+    steps = 7
+    logits = np.random.normal(size=[batch_size, steps, nclasses])
+    logprobs = jax.nn.log_softmax(logits)
+
+    labels = []
+    for n in range(batch_size):
+      row = list(range(1, nclasses))
+      np.random.shuffle(row)
+      labels.append(row[:steps])
+    labels = np.array(labels)
+
+    lengths = np.random.randint(3, 6, size=(batch_size,))
+    paddings = _lengths_to_paddings(lengths, steps)
+
+    actual_loss = self.variant(loss.ctc_loss)(
+        logits, paddings, labels, paddings)
+
+    value_and_grad = self.variant(jax.value_and_grad(_average_ctc_loss))
+    unused_avg_loss, actual_gradients = value_and_grad(
+        logits, paddings, labels, paddings)
+
+    for n in range(batch_size):
+      expected_loss = -sum(logprobs[n, t, k]
+                           for t, k in enumerate(labels[n, :lengths[n]]))
+      np.testing.assert_allclose(expected_loss, actual_loss[n])
+
+      expected_gradients = np.array(jax.nn.softmax(logits[n]))
+      expected_gradients[lengths[n]:] = 0.0
+      for t, k in enumerate(labels[n, :lengths[n]]):
+        expected_gradients[t, k] -= 1.0
+      expected_gradients /= batch_size
+      np.testing.assert_allclose(expected_gradients, actual_gradients[n],
+                                 rtol=1e-6)
+
+  @chex.all_variants
+  def test_repeat_with_one_to_one_alignment(self):
+    # test if it can correctly handle the same-label repetition.
+    nclasses = 5
+    labels = np.array([
+        [1, 2, 2, 3],
+        [2, 3, 4, 4],
+        [1, 1, 1, 1],
+        [1, 1, 2, 3],
+        [1, 1, 1, 2],
+    ])
+    expected_alignment = [  # expected minimal alignment
+        [1, 2, 0, 2, 3],
+        [2, 3, 4, 0, 4],
+        [1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 2, 3],
+        [1, 0, 1, 0, 1, 2],
+    ]
+    batch_size = len(labels)
+    label_lens = np.array([4] * batch_size)
+    label_steps = 6
+    # Designed to have two padding elements on the right.
+    labels = np.pad(labels, [(0, 0), (0, label_steps - labels.shape[1])])
+    label_paddings = _lengths_to_paddings(label_lens, label_steps)
+
+    logit_lengths = np.array([len(seq) for seq in expected_alignment])
+    logit_steps = max(logit_lengths)
+    logits = np.random.randn(batch_size, logit_steps, nclasses)
+    logit_paddings = _lengths_to_paddings(logit_lengths, logit_steps)
+
+    per_seq_loss = self.variant(loss.ctc_loss)(
+        logits, logit_paddings, labels, label_paddings)
+
+    logprobs = jax.nn.log_softmax(logits)
+    for n in range(batch_size):
+      expected_loss = -sum(
+          logprobs[n, t, k]
+          for t, k in enumerate(expected_alignment[n]))
+      np.testing.assert_allclose(
+          jnp.array(expected_loss), per_seq_loss[n], rtol=1e-6)
 
 
 if __name__ == '__main__':
