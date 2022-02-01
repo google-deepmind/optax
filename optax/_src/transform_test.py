@@ -207,13 +207,12 @@ class TransformTest(parameterized.TestCase):
     centralized_inputs, _ = centralizer.update(inputs, None)
     chex.assert_tree_all_close(centralized_inputs, outputs)
 
-  @parameterized.parameters(
-    (0.01, 0.55, 123),
-    (0.3, 0.54, 234),
-    (1.0, 0.56, 314),
-  )
-  def test_add_noise_has_correct_variance_scaling(self, eta, gamma, seed):
+  @chex.all_variants
+  def test_add_noise_has_correct_variance_scaling(self):
     # Prepare to compare noise with a rescaled unit-variance substitute.
+    eta = 0.3
+    gamma = 0.55
+    seed = 314
     noise = transform.add_noise(eta, gamma, seed)
     noise_unit = transform.add_noise(1.0, 0.0, seed)
 
@@ -225,14 +224,13 @@ class TransformTest(parameterized.TestCase):
     updates = jax.tree_map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
-      updates_i, state = noise.update(updates, state)
+      updates_i, state = self.variant(noise.update)(updates, state)
       updates_i_unit, state_unit = noise_unit.update(updates, state_unit)
 
       scale = jnp.sqrt(eta / i**gamma)
 
-      def rescale(g):
-        return g * scale  # pylint:disable=cell-var-from-loop
-      updates_i_rescaled = jax.tree_map(rescale, updates_i_unit)
+      updates_i_rescaled = jax.tree_map(
+          lambda g, s=scale: g * s, updates_i_unit)
 
       chex.assert_tree_all_close(updates_i, updates_i_rescaled)
 
