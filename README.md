@@ -2,6 +2,7 @@
 
 ![CI status](https://github.com/deepmind/optax/workflows/tests/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/optax/badge/?version=latest)](http://optax.readthedocs.io)
+![pypi](https://img.shields.io/pypi/v/optax)
 
 ## Introduction
 
@@ -10,7 +11,7 @@ Optax is a gradient processing and optimization library for JAX.
 Optax is designed to facilitate research by providing building blocks
 that can be easily recombined in custom ways.
 
-Our goals are to:
+Our goals are to
 
 *   Provide simple, well-tested, efficient implementations of core components.
 *   Improve research productivity by enabling to easily combine low level
@@ -31,13 +32,13 @@ Documentation on Optax can be found at [optax.readthedocs.io](https://optax.read
 
 ## Installation
 
-Optax can be installed with pip directly from github, with the following command:
+Optax can be installed with pip directly from GitHub, with the following command:
 
 ```shell
 pip install git+git://github.com/deepmind/optax.git
 ```
 
-or from PyPI:
+or from PyPI,
 
 ```shell
 pip install optax

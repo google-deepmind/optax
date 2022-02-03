@@ -8,37 +8,30 @@ to facilitate research by providing building blocks that can be recombined in
 custom ways in order to optimise parametric models such as, but not limited to,
 deep neural networks.
 
-Our goals are to:
+Our goals are to
 
-*   provide readable, well-tested, efficient implementations of core components,
-*   improve researcher productivity by making it possible to combine low level
+*   Provide readable, well-tested, efficient implementations of core components,
+*   Improve researcher productivity by making it possible to combine low level
     ingredients into custom optimiser (or other gradient processing components).
-*   accelerate adoption of new ideas by making it easy for anyone to contribute.
+*   Accelerate adoption of new ideas by making it easy for anyone to contribute.
 
 We favour focusing on small composable building blocks that can be effectively
 combined into custom solutions. Others may build upon these basic components
 more complicated abstractions. Whenever reasonable, implementations prioritise
 readability and structuring code to match standard equations, over code reuse.
 
-An initial prototype of this library was made available in JAX's experimental
-folder as `jax.experimental.optix`. Given the wide adoption across DeepMind
-of `optix`, and after a few iterations on the API, `optix` was eventually moved
-out of `experimental` as a standalone open-source library, renamed `optax`.
-
 Installation
 ------------
 
-The latest release of Optax can be installed from PyPI by simply running:
+The latest release of Optax can be installed from
+`PyPI <https://pypi.org/project/optax/>`_ using
 
-```shell
-pip install optax
-```
+``pip install optax``
 
-You may also instal directly from github's head, using the following command:
+You may also install directly from GitHub, using the following command. This
+can be used to obtain the most recent version of Optax.
 
-```shell
-pip install git+git://github.com/deepmind/optax.git
-```
+``pip install git+git://github.com/deepmind/optax.git``
 
 Note that Optax is built on top of JAX.
 See `here <https://github.com/google/jax#pip-installation-cpu>`_
