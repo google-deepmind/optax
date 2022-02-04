@@ -154,9 +154,13 @@ def set_to_zero() -> GradientTransformation:
   returned from this transformation are applied to the model parameters, the
   model parameters will remain unchanged.
 
-  This can be used in combination with `multi_transform` to keep some parts of
-  the tree of model parameters fixed while applying gradient updates to other
-  parts of the tree.
+  This can be used in combination with `multi_transform` or `masked` to freeze
+  (i.e. keep fixed) some parts of the tree of model parameters while applying
+  gradient updates to other parts of the tree.
+
+  When updates are set to zero inside the same jit-compiled function as the
+  calculation of gradients, optax transformations, and application of updates to
+  parameters, unnecessary computations will in general be dropped.
 
   Returns:
     An (init_fn, update_fn) tuple.
