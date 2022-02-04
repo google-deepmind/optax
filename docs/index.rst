@@ -53,6 +53,14 @@ for instructions on installing JAX.
 
 
 .. toctree::
+   :caption: Developer Documentation
+   :maxdepth: 1
+
+   design_docs
+   contributors
+
+
+.. toctree::
    :caption: API Documentation
    :maxdepth: 2
 
@@ -78,27 +86,6 @@ Support
 If you are having issues, please let us know by filing an issue on our
 `issue tracker <https://github.com/deepmind/optax/issues>`_.
 
-Contribute
-----------
-
-We'd love to accept your patches and contributions to this project. Please take
-a look at the simple guidelines in the
-`CONTRIBUTING.md https://github.com/deepmind/optax/blob/master/CONTRIBUTING.md`_
-file before starting your first PR. You can find open issues and the source code
-in the links below.
-
-- `Issue tracker <https://github.com/deepmind/optax/issues>`_
-- `Source code <https://github.com/deepmind/optax/tree/master>`_
-
-A selection of good first issues for new contributors are labelled accordingly
-in the issue tracker. You are also welcome to create new issues. For large
-changes that warrant extensive discussion of the implications for all users
-consider creating a Design doc, as done by @wdphy16 in this example:
-
-- `Complex number support <https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29>`_
-
-If in doubt whether or not a proposed change deserves its own design doc,
-just start with opening the issue and we can discuss there.
 
 License
 -------
