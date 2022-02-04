@@ -396,6 +396,32 @@ class MaskedTest(chex.TestCase):
     np.testing.assert_allclose(updates['b'][1],
                                grads['b'][1] + 0.1*params['b'][1])
 
+  @chex.all_variants
+  @parameterized.named_parameters(
+      ('scale', lambda: transform.scale(-1.)),  # stateless test
+      ('sgd', _build_sgd),  # stateful test
+  )
+  def test_nested_mask(self, opt_builder):
+    params = {'linear_1': {'w': jnp.zeros((1, 1)), 'b': jnp.zeros(1)},
+              'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
+              'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
+
+    outer_mask = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
+    inner_mask = jax.tree_map(lambda _: True, params)
+    inner_mask['linear_2'] = False
+
+    inner = wrappers.masked(opt_builder(), inner_mask)
+    init_fn, update_fn = wrappers.masked(inner, outer_mask)
+
+    input_updates = jax.tree_map(jnp.ones_like, params)
+    correct_updates = jax.tree_map(lambda x: x, input_updates)
+    correct_updates['linear_1']['w'] *= -1.0
+    correct_updates['linear_3']['w'] *= -1.0
+
+    state = self.variant(init_fn)(params)
+    updates, state = self.variant(update_fn)(input_updates, state, params)
+    chex.assert_trees_all_close(updates, correct_updates)
+
 
 class MaybeUpdateTest(chex.TestCase):
   """Tests for the maybe_update wrapper."""
