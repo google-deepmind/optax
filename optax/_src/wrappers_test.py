@@ -14,6 +14,8 @@
 # ==============================================================================
 """Tests for `wrappers.py`."""
 
+import copy
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -402,6 +404,7 @@ class MaskedTest(chex.TestCase):
       ('sgd', _build_sgd),  # stateful test
   )
   def test_nested_mask(self, opt_builder):
+    # https://github.com/deepmind/optax/issues/271
     params = {'linear_1': {'w': jnp.zeros((1, 1)), 'b': jnp.zeros(1)},
               'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
               'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
@@ -414,7 +417,7 @@ class MaskedTest(chex.TestCase):
     init_fn, update_fn = wrappers.masked(inner, outer_mask)
 
     input_updates = jax.tree_map(jnp.ones_like, params)
-    correct_updates = jax.tree_map(lambda x: x, input_updates)
+    correct_updates = copy.deepcopy(input_updates)
     correct_updates['linear_1']['w'] *= -1.0
     correct_updates['linear_3']['w'] *= -1.0
 
