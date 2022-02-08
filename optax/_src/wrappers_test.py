@@ -35,9 +35,11 @@ def _build_sgd():
   return alias.sgd(1.)
 
 
-def _build_simple_adam():
-  # This adam behaves like an sgd, but with state.
-  return alias.adam(1., b1=0., b2=0.)
+def _build_stateful_sgd():
+  # This SGD behaves like _build_sgd but also tests the optimizer state. The
+  # momentum is set to zero rather than None so that the momentum terms are
+  # calculated, but do not change the results.
+  return alias.sgd(1., momentum=0.)
 
 
 class WrappersTest(parameterized.TestCase):
@@ -69,7 +71,7 @@ class WrappersTest(parameterized.TestCase):
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
-      ('adam', _build_simple_adam),
+      ('stateful_sgd', _build_stateful_sgd),
   )
   def test_apply_if_finite(self, opt_builder):
     one = jnp.ones([])
@@ -262,10 +264,10 @@ class MaskedTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      ('scale', lambda: transform.scale(-1.), True),  # stateless test
-      ('sgd', _build_sgd, False),  # stateful test
-      ('scale', lambda: transform.scale(-1.), True),  # stateless test
-      ('sgd', _build_sgd, False),  # stateful test
+      ('sgd', _build_sgd, False),
+      ('stateful_sgd', _build_stateful_sgd, False),
+      ('sgd_w_mask_fn', _build_sgd, True),
+      ('stateful_sgd_w_mask_fn', _build_stateful_sgd, True),
   )
   def test_masked(self, opt_builder, use_fn):
     mask = {'a': True,
@@ -295,8 +297,8 @@ class MaskedTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      ('scale', lambda: transform.scale(-1.)),  # stateless test
-      ('sgd', _build_sgd),  # stateful test
+      ('sgd', _build_sgd),
+      ('stateful_sgd', _build_stateful_sgd),
   )
   def test_prefix_mask(self, opt_builder):
     """Test when the mask is a prefix of the updates PyTree."""
