@@ -36,7 +36,9 @@ def _build_sgd():
 
 
 def _build_stateful_sgd():
-  # This SGD behaves like _build_sgd except with (unused) momentum state
+  # This SGD behaves like _build_sgd but also tests the optimizer state. The
+  # momentum is set to zero rather than None so that the momentum terms are
+  # calculated, but do not change the results.
   return alias.sgd(1., momentum=0.)
 
 
@@ -264,8 +266,8 @@ class MaskedTest(chex.TestCase):
   @parameterized.named_parameters(
       ('sgd', _build_sgd, False),
       ('stateful_sgd', _build_stateful_sgd, False),
-      ('sgd_w_fn', _build_sgd, True),
-      ('stateful_sgd_w_fn', _build_stateful_sgd, True),
+      ('sgd_w_mask_fn', _build_sgd, True),
+      ('stateful_sgd_w_mask_fn', _build_stateful_sgd, True),
   )
   def test_masked(self, opt_builder, use_fn):
     mask = {'a': True,
