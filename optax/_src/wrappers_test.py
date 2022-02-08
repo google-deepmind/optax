@@ -400,8 +400,8 @@ class MaskedTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      ('scale', lambda: transform.scale(-1.)),  # stateless test
-      ('sgd', _build_sgd),  # stateful test
+      ('sgd', _build_sgd),
+      ('stateful_sgd', _build_stateful_sgd),
   )
   def test_nested_mask(self, opt_builder):
     # https://github.com/deepmind/optax/issues/271
@@ -424,6 +424,17 @@ class MaskedTest(chex.TestCase):
     state = self.variant(init_fn)(params)
     updates, state = self.variant(update_fn)(input_updates, state, params)
     chex.assert_trees_all_close(updates, correct_updates)
+
+  @chex.all_variants
+  def test_masked_state_structure(self):
+    # https://github.com/deepmind/optax/issues/271
+    params = {'a': [jnp.ones(1), (jnp.ones(2), jnp.ones(3))],
+              'b': {'c': jnp.ones(4), 'd': jnp.ones(5)}}
+    mask = {'a': [True, (True, False)], 'b': False}
+    tx = wrappers.masked(_build_stateful_sgd(), mask)
+    trace = self.variant(tx.init)(params).inner_state[0].trace
+    expected_trace = {'a': [jnp.zeros(1), (jnp.zeros(2), None)], 'b': None}
+    chex.assert_tree_all_equal_structs(trace, expected_trace)
 
 
 class MaybeUpdateTest(chex.TestCase):
