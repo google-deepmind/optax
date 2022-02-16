@@ -15,7 +15,7 @@
 """Factorized optimizers."""
 
 import dataclasses
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional, Tuple, Callable
 
 import chex
 import jax
@@ -84,7 +84,8 @@ def scale_by_factored_rms(
     decay_rate: float = 0.8,
     step_offset: int = 0,
     min_dim_size_to_factor: int = 128,
-    epsilon: float = 1e-30):
+    epsilon: float = 1e-30,
+    decay_rate_fn: Callable[[int, float], chex.Array] = _decay_rate_pow):
   """Scaling by a factored estimate of the gradient rms (as in Adafactor).
 
   This is a so-called "1+epsilon" scaling algorithms, that is extremely memory
@@ -102,6 +103,13 @@ def scale_by_factored_rms(
       min_dim_size_to_factor: only factor accumulator if two array dimensions
         are at least this size.
       epsilon: Regularization constant for squared gradient.
+      decay_rate_fn: A function that accepts the current step, the decay rate
+        parameter and controls the schedule for the second momentum. Defaults to
+        the original adafactor's power decay schedule. One potential shortcoming
+        of the orignal schedule is the fact that second momentum converges to 1,
+        which effectively freezes the second momentum. To prevent this the user
+        can opt for a custom schedule that sets an upper bound for the second
+        momentum, like in [Zhai et al., 2021](https://arxiv.org/abs/2106.04560).
 
   Returns:
     the corresponding `GradientTransformation`.
@@ -146,7 +154,7 @@ def scale_by_factored_rms(
 
     def _update(grad, v_row, v_col, v, param, step):
       shape = param.shape
-      decay_rate_t = _decay_rate_pow(step - step_offset, decay_rate)
+      decay_rate_t = decay_rate_fn(step - step_offset, decay_rate)
 
       # Scaled by factorized second moment statistics.
       new_v_row = jnp.zeros((1,))
