@@ -14,6 +14,8 @@
 # ==============================================================================
 """Tests for `wrappers.py`."""
 
+import copy
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -395,6 +397,44 @@ class MaskedTest(chex.TestCase):
     np.testing.assert_allclose(updates['b'][0], grads['b'][0])
     np.testing.assert_allclose(updates['b'][1],
                                grads['b'][1] + 0.1*params['b'][1])
+
+  @chex.all_variants
+  @parameterized.named_parameters(
+      ('sgd', _build_sgd),
+      ('stateful_sgd', _build_stateful_sgd),
+  )
+  def test_nested_mask(self, opt_builder):
+    # https://github.com/deepmind/optax/issues/271
+    params = {'linear_1': {'w': jnp.zeros((1, 1)), 'b': jnp.zeros(1)},
+              'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
+              'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
+
+    outer_mask = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
+    inner_mask = jax.tree_map(lambda _: True, params)
+    inner_mask['linear_2'] = False
+
+    inner = wrappers.masked(opt_builder(), inner_mask)
+    init_fn, update_fn = wrappers.masked(inner, outer_mask)
+
+    input_updates = jax.tree_map(jnp.ones_like, params)
+    correct_updates = copy.deepcopy(input_updates)
+    correct_updates['linear_1']['w'] *= -1.0
+    correct_updates['linear_3']['w'] *= -1.0
+
+    state = self.variant(init_fn)(params)
+    updates, state = self.variant(update_fn)(input_updates, state, params)
+    chex.assert_trees_all_close(updates, correct_updates)
+
+  @chex.all_variants
+  def test_masked_state_structure(self):
+    # https://github.com/deepmind/optax/issues/271
+    params = {'a': [jnp.ones(1), (jnp.ones(2), jnp.ones(3))],
+              'b': {'c': jnp.ones(4), 'd': jnp.ones(5)}}
+    mask = {'a': [True, (True, False)], 'b': False}
+    tx = wrappers.masked(_build_stateful_sgd(), mask)
+    trace = self.variant(tx.init)(params).inner_state[0].trace
+    expected_trace = {'a': [jnp.zeros(1), (jnp.zeros(2), None)], 'b': None}
+    chex.assert_tree_all_equal_structs(trace, expected_trace)
 
 
 class MaybeUpdateTest(chex.TestCase):
