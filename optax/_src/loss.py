@@ -252,3 +252,109 @@ def log_cosh(
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+
+
+def ctc_loss(logits: chex.Array,
+             logitpaddings: chex.Array,
+             labels: chex.Array,
+             labelpaddings: chex.Array,
+             blank_id: int = 0,
+             logepsilon: float = -1e5) -> chex.Array:
+  """Computes CTC loss.
+
+  The CTC loss is a loss function based on log-likelihoods of the model that
+  introduces a special blank symbol to represent variable-length output
+  sequences.
+
+  Reference:
+    [Graves et al, 2006](https://dl.acm.org/doi/abs/10.1145/1143844.1143891)
+
+  Args:
+    logits: (B, T, K)-array containing logits of each class where `B` denotes
+      the batch size, `T` denotes the max time frames in `logits`, and `K`
+      denotes the number of classes including a class for blanks.
+    logitpaddings: (B, T)-array. Padding indicators for `logits`. Each element
+      must be either 1.0 or 0.0, and `logitpaddings[b, t] == 1.0` denotes that
+      `logits[b, t, :]` are padded values.
+    labels: (B, N)-array containing reference integer labels where `N` denotes
+      the max time frames in the label sequence.
+    labelpaddings: (B, N)-array. Padding indicators for `labels`. Each element
+      must be either 1.0 or 0.0, and `labelpaddings[b, n] == 1.0` denotes that
+      `labels[b, n]` is a padded label. In the current implementation, `labels`
+      must be right-padded, i.e. each row `labelpaddings[b, :]` must be
+        repetition of zeroes, followed by repetition of ones.
+    blank_id: Id for blank token. `logits[b, :, blank_id]` are used as
+      probabilities of blank symbols.
+    logepsilon: Numerically-stable approximation of log(+0).
+
+  Returns:
+    (B,)-array containing loss values for each sequence in the batch.
+  """
+  chex.assert_rank(logits, 3)
+  chex.assert_rank(labels, 2)
+  batchsize, unused_maxinputlen, num_classes = logits.shape
+  batchsize_of_labels, maxlabellen = labels.shape
+  chex.assert_equal(batchsize, batchsize_of_labels)
+  chex.assert_equal(labels.shape, labelpaddings.shape)
+  chex.assert_equal(logits.shape[:2], logitpaddings.shape)
+
+  logprobs = jax.nn.log_softmax(logits)
+  labellens = maxlabellen - jnp.sum(labelpaddings, axis=1).astype(jnp.int32)
+
+  # repeat[b, n] == 1.0 when label[b, n] == label[b, n+1].
+  repeat = (labels[:, :-1] == labels[:, 1:]).astype(jnp.float32)
+  repeat = jnp.pad(repeat, ((0, 0), (0, 1)))
+
+  logprobs_phi = logprobs[:, :, blank_id:blank_id + 1]  # [B, T, 1]
+  logprobs_phi = jnp.transpose(logprobs_phi, (1, 0, 2))  # [T, B, 1]
+
+  one_hot = jax.nn.one_hot(labels, num_classes=num_classes)  # [B, N, K]
+  logprobs_emit = jnp.einsum('btk,bnk->btn', logprobs, one_hot)
+  logprobs_emit = jnp.transpose(logprobs_emit, (1, 0, 2))  # [T, B, N]
+
+  logalpha_phi_init = jnp.ones(
+      (batchsize, maxlabellen + 1)) * logepsilon  # [B, N]
+  logalpha_phi_init = logalpha_phi_init.at[:, 0].set(0.0)
+  logalpha_emit_init = jnp.ones((batchsize, maxlabellen)) * logepsilon  # [B, N]
+
+  def update_phi_score(phi, added_score):
+    # Update `phi[:, 1:]`` with adding `added_score` in log space.
+    return jnp.concatenate(
+        [phi[:, :1], jnp.logaddexp(phi[:, 1:], added_score)], axis=-1)
+
+  def loop_body(prev, x):
+    prev_phi, prev_emit = prev
+    # emit-to-phi epsilon transition, except if the next label is repetition
+    prev_phi_orig = prev_phi
+    prev_phi = update_phi_score(prev_phi, prev_emit + logepsilon * repeat)
+
+    logprob_emit, logprob_phi, pad = x
+
+    # phi-to-emit transition
+    next_emit = jnp.logaddexp(prev_phi[:, :-1] + logprob_emit,
+                              prev_emit + logprob_emit)
+    # self-loop transition
+    next_phi = prev_phi + logprob_phi
+    # emit-to-phi blank transition only when the next label is repetition
+    next_phi = update_phi_score(
+        next_phi, prev_emit + logprob_phi + logepsilon * (1.0 - repeat))
+
+    pad = pad.reshape((batchsize, 1))
+    next_emit = pad * prev_emit + (1.0 - pad) * next_emit
+    next_phi = pad * prev_phi_orig + (1.0 - pad) * next_phi
+
+    return (next_phi, next_emit), (next_phi, next_emit)
+
+  xs = (logprobs_emit, logprobs_phi, logitpaddings.transpose((1, 0)))
+  _, (logalpha_phi,
+      logalpha_emit) = jax.lax.scan(loop_body,
+                                    (logalpha_phi_init, logalpha_emit_init), xs)
+
+  # last row needs to be updated with the last epsilon transition
+  logalpha_phi_last = update_phi_score(logalpha_phi[-1], logalpha_emit[-1])
+
+  # extract per_seq_loss
+  one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
+  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)
+
+  return per_seq_loss
