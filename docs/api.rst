@@ -433,6 +433,7 @@ Common Losses
 
     cosine_distance
     cosine_similarity
+    ctc_loss
     huber_loss
     l2_loss
     log_cosh
@@ -446,6 +447,7 @@ Losses
 
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
+-- autofunction:: ctc_loss
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
