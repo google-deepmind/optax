@@ -317,7 +317,8 @@ def masked(
     mask: a PyTree with same structure as (or a prefix of) the params PyTree, or
       a Callable that returns such a pytree given the params/updates. The leaves
       should be booleans, ``True`` for leaves/subtrees you want to apply the
-      transformation to, and ``False`` for those you want to skip.
+      transformation to, and ``False`` for those you want to skip. The mask must
+      be static for the gradient transformation to be jit-compilable.
 
   Returns:
     New GradientTransformation wrapping ``inner``.
