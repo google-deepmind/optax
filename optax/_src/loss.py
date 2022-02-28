@@ -375,8 +375,8 @@ def kldiv_loss(predictions: chex.Array,
     targets: Probabilities of target distribution with shape [..., dim].
 
   Returns:
-    Kullback-Leibler divergence of distribution P from distribution Q
-    with shape [...].
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
   """
   chex.assert_type([predictions, targets], float)
   log_p_div_q = jnp.log(jnp.divide(targets, predictions))
