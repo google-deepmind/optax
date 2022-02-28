@@ -369,5 +369,28 @@ class CTCTest(parameterized.TestCase):
           jnp.array(expected_loss), per_seq_loss[n], rtol=self._rtol)
 
 
+class KLDivLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ps = np.array([[0.05, 0.03, 0.02, 0.3, 0.5, 0.1],
+                       [0.2, 0.2, 0.2, 0.1, 0.15, 0.15]])
+    self.qs = np.array([[0.2, 0.2, 0.2, 0.1, 0.15, 0.15],
+                       [0.05, 0.03, 0.02, 0.3, 0.5, 0.1]])
+    # computed kullback-leibler divergence of P from Q.
+    self.exp = np.array([0.8875625, 0.7187435584901326])
+
+  @chex.all_variants
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(loss.kldiv_loss)(self.ps[0], self.qs[0]),
+        self.exp[0])
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(loss.kldiv_loss)(self.ps, self.qs),
+        self.exp)
+
 if __name__ == '__main__':
   absltest.main()

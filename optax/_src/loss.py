@@ -358,3 +358,26 @@ def ctc_loss(logits: chex.Array,
   per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)
 
   return per_seq_loss
+
+
+def kldiv_loss(predictions: chex.Array,
+               targets: chex.Array):
+  """Computes the Kullback-Leibler divergence (relative entropy) loss.
+
+  Measures the information gain achieved if probability distribution P
+  would be used instead of probability distribution Q.
+
+  References:
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
+
+  Args:
+    predictions: Probabilities of predicted distribution with shape [..., dim].
+    targets: Probabilities of target distribution with shape [..., dim].
+
+  Returns:
+    Kullback-Leibler divergence of distribution P from distribution Q
+    with shape [...].
+  """
+  chex.assert_type([predictions, targets], float)
+  log_p_div_q = jnp.log(jnp.divide(targets, predictions))
+  return jnp.sum(jnp.multiply(targets, log_p_div_q), axis=-1)
