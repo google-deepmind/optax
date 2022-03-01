@@ -211,7 +211,12 @@ def cosine_decay_schedule(
 ) -> base.Schedule:
   """Returns a function which implements cosine learning rate decay.
 
-  For more details see: https://arxiv.org/abs/1608.03983
+  The schedule does not restart when ``decay_steps`` has been reached. Instead,
+  the learning rate remains constant afterwards. For a cosine schedule with
+  restarts, :func:`optax.join_schedules` can be used to join several cosine
+  decay schedules.
+
+  For more details see: https://arxiv.org/abs/1608.03983.
 
   Args:
     init_value: An initial value `init_v`.
