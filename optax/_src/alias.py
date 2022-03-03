@@ -319,7 +319,7 @@ def lars(
 ) -> base.GradientTransformation:
   """The LARS optimiser.
 
-  LAMB is a layer-wise adaptive optimiser introduced to help scale SGD to
+  LARS is a layer-wise adaptive optimiser introduced to help scale SGD to
   larger batch sizes. LARS later inspired the LAMB optimiser.
 
   References:
