@@ -447,7 +447,7 @@ Losses
 
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
--- autofunction:: ctc_loss
+.. autofunction:: ctc_loss
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
