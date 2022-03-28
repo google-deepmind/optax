@@ -278,9 +278,10 @@ class CTCTest(parameterized.TestCase):
         while labels[n, t] == labels[n, t - 1]:
           labels[n, t] = np.random.uniform(1, nclasses)
 
-    per_seq_loss = self.variant(loss.ctc_loss)(logits,
-                                               np.zeros(logits.shape[:2]),
-                                               labels, np.zeros(labels.shape))
+    results = self.variant(loss.ctc_loss_with_forward_probs)(
+        logits, np.zeros(logits.shape[:2]),
+        labels, np.zeros(labels.shape))
+    (per_seq_loss, logalpha_blank, logalpha_emit) = results
 
     logprobs = jax.nn.log_softmax(logits)
     for b in range(batchsize):
@@ -288,7 +289,27 @@ class CTCTest(parameterized.TestCase):
       for t in range(steps):
         p += logprobs[b, t, labels[b, t]]
       np.testing.assert_allclose(
-          jnp.array(-p), per_seq_loss[b], rtol=self._rtol)
+          np.array(-p), per_seq_loss[b], rtol=self._rtol)
+
+      # Check forward-probabilities.
+      # 1. All-phi path: logalpha_blank[-1, b, 0] must be a probability of
+      #   the path that outputs blank symbols for all the frames.
+      np.testing.assert_allclose(logalpha_blank[-1, b, 0],
+                                 np.sum(logprobs[b, :, 0]),
+                                 rtol=self._rtol)
+
+      # 2. After emitting all the labels
+      #   the negated loss must be identical with the forward probability of
+      #   paths after consuming all the labels (because one-to-one alignment
+      #   doesn't allow extra blank symbols)
+      np.testing.assert_allclose(logalpha_emit[-1, b, steps - 1],
+                                 -per_seq_loss[b],
+                                 rtol=self._rtol)
+      #   and, this forward probability must be copied to the blank forward
+      #   probability of the next step.
+      np.testing.assert_allclose(logalpha_blank[-1, b, steps],
+                                 -per_seq_loss[b],
+                                 rtol=self._rtol)
 
   @chex.all_variants
   def test_with_one_to_one_alignment_and_paddings(self):
