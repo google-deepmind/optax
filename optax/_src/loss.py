@@ -360,24 +360,31 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
-def kldiv_loss(predictions: chex.Array,
-               targets: chex.Array):
+def kl_div_loss(predictions: chex.Array,
+                targets: chex.Array,
+                log_targets: bool = False) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if probability distribution P
-  would be used instead of probability distribution Q.
+  (targets) would be used instead of probability distribution Q (predictions).
 
   References:
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
     predictions: Probabilities of predicted distribution with shape [..., dim].
+    Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
+    Expected to be strictly positive.
+    log_targets: Specifies whether targets are given in the log-space.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
   """
   chex.assert_type([predictions, targets], float)
-  log_p_div_q = jnp.log(jnp.divide(targets, predictions))
-  return jnp.sum(jnp.multiply(targets, log_p_div_q), axis=-1)
+  if log_targets:
+    loss = jnp.multiply(jnp.exp(targets), jnp.subtract(targets, predictions))
+  else:
+    loss = jnp.multiply(targets, jnp.subtract(jnp.log(targets), predictions))
+  return jnp.sum(loss, axis=-1)
