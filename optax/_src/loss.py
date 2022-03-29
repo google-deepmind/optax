@@ -365,8 +365,8 @@ def kl_div_loss(predictions: chex.Array,
                 log_targets: bool = False) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
-  Measures the information gain achieved if probability distribution P
-  (targets) would be used instead of probability distribution Q (predictions).
+  Measures the information gain achieved if probability target distribution
+  would be used instead of predicted probability distribution.
 
   References:
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
