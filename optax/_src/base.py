@@ -52,7 +52,6 @@ class TransformInitFn(typing_extensions.Protocol):
     Returns:
       The initial state of the gradient transformation.
     """
-    ...
 
 
 class TransformUpdateFn(typing_extensions.Protocol):
@@ -81,7 +80,6 @@ class TransformUpdateFn(typing_extensions.Protocol):
     Returns:
       The transformed updates, and the updated state.
     """
-    ...
 
 
 class GradientTransformation(NamedTuple):
