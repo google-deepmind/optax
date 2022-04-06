@@ -70,6 +70,7 @@ from optax._src.lookahead import LookaheadState
 from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
 from optax._src.loss import ctc_loss
+from optax._src.loss import ctc_loss_with_forward_probs
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
@@ -183,6 +184,7 @@ __all__ = (
     "ClipState",
     "constant_schedule",
     "ctc_loss",
+    "ctc_loss_with_forward_probs",
     "control_delta_method",
     "control_variates_jacobians",
     "cosine_decay_schedule",
