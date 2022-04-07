@@ -68,9 +68,9 @@ def trace(
   def update_fn(updates, state, params=None):
     del params
     f = lambda g, t: g + decay * t
-    new_trace = jax.tree_multimap(f, updates, state.trace)
+    new_trace = jax.tree_map(f, updates, state.trace)
     updates = (
-        jax.tree_multimap(f, updates, new_trace) if nesterov else new_trace)
+        jax.tree_map(f, updates, new_trace) if nesterov else new_trace)
     new_trace = utils.cast_tree(new_trace, accumulator_dtype)
     return updates, TraceState(trace=new_trace)
 
@@ -79,7 +79,7 @@ def trace(
 
 def _update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order`-th moment."""
-  return jax.tree_multimap(
+  return jax.tree_map(
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
@@ -96,7 +96,7 @@ def _update_moment_per_elem_norm(updates, moments, decay, order):
         half_order = int(half_order)
       return _abs_sq(g) ** half_order
 
-  return jax.tree_multimap(
+  return jax.tree_map(
       lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
 
 
@@ -188,11 +188,11 @@ def scale_by_rss(
 
   def update_fn(updates, state, params=None):
     del params
-    sum_of_squares = jax.tree_multimap(
+    sum_of_squares = jax.tree_map(
         lambda g, t: _abs_sq(g) + t, updates, state.sum_of_squares)
     inv_sqrt_g_square = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda scale, g: scale * g, inv_sqrt_g_square, updates)
     return updates, ScaleByRssState(sum_of_squares=sum_of_squares)
 
@@ -231,7 +231,7 @@ def scale_by_rms(
   def update_fn(updates, state, params=None):
     del params
     nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
 
@@ -273,7 +273,7 @@ def scale_by_stddev(
     del params
     mu = _update_moment(updates, state.mu, decay, 1)
     nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda g, m, n: g * jax.lax.rsqrt(n - _abs_sq(m) + eps),
         updates, mu, nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
@@ -328,7 +328,7 @@ def scale_by_adam(
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -385,7 +385,7 @@ def scale_by_param_block_norm(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda u, p: u * numerics.safe_norm(p, min_scale),
         updates, params)
     return updates, state
@@ -461,13 +461,13 @@ def scale_by_belief(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
+    prediction_error = jax.tree_map(lambda g, m: g-m, updates, state.mu)
     nu = _update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jax.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
@@ -511,13 +511,13 @@ def scale_by_yogi(
   def update_fn(updates, state, params=None):
     del params
     mu = _update_moment(updates, state.mu, b1, 1)
-    nu = jax.tree_multimap(
+    nu = jax.tree_map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - _abs_sq(g)) * _abs_sq(g),
         updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = _bias_correction(mu, b1, count_inc)
     nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
@@ -554,7 +554,7 @@ def scale_by_radam(
     mu_hat = params[1]
     nu_hat = params[2]
     r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates
 
@@ -607,7 +607,7 @@ def add_decayed_weights(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
@@ -703,7 +703,7 @@ def scale_by_trust_ratio(
 
       return update * safe_trust_ratio
 
-    updates = jax.tree_multimap(_scale_update, updates, params)
+    updates = jax.tree_map(_scale_update, updates, params)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -747,10 +747,10 @@ def add_noise(
     variance = eta / count_inc**gamma
     standard_deviation = jnp.sqrt(variance)
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
-    noise = jax.tree_multimap(
+    noise = jax.tree_map(
         lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
         updates, jax.tree_unflatten(treedef, all_keys[1:]))
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda g, n: g + standard_deviation.astype(g.dtype) * n,
         updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
@@ -790,7 +790,7 @@ def apply_every(
     del params
     c = state.count % k
     acc = c != 0
-    grad_acc = jax.tree_multimap(
+    grad_acc = jax.tree_map(
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
@@ -890,14 +890,14 @@ def scale_by_sm3(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = jax.tree_multimap(
+    mu = jax.tree_map(
         lambda g, v:  # pylint:disable=g-long-lambda
         [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)],
         updates, state.mu)
-    accum = jax.tree_multimap(_new_accum, updates, mu)
+    accum = jax.tree_map(_new_accum, updates, mu)
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
-    up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
+    up = jax.tree_map(lambda g, a: g*a, updates, accum_inv_sqrt)
     nu = _update_moment(up, state.nu, b1, 1)
     mu = jax.tree_map(
         lambda g: [_new_mu(g, i) for i in range(g.ndim)], accum)

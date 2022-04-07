@@ -49,7 +49,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    updates = jax.tree_multimap(
+    updates = jax.tree_map(
         lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
     return updates, state
 

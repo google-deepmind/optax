@@ -246,7 +246,7 @@ class MultiSteps:
              ) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
-    acc_grads = jax.tree_util.tree_multimap(
+    acc_grads = jax.tree_util.tree_map(
         functools.partial(self._acc_update, n_acc=state.mini_step),
         updates, state.acc_grads)
 

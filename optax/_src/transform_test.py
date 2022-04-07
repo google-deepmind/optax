@@ -61,8 +61,7 @@ class TransformTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
-                      updates)
+    jax.tree_map(lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants()
   def test_add_decayed_weights(self):

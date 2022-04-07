@@ -208,7 +208,7 @@ class WrappersTest(parameterized.TestCase):
       if idx % k_steps < k_steps - 1:
         # The parameters should not have changed and the loss should be
         # constant.
-        jax.tree_multimap(np.testing.assert_array_equal, new_params, params)
+        jax.tree_map(np.testing.assert_array_equal, new_params, params)
         np.testing.assert_equal(new_loss, prev_loss)
         self.assertFalse(ms_opt.has_updated(opt_state))
       else:
@@ -282,7 +282,7 @@ class MaskedTest(chex.TestCase):
 
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
-      return jax.tree_multimap(
+      return jax.tree_map(
           lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
@@ -312,7 +312,7 @@ class MaskedTest(chex.TestCase):
     # Negate the updates wherever the mask (or mask parent) is True
     def _masked_sgd_on_updates(m, upd):
       return jax.tree_map(lambda x: -x, upd) if m else upd
-    correct_updates = jax.tree_multimap(
+    correct_updates = jax.tree_map(
         _masked_sgd_on_updates, mask, input_updates)
 
     init_fn, update_fn = wrappers.masked(opt_builder(), mask)
@@ -322,7 +322,7 @@ class MaskedTest(chex.TestCase):
     chex.assert_tree_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
-    correct_updates = jax.tree_multimap(
+    correct_updates = jax.tree_map(
         _masked_sgd_on_updates, mask, correct_updates)
     updates, state = update_fn(updates, state)
     chex.assert_tree_all_close(updates, correct_updates)
@@ -337,7 +337,7 @@ class MaskedTest(chex.TestCase):
     params = jax.tree_map(jnp.asarray, params)
     input_updates = jax.tree_map(lambda x: x/10., params)
 
-    correct_updates = jax.tree_multimap(
+    correct_updates = jax.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, input_updates, params)
 
@@ -352,7 +352,7 @@ class MaskedTest(chex.TestCase):
     params = update.apply_updates(params, updates)
 
     # Test repeated application
-    new_correct_updates = jax.tree_multimap(
+    new_correct_updates = jax.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, correct_updates, params)
     updates, state = update_fn(correct_updates, state, params)
