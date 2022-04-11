@@ -20,7 +20,7 @@ reduction over the batch dimensions, leaving it to the user to, for instance,
 mean or sum losses across batch dimensions.
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 
 import chex
 import jax
@@ -256,57 +256,60 @@ def log_cosh(
 
 def ctc_loss_with_forward_probs(
     logits: chex.Array,
-    logitpaddings: chex.Array,
+    logit_paddings: chex.Array,
     labels: chex.Array,
-    labelpaddings: chex.Array,
+    label_paddings: chex.Array,
     blank_id: int = 0,
-    logepsilon: float = -1e5) -> chex.Array:
-  r"""Computes CTC loss and CTC log forward-probabilities.
+    log_epsilon: float = -1e5) -> Tuple[chex.Array, chex.Array, chex.Array]:
+  r"""Computes CTC loss and CTC forward-probabilities.
 
   The CTC loss is a loss function based on log-likelihoods of the model that
-  introduces a special blank symbol to represent variable-length output
-  sequences.
+  introduces a special blank symbol :math:`\phi` to represent variable-length
+  output sequences.
 
   Forward probabilities returned by this function, as auxiliary results, are
   grouped into two part: blank alpha-probability and non-blank alpha
   probability. Those are defined as follows:
 
-    Blank:
-      \alpha_B(t, n) = \sum_{\pi_{1:t-1}} p(\pi_t = \phi | \pi_{1:t-1}, ...)
-    Non-Blank:
-      \alpha_L(t, n) = \sum_{\pi_{1:t-1}} p(\pi_t = y_n | \pi_{1:t-1}, ...)
+  .. math::
+    \alpha_{\mathrm{BLANK}}(t, n) =
+    \sum_{\pi_{1:t-1}} p(\pi_t = \phi | \pi_{1:t-1}, y_{1:n-1}, \cdots), \\
+    \alpha_{\mathrm{LABEL}}(t, n) =
+    \sum_{\pi_{1:t-1}} p(\pi_t = y_n | \pi_{1:t-1}, y_{1:n-1}, \cdots).
 
-  Here, \pi denotes the alignment sequence in reference [Graves et al, 2006]
-  that denotes blank-inserted aligned representation of `labels`. The return
-  values are logarithms of the above probabilities.
+  Here, :math:`\pi` denotes the alignment sequence in the reference
+  [Graves et al, 2006] that is blank-inserted representations of ``labels``.
+  The return values are the logarithms of the above probabilities.
 
-  Reference:
+  References:
     [Graves et al, 2006](https://dl.acm.org/doi/abs/10.1145/1143844.1143891)
 
   Args:
-    logits: (B, T, K)-array containing logits of each class where `B` denotes
-      the batch size, `T` denotes the max time frames in `logits`, and `K`
+    logits: (B, T, K)-array containing logits of each class where B denotes
+      the batch size, T denotes the max time frames in ``logits``, and K
       denotes the number of classes including a class for blanks.
-    logitpaddings: (B, T)-array. Padding indicators for `logits`. Each element
-      must be either 1.0 or 0.0, and `logitpaddings[b, t] == 1.0` denotes that
-      `logits[b, t, :]` are padded values.
-    labels: (B, N)-array containing reference integer labels where `N` denotes
+    logit_paddings: (B, T)-array. Padding indicators for ``logits``. Each
+      element must be either 1.0 or 0.0, and ``logitpaddings[b, t] == 1.0``
+      denotes that ``logits[b, t, :]`` are padded values.
+    labels: (B, N)-array containing reference integer labels where N denotes
       the max time frames in the label sequence.
-    labelpaddings: (B, N)-array. Padding indicators for `labels`. Each element
-      must be either 1.0 or 0.0, and `labelpaddings[b, n] == 1.0` denotes that
-      `labels[b, n]` is a padded label. In the current implementation, `labels`
-      must be right-padded, i.e. each row `labelpaddings[b, :]` must be
-        repetition of zeroes, followed by repetition of ones.
-    blank_id: Id for blank token. `logits[b, :, blank_id]` are used as
+    label_paddings: (B, N)-array. Padding indicators for ``labels``. Each
+      element must be either 1.0 or 0.0, and ``labelpaddings[b, n] == 1.0``
+      denotes that ``labels[b, n]`` is a padded label. In the current
+      implementation, ``labels`` must be right-padded, i.e. each row
+      ``labelpaddings[b, :]`` must be repetition of zeroes, followed by
+      repetition of ones.
+    blank_id: Id for blank token. ``logits[b, :, blank_id]`` are used as
       probabilities of blank symbols.
-    logepsilon: Numerically-stable approximation of log(+0).
+    log_epsilon: Numerically-stable approximation of log(+0).
 
   Returns:
-    A tuple `(loss_value, logalpha_blank, logalpha_nonblank)`. Here,
-    `loss_value` is a (B,)-array containing loss values for each sequence in
-    the batch, `logalpha_blank` and `logalpha_nonblank` are (T, B, N+1)-arrays
-    where the (t, b, n)-th element denotes \log \alpha_B(t, n) and
-    \log \alpha_L(t, n), respectively, for `b`-th sequence in the batch.
+    A tuple ``(loss_value, logalpha_blank, logalpha_nonblank)``. Here,
+    ``loss_value`` is a (B,)-array containing the loss values for each sequence
+    in the batch, ``logalpha_blank`` and ``logalpha_nonblank`` are
+    (T, B, N+1)-arrays where the (t, b, n)-th element denotes
+    \log \alpha_B(t, n) and \log \alpha_L(t, n), respectively, for ``b``-th
+    sequence in the batch.
   """
 
   chex.assert_rank(logits, 3)
@@ -314,11 +317,11 @@ def ctc_loss_with_forward_probs(
   batchsize, unused_maxinputlen, num_classes = logits.shape
   batchsize_of_labels, maxlabellen = labels.shape
   chex.assert_equal(batchsize, batchsize_of_labels)
-  chex.assert_equal(labels.shape, labelpaddings.shape)
-  chex.assert_equal(logits.shape[:2], logitpaddings.shape)
+  chex.assert_equal(labels.shape, label_paddings.shape)
+  chex.assert_equal(logits.shape[:2], logit_paddings.shape)
 
   logprobs = jax.nn.log_softmax(logits)
-  labellens = maxlabellen - jnp.sum(labelpaddings, axis=1).astype(jnp.int32)
+  labellens = maxlabellen - jnp.sum(label_paddings, axis=1).astype(jnp.int32)
 
   # repeat[b, n] == 1.0 when label[b, n] == label[b, n+1].
   repeat = (labels[:, :-1] == labels[:, 1:]).astype(jnp.float32)
@@ -332,9 +335,9 @@ def ctc_loss_with_forward_probs(
   logprobs_emit = jnp.transpose(logprobs_emit, (1, 0, 2))  # [T, B, N]
 
   logalpha_phi_init = jnp.ones(
-      (batchsize, maxlabellen + 1)) * logepsilon  # [B, N]
+      (batchsize, maxlabellen + 1)) * log_epsilon  # [B, N]
   logalpha_phi_init = logalpha_phi_init.at[:, 0].set(0.0)
-  logalpha_emit_init = jnp.ones((batchsize, maxlabellen)) * logepsilon  # [B, N]
+  logalpha_emit_init = jnp.ones((batchsize, maxlabellen)) * log_epsilon
 
   def update_phi_score(phi, added_score):
     # Update `phi[:, 1:]`` with adding `added_score` in log space.
@@ -345,7 +348,7 @@ def ctc_loss_with_forward_probs(
     prev_phi, prev_emit = prev
     # emit-to-phi epsilon transition, except if the next label is repetition
     prev_phi_orig = prev_phi
-    prev_phi = update_phi_score(prev_phi, prev_emit + logepsilon * repeat)
+    prev_phi = update_phi_score(prev_phi, prev_emit + log_epsilon * repeat)
 
     logprob_emit, logprob_phi, pad = x
 
@@ -356,7 +359,7 @@ def ctc_loss_with_forward_probs(
     next_phi = prev_phi + logprob_phi
     # emit-to-phi blank transition only when the next label is repetition
     next_phi = update_phi_score(
-        next_phi, prev_emit + logprob_phi + logepsilon * (1.0 - repeat))
+        next_phi, prev_emit + logprob_phi + log_epsilon * (1.0 - repeat))
 
     pad = pad.reshape((batchsize, 1))
     next_emit = pad * prev_emit + (1.0 - pad) * next_emit
@@ -364,7 +367,7 @@ def ctc_loss_with_forward_probs(
 
     return (next_phi, next_emit), (next_phi, next_emit)
 
-  xs = (logprobs_emit, logprobs_phi, logitpaddings.transpose((1, 0)))
+  xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))
   _, (logalpha_phi,
       logalpha_emit) = jax.lax.scan(loop_body,
                                     (logalpha_phi_init, logalpha_emit_init), xs)
@@ -381,37 +384,38 @@ def ctc_loss_with_forward_probs(
 
 
 def ctc_loss(logits: chex.Array,
-             logitpaddings: chex.Array,
+             logit_paddings: chex.Array,
              labels: chex.Array,
-             labelpaddings: chex.Array,
+             label_paddings: chex.Array,
              blank_id: int = 0,
-             logepsilon: float = -1e5) -> chex.Array:
+             log_epsilon: float = -1e5) -> chex.Array:
   """Computes CTC loss.
 
-  See docstring for `ctc_loss_with_forward_score` details.
+  See docstring for ``ctc_loss_with_forward_probs`` for details.
 
   Args:
-    logits: (B, T, K)-array containing logits of each class where `B` denotes
-      the batch size, `T` denotes the max time frames in `logits`, and `K`
+    logits: (B, T, K)-array containing logits of each class where B denotes
+      the batch size, T denotes the max time frames in ``logits``, and K
       denotes the number of classes including a class for blanks.
-    logitpaddings: (B, T)-array. Padding indicators for `logits`. Each element
-      must be either 1.0 or 0.0, and `logitpaddings[b, t] == 1.0` denotes that
-      `logits[b, t, :]` are padded values.
-    labels: (B, N)-array containing reference integer labels where `N` denotes
+    logit_paddings: (B, T)-array. Padding indicators for ``logits``. Each
+      element must be either 1.0 or 0.0, and ``logitpaddings[b, t] == 1.0``
+      denotes that ``logits[b, t, :]`` are padded values.
+    labels: (B, N)-array containing reference integer labels where N denotes
       the max time frames in the label sequence.
-    labelpaddings: (B, N)-array. Padding indicators for `labels`. Each element
-      must be either 1.0 or 0.0, and `labelpaddings[b, n] == 1.0` denotes that
-      `labels[b, n]` is a padded label. In the current implementation, `labels`
-      must be right-padded, i.e. each row `labelpaddings[b, :]` must be
-        repetition of zeroes, followed by repetition of ones.
-    blank_id: Id for blank token. `logits[b, :, blank_id]` are used as
+    label_paddings: (B, N)-array. Padding indicators for ``labels``. Each
+      element must be either 1.0 or 0.0, and ``labelpaddings[b, n] == 1.0``
+      denotes that ``labels[b, n]`` is a padded label. In the current
+      implementation, ``labels`` must be right-padded, i.e. each row
+      ``labelpaddings[b, :]`` must be repetition of zeroes, followed by
+      repetition of ones.
+    blank_id: Id for blank token. ``logits[b, :, blank_id]`` are used as
       probabilities of blank symbols.
-    logepsilon: Numerically-stable approximation of log(+0).
+    log_epsilon: Numerically-stable approximation of log(+0).
 
   Returns:
     (B,)-array containing loss values for each sequence in the batch.
   """
   per_seq_loss, _, _ = ctc_loss_with_forward_probs(
-      logits, logitpaddings, labels, labelpaddings,
-      blank_id=blank_id, logepsilon=logepsilon)
+      logits, logit_paddings, labels, label_paddings,
+      blank_id=blank_id, log_epsilon=log_epsilon)
   return per_seq_loss
