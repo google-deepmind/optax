@@ -24,6 +24,7 @@ from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import lion
 from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
@@ -222,6 +223,7 @@ __all__ = (
     "l2_loss",
     "lamb",
     "lars",
+    "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
     "log_cosh",

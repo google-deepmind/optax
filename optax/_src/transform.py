@@ -379,6 +379,50 @@ def scale_by_adamax(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByLionState(NamedTuple):
+  """State for the Lion algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+
+
+def scale_by_lion(
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Lion algorithm.
+
+  Args:
+    b1: rate for combining moment and the current grad.
+    b2: decay rate for the exponentially weighted average of grads.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_map(  # moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    t = state.count.astype(jnp.float32) + 1.
+    b2_decay = b2 * (1. - jnp.power(b2, t - 1.)) / (1. - jnp.power(b2, t))
+    mu = update_moment(updates, state.mu, b2_decay, 1)
+    mu = utils.cast_tree(mu, mu_dtype)
+    count_inc = numerics.safe_int32_increment(state.count)
+    updates = jax.tree_map(
+        lambda g, m: jnp.sign((1. - b1) * g + b1 * m), updates, state.mu)
+    return updates, ScaleByLionState(count=count_inc, mu=mu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 ScaleState = base.EmptyState
 
 
