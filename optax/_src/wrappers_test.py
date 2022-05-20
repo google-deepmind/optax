@@ -24,13 +24,13 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import alias
 from optax._src import combine
 from optax._src import constrain
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
+import tree
 
 
 def _build_sgd():
@@ -433,8 +433,31 @@ class MaskedTest(chex.TestCase):
     mask = {'a': [True, (True, False)], 'b': False}
     tx = wrappers.masked(_build_stateful_sgd(), mask)
     trace = self.variant(tx.init)(params).inner_state[0].trace
-    expected_trace = {'a': [jnp.zeros(1), (jnp.zeros(2), None)], 'b': None}
+    expected_trace = {
+        'a': [jnp.zeros(1), (jnp.zeros(2), wrappers.MaskedNode())],
+        'b': wrappers.MaskedNode()
+    }
     chex.assert_tree_all_equal_structs(trace, expected_trace)
+
+  def test_masked_state_is_compatible_with_deepmind_tree(self):
+    """Checks that the masked state is compatible with deepmind/tree.
+
+    DeepMind's tree library and `jax.tree_util` have slightly different
+    behavior: jax treats `None`s as tree nodes without children while
+    deepmind/tree treats them as leaves with `None` values. This has led to bugs
+    when users used deepmind/tree to manipulate masked optimizer states.
+
+    This test ensures that masked parts of the optimizer state are also ignored
+    by deepmind/tree.
+    """
+    params = {
+        'a': [jnp.ones(1), (jnp.ones(2), jnp.ones(3))],
+        'b': [jnp.ones(4)]
+    }
+    mask = {'a': [True, (True, False)], 'b': False}
+    opt_init, _ = wrappers.masked(_build_stateful_sgd(), mask)
+    state = opt_init(params)
+    chex.assert_trees_all_equal(tree.map_structure(np.array, state), state)
 
 
 class MaybeUpdateTest(chex.TestCase):

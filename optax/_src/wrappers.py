@@ -290,6 +290,15 @@ class MaskedState(NamedTuple):
   inner_state: Any
 
 
+class MaskedNode(NamedTuple):
+  """A node used to mask out unspecified parts of a tree.
+
+  This node is ignored when mapping functions across the tree e.g. using
+  `jax.tree_util.tree_map` since it is a container without children. It can
+  therefore be used to mask out parts of a tree.
+  """
+
+
 def masked(
     inner: base.GradientTransformation,
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
@@ -324,7 +333,7 @@ def masked(
     New GradientTransformation wrapping ``inner``.
   """
   def mask_pytree(pytree, mask_tree):
-    return tree_map(lambda m, p: p if m else None, mask_tree, pytree)
+    return tree_map(lambda m, p: p if m else MaskedNode(), mask_tree, pytree)
 
   def init_fn(params):
     mask_tree = mask(params) if callable(mask) else mask
