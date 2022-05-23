@@ -83,6 +83,12 @@ def _update_moment(updates, moments, decay, order):
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
+def _update_infinity_moment(updates, moments, decay, eps):
+  """Compute the exponential moving average of the infinity norm."""
+  return jax.tree_map(
+      lambda g, t: jnp.maximum(jnp.abs(g) + eps, decay * t), updates, moments)
+
+
 def _update_moment_per_elem_norm(updates, moments, decay, order):
   """Compute the EMA of the `order`-th moment of the element-wise norm."""
 
@@ -331,6 +337,43 @@ def scale_by_adam(
     updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_adamax(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adamax algorithm.
+
+  References:
+    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted maximum of grads.
+    eps: term added to the denominator to improve numerical stability.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_map(jnp.zeros_like, params)  # Infinite moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    count_inc = numerics.safe_int32_increment(state.count)
+    mu = _update_moment(updates, state.mu, b1, 1)
+    nu = _update_infinity_moment(updates, state.nu, b2, eps)
+    # Bias correction for mean. No bias correction needed for infinity moment.
+    mu_hat = _bias_correction(mu, b1, count_inc)
+    updates = jax.tree_multimap(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
