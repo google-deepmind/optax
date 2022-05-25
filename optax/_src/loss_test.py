@@ -128,6 +128,32 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         self.exp, atol=1e-4)
 
 
+class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
+    self.ts = np.array([1, 0], dtype=np.int32)
+
+  @chex.all_variants()
+  def test_consistent_with_softmax_cross_entropy_scalar(self):
+    """Tests for a scalar."""
+    exp = loss.softmax_cross_entropy(self.ys[0], jax.nn.one_hot(self.ts[0], 3))
+    np.testing.assert_allclose(
+        self.variant(loss.softmax_cross_entropy_with_integer_labels)(
+            self.ys[0], self.ts[0]),
+        exp, rtol=1e-6)
+
+  @chex.all_variants()
+  def test_consistent_with_softmax_cross_entropy_batched(self):
+    """Tests for a full batch."""
+    exp = loss.softmax_cross_entropy(self.ys, jax.nn.one_hot(self.ts, 3))
+    np.testing.assert_allclose(
+        self.variant(loss.softmax_cross_entropy_with_integer_labels)(
+            self.ys, self.ts),
+        exp, rtol=1e-6)
+
+
 class SigmoidCrossEntropyTest(parameterized.TestCase):
 
   @parameterized.parameters(

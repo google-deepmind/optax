@@ -441,6 +441,7 @@ Common Losses
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
+    softmax_cross_entropy_with_integer_labels
 
 
 Losses
