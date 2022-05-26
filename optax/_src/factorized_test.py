@@ -14,12 +14,20 @@
 # ==============================================================================
 """Tests for `factorized.py`."""
 
+from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
+import jax
 import jax.numpy as jnp
 
+import optax
 from optax._src import factorized
+
+
+def replicate(tree):
+  """Replicates arrays to multiple devices."""
+  return jax.device_put_replicated(tree, jax.local_devices())
 
 
 class FactorizedTest(parameterized.TestCase):
@@ -43,3 +51,15 @@ class FactorizedTest(parameterized.TestCase):
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
     chex.assert_tree_all_equal_shapes(params, updates)
+
+  def test_scale_by_factored_rms_with_injected_hyperparams(self):
+    params = jax.random.uniform(jax.random.PRNGKey(0), (10, 10))
+    tx = optax.inject_hyperparams(
+        optax.adafactor, static_args='min_dim_size_to_factor')(
+            learning_rate=0.0)
+    opt_state = tx.init(params)
+    _ = jax.jit(tx.update)(params, opt_state, params)
+
+
+if __name__ == '__main__':
+  absltest.main()
