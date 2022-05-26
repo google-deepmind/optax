@@ -69,7 +69,6 @@ class _UpdateResult:
   v_row: chex.Array  # used for factored params.
   v_col: chex.Array  # used for factored params.
   v: chex.Array  # used for params where factoring is skipped.
-  factored_dims: Optional[Tuple[int]]  # factored dims.
 
 
 class FactoredState(NamedTuple):
@@ -78,7 +77,6 @@ class FactoredState(NamedTuple):
   v_row: chex.ArrayTree  # Tree of factored params.
   v_col: chex.ArrayTree  # Tree of factored params.
   v: chex.ArrayTree  # Tree for params where factoring is skipped.
-  factored_dims: chex.ArrayTree  # Tree of factored dims.
 
 
 def scale_by_factored_rms(
@@ -123,8 +121,7 @@ def scale_by_factored_rms(
         count=count,
         v_row=jax.tree_map(lambda o: o.v_row, result_tree),
         v_col=jax.tree_map(lambda o: o.v_col, result_tree),
-        v=jax.tree_map(lambda o: o.v, result_tree),
-        factored_dims=jax.tree_map(lambda o: o.factored_dims, result_tree))
+        v=jax.tree_map(lambda o: o.v, result_tree))
 
   def init_fn(params):
     """Initialise the optimiser's state."""
@@ -140,15 +137,13 @@ def scale_by_factored_rms(
             update=jnp.zeros((1,)),
             v_row=jnp.zeros(vr_shape),
             v_col=jnp.zeros(vc_shape),
-            v=jnp.zeros((1,)),
-            factored_dims=factored_dims)
+            v=jnp.zeros((1,)))
       else:
         return _UpdateResult(
             update=jnp.zeros((1,)),
             v_row=jnp.zeros((1,)),
             v_col=jnp.zeros((1,)),
-            v=jnp.zeros(param.shape),
-            factored_dims=None)
+            v=jnp.zeros(param.shape))
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree_map(_init, params))
 
@@ -157,8 +152,8 @@ def scale_by_factored_rms(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    def _update(grad, v_row, v_col, v, factored_dims, param, step):
-      del param
+    def _update(grad, v_row, v_col, v, param, step):
+      shape = param.shape
       decay_rate_t = decay_rate_fn(step - step_offset, decay_rate)
 
       # Scaled by factorized second moment statistics.
@@ -166,6 +161,7 @@ def scale_by_factored_rms(
       new_v_col = jnp.zeros((1,))
       new_v = jnp.zeros((1,))
 
+      factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
         grad_sqr = numerics.abs_sq(grad) + epsilon
@@ -188,12 +184,12 @@ def scale_by_factored_rms(
         new_v = decay_rate_t * v + (1. - decay_rate_t) * grad_sqr
         update = grad * (new_v)**-0.5
 
-      return _UpdateResult(update, new_v_row, new_v_col, new_v, factored_dims)
+      return _UpdateResult(update, new_v_row, new_v_col, new_v)
 
     # Transform grad and compute new per-parameter stats.
     output = jax.tree_map(
         lambda *args: _update(*args, state.count),
-        grads, state.v_row, state.v_col, state.v, state.factored_dims, params)
+        grads, state.v_row, state.v_col, state.v, params)
 
     # Unpack updates / stats and return.
     updates = jax.tree_map(lambda o: o.update, output)

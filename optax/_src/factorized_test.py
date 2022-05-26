@@ -14,20 +14,12 @@
 # ==============================================================================
 """Tests for `factorized.py`."""
 
-from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
-import jax
 import jax.numpy as jnp
 
-import optax
 from optax._src import factorized
-
-
-def replicate(tree):
-  """Replicates arrays to multiple devices."""
-  return jax.device_put_replicated(tree, jax.local_devices())
 
 
 class FactorizedTest(parameterized.TestCase):
@@ -50,25 +42,4 @@ class FactorizedTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    chex.assert_trees_all_equal_shapes(params, updates)
-
-  def test_scale_by_factored_rms_with_injected_hyperparams(self):
-    params = jax.random.uniform(jax.random.PRNGKey(0), (10, 10))
-    tx = optax.inject_hyperparams(optax.adafactor)(learning_rate=0.0)
-    opt_state = tx.init(params)
-    replicated_params = replicate(params)
-    replicated_opt_state = replicate(opt_state)
-
-    def _update(params, opt_state):
-      updates = jax.random.uniform(
-          jax.random.PRNGKey(jax.lax.axis_index('device')), (10, 10))
-      updates, opt_state = tx.update(updates, opt_state, params)
-      params = optax.apply_updates(params, updates)
-      params = jax.lax.pmean(params, axis_name='device')
-      return params, opt_state
-
-    jax.pmap(_update, 'device')(replicated_params, replicated_opt_state)
-
-
-if __name__ == '__main__':
-  absltest.main()
+    chex.assert_tree_all_equal_shapes(params, updates)
