@@ -77,19 +77,19 @@ def trace(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def _update_moment(updates, moments, decay, order):
+def update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order`-th moment."""
   return jax.tree_map(
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
-def _update_infinity_moment(updates, moments, decay, eps):
+def update_infinity_moment(updates, moments, decay, eps):
   """Compute the exponential moving average of the infinity norm."""
   return jax.tree_map(
       lambda g, t: jnp.maximum(jnp.abs(g) + eps, decay * t), updates, moments)
 
 
-def _update_moment_per_elem_norm(updates, moments, decay, order):
+def update_moment_per_elem_norm(updates, moments, decay, order):
   """Compute the EMA of the `order`-th moment of the element-wise norm."""
 
   def orderth_norm(g):
@@ -106,10 +106,10 @@ def _update_moment_per_elem_norm(updates, moments, decay, order):
       lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
 
 
-def _bias_correction(moment, decay, count):
+def bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
-  bias_correction = 1 - decay**count
-  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
+  bias_correction_ = 1 - decay**count
+  return jax.tree_map(lambda t: t / bias_correction_.astype(t.dtype), moment)
 
 
 def _reject_complex(params):
@@ -154,10 +154,10 @@ def ema(
 
   def update_fn(updates, state, params=None):
     del params
-    updates = new_ema = _update_moment(updates, state.ema, decay, order=1)
+    updates = new_ema = update_moment(updates, state.ema, decay, order=1)
     count_inc = utils.safe_int32_increment(state.count)
     if debias:
-      updates = _bias_correction(new_ema, decay, count_inc)
+      updates = bias_correction(new_ema, decay, count_inc)
     state_ema = utils.cast_tree(new_ema, accumulator_dtype)
     return updates, EmaState(count=count_inc, ema=state_ema)
 
@@ -236,7 +236,7 @@ def scale_by_rms(
 
   def update_fn(updates, state, params=None):
     del params
-    nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
+    nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
     updates = jax.tree_map(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
@@ -277,8 +277,8 @@ def scale_by_stddev(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, decay, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
+    mu = update_moment(updates, state.mu, decay, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
     updates = jax.tree_map(
         lambda g, m, n: g * jax.lax.rsqrt(n - _abs_sq(m) + eps),
         updates, mu, nu)
@@ -329,11 +329,11 @@ def scale_by_adam(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
@@ -369,10 +369,10 @@ def scale_by_adamax(
   def update_fn(updates, state, params=None):
     del params
     count_inc = numerics.safe_int32_increment(state.count)
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_infinity_moment(updates, state.nu, b2, eps)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_infinity_moment(updates, state.nu, b2, eps)
     # Bias correction for mean. No bias correction needed for infinity moment.
-    mu_hat = _bias_correction(mu, b1, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
     updates = jax.tree_multimap(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
@@ -503,13 +503,13 @@ def scale_by_belief(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
+    mu = update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_map(lambda g, m: g-m, updates, state.mu)
-    nu = _update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
+    nu = update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jax.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
@@ -553,13 +553,13 @@ def scale_by_yogi(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
+    mu = update_moment(updates, state.mu, b1, 1)
     nu = jax.tree_map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - _abs_sq(g)) * _abs_sq(g),
         updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -608,13 +608,13 @@ def scale_by_radam(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.lax.cond(
         ro >= threshold, _radam_update, lambda _: mu_hat,
         (ro, mu_hat, nu_hat))
@@ -941,7 +941,7 @@ def scale_by_sm3(
     accum_inv_sqrt = jax.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
     up = jax.tree_map(lambda g, a: g*a, updates, accum_inv_sqrt)
-    nu = _update_moment(up, state.nu, b1, 1)
+    nu = update_moment(up, state.nu, b1, 1)
     mu = jax.tree_map(
         lambda g: [_new_mu(g, i) for i in range(g.ndim)], accum)
 

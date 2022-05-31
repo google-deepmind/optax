@@ -119,6 +119,7 @@ Gradient Transforms
     AddNoiseState
     apply_every
     ApplyEvery
+    bias_correction
     centralize
     clip
     clip_by_block_rms
@@ -166,6 +167,9 @@ Gradient Transforms
     TraceState
     TransformInitFn
     TransformUpdateFn
+    update_infinity_moment
+    update_moment
+    update_moment_per_elem_norm
     Updates
     zero_nans
     ZeroNansState

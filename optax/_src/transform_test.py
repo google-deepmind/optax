@@ -144,7 +144,7 @@ class TransformTest(parameterized.TestCase):
     decay = 0.9
     d = decay
 
-    transform_fn = self.variant(transform._update_infinity_moment)
+    transform_fn = self.variant(transform.update_infinity_moment)
 
     # identity if updating with itself (and positive decay)
     np.testing.assert_allclose(
