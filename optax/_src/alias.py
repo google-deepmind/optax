@@ -642,7 +642,7 @@ def dpsgd(
   Differential privacy is a standard for privacy guarantees of algorithms
   learning from aggregate databases including potentially sensitive information.
   DPSGD offers protection against a strong adversary with full knowledge of the
-  training mechanism and access to the model’s parameters.
+  training mechanism and access to the model's parameters.
 
   WARNING: This `GradientTransformation` expects input updates to have a batch
   dimension on the 0th axis. That is, this function expects per-example
@@ -670,6 +670,60 @@ def dpsgd(
           seed=seed),
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
+      _scale_by_learning_rate(learning_rate)
+  )
+
+
+def dpadam(
+    learning_rate: ScalarOrSchedule,
+    l2_norm_clip: float,
+    noise_multiplier: float,
+    seed: int,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: Optional[Any] = None
+) -> base.GradientTransformation:
+  """Differentially private Adam optimizer.
+
+  Differential privacy is a standard for privacy guarantees of algorithms
+  learning from aggregate databases including potentially sensitive information.
+  DPSGD offers protection against a strong adversary with full knowledge of the
+  training mechanism and access to the model's parameters.
+
+  WARNING: This `GradientTransformation` expects input updates to have a batch
+  dimension on the 0th axis. That is, this function expects per-example
+  gradients as input (which are easy to obtain in JAX using `jax.vmap`).
+
+  References:
+    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    l2_norm_clip: maximum L2 norm of the per-example gradients.
+    noise_multiplier: ratio of standard deviation to the clipping norm.
+    seed: initial seed used for the jax.random.PRNGKey
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the second moment of past gradients.
+    eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: (default `0`), a small constant applied to denominator inside the
+      square root (as in RMSProp), to avoid dividing by zero when rescaling.
+      This is needed for example when computing (meta-)gradients through Adam.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+  return combine.chain(
+      privacy.differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      transform.scale_by_adam(
+          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
       _scale_by_learning_rate(learning_rate)
   )
 

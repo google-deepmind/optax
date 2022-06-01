@@ -20,6 +20,7 @@ from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import dpadam
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -198,6 +199,7 @@ __all__ = (
     "cosine_similarity",
     "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",
+    "dpadam",
     "dpsgd",
     "ema",
     "EmaState",

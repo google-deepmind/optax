@@ -88,6 +88,9 @@ class AliasTest(chex.TestCase):
           dict(
               opt_name='dpsgd',
               opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
+          dict(
+              opt_name='dpadam',
+              opt=lambda: alias.dpadam(1e-1, 10.0, 0.001, 0)),
       ),
       target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
@@ -104,7 +107,7 @@ class AliasTest(chex.TestCase):
     @jax.jit
     def step(params, state):
       updates = get_updates(params)
-      if opt_name == 'dpsgd':
+      if opt_name in ['dpsgd', 'dpadam']:
         updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
