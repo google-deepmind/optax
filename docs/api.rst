@@ -461,6 +461,7 @@ Losses
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
+.. autofunction:: softmax_cross_entropy_with_integer_labels
 
 
 
