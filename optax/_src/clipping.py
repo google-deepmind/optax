@@ -106,16 +106,8 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = linear_algebra.global_norm(updates)
-    # TODO(b/163995078): revert back to the following (faster) implementation
-    # once analysed how it affects backprop through update (e.g. meta-gradients)
-    # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
-    trigger = jnp.squeeze(g_norm < max_norm)
-    chex.assert_shape(trigger, ())  # A scalar.
-
-    updates = jax.tree_map(
-        lambda t: jax.lax.select(trigger, t, (t / g_norm) * max_norm), updates)
+    g_norm = jnp.maximum(max_norm, linear_algebra.global_norm(updates))
+    updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
