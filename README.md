@@ -196,11 +196,11 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
 
 After transforming an update using a `GradientTransformation` or any custom
 manipulation of the update, you will typically apply the update to a set
-of parameters. This can be done trivially using `tree_multimap`. 
+of parameters. This can be done trivially using `tree_map`. 
 
 For convenience, we expose an `apply_updates` function to apply updates to
 parameters. The function just adds the updates and the parameters together,
-i.e. `tree_multimap(lambda p, u: p + u, params, updates)`.
+i.e. `tree_map(lambda p, u: p + u, params, updates)`.
 
 ```python
 updates, state = tx.update(grads, state, params)  # transform & update stats.

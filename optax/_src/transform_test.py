@@ -43,6 +43,7 @@ class TransformTest(parameterized.TestCase):
   @chex.all_variants
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
+      ('adamax', transform.scale_by_adamax),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
@@ -61,8 +62,7 @@ class TransformTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
-                      updates)
+    jax.tree_map(lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants()
   def test_add_decayed_weights(self):
@@ -137,6 +137,40 @@ class TransformTest(parameterized.TestCase):
         state.ema,
         (1 - d) * values[1] + d * (1 - d) * values[0],
         atol=1e-2)
+
+  @chex.all_variants()
+  def test_update_infinity_moment(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
+    transform_fn = self.variant(transform.update_infinity_moment)
+
+    # identity if updating with itself (and positive decay)
+    np.testing.assert_allclose(
+        transform_fn(values, values, decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return (decayed) max when updating with zeros
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.),
+        d * values,
+        atol=1e-4
+    )
+    # infinity norm takes absolute values
+    np.testing.assert_allclose(
+        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return at least `eps`
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), jnp.zeros_like(values),
+                     decay=d, eps=1e-2),
+        jnp.ones_like(values) * 1e-2,
+        atol=1e-4
+    )
 
   @chex.all_variants()
   def test_apply_every(self):

@@ -69,6 +69,8 @@ class AliasTest(chex.TestCase):
           dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
           dict(opt_name='adam', opt=lambda: alias.adam(1e-1)),
           dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
+          dict(opt_name='adamax', opt=lambda: alias.adam(1e-1)),
+          dict(opt_name='adamaxw', opt=lambda: alias.adamw(1e-1)),
           dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
           dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
           dict(

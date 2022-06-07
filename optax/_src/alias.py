@@ -257,7 +257,11 @@ def adamw(
       This is needed for instance when computing (meta-)gradients through Adam.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
-    weight_decay: strength of the weight decay regularization.
+    weight_decay: strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
     mask: a tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
@@ -319,7 +323,7 @@ def lars(
 ) -> base.GradientTransformation:
   """The LARS optimiser.
 
-  LAMB is a layer-wise adaptive optimiser introduced to help scale SGD to
+  LARS is a layer-wise adaptive optimiser introduced to help scale SGD to
   larger batch sizes. LARS later inspired the LAMB optimiser.
 
   References:
@@ -667,4 +671,80 @@ def dpsgd(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
       _scale_by_learning_rate(learning_rate)
+  )
+
+
+def adamax(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+) -> base.GradientTransformation:
+  """A variant of the Adam optimizer that uses the infinity norm.
+
+  References:
+    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the maximum of past gradients.
+    eps: a small constant applied to denominator to avoid dividing by zero when
+      rescaling.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adamax(b1=b1, b2=b2, eps=eps,),
+      _scale_by_learning_rate(learning_rate),
+  )
+
+
+def adamaxw(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    weight_decay: float = 1e-4,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+  """Adamax with weight decay regularization.
+
+  AdamaxW uses weight decay to regularise learning towards small weights, as
+  this leads to better generalisation. In SGD you can also use L2 regularisation
+  to implement this as an additive loss term, however L2 regularization
+  does not behave as intended for adaptive gradient algorithms such as Adam.
+
+  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
+  for the bias parameters. You can use `optax.masked` to make your own AdamaxW
+  variant where `additive_weight_decay` is applied only to a subset of `params`.
+
+  References:
+    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the maximum of past gradients.
+    eps: a small constant applied to denominator to avoid dividing by zero when
+      rescaling.
+    weight_decay: strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: a tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adamax gradient transformations are applied to all parameters.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adamax(b1=b1, b2=b2, eps=eps),
+      transform.add_decayed_weights(weight_decay, mask),
+      _scale_by_learning_rate(learning_rate),
   )

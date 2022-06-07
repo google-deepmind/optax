@@ -70,12 +70,14 @@ from optax._src.lookahead import LookaheadState
 from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
 from optax._src.loss import ctc_loss
+from optax._src.loss import ctc_loss_with_forward_probs
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
+from optax._src.loss import softmax_cross_entropy_with_integer_labels
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -110,6 +112,7 @@ from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
+from optax._src.transform import bias_correction
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
@@ -138,6 +141,9 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
+from optax._src.transform import update_infinity_moment
+from optax._src.transform import update_moment
+from optax._src.transform import update_moment_per_elem_norm
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -153,7 +159,7 @@ from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = (
     "adabelief",
@@ -183,6 +189,7 @@ __all__ = (
     "ClipState",
     "constant_schedule",
     "ctc_loss",
+    "ctc_loss_with_forward_probs",
     "control_delta_method",
     "control_variates_jacobians",
     "cosine_decay_schedule",
