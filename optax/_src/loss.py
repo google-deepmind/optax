@@ -360,9 +360,8 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
-def kl_div_loss(predictions: chex.Array,
-                targets: chex.Array,
-                log_targets: bool = False) -> chex.Array:
+def kl_div_loss(log_predictions: chex.Array,
+                targets: chex.Array) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if target probability distribution
@@ -372,19 +371,36 @@ def kl_div_loss(predictions: chex.Array,
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    predictions: Probabilities of predicted distribution with shape [..., dim].
-    Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape [..., dim].
+      Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
-    Expected to be strictly positive.
-    log_targets: Specifies whether targets are given in the log-space.
+      Expected to be strictly positive.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
   """
-  chex.assert_type([predictions, targets], float)
-  if log_targets:
-    loss = jnp.multiply(jnp.exp(targets), jnp.subtract(targets, predictions))
-  else:
-    loss = jnp.multiply(targets, jnp.subtract(jnp.log(targets), predictions))
+  chex.assert_type([log_predictions, targets], float)
+  loss = targets * (jnp.log(targets) - log_predictions)
+  return jnp.sum(loss, axis=-1)
+
+
+def kl_div_loss_with_log_targets(log_predictions: chex.Array,
+                                 log_targets: chex.Array) -> chex.Array:
+  """Computes the Kullback-Leibler divergence (relative entropy) loss.
+
+  Version of kl_div_loss where targets are given in log-space.
+
+  Args:
+    log_predictions: Probabilities of predicted distribution with shape [..., dim].
+      Expected to be in the log-space to avoid underflow.
+    log_targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be in the log-space.
+
+  Returns:
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
+  """
+  chex.assert_type([log_predictions, log_targets], float)
+  loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=-1)
