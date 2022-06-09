@@ -153,6 +153,7 @@ from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
 from optax._src.wrappers import masked
+from optax._src.wrappers import MaskedNode
 from optax._src.wrappers import MaskedState
 from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
