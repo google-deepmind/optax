@@ -20,7 +20,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import linear_algebra
+from optax._src import clipping
 
 
 # pylint:disable=no-value-for-parameter
@@ -63,17 +63,9 @@ def differentially_private_aggregate(
     del params
     grads_flat, grads_treedef = jax.tree_flatten(updates)
     bsize = grads_flat[0].shape[0]
+    clipped = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
 
-    if any(g.ndim == 0 or bsize != g.shape[0] for g in grads_flat):
-      raise ValueError(
-          'Unlike other transforms, `differentially_private_aggregate` expects'
-          ' `updates` to have a batch dimension in the 0th axis. That is, this'
-          ' function expects per-example gradients as input.')
-
-    new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat)+1)
-    global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads_flat)
-    divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
-    clipped = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads_flat]
+    new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
               for g, r in zip(clipped, rngs)]
     return (jax.tree_unflatten(grads_treedef, noised),

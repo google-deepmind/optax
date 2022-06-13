@@ -121,6 +121,36 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
+def per_example_global_norm_clip(grads: chex.Array,
+                                 l2_norm_clip: float) -> chex.Array:
+  """Applies gradient clipping per-example using their global norm.
+
+  WARNING: Unlike other transforms, `per_example_global_norm_clip` expects
+  the grads to have a batch dimension in the 0th axis.
+
+  References:
+    [Abadi et al, 2016](https://arxiv.org/abs/1607.00133)
+
+  Args:
+    grads: Flattened updates.
+    l2_norm_clip: maximum L2 norm of the per-example gradients.
+
+  Returns:
+    Sum of the clipped per-example grads.
+  """
+  bsize = grads[0].shape[0]
+
+  if any(g.ndim == 0 or bsize != g.shape[0] for g in grads):
+    raise ValueError(
+        'Unlike other transforms, `per_example_global_norm_clip` expects'
+        ' `grads` to have a batch dimension in the 0th axis.')
+
+  global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
+  divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
+  clipped_sum = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads]
+  return clipped_sum
+
+
 def unitwise_norm(x: chex.Array) -> chex.Array:
   """Computes norms of each output unit separately."""
   if jnp.squeeze(x).ndim <= 1:  # Scalars and vectors
