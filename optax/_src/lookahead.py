@@ -21,6 +21,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
+from optax._src import utils
 
 # pylint:disable=no-value-for-parameter
 
@@ -60,12 +61,10 @@ class LookaheadParams(NamedTuple):
     return cls(slow=params, fast=params)
 
 
-def lookahead(
-    fast_optimizer: base.GradientTransformation,
-    sync_period: int,
-    slow_step_size: float,
-    reset_state: bool = False
-) -> base.GradientTransformation:
+def lookahead(fast_optimizer: base.GradientTransformation,
+              sync_period: int,
+              slow_step_size: float,
+              reset_state: bool = False) -> base.GradientTransformation:
   """Lookahead optimizer.
 
   Performs steps with a fast optimizer and periodically updates a set of slow
@@ -95,7 +94,7 @@ def lookahead(
   if sync_period < 1:
     raise ValueError('Synchronization period must be >= 1.')
 
-  def init_fn(params: base.Params) -> LookaheadState:
+  def init_fn(params: base.Params, *, extra_kwargs=None) -> LookaheadState:
     try:
       fast_params = params.fast
     except AttributeError:
@@ -107,21 +106,27 @@ def lookahead(
       fast_params = params
 
     return LookaheadState(
-        fast_state=fast_optimizer.init(fast_params),
+        fast_state=utils.maybe_add_extra_kwargs_and_call(
+            fast_optimizer.init, extra_kwargs, fast_params),
         steps_since_sync=jnp.zeros(shape=(), dtype=jnp.int32))
 
-  def update_fn(
-      updates: base.Updates, state: LookaheadState,
-      params: LookaheadParams) -> Tuple[LookaheadParams, LookaheadState]:
-    updates, fast_state = fast_optimizer.update(updates, state.fast_state,
-                                                params.fast)
+  def update_fn(updates: base.Updates,
+                state: LookaheadState,
+                params: LookaheadParams,
+                *,
+                extra_kwargs=None) -> Tuple[LookaheadParams, LookaheadState]:
+    updates, fast_state = utils.maybe_add_extra_kwargs_and_call(
+        fast_optimizer.update, extra_kwargs, updates, state.fast_state,
+        params.fast)
 
     sync_next = (state.steps_since_sync == sync_period - 1)
     updates = _lookahead_update(updates, sync_next, params, slow_step_size)
     if reset_state:
       # Jittable way of resetting the fast optimizer state if parameters will be
       # synchronized after this update step.
-      initial_state = fast_optimizer.init(params.fast)
+      initial_state = utils.maybe_add_extra_kwargs_and_call(
+          fast_optimizer.init, extra_kwargs, params.fast)
+
       fast_state = jax.tree_map(
           lambda current, init: (1 - sync_next) * current + sync_next * init,
           fast_state, initial_state)
@@ -132,9 +137,9 @@ def lookahead(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def _lookahead_update(
-    updates: base.Updates, sync_next: bool, params: LookaheadParams,
-    slow_step_size: float) -> LookaheadParams:
+def _lookahead_update(updates: base.Updates, sync_next: bool,
+                      params: LookaheadParams,
+                      slow_step_size: float) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 
   References:
@@ -180,13 +185,12 @@ def _lookahead_update(
   #   slow_updates = slow_step_size * sync_next * last_difference
   #   fast_updates = updates - (
   #                  1 - slow_step_size) * sync_next * last_difference
-  last_difference = jax.tree_map(
-      lambda f, u, s: f + u - s, params.fast, updates, params.slow)
-  slow_updates = jax.tree_map(
-      lambda diff: slow_step_size * sync_next * diff, last_difference)
+  last_difference = jax.tree_map(lambda f, u, s: f + u - s, params.fast,
+                                 updates, params.slow)
+  slow_updates = jax.tree_map(lambda diff: slow_step_size * sync_next * diff,
+                              last_difference)
   fast_updates = jax.tree_map(
       lambda up, diff: up - sync_next * (1 - slow_step_size) * diff, updates,
       last_difference)
 
   return LookaheadParams(fast=fast_updates, slow=slow_updates)
-

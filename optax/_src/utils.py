@@ -14,6 +14,8 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+import inspect
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -78,13 +80,13 @@ class MultiNormalDiagFromLogScale():
     self._log_scale = log_scale
     self._scale = jnp.exp(log_scale)
     self._mean = loc
-    self._param_shape = jax.lax.broadcast_shapes(
-        self._mean.shape, self._scale.shape)
+    self._param_shape = jax.lax.broadcast_shapes(self._mean.shape,
+                                                 self._scale.shape)
 
   def sample(self, shape, seed):
     sample_shape = shape + self._param_shape
     return jax.random.normal(
-        seed, shape=sample_shape) * self._scale  + self._mean
+        seed, shape=sample_shape) * self._scale + self._mean
 
   def log_prob(self, x):
     log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
@@ -102,7 +104,7 @@ class MultiNormalDiagFromLogScale():
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.Array, scale: float)  -> chex.ArrayTree:
+def _scale_gradient(inputs: chex.Array, scale: float) -> chex.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
@@ -136,6 +138,15 @@ def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
     return jax.lax.stop_gradient(inputs)
   else:
     return _scale_gradient(inputs, scale)
+
+
+def maybe_add_extra_kwargs_and_call(fn, extra_kwargs, *args, **kwargs):
+  """Adds calls `fn` with extra_kwargs, if supported."""
+  if 'extra_kwargs' in inspect.signature(fn).parameters:
+    assert 'extra_kwargs' not in kwargs, kwargs.keys()
+    return fn(*args, extra_kwargs=extra_kwargs, **kwargs)
+  else:
+    return fn(*args, **kwargs)
 
 
 # TODO(b/183800387): remove legacy aliases.

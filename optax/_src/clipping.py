@@ -40,12 +40,12 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return ClipState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     updates = jax.tree_map(lambda g: jnp.clip(g, -max_delta, max_delta),
                            updates)
     return updates, state
@@ -66,12 +66,12 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return base.EmptyState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
 
     def _clip_fn(u):
       clip_denom = jnp.maximum(
@@ -101,12 +101,12 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return ClipByGlobalNormState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     g_norm = linear_algebra.global_norm(updates)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
@@ -201,11 +201,12 @@ def adaptive_grad_clip(clipping: float,
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return AdaptiveGradClipState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     g_norm, p_norm = jax.tree_map(unitwise_norm, (updates, params))

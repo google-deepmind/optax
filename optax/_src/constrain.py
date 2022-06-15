@@ -41,11 +41,12 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return NonNegativeParamsState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
@@ -82,12 +83,13 @@ def zero_nans() -> base.GradientTransformation:
     A `GradientTransformation`.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     return ZeroNansState(
         jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
 
-  def update_fn(updates, opt_state, params=None):
-    del params
+  def update_fn(updates, opt_state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     opt_state = ZeroNansState(
         jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
     updates = jax.tree_map(

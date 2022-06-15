@@ -55,12 +55,12 @@ def differentially_private_aggregate(
   """
   noise_std = l2_norm_clip * noise_multiplier
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return DifferentiallyPrivateAggregateState(rng_key=jax.random.PRNGKey(seed))
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     grads_flat, grads_treedef = jax.tree_flatten(updates)
     bsize = grads_flat[0].shape[0]
     clipped, _ = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)

@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import chex
 import jax
@@ -25,6 +25,7 @@ NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
     'parameters, but you are not passing `params` when calling `update`.')
 
+ExtraKwargs = Mapping[str, Any]
 PyTree = Any
 Shape = Sequence[int]
 
@@ -43,11 +44,16 @@ class TransformInitFn(typing_extensions.Protocol):
   may hold statistics of the past updates or any other non static information.
   """
 
-  def __call__(self, params: Params) -> OptState:
+  def __call__(self,
+               params: Params,
+               *,
+               extra_kwargs: Optional[ExtraKwargs] = None) -> OptState:
     """The `init` function.
 
     Args:
       params: The initial value of the parameters.
+      extra_kwargs: (Optionally) Extra keyword arguments required by specific
+        algorithms.
 
     Returns:
       The initial state of the gradient transformation.
@@ -68,14 +74,18 @@ class TransformUpdateFn(typing_extensions.Protocol):
       self,
       updates: Updates,
       state: OptState,
-      params: Optional[Params] = None
-    ) -> Tuple[Updates, OptState]:
+      params: Optional[Params] = None,
+      *,
+      extra_kwargs: Optional[ExtraKwargs] = None,
+  ) -> Tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
       updates: A tree of candidate updates.
       state: The state of the gradient transformation.
       params: (Optionally) the current value of the parameters.
+      extra_kwargs: (Optionally) Extra keyword arguments required by specific
+        algorithms.
 
     Returns:
       The transformed updates, and the updated state.
@@ -134,11 +144,12 @@ def identity() -> GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(_):
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return EmptyState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     return updates, state
 
   return GradientTransformation(init_fn, update_fn)
@@ -164,38 +175,39 @@ def set_to_zero() -> GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return EmptyState()
 
-  def update_fn(updates, state, params=None):
-    del params  # Unused by the zero transform.
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs  # Unused by the zero transform.
     return jax.tree_map(jnp.zeros_like, updates), state
 
   return GradientTransformation(init_fn, update_fn)
 
 
 def stateless(
-    f: Callable[[Updates, Optional[Params]], Updates],
-) -> GradientTransformation:
+    f: Callable[[Updates, Optional[Params]],
+                Updates],) -> GradientTransformation:
   """Creates a stateless transformation from an update-like function.
 
   This wrapper eliminates the boilerplate needed to create a transformation that
   does not require saved state between iterations.
 
   Args:
-    f: Update function that takes in updates (e.g. gradients) and parameters
-      and returns updates. The parameters may be `None`.
+    f: Update function that takes in updates (e.g. gradients) and parameters and
+      returns updates. The parameters may be `None`.
 
   Returns:
     An `optax.GradientTransformation`.
   """
 
-  def init_fn(_):
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return EmptyState()
 
-  def update_fn(updates, state, params=None):
-    del state
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del state, extra_kwargs
     return f(updates, params), EmptyState()
 
   return GradientTransformation(init_fn, update_fn)
@@ -219,11 +231,12 @@ def stateless_with_tree_map(
     An `optax.GradientTransformation`.
   """
 
-  def init_fn(_):
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return EmptyState()
 
-  def update_fn(updates, state, params=None):
-    del state
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del state, extra_kwargs
     if params is not None:
       return jax.tree_map(f, updates, params), EmptyState()
     else:

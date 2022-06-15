@@ -19,12 +19,11 @@ from typing import Callable, NamedTuple, Union, Mapping, Hashable
 import jax
 
 from optax._src import base
+from optax._src import utils
 from optax._src import wrappers
 
 
-def chain(
-    *args: base.GradientTransformation
-) -> base.GradientTransformation:
+def chain(*args: base.GradientTransformation) -> base.GradientTransformation:
   """Applies a list of chainable update transformations.
 
   Given a sequence of chainable transforms, `chain` returns an `init_fn`
@@ -40,18 +39,36 @@ def chain(
   """
 
   init_fns, update_fns = zip(*args)
+  num_fns = len(init_fns)
 
-  def init_fn(params):
-    return tuple(fn(params) for fn in init_fns)
+  def _unpack_extra_kwargs(extra_kwargs):
+    if extra_kwargs and set(extra_kwargs.keys()) == {'chain'}:  # unique kwargs
+      extra_kwargs_list = extra_kwargs['chain']
+      if len(extra_kwargs_list) != num_fns:
+        raise ValueError(
+            'The number of extra kwargs should match the number of chained '
+            f'transformations, got {len(extra_kwargs_list)} != {num_fns}.')
+    else:  # shared kwargs
+      extra_kwargs_list = (extra_kwargs,) * num_fns
+    return extra_kwargs_list
 
-  def update_fn(updates, state, params=None):
-    if len(update_fns) != len(state):
+  def init_fn(params, *, extra_kwargs=None):
+    extra_kwargs_list = _unpack_extra_kwargs(extra_kwargs)
+    return tuple(
+        utils.maybe_add_extra_kwargs_and_call(fn, extra_kwargs, params)
+        for (fn, extra_kwargs) in zip(init_fns, extra_kwargs_list))
+
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    if len(state) != num_fns:
       raise ValueError('The number of updates and states has to be the same in '
-                       'chain! Make sure you have called init first!')
+                       f'chain, got {num_fns} and {len(state)}.'
+                       'Make sure you have called init first!')
+    extra_kwargs_list = _unpack_extra_kwargs(extra_kwargs)
 
     new_state = []
-    for s, fn in zip(state, update_fns):
-      updates, new_s = fn(updates, s, params)
+    for s, fn, fn_extra_kwargs in zip(state, update_fns, extra_kwargs_list):
+      updates, new_s = utils.maybe_add_extra_kwargs_and_call(
+          fn, fn_extra_kwargs, updates, s, params)
       new_state.append(new_s)
     return updates, tuple(new_state)
 
@@ -120,10 +137,11 @@ def multi_transform(
   Returns:
     An ``optax.GradientTransformation``.
   """
+
   def make_mask(labels, group):
     return jax.tree_map(lambda label: label == group, labels)
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
     labels = param_labels(params) if callable(param_labels) else param_labels
 
     label_set = set(jax.tree_leaves(labels))
@@ -133,18 +151,19 @@ def multi_transform(
                        f'Transforms keys: {list(sorted(transforms.keys()))} \n')
 
     inner_states = {
-        group: wrappers.masked(tx, make_mask(labels, group)).init(params)
+        group: wrappers.masked(tx, make_mask(labels, group)).init(
+            params, extra_kwargs=extra_kwargs)
         for group, tx in transforms.items()
     }
     return MultiTransformState(inner_states)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
     labels = param_labels(updates) if callable(param_labels) else param_labels
     new_inner_state = {}
     for group, tx in transforms.items():
       masked_tx = wrappers.masked(tx, make_mask(labels, group))
       updates, new_inner_state[group] = masked_tx.update(
-          updates, state.inner_states[group], params)
+          updates, state.inner_states[group], params, extra_kwargs=extra_kwargs)
     return updates, MultiTransformState(new_inner_state)
 
   return base.GradientTransformation(init_fn, update_fn)

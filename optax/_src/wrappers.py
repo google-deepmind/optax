@@ -20,13 +20,11 @@ from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 import jax
 from jax import lax
 import jax.numpy as jnp
-from jax.tree_util import tree_flatten
-from jax.tree_util import tree_map
-from jax.tree_util import tree_unflatten
 import numpy as np
 
 from optax._src import base
 from optax._src import numerics
+from optax._src import utils
 
 Array = jnp.ndarray
 
@@ -48,12 +46,12 @@ def flatten(
 
   def _flatten(params):
     """Flattens and concatenates all tensors in params to a single vector."""
-    params, _ = tree_flatten(params)
+    params, _ = jax.tree_flatten(params)
     return jnp.concatenate([jnp.reshape(param, [-1]) for param in params])
 
   def _unflatten(updates, flat):
     """Extracts tensors from flat, using the structure and shapes of params."""
-    updates_flat, treedef = tree_flatten(updates)
+    updates_flat, treedef = jax.tree_flatten(updates)
     offsets = []
     for update in updates_flat:
       size = np.prod(update.shape)
@@ -67,16 +65,17 @@ def flatten(
         jnp.reshape(flat_update, update.shape)
         for flat_update, update in zip(flat_split, updates_flat)
     ]
-    return tree_unflatten(treedef, reshaped)
+    return jax.tree_unflatten(treedef, reshaped)
 
-  def init_fn(params):
-    flat = _flatten(params)
-    return inner.init(flat)
+  def init_fn(params, *, extra_kwargs=None):
+    return utils.maybe_add_extra_kwargs_and_call(inner.init, extra_kwargs,
+                                                 _flatten(params))
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
     if params is not None:
       params = _flatten(params)
-    updates_flat, state = inner.update(_flatten(updates), state, params)
+    updates_flat, state = utils.maybe_add_extra_kwargs_and_call(
+        inner.update, extra_kwargs, _flatten(updates), state, params)
     updates = _unflatten(updates, updates_flat)
     return updates, state
 
@@ -124,16 +123,17 @@ def apply_if_finite(
     New GradientTransformation.
   """
 
-  def init(params):
+  def init(params, *, extra_kwargs=None):
     return ApplyIfFiniteState(
         notfinite_count=jnp.zeros([], jnp.int32),
         last_finite=jnp.array(True, jnp.bool_),
         total_notfinite=jnp.zeros([], jnp.int32),
-        inner_state=inner.init(params))
+        inner_state=utils.maybe_add_extra_kwargs_and_call(
+            inner.init, extra_kwargs, params))
 
-  def update(updates, state, params=None):
+  def update(updates, state, params=None, *, extra_kwargs=None):
     inner_state = state.inner_state
-    flat_updates = tree_flatten(updates)[0]
+    flat_updates = jax.tree_flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
     notfinite_count = jnp.where(
@@ -141,9 +141,11 @@ def apply_if_finite(
         numerics.safe_int32_increment(state.notfinite_count))
 
     def do_update(_):
-      return inner.update(updates, inner_state, params)
+      return utils.maybe_add_extra_kwargs_and_call(inner.update, extra_kwargs,
+                                                   updates, inner_state, params)
+
     def reject_update(_):
-      return (tree_map(jnp.zeros_like, updates), inner_state)
+      return (jax.tree_map(jnp.zeros_like, updates), inner_state)
 
     updates, new_inner_state = lax.cond(
         jnp.logical_or(isfinite, notfinite_count > max_consecutive_errors),
@@ -231,29 +233,31 @@ class MultiSteps:
   def inner_opt(self):
     return self._opt
 
-  def init(self, params: Any) -> MultiStepsState:
-    init_state = MultiStepsState(
+  def init(self, params: Any, *, extra_kwargs=None) -> MultiStepsState:
+    return MultiStepsState(
         mini_step=jnp.zeros([], dtype=jnp.int32),
         gradient_step=jnp.zeros([], dtype=jnp.int32),
-        inner_opt_state=self._opt.init(params),
+        inner_opt_state=utils.maybe_add_extra_kwargs_and_call(
+            self._opt.init, extra_kwargs, params),
         acc_grads=_zeros_tree_like(params))
-    return init_state
 
   def update(self,
              updates: base.Updates,
              state: MultiStepsState,
-             params: Optional[base.Params] = None
-             ) -> Tuple[base.Updates, MultiStepsState]:
+             params: Optional[base.Params] = None,
+             *,
+             extra_kwargs=None) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
-    acc_grads = jax.tree_util.tree_map(
-        functools.partial(self._acc_update, n_acc=state.mini_step),
-        updates, state.acc_grads)
+    acc_grads = jax.tree_map(
+        functools.partial(self._acc_update, n_acc=state.mini_step), updates,
+        state.acc_grads)
 
     def final_step(args):
       del args
-      updates, new_inner_state = self._opt.update(
-          acc_grads, state.inner_opt_state, params=params)
+      updates, new_inner_state = utils.maybe_add_extra_kwargs_and_call(
+          self._opt.update, extra_kwargs, acc_grads, state.inner_opt_state,
+          params)
       new_state = MultiStepsState(
           mini_step=jnp.zeros([], dtype=jnp.int32),
           gradient_step=numerics.safe_int32_increment(state.gradient_step),
@@ -263,8 +267,11 @@ class MultiSteps:
 
     def mid_step(args):
       del args
-      updates_shape_dtype, _ = jax.eval_shape(
-          self._opt.update, acc_grads, state.inner_opt_state, params=params)
+      update_fn = functools.partial(utils.maybe_add_extra_kwargs_and_call,
+                                    self._opt.update)
+      updates_shape_dtype, _ = jax.eval_shape(update_fn, extra_kwargs,
+                                              acc_grads, state.inner_opt_state,
+                                              params)
       updates = jax.tree_map(lambda sd: jnp.zeros(sd.shape, sd.dtype),
                              updates_shape_dtype)
       new_state = MultiStepsState(
@@ -294,8 +301,8 @@ class MaskedNode(NamedTuple):
   """A node used to mask out unspecified parts of a tree.
 
   This node is ignored when mapping functions across the tree e.g. using
-  `jax.tree_util.tree_map` since it is a container without children. It can
-  therefore be used to mask out parts of a tree.
+  `jax.tree_map` since it is a container without children. It can therefore be
+  used to mask out parts of a tree.
   """
 
 
@@ -332,23 +339,28 @@ def masked(
   Returns:
     New GradientTransformation wrapping ``inner``.
   """
-  def mask_pytree(pytree, mask_tree):
-    return tree_map(lambda m, p: p if m else MaskedNode(), mask_tree, pytree)
 
-  def init_fn(params):
+  def mask_pytree(pytree, mask_tree):
+    return jax.tree_map(lambda m, p: p if m else MaskedNode(),
+                        mask_tree, pytree)
+
+  def init_fn(params, *, extra_kwargs=None):
     mask_tree = mask(params) if callable(mask) else mask
     masked_params = mask_pytree(params, mask_tree)
-    return MaskedState(inner_state=inner.init(masked_params))
+    return MaskedState(
+        inner_state=utils.maybe_add_extra_kwargs_and_call(
+            inner.init, extra_kwargs, masked_params))
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
     mask_tree = mask(updates) if callable(mask) else mask
     masked_updates = mask_pytree(updates, mask_tree)
     masked_params = None if params is None else mask_pytree(params, mask_tree)
 
-    new_masked_updates, new_inner_state = inner.update(
-        masked_updates, state.inner_state, masked_params)
+    new_masked_updates, new_inner_state = utils.maybe_add_extra_kwargs_and_call(
+        inner.update, extra_kwargs, masked_updates, state.inner_state,
+        masked_params)
 
-    new_updates = tree_map(
+    new_updates = jax.tree_map(
         lambda m, new_u, old_u: new_u if m else old_u,
         mask_tree, new_masked_updates, updates)
     return new_updates, MaskedState(inner_state=new_inner_state)
@@ -364,8 +376,7 @@ class MaybeUpdateState(NamedTuple):
 
 def maybe_update(
     inner: base.GradientTransformation,
-    should_update_fn: Callable[[Array], Array]
-) -> base.GradientTransformation:
+    should_update_fn: Callable[[Array], Array]) -> base.GradientTransformation:
   """Calls the inner update function only at certain steps.
 
   Creates a transformation wrapper which counts the number of times the `update`
@@ -385,14 +396,18 @@ def maybe_update(
     An `optax.GradientTransformation`.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
     return MaybeUpdateState(
-        inner_state=inner.init(params), step=jnp.zeros([], dtype=jnp.int32))
+        inner_state=utils.maybe_add_extra_kwargs_and_call(
+            inner.init, extra_kwargs, params),
+        step=jnp.zeros([], dtype=jnp.int32))
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
 
     def do_update(_):
-      return inner.update(updates, state.inner_state, params)
+      return utils.maybe_add_extra_kwargs_and_call(inner.update, extra_kwargs,
+                                                   updates, state.inner_state,
+                                                   params)
 
     def reject_update(_):
       return updates, state.inner_state

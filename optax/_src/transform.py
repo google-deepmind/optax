@@ -60,13 +60,14 @@ def trace(
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     return TraceState(
         trace=jax.tree_map(
             lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     f = lambda g, t: g + decay * t
     new_trace = jax.tree_map(f, updates, state.trace)
     updates = (
@@ -146,14 +147,15 @@ def ema(
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     return EmaState(
         count=jnp.zeros([], jnp.int32),
         ema=jax.tree_map(
             lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     updates = new_ema = update_moment(updates, state.ema, decay, order=1)
     count_inc = utils.safe_int32_increment(state.count)
     if debias:
@@ -187,13 +189,14 @@ def scale_by_rss(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     sum_of_squares = jax.tree_map(
         lambda t: jnp.full_like(t, initial_accumulator_value), params)
     return ScaleByRssState(sum_of_squares=sum_of_squares)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     sum_of_squares = jax.tree_map(
         lambda g, t: _abs_sq(g) + t, updates, state.sum_of_squares)
     inv_sqrt_g_square = jax.tree_map(
@@ -229,13 +232,14 @@ def scale_by_rms(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     nu = jax.tree_map(
         lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRmsState(nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
     updates = jax.tree_map(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
@@ -269,14 +273,15 @@ def scale_by_stddev(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     nu = jax.tree_map(
         lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRStdDevState(mu=mu, nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = update_moment(updates, state.mu, decay, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
     updates = jax.tree_map(
@@ -321,14 +326,15 @@ def scale_by_adam(
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     mu = jax.tree_map(  # First moment
         lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
@@ -361,13 +367,14 @@ def scale_by_adamax(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     nu = jax.tree_map(jnp.zeros_like, params)  # Infinite moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     count_inc = numerics.safe_int32_increment(state.count)
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_infinity_moment(updates, state.nu, b2, eps)
@@ -394,12 +401,12 @@ def scale(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return ScaleState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     updates = jax.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
@@ -421,11 +428,12 @@ def scale_by_param_block_norm(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return base.EmptyState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_map(
@@ -451,11 +459,12 @@ def scale_by_param_block_rms(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return base.EmptyState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_map(
@@ -496,13 +505,14 @@ def scale_by_belief(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
     return ScaleByBeliefState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree_map(lambda g, m: g-m, updates, state.mu)
     nu = update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
@@ -545,14 +555,15 @@ def scale_by_yogi(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
     mu = jax.tree_map(value_like, params)  # First moment
     nu = jax.tree_map(value_like, params)  # Second Central moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = update_moment(updates, state.mu, b1, 1)
     nu = jax.tree_map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - _abs_sq(g)) * _abs_sq(g),
@@ -601,13 +612,14 @@ def scale_by_radam(
         lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     mu = jax.tree_map(jnp.zeros_like, params)  # First moment
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
@@ -643,11 +655,12 @@ def add_decayed_weights(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return AddDecayedWeightsState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree_map(
@@ -680,12 +693,12 @@ def scale_by_schedule(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return ScaleByScheduleState(count=jnp.zeros([], jnp.int32))
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     step_size = step_size_fn(state.count)
     updates = jax.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
@@ -723,11 +736,12 @@ def scale_by_trust_ratio(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return ScaleByTrustRatioState()
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
@@ -777,13 +791,13 @@ def add_noise(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return AddNoiseState(
         count=jnp.zeros([], jnp.int32), rng_key=jax.random.PRNGKey(seed))
 
-  def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     num_vars = len(jax.tree_leaves(updates))
     treedef = jax.tree_structure(updates)
     count_inc = numerics.safe_int32_increment(state.count)
@@ -825,12 +839,13 @@ def apply_every(
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     grad_acc = jax.tree_map(jnp.zeros_like, params)
     return ApplyEvery(count=jnp.zeros([], jnp.int32), grad_acc=grad_acc)
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     c = state.count % k
     acc = c != 0
     grad_acc = jax.tree_map(
@@ -863,12 +878,12 @@ def centralize() -> base.GradientTransformation:
     An (init_fn, update_fn) tuple.
   """
 
-  def init_fn(params):
-    del params
+  def init_fn(params, *, extra_kwargs=None):
+    del params, extra_kwargs
     return CentralState()
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     updates = jax.tree_map(_subtract_mean, updates)
     return updates, state
 
@@ -903,7 +918,8 @@ def scale_by_sm3(
   def zeros_for_dim(p):
     return [jnp.zeros([s]) for s in p.shape]
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     _reject_complex(params)
     mu = jax.tree_map(zeros_for_dim, params)
     nu = jax.tree_map(jnp.zeros_like, params)
@@ -931,8 +947,8 @@ def scale_by_sm3(
   def other_axes(idx, ndim):
     return list(range(idx)) + list(range(idx+1, ndim))
 
-  def update_fn(updates, state, params=None):
-    del params
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params, extra_kwargs
     mu = jax.tree_map(
         lambda g, v:  # pylint:disable=g-long-lambda
         [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)],

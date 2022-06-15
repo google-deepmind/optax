@@ -30,6 +30,7 @@ import jax.numpy as jnp
 
 from optax._src import base
 from optax._src import numerics
+from optax._src import utils
 
 
 def constant_schedule(
@@ -581,28 +582,32 @@ def inject_hyperparams(
     def schedule_fn(count, dtype):
       return {k: _convert_floats(f(count), dtype) for k, f in sched_hps.items()}
 
-    def init_fn(params):
+    def init_fn(params, *, extra_kwargs=None):
       count = jnp.zeros([], jnp.int32)
       dtype = getattr(next(iter(jax.tree_leaves(params)), None), 'dtype', None)
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
-          for k, v in numeric_hps.items()}
+          for k, v in numeric_hps.items()
+      }
       hparams.update(schedule_fn(count, dtype))
-      return InjectHyperparamsState(  # pylint:disable=too-many-function-args
-          count, hparams, inner_factory(**other_hps, **hparams).init(params))
+      inner_init_fn = inner_factory(**other_hps, **hparams).init
+      return InjectHyperparamsState(
+          count, hparams,
+          utils.maybe_add_extra_kwargs_and_call(inner_init_fn, extra_kwargs,
+                                                params))
 
-    def update_fn(updates, state, params=None):
+    def update_fn(updates, state, params=None, *, extra_kwargs=None):
       count_inc = numerics.safe_int32_increment(state.count)
       dtype = getattr(next(iter(jax.tree_leaves(updates)), None), 'dtype', None)
-      hparams = {k: _convert_floats(v, dtype)
-                 for k, v in state.hyperparams.items()}
+      hparams = {
+          k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
+      }
       hparams.update(schedule_fn(count_inc, dtype))
-      updates, inner_state = inner_factory(**other_hps, **hparams).update(
-          updates, state.inner_state, params)
+      inner_update_fn = inner_factory(**other_hps, **hparams).update
+      updates, inner_state = utils.maybe_add_extra_kwargs_and_call(
+          inner_update_fn, extra_kwargs, updates, state.inner_state, params)
 
-      # pylint:disable=too-many-function-args
       return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
-      # pylint:enable=too-many-function-args
 
     return base.GradientTransformation(init_fn, update_fn)
 

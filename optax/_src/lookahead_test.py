@@ -45,11 +45,13 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
 
   # Use SGD for simplicity but add non-trivial optimizer state so that the
   # resetting behaviour of lookahead can be tested.
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
+    del extra_kwargs
     aggregate_grads = jax.tree_map(jnp.zeros_like, params)
     return TestOptimizerState(aggregate_grads, is_reset=True)
 
-  def update_fn(updates, state, params):
+  def update_fn(updates, state, params, *, extra_kwargs=None):
+    del extra_kwargs
     # The test optimizer does not use the parameters, but we check that they
     # have been passed correctly.
     chex.assert_trees_all_equal_shapes(updates, params)

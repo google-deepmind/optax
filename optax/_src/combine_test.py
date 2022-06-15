@@ -22,13 +22,53 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
 
-
 STEPS = 50
 LR = 1e-2
+
+
+def _plus_with_extra() -> base.GradientTransformation:
+  """Returns a simple gradient transformation w/ extra_kwargs for testing."""
+
+  def init_fn(params, *, extra_kwargs=None):
+    del params
+
+    # Default.
+    if not extra_kwargs:
+      extra_kwargs = dict(x=1)
+
+    return (extra_kwargs['x'],)
+
+  def update_fn(updates, state, params=None, *, extra_kwargs=None):
+    del params
+
+    # Default.
+    if not extra_kwargs:
+      extra_kwargs = dict(y=0)
+
+    updates = jax.tree_map(lambda x: x + state[0] + extra_kwargs['y'], updates)
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def _plus_no_extra() -> base.GradientTransformation:
+  """Returns a simple gradient transformation w/o extra_kwargs for testing."""
+
+  def init_fn(params):
+    del params
+    return (1,)
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates = jax.tree_map(lambda x: x + state[0], updates)
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 class ComposeTest(chex.TestCase):
@@ -38,12 +78,13 @@ class ComposeTest(chex.TestCase):
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
         transform.trace(decay=0, nesterov=False),
-        transform.scale(-LR)]
+        transform.scale(-LR)
+    ]
 
     # Apply updates with chain.
     chain_params = self.init_params
@@ -74,6 +115,64 @@ class ComposeTest(chex.TestCase):
 
     # Check equivalence.
     chex.assert_tree_all_close(manual_params, chain_params, rtol=1e-4)
+
+  @chex.all_variants
+  def test_chain_with_extra_kwargs_shared(self):
+    transformations = [
+        _plus_no_extra(),
+        _plus_with_extra(),  # shared extra_kwargs
+        _plus_no_extra(),
+        _plus_with_extra(),  # shared extra_kwargs
+    ]
+
+    chained = combine.chain(*transformations)
+
+    @self.variant
+    def update_fn(updates, state, *, extra_kwargs=None):
+      return chained.update(updates, state, extra_kwargs=extra_kwargs)
+
+    params = self.init_params
+    state = chained.init(params, extra_kwargs={'x': 3})
+    for y in range(STEPS):
+      updates, state = update_fn(
+          self.per_step_updates, state, extra_kwargs={'y': y})
+      params = update.apply_updates(params, updates)
+
+    delta = jax.tree_map(lambda x: STEPS * (x + 8) + STEPS * (STEPS - 1),
+                         self.per_step_updates)
+    chex.assert_trees_all_equal(
+        params, jax.tree_map(lambda x, d: x + d, self.init_params, delta))
+
+  @chex.all_variants
+  def test_chain_with_extra_kwargs_list(self):
+    transformations = [
+        _plus_no_extra(),
+        _plus_with_extra(),  # unique extra_kwargs
+        _plus_no_extra(),
+        _plus_with_extra(),  # unique extra_kwargs
+    ]
+
+    chained = combine.chain(*transformations)
+    with self.assertRaisesRegex(ValueError, 'The number of extra kwargs'):
+      chained.init(None, extra_kwargs={'chain': (1, 2, 3)})
+
+    @self.variant
+    def update_fn(updates, state, *, extra_kwargs=None):
+      return chained.update(updates, state, extra_kwargs=extra_kwargs)
+
+    params = self.init_params
+    init_extra_kwargs = {'chain': (None, {'x': 3}, None, {'x': 7})}
+    state = chained.init(params, extra_kwargs=init_extra_kwargs)
+    for y in range(STEPS):
+      extra_kwargs = {'chain': (None, {'y': y}, None, {'y': 3 * y})}
+      updates, state = update_fn(
+          self.per_step_updates, state, extra_kwargs=extra_kwargs)
+      params = update.apply_updates(params, updates)
+
+    delta = jax.tree_map(lambda x: STEPS * (x + 12) + 2 * STEPS * (STEPS - 1),
+                         self.per_step_updates)
+    chex.assert_trees_all_equal(
+        params, jax.tree_map(lambda x, d: x + d, self.init_params, delta))
 
 
 def _map_keys_fn(fn):

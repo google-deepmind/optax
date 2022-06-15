@@ -123,8 +123,9 @@ def scale_by_factored_rms(
         v_col=jax.tree_map(lambda o: o.v_col, result_tree),
         v=jax.tree_map(lambda o: o.v, result_tree))
 
-  def init_fn(params):
+  def init_fn(params, *, extra_kwargs=None):
     """Initialise the optimiser's state."""
+    del extra_kwargs
 
     def _init(param):
       shape = param.shape
@@ -147,8 +148,9 @@ def scale_by_factored_rms(
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree_map(_init, params))
 
-  def update_fn(grads, state, params):
+  def update_fn(grads, state, params=None, *, extra_kwargs=None):
     """Apply gradient transformation."""
+    del extra_kwargs
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
