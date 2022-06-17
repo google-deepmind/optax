@@ -416,7 +416,7 @@ class CTCTest(parameterized.TestCase):
           jnp.array(expected_loss), per_seq_loss[n], rtol=self._rtol)
 
 
-class KLDivLossTest(parameterized.TestCase):
+class KLDivergenceTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -442,7 +442,7 @@ class KLDivLossTest(parameterized.TestCase):
         atol=1e-4)
 
 
-class KLDivLossWithLogTargetsTest(parameterized.TestCase):
+class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()

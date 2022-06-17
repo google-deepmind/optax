@@ -456,7 +456,7 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
-def kl_div_loss(log_predictions: chex.Array,
+def kl_divergence(log_predictions: chex.Array,
                 targets: chex.Array) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -481,8 +481,8 @@ def kl_div_loss(log_predictions: chex.Array,
   return jnp.sum(loss, axis=-1)
 
 
-def kl_div_loss_with_log_targets(log_predictions: chex.Array,
-                                 log_targets: chex.Array) -> chex.Array:
+def kl_divergence_with_log_targets(log_predictions: chex.Array,
+                                   log_targets: chex.Array) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Version of kl_div_loss where targets are given in log-space.
