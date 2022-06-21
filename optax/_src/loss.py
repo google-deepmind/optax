@@ -457,7 +457,7 @@ def ctc_loss(logits: chex.Array,
 
 
 def kl_divergence(log_predictions: chex.Array,
-                targets: chex.Array) -> chex.Array:
+                  targets: chex.Array) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if target probability distribution
