@@ -467,8 +467,8 @@ def kl_divergence(log_predictions: chex.Array,
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    log_predictions: Probabilities of predicted distribution with shape [..., dim].
-      Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape
+      [..., dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
 
@@ -488,8 +488,8 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
   Version of kl_div_loss where targets are given in log-space.
 
   Args:
-    log_predictions: Probabilities of predicted distribution with shape [..., dim].
-      Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape
+      [..., dim]. Expected to be in the log-space to avoid underflow.
     log_targets: Probabilities of target distribution with shape [..., dim].
       Expected to be in the log-space.
 
