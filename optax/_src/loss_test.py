@@ -430,14 +430,14 @@ class KLDivergenceTest(parameterized.TestCase):
   @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(loss.kl_div_loss)(self.log_ps[0], self.qs[0]),
+        self.variant(loss.kl_divergence)(self.log_ps[0], self.qs[0]),
         self.exp[0],
         atol=1e-4)
 
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(loss.kl_div_loss)(self.log_ps, self.qs),
+        self.variant(loss.kl_divergence)(self.log_ps, self.qs),
         self.exp,
         atol=1e-4)
 
@@ -456,14 +456,14 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
   @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(loss.kl_div_loss_with_log_targets)(self.log_ps[0], self.qs[0]),
+        self.variant(loss.kl_divergence_with_log_targets)(self.log_ps[0], self.qs[0]),
         self.exp[0],
         atol=1e-4)
 
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(loss.kl_div_loss_with_log_targets)(self.log_ps, self.qs),
+        self.variant(loss.kl_divergence_with_log_targets)(self.log_ps, self.qs),
         self.exp,
         atol=1e-4)
 
