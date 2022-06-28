@@ -63,7 +63,7 @@ def differentially_private_aggregate(
     del params
     grads_flat, grads_treedef = jax.tree_flatten(updates)
     bsize = grads_flat[0].shape[0]
-    clipped = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
+    clipped, _ = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
