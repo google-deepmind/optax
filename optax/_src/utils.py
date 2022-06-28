@@ -37,7 +37,9 @@ def canonicalize_dtype(dtype: Optional[jnp.dtype]) -> Optional[jnp.dtype]:
     return jax.dtypes.canonicalize_dtype(dtype)
   return dtype
 
-def cast_tree(tree: chex.ArrayTree, dtype: Optional[jnp.dtype]) -> chex.ArrayTree:
+
+def cast_tree(tree: chex.ArrayTree,
+              dtype: Optional[jnp.dtype]) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None."""
   if dtype is not None:
     return jax.tree_map(lambda t: t.astype(dtype), tree)
@@ -78,13 +80,16 @@ class MultiNormalDiagFromLogScale():
     self._param_shape = jax.lax.broadcast_shapes(
         self._mean.shape, self._scale.shape)
 
-  def sample(self, shape: Sequence[int], seed: jax.random.PRNGKey) -> chex.Array:
+  def sample(self, shape: Sequence[int],
+             seed: jax.random.PRNGKey) -> chex.Array:
     sample_shape = shape + self._param_shape
     return jax.random.normal(
         seed, shape=sample_shape) * self._scale  + self._mean
 
   def log_prob(self, x: chex.Array) -> chex.Array:
-    log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
+    log_prob = multivariate_normal.logpdf(x,
+                                          loc=self._mean,
+                                          scale=self._scale)
     # Sum over parameter axes.
     sum_axis = [-(i + 1) for i in range(len(self._param_shape))]
     return jnp.sum(log_prob, axis=sum_axis)
@@ -98,22 +103,25 @@ class MultiNormalDiagFromLogScale():
     return [self._mean, self._log_scale]
 
 
-def multi_normal(loc: chex.Array, log_scale: chex.Array) -> MultiNormalDiagFromLogScale:
+def multi_normal(loc: chex.Array,
+                 log_scale: chex.Array) -> MultiNormalDiagFromLogScale:
   return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.Array, scale: float)  -> chex.ArrayTree:
+def _scale_gradient(inputs: chex.Array, scale: float) -> chex.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
-def _scale_gradient_fwd(inputs: chex.ArrayTree, scale: float) -> Tuple[chex.ArrayTree, float]:
+def _scale_gradient_fwd(inputs: chex.ArrayTree,
+                        scale: float) -> Tuple[chex.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
-def _scale_gradient_bwd(scale: float, g: chex.ArrayTree) -> Tuple[chex.ArrayTree, None]:
+def _scale_gradient_bwd(scale: float,
+                        g: chex.ArrayTree) -> Tuple[chex.ArrayTree, None]:
   return (jax.tree_map(lambda g_: g_ * scale, g), None)
 
 
