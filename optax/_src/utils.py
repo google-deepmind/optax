@@ -45,7 +45,7 @@ def cast_tree(tree: chex.ArrayTree, dtype: Optional[jnp.dtype]) -> chex.ArrayTre
     return tree
 
 
-def set_diags(a: chex.Array, new_diags: chex.Array):
+def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -90,7 +90,7 @@ class MultiNormalDiagFromLogScale():
     return jnp.sum(log_prob, axis=sum_axis)
 
   @property
-  def log_scale(self):
+  def log_scale(self) -> chex.Array:
     return self._log_scale
 
   @property
