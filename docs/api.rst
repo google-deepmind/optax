@@ -371,6 +371,9 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
+    ShouldSkipUpdateFunction
+    skip_large_updates
+    skip_not_finite
 
 
 Apply if Finite

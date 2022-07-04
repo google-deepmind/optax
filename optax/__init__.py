@@ -160,6 +160,9 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
+from optax._src.wrappers import ShouldSkipUpdateFunction
+from optax._src.wrappers import skip_large_updates
+from optax._src.wrappers import skip_not_finite
 
 __version__ = "0.1.2"
 
@@ -287,7 +290,10 @@ __all__ = (
     "set_to_zero",
     "sgd",
     "sgdr_schedule",
+    "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
+    "skip_large_updates",
+    "skip_not_finite",
     "sm3",
     "smooth_labels",
     "softmax_cross_entropy",

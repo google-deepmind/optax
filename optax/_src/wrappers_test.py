@@ -260,6 +260,112 @@ class WrappersTest(parameterized.TestCase):
     self.assertTrue(ms_opt.has_updated(opt_state))
     np.testing.assert_array_equal(new_params['a'], 2.5)
 
+  def test_skip_not_finite(self):
+    step = jnp.zeros([], dtype=jnp.int32)
+
+    with self.subTest('test_pos_inf'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(float('inf')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_neg_inf'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(-float('inf')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_nan'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(float('nan')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_finite'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(11.), jnp.zeros([])], step, None)
+      self.assertFalse(bool(should_skip))
+      self.assertFalse(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 0)
+
+  def test_skip_large_updates(self):
+    step = jnp.zeros([], dtype=jnp.int32)
+
+    with self.subTest('test_inf'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(float('inf')), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), float('inf'))
+
+    with self.subTest('test_nan'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(float('nan')), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      # Recall that NaN != NaN.
+      norm_squared = float(skip_state['norm_squared'])
+      self.assertNotEqual(norm_squared, norm_squared)
+
+    with self.subTest('test_large'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(11.), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), 121.)
+
+    with self.subTest('test_small'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.zeros([]), jnp.zeros([])], step, None, 100.)
+      self.assertFalse(bool(should_skip))
+      self.assertFalse(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), 0.)
+
+  def test_multi_steps_skip_not_finite(self):
+    k_steps = 2
+    ms_opt = wrappers.MultiSteps(
+        alias.sgd(1.), k_steps, should_skip_update_fn=wrappers.skip_not_finite)
+    opt_init, opt_update = ms_opt.gradient_transformation()
+    opt_init = jax.jit(opt_init)
+    opt_update = jax.jit(opt_update)
+    params = dict(a=jnp.zeros([]))
+    opt_state = opt_init(params)
+
+    with self.subTest('test_good_updates'):
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 1)
+      params = update.apply_updates(params, updates)
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_inf_updates'):
+      updates, opt_state = opt_update(
+          dict(a=jnp.array(float('inf'))), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_nan_updates'):
+      updates, opt_state = opt_update(
+          dict(a=jnp.full([], float('nan'))), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_final_good_updates'):
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 1)
+      params = update.apply_updates(params, updates)
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.full([], 2.))
+
 
 class MaskedTest(chex.TestCase):
   """Tests for the masked wrapper."""
