@@ -69,13 +69,13 @@ class Float64Test(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(ALL_MODULES)
-  def test_float32_input_outputs(self, transform_constr, transform_kwargs):
+  def test_mixed_dtype_input_outputs(self, transform_constr, transform_kwargs):
     initial_params = (
         jnp.array([1., 2.], dtype=jnp.float32),
-        jnp.array([3., 4.], dtype=jnp.float32))
+        jnp.array([3., 4.], dtype=jnp.float64))
     updates = (
         jnp.array([10., 21.], dtype=jnp.float32),
-        jnp.array([33., 42.], dtype=jnp.float32))
+        jnp.array([33., 42.], dtype=jnp.float64))
     scaler = transform_constr(**transform_kwargs)
     init_fn = self.variant(scaler.init)
     update_fn = self.variant(scaler.update)
