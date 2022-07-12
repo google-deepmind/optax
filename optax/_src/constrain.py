@@ -49,7 +49,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    updates = jax.tree_map(
+    updates = jax.tree_util.tree_map(
         lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
     return updates, state
 
@@ -83,14 +83,14 @@ def zero_nans() -> base.GradientTransformation:
   """
 
   def init_fn(params):
-    return ZeroNansState(
-        jax.tree_map(lambda p: jnp.array(False, dtype=jnp.bool_), params))
+    return ZeroNansState(jax.tree_util.tree_map(
+        lambda p: jnp.array(False, dtype=jnp.bool_), params))
 
   def update_fn(updates, opt_state, params=None):
     del params
     opt_state = ZeroNansState(
-        jax.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
-    updates = jax.tree_map(
+        jax.tree_util.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
+    updates = jax.tree_util.tree_map(
         lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
     return updates, opt_state
 

@@ -92,35 +92,35 @@ class WrappersTest(parameterized.TestCase):
     params = update.apply_updates(params, updates)
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
-    self.assertEqual(-1., float(jax.tree_flatten(params)[0][0]))
+    self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
     self.assertTrue(bool(state.last_finite))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-1., float(jax.tree_flatten(params)[0][0]))
+      self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
       self.assertFalse(bool(state.last_finite))
       self.assertEqual(step + 1, int(state.notfinite_count))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertEqual(-2., float(jax.tree_flatten(params)[0][0]))
+    self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
     self.assertTrue(bool(state.last_finite))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-2., float(jax.tree_flatten(params)[0][0]))
+      self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
       self.assertFalse(bool(state.last_finite))
       self.assertEqual(step + 1, int(state.notfinite_count))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertTrue(bool(jnp.isnan(jax.tree_flatten(params)[0][0])))
+    self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
     self.assertEqual(5, int(state.total_notfinite))
 
   def test_apply_if_finite_pmap(self):
@@ -145,8 +145,8 @@ class WrappersTest(parameterized.TestCase):
 
     params = fn.init(jax.random.PRNGKey(1905), half)
     opt_state = opt.init(params)
-    params = jax.tree_map(lambda x: x[None], params)
-    opt_state = jax.tree_map(lambda x: x[None], opt_state)
+    params = jax.tree_util.tree_map(lambda x: x[None], params)
+    opt_state = jax.tree_util.tree_map(lambda x: x[None], opt_state)
     # Do one successful param update
     params, opt_state = fn_update(params, opt_state, half)
     self.assertTrue(bool(opt_state.last_finite))
@@ -208,7 +208,8 @@ class WrappersTest(parameterized.TestCase):
       if idx % k_steps < k_steps - 1:
         # The parameters should not have changed and the loss should be
         # constant.
-        jax.tree_map(np.testing.assert_array_equal, new_params, params)
+        jax.tree_util.tree_map(
+            np.testing.assert_array_equal, new_params, params)
         np.testing.assert_equal(new_loss, prev_loss)
         self.assertFalse(ms_opt.has_updated(opt_state))
       else:
@@ -383,12 +384,12 @@ class MaskedTest(chex.TestCase):
             'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
-      return jax.tree_map(
+      return jax.tree_util.tree_map(
           lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
@@ -412,13 +413,13 @@ class MaskedTest(chex.TestCase):
     """Test when the mask is a prefix of the updates PyTree."""
     mask = {'a': True, 'b': False, 'c': {'d': False, 'e': True}}
     params = {'a': 1., 'b': {'f': 2.}, 'c': {'d': 3., 'e': ([4., 5.], 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask (or mask parent) is True
     def _masked_sgd_on_updates(m, upd):
-      return jax.tree_map(lambda x: -x, upd) if m else upd
-    correct_updates = jax.tree_map(
+      return jax.tree_util.tree_map(lambda x: -x, upd) if m else upd
+    correct_updates = jax.tree_util.tree_map(
         _masked_sgd_on_updates, mask, input_updates)
 
     init_fn, update_fn = wrappers.masked(opt_builder(), mask)
@@ -428,7 +429,7 @@ class MaskedTest(chex.TestCase):
     chex.assert_tree_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
-    correct_updates = jax.tree_map(
+    correct_updates = jax.tree_util.tree_map(
         _masked_sgd_on_updates, mask, correct_updates)
     updates, state = update_fn(updates, state)
     chex.assert_tree_all_close(updates, correct_updates)
@@ -440,10 +441,10 @@ class MaskedTest(chex.TestCase):
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
-    correct_updates = jax.tree_map(
+    correct_updates = jax.tree_util.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, input_updates, params)
 
@@ -458,7 +459,7 @@ class MaskedTest(chex.TestCase):
     params = update.apply_updates(params, updates)
 
     # Test repeated application
-    new_correct_updates = jax.tree_map(
+    new_correct_updates = jax.tree_util.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, correct_updates, params)
     updates, state = update_fn(correct_updates, state, params)
@@ -477,7 +478,7 @@ class MaskedTest(chex.TestCase):
             'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
 
     if extra_key_in_mask:
       mask['c']['extra'] = True
@@ -491,13 +492,13 @@ class MaskedTest(chex.TestCase):
   @chex.all_variants
   def test_mask_fn(self):
     params = {'a': jnp.ones((1, 2)), 'b': (jnp.ones((1,)), np.ones((1, 2, 3)))}
-    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
+    mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim > 1, p)
     init_fn, update_fn = wrappers.masked(transform.add_decayed_weights(0.1),
                                          mask_fn)
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)
-    grads = jax.tree_map(lambda x: x*2, params)
+    grads = jax.tree_util.tree_map(lambda x: x*2, params)
     updates, state = update_fn(grads, state, params)
     np.testing.assert_allclose(updates['a'], grads['a'] + 0.1*params['a'])
     np.testing.assert_allclose(updates['b'][0], grads['b'][0])
@@ -515,14 +516,14 @@ class MaskedTest(chex.TestCase):
               'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
               'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
 
-    outer_mask = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
-    inner_mask = jax.tree_map(lambda _: True, params)
+    outer_mask = lambda p: jax.tree_util.tree_map(lambda x: x.ndim > 1, p)
+    inner_mask = jax.tree_util.tree_map(lambda _: True, params)
     inner_mask['linear_2'] = False
 
     inner = wrappers.masked(opt_builder(), inner_mask)
     init_fn, update_fn = wrappers.masked(inner, outer_mask)
 
-    input_updates = jax.tree_map(jnp.ones_like, params)
+    input_updates = jax.tree_util.tree_map(jnp.ones_like, params)
     correct_updates = copy.deepcopy(input_updates)
     correct_updates['linear_1']['w'] *= -1.0
     correct_updates['linear_3']['w'] *= -1.0

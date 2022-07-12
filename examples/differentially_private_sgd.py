@@ -148,7 +148,7 @@ def main(_):
     grad_fn = jax.grad(loss_fn, has_aux=True)
     if FLAGS.dpsgd:
       # Insert dummy dimension in axis 1 to use jax.vmap over the batch
-      batch = jax.tree_map(lambda x: x[:, None], batch)
+      batch = jax.tree_util.tree_map(lambda x: x[:, None], batch)
       # Use jax.vmap across the batch to extract per-example gradients
       grad_fn = jax.vmap(grad_fn, in_axes=(None, 0))
 

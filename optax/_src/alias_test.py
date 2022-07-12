@@ -108,7 +108,7 @@ class AliasTest(chex.TestCase):
         updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
-      updates = jax.tree_map(lambda x: x.conj(), updates)
+      updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
       updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state

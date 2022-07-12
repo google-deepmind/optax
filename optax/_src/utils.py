@@ -39,7 +39,7 @@ def canonicalize_dtype(dtype):
 def cast_tree(tree, dtype):
   """Cast tree to given dtype, skip if None."""
   if dtype is not None:
-    return jax.tree_map(lambda t: t.astype(dtype), tree)
+    return jax.tree_util.tree_map(lambda t: t.astype(dtype), tree)
   else:
     return tree
 
@@ -113,7 +113,7 @@ def _scale_gradient_fwd(inputs, scale):
 
 
 def _scale_gradient_bwd(scale, g):
-  return (jax.tree_map(lambda g_: g_ * scale, g), None)
+  return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)

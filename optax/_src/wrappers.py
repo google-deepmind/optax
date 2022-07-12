@@ -162,7 +162,7 @@ def apply_if_finite(
 
 
 def _zeros_tree_like(inp_tree):
-  return jax.tree_map(jnp.zeros_like, inp_tree)
+  return jax.tree_util.tree_map(jnp.zeros_like, inp_tree)
 
 
 class MultiStepsState(NamedTuple):
@@ -232,7 +232,7 @@ def skip_not_finite(
   """
   del gradient_step, params
   all_is_finite = [jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-                   for p in jax.tree_leaves(updates)]
+                   for p in jax.tree_util.tree_leaves(updates)]
   num_not_finite = jnp.sum(jnp.array(all_is_finite))
   should_skip = num_not_finite > 0
   return should_skip, dict(should_skip=should_skip,
@@ -262,7 +262,7 @@ def skip_large_updates(updates: base.Updates,
   """
   del gradient_step, params
   norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jax.tree_leaves(updates)]))
+      jnp.array([jnp.sum(p**2) for p in jax.tree_util.tree_leaves(updates)]))
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, dict(should_skip=should_skip, norm_squared=norm_sq)
@@ -382,8 +382,8 @@ class MultiSteps:
       del args
       updates_shape_dtype, _ = jax.eval_shape(
           self._opt.update, acc_grads, state.inner_opt_state, params=params)
-      mid_updates = jax.tree_map(lambda sd: jnp.zeros(sd.shape, sd.dtype),
-                                 updates_shape_dtype)
+      mid_updates = jax.tree_util.tree_map(
+          lambda sd: jnp.zeros(sd.shape, sd.dtype), updates_shape_dtype)
       new_state = MultiStepsState(
           mini_step=numerics.safe_int32_increment(state.mini_step),
           gradient_step=state.gradient_step,
@@ -407,7 +407,7 @@ class MultiSteps:
         inner_opt_state=state.inner_opt_state,
         acc_grads=state.acc_grads,
         skip_state=skip_state)
-    zero_updates = jax.tree_map(jnp.zeros_like, updates)
+    zero_updates = jax.tree_util.tree_map(jnp.zeros_like, updates)
     new_updates, new_state = jax.lax.cond(
         should_skip_update,
         (), lambda args: (zero_updates, multi_state_when_skip),
@@ -447,12 +447,12 @@ def masked(
   one dimension. So, you may create a mask function to mask these out as
   follows::
 
-    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim != 1, p)
+    mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim != 1, p)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
 
   You may alternatively create the mask pytree upfront::
 
-    mask = jax.tree_map(lambda x: x.ndim != 1, params)
+    mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
 
   For the ``inner`` transform, state will only be stored for the parameters that

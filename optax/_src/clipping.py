@@ -46,8 +46,8 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_map(lambda g: jnp.clip(g, -max_delta, max_delta),
-                           updates)
+    updates = jax.tree_util.tree_map(
+        lambda g: jnp.clip(g, -max_delta, max_delta), updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -79,7 +79,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
           jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
       return u / clip_denom
 
-    updates = jax.tree_map(_clip_fn, updates)
+    updates = jax.tree_util.tree_map(_clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -111,14 +111,15 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
+    # updates = jax.tree_util.tree_map(
+    #     lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
     chex.assert_shape(trigger, ())  # A scalar.
 
     def clip_fn(t):
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
 
-    updates = jax.tree_map(clip_fn, updates)
+    updates = jax.tree_util.tree_map(clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -210,11 +211,12 @@ def adaptive_grad_clip(clipping: float,
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    g_norm, p_norm = jax.tree_map(unitwise_norm, (updates, params))
+    g_norm, p_norm = jax.tree_util.tree_map(unitwise_norm, (updates, params))
     # Maximum allowable norm.
-    max_norm = jax.tree_map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
+    max_norm = jax.tree_util.tree_map(
+        lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
-    updates = jax.tree_map(unitwise_clip, g_norm, max_norm, updates)
+    updates = jax.tree_util.tree_map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)

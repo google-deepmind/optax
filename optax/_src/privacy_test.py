@@ -34,7 +34,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
     # Example `i`'s grads are full of `i`s. Important to include 0 to ensure
     # there are no divisons by 0 (e.g. in norm clipping)
     a = jnp.arange(self.batch_size)
-    self.per_eg_grads = jax.tree_map(
+    self.per_eg_grads = jax.tree_util.tree_map(
         lambda p: jnp.moveaxis(a * jnp.ones(p.shape+(self.batch_size,)), -1, 0),
         self.params)
 
@@ -47,7 +47,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
         seed=0)
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
-    mean_grads = jax.tree_map(lambda g: g.mean(0), self.per_eg_grads)
+    mean_grads = jax.tree_util.tree_map(lambda g: g.mean(0), self.per_eg_grads)
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state)
@@ -65,13 +65,13 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     # Shape of the three arrays below is (self.batch_size, )
     norms = [jnp.linalg.norm(g.reshape(self.batch_size, -1), axis=1)
-             for g in jax.tree_leaves(self.per_eg_grads)]
+             for g in jax.tree_util.tree_leaves(self.per_eg_grads)]
     global_norms = jnp.linalg.norm(jnp.stack(norms), axis=0)
     divisors = jnp.maximum(global_norms / l2_norm_clip, 1.)
     # Since the values of all the parameters are the same within each example,
     # we can easily compute what the values should be:
     expected_val = jnp.mean(jnp.arange(self.batch_size) / divisors)
-    expected_tree = jax.tree_map(
+    expected_tree = jax.tree_util.tree_map(
         lambda p: jnp.broadcast_to(expected_val, p.shape), self.params)
 
     for _ in range(3):
@@ -103,7 +103,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
                                                       noise_multiplier=1.1,
                                                       seed=2021)
     state = dp_agg.init(self.params)
-    mean_grads = jax.tree_map(lambda g: g.mean(0), self.per_eg_grads)
+    mean_grads = jax.tree_util.tree_map(lambda g: g.mean(0), self.per_eg_grads)
     with self.assertRaises(ValueError):
       dp_agg.update(mean_grads, state, self.params)
 

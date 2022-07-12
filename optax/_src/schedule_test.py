@@ -526,7 +526,7 @@ class InjectHyperparamsTest(chex.TestCase):
     update_fn = self.variant(optim.update)
 
     expected_mom = [0.8]*4 + [0.4]*6 + [0.5]*2
-    grads = jax.tree_map(jnp.ones_like, params)
+    grads = jax.tree_util.tree_map(jnp.ones_like, params)
     for i in range(12):
       np.testing.assert_almost_equal(state.hyperparams['decay'],
                                      expected_mom[i])
@@ -543,7 +543,7 @@ class InjectHyperparamsTest(chex.TestCase):
     state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
 
-    grads = jax.tree_map(jnp.ones_like, params)
+    grads = jax.tree_util.tree_map(jnp.ones_like, params)
     for _ in range(5):
       updates, state = update_fn(grads, state, params)
       np.testing.assert_almost_equal(state.hyperparams['b1'], 0.0)
@@ -574,13 +574,13 @@ class InjectHyperparamsTest(chex.TestCase):
       return wrappers.masked(transform.scale(-learning_rate), mask)
 
     optim = custom_optim(
-        0.1, functools.partial(jax.tree_map, lambda x: x.ndim > 1))
+        0.1, functools.partial(jax.tree_util.tree_map, lambda x: x.ndim > 1))
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
     grads = params
     state = self.variant(optim.init)(params)
     updates, state = self.variant(optim.update)(grads, state)
-    expected_updates = jax.tree_map(lambda x: -0.1 * x if x.ndim > 1 else x,
-                                    grads)
+    expected_updates = jax.tree_util.tree_map(
+        lambda x: -0.1 * x if x.ndim > 1 else x, grads)
 
     assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
     chex.assert_tree_all_close(updates, expected_updates)
