@@ -375,7 +375,7 @@ def scale_by_adamax(
     nu = update_infinity_moment(updates, state.nu, b2, eps)
     # Bias correction for mean. No bias correction needed for infinity moment.
     mu_hat = bias_correction(mu, b1, count_inc)
-    updates = jax.tree_util.tree_multimap(lambda m, v: m / v, mu_hat, nu)
+    updates = jax.tree_util.tree_map(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
