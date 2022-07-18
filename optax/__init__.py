@@ -24,9 +24,11 @@ from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
+from optax._src.alias import ScalarOrSchedule
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -233,6 +235,7 @@ __all__ = (
     "LookaheadParams",
     "LookaheadState",
     "masked",
+    "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
     "maybe_update",
@@ -260,6 +263,7 @@ __all__ = (
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
+    "ScalarOrSchedule",
     "scale_by_adam",
     "scale_by_belief",
     "scale_by_factored_rms",
