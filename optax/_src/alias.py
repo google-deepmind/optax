@@ -239,10 +239,6 @@ def adamw(
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
 
-  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
-  for the bias parameters. You can use `optax.masked` to make your own AdamW
-  variant where `additive_weight_decay` is applied only to a subset of `params`.
-
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
