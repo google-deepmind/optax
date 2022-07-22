@@ -32,16 +32,16 @@ Documentation on Optax can be found at [optax.readthedocs.io](https://optax.read
 
 ## Installation
 
-Optax can be installed with pip directly from GitHub, with the following command:
+You can install the latest released version of Optax from PyPI via:
 
-```shell
-pip install git+git://github.com/deepmind/optax.git
+```sh
+pip install optax
 ```
 
-or from PyPI,
+or you can install the latest development version from GitHub:
 
-```shell
-pip install optax
+```sh
+pip install git+https://github.com/deepmind/optax.git
 ```
 
 ## Quickstart
