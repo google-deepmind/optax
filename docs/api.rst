@@ -141,6 +141,7 @@ Gradient Transforms
     scale_by_adam
     scale_by_belief
     scale_by_factored_rms
+    scale_by_novograd
     scale_by_param_block_norm
     scale_by_param_block_rms
     scale_by_radam
@@ -153,6 +154,7 @@ Gradient Transforms
     scale_by_yogi
     ScaleByAdamState
     ScaleByFromageState
+    ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
     ScaleByRStdDevState
@@ -250,6 +252,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
 .. autofunction:: scale_by_radam
@@ -264,6 +267,9 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByFromageState
+    :members:
+
+.. autoclass:: ScaleByNovogradState
     :members:
 
 .. autoclass:: ScaleByRmsState
