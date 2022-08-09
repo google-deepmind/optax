@@ -76,6 +76,9 @@ class AliasTest(chex.TestCase):
           dict(
               opt_name='noisy_sgd',
               opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
+          dict(
+              opt_name='optimistic_gradient_descent',
+              opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
           dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
           dict(
               opt_name='rmsprop_momentum',
@@ -93,7 +96,8 @@ class AliasTest(chex.TestCase):
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in ('fromage', 'noisy_sgd', 'sm3') and
+    if (opt_name in (
+        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
         jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')

@@ -269,6 +269,27 @@ class TransformTest(parameterized.TestCase):
 
       chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
 
+  def test_scale_by_optimistic_gradient(self):
+
+    def f(params: jnp.ndarray) -> jnp.ndarray:
+      return params['x'] ** 2
+
+    initial_params = {
+        'x': jnp.array(2.0)
+    }
+
+    og = transform.scale_by_optimistic_gradient()
+    og_state = og.init(initial_params)
+    # Provide some arbitrary previous gradient.
+    og_state.trace['x'] = 1.5
+
+    g = jax.grad(f)(initial_params)
+    og_true = 2 * g['x'] - og_state.trace['x']
+    og, og_state = og.update(g, og_state)
+
+    # Compare transformation output with manually computed optimistic gradient.
+    chex.assert_tree_all_close(og_true, og['x'])
+
 
 if __name__ == '__main__':
   absltest.main()

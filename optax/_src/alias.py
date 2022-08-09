@@ -431,6 +431,35 @@ def noisy_sgd(
   )
 
 
+def optimistic_gradient_descent(
+    learning_rate: ScalarOrSchedule,
+    alpha: ScalarOrSchedule = 1.0,
+    beta: ScalarOrSchedule = 1.0
+) -> base.GradientTransformation:
+  """An Optimistic Gradient Descent optimiser.
+
+  Optimistic gradient descent is an approximation of extra-gradient methods
+  which require multiple gradient calls to compute the next update. It has
+  strong formal guarantees for last-iterate convergence in min-max games, for
+  which standard gradient descent can oscillate or even diverge.
+
+  References:
+    [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    alpha: coefficient for generalised OGD.
+    beta: coefficient for generalized OGD negative momentum.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
+      _scale_by_learning_rate(learning_rate)
+  )
+
+
 def radam(
     learning_rate: ScalarOrSchedule,
     b1: float = 0.9,

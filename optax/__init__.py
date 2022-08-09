@@ -26,6 +26,7 @@ from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
+from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import ScalarOrSchedule
@@ -122,6 +123,7 @@ from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam

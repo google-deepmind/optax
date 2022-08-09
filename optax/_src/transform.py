@@ -953,6 +953,37 @@ def scale_by_sm3(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+def scale_by_optimistic_gradient(
+    alpha: float = 1.0,
+    beta: float = 1.0) -> base.GradientTransformation:
+  """Compute generalised optimistic gradients.
+
+  References:
+    [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
+
+  Args:
+    alpha: (float) coefficient for generalized OGD
+    beta: (float) coefficient for negative momentum
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  def init_fn(params):
+    prev_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return TraceState(trace=prev_grads)
+
+  def update_fn(updates, state, params=None):
+    del params
+
+    new_updates = jax.tree_util.tree_map(
+        lambda grad_t, grad_tm1: (alpha + beta) * grad_t - beta * grad_tm1,
+        updates, state.trace)
+    return new_updates, TraceState(trace=updates)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 # TODO(b/183800387): remove legacy aliases.
 # These legacy aliases are here for checkpoint compatibility
 # To be removed once checkpoints have updated.
