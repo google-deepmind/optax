@@ -131,7 +131,7 @@ def identity() -> GradientTransformation:
   to be left unchanged when the updates are applied to them.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(_):
@@ -161,7 +161,7 @@ def set_to_zero() -> GradientTransformation:
   parameters, unnecessary computations will in general be dropped.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
