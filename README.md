@@ -32,16 +32,16 @@ Documentation on Optax can be found at [optax.readthedocs.io](https://optax.read
 
 ## Installation
 
-Optax can be installed with pip directly from GitHub, with the following command:
+You can install the latest released version of Optax from PyPI via:
 
-```shell
-pip install git+git://github.com/deepmind/optax.git
+```sh
+pip install optax
 ```
 
-or from PyPI,
+or you can install the latest development version from GitHub:
 
-```shell
-pip install optax
+```sh
+pip install git+https://github.com/deepmind/optax.git
 ```
 
 ## Quickstart
@@ -227,7 +227,6 @@ the batch dimension(s). This is trivial to do in JAX, for example:
 ```python
 avg_loss = jnp.mean(huber_loss(predictions, targets))
 sum_loss = jnp.sum(huber_loss(predictions, targets))
-
 ```
 
 ### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
@@ -261,18 +260,17 @@ to assess gradient variance.
 Example of how to use the `pathwise_jacobians` estimator:
 
 ```python
-  dist_params = [mean, log_scale]
-  function = lambda x: jnp.sum(x * weights)
-  jacobians = pathwise_jacobians(
-        function, dist_params,
-        utils.multi_normal, rng, num_samples)
+dist_params = [mean, log_scale]
+function = lambda x: jnp.sum(x * weights)
+jacobians = pathwise_jacobians(
+      function, dist_params,
+      utils.multi_normal, rng, num_samples)
 
-  mean_grads = jnp.mean(jacobians[0], axis=0)
-  log_scale_grads = jnp.mean(jacobians[1], axis=0)
-  grads = [mean_grads, log_scale_grads]
-  optim_update, optim_state = optim.update(grads, optim_state)
-  updated_dist_params = optax.apply_updates(dist_params, optim_update)
-
+mean_grads = jnp.mean(jacobians[0], axis=0)
+log_scale_grads = jnp.mean(jacobians[1], axis=0)
+grads = [mean_grads, log_scale_grads]
+optim_update, optim_state = optim.update(grads, optim_state)
+updated_dist_params = optax.apply_updates(dist_params, optim_update)
 ```
 
 where `optim` is an optax optimizer.
@@ -281,17 +279,17 @@ where `optim` is an optax optimizer.
 
 To cite this repository:
 
-```
+```bibtex
 @software{optax2020github,
   author = {Matteo Hessel and David Budden and Fabio Viola and Mihaela Rosca
             and Eren Sezener and Tom Hennigan},
   title = {Optax: composable gradient transformation and optimisation, in JAX!},
   url = {http://github.com/deepmind/optax},
-  version = {0.0.1},
+  version = {0.1.3},
   year = {2020},
 }
 ```
 
 In this bibtex entry, the version number is intended to be from
-[optax/\_\_init\_\_.py](https://github.com/deepmind/optax/blob/master/optax/__init__.py),
-and the year corresponds to the project's open-source release.
+[`optax/__init__.py`](optax/__init__.py), and the year corresponds to the
+project's open-source release.

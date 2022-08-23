@@ -19,3 +19,5 @@ Features may be removed or modified at any time.
 
 from optax._src.experimental.complex_valued import split_real_and_imaginary
 from optax._src.experimental.complex_valued import SplitRealAndImaginaryState
+from optax._src.experimental.extra_args import GradientTransformationWithExtraArgs
+from optax._src.experimental.extra_args import named_chain

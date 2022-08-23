@@ -44,6 +44,11 @@ class L2LossTest(parameterized.TestCase):
     np.testing.assert_allclose(
         self.variant(loss.l2_loss)(self.ys, self.ts), self.exp)
 
+  @chex.all_variants
+  def test_shape_mismatch(self):
+    with self.assertRaises(AssertionError):
+      _ = self.variant(loss.l2_loss)(self.ys, jnp.expand_dims(self.ts, axis=-1))
+
 
 class HuberLossTest(parameterized.TestCase):
 

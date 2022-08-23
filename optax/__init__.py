@@ -24,9 +24,12 @@ from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
+from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
+from optax._src.alias import ScalarOrSchedule
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -120,6 +123,7 @@ from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam
@@ -160,8 +164,11 @@ from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
+from optax._src.wrappers import ShouldSkipUpdateFunction
+from optax._src.wrappers import skip_large_updates
+from optax._src.wrappers import skip_not_finite
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = (
     "adabelief",
@@ -230,6 +237,7 @@ __all__ = (
     "LookaheadParams",
     "LookaheadState",
     "masked",
+    "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
     "maybe_update",
@@ -257,6 +265,7 @@ __all__ = (
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
+    "ScalarOrSchedule",
     "scale_by_adam",
     "scale_by_belief",
     "scale_by_factored_rms",
@@ -287,7 +296,10 @@ __all__ = (
     "set_to_zero",
     "sgd",
     "sgdr_schedule",
+    "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
+    "skip_large_updates",
+    "skip_not_finite",
     "sm3",
     "smooth_labels",
     "softmax_cross_entropy",

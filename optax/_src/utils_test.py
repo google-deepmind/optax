@@ -47,16 +47,19 @@ class ScaleGradientTest(parameterized.TestCase):
 
     def fn(inputs):
       outputs = utils.scale_gradient(inputs, scale)
-      outputs = jax.tree_map(lambda x: x ** 2, outputs)
-      return sum(jax.tree_leaves(outputs))
+      outputs = jax.tree_util.tree_map(lambda x: x ** 2, outputs)
+      return sum(jax.tree_util.tree_leaves(outputs))
 
     inputs = dict(a=-1., b=dict(c=(2.,), d=0.))
 
     grad = jax.grad(fn)
     grads = grad(inputs)
-    jax.tree_map(lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
+    jax.tree_util.tree_map(
+        lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
     self.assertEqual(
-        fn(inputs), sum(jax.tree_leaves(jax.tree_map(lambda x: x**2, inputs))))
+        fn(inputs),
+        sum(jax.tree_util.tree_leaves(
+            jax.tree_util.tree_map(lambda x: x**2, inputs))))
 
 if __name__ == '__main__':
   absltest.main()

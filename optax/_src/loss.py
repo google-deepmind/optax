@@ -50,6 +50,9 @@ def l2_loss(
     elementwise squared differences, with same shape as `predictions`.
   """
   chex.assert_type([predictions], float)
+  if targets is not None:
+    # Avoid broadcasting logic for "-" operator.
+    chex.assert_equal_shape((predictions, targets))
   errors = (predictions - targets) if (targets is not None) else predictions
   return 0.5 * (errors)**2
 

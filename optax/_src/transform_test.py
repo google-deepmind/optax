@@ -62,7 +62,8 @@ class TransformTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_map(lambda *args: chex.assert_equal_shape(args), params, updates)
+    jax.tree_util.tree_map(
+        lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants()
   def test_add_decayed_weights(self):
@@ -223,7 +224,7 @@ class TransformTest(parameterized.TestCase):
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-      manual_updates = jax.tree_map(rescale, updates)
+      manual_updates = jax.tree_util.tree_map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_tree_all_close(scaled_updates, manual_updates)
 
@@ -255,7 +256,7 @@ class TransformTest(parameterized.TestCase):
     state_unit = noise_unit.init(params)
 
     # Check the noise itself by adding it to zeros.
-    updates = jax.tree_map(jnp.zeros_like, params)
+    updates = jax.tree_util.tree_map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
       updates_i, state = self.variant(noise.update)(updates, state)
@@ -263,10 +264,31 @@ class TransformTest(parameterized.TestCase):
 
       scale = jnp.sqrt(eta / i**gamma)
 
-      updates_i_rescaled = jax.tree_map(
+      updates_i_rescaled = jax.tree_util.tree_map(
           lambda g, s=scale: g * s, updates_i_unit)
 
       chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+
+  def test_scale_by_optimistic_gradient(self):
+
+    def f(params: jnp.ndarray) -> jnp.ndarray:
+      return params['x'] ** 2
+
+    initial_params = {
+        'x': jnp.array(2.0)
+    }
+
+    og = transform.scale_by_optimistic_gradient()
+    og_state = og.init(initial_params)
+    # Provide some arbitrary previous gradient.
+    og_state.trace['x'] = 1.5
+
+    g = jax.grad(f)(initial_params)
+    og_true = 2 * g['x'] - og_state.trace['x']
+    og, og_state = og.update(g, og_state)
+
+    # Compare transformation output with manually computed optimistic gradient.
+    chex.assert_tree_all_close(og_true, og['x'])
 
 
 if __name__ == '__main__':

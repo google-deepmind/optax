@@ -64,7 +64,7 @@ def _factored_dims(
 
 @dataclasses.dataclass
 class _UpdateResult:
-  """Opaque containter that is not traversed by jax.tree_map."""
+  """Opaque containter that is not traversed by jax.tree_util.tree_map."""
   update: chex.Array  # the update to apply to params
   v_row: chex.Array  # used for factored params.
   v_col: chex.Array  # used for factored params.
@@ -119,9 +119,9 @@ def scale_by_factored_rms(
     """Maps from a tree of (factored) values to separate trees of values."""
     return FactoredState(
         count=count,
-        v_row=jax.tree_map(lambda o: o.v_row, result_tree),
-        v_col=jax.tree_map(lambda o: o.v_col, result_tree),
-        v=jax.tree_map(lambda o: o.v, result_tree))
+        v_row=jax.tree_util.tree_map(lambda o: o.v_row, result_tree),
+        v_col=jax.tree_util.tree_map(lambda o: o.v_col, result_tree),
+        v=jax.tree_util.tree_map(lambda o: o.v, result_tree))
 
   def init_fn(params):
     """Initialise the optimiser's state."""
@@ -145,7 +145,8 @@ def scale_by_factored_rms(
             v_col=jnp.zeros((1,)),
             v=jnp.zeros(param.shape))
 
-    return _to_state(jnp.zeros([], jnp.int32), jax.tree_map(_init, params))
+    return _to_state(
+        jnp.zeros([], jnp.int32), jax.tree_util.tree_map(_init, params))
 
   def update_fn(grads, state, params):
     """Apply gradient transformation."""
@@ -187,12 +188,12 @@ def scale_by_factored_rms(
       return _UpdateResult(update, new_v_row, new_v_col, new_v)
 
     # Transform grad and compute new per-parameter stats.
-    output = jax.tree_map(
+    output = jax.tree_util.tree_map(
         lambda *args: _update(*args, state.count),
         grads, state.v_row, state.v_col, state.v, params)
 
     # Unpack updates / stats and return.
-    updates = jax.tree_map(lambda o: o.update, output)
+    updates = jax.tree_util.tree_map(lambda o: o.update, output)
     return updates, _to_state(utils.safe_int32_increment(state.count), output)
 
   return base.GradientTransformation(init_fn, update_fn)

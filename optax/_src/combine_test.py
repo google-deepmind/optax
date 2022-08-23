@@ -90,8 +90,8 @@ class MultiTransformTest(chex.TestCase):
   @parameterized.parameters(True, False)
   def test_multi_transform(self, use_fn):
     params = {'a1': 1., 'b1': 2., 'z1': {'a2': 3., 'z2': {'c1': 4.}}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x / 10.0, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
     tx_dict = {'a': transform.scale(-1.0),
                'b': transform.ema(0.0),  # stateful
                'c': transform.scale(2.0)}
@@ -127,7 +127,7 @@ class MultiTransformTest(chex.TestCase):
   def test_labels_mismatch(self, use_extra_label, use_fn):
     # The labels from label_fn must be a subet of the keys for the tx.
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
     label_tree = {'a': 0, 'b': [1, 0], 'c': 1}  # prefix of params
 
     if use_extra_label:
@@ -144,7 +144,7 @@ class MultiTransformTest(chex.TestCase):
         self.variant(init_fn)(params)
     else:
       state = self.variant(init_fn)(params)
-      updates = jax.tree_map(lambda x: x / 10.0, params)
+      updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
       self.variant(update_fn)(updates, state)
 
 

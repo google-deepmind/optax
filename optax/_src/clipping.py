@@ -17,6 +17,7 @@
 Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
+from typing import Tuple
 
 import chex
 import jax
@@ -36,7 +37,7 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
     max_delta: The maximum absolute value for each element in the update.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -45,8 +46,8 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_map(lambda g: jnp.clip(g, -max_delta, max_delta),
-                           updates)
+    updates = jax.tree_util.tree_map(
+        lambda g: jnp.clip(g, -max_delta, max_delta), updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -62,7 +63,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     threshold: The maximum rms for the gradient of each param vector or matrix.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -78,7 +79,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
           jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
       return u / clip_denom
 
-    updates = jax.tree_map(_clip_fn, updates)
+    updates = jax.tree_util.tree_map(_clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -97,7 +98,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     max_norm: The maximum global norm for an update.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -110,33 +111,35 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jax.tree_map(lambda t: (t / g_norm) * max_norm, updates)
+    # updates = jax.tree_util.tree_map(
+    #     lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
     chex.assert_shape(trigger, ())  # A scalar.
 
-    updates = jax.tree_map(
-        lambda t: jax.lax.select(trigger, t, (t / g_norm) * max_norm), updates)
+    def clip_fn(t):
+      return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
+
+    updates = jax.tree_util.tree_map(clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
 
 
 def per_example_global_norm_clip(grads: chex.Array,
-                                 l2_norm_clip: float) -> chex.Array:
+                                 l2_norm_clip: float) -> Tuple[chex.Array, int]:
   """Applies gradient clipping per-example using their global norm.
-
-  WARNING: Unlike other transforms, `per_example_global_norm_clip` expects
-  the grads to have a batch dimension in the 0th axis.
 
   References:
     [Abadi et al, 2016](https://arxiv.org/abs/1607.00133)
 
   Args:
-    grads: Flattened updates.
+    grads: flattened update; the function expects these to have a batch
+      dimension on the 0th axis.
     l2_norm_clip: maximum L2 norm of the per-example gradients.
 
   Returns:
-    Sum of the clipped per-example grads.
+    A tuple containing sum of the clipped per-example grads, and the number of
+    per-example grads that were clipped.
   """
   bsize = grads[0].shape[0]
 
@@ -147,8 +150,9 @@ def per_example_global_norm_clip(grads: chex.Array,
 
   global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
   divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
+  num_clipped = jnp.greater(divisors, 1.0).sum()
   clipped_sum = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads]
-  return clipped_sum
+  return clipped_sum, num_clipped
 
 
 def unitwise_norm(x: chex.Array) -> chex.Array:
@@ -197,7 +201,7 @@ def adaptive_grad_clip(clipping: float,
     eps: An epsilon term to prevent clipping of zero-initialized params.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -207,11 +211,12 @@ def adaptive_grad_clip(clipping: float,
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    g_norm, p_norm = jax.tree_map(unitwise_norm, (updates, params))
+    g_norm, p_norm = jax.tree_util.tree_map(unitwise_norm, (updates, params))
     # Maximum allowable norm.
-    max_norm = jax.tree_map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
+    max_norm = jax.tree_util.tree_map(
+        lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
-    updates = jax.tree_map(unitwise_clip, g_norm, max_norm, updates)
+    updates = jax.tree_util.tree_map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)

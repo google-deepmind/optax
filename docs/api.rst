@@ -14,6 +14,7 @@ Common Optimizers
     lamb
     lars
     noisy_sgd
+    optimistic_gd
     dpsgd
     radam
     rmsprop
@@ -72,6 +73,13 @@ Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
+
+
+Optimistic GD
+~~~~~~~~~~~~~
+
+.. autofunction:: optimistic_gradient_descent
+
 
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,6 +149,7 @@ Gradient Transforms
     scale_by_adam
     scale_by_belief
     scale_by_factored_rms
+    scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
     scale_by_radam
@@ -371,6 +380,9 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
+    ShouldSkipUpdateFunction
+    skip_large_updates
+    skip_not_finite
 
 
 Apply if Finite
@@ -461,6 +473,7 @@ Losses
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
+.. autofunction:: softmax_cross_entropy_with_integer_labels
 
 
 

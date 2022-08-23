@@ -30,6 +30,14 @@ pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-test.txt
 pip install -r requirements/requirements-examples.txt
 
+# Dp-accounting specifies exact minor versions as requirements which sometimes
+# become incompatible with other libraries optax needs. We therefore install
+# dependencies for dp-accounting manually.
+# TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
+# version requirements.
+pip install -r requirements/minimum-requirements-dp-accounting.txt
+pip install "dp-accounting>=0.1.1" --no-deps
+
 # Ensure optax was not installed by one of the dependencies above,
 # since if it is, the tests below will be run against that version instead of
 # the branch build.

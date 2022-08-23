@@ -131,7 +131,7 @@ def identity() -> GradientTransformation:
   to be left unchanged when the updates are applied to them.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(_):
@@ -161,7 +161,7 @@ def set_to_zero() -> GradientTransformation:
   parameters, unnecessary computations will in general be dropped.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -170,7 +170,7 @@ def set_to_zero() -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params  # Unused by the zero transform.
-    return jax.tree_map(jnp.zeros_like, updates), state
+    return jax.tree_util.tree_map(jnp.zeros_like, updates), state
 
   return GradientTransformation(init_fn, update_fn)
 
@@ -225,9 +225,9 @@ def stateless_with_tree_map(
   def update_fn(updates, state, params=None):
     del state
     if params is not None:
-      return jax.tree_map(f, updates, params), EmptyState()
+      return jax.tree_util.tree_map(f, updates, params), EmptyState()
     else:
       f_ = lambda u: f(u, None)
-      return jax.tree_map(f_, updates), EmptyState()
+      return jax.tree_util.tree_map(f_, updates), EmptyState()
 
   return GradientTransformation(init_fn, update_fn)
