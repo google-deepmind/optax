@@ -344,6 +344,66 @@ def scale_by_adam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByAmsgradState(NamedTuple):
+  """State for the AMSGrad algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+  nu: base.Updates
+  nu_max: base.Updates
+
+
+def scale_by_amsgrad(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the AMSGrad algorithm.
+
+  References:
+    [Reddi et al, 2018](https://openreview.net/forum?id=ryQu7f-RZ)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of squared grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # First moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
+    nu_max = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return ScaleByAmsgradState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu,
+                               nu_max=nu_max)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    count_inc = numerics.safe_int32_increment(state.count)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
+    nu_max = jax.tree_util.tree_map(jnp.maximum, state.nu_max, nu_hat)
+    updates = jax.tree_util.tree_map(
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_max)
+    mu = utils.cast_tree(mu, mu_dtype)
+    return updates, ScaleByAmsgradState(count=count_inc, mu=mu, nu=nu,
+                                        nu_max=nu_max)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 def scale_by_adamax(
     b1: float = 0.9,
     b2: float = 0.999,

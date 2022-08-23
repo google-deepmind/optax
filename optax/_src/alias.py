@@ -189,6 +189,7 @@ def adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
+    amsgrad: bool = False,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """The classic Adam optimiser.
@@ -209,15 +210,21 @@ def adam(
     eps_root: (default `0`), a small constant applied to denominator inside the
       square root (as in RMSProp), to avoid dividing by zero when rescaling.
       This is needed for example when computing (meta-)gradients through Adam.
+    amsgrad: (default `False`), whether to use the AMSGrad variant of this
+      algorithm  from the paper:
+      Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     the corresponding `GradientTransformation`.
   """
-  return combine.chain(
+  return combine.chain((
+      transform.scale_by_amsgrad(
+          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype) if
+      amsgrad else
       transform.scale_by_adam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype)),
       _scale_by_learning_rate(learning_rate),
   )
 
