@@ -468,7 +468,13 @@ def novograd(
     the corresponding `GradientTransformation`.
   """
   return combine.chain(
-      transform.scale_by_novograd(b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay),
+      transform.scale_by_novograd(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          weight_decay=weight_decay
+      ),
       _scale_by_learning_rate(learning_rate),
   )
 
