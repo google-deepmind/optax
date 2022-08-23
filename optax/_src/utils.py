@@ -14,7 +14,7 @@
 # ==============================================================================
 """Utility functions for testing."""
 
-from typing import Optional, Tuple, List, Sequence
+from typing import Optional, Tuple, Sequence
 
 import chex
 import jax
@@ -31,7 +31,7 @@ def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
   return jnp.expand_dims(ones, axis=-2) * a
 
 
-def canonicalize_dtype(dtype: Optional[jnp.dtype]) -> Optional[jnp.dtype]:
+def canonicalize_dtype(dtype: Optional[chex.ArrayDType]) -> Optional[chex.ArrayDType]:
   """Canonicalise a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
@@ -39,7 +39,7 @@ def canonicalize_dtype(dtype: Optional[jnp.dtype]) -> Optional[jnp.dtype]:
 
 
 def cast_tree(tree: chex.ArrayTree,
-              dtype: Optional[jnp.dtype]) -> chex.ArrayTree:
+              dtype: Optional[chex.ArrayDType]) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None."""
   if dtype is not None:
     return jax.tree_map(lambda t: t.astype(dtype), tree)
@@ -81,7 +81,7 @@ class MultiNormalDiagFromLogScale():
         self._mean.shape, self._scale.shape)
 
   def sample(self, shape: Sequence[int],
-             seed: jax.random.PRNGKey) -> chex.Array:
+             seed: chex.PRNGKey) -> chex.Array:
     sample_shape = shape + self._param_shape
     return jax.random.normal(
         seed, shape=sample_shape) * self._scale  + self._mean
@@ -99,7 +99,7 @@ class MultiNormalDiagFromLogScale():
     return self._log_scale
 
   @property
-  def params(self) -> List[chex.Array]:
+  def params(self) -> Sequence[chex.Array]:
     return [self._mean, self._log_scale]
 
 
@@ -109,7 +109,7 @@ def multi_normal(loc: chex.Array,
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.Array, scale: float) -> chex.ArrayTree:
+def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
