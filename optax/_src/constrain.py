@@ -38,7 +38,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
   When params is negative the transformed update will move them to 0.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):

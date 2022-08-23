@@ -37,7 +37,7 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
     max_delta: The maximum absolute value for each element in the update.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -63,7 +63,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     threshold: The maximum rms for the gradient of each param vector or matrix.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -98,7 +98,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     max_norm: The maximum global norm for an update.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -201,7 +201,7 @@ def adaptive_grad_clip(clipping: float,
     eps: An epsilon term to prevent clipping of zero-initialized params.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):

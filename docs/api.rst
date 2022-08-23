@@ -14,6 +14,7 @@ Common Optimizers
     lamb
     lars
     noisy_sgd
+    optimistic_gd
     dpsgd
     radam
     rmsprop
@@ -72,6 +73,13 @@ Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
+
+
+Optimistic GD
+~~~~~~~~~~~~~
+
+.. autofunction:: optimistic_gradient_descent
+
 
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,6 +150,7 @@ Gradient Transforms
     scale_by_belief
     scale_by_factored_rms
     scale_by_novograd
+    scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
     scale_by_radam
