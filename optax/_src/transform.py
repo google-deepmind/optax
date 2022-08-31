@@ -958,20 +958,29 @@ class ScaleByOnlineNewtonStepState(NamedTuple):
   hessian_inv: base.Updates
 
 
-def sherman_morrison(a_inv, u):
-  """Sherman Morrison formula to compute the inverse of the sum of an invertible
-   matrix and the outer product of two vectors.
+def sherman_morrison(a_inv: chex.Array, u: chex.Array) -> chex.Array:
+  """Sherman Morrison formula
 
-   The formula is used in the "Online Newton Step" gradient update method.
-   """
-  den = 1.0 + (u.T @ a_inv @ u)
-  a_inv -= a_inv @ jnp.outer(u, u) @ a_inv / den
+  Compute the inverse of the sum of an invertible matrix and the outer product
+  of two vectors. The formula is used in the "Online Newton Step" gradient
+  update method.
+
+  Args:
+    a_inv : inversed matrix
+    u : vector used for the rank-one update.
+
+  Returns:
+    Updated inversed matrix.
+  """
+  denominator = 1.0 + (u.T @ a_inv @ u)
+  a_inv -= a_inv @ jnp.outer(u, u) @ a_inv / denominator
   return a_inv
 
 
 def scale_by_online_newton_step(eps: float) -> base.GradientTransformation:
-  """Rescale the updates by multiplying them by the inverse of a hessian
-  approximation.
+  """Rescale the updates with the Online Newton Step update.
+
+  Multiply updates by the inverse of a hessian approximation.
 
   (see the description of the ONS in Fig. 2 p. 176 of the reference below).
 
