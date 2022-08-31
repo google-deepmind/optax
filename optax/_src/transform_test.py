@@ -278,10 +278,10 @@ class TransformTest(parameterized.TestCase):
     rng, sub_rng = jax.random.split(rng)
     u = jax.random.normal(sub_rng, (3,))
 
-    ref = jnp.linalg.inv(a + jnp.outer(u, u))
+    correct_inverse = jnp.linalg.inv(a + jnp.outer(u, u))
     a_inv = jnp.linalg.inv(a)
     a_inv = transform.sherman_morrison(a_inv, u)
-    np.testing.assert_allclose(a_inv, ref, rtol=1e-5)
+    np.testing.assert_allclose(a_inv, correct_inverse, rtol=1e-5)
 
   def test_scale_by_online_newton_step(self):
     eps = 5.
