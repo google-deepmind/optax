@@ -1007,7 +1007,7 @@ def scale_by_online_newton_step(eps: float) -> base.GradientTransformation:
     hessian_inv = jax.tree_map(
         sherman_morrison, state.hessian_inv, flattened_updates
     )
-    flattened_updates = jax.tree_map(lambda hinv, g: hinv @ g, hessian_inv, flattened_updates)
+    flattened_updates = jax.tree_map(lambda h_inv, g: h_inv @ g, hessian_inv, flattened_updates)
     updates = jax.tree_map(lambda flat_u, u: flat_u.reshape(u.shape),
                                 flattened_updates, updates)
     return updates, ScaleByOnlineNewtonStepState(hessian_inv=hessian_inv)
