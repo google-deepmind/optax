@@ -433,7 +433,7 @@ def noisy_sgd(
 
 def online_newton_step(learning_rate: ScalarOrSchedule,
                        eps: float) -> base.GradientTransformation:
-    """Online Newton Step optimizer.
+  """Online Newton Step optimizer.
 
   (see the description of the ONS in Fig. 2 p. 176 of the reference below).
 
@@ -450,7 +450,7 @@ def online_newton_step(learning_rate: ScalarOrSchedule,
   Returns:
     the corresponding `GradientTransformation`.
 
-    """
+  """
   return combine.chain(
     transform.scale_by_online_newton_step(eps=eps),
     _scale_by_learning_rate(learning_rate),

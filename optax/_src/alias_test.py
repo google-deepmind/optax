@@ -143,8 +143,7 @@ class AliasTest(chex.TestCase):
     self.assertEqual(expected_dtype, adam_state.mu.dtype)
 
   def test_online_newton_step_decreases_loss(self):
-    """We check that the online newton step update decrease a loss function.
-    """
+    """Checks that the online newton step update decreases the loss."""
 
     def loss(w):
       return -(w * x).sum() + (w ** 2).sum()
