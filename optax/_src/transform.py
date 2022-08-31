@@ -970,20 +970,23 @@ def sherman_morrison(a_inv, u):
 
 
 def scale_by_online_newton_step(eps: float) -> base.GradientTransformation:
-  # pylint: disable=line-too-long
-  """Rescale the updates by multiplying them by the inverse of a hessian approximation
+  """Rescale the updates by multiplying them by the inverse of a hessian
+  approximation.
+
   (see the description of the ONS in Fig. 2 p. 176 of the reference below).
 
   References:
-    Hazan, E., Agarwal, A. and Kale, S., 2007. Logarithmic regret algorithms for online convex optimization. Machine Learning, 69(2-3), pp.169-192 : https://link.springer.com/content/pdf/10.1007/s10994-007-5016-8.pdf
+    Hazan, E., Agarwal, A. and Kale, S., 2007. Logarithmic regret algorithms for
+    online convex optimization. Machine Learning, 69(2-3), pp.169-192 :
+    https://link.springer.com/content/pdf/10.1007/s10994-007-5016-8.pdf
 
   Args:
     eps: A floating point value to avoid zero denominator.
 
   Returns:
     An (init_fn, update_fn) tuple.
-  """
 
+  """
   def init_fn(params):
     hessian_inv = jax.tree_map(
         lambda t: jnp.eye(len(t.flatten()), dtype=t.dtype) / eps, params

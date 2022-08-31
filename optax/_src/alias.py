@@ -433,12 +433,14 @@ def noisy_sgd(
 
 def online_newton_step(learning_rate: ScalarOrSchedule,
                        eps: float) -> base.GradientTransformation:
-  # pylint: disable=line-too-long
-  """Online Newton Step optimizer.
+    """Online Newton Step optimizer.
+
   (see the description of the ONS in Fig. 2 p. 176 of the reference below).
 
   References:
-    Hazan, E., Agarwal, A. and Kale, S., 2007. Logarithmic regret algorithms for online convex optimization. Machine Learning, 69(2-3), pp.169-192 : https://link.springer.com/content/pdf/10.1007/s10994-007-5016-8.pdf
+    Hazan, E., Agarwal, A. and Kale, S., 2007. Logarithmic regret algorithms for
+    online convex optimization. Machine Learning, 69(2-3), pp.169-192 :
+    https://link.springer.com/content/pdf/10.1007/s10994-007-5016-8.pdf
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -447,7 +449,8 @@ def online_newton_step(learning_rate: ScalarOrSchedule,
 
   Returns:
     the corresponding `GradientTransformation`.
-  """
+
+    """
   return combine.chain(
     transform.scale_by_online_newton_step(eps=eps),
     _scale_by_learning_rate(learning_rate),
