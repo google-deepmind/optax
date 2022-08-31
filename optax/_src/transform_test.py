@@ -304,15 +304,10 @@ class TransformTest(parameterized.TestCase):
     state = step.init(params)
     updates, state = step.update(grad, state)
 
-    u = (w @ x) * x
-
-    # check that step.update applied the sherman_morrison
-    ref = transform.sherman_morrison(jnp.eye(3) / eps, u) @ u
-    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
-
     # check Sherman-Morrison formula
-    ref = jnp.linalg.inv(jnp.eye(3) * eps + jnp.outer(u, u)) @ u
-    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
+    u = (w @ x) * x
+    correct_weights = jnp.linalg.inv(jnp.eye(3) * eps + jnp.outer(u, u)) @ u
+    np.testing.assert_allclose(correct_weights, updates['weights'], rtol=1e-6)
 
   def test_scale_by_online_newton_step_with_multidimentional_weights(self):
     eps = 5.
@@ -335,17 +330,11 @@ class TransformTest(parameterized.TestCase):
     state = step.init(params)
     updates, state = step.update(grad, state)
 
-    u = grad['weights'].flatten()  # (w * x).sum() * x
-
-    # check that step.update applied the sherman_morrison
-    ref = transform.sherman_morrison(jnp.eye(3*2) / eps, u)@u
-    ref = ref.reshape((3, 2))
-    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
-
     # check Sherman-Morrison formula
-    ref = jnp.linalg.inv(jnp.eye(3*2) * eps + jnp.outer(u, u)) @ u
-    ref = ref.reshape((3, 2))
-    np.testing.assert_allclose(ref, updates['weights'], rtol=1e-6)
+    u = grad['weights'].flatten()  # (w * x).sum() * x
+    correct_weights = jnp.linalg.inv(jnp.eye(3*2) * eps + jnp.outer(u, u)) @ u
+    correct_weights = correct_weights.reshape((3, 2))
+    np.testing.assert_allclose(correct_weights, updates['weights'], rtol=1e-6)
 
   def test_scale_by_optimistic_gradient(self):
 
