@@ -283,9 +283,14 @@ class TransformTest(parameterized.TestCase):
     a_inv = transform.sherman_morrison(a_inv, u)
     np.testing.assert_allclose(a_inv, correct_inverse, rtol=1e-5)
 
+  @chex.all_variants()
   def test_scale_by_online_newton_step(self):
     eps = 5.
     step = scale_by_online_newton_step(eps)
+    init_fn = self.variant(step.init)
+    transform_fn = self.variant(step.update)
+    del step
+
     rng = jax.random.PRNGKey(42)
 
     rng, sub_rng = jax.random.split(rng)
@@ -301,17 +306,22 @@ class TransformTest(parameterized.TestCase):
 
     grad = jax.grad(fun)(params, x)
 
-    state = step.init(params)
-    updates, state = step.update(grad, state)
+    state = init_fn(params)
+    updates, state = transform_fn(grad, state)
 
     # check Sherman-Morrison formula
     u = (w @ x) * x
     correct_weights = jnp.linalg.inv(jnp.eye(3) * eps + jnp.outer(u, u)) @ u
     np.testing.assert_allclose(correct_weights, updates['weights'], rtol=1e-6)
 
+  @chex.all_variants()
   def test_scale_by_online_newton_step_with_multidimentional_weights(self):
     eps = 5.
     step = scale_by_online_newton_step(eps)
+    init_fn = self.variant(step.init)
+    transform_fn = self.variant(step.update)
+    del step
+
     rng = jax.random.PRNGKey(42)
 
     rng, sub_rng = jax.random.split(rng)
@@ -327,8 +337,8 @@ class TransformTest(parameterized.TestCase):
 
     grad = jax.grad(fun)(params, x)
 
-    state = step.init(params)
-    updates, state = step.update(grad, state)
+    state = init_fn(params)
+    updates, state = transform_fn(grad, state)
 
     # check Sherman-Morrison formula
     u = grad['weights'].flatten()  # (w * x).sum() * x
