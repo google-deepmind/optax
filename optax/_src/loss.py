@@ -503,3 +503,16 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
   chex.assert_type([log_predictions, log_targets], float)
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=-1)
+
+def hinge_loss(predictions: chex.Array, targets: chex.Array) -> chex.Array:
+  """
+  Docstring
+  """
+  assert predictions.shape[0] == targets.shape[0], "Predictions and Target lengths must be consistent."
+
+  # Binary Case
+  new_predictions = jnp.array([-1 if i == 0 else i for i in predictions])
+  new_targets = jnp.array([-1 if i == 0 else i for i in targets])
+
+  loss = jnp.mean([jnp.maximum(jnp.array([0]), 1-x*y) for x, y in zip(new_targets, new_predictions)])
+  return loss
