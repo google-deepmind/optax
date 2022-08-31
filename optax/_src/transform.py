@@ -994,7 +994,6 @@ def scale_by_online_newton_step(eps: float) -> base.GradientTransformation:
 
   Returns:
     An (init_fn, update_fn) tuple.
-
   """
   def init_fn(params):
     hessian_inv = jax.tree_map(
