@@ -335,6 +335,69 @@ def scale_by_adam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByAdanState(NamedTuple):
+  """State for the Adan algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  m: base.Updates
+  v: base.Updates
+  n: base.Updates
+  pre_grad: base.Updates
+
+
+def scale_by_adan(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    b3: float = 0.8,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adan algorithm.
+
+  References:
+    [Xie et al, 2022](https://arxiv.org/abs/2208.06677)
+
+  Args:
+    b1: decay rate for the exponentially weighted average of grads.
+    b2: decay rate for the exponentially weighted average of squared grads.
+    b3: decay rate for the exponentially weighted average of squared grads.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    m = jax.tree_map(  # First moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    v = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    n = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    pre_grad = jax.tree_map(jnp.zeros_like, params)  # Previous gradient
+    return ScaleByAdanState(count=jnp.zeros([], jnp.int32), m=m, v=v, n=n, pre_grad=pre_grad)
+
+  def update_fn(updates, state, params=None):
+    del params
+    diff = jax.tree_map(lambda x, y: x - y, updates, state.pre_grad)
+    m = _update_moment(updates, state.m, b1, 1)
+    n = _update_moment(diff, state.n, b3, 1)
+    v = _update_moment_per_elem_norm(n, state.v, b2, 2)
+    count_inc = numerics.safe_int32_increment(state.count)
+    m_hat = utils.cast_tree(_bias_correction(m, b1, count_inc), mu_dtype)
+    n_hat = _bias_correction(n, b3, count_inc)
+    v_hat = _bias_correction(v, b2, count_inc)
+    updates = jax.tree_multimap(
+        lambda x, y, z: (x + y) / (jnp.sqrt(z + eps_root) + eps), m_hat, n_hat, v_hat)
+    return updates, ScaleByAdanState(count=count_inc, m=m, v=v, n=n, pre_grad=updates)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 ScaleState = base.EmptyState
 
 
