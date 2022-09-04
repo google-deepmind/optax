@@ -66,12 +66,11 @@ import warnings
 
 from absl import app
 from absl import flags
+import dp_accounting
 import jax
 from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -112,9 +111,10 @@ def compute_epsilon(steps, target_delta=1e-5):
     warnings.warn('Your delta might be too high.')
   q = FLAGS.batch_size / float(NUM_EXAMPLES)
   orders = list(jnp.linspace(1.1, 10.9, 99)) + list(range(11, 64))
-  rdp_const = compute_rdp(q, FLAGS.noise_multiplier, steps, orders)
-  eps, _, _ = get_privacy_spent(orders, rdp_const, target_delta=target_delta)
-  return eps
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
+  accountant.compose(dp_accounting.PoissonSampledDpEvent(
+      q, dp_accounting.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
+  return accountant.get_epsilon(target_delta)
 
 
 def loss_fn(params, batch):
@@ -148,7 +148,7 @@ def main(_):
     grad_fn = jax.grad(loss_fn, has_aux=True)
     if FLAGS.dpsgd:
       # Insert dummy dimension in axis 1 to use jax.vmap over the batch
-      batch = jax.tree_map(lambda x: x[:, None], batch)
+      batch = jax.tree_util.tree_map(lambda x: x[:, None], batch)
       # Use jax.vmap across the batch to extract per-example gradients
       grad_fn = jax.vmap(grad_fn, in_axes=(None, 0))
 

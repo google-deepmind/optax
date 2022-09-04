@@ -46,44 +46,51 @@ def trace(
 
   Note: `trace` and `ema` have very similar but distinct updates;
   `trace = decay * trace + t`, while `ema = decay * ema + (1-decay) * t`.
-  Both are frequently found in the optimisation literature.
+  Both are frequently found in the optimization literature.
 
   Args:
-    decay: the decay rate for the trace of past updates.
-    nesterov: whether to use Nesterov momentum.
-    accumulator_dtype: optional `dtype` to be used for the accumulator; if
+    decay: Decay rate for the trace of past updates.
+    nesterov: Whether to use Nesterov momentum.
+    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
   def init_fn(params):
     return TraceState(
-        trace=jax.tree_map(
+        trace=jax.tree_util.tree_map(
             lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
 
   def update_fn(updates, state, params=None):
     del params
     f = lambda g, t: g + decay * t
-    new_trace = jax.tree_multimap(f, updates, state.trace)
+    new_trace = jax.tree_util.tree_map(f, updates, state.trace)
     updates = (
-        jax.tree_multimap(f, updates, new_trace) if nesterov else new_trace)
+        jax.tree_util.tree_map(f, updates, new_trace) if nesterov
+        else new_trace)
     new_trace = utils.cast_tree(new_trace, accumulator_dtype)
     return updates, TraceState(trace=new_trace)
 
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def _update_moment(updates, moments, decay, order):
+def update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order`-th moment."""
-  return jax.tree_multimap(
+  return jax.tree_util.tree_map(
       lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
 
 
-def _update_moment_per_elem_norm(updates, moments, decay, order):
+def update_infinity_moment(updates, moments, decay, eps):
+  """Compute the exponential moving average of the infinity norm."""
+  return jax.tree_util.tree_map(
+      lambda g, t: jnp.maximum(jnp.abs(g) + eps, decay * t), updates, moments)
+
+
+def update_moment_per_elem_norm(updates, moments, decay, order):
   """Compute the EMA of the `order`-th moment of the element-wise norm."""
 
   def orderth_norm(g):
@@ -96,18 +103,19 @@ def _update_moment_per_elem_norm(updates, moments, decay, order):
         half_order = int(half_order)
       return _abs_sq(g) ** half_order
 
-  return jax.tree_multimap(
+  return jax.tree_util.tree_map(
       lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
 
 
-def _bias_correction(moment, decay, count):
+def bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
-  bias_correction = 1 - decay**count
-  return jax.tree_map(lambda t: t / bias_correction.astype(t.dtype), moment)
+  bias_correction_ = 1 - decay**count
+  return jax.tree_util.tree_map(
+      lambda t: t / bias_correction_.astype(t.dtype), moment)
 
 
 def _reject_complex(params):
-  if any(jnp.iscomplexobj(x) for x in jax.tree_leaves(params)):
+  if any(jnp.iscomplexobj(x) for x in jax.tree_util.tree_leaves(params)):
     raise ValueError('This transformation does not support complex parameters.')
 
 
@@ -126,16 +134,16 @@ def ema(
 
   Note: `trace` and `ema` have very similar but distinct updates;
   `ema = decay * ema + (1-decay) * t`, while `trace = decay * trace + t`.
-  Both are frequently found in the optimisation literature.
+  Both are frequently found in the optimization literature.
 
   Args:
-    decay: the decay rate for the exponential moving average.
-    debias: whether to debias the transformed gradient.
-    accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
+    decay: Decay rate for the exponential moving average.
+    debias: Whether to debias the transformed gradient.
+    accumulator_dtype: Optional `dtype` to used for the accumulator; if `None`
       then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
@@ -143,15 +151,15 @@ def ema(
   def init_fn(params):
     return EmaState(
         count=jnp.zeros([], jnp.int32),
-        ema=jax.tree_map(
+        ema=jax.tree_util.tree_map(
             lambda t: jnp.zeros_like(t, dtype=accumulator_dtype), params))
 
   def update_fn(updates, state, params=None):
     del params
-    updates = new_ema = _update_moment(updates, state.ema, decay, order=1)
+    updates = new_ema = update_moment(updates, state.ema, decay, order=1)
     count_inc = utils.safe_int32_increment(state.count)
     if debias:
-      updates = _bias_correction(new_ema, decay, count_inc)
+      updates = bias_correction(new_ema, decay, count_inc)
     state_ema = utils.cast_tree(new_ema, accumulator_dtype)
     return updates, EmaState(count=count_inc, ema=state_ema)
 
@@ -178,21 +186,21 @@ def scale_by_rss(
     eps: A small floating point value to avoid zero denominator.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
-    sum_of_squares = jax.tree_map(
+    sum_of_squares = jax.tree_util.tree_map(
         lambda t: jnp.full_like(t, initial_accumulator_value), params)
     return ScaleByRssState(sum_of_squares=sum_of_squares)
 
   def update_fn(updates, state, params=None):
     del params
-    sum_of_squares = jax.tree_multimap(
+    sum_of_squares = jax.tree_util.tree_map(
         lambda g, t: _abs_sq(g) + t, updates, state.sum_of_squares)
-    inv_sqrt_g_square = jax.tree_map(
+    inv_sqrt_g_square = jax.tree_util.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), sum_of_squares)
-    updates = jax.tree_multimap(
+    updates = jax.tree_util.tree_map(
         lambda scale, g: scale * g, inv_sqrt_g_square, updates)
     return updates, ScaleByRssState(sum_of_squares=sum_of_squares)
 
@@ -215,23 +223,23 @@ def scale_by_rms(
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
   Args:
-    decay: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    initial_scale: initial value for second moment
+    decay: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    initial_scale: Initial value for second moment.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
-    nu = jax.tree_map(
+    nu = jax.tree_util.tree_map(
         lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
-    nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
-    updates = jax.tree_multimap(
+    nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
+    updates = jax.tree_util.tree_map(
         lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
     return updates, ScaleByRmsState(nu=nu)
 
@@ -255,25 +263,25 @@ def scale_by_stddev(
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
   Args:
-    decay: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    initial_scale: initial value for second moment
+    decay: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    initial_scale: Initial value for second moment.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(
+    mu = jax.tree_util.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_util.tree_map(
         lambda n: jnp.full_like(n, initial_scale), params)  # second moment
     return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, decay, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, decay, 2)
-    updates = jax.tree_multimap(
+    mu = update_moment(updates, state.mu, decay, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, decay, 2)
+    updates = jax.tree_util.tree_map(
         lambda g, m, n: g * jax.lax.rsqrt(n - _abs_sq(m) + eps),
         updates, mu, nu)
     return updates, ScaleByRStdDevState(mu=mu, nu=nu)
@@ -301,35 +309,73 @@ def scale_by_adam(
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype is inferred from `params` and `updates`.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = jax.tree_map(  # First moment
+    mu = jax.tree_util.tree_map(  # First moment
         lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = utils.cast_tree(_bias_correction(mu, b1, count_inc), mu_dtype)
-    nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
+    updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    mu = utils.cast_tree(mu, mu_dtype)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_adamax(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adamax algorithm.
+
+  References:
+    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+
+  Args:
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted maximum of grads.
+    eps: Term added to the denominator to improve numerical stability.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Infinite moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    count_inc = numerics.safe_int32_increment(state.count)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_infinity_moment(updates, state.nu, b2, eps)
+    # Bias correction for mean. No bias correction needed for infinity moment.
+    mu_hat = bias_correction(mu, b1, count_inc)
+    updates = jax.tree_util.tree_map(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -407,10 +453,10 @@ def scale(
   """Scale updates by some fixed scalar `step_size`.
 
   Args:
-    step_size: a scalar corresponding to a fixed scaling factor for updates.
+    step_size: A scalar corresponding to a fixed scaling factor for updates.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -419,7 +465,7 @@ def scale(
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_map(lambda g: step_size * g, updates)
+    updates = jax.tree_util.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -434,10 +480,10 @@ def scale_by_param_block_norm(
   (e.g. in a convolutional layer) appearing as a leaf in the grads/param pytree.
 
   Args:
-    min_scale: minimum scaling factor.
+    min_scale: Minimum scaling factor.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -447,7 +493,7 @@ def scale_by_param_block_norm(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jax.tree_multimap(
+    updates = jax.tree_util.tree_map(
         lambda u, p: u * numerics.safe_norm(p, min_scale),
         updates, params)
     return updates, state
@@ -464,10 +510,10 @@ def scale_by_param_block_rms(
   (e.g. in a convolutional layer) appearing as a leaf in the grads/param pytree.
 
   Args:
-    min_scale: minimum scaling factor.
+    min_scale: Minimum scaling factor.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -477,7 +523,7 @@ def scale_by_param_block_rms(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jax.tree_map(
+    updates = jax.tree_util.tree_map(
         lambda u, p: u * numerics.safe_root_mean_squares(p, min_scale),
         updates, params)
     return updates, state
@@ -504,32 +550,33 @@ def scale_by_belief(
     [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of variance of grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the second moment of the prediction error to
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of variance of grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    s = jax.tree_map(jnp.zeros_like, params)  # Second Central moment
+    mu = jax.tree_util.tree_map(jnp.zeros_like, params)  # First moment
+    s = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second Central moment
     return ScaleByBeliefState(count=jnp.zeros([], jnp.int32), mu=mu, nu=s)
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    prediction_error = jax.tree_multimap(lambda g, m: g-m, updates, state.mu)
-    nu = _update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
-    nu = jax.tree_map(lambda v: v + eps_root, nu)
+    mu = update_moment(updates, state.mu, b1, 1)
+    prediction_error = jax.tree_util.tree_map(
+        lambda g, m: g-m, updates, state.mu)
+    nu = update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
+    nu = jax.tree_util.tree_map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
+    updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
@@ -552,34 +599,34 @@ def scale_by_yogi(
     [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of variance of grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of variance of grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     initial_accumulator_value: The starting value for accumulators.
       Only positive values are allowed.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
     value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
-    mu = jax.tree_map(value_like, params)  # First moment
-    nu = jax.tree_map(value_like, params)  # Second Central moment
+    mu = jax.tree_util.tree_map(value_like, params)  # First moment
+    nu = jax.tree_util.tree_map(value_like, params)  # Second Central moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = jax.tree_multimap(
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = jax.tree_util.tree_map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - _abs_sq(g)) * _abs_sq(g),
         updates, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
-    updates = jax.tree_multimap(
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
+    updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
@@ -599,15 +646,15 @@ def scale_by_radam(
     [Liu et al, 2020](https://arxiv.org/abs/1908.03265)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    threshold: Threshold for variance tractability
+    threshold: Threshold for variance tractability.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   ro_inf = 2./(1 - b2) - 1
@@ -616,24 +663,24 @@ def scale_by_radam(
     mu_hat = params[1]
     nu_hat = params[2]
     r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
-    updates = jax.tree_multimap(
+    updates = jax.tree_util.tree_map(
         lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     return updates
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    mu = jax.tree_util.tree_map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
-    mu_hat = _bias_correction(mu, b1, count_inc)
-    nu_hat = _bias_correction(nu, b2, count_inc)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.lax.cond(
         ro >= threshold, _radam_update, lambda _: mu_hat,
         (ro, mu_hat, nu_hat))
@@ -652,14 +699,14 @@ def add_decayed_weights(
   """Add parameter scaled by `weight_decay`.
 
   Args:
-    weight_decay: a scalar weight decay rate.
-    mask: a tree with same structure as (or a prefix of) the params PyTree,
+    weight_decay: A scalar weight decay rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the transformation to, and `False` for those you want to skip.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -669,7 +716,7 @@ def add_decayed_weights(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jax.tree_multimap(
+    updates = jax.tree_util.tree_map(
         lambda g, p: g + weight_decay * p, updates, params)
     return updates, state
 
@@ -692,11 +739,11 @@ def scale_by_schedule(
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
-    step_size_fn: a function that takes an update count as input and proposes
+    step_size_fn: A function that takes an update count as input and proposes
       the step_size to multiply the updates by.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -706,7 +753,7 @@ def scale_by_schedule(
   def update_fn(updates, state, params=None):
     del params
     step_size = step_size_fn(state.count)
-    updates = jax.tree_map(
+    updates = jax.tree_util.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
         count=numerics.safe_int32_increment(state.count))
@@ -734,12 +781,12 @@ def scale_by_trust_ratio(
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
 
   Args:
-    min_norm: minimum norm for params and gradient norms; by default is zero.
-    trust_coefficient: a multiplier for the trust ratio.
-    eps: additive constant added to the denominator for numerical stability.
+    min_norm: Minimum norm for params and gradient norms; by default is zero.
+    trust_coefficient: A multiplier for the trust ratio.
+    eps: Additive constant added to the denominator for numerical stability.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -765,7 +812,7 @@ def scale_by_trust_ratio(
 
       return update * safe_trust_ratio
 
-    updates = jax.tree_multimap(_scale_update, updates, params)
+    updates = jax.tree_util.tree_map(_scale_update, updates, params)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -788,12 +835,12 @@ def add_noise(
     [Neelakantan et al, 2014](https://arxiv.org/abs/1511.06807)
 
   Args:
-    eta: base variance of the gaussian noise added to the gradient.
-    gamma: decay exponent for annealing of the variance.
-    seed: seed for random number generation.
+    eta: Base variance of the gaussian noise added to the gradient.
+    gamma: Decay exponent for annealing of the variance.
+    seed: Seed for random number generation.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -803,16 +850,16 @@ def add_noise(
 
   def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
     del params
-    num_vars = len(jax.tree_leaves(updates))
-    treedef = jax.tree_structure(updates)
+    num_vars = len(jax.tree_util.tree_leaves(updates))
+    treedef = jax.tree_util.tree_structure(updates)
     count_inc = numerics.safe_int32_increment(state.count)
     variance = eta / count_inc**gamma
     standard_deviation = jnp.sqrt(variance)
     all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
-    noise = jax.tree_multimap(
+    noise = jax.tree_util.tree_map(
         lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
-        updates, jax.tree_unflatten(treedef, all_keys[1:]))
-    updates = jax.tree_multimap(
+        updates, jax.tree_util.tree_unflatten(treedef, all_keys[1:]))
+    updates = jax.tree_util.tree_map(
         lambda g, n: g + standard_deviation.astype(g.dtype) * n,
         updates, noise)
     return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
@@ -838,24 +885,24 @@ def apply_every(
   important for you, consider using the `optax.MultiSteps`.
 
   Args:
-    k: emit non-zero gradients every k steps, otherwise accumulate them.
+    k: Emit non-zero gradients every k steps, otherwise accumulate them.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
-    grad_acc = jax.tree_map(jnp.zeros_like, params)
+    grad_acc = jax.tree_util.tree_map(jnp.zeros_like, params)
     return ApplyEvery(count=jnp.zeros([], jnp.int32), grad_acc=grad_acc)
 
   def update_fn(updates, state, params=None):
     del params
     c = state.count % k
     acc = c != 0
-    grad_acc = jax.tree_multimap(
+    grad_acc = jax.tree_util.tree_map(
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
-    updates = jax.tree_map(lambda ga: emit * ga, grad_acc)
+    updates = jax.tree_util.tree_map(lambda ga: emit * ga, grad_acc)
     count_inc = numerics.safe_int32_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
@@ -879,7 +926,7 @@ def centralize() -> base.GradientTransformation:
     [Yong et al, 2020](https://arxiv.org/abs/2004.01461)
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -888,7 +935,7 @@ def centralize() -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree_map(_subtract_mean, updates)
+    updates = jax.tree_util.tree_map(_subtract_mean, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -911,12 +958,12 @@ def scale_by_sm3(
     [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
 
   Returns:
-    An (init_fn, update_fn) tuple.
+    A `GradientTransformation` object.
   """
 
   def zeros_for_dim(p):
@@ -924,8 +971,8 @@ def scale_by_sm3(
 
   def init_fn(params):
     _reject_complex(params)
-    mu = jax.tree_map(zeros_for_dim, params)
-    nu = jax.tree_map(jnp.zeros_like, params)
+    mu = jax.tree_util.tree_map(zeros_for_dim, params)
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)
     return ScaleBySM3State(mu, nu)
 
   def _expanded_shape(shape, axis):
@@ -952,19 +999,50 @@ def scale_by_sm3(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = jax.tree_multimap(
+    mu = jax.tree_util.tree_map(
         lambda g, v:  # pylint:disable=g-long-lambda
         [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)],
         updates, state.mu)
-    accum = jax.tree_multimap(_new_accum, updates, mu)
-    accum_inv_sqrt = jax.tree_map(
+    accum = jax.tree_util.tree_map(_new_accum, updates, mu)
+    accum_inv_sqrt = jax.tree_util.tree_map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum)
-    up = jax.tree_multimap(lambda g, a: g*a, updates, accum_inv_sqrt)
-    nu = _update_moment(up, state.nu, b1, 1)
-    mu = jax.tree_map(
+    up = jax.tree_util.tree_map(lambda g, a: g*a, updates, accum_inv_sqrt)
+    nu = update_moment(up, state.nu, b1, 1)
+    mu = jax.tree_util.tree_map(
         lambda g: [_new_mu(g, i) for i in range(g.ndim)], accum)
 
     return nu, ScaleBySM3State(mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_optimistic_gradient(
+    alpha: float = 1.0,
+    beta: float = 1.0) -> base.GradientTransformation:
+  """Compute generalized optimistic gradients.
+
+  References:
+    [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
+
+  Args:
+    alpha: Coefficient for generalized optimistic gradient descent.
+    beta: Coefficient for negative momentum.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    prev_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return TraceState(trace=prev_grads)
+
+  def update_fn(updates, state, params=None):
+    del params
+
+    new_updates = jax.tree_util.tree_map(
+        lambda grad_t, grad_tm1: (alpha + beta) * grad_t - beta * grad_tm1,
+        updates, state.trace)
+    return new_updates, TraceState(trace=updates)
 
   return base.GradientTransformation(init_fn, update_fn)
 

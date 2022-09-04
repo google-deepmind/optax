@@ -25,8 +25,8 @@ from optax._src import numerics
 
 def global_norm(updates: base.Updates) -> base.Updates:
   """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(
-      sum([jnp.sum(numerics.abs_sq(x)) for x in jax.tree_leaves(updates)]))
+  return jnp.sqrt(sum(
+      jnp.sum(numerics.abs_sq(x)) for x in jax.tree_util.tree_leaves(updates)))
 
 
 def power_iteration(
@@ -200,4 +200,3 @@ def matrix_inverse_pth_root(
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
     resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
   return resultant_mat_h, error
-

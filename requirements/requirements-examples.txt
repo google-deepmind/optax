@@ -1,4 +1,3 @@
 dm-haiku>=0.0.3
 tensorflow-datasets>=4.2.0
 tensorflow>=2.4.0
-tensorflow_privacy>=0.5.1

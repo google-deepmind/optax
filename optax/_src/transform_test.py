@@ -43,6 +43,7 @@ class TransformTest(parameterized.TestCase):
   @chex.all_variants
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
+      ('adamax', transform.scale_by_adamax),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
@@ -61,8 +62,8 @@ class TransformTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_multimap(lambda *args: chex.assert_equal_shape(args), params,
-                      updates)
+    jax.tree_util.tree_map(
+        lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants()
   def test_add_decayed_weights(self):
@@ -139,6 +140,40 @@ class TransformTest(parameterized.TestCase):
         atol=1e-2)
 
   @chex.all_variants()
+  def test_update_infinity_moment(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
+    transform_fn = self.variant(transform.update_infinity_moment)
+
+    # identity if updating with itself (and positive decay)
+    np.testing.assert_allclose(
+        transform_fn(values, values, decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return (decayed) max when updating with zeros
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.),
+        d * values,
+        atol=1e-4
+    )
+    # infinity norm takes absolute values
+    np.testing.assert_allclose(
+        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return at least `eps`
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), jnp.zeros_like(values),
+                     decay=d, eps=1e-2),
+        jnp.ones_like(values) * 1e-2,
+        atol=1e-4
+    )
+
+  @chex.all_variants()
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
@@ -189,7 +224,7 @@ class TransformTest(parameterized.TestCase):
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-      manual_updates = jax.tree_map(rescale, updates)
+      manual_updates = jax.tree_util.tree_map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_tree_all_close(scaled_updates, manual_updates)
 
@@ -221,7 +256,7 @@ class TransformTest(parameterized.TestCase):
     state_unit = noise_unit.init(params)
 
     # Check the noise itself by adding it to zeros.
-    updates = jax.tree_map(jnp.zeros_like, params)
+    updates = jax.tree_util.tree_map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
       updates_i, state = self.variant(noise.update)(updates, state)
@@ -229,10 +264,31 @@ class TransformTest(parameterized.TestCase):
 
       scale = jnp.sqrt(eta / i**gamma)
 
-      updates_i_rescaled = jax.tree_map(
+      updates_i_rescaled = jax.tree_util.tree_map(
           lambda g, s=scale: g * s, updates_i_unit)
 
       chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+
+  def test_scale_by_optimistic_gradient(self):
+
+    def f(params: jnp.ndarray) -> jnp.ndarray:
+      return params['x'] ** 2
+
+    initial_params = {
+        'x': jnp.array(2.0)
+    }
+
+    og = transform.scale_by_optimistic_gradient()
+    og_state = og.init(initial_params)
+    # Provide some arbitrary previous gradient.
+    og_state.trace['x'] = 1.5
+
+    g = jax.grad(f)(initial_params)
+    og_true = 2 * g['x'] - og_state.trace['x']
+    og, og_state = og.update(g, og_state)
+
+    # Compare transformation output with manually computed optimistic gradient.
+    chex.assert_tree_all_close(og_true, og['x'])
 
 
 if __name__ == '__main__':

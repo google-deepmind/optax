@@ -32,16 +32,16 @@ Documentation on Optax can be found at [optax.readthedocs.io](https://optax.read
 
 ## Installation
 
-Optax can be installed with pip directly from GitHub, with the following command:
+You can install the latest released version of Optax from PyPI via:
 
-```shell
-pip install git+git://github.com/deepmind/optax.git
+```sh
+pip install optax
 ```
 
-or from PyPI,
+or you can install the latest development version from GitHub:
 
-```shell
-pip install optax
+```sh
+pip install git+https://github.com/deepmind/optax.git
 ```
 
 ## Quickstart
@@ -196,11 +196,11 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
 
 After transforming an update using a `GradientTransformation` or any custom
 manipulation of the update, you will typically apply the update to a set
-of parameters. This can be done trivially using `tree_multimap`. 
+of parameters. This can be done trivially using `tree_map`. 
 
 For convenience, we expose an `apply_updates` function to apply updates to
 parameters. The function just adds the updates and the parameters together,
-i.e. `tree_multimap(lambda p, u: p + u, params, updates)`.
+i.e. `tree_map(lambda p, u: p + u, params, updates)`.
 
 ```python
 updates, state = tx.update(grads, state, params)  # transform & update stats.
@@ -227,7 +227,6 @@ the batch dimension(s). This is trivial to do in JAX, for example:
 ```python
 avg_loss = jnp.mean(huber_loss(predictions, targets))
 sum_loss = jnp.sum(huber_loss(predictions, targets))
-
 ```
 
 ### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
@@ -261,37 +260,25 @@ to assess gradient variance.
 Example of how to use the `pathwise_jacobians` estimator:
 
 ```python
-  dist_params = [mean, log_scale]
-  function = lambda x: jnp.sum(x * weights)
-  jacobians = pathwise_jacobians(
-        function, dist_params,
-        utils.multi_normal, rng, num_samples)
+dist_params = [mean, log_scale]
+function = lambda x: jnp.sum(x * weights)
+jacobians = pathwise_jacobians(
+      function, dist_params,
+      utils.multi_normal, rng, num_samples)
 
-  mean_grads = jnp.mean(jacobians[0], axis=0)
-  log_scale_grads = jnp.mean(jacobians[1], axis=0)
-  grads = [mean_grads, log_scale_grads]
-  optim_update, optim_state = optim.update(grads, optim_state)
-  updated_dist_params = optax.apply_updates(dist_params, optim_update)
-
+mean_grads = jnp.mean(jacobians[0], axis=0)
+log_scale_grads = jnp.mean(jacobians[1], axis=0)
+grads = [mean_grads, log_scale_grads]
+optim_update, optim_state = optim.update(grads, optim_state)
+updated_dist_params = optax.apply_updates(dist_params, optim_update)
 ```
 
 where `optim` is an optax optimizer.
 
 ## Citing Optax
 
-To cite this repository:
+Optax is part of the [DeepMind JAX Ecosystem], to cite Optax please use
+the [DeepMind JAX Ecosystem citation].
 
-```
-@software{optax2020github,
-  author = {Matteo Hessel and David Budden and Fabio Viola and Mihaela Rosca
-            and Eren Sezener and Tom Hennigan},
-  title = {Optax: composable gradient transformation and optimisation, in JAX!},
-  url = {http://github.com/deepmind/optax},
-  version = {0.0.1},
-  year = {2020},
-}
-```
-
-In this bibtex entry, the version number is intended to be from
-[optax/\_\_init\_\_.py](https://github.com/deepmind/optax/blob/master/optax/__init__.py),
-and the year corresponds to the project's open-source release.
+[DeepMind JAX Ecosystem]: https://deepmind.com/blog/article/using-jax-to-accelerate-our-research "DeepMind JAX Ecosystem"
+[DeepMind JAX Ecosystem citation]: https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt "Citation"

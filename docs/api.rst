@@ -14,6 +14,7 @@ Common Optimizers
     lamb
     lars
     noisy_sgd
+    optimistic_gd
     dpsgd
     radam
     rmsprop
@@ -73,6 +74,13 @@ Noisy SGD
 
 .. autofunction:: noisy_sgd
 
+
+Optimistic GD
+~~~~~~~~~~~~~
+
+.. autofunction:: optimistic_gradient_descent
+
+
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -119,6 +127,7 @@ Gradient Transforms
     AddNoiseState
     apply_every
     ApplyEvery
+    bias_correction
     centralize
     clip
     clip_by_block_rms
@@ -140,6 +149,7 @@ Gradient Transforms
     scale_by_adam
     scale_by_belief
     scale_by_factored_rms
+    scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
     scale_by_radam
@@ -166,6 +176,9 @@ Gradient Transforms
     TraceState
     TransformInitFn
     TransformUpdateFn
+    update_infinity_moment
+    update_moment
+    update_moment_per_elem_norm
     Updates
     zero_nans
     ZeroNansState
@@ -367,6 +380,9 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
+    ShouldSkipUpdateFunction
+    skip_large_updates
+    skip_not_finite
 
 
 Apply if Finite
@@ -433,12 +449,15 @@ Common Losses
 
     cosine_distance
     cosine_similarity
+    ctc_loss
+    ctc_loss_with_forward_probs
     huber_loss
     l2_loss
     log_cosh
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
+    softmax_cross_entropy_with_integer_labels
 
 
 Losses
@@ -446,12 +465,15 @@ Losses
 
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
+.. autofunction:: ctc_loss
+.. autofunction:: ctc_loss_with_forward_probs
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
+.. autofunction:: softmax_cross_entropy_with_integer_labels
 
 
 

@@ -69,12 +69,17 @@ class AliasTest(chex.TestCase):
           dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
           dict(opt_name='adam', opt=lambda: alias.adam(1e-1)),
           dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
+          dict(opt_name='adamax', opt=lambda: alias.adam(1e-1)),
+          dict(opt_name='adamaxw', opt=lambda: alias.adamw(1e-1)),
           dict(opt_name='adan', opt=lambda: alias.adan(1e-1)),
           dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
           dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
           dict(
               opt_name='noisy_sgd',
               opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
+          dict(
+              opt_name='optimistic_gradient_descent',
+              opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
           dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
           dict(
               opt_name='rmsprop_momentum',
@@ -92,7 +97,8 @@ class AliasTest(chex.TestCase):
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in ('fromage', 'noisy_sgd', 'sm3') and
+    if (opt_name in (
+        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
         jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
@@ -107,7 +113,7 @@ class AliasTest(chex.TestCase):
         updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
-      updates = jax.tree_map(lambda x: x.conj(), updates)
+      updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
       updates, state = opt.update(updates, state, params)
       params = update.apply_updates(params, updates)
       return params, state

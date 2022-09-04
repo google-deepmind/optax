@@ -211,7 +211,12 @@ def cosine_decay_schedule(
 ) -> base.Schedule:
   """Returns a function which implements cosine learning rate decay.
 
-  For more details see: https://arxiv.org/abs/1608.03983
+  The schedule does not restart when ``decay_steps`` has been reached. Instead,
+  the learning rate remains constant afterwards. For a cosine schedule with
+  restarts, :func:`optax.join_schedules` can be used to join several cosine
+  decay schedules.
+
+  For more details see: https://arxiv.org/abs/1608.03983.
 
   Args:
     init_value: An initial value `init_v`.
@@ -578,7 +583,8 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      dtype = getattr(next(iter(jax.tree_leaves(params)), None), 'dtype', None)
+      dtype = getattr(next(iter(
+          jax.tree_util.tree_leaves(params)), None), 'dtype', None)
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
@@ -588,7 +594,8 @@ def inject_hyperparams(
 
     def update_fn(updates, state, params=None):
       count_inc = numerics.safe_int32_increment(state.count)
-      dtype = getattr(next(iter(jax.tree_leaves(updates)), None), 'dtype', None)
+      dtype = getattr(next(iter(
+          jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
       hparams.update(schedule_fn(count_inc, dtype))

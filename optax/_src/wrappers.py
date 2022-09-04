@@ -17,6 +17,7 @@
 import functools
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
+import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -24,9 +25,9 @@ from jax.tree_util import tree_flatten
 from jax.tree_util import tree_map
 from jax.tree_util import tree_unflatten
 import numpy as np
-
 from optax._src import base
 from optax._src import numerics
+import typing_extensions
 
 Array = jnp.ndarray
 
@@ -161,7 +162,7 @@ def apply_if_finite(
 
 
 def _zeros_tree_like(inp_tree):
-  return jax.tree_map(jnp.zeros_like, inp_tree)
+  return jax.tree_util.tree_map(jnp.zeros_like, inp_tree)
 
 
 class MultiStepsState(NamedTuple):
@@ -174,11 +175,97 @@ class MultiStepsState(NamedTuple):
       mini-steps have been accumulated.
     inner_opt_state: the state of the wrapped otpimiser.
     acc_grads: accumulated gradients over multiple mini-steps.
+    skip_state: an arbitrarily nested tree of arrays. This is only
+      relevant when passing a `should_skip_update_fn` to `MultiSteps`. This
+      structure will then contain values for debugging and or monitoring. The
+      actual structure will vary depending on the choice of
+      `ShouldSkipUpdateFunction`.
   """
   mini_step: Array
   gradient_step: Array
   inner_opt_state: Any
   acc_grads: Any
+  skip_state: chex.ArrayTree = ()
+
+
+class ShouldSkipUpdateFunction(typing_extensions.Protocol):
+
+  def __call__(self, updates: base.Updates, gradient_step: Array,
+               params: Optional[base.Params]) -> Tuple[Array, chex.ArrayTree]:
+    """Returns true to indicate that updates should be skipped in a multi-step.
+
+    Args:
+      updates: The updates that the gradient transformation has proposed
+        to apply
+      gradient_step: The current gradient step (see
+        `MultiStepsState.gradient_step`). This can be used for example to reject
+        large gradients with an annealed maximum allowed gradient norm.
+      params: If known, the current parameter tree of the function being
+        transformed.
+    Returns:
+      A tuple:
+      * First element is an array with a single bool indicating whether or not
+        the updates should be applied.
+      * Second element is an arbitrarily nested structure of arrays that will be
+        stored in `MultiStepsState.skip_state`. The structure will vary from
+        function to function. Debugging info, or values to monitor, can be put
+        in this structure.
+    """
+
+
+def skip_not_finite(
+    updates: base.Updates, gradient_step: Array,
+    params: Optional[base.Params]) -> Tuple[Array, chex.ArrayTree]:
+  """Returns True iff any of the `updates` contains an inf or a NaN.
+
+  Args:
+    updates: see `ShouldSkipUpdateFunction`.
+    gradient_step: see `ShouldSkipUpdateFunction`.
+    params: see `ShouldSkipUpdateFunction`.
+
+  Returns:
+    A tuple:
+    * First element is a scalar array of type bool.
+    * Second element is a dictionary with keys:
+      - `should_skip`: True iff `updates` contains an inf or a NaN.
+      - `num_not_finite`: total number of inf and NaN found in `updates`.
+  """
+  del gradient_step, params
+  all_is_finite = [jnp.sum(jnp.logical_not(jnp.isfinite(p)))
+                   for p in jax.tree_util.tree_leaves(updates)]
+  num_not_finite = jnp.sum(jnp.array(all_is_finite))
+  should_skip = num_not_finite > 0
+  return should_skip, dict(should_skip=should_skip,
+                           num_not_finite=num_not_finite)
+
+
+def skip_large_updates(updates: base.Updates,
+                       gradient_step: Array,
+                       params: Optional[base.Params],
+                       max_squared_norm: float) -> Tuple[Array, chex.ArrayTree]:
+  """Returns True if the global norm square of `updates` is small enough.
+
+  Args:
+    updates: see `ShouldSkipUpdateFunction`.
+    gradient_step: see `ShouldSkipUpdateFunction`.
+    params: see `ShouldSkipUpdateFunction`.
+    max_squared_norm: only updates with a norm square strictly less than this
+      value will be accepted.
+
+  Returns:
+    A tuple:
+    * First element is a scalar array of type bool.
+    * Second element is a dictionary with keys:
+      - `should_skip`: True iff square norm of `updates` is larger or equal than
+        `max_squared_norm`.
+      - `norm_squared`: overall norm square of the `updates`.
+  """
+  del gradient_step, params
+  norm_sq = jnp.sum(
+      jnp.array([jnp.sum(p**2) for p in jax.tree_util.tree_leaves(updates)]))
+  # This will also return True if `norm_sq` is NaN.
+  should_skip = jnp.logical_not(norm_sq < max_squared_norm)
+  return should_skip, dict(should_skip=should_skip, norm_squared=norm_sq)
 
 
 class MultiSteps:
@@ -195,10 +282,12 @@ class MultiSteps:
   training.
   """
 
-  def __init__(self,
-               opt: base.GradientTransformation,
-               every_k_schedule: Union[int, Callable[[Array], Array]],
-               use_grad_mean: bool = True):
+  def __init__(
+      self,
+      opt: base.GradientTransformation,
+      every_k_schedule: Union[int, Callable[[Array], Array]],
+      use_grad_mean: bool = True,
+      should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None):
     """Initialiser.
 
     Args:
@@ -212,6 +301,18 @@ class MultiSteps:
           update.
       use_grad_mean: if `True` (the default), gradients accumulated over
         multiple mini-steps are averaged. Otherwise, they are summed.
+      should_skip_update_fn: if provided, this function is used to decide when
+        to accept or reject the updates from a mini-step. When a mini-step is
+        rejected, the inner state of `MultiSteps` is not updated. In other
+        words, it is as if this mini-step never happened. For example:
+        * to ignore updates containing inf or NaN, do
+          `should_skip_update_fn=skip_not_finite`;
+        * to ignore updates with a norm square larger then 42, do
+          `should_skip_update_fn=functools.partial(skip_large_updates,
+                                                   max_norm_sq=42.)`.
+        Note that the optimiser's state `MultiStepsState` contains a field
+        `skip_state` in which debugging and monitoring information returned
+        by `should_skip_update_fn` is written.
     """
     self._opt = opt
     if isinstance(every_k_schedule, int):
@@ -227,16 +328,28 @@ class MultiSteps:
     else:
       self._acc_update = lambda grad, acc, *, n_acc: grad + acc
 
+    if should_skip_update_fn is None:
+
+      def should_skip_update_fn(*unused_args, **unused_kwargs):
+        return jnp.array(False, dtype=jnp.bool_), ()
+
+    self._should_skip_update_fn = should_skip_update_fn
+
   @property
   def inner_opt(self):
     return self._opt
 
   def init(self, params: Any) -> MultiStepsState:
+    """Builds and returns initial `MultiStepsState`."""
+    updates = _zeros_tree_like(params)
+    gradient_step = jnp.zeros([], dtype=jnp.int32)
+    _, skip_state = self._should_skip_update_fn(updates, gradient_step, params)
     init_state = MultiStepsState(
         mini_step=jnp.zeros([], dtype=jnp.int32),
-        gradient_step=jnp.zeros([], dtype=jnp.int32),
+        gradient_step=gradient_step,
         inner_opt_state=self._opt.init(params),
-        acc_grads=_zeros_tree_like(params))
+        acc_grads=updates,
+        skip_state=skip_state)
     return init_state
 
   def update(self,
@@ -246,37 +359,61 @@ class MultiSteps:
              ) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
-    acc_grads = jax.tree_util.tree_multimap(
+    acc_grads = jax.tree_util.tree_map(
         functools.partial(self._acc_update, n_acc=state.mini_step),
         updates, state.acc_grads)
 
+    should_skip_update, skip_state = self._should_skip_update_fn(
+        updates, state.gradient_step, params)
+
     def final_step(args):
       del args
-      updates, new_inner_state = self._opt.update(
+      final_updates, new_inner_state = self._opt.update(
           acc_grads, state.inner_opt_state, params=params)
       new_state = MultiStepsState(
           mini_step=jnp.zeros([], dtype=jnp.int32),
           gradient_step=numerics.safe_int32_increment(state.gradient_step),
           inner_opt_state=new_inner_state,
-          acc_grads=_zeros_tree_like(acc_grads))
-      return updates, new_state
+          acc_grads=_zeros_tree_like(acc_grads),
+          skip_state=skip_state)
+      return final_updates, new_state
 
     def mid_step(args):
       del args
       updates_shape_dtype, _ = jax.eval_shape(
           self._opt.update, acc_grads, state.inner_opt_state, params=params)
-      updates = jax.tree_map(lambda sd: jnp.zeros(sd.shape, sd.dtype),
-                             updates_shape_dtype)
+      mid_updates = jax.tree_util.tree_map(
+          lambda sd: jnp.zeros(sd.shape, sd.dtype), updates_shape_dtype)
       new_state = MultiStepsState(
           mini_step=numerics.safe_int32_increment(state.mini_step),
           gradient_step=state.gradient_step,
           inner_opt_state=state.inner_opt_state,
-          acc_grads=acc_grads)
-      return updates, new_state
+          acc_grads=acc_grads,
+          skip_state=skip_state)
+      return mid_updates, new_state
 
-    updates, new_state = jax.lax.cond(
+    new_updates, new_state = jax.lax.cond(
         state.mini_step < k_steps - 1, (), mid_step, (), final_step)
-    return updates, new_state
+
+    if (should_skip_update.dtype, should_skip_update.shape) != (jnp.bool_, ()):
+      raise ValueError(
+          'The `should_skip_update_fn` function should return a boolean scalar '
+          f'array, but it returned an array of dtype {should_skip_update.dtype}'
+          f' and shape {should_skip_update.shape}')
+
+    multi_state_when_skip = MultiStepsState(
+        mini_step=state.mini_step,
+        gradient_step=state.gradient_step,
+        inner_opt_state=state.inner_opt_state,
+        acc_grads=state.acc_grads,
+        skip_state=skip_state)
+    zero_updates = jax.tree_util.tree_map(jnp.zeros_like, updates)
+    new_updates, new_state = jax.lax.cond(
+        should_skip_update,
+        (), lambda args: (zero_updates, multi_state_when_skip),
+        (), lambda args: (new_updates, new_state))
+
+    return new_updates, new_state
 
   def has_updated(self, state: MultiStepsState) -> Array:
     return jnp.logical_and(state.mini_step == 0, state.gradient_step > 0)
@@ -290,6 +427,15 @@ class MaskedState(NamedTuple):
   inner_state: Any
 
 
+class MaskedNode(NamedTuple):
+  """A node used to mask out unspecified parts of a tree.
+
+  This node is ignored when mapping functions across the tree e.g. using
+  `jax.tree_util.tree_map` since it is a container without children. It can
+  therefore be used to mask out parts of a tree.
+  """
+
+
 def masked(
     inner: base.GradientTransformation,
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
@@ -301,12 +447,12 @@ def masked(
   one dimension. So, you may create a mask function to mask these out as
   follows::
 
-    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim != 1, p)
+    mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim != 1, p)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
 
   You may alternatively create the mask pytree upfront::
 
-    mask = jax.tree_map(lambda x: x.ndim != 1, params)
+    mask = jax.tree_util.tree_map(lambda x: x.ndim != 1, params)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
 
   For the ``inner`` transform, state will only be stored for the parameters that
@@ -317,13 +463,14 @@ def masked(
     mask: a PyTree with same structure as (or a prefix of) the params PyTree, or
       a Callable that returns such a pytree given the params/updates. The leaves
       should be booleans, ``True`` for leaves/subtrees you want to apply the
-      transformation to, and ``False`` for those you want to skip.
+      transformation to, and ``False`` for those you want to skip. The mask must
+      be static for the gradient transformation to be jit-compilable.
 
   Returns:
     New GradientTransformation wrapping ``inner``.
   """
   def mask_pytree(pytree, mask_tree):
-    return tree_map(lambda m, p: p if m else None, mask_tree, pytree)
+    return tree_map(lambda m, p: p if m else MaskedNode(), mask_tree, pytree)
 
   def init_fn(params):
     mask_tree = mask(params) if callable(mask) else mask

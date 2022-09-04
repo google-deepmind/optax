@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Aliases for popular optimisers."""
+"""Aliases for popular optimizers."""
 
 from typing import Any, Callable, Optional, Union
 
@@ -44,11 +44,11 @@ def adabelief(
     b2: float = 0.999,
     eps: float = 1e-16,
     eps_root: float = 1e-16) -> base.GradientTransformation:
-  """The AdaBelief optimiser.
+  """The AdaBelief optimizer.
 
-  AdaBelief is an adaptive learning rate optimiser that focuses on fast
-  convergence, generalisation, and stability. It adapts the step size depending
-  on its "belief" in the gradient direction — the optimiser adaptively scales
+  AdaBelief is an adaptive learning rate optimizer that focuses on fast
+  convergence, generalization, and stability. It adapts the step size depending
+  on its "belief" in the gradient direction — the optimizer adaptively scales
   the step size by the difference between the predicted and observed gradients.
   AdaBelief is a modified version of Adam and contains the same number of
   parameters.
@@ -57,16 +57,16 @@ def adabelief(
     Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the second moment of the prediction error to
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
@@ -88,9 +88,9 @@ def adafactor(
     factored: bool = True,
     weight_decay_mask: MaskOrFn = None,
     ) -> base.GradientTransformation:
-  """The Adafactor optimiser.
+  """The Adafactor optimizer.
 
-  Adafactor is an adaptive learning rate optimiser that focuses on fast
+  Adafactor is an adaptive learning rate optimizer that focuses on fast
   training of large scale neural networks. It saves memory by using a factored
   estimate of the second order moments used to scale gradients.
 
@@ -98,31 +98,32 @@ def adafactor(
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
 
   Args:
-      learning_rate: (float) a step size. Note: the natural scale for
+      learning_rate: A fixed global scaling factor. Note: the natural scale for
         Adafactor's LR is markedly different from Adam, one doesn't use the
         1/sqrt(hidden) correction for this optim with attention-based models.
-      min_dim_size_to_factor: (int) only factor the statistics if two array
-        dimensions have at least this size.
-      decay_rate: (float) controls second-moment exponential decay schedule.
-      decay_offset: (int) for finetuning, one may set this to the starting
-        step number of the finetuning phase.
-      multiply_by_parameter_scale: (bool): if True, then scale learning_rate by
-        parameter norm. if False, provided learning_rate is absolute step size.
-      clipping_threshold: (float>=1) optional value; if None, clipping disabled.
-      momentum: (float) optional value between 0 and 1, enables
-        momentum and uses extra memory if non-None! None by default.
-      dtype_momentum: (dtype) dtype of momentum buffers.
-      weight_decay_rate: (float) optional rate at which to decay weights.
-      eps: (float) regularization constant for root mean squared gradient.
-      factored: (bool) whether to use factored second-moment estimates.
-      weight_decay_mask: a tree with same structure as (or a prefix of)
+      min_dim_size_to_factor: Only factor the statistics if two array dimensions
+        have at least this size.
+      decay_rate: Controls second-moment exponential decay schedule.
+      decay_offset: For fine-tuning, one may set this to the starting step
+        number of the fine-tuning phase.
+      multiply_by_parameter_scale: If True, then scale learning_rate by
+        parameter norm. If False, provided learning_rate is absolute step size.
+      clipping_threshold: Optional clipping threshold. Must be >= 1. If None,
+        clipping is disabled.
+      momentum: Optional value between 0 and 1, enables momentum and uses extra
+        memory if non-None! None by default.
+      dtype_momentum: Data type of momentum buffers.
+      weight_decay_rate: Optional rate at which to decay weights.
+      eps: Regularization constant for root mean squared gradient.
+      factored: Whether to use factored second-moment estimates.
+      weight_decay_mask: A tree with same structure as (or a prefix of)
         the params PyTree, or a Callable that returns such a pytree given
         the params/updates. The leaves should be booleans, `True`
         for leaves/subtrees you want to apply the transformation to,
         and `False` for those you want to skip.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   # The core of the algorithm is a procedure for rescaling gradients
   # by a factored estimate of the root mean squared gradients.
@@ -157,7 +158,7 @@ def adagrad(
 ) -> base.GradientTransformation:
   """The Adagrad optimizer.
 
-  Adagrad is an algorithm for gradient based optimisation that anneals the
+  Adagrad is an algorithm for gradient based optimization that anneals the
   learning rate for each parameter during the course of training.
 
   WARNING: Adagrad's main limit is the monotonic accumulation of squared
@@ -168,13 +169,13 @@ def adagrad(
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    initial_accumulator_value: initialisation for the accumulator.
-    eps: a small constant applied to denominator inside of the square root
+    learning_rate: A fixed global scaling factor.
+    initial_accumulator_value: Initial value for the accumulator.
+    eps: A small constant applied to denominator inside of the square root
       (as in RMSProp) to avoid dividing by zero when rescaling.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_rss(
@@ -191,7 +192,7 @@ def adam(
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """The classic Adam optimiser.
+  """The classic Adam optimizer.
 
   Adam is an SGD variant with learning rate adaptation. The `learning_rate`
   used for each weight is computed from estimates of first- and second-order
@@ -201,19 +202,19 @@ def adam(
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: a small constant applied to denominator outside of the square root
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0`), a small constant applied to denominator inside the
-      square root (as in RMSProp), to avoid dividing by zero when rescaling.
-      This is needed for example when computing (meta-)gradients through Adam.
-    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      example when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -234,38 +235,38 @@ def adamw(
 ) -> base.GradientTransformation:
   """Adam with weight decay regularization.
 
-  AdamW uses weight decay to regularise learning towards small weights, as
-  this leads to better generalisation. In SGD you can also use L2 regularisation
+  AdamW uses weight decay to regularize learning towards small weights, as
+  this leads to better generalization. In SGD you can also use L2 regularization
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
-
-  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
-  for the bias parameters. You can use `optax.masked` to make your own AdamW
-  variant where `additive_weight_decay` is applied only to a subset of `params`.
 
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: a small constant applied to denominator outside of the square root
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0`), a small constant applied to denominator inside the
-      square root (as in RMSProp), to avoid dividing by zero when rescaling.
-      This is needed for instance when computing (meta-)gradients through Adam.
-    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
-    weight_decay: strength of the weight decay regularization.
-    mask: a tree with same structure as (or a prefix of) the params PyTree,
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the weight decay to, and `False` for those you want to skip. Note
       that the Adam gradient transformations are applied to all parameters.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -333,25 +334,25 @@ def fromage(
     learning_rate: float,
     min_norm: float = 1e-6
 ) -> base.GradientTransformation:
-  """The Frobenius matched gradient descent (Fromage) optimiser.
+  """The Frobenius matched gradient descent (Fromage) optimizer.
 
   Fromage is a learning algorithm that does not require learning rate tuning.
-  The optimiser is based on modelling neural network gradients via deep relative
+  The optimizer is based on modeling neural network gradients via deep relative
   trust (a distance function on deep neural networks). Fromage is similar to the
-  LARS optimiser and can work on a range of standard neural network benchmarks,
+  LARS optimizer and can work on a range of standard neural network benchmarks,
   such as natural language Transformers and generative adversarial networks.
 
   References:
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    min_norm: a minimum value that the norm of the gradient updates and the
-    norm of the layer parameters can be clipped to to avoid dividing by zero
-    when computing the trust ratio (as in the LARS paper).
+    learning_rate: A fixed global scaling factor.
+    min_norm: A minimum value that the norm of the gradient updates and the norm
+      of the layer parameters can be clipped to to avoid dividing by zero when
+      computing the trust ratio (as in the LARS paper).
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
@@ -371,32 +372,32 @@ def lars(
     momentum: float = 0.9,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
-  """The LARS optimiser.
+  """The LARS optimizer.
 
-  LAMB is a layer-wise adaptive optimiser introduced to help scale SGD to
-  larger batch sizes. LARS later inspired the LAMB optimiser.
+  LARS is a layer-wise adaptive optimizer introduced to help scale SGD to
+  larger batch sizes. LARS later inspired the LAMB optimizer.
 
   References:
     You et al, 2017: https://arxiv.org/abs/1708.03888
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    weight_decay (default `0.`): strength of the weight decay regularization.
-    weight_decay_mask: a tree with same structure as (or a prefix of) the params
+    learning_rate: A fixed global scaling factor.
+    weight_decay: Strength of the weight decay regularization.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the transformation to, and `False` for those you want to skip.
-    trust_coefficient: a multiplier for the trust ratio.
-    eps: optional additive constant in the trust ratio denominator.
-    trust_ratio_mask: a tree with same structure as (or a prefix of) the params
+    trust_coefficient: A multiplier for the trust ratio.
+    eps: Optional additive constant in the trust ratio denominator.
+    trust_ratio_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the transformation to, and `False` for those you want to skip.
-    momentum: the decay rate for momentum.
-    nesterov: whether to use Nesterov momentum.
+    momentum: Decay rate for momentum.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
@@ -418,34 +419,34 @@ def lamb(
     weight_decay: float = 0.,
     mask: MaskOrFn = None,
 ) -> base.GradientTransformation:
-  """The LAMB optimiser.
+  """The LAMB optimizer.
 
-  LAMB is a general purpose layer-wise adaptive large batch optimiser designed
+  LAMB is a general purpose layer-wise adaptive large batch optimizer designed
   to provide consistent training performance across a wide range of tasks,
   including those that use attention-based models (such as Transformers) and
-  ResNet-50. The optimiser is able to work with small and large batch sizes.
+  ResNet-50. The optimizer is able to work with small and large batch sizes.
   LAMB was inspired by the LARS learning algorithm.
 
   References:
     You et al, 2019: https://arxiv.org/abs/1904.00962
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: a small constant applied to denominator outside of the square root
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0.0`), a small constant applied to denominator inside
-      the square root (as in RMSProp), to avoid dividing by zero when rescaling.
-      This is needed for instance when computing (meta-)gradients through Adam.
-    weight_decay (default `0.`): strength of the weight decay regularization.
-    mask: a tree with same structure as (or a prefix of) the params PyTree,
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    weight_decay: Strength of the weight decay regularization.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the transformation to, and `False` for those you want to skip.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
@@ -464,24 +465,53 @@ def noisy_sgd(
   r"""A variant of SGD with added noise.
 
   It has been found that adding noise to the gradients can improve
-  both the training error and the generalisation error in very deep networks.
+  both the training error and the generalization error in very deep networks.
 
   References:
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    eta: the initial variance for the gaussian noise added to gradients.
-    gamma: a parameter controlling the annealing of noise over time,
-      the variance decays according to `(1+t)^-\gamma`.
-    seed: the seed for the pseudo-random generation process.
+    learning_rate: A fixed global scaling factor.
+    eta: Initial variance for the Gaussian noise added to gradients.
+    gamma: A parameter controlling the annealing of noise over time, the
+      variance decays according to `(1+t)^-\gamma`.
+    seed: Seed for the pseudo-random generation process.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       _scale_by_learning_rate(learning_rate),
       transform.add_noise(eta, gamma, seed),
+  )
+
+
+def optimistic_gradient_descent(
+    learning_rate: ScalarOrSchedule,
+    alpha: ScalarOrSchedule = 1.0,
+    beta: ScalarOrSchedule = 1.0
+) -> base.GradientTransformation:
+  """An Optimistic Gradient Descent optimizer.
+
+  Optimistic gradient descent is an approximation of extra-gradient methods
+  which require multiple gradient calls to compute the next update. It has
+  strong formal guarantees for last-iterate convergence in min-max games, for
+  which standard gradient descent can oscillate or even diverge.
+
+  References:
+    [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    alpha: Coefficient for generalized OGD.
+    beta: Coefficient for generalized OGD negative momentum.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
+      _scale_by_learning_rate(learning_rate)
   )
 
 
@@ -493,29 +523,29 @@ def radam(
     eps_root: float = 0.0,
     threshold: float = 5.0
 ) -> base.GradientTransformation:
-  """The Rectified Adam optimiser.
+  """The Rectified Adam optimizer.
 
   The adaptive learning rate in Adam has undesirably large variance in early
   stages of training, due to the limited number of training samples used to
-  estimate the optimiser's statistics. Rectified Adam addresses this issue
+  estimate the optimizer's statistics. Rectified Adam addresses this issue
   by analytically reducing the large variance.
 
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: a small constant applied to denominator outside of the square root
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0`), a small constant applied to denominator inside the
-      square root (as in RMSProp), to avoid dividing by zero when rescaling.
-      This is needed for instance when computing (meta-)gradients through Adam.
-    threshold: the threshold for variance tractability.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    threshold: Threshold for variance tractability.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_radam(
@@ -534,33 +564,33 @@ def rmsprop(
     nesterov: bool = False
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
-  """A flexible RMSProp optimiser.
+  """A flexible RMSProp optimizer.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
   used for each weight is scaled by a suitable estimate of the magnitude of the
   gradients on previous steps. Several variants of RMSProp can be found
   in the literature. This alias provides an easy to configure RMSProp
-  optimiser that can be used to switch between several of these variants.
+  optimizer that can be used to switch between several of these variants.
 
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
     Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    decay: the decay used to track the magnitude of previous gradients.
-    eps: a small numerical constant to avoid dividing by zero when rescaling.
-    initial_scale: (default `0.`), initialisation of accumulators tracking the
-      magnitude of previous updates. PyTorch uses `0`, TF1 uses `1`. When
-      reproducing results from a paper, verify the value used by the authors.
-    centered: (default `False`), whether the second moment or the variance of
-      the past gradients is used to rescale the latest gradients.
-    momentum: (default `None`), the `decay` rate used by the momentum term,
-      when it is set to `None`, then momentum is not used at all.
-    nesterov (default `False`): whether nesterov momentum is used.
+    learning_rate: A fixed global scaling factor.
+    decay: Decay used to track the magnitude of previous gradients.
+    eps: A small numerical constant to avoid dividing by zero when rescaling.
+    initial_scale: Initial value of accumulators tracking the magnitude of
+      previous updates. PyTorch uses `0`, TF1 uses `1`. When reproducing results
+      from a paper, verify the value used by the authors.
+    centered: Whether the second moment or the variance of the past gradients is
+      used to rescale the latest gradients.
+    momentum: Decay rate used by the momentum term, when it is set to `None`,
+      then momentum is not used at all.
+    nesterov: Whether Nesterov momentum is used.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   # pylint: enable=line-too-long
   if centered:
@@ -586,7 +616,7 @@ def sgd(
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """A canonical Stochastic Gradient Descent optimiser.
+  """A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
   momentum, and nesterov acceleration, as these are standard practice when
@@ -596,11 +626,11 @@ def sgd(
     Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    momentum: (default `None`), the `decay` rate used by the momentum term,
-      when it is set to `None`, then momentum is not used at all.
-    nesterov (default `False`): whether nesterov momentum is used.
-    accumulator_dtype: optional `dtype` to be used for the accumulator; if
+    learning_rate: A fixed global scaling factor.
+    momentum: Decay rate used by the momentum term, when it is set to `None`,
+      then momentum is not used at all.
+    nesterov: Whether Nesterov momentum is used.
+    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
@@ -618,12 +648,12 @@ def sm3(
     learning_rate: float,
     momentum: float = 0.9
 ) -> base.GradientTransformation:
-  """The SM3 optimiser.
+  """The SM3 optimizer.
 
   SM3 (Square-root of Minima of Sums of Maxima of Squared-gradients Method) is a
-  memory-efficient adaptive optimiser designed to decrease memory overhead when
+  memory-efficient adaptive optimizer designed to decrease memory overhead when
   training very large models, such as the Transformer for machine translation,
-  BERT for language modelling, and AmoebaNet-D for image classification. SM3: 1)
+  BERT for language modeling, and AmoebaNet-D for image classification. SM3: 1)
   applies to tensors of arbitrary dimensions and any predefined cover of the
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
@@ -633,12 +663,12 @@ def sm3(
     Anil et al, 2019: https://arxiv.org/abs/1901.11150
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    momentum: the `decay` rate used by the momentum term (when it is not set to
+    learning_rate: A fixed global scaling factor.
+    momentum: Decay rate used by the momentum term (when it is not set to
       `None`, then momentum is not used at all).
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_sm3(momentum),
@@ -652,11 +682,11 @@ def yogi(
     b2: float = 0.999,
     eps: float = 1e-3,
 ) -> base.GradientTransformation:
-  """The Yogi optimiser.
+  """The Yogi optimizer.
 
-  Yogi is an adaptive optimiser, which provides control in tuning the effective
+  Yogi is an adaptive optimizer, which provides control in tuning the effective
   learning rate to prevent it from increasing. By doing so, it focuses on
-  addressing the issues of convergence and generalisation in exponential moving
+  addressing the issues of convergence and generalization in exponential moving
   average-based adaptive methods (such as Adam and RMSprop). Yogi is a
   modification of Adam and uses the same parameters.
 
@@ -664,14 +694,14 @@ def yogi(
     Zaheer et al, 2020: http://www.sanjivk.com/yogi_nips2018.pdf
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
-    eps: a small constant applied to denominator outside of the square root
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
@@ -687,7 +717,7 @@ def dpsgd(
     momentum: Optional[float] = None,
     nesterov: bool = False
 ) -> base.GradientTransformation:
-  """The DPSGD optimiser.
+  """The DPSGD optimizer.
 
   Differential privacy is a standard for privacy guarantees of algorithms
   learning from aggregate databases including potentially sensitive information.
@@ -702,13 +732,13 @@ def dpsgd(
     Abadi et al, 2016: https://arxiv.org/abs/1607.00133
 
   Args:
-    learning_rate: this is a fixed global scaling factor.
-    l2_norm_clip: maximum L2 norm of the per-example gradients.
-    noise_multiplier: ratio of standard deviation to the clipping norm.
-    seed: initial seed used for the jax.random.PRNGKey
-    momentum: (default `None`), the `decay` rate used by the momentum term,
-      when it is set to `None`, then momentum is not used at all.
-    nesterov (default `False`): whether nesterov momentum is used.
+    learning_rate: A fixed global scaling factor.
+    l2_norm_clip: Maximum L2 norm of the per-example gradients.
+    noise_multiplier: Ratio of standard deviation to the clipping norm.
+    seed: Initial seed used for the jax.random.PRNGKey
+    momentum: Decay rate used by the momentum term, when it is set to `None`,
+      then momentum is not used at all.
+    nesterov: Whether Nesterov momentum is used.
 
   Returns:
     A `GradientTransformation`.
@@ -721,4 +751,80 @@ def dpsgd(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
       _scale_by_learning_rate(learning_rate)
+  )
+
+
+def adamax(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+) -> base.GradientTransformation:
+  """A variant of the Adam optimizer that uses the infinity norm.
+
+  References:
+    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the maximum of past gradients.
+    eps: A small constant applied to denominator to avoid dividing by zero when
+      rescaling.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adamax(b1=b1, b2=b2, eps=eps,),
+      _scale_by_learning_rate(learning_rate),
+  )
+
+
+def adamaxw(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    weight_decay: float = 1e-4,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+  """Adamax with weight decay regularization.
+
+  AdamaxW uses weight decay to regularize learning towards small weights, as
+  this leads to better generalization. In SGD you can also use L2 regularization
+  to implement this as an additive loss term, however L2 regularization
+  does not behave as intended for adaptive gradient algorithms such as Adam.
+
+  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
+  for the bias parameters. You can use `optax.masked` to make your own AdamaxW
+  variant where `additive_weight_decay` is applied only to a subset of `params`.
+
+  References:
+    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the maximum of past gradients.
+    eps: A small constant applied to denominator to avoid dividing by zero when
+      rescaling.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adamax gradient transformations are applied to all parameters.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adamax(b1=b1, b2=b2, eps=eps),
+      transform.add_decayed_weights(weight_decay, mask),
+      _scale_by_learning_rate(learning_rate),
   )

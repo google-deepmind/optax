@@ -7,12 +7,11 @@
 
 [MASTER]
 
-# Add files or directories to the blacklist. They should be base names, not
-# paths.
+# Files or directories to be skipped. They should be base names, not paths.
 ignore=third_party
 
-# Add files or directories matching the regex patterns to the blacklist. The
-# regex matches against base names, not paths.
+# Files or directories matching the regex patterns are skipped. The regex
+# matches against base names, not paths.
 ignore-patterns=
 
 # Pickle collected data for later comparisons.
@@ -28,11 +27,6 @@ jobs=4
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
 unsafe-load-any-extension=no
-
-# A comma-separated list of package or module names from where C extensions may
-# be loaded. Extensions are loading into the active Python interpreter and may
-# run arbitrary code
-extension-pkg-whitelist=
 
 
 [MESSAGES CONTROL]
@@ -56,12 +50,16 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=apply-builtin,
+disable=abstract-method,
+        apply-builtin,
+        arguments-differ,
         attribute-defined-outside-init,
         backtick,
         bad-option-value,
+        basestring-builtin,
         buffer-builtin,
         c-extension-no-member,
+        consider-using-enumerate,
         cmp-builtin,
         cmp-method,
         coerce-builtin,
@@ -78,18 +76,20 @@ disable=apply-builtin,
         global-statement,
         hex-method,
         idiv-method,
-        implicit-str-concat-in-sequence,
+        implicit-str-concat,
         import-error,
         import-self,
         import-star-module-level,
+        inconsistent-return-statements,
         input-builtin,
         intern-builtin,
         invalid-str-codec,
-        invalid-unary-operand-type,
         locally-disabled,
         long-builtin,
         long-suffix,
         map-builtin-not-iterating,
+        misplaced-comparison-constant,
+        missing-function-docstring,
         metaclass-assignment,
         next-method-called,
         next-method-defined,
@@ -98,7 +98,9 @@ disable=apply-builtin,
         no-else-continue,
         no-else-raise,
         no-else-return,
+        no-init,  # added
         no-member,
+        no-name-in-module,
         no-self-use,
         nonzero-method,
         oct-method,
@@ -128,18 +130,21 @@ disable=apply-builtin,
         too-many-branches,
         too-many-instance-attributes,
         too-many-locals,
+        too-many-nested-blocks,
         too-many-public-methods,
         too-many-return-statements,
         too-many-statements,
         trailing-newlines,
         unichr-builtin,
         unicode-builtin,
+        unnecessary-lambda-assignment,
+        unnecessary-pass,
         unpacking-in-except,
         useless-else-on-loop,
         useless-suppression,
         using-cmp-argument,
-        xrange-builtin,
         wrong-import-order,
+        xrange-builtin,
         zip-builtin-not-iterating,
 
 
@@ -149,12 +154,6 @@ disable=apply-builtin,
 # (visual studio) and html. You can also give a reporter class, eg
 # mypackage.mymodule.MyReporterClass.
 output-format=text
-
-# Put messages in a separate file for each module / package specified on the
-# command line instead of printing them on stdout. Reports (if any) will be
-# written in a file name "pylint_global.[txt|html]". This option is deprecated
-# and it will be removed in Pylint 2.0.
-files-output=no
 
 # Tells whether to display a full report or only the messages
 reports=no
@@ -276,12 +275,6 @@ ignore-long-lines=(?x)(
 # else.
 single-line-if-stmt=yes
 
-# List of optional constructs for which whitespace checking is disabled. `dict-
-# separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
-# `trailing-comma` allows a space between comma and closing bracket: (a, ).
-# `empty-line` allows space-only lines.
-no-space-check=
-
 # Maximum number of lines in a module
 max-module-lines=99999
 
@@ -302,6 +295,13 @@ expected-line-ending-format=
 
 # List of note tags to take in consideration, separated by a comma.
 notes=TODO
+
+
+[STRING]
+
+# This flag controls whether inconsistent-quotes generates a warning when the
+# character used as a quote delimiter is used inconsistently within a module.
+check-quote-consistency=yes
 
 
 [VARIABLES]
@@ -330,7 +330,7 @@ redefining-builtins-modules=six,six.moves,past.builtins,future.builtins,functool
 
 # Logging modules to check that the string format arguments are in logging
 # function parameter format
-logging-modules=logging,absl.logging,tensorflow.google.logging
+logging-modules=logging,absl.logging,tensorflow.io.logging
 
 
 [SIMILARITIES]

@@ -63,19 +63,19 @@ ALL_MODULES = [
 class Float64Test(parameterized.TestCase):
 
   def _assert_dtype_equals(self, tree1, tree2):
-    tree1_types = jax.tree_map(lambda t: t.dtype, tree1)
-    tree2_types = jax.tree_map(lambda t: t.dtype, tree2)
+    tree1_types = jax.tree_util.tree_map(lambda t: t.dtype, tree1)
+    tree2_types = jax.tree_util.tree_map(lambda t: t.dtype, tree2)
     self.assertEqual(tree1_types, tree2_types)
 
   @chex.all_variants
   @parameterized.named_parameters(ALL_MODULES)
-  def test_float32_input_outputs(self, transform_constr, transform_kwargs):
+  def test_mixed_dtype_input_outputs(self, transform_constr, transform_kwargs):
     initial_params = (
         jnp.array([1., 2.], dtype=jnp.float32),
-        jnp.array([3., 4.], dtype=jnp.float32))
+        jnp.array([3., 4.], dtype=jnp.float64))
     updates = (
         jnp.array([10., 21.], dtype=jnp.float32),
-        jnp.array([33., 42.], dtype=jnp.float32))
+        jnp.array([33., 42.], dtype=jnp.float64))
     scaler = transform_constr(**transform_kwargs)
     init_fn = self.variant(scaler.init)
     update_fn = self.variant(scaler.update)

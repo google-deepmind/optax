@@ -24,9 +24,12 @@ from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
+from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
+from optax._src.alias import ScalarOrSchedule
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -49,6 +52,7 @@ from optax._src.clipping import clip_by_block_rms
 from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
+from optax._src.clipping import per_example_global_norm_clip
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
@@ -69,12 +73,15 @@ from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
 from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
+from optax._src.loss import ctc_loss
+from optax._src.loss import ctc_loss_with_forward_probs
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
+from optax._src.loss import softmax_cross_entropy_with_integer_labels
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -109,6 +116,7 @@ from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
+from optax._src.transform import bias_correction
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
@@ -116,6 +124,7 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam
@@ -139,6 +148,9 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
+from optax._src.transform import update_infinity_moment
+from optax._src.transform import update_moment
+from optax._src.transform import update_moment_per_elem_norm
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -148,13 +160,17 @@ from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
 from optax._src.wrappers import masked
+from optax._src.wrappers import MaskedNode
 from optax._src.wrappers import MaskedState
 from optax._src.wrappers import maybe_update
 from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
+from optax._src.wrappers import ShouldSkipUpdateFunction
+from optax._src.wrappers import skip_large_updates
+from optax._src.wrappers import skip_not_finite
 
-__version__ = "0.1.1"
+__version__ = "0.1.3"
 
 __all__ = (
     "adabelief",
@@ -184,6 +200,8 @@ __all__ = (
     "ClipByGlobalNormState",
     "ClipState",
     "constant_schedule",
+    "ctc_loss",
+    "ctc_loss_with_forward_probs",
     "control_delta_method",
     "control_variates_jacobians",
     "cosine_decay_schedule",
@@ -222,6 +240,7 @@ __all__ = (
     "LookaheadParams",
     "LookaheadState",
     "masked",
+    "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
     "maybe_update",
@@ -239,6 +258,7 @@ __all__ = (
     "Params",
     "pathwise_jacobians",
     "periodic_update",
+    "per_example_global_norm_clip",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
@@ -248,6 +268,7 @@ __all__ = (
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
+    "ScalarOrSchedule",
     "scale_by_adam",
     "scale_by_adan",
     "scale_by_belief",
@@ -280,7 +301,10 @@ __all__ = (
     "set_to_zero",
     "sgd",
     "sgdr_schedule",
+    "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
+    "skip_large_updates",
+    "skip_not_finite",
     "sm3",
     "smooth_labels",
     "softmax_cross_entropy",

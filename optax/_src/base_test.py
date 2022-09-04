@@ -72,7 +72,7 @@ class StatelessTest(chex.TestCase):
 
     @base.stateless
     def opt(g, p):
-      return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+      return jax.tree_util.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     state = opt.init(params)
     update_fn = self.variant(opt.update)
@@ -86,7 +86,7 @@ class StatelessTest(chex.TestCase):
 
     @base.stateless
     def opt(g, _):
-      return jax.tree_map(lambda g_: g_ * 2, g)
+      return jax.tree_util.tree_map(lambda g_: g_ * 2, g)
 
     state = opt.init(None)
     update_fn = self.variant(opt.update)
@@ -96,7 +96,7 @@ class StatelessTest(chex.TestCase):
 
   def test_init_returns_emptystate(self):
     def weight_decay(g, p):
-      return jax.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+      return jax.tree_util.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     opt = base.stateless(weight_decay)
     state = opt.init(None)
