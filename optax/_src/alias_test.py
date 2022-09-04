@@ -71,7 +71,7 @@ class AliasTest(chex.TestCase):
           dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
           dict(opt_name='adamax', opt=lambda: alias.adam(1e-1)),
           dict(opt_name='adamaxw', opt=lambda: alias.adamw(1e-1)),
-          dict(opt_name='adan', opt=lambda: alias.adan(1e-1)),
+          dict(opt_name='adan', opt=lambda: alias.adan(1.0)),
           dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
           dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
           dict(
