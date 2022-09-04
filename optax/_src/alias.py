@@ -278,12 +278,12 @@ def adamw(
 
 def adan(
     learning_rate: ScalarOrSchedule,
-    b1: float = 0.02,
-    b2: float = 0.08,
-    b3: float = 0.01,
+    b1: float = 0.98,
+    b2: float = 0.92,
+    b3: float = 0.99,
     eps: float = 1e-8,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-2,
+    weight_decay: float = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """The ADAptive Nesterov momentum algorithm (Adan).
