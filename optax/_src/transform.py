@@ -387,7 +387,7 @@ class ScaleByAdanState(NamedTuple):
   mu: base.Updates
   nu: base.Updates
   delta: base.Updates
-  pre_grad: base.Updates
+  grad_tm1: base.Updates
 
 
 def scale_by_adan(
