@@ -278,27 +278,22 @@ def adamw(
 
 def adan(
     learning_rate: ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    b3: float = 0.999,
+    b1: float = 0.02,
+    b2: float = 0.08,
+    b3: float = 0.01,
     eps: float = 1e-8,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-4,
+    weight_decay: float = 1e-2,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
-  """Adam with weight decay regularization.
+  """The ADAptive Nesterov momentum algorithm (Adan).
 
-  AdamW uses weight decay to regularise learning towards small weights, as
-  this leads to better generalisation. In SGD you can also use L2 regularisation
-  to implement this as an additive loss term, however L2 regularization
-  does not behave as intended for adaptive gradient algorithms such as Adam.
-
-  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
-  for the bias parameters. You can use `optax.masked` to make your own AdamW
-  variant where `additive_weight_decay` is applied only to a subset of `params`.
+  Adan is an Adam variant with Nesterov Momentum Estimation (NME).
+  Adan adopts NME to estimate the first- and second-order moments of
+  the gradient in adaptive gradient algorithms for convergence acceleration
 
   References:
-    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
+    Xie et al, 2022: https://arxiv.org/abs/2208.06677
 
   Args:
     learning_rate: this is a fixed global scaling factor.
@@ -306,9 +301,6 @@ def adan(
     b2: the exponential decay rate to track the second moment of past gradients.
     eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: (default `0`), a small constant applied to denominator inside the
-      square root (as in RMSProp), to avoid dividing by zero when rescaling.
-      This is needed for instance when computing (meta-)gradients through Adam.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
     weight_decay: strength of the weight decay regularization.

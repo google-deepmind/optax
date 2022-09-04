@@ -391,9 +391,9 @@ class ScaleByAdanState(NamedTuple):
 
 
 def scale_by_adan(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    b3: float = 0.8,
+    b1: float = 0.02,
+    b2: float = 0.08,
+    b3: float = 0.01,
     eps: float = 1e-8,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
