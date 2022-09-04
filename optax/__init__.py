@@ -114,6 +114,7 @@ from optax._src.transform import ema
 from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
@@ -126,6 +127,7 @@ from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByRmsState
@@ -160,6 +162,7 @@ __all__ = (
     "adagrad",
     "adam",
     "adamw",
+    "adan",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
@@ -246,6 +249,7 @@ __all__ = (
     "safe_norm",
     "safe_root_mean_squares",
     "scale_by_adam",
+    "scale_by_adan",
     "scale_by_belief",
     "scale_by_factored_rms",
     "scale_by_param_block_norm",
@@ -261,6 +265,7 @@ __all__ = (
     "scale_gradient",
     "scale",
     "ScaleByAdamState",
+    "ScaleByAdanState",
     "ScaleByBeliefState",
     "ScaleByFromageState",
     "ScaleByRmsState",
