@@ -405,8 +405,10 @@ def scale_by_adan(
 
   Args:
     b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared differences.
-    b3: decay rate for the exponentially weighted average of difference of grads.
+    b2: decay rate for the exponentially weighted average of
+        squared differences.
+    b3: decay rate for the exponentially weighted average of
+        difference of grads.
     eps: term added to the denominator to improve numerical stability.
     eps_root: term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
@@ -425,7 +427,8 @@ def scale_by_adan(
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
     delta = jax.tree_map(jnp.zeros_like, params)  # Second moment
     grad_tm1 = jax.tree_map(jnp.zeros_like, params)  # Previous gradient
-    return ScaleByAdanState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, delta=delta, grad_tm1=grad_tm1)
+    return ScaleByAdanState(count=jnp.zeros([], jnp.int32),
+                            mu=mu, nu=nu, delta=delta, grad_tm1=grad_tm1)
 
   def update_fn(updates, state, params=None):
     del params
@@ -438,8 +441,11 @@ def scale_by_adan(
     delta_hat = bias_correction(delta, b3, count_inc)
     nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_multimap(
-        lambda m, d, n: (m + d) / (jnp.sqrt(n + eps_root) + eps), mu_hat, delta_hat, nu_hat)
-    return updates, ScaleByAdanState(count=count_inc, mu=mu, nu=nu, delta=delta, grad_tm1=updates)
+        lambda m, d, n: (m + d) / (jnp.sqrt(n + eps_root) + eps),
+        mu_hat, delta_hat, nu_hat)
+    return updates, ScaleByAdanState(count=count_inc,
+                                    mu=mu, nu=nu, delta=delta,
+                                    grad_tm1=updates)
 
   return base.GradientTransformation(init_fn, update_fn)
 
