@@ -395,7 +395,6 @@ def scale_by_adan(
     b2: float = 0.999,
     b3: float = 0.8,
     eps: float = 1e-8,
-    eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adan algorithm.
@@ -410,8 +409,6 @@ def scale_by_adan(
     b3: decay rate for the exponentially weighted average of
         difference of grads.
     eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype is inferred from `params` and `updates`.
 

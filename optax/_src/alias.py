@@ -282,7 +282,6 @@ def adan(
     b2: float = 0.999,
     b3: float = 0.999,
     eps: float = 1e-8,
-    eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
     weight_decay: float = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
@@ -324,7 +323,7 @@ def adan(
   """
   return combine.chain(
       transform.scale_by_adan(
-          b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+          b1=b1, b2=b2, b3=b3, eps=eps, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
       _scale_by_learning_rate(learning_rate),
   )
