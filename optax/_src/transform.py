@@ -429,9 +429,10 @@ def scale_by_adan(
 
   def update_fn(updates, state, params=None):
     del params
-    if state.count == 0:
-      state.grad_tm1 = updates
-    diff = jax.tree_map(lambda x, y: x - y, updates, state.grad_tm1)
+    if state.count != 0:
+      diff = jax.tree_map(lambda x, y: x - y, updates, state.grad_tm1)
+    else:
+      diff = jnp.zeros_like(updates)
     grad_prime = jax.tree_map(lambda x, y: x + b2*y, updates, diff)
 
     mu = update_moment(updates, state.mu, b1, 1)
@@ -447,8 +448,7 @@ def scale_by_adan(
     new_updates = jax.tree_map(
         lambda m, d, n: (m + b2*d) / (jnp.sqrt(n) + eps),
         mu_hat, delta_hat, nu_hat)
-    print("test")
-    new_uptades = jnp.zeros_like(updates)
+
     return new_updates, ScaleByAdanState(count=count_inc,
                                     mu=mu, nu=nu, delta=delta,
                                     grad_tm1=updates)
