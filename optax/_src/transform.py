@@ -447,6 +447,8 @@ def scale_by_adan(
     new_updates = jax.tree_map(
         lambda m, d, n: (m + b2*d) / (jnp.sqrt(n) + eps),
         mu_hat, delta_hat, nu_hat)
+    print("test")
+    new_uptades = jnp.zeros_like(updates)
     return new_updates, ScaleByAdanState(count=count_inc,
                                     mu=mu, nu=nu, delta=delta,
                                     grad_tm1=updates)
