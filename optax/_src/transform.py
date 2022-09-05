@@ -429,11 +429,15 @@ def scale_by_adan(
 
   def update_fn(updates, state, params=None):
     del params
+    if state.count == 0:
+      state.grad_tm1 = updates
     diff = jax.tree_map(lambda x, y: x - y, updates, state.grad_tm1)
     grad_prime = jax.tree_map(lambda x, y: x + b2*y, updates, diff)
+
     mu = update_moment(updates, state.mu, b1, 1)
     delta = update_moment(diff, state.delta, b2, 1)
     nu = update_moment_per_elem_norm(grad_prime, state.nu, b3, 2)
+
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = utils.cast_tree(bias_correction(mu, b1, count_inc), mu_dtype)
     delta_hat = bias_correction(delta, b2, count_inc)
