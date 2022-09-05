@@ -439,8 +439,6 @@ def scale_by_adan(
     delta = update_moment(diff, state.delta, b2, 1)
     nu = update_moment_per_elem_norm(grad_prime, state.nu, b3, 2)
 
-    print(mu, delta, nu)
-
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = utils.cast_tree(bias_correction(mu, b1, count_inc), mu_dtype)
     delta_hat = bias_correction(delta, b2, count_inc)
