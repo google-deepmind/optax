@@ -427,8 +427,8 @@ def noisy_sgd(
     The corresponding `GradientTransformation`.
   """
   return combine.chain(
-      _scale_by_learning_rate(learning_rate),
       transform.add_noise(eta, gamma, seed),
+      _scale_by_learning_rate(learning_rate),
   )
 
 
