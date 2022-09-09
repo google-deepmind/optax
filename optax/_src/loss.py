@@ -506,13 +506,16 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
 
 def hinge_loss(predictions: chex.Array, targets: chex.Array) -> chex.Array:
   """
-  Docstring
+  Computes the hinge loss for Binary Classification.
+
+  Args:
+    predictions: Predicted values with shape [..., dim].
+    targets: Target values with shape [..., dim].
+      Expected to be in range [-1, 1].
+
+  Returns:
+    Average Hinge Loss
   """
   assert predictions.shape[0] == targets.shape[0], "Predictions and Target lengths must be consistent."
-
   # Binary Case
-  new_predictions = jnp.array([-1 if i == 0 else i for i in predictions])
-  new_targets = jnp.array([-1 if i == 0 else i for i in targets])
-
-  loss = jnp.mean([jnp.maximum(jnp.array([0]), 1-x*y) for x, y in zip(new_targets, new_predictions)])
-  return loss
+  return jnp.mean(jnp.maximum(0, 1 - predictions * targets))
