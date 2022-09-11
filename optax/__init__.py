@@ -75,6 +75,7 @@ from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
 from optax._src.loss import ctc_loss
 from optax._src.loss import ctc_loss_with_forward_probs
+from optax._src.loss import hinge_loss
 from optax._src.loss import huber_loss
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
@@ -218,6 +219,7 @@ __all__ = (
     "fromage",
     "global_norm",
     "GradientTransformation",
+    "hinge_loss",
     "hessian_diag",
     "huber_loss",
     "hvp",

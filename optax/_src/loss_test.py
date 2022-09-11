@@ -475,5 +475,20 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
         self.exp,
         atol=1e-4)
 
+class HingeLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([1, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+    self.ts = np.array([-1, -1, -1, -1, -1, 1, -1, 1, -1, 1])
+    # computed expected outputs.
+    self.exp = np.maximum(0, 1 - self.ys * self.ts)
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(loss.hinge_loss)(self.ys, self.ts, delta=1),
+        self.exp)
+
 if __name__ == '__main__':
   absltest.main()
