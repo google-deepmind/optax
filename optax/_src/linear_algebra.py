@@ -14,10 +14,13 @@
 # ==============================================================================
 """Linear algebra utilities used in optimisation."""
 
+from optparse import Option
 import jax
 from jax import lax
 import jax.numpy as jnp
+import chex
 import numpy as np
+from typing import Optional
 
 from optax._src import base
 from optax._src import numerics
@@ -30,10 +33,10 @@ def global_norm(updates: base.Updates) -> base.Updates:
 
 
 def power_iteration(
-    matrix,
-    num_iters=100,
-    error_tolerance=1e-6,
-    precision=lax.Precision.HIGHEST):
+    matrix: chex.Array,
+    num_iters: Optional[int]=100,
+    error_tolerance: Optional[float]=1e-6,
+    precision: Optional[jnp.float32]=lax.Precision.HIGHEST):
   r"""Power iteration algorithm.
 
   The power iteration algorithm takes a symmetric PSD matrix `A`, and produces
@@ -81,12 +84,12 @@ def power_iteration(
 
 
 def matrix_inverse_pth_root(
-    matrix,
-    p,
-    num_iters=100,
-    ridge_epsilon=1e-6,
-    error_tolerance=1e-6,
-    precision=lax.Precision.HIGHEST):
+    matrix: chex.Array,
+    p: int,
+    num_iters: Optional[int]=100,
+    ridge_epsilon: Optional[float]=1e-6,
+    error_tolerance: Optional[float]=1e-6,
+    precision: Optional[jnp.float32]=lax.Precision.HIGHEST):
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
 
   This function uses the Coupled newton iterations algorithm for
