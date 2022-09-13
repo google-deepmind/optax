@@ -77,6 +77,9 @@ class AliasTest(chex.TestCase):
               opt_name='noisy_sgd',
               opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
           dict(
+              opt_name='online_newton_step',
+              opt=lambda: alias.online_newton_step(learning_rate=30., eps=1.)),
+          dict(
               opt_name='optimistic_gradient_descent',
               opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
           dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
@@ -97,10 +100,13 @@ class AliasTest(chex.TestCase):
   )
   def test_optimization(self, opt_name, opt, target, dtype):
     if (opt_name in (
-        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
-        jnp.iscomplexobj(dtype)):
+        'fromage', 'noisy_sgd', 'sm3', 'online_newton_step',
+        'optimistic_gradient_descent') and jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
+
+    if (opt_name == 'online_newton_step' and target is _setup_rosenbrock):
+      opt = lambda: alias.online_newton_step(learning_rate=0.5, eps=1.)
 
     opt = opt()
     initial_params, final_params, get_updates = target(dtype)
