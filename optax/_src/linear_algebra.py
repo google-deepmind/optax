@@ -14,7 +14,6 @@
 # ==============================================================================
 """Linear algebra utilities used in optimisation."""
 
-from optparse import Option
 import jax
 from jax import lax
 import jax.numpy as jnp
