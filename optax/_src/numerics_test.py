@@ -43,7 +43,7 @@ def _invalid_ord_axis_inputs(ord_axis_keepdims):
 
 class NumericsTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_safe_int32_increments(self):
     inc_fn = self.variant(numerics.safe_int32_increment)
     # increment small numbers correctly.
@@ -55,7 +55,7 @@ class NumericsTest(chex.TestCase):
     incremented = inc_fn(base)
     np.testing.assert_array_equal(incremented, base)
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters(
       itertools.filterfalse(
           _invalid_ord_axis_inputs,
@@ -73,7 +73,7 @@ class NumericsTest(chex.TestCase):
     g = dnorm_dx(float32_array(jnp.zeros((3, 4))), float32_array(3.))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_safe_rms(self):
     drms_dx = self.variant(jax.grad(numerics.safe_root_mean_squares))
     # Test gradient is 0. in 0. when zero min rms is used.

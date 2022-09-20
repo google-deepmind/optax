@@ -38,7 +38,7 @@ class ComposeTest(chex.TestCase):
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
