@@ -395,6 +395,7 @@ def scale_by_adan(
     b2: float = 0.92,
     b3: float = 0.99,
     eps: float = 1e-8,
+    eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adan algorithm.
@@ -403,12 +404,13 @@ def scale_by_adan(
     [Xie et al, 2022](https://arxiv.org/abs/2208.06677)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of
-        squared differences.
-    b3: decay rate for the exponentially weighted average of
-        difference of grads.
+    b1: Decay rate for the exponentially weighted average of gradients.
+    b2: Decay rate for the exponentially weighted average of difference of
+      gradients.
+    b3: Decay rate for the exponentially weighted average of the squared term.
     eps: term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype is inferred from `params` and `updates`.
 
@@ -445,7 +447,7 @@ def scale_by_adan(
     delta_hat = bias_correction(delta, b2, count_inc)
     nu_hat = bias_correction(nu, b3, count_inc)
     new_updates = jax.tree_map(
-        lambda m, d, n: (m + b2*d) / (jnp.sqrt(n) + eps),
+        lambda m, d, n: (m + b2*d) / (jnp.sqrt(n + eps_root) + eps),
         mu_hat, delta_hat, nu_hat)
 
     return new_updates, ScaleByAdanState(count=count_inc,

@@ -282,6 +282,7 @@ def adan(
     b2: float = 0.92,
     b3: float = 0.99,
     eps: float = 1e-8,
+    eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
     weight_decay: float = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
@@ -297,10 +298,14 @@ def adan(
 
   Args:
     learning_rate: this is a fixed global scaling factor.
-    b1: the exponential decay rate to track the first moment of past gradients.
-    b2: the exponential decay rate to track the second moment of past gradients.
+    b1: Decay rate for the exponentially weighted average of gradients.
+    b2: Decay rate for the exponentially weighted average of difference of
+      gradients.
+    b3: Decay rate for the exponentially weighted average of the squared term.
     eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling.
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
     weight_decay: strength of the weight decay regularization.
@@ -315,7 +320,7 @@ def adan(
   """
   return combine.chain(
       transform.scale_by_adan(
-          b1=b1, b2=b2, b3=b3, eps=eps, mu_dtype=mu_dtype),
+          b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
       _scale_by_learning_rate(learning_rate),
   )
