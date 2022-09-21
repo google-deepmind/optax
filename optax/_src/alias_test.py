@@ -64,45 +64,52 @@ class AliasTest(chex.TestCase):
 
   @parameterized.product(
       (
-          dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
-          dict(opt_name='adafactor', opt=lambda: alias.adafactor(5e-3)),
-          dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
-          dict(opt_name='adam', opt=lambda: alias.adam(1e-1)),
-          dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
-          dict(opt_name='adamax', opt=lambda: alias.adam(1e-1)),
-          dict(opt_name='adamaxw', opt=lambda: alias.adamw(1e-1)),
-          dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
-          dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
+          dict(
+              opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3,
+                                              momentum=0.9)),
+          dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
+          dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
+          dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
+          dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
+          dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
+          dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
+          dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
+          dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
           dict(
               opt_name='noisy_sgd',
-              opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
+              opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
           dict(
               opt_name='optimistic_gradient_descent',
-              opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
-          dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
+              opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1)),
+          dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
           dict(
-              opt_name='rmsprop_momentum',
-              opt=lambda: alias.rmsprop(5e-3, momentum=0.9)),
-          dict(opt_name='fromage', opt=lambda: alias.fromage(5e-3)),
-          dict(opt_name='adabelief', opt=lambda: alias.adabelief(1e-2)),
-          dict(opt_name='radam', opt=lambda: alias.radam(5e-3)),
-          dict(opt_name='sm3', opt=lambda: alias.sm3(1.0)),
-          dict(opt_name='yogi', opt=lambda: alias.yogi(1e-1)),
+              opt_name='rmsprop',
+              opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
+          dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
+          dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1e-2)),
+          dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
+          dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
+          dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
           dict(
               opt_name='dpsgd',
-              opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
+              opt_kwargs=dict(
+                  learning_rate=1e-3,
+                  l2_norm_clip=10.,
+                  noise_multiplier=1e-3,
+                  seed=0,
+                  momentum=0.2)),
       ),
       target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
   )
-  def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in (
-        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
+  def test_optimization(self, opt_name, opt_kwargs, target, dtype):
+    if (opt_name
+        in ('fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
         jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
 
-    opt = opt()
+    opt = getattr(alias, opt_name)(**opt_kwargs)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -122,7 +129,7 @@ class AliasTest(chex.TestCase):
     for _ in range(10000):
       params, state = step(params, state)
 
-    chex.assert_tree_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.named_parameters([
       ('float32', 'float32'),
