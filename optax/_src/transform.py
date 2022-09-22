@@ -396,7 +396,7 @@ def scale_by_adan(
     b3: float = 0.99,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    fo_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adan algorithm.
 
@@ -411,20 +411,22 @@ def scale_by_adan(
     eps: term added to the denominator to improve numerical stability.
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    mu_dtype: optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+    fo_dtype: optional `dtype` to be used for the first order accumulators
+      mu and delta; if `None` then the `dtype is inferred from `params`
+      and `updates`.
 
   Returns:
     An (init_fn, update_fn) tuple.
   """
 
-  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+  fo_dtype = utils.canonicalize_dtype(fo_dtype)
 
   def init_fn(params):
     mu = jax.tree_map(  # First moment
-        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+        lambda t: jnp.zeros_like(t, dtype=fo_dtype), params)
     nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
-    delta = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    delta = jax.tree_map(  # EWA of Difference of gradients
+        lambda t: jnp.zeros_like(t, dtype=fo_dtype), params)
     grad_tm1 = jax.tree_map(jnp.zeros_like, params)  # Previous gradient
     return ScaleByAdanState(count=jnp.zeros([], jnp.int32),
                             mu=mu, nu=nu, delta=delta, grad_tm1=grad_tm1)
@@ -443,8 +445,10 @@ def scale_by_adan(
     nu = update_moment_per_elem_norm(grad_prime, state.nu, b3, 2)
 
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = utils.cast_tree(bias_correction(mu, b1, count_inc), mu_dtype)
-    delta_hat = bias_correction(delta, b2, count_inc)
+    mu_hat = utils.cast_tree(bias_correction(mu, b1, count_inc), fo_dtype)
+    delta_hat = utils.cast_tree(
+                                bias_correction(delta, b2, count_inc),
+                                fo_dtype)
     nu_hat = bias_correction(nu, b3, count_inc)
     new_updates = jax.tree_map(
         lambda m, d, n: (m + b2*d) / (jnp.sqrt(n + eps_root) + eps),
