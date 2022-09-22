@@ -23,7 +23,40 @@ import jax.numpy as jnp
 
 from optax._src import alias
 from optax._src import numerics
+from optax._src import schedule
 from optax._src import update
+
+_OPTIMIZERS_UNDER_TEST = (
+    dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
+    dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
+    dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
+    dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
+    dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
+    dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
+    dict(
+        opt_name='optimistic_gradient_descent',
+        opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1)),
+    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
+    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
+    dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
+    dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1e-2)),
+    dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
+    dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
+    dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(
+        opt_name='dpsgd',
+        opt_kwargs=dict(
+            learning_rate=1e-3,
+            l2_norm_clip=10.,
+            noise_multiplier=1e-3,
+            seed=0,
+            momentum=0.2)),
+)
 
 
 def _setup_parabola(dtype):
@@ -63,47 +96,18 @@ def _setup_rosenbrock(dtype):
 class AliasTest(chex.TestCase):
 
   @parameterized.product(
-      (
-          dict(opt_name='sgd', opt=lambda: alias.sgd(1e-3, 0.9)),
-          dict(opt_name='adafactor', opt=lambda: alias.adafactor(5e-3)),
-          dict(opt_name='adagrad', opt=lambda: alias.adagrad(1.0)),
-          dict(opt_name='adam', opt=lambda: alias.adam(1e-1)),
-          dict(opt_name='adamw', opt=lambda: alias.adamw(1e-1)),
-          dict(opt_name='adamax', opt=lambda: alias.adam(1e-1)),
-          dict(opt_name='adamaxw', opt=lambda: alias.adamw(1e-1)),
-          dict(opt_name='adan', opt=lambda: alias.adan(0.1)),
-          dict(opt_name='lars', opt=lambda: alias.lars(1.0)),
-          dict(opt_name='lamb', opt=lambda: alias.lamb(1e-3)),
-          dict(
-              opt_name='noisy_sgd',
-              opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
-          dict(
-              opt_name='optimistic_gradient_descent',
-              opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
-          dict(opt_name='rmsprop', opt=lambda: alias.rmsprop(5e-3)),
-          dict(
-              opt_name='rmsprop_momentum',
-              opt=lambda: alias.rmsprop(5e-3, momentum=0.9)),
-          dict(opt_name='fromage', opt=lambda: alias.fromage(5e-3)),
-          dict(opt_name='adabelief', opt=lambda: alias.adabelief(1e-2)),
-          dict(opt_name='radam', opt=lambda: alias.radam(5e-3)),
-          dict(opt_name='sm3', opt=lambda: alias.sm3(1.0)),
-          dict(opt_name='yogi', opt=lambda: alias.yogi(1e-1)),
-          dict(
-              opt_name='dpsgd',
-              opt=lambda: alias.dpsgd(1e-3, 10.0, 0.001, 0, 0.2)),
-      ),
+      _OPTIMIZERS_UNDER_TEST,
       target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32, jnp.complex64),
   )
-  def test_optimization(self, opt_name, opt, target, dtype):
-    if (opt_name in (
-        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
+  def test_optimization(self, opt_name, opt_kwargs, target, dtype):
+    if (opt_name
+        in ('fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
         jnp.iscomplexobj(dtype)):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
 
-    opt = opt()
+    opt = getattr(alias, opt_name)(**opt_kwargs)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -123,7 +127,40 @@ class AliasTest(chex.TestCase):
     for _ in range(10000):
       params, state = step(params, state)
 
-    chex.assert_tree_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+
+  @chex.all_variants
+  @parameterized.product(_OPTIMIZERS_UNDER_TEST)
+  def test_optimizers_can_be_wrapped_in_inject_hyperparams(
+      self, opt_name, opt_kwargs):
+    """Checks that optimizers can be wrapped in inject_hyperparams."""
+    # See also https://github.com/deepmind/optax/issues/412.
+    opt_factory = getattr(alias, opt_name)
+    opt = opt_factory(**opt_kwargs)
+    if opt_name == 'adafactor':
+      # Adafactor wrapped in inject_hyperparams currently needs a static
+      # argument to be specified in order to be jittable. See issue
+      # https://github.com/deepmind/optax/issues/412.
+      opt_inject = schedule.inject_hyperparams(
+          opt_factory, static_args=('min_dim_size_to_factor',))(**opt_kwargs)
+    else:
+      opt_inject = schedule.inject_hyperparams(opt_factory)(**opt_kwargs)
+
+    params = [-jnp.ones((2, 3)), jnp.ones((2, 5, 2))]
+    grads = [jnp.ones((2, 3)), -jnp.ones((2, 5, 2))]
+
+    state = self.variant(opt.init)(params)
+    updates, new_state = self.variant(opt.update)(grads, state, params)
+
+    state_inject = self.variant(opt_inject.init)(params)
+    updates_inject, new_state_inject = self.variant(opt_inject.update)(
+        grads, state_inject, params)
+
+    with self.subTest('Equality of updates.'):
+      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
+    with self.subTest('Equality of new optimizer states.'):
+      chex.assert_trees_all_close(
+          new_state_inject.inner_state, new_state, rtol=1e-4)
 
   @parameterized.named_parameters([
       ('float32', 'float32'),

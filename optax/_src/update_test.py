@@ -25,7 +25,7 @@ from optax._src import update
 
 class UpdateTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_apply_updates(self):
     params = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     grads = jax.tree_util.tree_map(lambda t: 2 * t, params)
@@ -35,7 +35,7 @@ class UpdateTest(chex.TestCase):
     chex.assert_tree_all_close(
         exp_params, new_params, atol=1e-10, rtol=1e-5)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_apply_updates_mixed_precision(self):
     params = (
         {'a': jnp.ones((3, 2), dtype=jnp.bfloat16)},
@@ -47,7 +47,7 @@ class UpdateTest(chex.TestCase):
     for leaf in jax.tree_util.tree_leaves(new_params):
       assert leaf.dtype == jnp.bfloat16
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_incremental_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     params_2 = jax.tree_util.tree_map(lambda t: 2 * t, params_1)
@@ -58,7 +58,7 @@ class UpdateTest(chex.TestCase):
     chex.assert_tree_all_close(
         exp_params, new_params, atol=1e-10, rtol=1e-5)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_periodic_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     params_2 = jax.tree_util.tree_map(lambda t: 2 * t, params_1)

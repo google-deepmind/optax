@@ -32,7 +32,7 @@ from optax._src import wrappers
 
 class ConstantTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_constant(self):
     """Check constant schedule."""
     # Get schedule function.
@@ -52,7 +52,7 @@ class ConstantTest(chex.TestCase):
 
 class PolynomialTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_linear(self):
     """Check linear schedule."""
     # Get schedule function.
@@ -69,7 +69,7 @@ class PolynomialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_zero_steps_schedule(self):
     # Get schedule function.
     initial_value = 10.
@@ -83,7 +83,7 @@ class PolynomialTest(chex.TestCase):
       for count in range(15):
         np.testing.assert_allclose(schedule_fn(count), initial_value)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_nonlinear(self):
     """Check non-linear (quadratic) schedule."""
     # Get schedule function.
@@ -102,7 +102,7 @@ class PolynomialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_with_decay_begin(self):
     """Check quadratic schedule with non-zero schedule begin."""
     # Get schedule function.
@@ -126,7 +126,7 @@ class PolynomialTest(chex.TestCase):
 
 class PiecewiseConstantTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_positive(self):
     """Check piecewise constant schedule of positive values."""
     # Get schedule function.
@@ -142,7 +142,7 @@ class PiecewiseConstantTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_negative(self):
     """Check piecewise constant schedule of negative values."""
     # Get schedule function.
@@ -162,7 +162,7 @@ class PiecewiseConstantTest(chex.TestCase):
 
 class ExponentialTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_constant_schedule(self, staircase):
     """Checks constant schedule for exponential decay schedule."""
@@ -181,7 +181,7 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_nonvalid_transition_steps(self, staircase):
     """Checks nonvalid decay steps results in a constant schedule."""
@@ -194,7 +194,7 @@ class ExponentialTest(chex.TestCase):
       for count in range(15):
         np.testing.assert_allclose(schedule_fn(count), init_value)
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_nonvalid_decay_rate(self, staircase):
     """Checks nonvalid decay steps results in a constant schedule."""
@@ -206,7 +206,7 @@ class ExponentialTest(chex.TestCase):
     for count in range(15):
       np.testing.assert_allclose(schedule_fn(count), init_value)
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters((False, 0), (True, 0), (False, 5), (True, 5))
   def test_exponential(self, staircase, transition_begin):
     """Checks non-linear (quadratic) schedule."""
@@ -240,7 +240,7 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.parameters(
       (0.2, 0.1, False), (1.0, 0.1, False), (2.0, 3.0, False),
       (0.2, 0.1, True), (1.0, 0.1, True), (2.0, 3.0, True))
@@ -281,7 +281,7 @@ class ExponentialTest(chex.TestCase):
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_immutable_count(self):
     """Checks constant schedule for exponential decay schedule."""
     num_steps = 5
@@ -304,7 +304,7 @@ class ExponentialTest(chex.TestCase):
 
 class CosineDecayTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_decay_count_smaller_count(self):
     """Check cosine schedule decay for the entire training schedule."""
     initial_value = 0.1
@@ -324,7 +324,7 @@ class CosineDecayTest(chex.TestCase):
         initial_value * expected_multipliers,
         np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_decay_count_greater_count(self):
     """Check cosine schedule decay for a part of the training schedule."""
     initial_value = 0.1
@@ -345,7 +345,7 @@ class CosineDecayTest(chex.TestCase):
         initial_value * expected_multipliers,
         np.array(generated_vals), atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_decay_count_greater_count_with_alpha(self):
     """Check cosine schedule decay for a part of the training schedule."""
     # Get schedule function.
@@ -371,7 +371,7 @@ class CosineDecayTest(chex.TestCase):
 
 class WarmupCosineDecayTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.named_parameters(
       ('with end value', 10, 0.5, 1e-4),
       ('without end value', 5, 3, 0.),)
@@ -392,7 +392,7 @@ class WarmupCosineDecayTest(chex.TestCase):
 
 class SGDRTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.named_parameters(
       ('with step decay', 1.6, 0.8, 0.4),
       ('without step_decay', 1.6, 1.6, 1.6),)
@@ -410,7 +410,7 @@ class SGDRTest(chex.TestCase):
 
 class PiecewiseInterpolateTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_linear_piecewise(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
         'linear', 200., {5: 1.5, 10: 0.25}))
@@ -419,7 +419,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
                      120., 75., 75., 75.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_cos_piecewise(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
         'cosine', 400., {5: 1.2, 3: 0.6, 7: 1.}))
@@ -427,7 +427,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
     expected_vals = [400., 360., 280., 240., 264., 288., 288., 288., 288.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_empty_dict(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
         'linear', 13., {}))
@@ -435,7 +435,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
     expected_vals = [13., 13., 13., 13., 13.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_no_dict(self):
     schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
         'cosine', 17.))
@@ -460,7 +460,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
 
 class OneCycleTest(chex.TestCase):
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_linear(self):
     schedule_fn = self.variant(schedule.linear_onecycle_schedule(
         transition_steps=10,
@@ -475,7 +475,7 @@ class OneCycleTest(chex.TestCase):
                      34., 1., 1.]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_cosine(self):
     schedule_fn = self.variant(schedule.cosine_onecycle_schedule(
         transition_steps=5,

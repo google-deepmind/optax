@@ -17,7 +17,6 @@ import functools
 from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple
 
 from absl import app
-from absl import flags
 import haiku as hk
 import jax
 from jax import random
@@ -28,23 +27,17 @@ import optax
 import datasets  # Located in the examples folder.
 # pylint: enable=g-bad-import-order
 
-flags.DEFINE_float('learning_rate', 0.002, 'Learning rate of fast optimizer.')
-flags.DEFINE_float('slow_step_size', 0.5,
-                   'Step size for slow lookahead parameters.')
-flags.DEFINE_integer(
-    'sync_period', 5,
-    'Number of fast optimizer steps to take before synchronizing parameters.')
-flags.DEFINE_multi_integer(
-    'hidden_dims', [1000, 1000], 'Hidden dimensions of the dense layer. '
-    'Each use of the flag adds another layer with the specified dimension.')
-flags.DEFINE_integer('batch_size', 128, 'Batch size to use for training.')
-flags.DEFINE_integer('n_epochs', 5, 'Number of epochs to train for.')
-flags.DEFINE_integer('seed', 1, 'Random seed.')
-FLAGS = flags.FLAGS
+LEARNING_RATE = 0.002
+SLOW_LEARNING_RATE = 0.5
+SYNC_PERIOD = 5
+HIDDEN_DIMS = [1000, 1000]
+BATCH_SIZE = 128
+N_EPOCHS = 5
+SEED = 1
 
 
-def categorical_crossentropy(logits: jnp.ndarray,
-                             labels: jnp.ndarray) -> jnp.ndarray:
+def categorical_crossentropy(
+    logits: jnp.ndarray, labels: jnp.ndarray) -> jnp.ndarray:
   losses = -jnp.sum(labels * jax.nn.log_softmax(logits), axis=1)
   return jnp.mean(losses)
 
@@ -84,18 +77,17 @@ def _make_model(
 
 
 def main(unused_argv) -> None:
-  train_dataset = datasets.load_image_dataset('mnist', FLAGS.batch_size)
-  test_dataset = datasets.load_image_dataset('mnist', FLAGS.batch_size,
-                                             datasets.Split.TEST)
+  train_dataset = datasets.load_image_dataset('mnist', BATCH_SIZE)
+  test_dataset = datasets.load_image_dataset(
+      'mnist', BATCH_SIZE, datasets.Split.TEST)
   num_classes = train_dataset.element_spec['label'].shape[1]
 
-  init_params_fn, apply_params_fn = _make_model(
-      (*FLAGS.hidden_dims, num_classes))
+  init_params_fn, apply_params_fn = _make_model((*HIDDEN_DIMS, num_classes))
 
   # Set up the fast optimizer (adam) and wrap lookahead around it.
-  fast_optimizer = optax.adam(FLAGS.learning_rate)
-  optimizer = optax.lookahead(fast_optimizer, FLAGS.sync_period,
-                              FLAGS.slow_step_size)
+  fast_optimizer = optax.adam(LEARNING_RATE)
+  optimizer = optax.lookahead(
+      fast_optimizer, SYNC_PERIOD, SLOW_LEARNING_RATE)
 
   def get_loss(fast_params, batch):
     logits = apply_params_fn(fast_params, batch['image'])
@@ -108,7 +100,7 @@ def main(unused_argv) -> None:
     return optax.apply_updates(params, updates), opt_state
 
   example_input = next(train_dataset.as_numpy_iterator())['image']
-  initial_params = init_params_fn(random.PRNGKey(FLAGS.seed), example_input)
+  initial_params = init_params_fn(random.PRNGKey(SEED), example_input)
 
   # The lookahead optimizer wrapper keeps a pair of slow and fast parameters. To
   # initialize them, we create a pair of synchronized parameters from the
@@ -119,7 +111,7 @@ def main(unused_argv) -> None:
   opt_state = optimizer.init(params)
 
   # Training loop
-  for epoch in range(FLAGS.n_epochs):
+  for epoch in range(N_EPOCHS):
     for batch in train_dataset.as_numpy_iterator():
       params, opt_state = train_step(params, opt_state, batch)
 

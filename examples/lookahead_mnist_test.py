@@ -13,12 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for optax.examples.lookahead_mnist."""
-import sys
 
-from absl import flags
 from absl.testing import absltest
-from absl.testing import flagsaver
 from absl.testing.absltest import mock
+
 import numpy as np
 import tensorflow as tf
 
@@ -26,9 +24,6 @@ import tensorflow as tf
 import datasets  # Located in the examples folder.
 import lookahead_mnist  # Located in the examples folder.
 # pylint: enable=g-bad-import-order
-
-# Flags aren't parsed automatically when running with pytest.
-flags.FLAGS(sys.argv)
 
 
 class LookaheadMnistTest(absltest.TestCase):
@@ -59,13 +54,13 @@ class LookaheadMnistTest(absltest.TestCase):
 
   def test_model_accuracy(self):
     """Tests the calculation of metrics on a dataset."""
-    accuracy = lookahead_mnist.model_accuracy(lambda x: x,
-                                              self.dataset.as_numpy_iterator())
+    accuracy = lookahead_mnist.model_accuracy(
+        lambda x: x, self.dataset.as_numpy_iterator())
     self.assertEqual(accuracy, self.correct_accuracy)
 
-  @flagsaver.flagsaver(hidden_dims=[3, 5])
   def test_main(self):
     """Checks that the example runs successfully."""
+    lookahead_mnist.HIDDEN_DIMS = [3, 5]
     with mock.patch.object(
         datasets, 'load_image_dataset', return_value=self.dataset):
       lookahead_mnist.main({})

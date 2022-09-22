@@ -38,7 +38,7 @@ class OptimizersEquivalenceTest(chex.TestCase):
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4., 5.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3., 1.]))
 
-  @chex.all_variants()
+  @chex.all_variants
   @parameterized.named_parameters(
       ('sgd', alias.sgd(LR, 0.0),
        optimizers.sgd(LR), 1e-5),
