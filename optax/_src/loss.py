@@ -511,11 +511,12 @@ def hinge_loss(
   """Computes the hinge loss for binary classification.
 
   Args:
-    predictor_outputs: Outputs of the decision function with shape [...].
-    targets: Target values with shape [...].
+    predictor_outputs: Outputs of the decision function.
+    targets: Target values.
       Target values should be strictly in the set {-1, 1}.
+    delta: Margin
 
   Returns:
-    Binary Hinge Loss with shape [...].
+    Binary Hinge Loss.
   """
   return jnp.maximum(0, delta - predictor_outputs * targets)
