@@ -49,6 +49,7 @@ for instructions on installing JAX.
    :caption: Examples
    :maxdepth: 1
 
+   gradient_accumulation
    meta_learning
 
 

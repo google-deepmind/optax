@@ -9,3 +9,4 @@ pandoc==1.0.2
 myst_nb==0.13.1
 docutils==0.16
 matplotlib==3.5.0
+dm-haiku==0.0.8
