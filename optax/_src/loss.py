@@ -138,11 +138,11 @@ def sigmoid_binary_cross_entropy(logits, labels):
     cross entropy for each binary prediction, same shape as `logits`.
   """
   chex.assert_type([logits], float)
-  log_p = jax.nn.log_sigmoid(logits)
-  # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
-  log_not_p = jax.nn.log_sigmoid(-logits)
-  return -labels * log_p - (1. - labels) * log_not_p
-
+  return (
+    jnp.maximum(logits, 0) -
+    jnp.where(labels == 0, 0, logits) * labels +
+    jnp.log1p(jnp.exp(-jnp.abs(logits)))
+  )
 
 def softmax_cross_entropy(
     logits: chex.Array,

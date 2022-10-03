@@ -192,6 +192,12 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
       dict(preds=np.array([0., 0.]),
            labels=np.array([0., 1.]),
            expected=0.6931472),
+      dict(preds=np.array([np.inf, -np.inf]),
+           labels=np.array([0., 1.]),
+           expected=0),
+      dict(preds=np.array([-np.inf, np.inf]),
+           labels=np.array([0., 1.]),
+           expected=np.inf),
   )
   def testSigmoidCrossEntropy(self, preds, labels, expected):
     tested = jnp.mean(loss.sigmoid_binary_cross_entropy(preds, labels))
