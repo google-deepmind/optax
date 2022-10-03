@@ -512,7 +512,8 @@ class InjectHyperparamsState(NamedTuple):
 
 def inject_hyperparams(
     inner_factory: Callable[..., base.GradientTransformation],
-    static_args: Union[str, Iterable[str]] = ()
+    static_args: Union[str, Iterable[str]] = (),
+    hyperparam_dtype: Optional[jnp.dtype] = None,
 ) -> Callable[..., base.GradientTransformation]:
   """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
@@ -546,6 +547,8 @@ def inject_hyperparams(
       callable parameters are not schedules. inject_hyperparams treats all
       callables as schedules by default, so if a hyperparameter is a
       non-schedule callable, you must specify that using this argument.
+    hyperparam_dtype: Optional datatype override. If specified, all float
+      hyperparameters will be cast to this type.
 
   Returns:
     A callable that returns a ``optax.GradientTransformation``. This callable
@@ -583,8 +586,11 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      dtype = getattr(next(iter(
-          jax.tree_util.tree_leaves(params)), None), 'dtype', None)
+      if hyperparam_dtype is None:
+        dtype = getattr(next(iter(
+            jax.tree_util.tree_leaves(params)), None), 'dtype', None)
+      else:
+        dtype = hyperparam_dtype
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
@@ -594,8 +600,11 @@ def inject_hyperparams(
 
     def update_fn(updates, state, params=None):
       count_inc = numerics.safe_int32_increment(state.count)
-      dtype = getattr(next(iter(
-          jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
+      if hyperparam_dtype is None:
+        dtype = getattr(next(iter(
+            jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
+      else:
+        dtype = hyperparam_dtype
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
       hparams.update(schedule_fn(count_inc, dtype))

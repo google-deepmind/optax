@@ -598,6 +598,37 @@ class InjectHyperparamsTest(chex.TestCase):
 
     assert not set(state.hyperparams.keys()).intersection(set(static_args))
 
+  @chex.all_variants
+  @parameterized.named_parameters(
+      ('bf16hyp f32param bf16grad', jnp.bfloat16, jnp.float32, jnp.bfloat16),
+      ('bf16hyp f32param f32_grads', jnp.bfloat16, jnp.float32, jnp.float32),
+      ('f32hyp bf16param bf16grad', jnp.float32, jnp.bfloat16, jnp.bfloat16),
+      ('f32hyp f32param bf16grad', jnp.float32, jnp.float32, jnp.bfloat16),
+      ('f32hyp bf16param f32grad', jnp.float32, jnp.bfloat16, jnp.float32),
+      )
+  def test_hyperparam_dtypes(self,
+                             hyperparam_dtype,
+                             param_dtype,
+                             grad_dtype):
+    """Tests that hyperparam dtype override works as desired."""
+    optim = schedule.inject_hyperparams(
+        transform.scale_by_adam,
+        hyperparam_dtype=hyperparam_dtype)(b1=0.9, b2=0.95)
+
+    params = [jnp.ones((1, 2), dtype=param_dtype),
+              jnp.ones(2, dtype=param_dtype),
+              jnp.ones((1, 1, 1), dtype=param_dtype)]
+    grads = jax.tree_map(lambda x: x.astype(grad_dtype), params)
+    state = self.variant(optim.init)(params)
+    # Check that the hyperparams are overriden
+    self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
+    self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
+
+    _, state = self.variant(optim.update)(grads, state)
+
+    self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
+    self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
+
   @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):
