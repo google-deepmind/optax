@@ -321,7 +321,11 @@ def adan(
     the corresponding `GradientTransformation`.
   """
   if use_proximal_operator:
-    return 0
+    return transform.scale_by_proximal_adan(
+      learning_rate=learning_rate,
+      weight_decay=weight_decay,
+      b1=b1, b2=b2, b3=b3, eps_root=eps_root, fo_dtype=fo_dtype
+    )
 
   return combine.chain(
       transform.scale_by_adan(

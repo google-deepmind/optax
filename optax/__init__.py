@@ -128,6 +128,7 @@ from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
+from optax._src.transform import scale_by_proximal_adan
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -276,6 +277,7 @@ __all__ = (
     "scale_by_factored_rms",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
+    "scale_by_proximal_adan",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",

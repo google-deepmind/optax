@@ -468,7 +468,6 @@ def scale_by_proximal_adan(
     b1: float = 0.98,
     b2: float = 0.92,
     b3: float = 0.99,
-    eps: float = 1e-8,
     eps_root: float = 0.0,
     fo_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
@@ -519,7 +518,7 @@ def scale_by_proximal_adan(
 
     count_inc = numerics.safe_int32_increment(state.count)
     mu_hat = bias_correction(mu, b1, count_inc)
-    delta_hat = bias_correction(delta, b2, count_inc),
+    delta_hat = bias_correction(delta, b2, count_inc)
     nu_hat = bias_correction(nu, b3, count_inc)
 
     if callable(learning_rate):
@@ -529,14 +528,14 @@ def scale_by_proximal_adan(
 
     learning_rates = jax.tree_util.tree_map(
       lambda n: lr / jnp.sqrt(n + eps_root), nu_hat)
-    
+
     # negative scale: gradient descent
     updates = jax.tree_util.tree_map(lambda scale, m, v: -scale * (m + b2 * v),
                                      learning_rates, mu_hat,
                                      delta_hat)
 
     decay = 1. / (1. + weight_decay * lr)
-    params_new = jax.tree_util.tree_map(lambda p, u: 
+    params_new = jax.tree_util.tree_map(lambda p, u:
                                         decay * (p + u), params,
                                         updates)
 
