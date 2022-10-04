@@ -19,7 +19,6 @@ from jax import lax
 import jax.numpy as jnp
 import chex
 import numpy as np
-from typing import Optional
 
 from optax._src import base
 from optax._src import numerics
