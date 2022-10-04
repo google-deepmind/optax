@@ -20,6 +20,8 @@ from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import adamax
+from optax._src.alias import adamaxw
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -176,6 +178,8 @@ __all__ = (
     "adagrad",
     "adam",
     "adamw",
+    "adamax",
+    "adamaxw",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
