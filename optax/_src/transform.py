@@ -26,6 +26,7 @@ from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
+from optax._src.alias import ScalarOrSchedule
 
 # pylint:disable=no-value-for-parameter
 
@@ -453,6 +454,98 @@ def scale_by_adan(
     new_updates = jax.tree_map(
         lambda m, d, n: (m + b2*d) / (jnp.sqrt(n + eps_root) + eps),
         mu_hat, delta_hat, nu_hat)
+
+    return new_updates, ScaleByAdanState(count=count_inc,
+                                    mu=mu, nu=nu, delta=delta,
+                                    grad_tm1=updates)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_proximal_adan(
+    learning_rate: ScalarOrSchedule,
+    weight_decay: float,
+    b1: float = 0.98,
+    b2: float = 0.92,
+    b3: float = 0.99,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    fo_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adan algorithm.
+
+  References:
+    [Xie et al, 2022](https://arxiv.org/abs/2208.06677)
+
+  Args:
+    b1: Decay rate for the exponentially weighted average of gradients.
+    b2: Decay rate for the exponentially weighted average of difference of
+      gradients.
+    b3: Decay rate for the exponentially weighted average of the squared term.
+    eps: term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    fo_dtype: optional `dtype` to be used for the first order accumulators
+      mu and delta; if `None` then the `dtype is inferred from `params`
+      and `updates`.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+
+  fo_dtype = utils.canonicalize_dtype(fo_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_map(  # First moment
+        lambda t: jnp.zeros_like(t, dtype=fo_dtype), params)
+    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    delta = jax.tree_map(  # EWA of Difference of gradients
+        lambda t: jnp.zeros_like(t, dtype=fo_dtype), params)
+    grad_tm1 = jax.tree_map(jnp.zeros_like, params)  # Previous gradient
+    return ScaleByAdanState(count=jnp.zeros([], jnp.int32),
+                            mu=mu, nu=nu, delta=delta, grad_tm1=grad_tm1)
+
+  def update_fn(updates, state, params=None):
+    diff = jax.lax.cond(state.count != 0,
+                        lambda X, Y: jax.tree_map(lambda x, y: x - y, X, Y),
+                        lambda X, _: jax.tree_map(jnp.zeros_like, X),
+                        updates, state.grad_tm1)
+
+    grad_prime = jax.tree_map(lambda g, d: g + b2*d, updates, diff)
+
+    mu = update_moment(updates, state.mu, b1, 1)
+    delta = update_moment(diff, state.delta, b2, 1)
+    nu = update_moment_per_elem_norm(grad_prime, state.nu, b3, 2)
+
+    count_inc = numerics.safe_int32_increment(state.count)
+    mu_hat = bias_correction(mu, b1, count_inc)
+    delta_hat = bias_correction(delta, b2, count_inc),
+    nu_hat = bias_correction(nu, b3, count_inc)
+
+    if callable(learning_rate):
+      lr = learning_rate(state.count)
+    else:
+      lr = learning_rate
+
+    learning_rates = jax.tree_util.tree_map(
+      lambda n: lr / jnp.sqrt(n + eps_root), nu_hat)
+    
+    # negative scale: gradient descent
+    updates = jax.tree_util.tree_map(lambda scale, m, v: -scale * (m + b2 * v),
+                                     learning_rates, mu_hat,
+                                     delta_hat)
+
+    decay = 1. / (1. + weight_decay * lr)
+    params_new = jax.tree_util.tree_map(lambda p, u: 
+                                        decay * (p + u), params,
+                                        updates)
+
+    # params_new - params_old
+    new_updates = jax.tree_util.tree_map(lambda new, old: new - old, params_new,
+                                     params)
+
+    mu_hat = utils.cast_tree(mu_hat, fo_dtype)
+    delta_hat = utils.cast_tree(delta_hat, fo_dtype)
 
     return new_updates, ScaleByAdanState(count=count_inc,
                                     mu=mu, nu=nu, delta=delta,

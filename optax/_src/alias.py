@@ -285,6 +285,7 @@ def adan(
     eps_root: float = 0.0,
     fo_dtype: Optional[Any] = None,
     weight_decay: float = 0.0,
+    use_proximal_operator: bool = True,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """The ADAptive Nesterov momentum algorithm (Adan).
@@ -319,6 +320,9 @@ def adan(
   Returns:
     the corresponding `GradientTransformation`.
   """
+  if use_proximal_operator:
+    return 0
+
   return combine.chain(
       transform.scale_by_adan(
           b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root, fo_dtype=fo_dtype),
