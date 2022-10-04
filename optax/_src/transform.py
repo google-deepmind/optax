@@ -26,11 +26,11 @@ from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
-from optax._src.alias import ScalarOrSchedule
 
 # pylint:disable=no-value-for-parameter
 
 _abs_sq = numerics.abs_sq
+ScalarOrSchedule = Union[float, base.Schedule]
 
 
 class TraceState(NamedTuple):
