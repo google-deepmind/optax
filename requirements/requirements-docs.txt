@@ -1,6 +1,6 @@
 sphinx==4.5.0
 sphinx-book-theme==0.3.3
-sphinxcontrib-katex==0.8.6
+sphinxcontrib-katex==0.9.0
 sphinxcontrib-bibtex==2.4.2
 sphinx-autodoc-typehints==1.11.1
 IPython==7.16.3

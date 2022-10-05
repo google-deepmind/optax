@@ -200,7 +200,7 @@ latex_macros = r"""
 
 # Translate LaTeX macros to KaTeX and add to options for HTML builder
 katex_macros = katex.latex_defs_to_katex_macros(latex_macros)
-katex_options = 'macros: {' + katex_macros + '}'
+katex_options = '{displayMode: true, fleqn: true, macros: {' + katex_macros + '}}'
 
 # Add LaTeX macros for LATEX builder
 latex_elements = {'preamble': latex_macros}
