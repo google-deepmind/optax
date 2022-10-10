@@ -502,7 +502,7 @@ class InjectHyperparamsTest(chex.TestCase):
   def test_updates(self):
     optim = schedule.inject_hyperparams(transform.scale)(  # stateless
         step_size=schedule.piecewise_constant_schedule(
-            3.0, {1: 5, 7: 2, 12: 1.5}))
+            3.0, {2: 5, 8: 2, 13: 1.5}))
 
     params = [jnp.zeros([], dtype=jnp.float32)]
     state = self.variant(optim.init)(params)
@@ -518,7 +518,7 @@ class InjectHyperparamsTest(chex.TestCase):
   def test_hyperparams_state(self):
     optim = schedule.inject_hyperparams(transform.trace)(  # stateful
         decay=schedule.piecewise_constant_schedule(
-            0.8, {3: 0.5, 9: 1.25}),
+            0.8, {4: 0.5, 10: 1.25}),
         nesterov=True)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
@@ -633,16 +633,6 @@ class InjectHyperparamsTest(chex.TestCase):
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):
       schedule.inject_hyperparams(transform.scale, static_args=static_args)
-
-  @chex.all_variants
-  def test_inject_hyperparams_starts_with_step_count_zero(self):
-    """Checks that inject_hyperparams uses step count 0 in the first update."""
-    # See also: https://github.com/deepmind/optax/issues/415.
-    opt = schedule.inject_hyperparams(transform.scale)(lambda count: count)
-    params = jnp.zeros(3)
-    grads = jnp.array([-1, 0, 1])
-    updates, _ = self.variant(opt.update)(grads, opt.init(params))
-    np.testing.assert_array_equal(updates, np.zeros(3))
 
 
 if __name__ == '__main__':
