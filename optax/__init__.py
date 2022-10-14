@@ -19,6 +19,8 @@ from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
+from optax._src.alias import adamax
+from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import adan
 from optax._src.alias import dpsgd
@@ -123,6 +125,7 @@ from optax._src.transform import ema
 from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
+from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_optimistic_gradient
@@ -179,6 +182,8 @@ __all__ = (
     "adafactor",
     "adagrad",
     "adam",
+    "adamax",
+    "adamaxw",
     "adamw",
     "adan",
     "adaptive_grad_clip",
@@ -272,6 +277,7 @@ __all__ = (
     "safe_root_mean_squares",
     "ScalarOrSchedule",
     "scale_by_adam",
+    "scale_by_adamax",
     "scale_by_adan",
     "scale_by_belief",
     "scale_by_factored_rms",

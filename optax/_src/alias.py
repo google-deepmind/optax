@@ -192,11 +192,37 @@ def adam(
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """The classic Adam optimizer.
+  r"""The classic Adam optimizer.
 
-  Adam is an SGD variant with learning rate adaptation. The `learning_rate`
-  used for each weight is computed from estimates of first- and second-order
+  Adam is an SGD variant with gradient scaling adaptation. The scaling
+  used for each parameter is computed from estimates of first and second-order
   moments of the gradients (using suitable exponential moving averages).
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
+  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
+  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectievly. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, v_0) = (0, 0)`, representing initial estimates for the
+  first and second moments. In practice these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t` and optimizer state :math:`S_t`
+  and computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for
+  :math:`t > 0`, we have,
+
+  .. math::
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
+      \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
+      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      \bar{\varepsilon}} + \varepsilon} \right)\\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
 
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980

@@ -19,7 +19,7 @@ from absl.testing import absltest
 import jax.numpy as jnp
 import numpy as np
 from optax._src import linear_algebra
-import scipy
+import scipy.stats
 
 
 class LinearAlgebraTest(absltest.TestCase):
