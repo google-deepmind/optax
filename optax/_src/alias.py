@@ -308,7 +308,7 @@ def adan(
     b2: float = 0.92,
     b3: float = 0.99,
     eps: float = 1e-8,
-    eps_root: float = 0.0,
+    eps_root: float = 1e-8,
     fo_dtype: Optional[Any] = None,
     weight_decay: float = 0.0,
     use_proximal_operator: bool = True,

@@ -468,10 +468,10 @@ def scale_by_proximal_adan(
     b1: float = 0.98,
     b2: float = 0.92,
     b3: float = 0.99,
-    eps_root: float = 0.0,
+    eps_root: float = 1e-8,
     fo_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """Rescale updates according to the Adan algorithm.
+  """Rescale updates according to the proximal version of the Adan algorithm.
 
   References:
     [Xie et al, 2022](https://arxiv.org/abs/2208.06677)
