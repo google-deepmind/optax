@@ -16,6 +16,7 @@ Common Optimizers
     lamb
     lars
     noisy_sgd
+    novograd
     optimistic_gd
     dpsgd
     radam
@@ -85,6 +86,12 @@ Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
+
+
+Novograd
+~~~~~~~~~
+
+.. autofunction:: novograd
 
 
 Optimistic GD
@@ -162,6 +169,7 @@ Gradient Transforms
     scale_by_adamax
     scale_by_belief
     scale_by_factored_rms
+    scale_by_novograd
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
@@ -175,6 +183,7 @@ Gradient Transforms
     scale_by_yogi
     ScaleByAdamState
     ScaleByFromageState
+    ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
     ScaleByRStdDevState
@@ -273,6 +282,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_adamax
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
 .. autofunction:: scale_by_radam
@@ -287,6 +297,9 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByFromageState
+    :members:
+
+.. autoclass:: ScaleByNovogradState
     :members:
 
 .. autoclass:: ScaleByRmsState

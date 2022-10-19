@@ -37,6 +37,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
+    dict(opt_name='novograd', opt_kwargs=dict(learning_rate=1e-3)),
     dict(
         opt_name='optimistic_gradient_descent',
         opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1)),
