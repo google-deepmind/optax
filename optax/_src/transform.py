@@ -979,7 +979,7 @@ def scale_by_novograd(
     mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype is inferred from `params` and `updates`.
   Returns:
-    An (init_fn, update_fn) tuple.
+    A GradientTransformation object.
   """
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)

@@ -14,6 +14,7 @@ Common Optimizers
     lamb
     lars
     noisy_sgd
+    novograd
     optimistic_gd
     dpsgd
     radam
@@ -73,6 +74,12 @@ Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
+
+
+Novograd
+~~~~~~~~~
+
+.. autofunction:: novograd
 
 
 Optimistic GD
