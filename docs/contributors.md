@@ -61,6 +61,7 @@ contributors who have made significant contributions to Optax,
 
 *   [n2cholas](https://github.com/n2cholas)
 *   [wdphy16](https://github.com/wdphy16)
+*   [holounic](https://github.com/holounic)
 
 A full list of open source contributors can be found
 [here](https://github.com/deepmind/optax/graphs/contributors).

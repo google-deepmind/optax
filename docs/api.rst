@@ -10,6 +10,8 @@ Common Optimizers
     adagrad
     adam
     adamw
+    adamax
+    adamaxw
     fromage
     lamb
     lars
@@ -43,6 +45,16 @@ Adam
 ~~~~
 
 .. autofunction:: adam
+
+Adamax
+~~~~
+
+.. autofunction:: adamax
+
+AdamaxW
+~~~~~
+
+.. autofunction:: adamaxw
 
 AdamW
 ~~~~~
@@ -154,6 +166,7 @@ Gradient Transforms
     Params
     scale
     scale_by_adam
+    scale_by_adamax
     scale_by_belief
     scale_by_factored_rms
     scale_by_novograd
@@ -266,6 +279,7 @@ Optax Transforms and States
 
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
+.. autofunction:: scale_by_adamax
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
 .. autofunction:: scale_by_novograd

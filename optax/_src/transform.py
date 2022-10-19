@@ -46,12 +46,12 @@ def trace(
 
   Note: `trace` and `ema` have very similar but distinct updates;
   `trace = decay * trace + t`, while `ema = decay * ema + (1-decay) * t`.
-  Both are frequently found in the optimisation literature.
+  Both are frequently found in the optimization literature.
 
   Args:
-    decay: the decay rate for the trace of past updates.
-    nesterov: whether to use Nesterov momentum.
-    accumulator_dtype: optional `dtype` to be used for the accumulator; if
+    decay: Decay rate for the trace of past updates.
+    nesterov: Whether to use Nesterov momentum.
+    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
@@ -134,12 +134,12 @@ def ema(
 
   Note: `trace` and `ema` have very similar but distinct updates;
   `ema = decay * ema + (1-decay) * t`, while `trace = decay * trace + t`.
-  Both are frequently found in the optimisation literature.
+  Both are frequently found in the optimization literature.
 
   Args:
-    decay: the decay rate for the exponential moving average.
-    debias: whether to debias the transformed gradient.
-    accumulator_dtype: optional `dtype` to used for the accumulator; if `None`
+    decay: Decay rate for the exponential moving average.
+    debias: Whether to debias the transformed gradient.
+    accumulator_dtype: Optional `dtype` to used for the accumulator; if `None`
       then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
@@ -223,9 +223,9 @@ def scale_by_rms(
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
   Args:
-    decay: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    initial_scale: initial value for second moment
+    decay: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    initial_scale: Initial value for second moment.
 
   Returns:
     A `GradientTransformation` object.
@@ -263,9 +263,9 @@ def scale_by_stddev(
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
   Args:
-    decay: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    initial_scale: initial value for second moment
+    decay: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    initial_scale: Initial value for second moment.
 
   Returns:
     A `GradientTransformation` object.
@@ -309,12 +309,12 @@ def scale_by_adam(
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype is inferred from `params` and `updates`.
 
   Returns:
@@ -355,9 +355,9 @@ def scale_by_adamax(
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted maximum of grads.
-    eps: term added to the denominator to improve numerical stability.
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted maximum of grads.
+    eps: Term added to the denominator to improve numerical stability.
 
   Returns:
     A `GradientTransformation` object.
@@ -390,7 +390,7 @@ def scale(
   """Scale updates by some fixed scalar `step_size`.
 
   Args:
-    step_size: a scalar corresponding to a fixed scaling factor for updates.
+    step_size: A scalar corresponding to a fixed scaling factor for updates.
 
   Returns:
     A `GradientTransformation` object.
@@ -417,7 +417,7 @@ def scale_by_param_block_norm(
   (e.g. in a convolutional layer) appearing as a leaf in the grads/param pytree.
 
   Args:
-    min_scale: minimum scaling factor.
+    min_scale: Minimum scaling factor.
 
   Returns:
     A `GradientTransformation` object.
@@ -447,7 +447,7 @@ def scale_by_param_block_rms(
   (e.g. in a convolutional layer) appearing as a leaf in the grads/param pytree.
 
   Args:
-    min_scale: minimum scaling factor.
+    min_scale: Minimum scaling factor.
 
   Returns:
     A `GradientTransformation` object.
@@ -487,10 +487,10 @@ def scale_by_belief(
     [Zhuang et al, 2020](https://arxiv.org/abs/2010.07468)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of variance of grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the second moment of the prediction error to
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of variance of grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
 
@@ -536,10 +536,10 @@ def scale_by_yogi(
     [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of variance of grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of variance of grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     initial_accumulator_value: The starting value for accumulators.
       Only positive values are allowed.
@@ -583,12 +583,12 @@ def scale_by_radam(
     [Liu et al, 2020](https://arxiv.org/abs/1908.03265)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    threshold: Threshold for variance tractability
+    threshold: Threshold for variance tractability.
 
   Returns:
     A `GradientTransformation` object.
@@ -636,8 +636,8 @@ def add_decayed_weights(
   """Add parameter scaled by `weight_decay`.
 
   Args:
-    weight_decay: a scalar weight decay rate.
-    mask: a tree with same structure as (or a prefix of) the params PyTree,
+    weight_decay: A scalar weight decay rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
       apply the transformation to, and `False` for those you want to skip.
@@ -676,7 +676,7 @@ def scale_by_schedule(
   """Scale updates using a custom schedule for the `step_size`.
 
   Args:
-    step_size_fn: a function that takes an update count as input and proposes
+    step_size_fn: A function that takes an update count as input and proposes
       the step_size to multiply the updates by.
 
   Returns:
@@ -718,9 +718,9 @@ def scale_by_trust_ratio(
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
 
   Args:
-    min_norm: minimum norm for params and gradient norms; by default is zero.
-    trust_coefficient: a multiplier for the trust ratio.
-    eps: additive constant added to the denominator for numerical stability.
+    min_norm: Minimum norm for params and gradient norms; by default is zero.
+    trust_coefficient: A multiplier for the trust ratio.
+    eps: Additive constant added to the denominator for numerical stability.
 
   Returns:
     A `GradientTransformation` object.
@@ -772,9 +772,9 @@ def add_noise(
     [Neelakantan et al, 2014](https://arxiv.org/abs/1511.06807)
 
   Args:
-    eta: base variance of the gaussian noise added to the gradient.
-    gamma: decay exponent for annealing of the variance.
-    seed: seed for random number generation.
+    eta: Base variance of the gaussian noise added to the gradient.
+    gamma: Decay exponent for annealing of the variance.
+    seed: Seed for random number generation.
 
   Returns:
     A `GradientTransformation` object.
@@ -822,7 +822,7 @@ def apply_every(
   important for you, consider using the `optax.MultiSteps`.
 
   Args:
-    k: emit non-zero gradients every k steps, otherwise accumulate them.
+    k: Emit non-zero gradients every k steps, otherwise accumulate them.
 
   Returns:
     A `GradientTransformation` object.
@@ -895,9 +895,9 @@ def scale_by_sm3(
     [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
 
   Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
 
   Returns:
     A `GradientTransformation` object.
@@ -1044,14 +1044,14 @@ def scale_by_novograd(
 def scale_by_optimistic_gradient(
     alpha: float = 1.0,
     beta: float = 1.0) -> base.GradientTransformation:
-  """Compute generalised optimistic gradients.
+  """Compute generalized optimistic gradients.
 
   References:
     [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
 
   Args:
-    alpha: (float) coefficient for generalized OGD
-    beta: (float) coefficient for negative momentum
+    alpha: Coefficient for generalized optimistic gradient descent.
+    beta: Coefficient for negative momentum.
 
   Returns:
     A `GradientTransformation` object.

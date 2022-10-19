@@ -277,19 +277,8 @@ where `optim` is an optax optimizer.
 
 ## Citing Optax
 
-To cite this repository:
+Optax is part of the [DeepMind JAX Ecosystem], to cite Optax please use
+the [DeepMind JAX Ecosystem citation].
 
-```bibtex
-@software{optax2020github,
-  author = {Matteo Hessel and David Budden and Fabio Viola and Mihaela Rosca
-            and Eren Sezener and Tom Hennigan},
-  title = {Optax: composable gradient transformation and optimisation, in JAX!},
-  url = {http://github.com/deepmind/optax},
-  version = {0.1.3},
-  year = {2020},
-}
-```
-
-In this bibtex entry, the version number is intended to be from
-[`optax/__init__.py`](optax/__init__.py), and the year corresponds to the
-project's open-source release.
+[DeepMind JAX Ecosystem]: https://deepmind.com/blog/article/using-jax-to-accelerate-our-research "DeepMind JAX Ecosystem"
+[DeepMind JAX Ecosystem citation]: https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt "Citation"
