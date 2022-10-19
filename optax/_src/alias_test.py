@@ -76,6 +76,7 @@ class AliasTest(chex.TestCase):
           dict(
               opt_name='noisy_sgd',
               opt=lambda: alias.noisy_sgd(1e-3, eta=1e-4)),
+          dict(opt_name='novograd', opt=lambda: alias.novograd(1e-3)),
           dict(
               opt_name='optimistic_gradient_descent',
               opt=lambda: alias.optimistic_gradient_descent(2e-3, 0.7, 0.1)),
