@@ -29,6 +29,7 @@ from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import MaskOrFn
 from optax._src.alias import noisy_sgd
+from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
@@ -128,6 +129,7 @@ from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
@@ -144,6 +146,7 @@ from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByFromageState
+from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
@@ -260,6 +263,7 @@ __all__ = (
     "MultiStepsState",
     "MultiTransformState",
     "noisy_sgd",
+    "novograd",
     "NonNegativeParamsState",
     "OptState",
     "Params",
@@ -281,6 +285,7 @@ __all__ = (
     "scale_by_adan",
     "scale_by_belief",
     "scale_by_factored_rms",
+    "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
     "scale_by_proximal_adan",
@@ -298,6 +303,7 @@ __all__ = (
     "ScaleByAdanState",
     "ScaleByBeliefState",
     "ScaleByFromageState",
+    "ScaleByNovogradState",
     "ScaleByRmsState",
     "ScaleByRssState",
     "ScaleByRStdDevState",

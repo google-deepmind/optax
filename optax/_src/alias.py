@@ -517,6 +517,49 @@ def noisy_sgd(
   )
 
 
+def novograd(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.25,
+    eps: float = 1e-6,
+    eps_root: float = 0.0,
+    weight_decay: float = 0.,
+) -> base.GradientTransformation:
+  """NovoGrad optimizer.
+
+  NovoGrad is more robust to the initial learning rate and
+  weight initialization than other methods. For example,
+  NovoGrad works well without LR warm-up, while other methods require it.
+  NovoGrad performs exceptionally well for large batch training, e.g. it
+  outperforms other methods for ResNet-50 for all batches up to 32K.
+  In addition, NovoGrad requires half the memory compared to Adam.
+  It was introduced together with Jasper ASR model.
+
+  References:
+    Ginsburg et al, 2019: https://arxiv.org/abs/1905.11286
+    Li et al, 2019: https://arxiv.org/abs/1904.03288
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: An exponential decay rate to track the first moment of past gradients.
+    b2: An exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root (as
+      in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside
+      the square root (as in RMSProp), to avoid dividing by zero when rescaling.
+      This is needed for instance when computing (meta-)gradients through Adam.
+    weight_decay: Strength of the weight decay regularization.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_novograd(
+          b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay),
+      _scale_by_learning_rate(learning_rate),
+  )
+
+
 def optimistic_gradient_descent(
     learning_rate: ScalarOrSchedule,
     alpha: ScalarOrSchedule = 1.0,
