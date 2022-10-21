@@ -180,6 +180,7 @@ Gradient Transforms
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
+    scale_by_proximal_adan
     scale_by_radam
     scale_by_rms
     scale_by_rss

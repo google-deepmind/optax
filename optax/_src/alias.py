@@ -347,6 +347,7 @@ def adan(
     the corresponding `GradientTransformation`.
   """
   if use_proximal_operator:
+    # no need to use scale by learning rate
     return transform.scale_by_proximal_adan(
       learning_rate=learning_rate,
       weight_decay=weight_decay,
