@@ -109,9 +109,8 @@ def update_moment_per_elem_norm(updates, moments, decay, order):
 
 def bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
-  bias_correction_ = 1 - decay**count
   return jax.tree_util.tree_map(
-      lambda t: t / bias_correction_.astype(t.dtype), moment)
+      lambda t: t / (1 - decay ** count.astype(t.dtype)), moment)
 
 
 def _reject_complex(params):
