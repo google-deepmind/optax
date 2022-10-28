@@ -22,6 +22,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import adan
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -126,11 +127,13 @@ from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
+from optax._src.transform import scale_by_proximal_adan
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rss
@@ -140,6 +143,7 @@ from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByNovogradState
@@ -184,6 +188,7 @@ __all__ = (
     "adamax",
     "adamaxw",
     "adamw",
+    "adan",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
@@ -277,11 +282,13 @@ __all__ = (
     "ScalarOrSchedule",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_adan",
     "scale_by_belief",
     "scale_by_factored_rms",
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
+    "scale_by_proximal_adan",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rss",
@@ -293,6 +300,7 @@ __all__ = (
     "scale_gradient",
     "scale",
     "ScaleByAdamState",
+    "ScaleByAdanState",
     "ScaleByBeliefState",
     "ScaleByFromageState",
     "ScaleByNovogradState",

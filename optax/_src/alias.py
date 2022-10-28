@@ -302,6 +302,66 @@ def adamw(
   )
 
 
+def adan(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.98,
+    b2: float = 0.92,
+    b3: float = 0.99,
+    eps: float = 1e-8,
+    eps_root: float = 1e-8,
+    fo_dtype: Optional[Any] = None,
+    weight_decay: float = 0.0,
+    use_proximal_operator: bool = True,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+  """The ADAptive Nesterov momentum algorithm (Adan).
+
+  Adan is an Adam variant with Nesterov Momentum Estimation (NME).
+  Adan adopts NME to estimate the first- and second-order moments of
+  the gradient in adaptive gradient algorithms for convergence acceleration
+
+  References:
+    Xie et al, 2022: https://arxiv.org/abs/2208.06677
+
+  Args:
+    learning_rate: this is a fixed global scaling factor.
+    b1: Decay rate for the exponentially weighted average of gradients.
+    b2: Decay rate for the exponentially weighted average of difference of
+      gradients.
+    b3: Decay rate for the exponentially weighted average of the squared term.
+    eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling.
+    fo_dtype: optional `dtype` to be used for the first order accumulators
+      mu and delta; if `None` then the `dtype is inferred from `params`
+      and `updates`.
+    weight_decay: strength of the weight decay regularization.
+    mask: a tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
+
+  Returns:
+    the corresponding `GradientTransformation`.
+  """
+  if use_proximal_operator:
+    # no need to use scale by learning rate
+    return transform.scale_by_proximal_adan(
+      learning_rate=learning_rate,
+      weight_decay=weight_decay,
+      b1=b1, b2=b2, b3=b3, eps_root=eps_root, fo_dtype=fo_dtype
+    )
+
+  return combine.chain(
+      transform.scale_by_adan(
+          b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root, fo_dtype=fo_dtype),
+      transform.add_decayed_weights(weight_decay, mask),
+      _scale_by_learning_rate(learning_rate),
+  )
+
+
 def fromage(
     learning_rate: float,
     min_norm: float = 1e-6
