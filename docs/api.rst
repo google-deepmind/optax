@@ -10,6 +10,7 @@ Common Optimizers
     adagrad
     adam
     adamw
+    amsgrad
     fromage
     lamb
     lars
@@ -47,6 +48,11 @@ AdamW
 ~~~~~
 
 .. autofunction:: adamw
+
+AMSGrad
+~~~~~
+
+.. autofunction:: amsgrad
 
 Fromage
 ~~~~~~~

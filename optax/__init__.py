@@ -20,6 +20,7 @@ from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
 from optax._src.alias import adamw
+from optax._src.alias import amsgrad
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -186,6 +187,7 @@ __all__ = (
     "additive_weight_decay",
     "AdditiveWeightDecayState",
     "AddNoiseState",
+    "amsgrad"
     "apply_every",
     "apply_if_finite",
     "apply_updates",
