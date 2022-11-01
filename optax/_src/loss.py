@@ -506,17 +506,14 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
 
 def hinge_loss(
   predictor_outputs: chex.Array,
-  targets: chex.Array,
-  delta: int = 1) -> chex.Array:
+  targets: chex.Array) -> chex.Array:
   """Computes the hinge loss for binary classification.
 
   Args:
     predictor_outputs: Outputs of the decision function.
     targets: Target values.
       Target values should be strictly in the set {-1, 1}.
-    delta: Margin
-
   Returns:
     Binary Hinge Loss.
   """
-  return jnp.maximum(0, delta - predictor_outputs * targets)
+  return jnp.maximum(0, 1 - predictor_outputs * targets)
