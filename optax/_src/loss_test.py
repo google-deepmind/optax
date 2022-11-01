@@ -480,11 +480,14 @@ class HingeLossTest(parameterized.TestCase):
   def setUp(self):
     super().setUp()
     self.ys = np.array(
-      [-0.9774, -1.0181, -0.8167, -0.7360, 2.0823, 1.8410, -1.0581]
+      [-0.97740268, -1.01812625, -0.81675726, -0.73605974,\
+       2.08235648, 1.84101354, -1.0581002]
     )
     self.ts = np.array([-1, -1, -1, -1, 1, 1, -1])
     # computed expected outputs.
-    self.correct_result = np.array([0.0225, 0., 0.1832, 0.2639, 0., 0., 0.])
+    self.correct_result = np.array(
+      [0.02259731, 0., 0.18324274, 0.26394027, 0., 0., 0.]
+    )
 
   @chex.all_variants
   def test_batched(self):
