@@ -195,7 +195,7 @@ __all__ = (
     "additive_weight_decay",
     "AdditiveWeightDecayState",
     "AddNoiseState",
-    "amsgrad"
+    "amsgrad",
     "apply_every",
     "apply_if_finite",
     "apply_updates",
