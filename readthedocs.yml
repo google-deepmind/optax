@@ -9,7 +9,7 @@ sphinx:
   fail_on_warning: false
 
 python:
-  version: 3.7
+  version: 3.8
   install:
     - requirements: requirements/requirements-docs.txt
     - requirements: requirements/requirements.txt

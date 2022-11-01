@@ -65,7 +65,7 @@ class TransformTest(parameterized.TestCase):
     jax.tree_util.tree_map(
         lambda *args: chex.assert_equal_shape(args), params, updates)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_add_decayed_weights(self):
     # Define a transform that add decayed weights.
     # We can define a mask either as a pytree, or as a function that
@@ -97,7 +97,7 @@ class TransformTest(parameterized.TestCase):
     # Assert output as expected.
     chex.assert_tree_all_close(new_updates, expected_tx_updates)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_ema(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -115,7 +115,7 @@ class TransformTest(parameterized.TestCase):
         mean,
         (1 - d) * (values[1] + d * values[0]), atol=1e-2)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_ema_debias(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -139,7 +139,7 @@ class TransformTest(parameterized.TestCase):
         (1 - d) * values[1] + d * (1 - d) * values[0],
         atol=1e-2)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_update_infinity_moment(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -173,7 +173,7 @@ class TransformTest(parameterized.TestCase):
         atol=1e-4
     )
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4

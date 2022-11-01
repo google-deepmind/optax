@@ -49,6 +49,7 @@ for instructions on installing JAX.
    :caption: Examples
    :maxdepth: 1
 
+   gradient_accumulation
    meta_learning
 
 
@@ -72,12 +73,12 @@ The Team
 The development of Optax is led by Ross Hemsley, Matteo Hessel, Markus Kunesch
 and Iurii Kemaev. The team relies on outstanding contributions from Research
 Engineers and Research Scientists from throughout
-[DeepMind](https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt) and
+`DeepMind <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_ and
 Alphabet. We are also very grateful to Optax's open source community for
 contributing ideas, bug fixes, issues, design docs, and amazing new features.
 
 The work on Optax is part of a wider effort to contribute to making the
-[JAX Ecosystem](https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt)
+`JAX Ecosystem <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_
 the best possible environment for ML/AI research.
 
 Support

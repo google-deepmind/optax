@@ -82,7 +82,7 @@ class SmoothLabelsTest(parameterized.TestCase):
     self.exp_alpha_zero_point_one = 0.9 * self.ts + 0.1 / self.ts.shape[-1]
     self.exp_alpha_one = jnp.ones_like(self.ts) / self.ts.shape[-1]
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
@@ -95,7 +95,7 @@ class SmoothLabelsTest(parameterized.TestCase):
         self.variant(loss.smooth_labels)(self.ts[0], 1.),
         self.exp_alpha_one[0], atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
@@ -118,14 +118,14 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     # taken expected outputs from rlax.
     self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.softmax_cross_entropy)(self.ys[0], self.ts[0]),
         self.exp[0], atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
@@ -140,7 +140,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
     self.ts = np.array([1, 0], dtype=np.int32)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_scalar(self):
     """Tests for a scalar."""
     exp = loss.softmax_cross_entropy(self.ys[0], jax.nn.one_hot(self.ts[0], 3))
@@ -149,7 +149,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
             self.ys[0], self.ts[0]),
         exp, rtol=1e-6)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_batched(self):
     """Tests for a full batch."""
     exp = loss.softmax_cross_entropy(self.ys, jax.nn.one_hot(self.ts, 3))
@@ -207,28 +207,28 @@ class CosineDistanceTest(parameterized.TestCase):
     # distance computed expected output from `scipy 1.20`.
     self.exp = np.array([0.9358251989, 1.0464068465], dtype=np.float32)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_scalar_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.cosine_distance)(self.ys[0], self.ts[0]),
         self.exp[0], atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_scalar_similarity(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.cosine_similarity)(self.ys[0], self.ts[0]),
         1. - self.exp[0], atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_batched_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
         self.variant(loss.cosine_distance)(self.ys, self.ts),
         self.exp, atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_batched_similarity(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(

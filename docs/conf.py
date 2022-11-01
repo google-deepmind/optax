@@ -111,12 +111,18 @@ if 'READTHEDOCS' in os.environ:
   _recursive_add_annotations_import()
   _monkey_patch_doc_strings()
 
-typing.get_type_hints = lambda obj, *unused: obj.__annotations__
+
+# TODO(b/254461517) Remove the annotation filtering when we drop Python 3.8
+# support.
+# We remove `None` type annotations as this breaks Sphinx under Python 3.7 and
+# 3.8 with error `AssertionError: Invalid annotation [...] None is not a class.`
+filter_nones = lambda x: dict((k, v) for k, v in x.items() if v is not None)
+typing.get_type_hints = lambda obj, *unused: filter_nones(obj.__annotations__)
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
 import optax
-import sphinxcontrib.katex as katex
+from sphinxcontrib import katex
 
 # -- Project information -----------------------------------------------------
 
@@ -200,7 +206,7 @@ latex_macros = r"""
 
 # Translate LaTeX macros to KaTeX and add to options for HTML builder
 katex_macros = katex.latex_defs_to_katex_macros(latex_macros)
-katex_options = 'macros: {' + katex_macros + '}'
+katex_options = '{displayMode: true, fleqn: true, macros: {' + katex_macros + '}}'
 
 # Add LaTeX macros for LATEX builder
 latex_elements = {'preamble': latex_macros}

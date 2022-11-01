@@ -94,7 +94,7 @@ class ApplyIfFiniteState(NamedTuple):
     last_finite: Whether or not the last gradient update contained an Inf of a
       NaN.
     total_notfinite: Total number of gradient updates containing an Inf or
-      a NaN since this optimiser was initialised. This number is never reset.
+      a NaN since this optimizer was initialised. This number is never reset.
     inner_state: The state of the inner `GradientTransformation`.
   """
   notfinite_count: jnp.array
@@ -107,19 +107,19 @@ def apply_if_finite(
     inner: base.GradientTransformation,
     max_consecutive_errors: int
 ) -> base.GradientTransformation:
-  """A function that wraps an optimiser to make it robust to a few NaNs or Infs.
+  """A function that wraps an optimizer to make it robust to a few NaNs or Infs.
 
-  The purpose of this function is to prevent any optimisation to happen if the
+  The purpose of this function is to prevent any optimization to happen if the
   gradients contain NaNs or Infs. That is, when a NaN of Inf is detected in the
-  gradients, the wrapped optimiser ignores that gradient update. If the NaNs or
-  Infs persist after a given number of updates, the wrapped optimiser gives up
+  gradients, the wrapped optimizer ignores that gradient update. If the NaNs or
+  Infs persist after a given number of updates, the wrapped optimizer gives up
   and accepts the update.
 
   Args:
     inner: Inner transformation to be wrapped.
     max_consecutive_errors: Maximum number of consecutive gradient updates
-      containing NaNs of Infs that the wrapped optimiser will ignore. After
-      that many ignored updates, the optimiser will give up and accept.
+      containing NaNs of Infs that the wrapped optimizer will ignore. After
+      that many ignored updates, the optimizer will give up and accept.
 
   Returns:
     New GradientTransformation.
@@ -269,16 +269,21 @@ def skip_large_updates(updates: base.Updates,
 
 
 class MultiSteps:
-  """An optimiser wrapper to spread gradient computation over multiple steps.
+  """An optimizer wrapper to accumulate gradients over multiple steps.
 
-  This wrapper will allow multiple mini-steps to accumulate their gradients
-  together before applying them. It wraps another optimiser, and makes sure that
-  this optimiser updates its state only when enough mini-steps have been
-  performed. At any other mini-step, the inner optimiser is not used and the
-  updates returned by the wrapper are all 0.
+  This wrapper collects together the updates passed to its `update` function
+  over consecutive steps until a given number of scheduled steps is reached.
+  In each of these intermediate steps, the returned value from the optimizer is
+  a tree of zeros of the same shape of the updates passed as input.
+
+  Once the scheduled number of intermediate 'mini-steps' has been reached, the
+  gradients accumulated to the current time will be passed to the wrapped
+  optimizer's update function, (with the inner optimizer's state being updated
+  appropriately) and then returned to the caller. The wrapper's accumulated
+  gradients are then set back to zero and the process starts again.
 
   The number of mini-steps per gradient update is controlled by a function, and
-  it can vary over training. This offers a mean of varying batch size over
+  it can vary over training. This offers a means of varying batch size over
   training.
   """
 
@@ -291,7 +296,7 @@ class MultiSteps:
     """Initialiser.
 
     Args:
-      opt: the wrapped optimiser.
+      opt: the wrapped optimizer.
       every_k_schedule: an int or f a function.
         * As a function, it returns how many mini-steps should be accumulated
           in a single gradient step. Its only argument is the current
@@ -310,7 +315,7 @@ class MultiSteps:
         * to ignore updates with a norm square larger then 42, do
           `should_skip_update_fn=functools.partial(skip_large_updates,
                                                    max_norm_sq=42.)`.
-        Note that the optimiser's state `MultiStepsState` contains a field
+        Note that the optimizer's state `MultiStepsState` contains a field
         `skip_state` in which debugging and monitoring information returned
         by `should_skip_update_fn` is written.
     """

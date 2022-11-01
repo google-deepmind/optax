@@ -74,14 +74,14 @@ class SecondOrderTest(chex.TestCase):
     self.hessian = jax_hessian_diag(
         self.loss_fn, self.parameters, self.data, self.labels)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_hessian_diag(self):
     hessian_diag_fn = self.variant(
         functools.partial(second_order.hessian_diag, self.loss_fn))
     actual = hessian_diag_fn(self.parameters, self.data, self.labels)
     np.testing.assert_array_almost_equal(self.hessian, actual, 5)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_fisher_diag_shape(self):
     fisher_diag_fn = self.variant(
         functools.partial(second_order.fisher_diag, self.loss_fn))
