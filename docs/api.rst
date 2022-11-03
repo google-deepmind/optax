@@ -12,6 +12,7 @@ Common Optimizers
     adamw
     adamax
     adamaxw
+    amsgrad
     fromage
     lamb
     lars
@@ -60,6 +61,11 @@ AdamW
 ~~~~~
 
 .. autofunction:: adamw
+
+AMSGrad
+~~~~~
+
+.. autofunction:: amsgrad
 
 Fromage
 ~~~~~~~
@@ -167,6 +173,7 @@ Gradient Transforms
     scale
     scale_by_adam
     scale_by_adamax
+    scale_by_amsgrad
     scale_by_belief
     scale_by_factored_rms
     scale_by_novograd
@@ -182,6 +189,7 @@ Gradient Transforms
     scale_by_trust_ratio
     scale_by_yogi
     ScaleByAdamState
+    ScaleByAmsgradState
     ScaleByFromageState
     ScaleByNovogradState
     ScaleByRmsState
@@ -280,6 +288,7 @@ Optax Transforms and States
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
+.. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
 .. autofunction:: scale_by_novograd
@@ -294,6 +303,9 @@ Optax Transforms and States
 .. autofunction:: scale_by_trust_ratio
 .. autofunction:: scale_by_yogi
 .. autoclass:: ScaleByAdamState
+    :members:
+
+.. autoclass:: ScaleByAmsgradState
     :members:
 
 .. autoclass:: ScaleByFromageState

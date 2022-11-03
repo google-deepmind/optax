@@ -22,6 +22,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import amsgrad
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -126,6 +127,7 @@ from optax._src.transform import EmaState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
@@ -140,6 +142,7 @@ from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByNovogradState
@@ -192,6 +195,7 @@ __all__ = (
     "additive_weight_decay",
     "AdditiveWeightDecayState",
     "AddNoiseState",
+    "amsgrad",
     "apply_every",
     "apply_if_finite",
     "apply_updates",
@@ -277,6 +281,7 @@ __all__ = (
     "ScalarOrSchedule",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_amsgrad",
     "scale_by_belief",
     "scale_by_factored_rms",
     "scale_by_novograd",
@@ -293,6 +298,7 @@ __all__ = (
     "scale_gradient",
     "scale",
     "ScaleByAdamState",
+    "ScaleByAmsgradState",
     "ScaleByBeliefState",
     "ScaleByFromageState",
     "ScaleByNovogradState",

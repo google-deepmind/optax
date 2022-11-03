@@ -34,6 +34,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
