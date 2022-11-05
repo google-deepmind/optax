@@ -493,7 +493,8 @@ class HingeLossTest(parameterized.TestCase):
   def test_batched(self):
     np.testing.assert_allclose(
         self.variant(loss.hinge_loss)(self.ys, self.ts),
-        self.correct_result)
+        self.correct_result,
+        atol=1e-4)
 
 if __name__ == '__main__':
   absltest.main()
