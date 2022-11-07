@@ -512,6 +512,7 @@ def hinge_loss(
   Args:
     predictor_outputs: Outputs of the decision function.
     targets: Target values. Target values should be strictly in the set {-1, 1}.
+
   Returns:
     Binary Hinge Loss.
   """
