@@ -504,9 +504,9 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=-1)
 
-def hinge_loss(
-  predictor_outputs: chex.Array,
-  targets: chex.Array) -> chex.Array:
+
+def hinge_loss(predictor_outputs: chex.Array,
+               targets: chex.Array) -> chex.Array:
   """Computes the hinge loss for binary classification.
 
   Args:
