@@ -482,8 +482,8 @@ class HingeLossTest(parameterized.TestCase):
     super().setUp()
     self.ys = np.array([
         -0.97740268, -1.01812625, -0.81675726, -0.73605974, 2.08235648,
-        1.84101354, -1.0581002]
-    )
+        1.84101354, -1.0581002
+    ])
     self.ts = np.array([-1, -1, -1, -1, 1, 1, -1])
     # Computed expected outputs.
     self.correct_result = np.array(
