@@ -490,6 +490,7 @@ Common Losses
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
+    hinge_loss
     huber_loss
     l2_loss
     log_cosh
@@ -506,6 +507,7 @@ Losses
 .. autofunction:: cosine_similarity
 .. autofunction:: ctc_loss
 .. autofunction:: ctc_loss_with_forward_probs
+.. autofunction:: hinge_loss
 .. autofunction:: huber_loss
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
