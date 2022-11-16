@@ -290,6 +290,16 @@ class TransformTest(parameterized.TestCase):
     # Compare transformation output with manually computed optimistic gradient.
     chex.assert_tree_all_close(og_true, og['x'])
 
+  @chex.all_variants
+  def test_bias_correction_bf16(self):
+    bias_correction_fn = self.variant(transform.bias_correction)
+    m = jnp.logspace(-10, 10, num=21, dtype=jnp.bfloat16)  # 1e-10 ... 1e10
+    for decay in (0.9, 0.99, 0.999, 0.9995):
+      for count in (1, 10, 100, 1000):
+        chex.assert_tree_all_finite(
+            bias_correction_fn(m, decay, count),
+            custom_message=f'failed with decay={decay}, count={count}')
+
 
 if __name__ == '__main__':
   absltest.main()
