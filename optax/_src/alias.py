@@ -552,7 +552,7 @@ def optimistic_gradient_descent(
   which standard gradient descent can oscillate or even diverge.
 
   References:
-    [Mokhtari et al, 2019](https://arxiv.org/abs/1901.08511v2)
+    Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
 
   Args:
     learning_rate: A fixed global scaling factor.
