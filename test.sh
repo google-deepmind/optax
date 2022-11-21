@@ -70,11 +70,11 @@ pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
 mkdir _testing && cd _testing
-python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs optax
+python -m pytest -n auto --pyargs optax
 cd ..
 
 cd examples
-python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" .
+python -m pytest -n auto .
 cd ..
 
 # Build Sphinx docs.
