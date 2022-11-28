@@ -67,7 +67,7 @@ class WrappersTest(parameterized.TestCase):
     sgd_params_flatten = update.apply_updates(optax_sgd_params, updates_sgd)
 
     # Test that both give the same result
-    chex.assert_tree_all_close(
+    chex.assert_trees_all_close(
         sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7)
 
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
@@ -397,12 +397,12 @@ class MaskedTest(chex.TestCase):
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = masked_negate(correct_updates)
     updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
   @chex.all_variants
   @parameterized.named_parameters(
@@ -426,13 +426,13 @@ class MaskedTest(chex.TestCase):
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = jax.tree_util.tree_map(
         _masked_sgd_on_updates, mask, correct_updates)
     updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
   @chex.all_variants
   def test_update_requires_params(self):
@@ -454,7 +454,7 @@ class MaskedTest(chex.TestCase):
 
     state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     params = update.apply_updates(params, updates)
 
@@ -463,7 +463,7 @@ class MaskedTest(chex.TestCase):
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, correct_updates, params)
     updates, state = update_fn(correct_updates, state, params)
-    chex.assert_tree_all_close(updates, new_correct_updates)
+    chex.assert_trees_all_close(updates, new_correct_updates)
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):

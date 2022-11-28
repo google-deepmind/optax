@@ -551,7 +551,7 @@ class InjectHyperparamsTest(chex.TestCase):
       np.testing.assert_almost_equal(state.hyperparams['eps'], 1e-8)
       np.testing.assert_almost_equal(state.hyperparams['eps_root'], 0.0)
       assert 'eps' in state.hyperparams
-      chex.assert_tree_all_close(updates, grads)
+      chex.assert_trees_all_close(updates, grads)
 
   @chex.all_variants
   def test_overriding_hyperparam(self):
@@ -583,7 +583,7 @@ class InjectHyperparamsTest(chex.TestCase):
         lambda x: -0.1 * x if x.ndim > 1 else x, grads)
 
     assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
-    chex.assert_tree_all_close(updates, expected_updates)
+    chex.assert_trees_all_close(updates, expected_updates)
 
   @chex.all_variants
   @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))

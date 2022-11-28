@@ -95,7 +95,7 @@ class TransformTest(parameterized.TestCase):
     transform_fn = self.variant(tx.update)
     new_updates, _ = transform_fn(updates, state, weights)
     # Assert output as expected.
-    chex.assert_tree_all_close(new_updates, expected_tx_updates)
+    chex.assert_trees_all_close(new_updates, expected_tx_updates)
 
   @chex.all_variants
   def test_ema(self):
@@ -206,12 +206,12 @@ class TransformTest(parameterized.TestCase):
 
       # Every k steps, check equivalence.
       if i % k == k-1:
-        chex.assert_tree_all_close(
+        chex.assert_trees_all_close(
             optax_sgd_apply_every_params, optax_sgd_params,
             atol=1e-6, rtol=1e-5)
       # Otherwise, check update is zero.
       else:
-        chex.assert_tree_all_close(
+        chex.assert_trees_all_close(
             updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0)
 
   def test_scale(self):
@@ -226,7 +226,7 @@ class TransformTest(parameterized.TestCase):
         return t * factor  # pylint:disable=cell-var-from-loop
       manual_updates = jax.tree_util.tree_map(rescale, updates)
       # Check the rescaled updates match.
-      chex.assert_tree_all_close(scaled_updates, manual_updates)
+      chex.assert_trees_all_close(scaled_updates, manual_updates)
 
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
@@ -240,7 +240,7 @@ class TransformTest(parameterized.TestCase):
     outputs = jnp.asarray(outputs)
     centralizer = transform.centralize()
     centralized_inputs, _ = centralizer.update(inputs, None)
-    chex.assert_tree_all_close(centralized_inputs, outputs)
+    chex.assert_trees_all_close(centralized_inputs, outputs)
 
   @chex.all_variants
   def test_add_noise_has_correct_variance_scaling(self):
@@ -267,7 +267,7 @@ class TransformTest(parameterized.TestCase):
       updates_i_rescaled = jax.tree_util.tree_map(
           lambda g, s=scale: g * s, updates_i_unit)
 
-      chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+      chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
 
   def test_scale_by_optimistic_gradient(self):
 
@@ -288,7 +288,7 @@ class TransformTest(parameterized.TestCase):
     og, og_state = og.update(g, og_state)
 
     # Compare transformation output with manually computed optimistic gradient.
-    chex.assert_tree_all_close(og_true, og['x'])
+    chex.assert_trees_all_close(og_true, og['x'])
 
   @chex.all_variants
   def test_bias_correction_bf16(self):

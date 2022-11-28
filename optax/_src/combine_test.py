@@ -73,7 +73,7 @@ class ComposeTest(chex.TestCase):
       states = new_states
 
     # Check equivalence.
-    chex.assert_tree_all_close(manual_params, chain_params, rtol=1e-4)
+    chex.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
 
 
 def _map_keys_fn(fn):
@@ -107,12 +107,12 @@ class MultiTransformTest(chex.TestCase):
 
     updates, state = update_fn(input_updates, state, params)
     correct_updates = correct_update_fn(input_updates)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = correct_update_fn(correct_updates)
     updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):

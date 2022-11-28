@@ -58,7 +58,7 @@ class ExtraArgsTest(absltest.TestCase):
     opt_state = tx.init(params, extra_args=extra_args)
     updates, opt_state = tx.update(
         grads, opt_state, params, extra_args=extra_args)
-    chex.assert_tree_all_close(updates, {'a': jnp.ones((4,))})
+    chex.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
 
 
 if __name__ == '__main__':

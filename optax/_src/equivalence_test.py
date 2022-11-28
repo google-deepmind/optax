@@ -87,7 +87,7 @@ class OptimizersEquivalenceTest(chex.TestCase):
       optax_params = update.apply_updates(optax_params, updates)
 
     # Check equivalence.
-    chex.assert_tree_all_close(jax_params, optax_params, rtol=rtol)
+    chex.assert_trees_all_close(jax_params, optax_params, rtol=rtol)
 
 
 class FlaxOptimizersEquivalenceTest(chex.TestCase):
@@ -169,7 +169,7 @@ class FlaxOptimizersEquivalenceTest(chex.TestCase):
       optax_params = update.apply_updates(optax_params, updates)
 
     # Check equivalence.
-    chex.assert_tree_all_close(flax_params, optax_params, rtol=2e-4)
+    chex.assert_trees_all_close(flax_params, optax_params, rtol=2e-4)
 
 
 if __name__ == '__main__':

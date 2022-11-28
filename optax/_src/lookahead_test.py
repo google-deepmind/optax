@@ -94,7 +94,7 @@ class LookaheadTest(chex.TestCase):
     # x steps must be: 3 -> 2 -> 1 -> 2 (sync) -> 1 -> 0 -> 1 (sync).
     # Similarly for y (with sign flipped).
     correct_final_params = {'x': 1, 'y': -1}
-    chex.assert_tree_all_close(final_params.slow, correct_final_params)
+    chex.assert_trees_all_close(final_params.slow, correct_final_params)
 
   @chex.all_variants
   @parameterized.parameters([False], [True])
@@ -116,7 +116,7 @@ class LookaheadTest(chex.TestCase):
       _, correct_state = self.loop(fast_optimizer, num_steps,
                                    self.initial_params)
 
-    chex.assert_tree_all_close(fast_state, correct_state)
+    chex.assert_trees_all_close(fast_state, correct_state)
 
   @chex.all_variants
   @parameterized.parameters(
@@ -133,7 +133,7 @@ class LookaheadTest(chex.TestCase):
         _test_optimizer(-1), sync_period, slow_step_size)
     final_params, _ = self.loop(
         optimizer, num_steps=2, params=self.synced_initial_params)
-    chex.assert_tree_all_close(final_params.slow, correct_result)
+    chex.assert_trees_all_close(final_params.slow, correct_result)
 
 
 if __name__ == '__main__':

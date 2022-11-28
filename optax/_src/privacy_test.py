@@ -51,7 +51,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state)
-      chex.assert_tree_all_close(updates, mean_grads)
+      chex.assert_trees_all_close(updates, mean_grads)
 
   @chex.all_variants
   @parameterized.parameters(0.5, 10.0, 20.0, 40.0, 80.0)
@@ -76,7 +76,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state, self.params)
-      chex.assert_tree_all_close(updates, expected_tree, rtol=2e-7)
+      chex.assert_trees_all_close(updates, expected_tree, rtol=2e-7)
 
   @chex.all_variants
   @parameterized.parameters((3.0, 2.0), (1.0, 5.0), (100.0, 4.0), (1.0, 90.0))
@@ -93,9 +93,9 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
     grads = [jnp.ones((1, 100, 100))]  # batch size 1
     for _ in range(3):
       updates, state = update_fn(grads, state)
-      chex.assert_tree_all_close(expected_std,
-                                 jnp.std(updates[0]),
-                                 atol=0.1 * expected_std)
+      chex.assert_trees_all_close(expected_std,
+                                  jnp.std(updates[0]),
+                                  atol=0.1 * expected_std)
 
   def test_aggregated_updates_as_input_fails(self):
     """Expect per-example gradients as input to this transform."""
