@@ -190,7 +190,6 @@ Gradient Transforms
     scale_by_yogi
     ScaleByAdamState
     ScaleByAmsgradState
-    ScaleByFromageState
     ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
@@ -306,9 +305,6 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByAmsgradState
-    :members:
-
-.. autoclass:: ScaleByFromageState
     :members:
 
 .. autoclass:: ScaleByNovogradState

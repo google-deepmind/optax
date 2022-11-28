@@ -145,7 +145,6 @@ from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
-from optax._src.transform import ScaleByFromageState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
@@ -302,7 +301,6 @@ __all__ = (
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
-    "ScaleByFromageState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
     "ScaleByRssState",

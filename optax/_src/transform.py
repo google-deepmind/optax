@@ -766,11 +766,6 @@ def scale_by_schedule(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByFromageState(NamedTuple):
-  """Maintains count for step-size scheduling."""
-  count: chex.Array  # shape=(), dtype=jnp.int32
-
-
 class ScaleByTrustRatioState(NamedTuple):
   """The scale and decay trust ratio transformation is stateless."""
 
