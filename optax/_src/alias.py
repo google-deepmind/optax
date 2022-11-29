@@ -735,6 +735,7 @@ def yogi(
     b2: float = 0.999,
     eps: float = 1e-3,
 ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   """The Yogi optimizer.
 
   Yogi is an adaptive optimizer, which provides control in tuning the effective
@@ -756,6 +757,7 @@ def yogi(
   Returns:
     The corresponding `GradientTransformation`.
   """
+  # pylint: enable=line-too-long
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
