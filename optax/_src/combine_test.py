@@ -14,14 +14,15 @@
 # ==============================================================================
 """Tests for `combine.py`."""
 
+import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
@@ -74,6 +75,37 @@ class ComposeTest(chex.TestCase):
 
     # Check equivalence.
     chex.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
+
+  @functools.partial(chex.all_variants, with_pmap=False)
+  def test_chain_with_aux(self):
+
+    opt = combine.chain(
+        transform.trace(1.0),
+        _transform_with_aux(),
+    )
+
+    params = {'w': jnp.array([1., 2.])}
+    state = self.variant(opt.init)(params)
+
+    updates, state = self.variant(opt.update)(params, state)
+    updates, state = self.variant(opt.update)(params, state, params)
+    updates, state = self.variant(opt.update)(params, state, params=params)
+    del updates, state
+
+    state = opt.init(params)
+    updates, state = self.variant(
+        opt.update, static_argnames=['with_aux'
+                                    ])(params, state, with_aux=False)
+
+    updates, state = self.variant(
+        opt.update, static_argnames=['with_aux'
+                                    ])(params, state, params, with_aux=False)
+
+    updates, state, aux = self.variant(
+        opt.update, static_argnames=['with_aux'
+                                    ])(params, state, with_aux=True)
+    self.assertEqual(aux, ({}, {'my_metric': 42.0}))
+    del updates, state, aux
 
 
 def _map_keys_fn(fn):
@@ -147,6 +179,22 @@ class MultiTransformTest(chex.TestCase):
       updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
       self.variant(update_fn)(updates, state)
 
+
+def _transform_with_aux() -> base.GradientTransformation:
+
+  def init_fn(params):
+    del params
+    return {'fake': 1.0}
+
+  def update_fn(updates, state, params=None, *, with_aux=False):
+    del params
+
+    if with_aux:
+      return updates, state, {'my_metric': 42.0}
+
+    return updates, state
+
+  return base.GradientTransformationWithAux(init_fn, update_fn)
 
 if __name__ == '__main__':
   absltest.main()

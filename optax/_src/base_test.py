@@ -46,6 +46,37 @@ class BaseTest(chex.TestCase):
 
     g(f)
 
+  def test_with_aux(self):
+
+    def init(params):
+      del params
+      return {}
+
+    def update(updates, state, params=None, with_aux=False):
+      del params
+
+      if with_aux:
+        return updates, state, {}
+
+      return updates, state
+
+    opt = base.GradientTransformationWithAux(init, update)
+    state = opt.init({})
+
+    # Try all variants.
+    updates, state, aux = opt.update({}, state, with_aux=True)
+    updates, state = opt.update({}, state, with_aux=False)
+    updates, state = opt.update({}, state)
+
+    # Check that the type checking works even when the value isn't directly
+    # a literal.
+    def fn():
+      return True
+
+    updates, state, aux = opt.update({}, state, with_aux=fn())
+
+    del updates, state, aux
+
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
     """Tests that zero transform returns a tree of zeros of correct shape."""
@@ -95,6 +126,7 @@ class StatelessTest(chex.TestCase):
     chex.assert_trees_all_close(new_updates, expected_updates)
 
   def test_init_returns_emptystate(self):
+
     def weight_decay(g, p):
       return jax.tree_util.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 

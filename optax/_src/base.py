@@ -14,7 +14,8 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
+import typing
+from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple, Union
 
 import chex
 import jax
@@ -31,6 +32,7 @@ Shape = Sequence[int]
 OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
+Aux = chex.ArrayTree
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
 
@@ -54,6 +56,78 @@ class TransformInitFn(typing_extensions.Protocol):
     """
 
 
+class TransformUpdateWithAux(typing_extensions.Protocol):
+  """A callable type for the `update` step of a `GradientTransformation`."""
+
+  # This type protocol is used to annotate update functions that have a
+  # `with_aux` argument. These functions may be used in any of the following
+  # ways,
+  #
+  # >>> updates, state, aux = opt.update(updates, state, with_aux=True)
+  # >>> updates, state = opt.update(updates, state, with_aux=False)
+  # >>> updates, state = opt.update(updates, state)
+  #
+  # This code is relatively boring Python, but correctly communicating to the
+  # the type checker these different calling conventions is a little more
+  # involved.
+  #
+  # We do this first by providing a general annotation that returns a
+  # union over the two different return types (see the final __call__ below) and
+  # then giving the two specific cases where the function is called using
+  # `with_aux=True` and `with_aux=False`. If we did not provide the two
+  # overloads, then type checker would complain since it is not able to
+  # automatically infer which return type it should test against, and so it will
+  # therefore assume the pessimistic case that the code should work for either
+  # return type. Typically, this would cause a type error.
+  # See https://peps.python.org/pep-0586/ for more details
+
+  @typing.overload
+  def __call__(
+      self,
+      updates: Updates,
+      state: OptState,
+      params: Optional[Params] = None,
+      *,
+      with_aux: typing_extensions.Literal[True]
+  ) -> Tuple[Updates, OptState, Aux]:
+    """Update signature used by type checkers, when with_aux is True."""
+
+  @typing.overload
+  def __call__(
+      self,
+      updates: Updates,
+      state: OptState,
+      params: Optional[Params] = None,
+      *,
+      with_aux: typing_extensions.Literal[False] = False
+  ) -> Tuple[Updates, OptState]:
+    """Update signature used by type checkers, when with_aux is False."""
+
+  def __call__(
+      self,
+      updates: Updates,
+      state: OptState,
+      params: Optional[Params] = None,
+      *,
+      with_aux: bool = False,
+  ) -> Union[Tuple[Updates, OptState], Tuple[Updates, OptState, Aux]]:
+    """Update function with optional aux.
+
+    Args:
+      updates: A tree of candidate updates.
+      state: The state of the gradient transformation.
+      params: (Optionally) the current value of the parameters.
+      with_aux: If set to True, this call will return an additional value
+        containing any auxiliary output available from the current gradient
+        transformation. When set to False or left to the default, no extra value
+        will be returned.
+
+    Returns:
+      When `with_aux=True`, a tuple `(updates, state, aux)`, when
+      `with_aux=False`, a tuple of `(updates, state)`.
+    """
+
+
 class TransformUpdateFn(typing_extensions.Protocol):
   """A callable type for the `update` step of a `GradientTransformation`.
 
@@ -64,12 +138,10 @@ class TransformUpdateFn(typing_extensions.Protocol):
   access to the current values of the parameters.
   """
 
-  def __call__(
-      self,
-      updates: Updates,
-      state: OptState,
-      params: Optional[Params] = None
-    ) -> Tuple[Updates, OptState]:
+  def __call__(self,
+               updates: Updates,
+               state: OptState,
+               params: Optional[Params] = None) -> Tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
@@ -115,6 +187,19 @@ class GradientTransformation(NamedTuple):
   """
   init: TransformInitFn
   update: TransformUpdateFn
+
+
+class GradientTransformationWithAux(GradientTransformation):
+  """A gradient transformation variant, with support for auxiliary returns."""
+
+  # This class is provided purely to enable correct type inference in optax. In
+  # particular, this class allows us to correctly communicate to type checkers
+  # when the gradient transformation in question provides support for returning
+  # auxiliary values. In the future, we might consider phasing out support for
+  # gradient transformations that do not accept a `with_aux` keyword, and in
+  # that case this class could be deleted.
+
+  update: TransformUpdateWithAux
 
 
 class EmptyState(NamedTuple):
@@ -176,16 +261,16 @@ def set_to_zero() -> GradientTransformation:
 
 
 def stateless(
-    f: Callable[[Updates, Optional[Params]], Updates],
-) -> GradientTransformation:
+    f: Callable[[Updates, Optional[Params]],
+                Updates],) -> GradientTransformation:
   """Creates a stateless transformation from an update-like function.
 
   This wrapper eliminates the boilerplate needed to create a transformation that
   does not require saved state between iterations.
 
   Args:
-    f: Update function that takes in updates (e.g. gradients) and parameters
-      and returns updates. The parameters may be `None`.
+    f: Update function that takes in updates (e.g. gradients) and parameters and
+      returns updates. The parameters may be `None`.
 
   Returns:
     An `optax.GradientTransformation`.

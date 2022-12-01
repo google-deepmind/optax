@@ -23,8 +23,8 @@ from optax._src import wrappers
 
 
 def chain(
-    *args: base.GradientTransformation
-) -> base.GradientTransformation:
+    *transforms: base.GradientTransformation,
+) -> base.GradientTransformationWithAux:
   """Applies a list of chainable update transformations.
 
   Given a sequence of chainable transforms, `chain` returns an `init_fn`
@@ -33,29 +33,37 @@ def chain(
   feeding the appropriate state to each.
 
   Args:
-    *args: a sequence of chainable (init_fn, update_fn) tuples.
+    *transforms: a sequence of chainable gradient transformations.
 
   Returns:
-    A single (init_fn, update_fn) tuple.
+    A single (init_fn, update_fn). The update function supports 'with_aux'.
   """
 
-  init_fns, update_fns = zip(*args)
-
   def init_fn(params):
-    return tuple(fn(params) for fn in init_fns)
+    return tuple(t.init(params) for t in transforms)
 
-  def update_fn(updates, state, params=None):
-    if len(update_fns) != len(state):
+  def update_fn(updates, state, params=None, *, with_aux=False):
+
+    if len(transforms) != len(state):
       raise ValueError('The number of updates and states has to be the same in '
                        'chain! Make sure you have called init first!')
 
-    new_state = []
-    for s, fn in zip(state, update_fns):
-      updates, new_s = fn(updates, s, params)
+    new_state, auxes = [], []
+    for t, s in zip(transforms, state):
+      if with_aux and isinstance(t, base.GradientTransformationWithAux):
+        updates, new_s, aux = t.update(updates, s, params, with_aux=True)
+      else:
+        updates, new_s = t.update(updates, s, params)
+        aux = {}
+
       new_state.append(new_s)
+      auxes.append(aux)
+
+    if with_aux:
+      return updates, tuple(new_state), tuple(auxes)
     return updates, tuple(new_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationWithAux(init_fn, update_fn)
 
 
 class MultiTransformState(NamedTuple):
@@ -120,6 +128,7 @@ def multi_transform(
   Returns:
     An ``optax.GradientTransformation``.
   """
+
   def make_mask(labels, group):
     return jax.tree_util.tree_map(lambda label: label == group, labels)
 
