@@ -735,6 +735,7 @@ def yogi(
     b2: float = 0.999,
     eps: float = 1e-3,
 ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   """The Yogi optimizer.
 
   Yogi is an adaptive optimizer, which provides control in tuning the effective
@@ -744,7 +745,7 @@ def yogi(
   modification of Adam and uses the same parameters.
 
   References:
-    Zaheer et al, 2020: http://www.sanjivk.com/yogi_nips2018.pdf
+    Zaheer et al, 2018: https://proceedings.neurips.cc/paper/2018/file/90365351ccc7437a1309dc64e4db32a3-Paper.pdf
 
   Args:
     learning_rate: A fixed global scaling factor.
@@ -756,6 +757,7 @@ def yogi(
   Returns:
     The corresponding `GradientTransformation`.
   """
+  # pylint: enable=line-too-long
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
