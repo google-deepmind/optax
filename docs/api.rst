@@ -18,7 +18,7 @@ Common Optimizers
     lars
     noisy_sgd
     novograd
-    optimistic_gd
+    optimistic_gradient_descent
     dpsgd
     radam
     rmsprop
