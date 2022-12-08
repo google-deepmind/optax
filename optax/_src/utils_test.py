@@ -20,6 +20,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import jax
+import jax.numpy as jnp
 
 from optax._src import utils
 
@@ -60,6 +61,71 @@ class ScaleGradientTest(parameterized.TestCase):
         fn(inputs),
         sum(jax.tree_util.tree_leaves(
             jax.tree_util.tree_map(lambda x: x**2, inputs))))
+
+
+class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
+
+  @staticmethod
+  def _get_loc_scale(loc_shape, scale_shape):
+    loc = 1.5 * jnp.ones(shape=loc_shape, dtype=jnp.float32)
+    scale = 0.5 * jnp.ones(shape=scale_shape, dtype=jnp.float32)
+    return loc, scale
+
+  @parameterized.parameters(
+    (1, 1, 1),
+    (5, 5, 5),
+    ((2, 3), (2, 3), (2, 3)),
+    ((1, 4), (3, 4), (3, 4)),
+    ((1, 2, 1, 3), (2, 1, 4, 3), (2, 2, 4, 3)),
+  )
+  def test_init_successful_broadcast(
+          self, loc_shape, scale_shape, broadcasted_shape):
+    def tuple_shape(shape):
+      if isinstance(shape, tuple):
+        return shape
+      return tuple([shape])
+
+    loc, scale = self._get_loc_scale(loc_shape, scale_shape)
+    dist = utils.multi_normal(loc, scale)
+    self.assertIsInstance(dist, utils.MultiNormalDiagFromLogScale)
+    mean, log_scale = dist.params
+    self.assertTrue(tuple(mean.shape) == tuple_shape(loc_shape))
+    self.assertTrue(tuple(log_scale.shape) == tuple_shape(scale_shape))
+    self.assertTrue(tuple(dist._param_shape) == tuple_shape(broadcasted_shape))
+
+  @parameterized.parameters(
+    (2, 3),
+    ((2, 3), (3, 2)),
+    ((2, 4), (3, 4)),
+    ((1, 2, 1, 3), (2, 1, 4, 4)),
+  )
+  def test_init_unsuccessful_broadcast(self, loc_shape, scale_shape):
+    loc, scale = self._get_loc_scale(loc_shape, scale_shape)
+    with self.assertRaises(ValueError):
+      utils.multi_normal(loc, scale)
+
+  @parameterized.parameters(list, tuple)
+  def test_sample_input_sequence_types(self, sample_type):
+    sample_shape = sample_type((4, 5))
+    loc_shape = scale_shape = (2, 3)
+    loc, scale = self._get_loc_scale(loc_shape, scale_shape)
+    dist = utils.multi_normal(loc, scale)
+    samples = dist.sample(sample_shape, jax.random.PRNGKey(239))
+    self.assertTrue(samples.shape == tuple(sample_shape) + loc_shape)
+
+  @parameterized.named_parameters([
+    ('1d', 1),
+    ('2d', (2, 3)),
+    ('4d', (1, 2, 3, 4)),
+  ])
+  def test_log_prob(self, shape):
+    loc, scale = self._get_loc_scale(shape, shape)
+    dist = utils.multi_normal(loc, scale)
+    probs = dist.log_prob(jnp.ones(shape=shape, dtype=jnp.float32))
+
+    self.assertIsInstance(probs, jnp.DeviceArray)
+    self.assertFalse(bool(probs.shape))
+
 
 if __name__ == '__main__':
   absltest.main()
