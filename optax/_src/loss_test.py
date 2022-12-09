@@ -496,5 +496,85 @@ class HingeLossTest(parameterized.TestCase):
         self.correct_result,
         atol=1e-4)
 
+
+class PolyLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.logits = np.array([0.14, 1.456, 2.356, -0.124, -2.47])
+    self.labels = np.array([0.1, 0.15, 0.2, 0.25, 0.3])
+
+    self.batched_logits = np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]])
+    self.batched_labels = np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]])
+    # all expected values are computed using tf version of `poly1_cross_entropy`
+    # see page 10 here https://arxiv.org/pdf/2204.12511.pdf for more
+
+  @chex.all_variants
+  @parameterized.parameters(
+      dict(eps=2, alpha=0, expected=4.531657285679147),
+      dict(eps=1, alpha=0, expected=3.7153301084365054),
+      dict(eps=-1, alpha=0, expected=2.082675753951222),
+      dict(eps=0, alpha=0, expected=2.8990029311938637),
+      dict(eps=-0.5, alpha=0, expected=2.490839342572543),
+      dict(eps=1.15, alpha=0, expected=3.8377791850229013),
+      dict(eps=2, alpha=0.01, expected=4.527930742134294),
+      dict(eps=2, alpha=0.1, expected=4.494391850230619),
+      dict(eps=1.214, alpha=0.2415, expected=3.8031273062152553),
+      dict(eps=5.45, alpha=0.7515, expected=7.025605235513005),
+  )
+  def test_scalar(self, eps, alpha, expected):
+    np.testing.assert_allclose(
+        self.variant(loss.poly_loss_cross_entropy)(self.logits,
+                                                   self.labels,
+                                                   eps, alpha),
+        expected,
+        atol=1e-4)
+
+  @chex.all_variants
+  @parameterized.parameters(
+      dict(eps=2, alpha=0, expected=np.array([0.48225655, 1.25670369])),
+      dict(eps=1, alpha=0, expected=np.array([0.32605129, 1.04072429])),
+      dict(eps=-1, alpha=0, expected=np.array([0.01364075, 0.60876549])),
+      dict(eps=0, alpha=0, expected=np.array([0.16984602, 0.82474489])),
+      dict(eps=-0.5, alpha=0, expected=np.array([0.09174339, 0.71675519])),
+      dict(eps=1.15, alpha=0, expected=np.array([0.34948207, 1.0731212])),
+      dict(eps=2, alpha=0.01, expected=np.array([0.50913245, 1.28771743])),
+      dict(eps=2, alpha=0.1, expected=np.array([0.7510155, 1.56684114])),
+      dict(eps=1.214, alpha=0.2415, expected=np.array([0.9116368, 1.75037682])),
+      dict(eps=5.45, alpha=0.7515, expected=np.array([4.36434872, 5.50100119])),
+  )
+  def test_batched(self, eps, alpha, expected):
+    np.testing.assert_allclose(
+        self.variant(loss.poly_loss_cross_entropy)(self.batched_logits,
+                                                   self.batched_labels,
+                                                   eps, alpha),
+        expected,
+        atol=1e-4)
+
+  @chex.all_variants
+  @parameterized.parameters(
+      dict(logits=np.array([[4.0, 2.0, 1.0],
+                            [0.0, 5.0, 1.0],
+                            [0.134, 1.234, 3.235]]),
+           labels=np.array([[1.0, 0.0, 0.0],
+                            [0.0, 0.8, 0.2],
+                            [0.34, 0.33, 0.33]])),
+      dict(logits=np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]]),
+           labels=np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]])),
+      dict(logits=np.array([[4.0, 2.0, 1.0, 0.134, 1.3515],
+                            [0.0, 5.0, 1.0, 0.5215, 5.616]]),
+           labels=np.array([[0.5, 0.0, 0.0, 0.0, 0.5],
+                            [0.0, 0.12, 0.2, 0.56, 0.12]])),
+      dict(logits=np.array([1.89, 2.39]),
+           labels=np.array([0.34, 0.66])),
+      dict(logits=np.array([0.314]),
+           labels=np.array([1.0])),
+  )
+  def test_equals_to_cross_entropy_when_eps0(self, logits, labels):
+    np.testing.assert_allclose(
+        self.variant(loss.poly_loss_cross_entropy)(logits, labels, 0., 0.),
+        self.variant(loss.softmax_cross_entropy)(logits, labels),
+        atol=1e-4)
+
 if __name__ == '__main__':
   absltest.main()
