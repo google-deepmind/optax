@@ -519,3 +519,14 @@ def hinge_loss(predictor_outputs: chex.Array,
     Binary Hinge Loss.
   """
   return jnp.maximum(0, 1 - predictor_outputs * targets)
+
+
+def multiclass_hinge_loss(predictor_outputs: chex.Array,
+                          targets: chex.Array) -> chex.Array:
+  """Computes the hinge loss for multiclass classification.
+  """
+  mask = jnp.ones_like(predictor_outputs, dtype=bool)
+  mask[jnp.arange(targets.shape[0]), targets] = False
+  margin = predictor_outputs[~mask]
+  margin = margin - jnp.max(predictor_outputs[mask].reshape(targets.shape[0], -1), axis=1)
+  return 1 - margin
