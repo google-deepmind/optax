@@ -523,9 +523,8 @@ def hinge_loss(predictor_outputs: chex.Array,
 
 def poly_loss_cross_entropy(logits: chex.Array,
                             labels: chex.Array,
-                            epsilon: float = 2.0,
-                            alpha: float = 0.0) -> chex.Array:
-  r"""Computes PolyLoss with alpha-label smoothing between logits and labels.
+                            epsilon: float = 2.0) -> chex.Array:
+  r"""Computes PolyLoss between logits and labels.
 
   The PolyLoss is a loss function that decomposes commonly
   used classification loss functions into a series of weighted
@@ -549,28 +548,24 @@ def poly_loss_cross_entropy(logits: chex.Array,
       logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
       labels: Valid probability distributions (non-negative, sum to 1), e.g a
         one hot encoding specifying the correct class for each input;
-        must have a shape broadcastable to `[..., num_classes]``
-      epsilon: The coefficient of the first polynomial term (default = 2.0).
+        must have a shape broadcastable to `[..., num_classes]`.
+      epsilon: The coefficient of the first polynomial term.
         According to the paper, the following values are recommended:
-        - For the ImageNet 2d image classification, epsilon = 2.0
-        - For the 2d Instance Segmentation and object detection, epsilon = -1.0
+        - For the ImageNet 2d image classification, epsilon = 2.0.
+        - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
         - It is also recommended to adjust this value
-          based on the task and dataset at hand. For example, one can use
-          simple grid search to achieve it.
-      alpha: The smoothing factor, the greedy category with be assigned
-        probability `(1-alpha) + alpha / num_categories` (default = 0.0)
+          based on the task, e.g. by using grid search.
 
     Returns:
-      poly loss between each prediction and the corresponding target
+      Poly loss between each prediction and the corresponding target
       distributions, with shape `[...]`.
     """
-  chex.assert_type([logits], float)
+  chex.assert_type([logits, labels], float)
 
-  smoothed_labels = smooth_labels(labels=labels, alpha=alpha)
   one_minus_pt = jnp.sum(
-    smoothed_labels * (1 - jax.nn.softmax(logits)), axis=-1)
+    labels * (1 - jax.nn.softmax(logits)), axis=-1)
 
-  cross_entropy = softmax_cross_entropy(logits=logits, labels=smoothed_labels)
+  cross_entropy = softmax_cross_entropy(logits=logits, labels=labels)
   poly_loss = cross_entropy + epsilon * one_minus_pt
 
   return poly_loss
