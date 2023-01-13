@@ -467,7 +467,7 @@ def convex_kl_divergence(log_predictions: chex.Array,
 
   Measures the information gain achieved if target probability distribution
   would be used instead of predicted probability distribution.
-  This version is jointly convex in x (targets) and y (log_predictions).
+  This version is jointly convex in p (targets) and q (log_predictions).
 
   References:
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
