@@ -461,6 +461,34 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
+def convex_kl_divergence(log_predictions: chex.Array,
+                  targets: chex.Array) -> chex.Array:
+  """Computes a convex version of the Kullback-Leibler divergence loss.
+
+  Measures the information gain achieved if target probability distribution
+  would be used instead of predicted probability distribution.
+  This version is jointly convex in x (targets) and y (log_predictions).
+
+  References:
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
+
+  Args:
+    log_predictions: Probabilities of predicted distribution with shape
+      [..., dim]. Expected to be in the log-space to avoid underflow.
+    targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be strictly positive.
+
+  Returns:
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
+  """
+  chex.assert_type([log_predictions, targets], float)
+  chex.assert_tree_all_finite(log_predictions)
+  loss = targets * (jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions)
+  loss = loss - targets + jnp.exp(log_predictions)
+  return jnp.sum(loss, axis=-1)
+
+
 def kl_divergence(log_predictions: chex.Array,
                   targets: chex.Array) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
