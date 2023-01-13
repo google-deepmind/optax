@@ -503,6 +503,7 @@ def kl_divergence_with_log_targets(log_predictions: chex.Array,
     distribution with shape [...].
   """
   chex.assert_type([log_predictions, log_targets], float)
+  chex.assert_tree_all_finite([log_predictions, log_targets])
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=-1)
 
