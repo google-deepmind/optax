@@ -504,7 +504,7 @@ def scale_by_eve(b1: float = 0.9,
     Example
     --------
     Initialize:
-    >>> optimizer, state_update_fn = optax.eve()
+    >>> optimizer, eve_update_state = optax.eve()
     >>> opt_state = optimizer.init(params)
 
     Train:
