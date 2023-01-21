@@ -21,7 +21,7 @@ import chex
 import haiku as hk
 import jax
 import numpy as np
-import optax
+import optax_add_eve
 import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
@@ -71,7 +71,7 @@ class MnistTest(chex.TestCase):
     dataset = tf.data.Dataset.from_tensor_slices(data).repeat(8).batch(10)
     with mock.patch.object(
         datasets, 'load_image_dataset', return_value=dataset):
-      final_accuracy = mnist.train_on_mnist(optax.adam(0.01), hidden_sizes=(1,))
+      final_accuracy = mnist.train_on_mnist(optax_add_eve.adam(0.01), hidden_sizes=(1,))
 
     self.assertEqual(final_accuracy, 1.)
 

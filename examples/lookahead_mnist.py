@@ -19,7 +19,7 @@ from absl import app
 import jax
 from jax import random
 import jax.numpy as jnp
-import optax
+import optax_add_eve
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -45,18 +45,18 @@ def main(unused_argv) -> None:
       (*HIDDEN_SIZES, num_classes))
 
   # Set up the fast optimizer (adam) and wrap lookahead around it.
-  fast_optimizer = optax.adam(LEARNING_RATE)
-  optimizer = optax.lookahead(fast_optimizer, SYNC_PERIOD, SLOW_LEARNING_RATE)
+  fast_optimizer = optax_add_eve.adam(LEARNING_RATE)
+  optimizer = optax_add_eve.lookahead(fast_optimizer, SYNC_PERIOD, SLOW_LEARNING_RATE)
 
   def get_loss(fast_params, batch):
     logits = apply_params_fn(fast_params, batch['image'])
-    return jnp.mean(optax.softmax_cross_entropy(logits, batch['label']))
+    return jnp.mean(optax_add_eve.softmax_cross_entropy(logits, batch['label']))
 
   @jax.jit
   def train_step(params, optimizer_state, batch):
     grads = jax.grad(get_loss)(params.fast, batch)
     updates, opt_state = optimizer.update(grads, optimizer_state, params)
-    return optax.apply_updates(params, updates), opt_state
+    return optax_add_eve.apply_updates(params, updates), opt_state
 
   example_input = next(train_dataset.as_numpy_iterator())['image']
   initial_params = init_params_fn(random.PRNGKey(SEED), example_input)
@@ -66,7 +66,7 @@ def main(unused_argv) -> None:
   # initial model parameters. The first line below is only necessary for the
   # lookahead wrapper; without it the initial parameters could be used in the
   # initialization function of the optimizer directly.
-  params = optax.LookaheadParams.init_synced(initial_params)
+  params = optax_add_eve.LookaheadParams.init_synced(initial_params)
   opt_state = optimizer.init(params)
 
   # Training loop
