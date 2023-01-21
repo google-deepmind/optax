@@ -339,6 +339,47 @@ def amsgrad(
       _scale_by_learning_rate(learning_rate),
   )
 
+def eve(
+    learning_rate: float = 1e-3,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    b3: float = 0.999,
+    c: float = 10.,
+    eps: float = 1e-8,
+    f_star: float = 0.,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """The Eve optimizer.
+
+    Eve is an SGD variant with adaptive global and local learning rates. The `learning_rate`
+    used for each weight is computed from estimates of first- and second-order
+    moments of the gradients (using suitable exponential moving averages) as in ADAM.
+    The global learning rate is scaled by some notion of sub-optimality and is increased
+    when far from optimal and is decreased when approaching optimality
+
+    References:
+      Hayashi et al, 2018: https://arXiv.org/abs/1611.01505
+
+    Args:
+      learning_rate: this is the initial global scaling factor.
+      b1: the exponential decay rate to track the first moment of past gradients.
+      b2: the exponential decay rate to track the second moment of past gradients.
+      b3: the exponential decay rate to track the sub-optimality.
+      c: the clipping limit to prevent extreme global learning rate changes
+      eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+      f_star: estimation of the global minimum
+      mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+
+    Returns:
+      the corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+    transform.scale_by_eve(
+      b1=b1, b2=b2, b3=b3, c=c, eps=eps, f_star=f_star, mu_dtype=mu_dtype),
+    _scale_by_learning_rate(learning_rate),
+  )
 
 def fromage(
     learning_rate: float,
