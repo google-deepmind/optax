@@ -498,7 +498,21 @@ def scale_by_eve(b1: float = 0.9,
     """
     Eve requires an additional parameter: the loss for the current iteration: state.f = f_t
     ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
-    It is up to the user to update the state with the current loss before injecting.
+    It is up to the user to update the state with the current loss before injecting using the
+    second returned function from optax.eve() as follows:
+    
+    Example
+    --------
+    Initialize:
+    >>> optimizer, state_update_fn = optax.eve()
+    >>> opt_state = optimizer.init(params)
+
+    Train:
+    >>> while training:
+    ...   loss, grads = jax.value_and_grad(loss_fn)(params, data)
+    ...   opt_state = state_update_fn(opt_state, loss)   # <-- Update state here
+    ...   updates, opt_state = optimizer.update(grads, opt_state)
+    ...   params = optax.apply_updates(params, updates)
     """
     del params
     mu = update_moment(updates, state.mu, b1, 1)

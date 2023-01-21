@@ -373,8 +373,8 @@ def eve(
       `None` then the `dtype` is inferred from `params` and `updates`.
 
     Returns:
-      the corresponding `GradientTransformation` and a function with which to update
-      the optimizer state with the required loss parameter before injecting.
+      the corresponding `GradientTransformation`
+      a function with which to update the optimizer state with the required loss parameter before injecting.
   """
   def update_opt_state(opt_state: Tuple[transform.ScaleByEveState,transform.ScaleState], f: float):
     return transform.ScaleByEveState(
