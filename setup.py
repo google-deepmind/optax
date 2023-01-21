@@ -42,7 +42,7 @@ def _parse_requirements(path):
 
 
 setup(
-    name='optax_add_eve',
+    name='optax',
     version=_get_version(),
     url='https://github.com/deepmind/optax',
     license='Apache 2.0',

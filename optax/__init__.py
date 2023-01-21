@@ -23,6 +23,7 @@ from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
+from optax._src.alias import eve
 from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -223,6 +224,7 @@ __all__ = (
     "ema",
     "EmaState",
     "EmptyState",
+    "eve"
     "exponential_decay",
     "FactoredState",
     "fisher_diag",
