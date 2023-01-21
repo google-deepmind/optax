@@ -492,7 +492,7 @@ def scale_by_eve(b1: float = 0.9,
     mu = jax.tree_util.tree_map(  # First moment
       lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
-    return ScaleByEveState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f= 1., f_prev=1.)
+    return ScaleByEveState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f= 1., f_prev=10.)
 
   def update_fn(updates: base.Updates, state: ScaleByEveState, params=None):
     """
@@ -506,12 +506,9 @@ def scale_by_eve(b1: float = 0.9,
     count_inc = utils.numerics.safe_int32_increment(state.count)
     mu_hat = jax.tree_util.tree_map(lambda m: m / (1-b1), mu)
     nu_hat = jax.tree_util.tree_map(lambda v: v / (1-b2), nu)
-    if count_inc > 1:
-      d_new = jnp.abs(state.f - state.f_prev) / (jnp.min(jnp.array([state.f,state.f_prev])) - f_star)
-      d_tilde = jnp.clip(d_new,1/c,c)
-      d = b3*state.d + (1-b3)*d_tilde
-    else:
-      d = 1.
+    d_new = jnp.abs(state.f - state.f_prev) / (jnp.min(jnp.array([state.f,state.f_prev])) - f_star)
+    d_tilde = jnp.clip(d_new,1/c,c)
+    d = jnp.where(count_inc > 1, b3*state.d + (1-b3)*d_tilde, 1.)
     updates = jax.tree_util.tree_map(
       lambda m, v: m / (jnp.sqrt(v) + eps) / d, mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
