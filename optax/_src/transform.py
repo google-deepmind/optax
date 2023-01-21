@@ -421,6 +421,7 @@ def scale_by_adamax(
 
   References:
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+    
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate for the exponentially weighted maximum of grads.
