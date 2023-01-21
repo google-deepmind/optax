@@ -131,6 +131,7 @@ from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_eve
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
@@ -146,6 +147,7 @@ from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByEveState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
@@ -286,6 +288,7 @@ __all__ = (
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
+    "scale_by_eve",
     "scale_by_factored_rms",
     "scale_by_novograd",
     "scale_by_param_block_norm",
@@ -303,6 +306,7 @@ __all__ = (
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
+    "ScaleByEveState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
     "ScaleByRssState",
