@@ -35,6 +35,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='eve', opt_kwargs=dict(f=10)),
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
@@ -116,6 +117,9 @@ class AliasTest(chex.TestCase):
       updates = get_updates(params)
       if opt_name == 'dpsgd':
         updates = updates[None]
+      elif opt_name == 'eve':
+        f = jnp.mean(jnp.square(params-final_params))
+        state.hyperparams['f'] = f
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
@@ -144,6 +148,10 @@ class AliasTest(chex.TestCase):
       # https://github.com/deepmind/optax/issues/412.
       opt_inject = schedule.inject_hyperparams(
           opt_factory, static_args=('min_dim_size_to_factor',))(**opt_kwargs)
+    elif opt_name == 'eve':
+      # Eve is injectable by default. Reassign opt to uninjectable _eve alias
+      opt = alias._eve(**opt_kwargs)
+      opt_inject = opt_factory(**opt_kwargs)
     else:
       opt_inject = schedule.inject_hyperparams(opt_factory)(**opt_kwargs)
 

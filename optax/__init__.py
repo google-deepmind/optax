@@ -24,6 +24,7 @@ from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
 from optax._src.alias import dpsgd
+from optax._src.alias import eve
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
@@ -130,6 +131,7 @@ from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_eve
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
@@ -145,6 +147,7 @@ from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByEveState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
 from optax._src.transform import ScaleByRssState
@@ -177,7 +180,7 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
-__version__ = "0.1.5.dev"
+__version__ = "0.1.5.dev0"
 
 __all__ = (
     "adabelief",
@@ -223,6 +226,7 @@ __all__ = (
     "ema",
     "EmaState",
     "EmptyState",
+    "eve",
     "exponential_decay",
     "FactoredState",
     "fisher_diag",
@@ -284,6 +288,7 @@ __all__ = (
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
+    "scale_by_eve",
     "scale_by_factored_rms",
     "scale_by_novograd",
     "scale_by_param_block_norm",
@@ -301,6 +306,7 @@ __all__ = (
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
+    "ScaleByEveState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
     "ScaleByRssState",

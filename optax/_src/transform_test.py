@@ -44,6 +44,7 @@ class TransformTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
+      ('eve', transform.scale_by_eve),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
