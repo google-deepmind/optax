@@ -512,7 +512,8 @@ def scale_by_eve(b1: float = 0.9,
     updates = jax.tree_util.tree_map(
       lambda m, v: m / (jnp.sqrt(v) + eps) / d, mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
-    return updates, ScaleByEveState(count=count_inc, mu=mu, nu=nu, d=d, f=state.f, f_prev=state.f)
+    # assign a decayed f to ScaleByEveState for testing purposes. User will need to update f in practice
+    return updates, ScaleByEveState(count=count_inc, mu=mu, nu=nu, d=d, f=b3*state.f, f_prev=state.f)
 
   return base.GradientTransformation(init_fn, update_fn)
 

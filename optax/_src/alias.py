@@ -14,7 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimizers."""
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, Tuple
 
 import jax.numpy as jnp
 
@@ -373,13 +373,24 @@ def eve(
       `None` then the `dtype` is inferred from `params` and `updates`.
 
     Returns:
-      the corresponding `GradientTransformation`.
+      the corresponding `GradientTransformation` and a function with which to update
+      the optimizer state with the required loss parameter before injecting.
   """
+  def update_opt_state(opt_state: Tuple[transform.ScaleByEveState,transform.ScaleState], f: float):
+    return transform.ScaleByEveState(
+      count=opt_state[0].count,
+      mu=opt_state[0].mu,
+      nu=opt_state[0].nu,
+      d=opt_state[0].d,
+      f=f,
+      f_prev=opt_state[0].f_prev
+    ), transform.ScaleState()
+
   return combine.chain(
     transform.scale_by_eve(
       b1=b1, b2=b2, b3=b3, c=c, eps=eps, f_star=f_star, mu_dtype=mu_dtype),
-    _scale_by_learning_rate(learning_rate),
-  )
+    _scale_by_learning_rate(learning_rate)
+  ), update_opt_state
 
 def fromage(
     learning_rate: float,

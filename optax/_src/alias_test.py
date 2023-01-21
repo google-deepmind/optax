@@ -109,7 +109,10 @@ class AliasTest(chex.TestCase):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.')
 
-    opt = getattr(alias, opt_name)(**opt_kwargs)
+    if opt_name != 'eve':
+      opt = getattr(alias, opt_name)(**opt_kwargs)
+    else:
+      opt, state_update = getattr(alias, opt_name)(**opt_kwargs)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -117,6 +120,9 @@ class AliasTest(chex.TestCase):
       updates = get_updates(params)
       if opt_name == 'dpsgd':
         updates = updates[None]
+      elif opt_name == 'eve':
+        f = jnp.mean(jnp.square(params-final_params))
+        state = state_update(opt_state=state,f=f)
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
