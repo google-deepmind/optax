@@ -376,7 +376,7 @@ def eve(
       the corresponding `GradientTransformation`
       a function with which to update the optimizer state with the required loss parameter before injecting.
   """
-  def update_opt_state(opt_state: Tuple[transform.ScaleByEveState,transform.ScaleState], f: float):
+  def eve_update_state(opt_state: Tuple[transform.ScaleByEveState,transform.ScaleState], f: float):
     return transform.ScaleByEveState(
       count=opt_state[0].count,
       mu=opt_state[0].mu,
@@ -390,7 +390,7 @@ def eve(
     transform.scale_by_eve(
       b1=b1, b2=b2, b3=b3, c=c, eps=eps, f_star=f_star, mu_dtype=mu_dtype),
     _scale_by_learning_rate(learning_rate)
-  ), update_opt_state
+  ), eve_update_state
 
 def fromage(
     learning_rate: float,

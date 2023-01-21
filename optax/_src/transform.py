@@ -510,7 +510,7 @@ def scale_by_eve(b1: float = 0.9,
     Train:
     >>> while training:
     ...   loss, grads = jax.value_and_grad(loss_fn)(params, data)
-    ...   opt_state = state_update_fn(opt_state, loss)   # <-- Update state here
+    ...   opt_state = eve_update_state(opt_state, loss)   # <-- Update state here
     ...   updates, opt_state = optimizer.update(grads, opt_state)
     ...   params = optax.apply_updates(params, updates)
     """
