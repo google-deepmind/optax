@@ -70,7 +70,7 @@ import dp_accounting
 import jax
 from jax.example_libraries import stax
 import jax.numpy as jnp
-import optax_add_eve
+import optax
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -119,7 +119,7 @@ def compute_epsilon(steps, target_delta=1e-5):
 
 def loss_fn(params, batch):
   logits = predict(params, batch['image'])
-  return optax_add_eve.softmax_cross_entropy(logits, batch['label']).mean(), logits
+  return optax.softmax_cross_entropy(logits, batch['label']).mean(), logits
 
 
 @jax.jit
@@ -136,12 +136,12 @@ def main(_):
   full_test_batch = next(test_dataset.as_numpy_iterator())
 
   if FLAGS.dpsgd:
-    tx = optax_add_eve.dpsgd(learning_rate=FLAGS.learning_rate,
+    tx = optax.dpsgd(learning_rate=FLAGS.learning_rate,
                      l2_norm_clip=FLAGS.l2_norm_clip,
                      noise_multiplier=FLAGS.noise_multiplier,
                      seed=FLAGS.seed)
   else:
-    tx = optax_add_eve.sgd(learning_rate=FLAGS.learning_rate)
+    tx = optax.sgd(learning_rate=FLAGS.learning_rate)
 
   @jax.jit
   def train_step(params, opt_state, batch):
@@ -154,7 +154,7 @@ def main(_):
 
     grads, _ = grad_fn(params, batch)
     updates, new_opt_state = tx.update(grads, opt_state, params)
-    new_params = optax_add_eve.apply_updates(params, updates)
+    new_params = optax.apply_updates(params, updates)
     return new_params, new_opt_state
 
   key = jax.random.PRNGKey(FLAGS.seed)

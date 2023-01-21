@@ -19,7 +19,7 @@ from absl import app
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
-import optax_add_eve
+import optax
 
 
 def main(argv):
@@ -70,11 +70,11 @@ def main(argv):
   # Construct a simple Adam optimiser using the transforms in optax.
   # You could also just use the `optax.adam` alias, but we show here how
   # to do so manually so that you may construct your own `custom` optimiser.
-  tx = optax_add_eve.chain(
+  tx = optax.chain(
       # Set the parameters of Adam. Note the learning_rate is not here.
-      optax_add_eve.scale_by_adam(b1=0.9, b2=0.999, eps=1e-8),
+      optax.scale_by_adam(b1=0.9, b2=0.999, eps=1e-8),
       # Put a minus sign to *minimise* the loss.
-      optax_add_eve.scale(-learning_rate)
+      optax.scale(-learning_rate)
   )
 
   # Create optimiser state.
@@ -89,7 +89,7 @@ def main(argv):
     # Update the optimiser state, create an update to the params.
     updates, opt_state = tx.update(grads, opt_state)
     # Update the parameters.
-    params = optax_add_eve.apply_updates(params, updates)
+    params = optax.apply_updates(params, updates)
     print(f'Loss[{step}] = {loss_val}')
 
 

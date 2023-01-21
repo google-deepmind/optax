@@ -16,8 +16,8 @@
 
 from typing import Any, Mapping
 
-import optax_add_eve
-from optax_add_eve._src import test_utils
+import optax
+from optax._src import test_utils
 from sphinx import application
 from sphinx import builders
 from sphinx import errors
@@ -25,7 +25,7 @@ from sphinx import errors
 
 def optax_public_symbols():
   names = set()
-  for module_name, module in test_utils.find_internal_python_modules(optax_add_eve):
+  for module_name, module in test_utils.find_internal_python_modules(optax):
     for name in module.__all__:
       names.add(module_name + "." + name)
   return names
@@ -55,4 +55,4 @@ class OptaxCoverageCheck(builders.Builder):
 
 def setup(app: application.Sphinx) -> Mapping[str, Any]:
   app.add_builder(OptaxCoverageCheck)
-  return dict(version=optax_add_eve.__version__, parallel_read_safe=True)
+  return dict(version=optax.__version__, parallel_read_safe=True)

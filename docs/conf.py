@@ -121,7 +121,7 @@ typing.get_type_hints = lambda obj, *unused: filter_nones(obj.__annotations__)
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
-import optax_add_eve
+import optax
 from sphinxcontrib import katex
 
 # -- Project information -----------------------------------------------------
@@ -246,7 +246,7 @@ def linkcode_resolve(domain, info):
   # TODO(slebedev): support tags after we release an initial version.
   return 'https://github.com/deepmind/optax/tree/master/optax/%s#L%d#L%d' % (
       os.path.relpath(filename, start=os.path.dirname(
-          optax_add_eve.__file__)), lineno, lineno + len(source) - 1)
+          optax.__file__)), lineno, lineno + len(source) - 1)
 
 
 # -- Intersphinx configuration -----------------------------------------------

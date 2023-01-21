@@ -22,7 +22,7 @@ import haiku as hk
 import jax
 from jax import random
 import jax.numpy as jnp
-import optax_add_eve
+import optax
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -70,7 +70,7 @@ def build_model(layer_dims: Sequence[int]) -> hk.Transformed:
   return hk.without_apply_rng(mlp_model)
 
 
-def train_on_mnist(optimizer: optax_add_eve.GradientTransformation,
+def train_on_mnist(optimizer: optax.GradientTransformation,
                    hidden_sizes: Sequence[int]) -> float:
   """Trains an MLP on MNIST using a given optimizer.
 
@@ -90,13 +90,13 @@ def train_on_mnist(optimizer: optax_add_eve.GradientTransformation,
 
   def get_loss(params, batch):
     logits = apply_params_fn(params, batch['image'])
-    return jnp.mean(optax_add_eve.softmax_cross_entropy(logits, batch['label']))
+    return jnp.mean(optax.softmax_cross_entropy(logits, batch['label']))
 
   @jax.jit
   def train_step(params, optimizer_state, batch):
     grads = jax.grad(get_loss)(params, batch)
     updates, opt_state = optimizer.update(grads, optimizer_state, params)
-    return optax_add_eve.apply_updates(params, updates), opt_state
+    return optax.apply_updates(params, updates), opt_state
 
   example_input = next(train_dataset.as_numpy_iterator())['image']
   params = init_params_fn(random.PRNGKey(SEED), example_input)
@@ -116,7 +116,7 @@ def train_on_mnist(optimizer: optax_add_eve.GradientTransformation,
 
 def main(unused_argv):
   """Trains an MLP on MNIST using the adam optimizers."""
-  return train_on_mnist(optax_add_eve.adam(LEARNING_RATE), DEFAULT_HIDDEN_SIZES)
+  return train_on_mnist(optax.adam(LEARNING_RATE), DEFAULT_HIDDEN_SIZES)
 
 
 if __name__ == '__main__':
