@@ -419,7 +419,7 @@ def scale_by_adamax(
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adamax algorithm.
 
-  References:References:
+  References:
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
