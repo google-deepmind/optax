@@ -419,10 +419,9 @@ def scale_by_adamax(
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adamax algorithm.
 
-  References:nu = update_infinity_moment(updates, state.nu, b2, eps)
-    count_inc = utils.numerics.safe_int32_increment(state.count)
-    mu_hat = jax.tree_util.tree_map(lambda m: jnp.asarray(m / (1-b1)), mu)
-    nu_hat = jax.tree_util.tree_map(lambda v: jnp.asarray(v / (1-b2)), nu)
+  References:References:
+    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+  Args:
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate for the exponentially weighted maximum of grads.
     eps: Term added to the denominator to improve numerical stability.
