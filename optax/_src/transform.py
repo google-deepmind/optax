@@ -504,13 +504,13 @@ def scale_by_eve(b1: float = 0.9,
     Example
     --------
     Initialize:
-    >>> optimizer, eve_update_state = optax.eve()
+    >>> optimizer, eve_update_state_fn = optax.eve()
     >>> opt_state = optimizer.init(params)
 
     Train:
     >>> while training:
     ...   loss, grads = jax.value_and_grad(loss_fn)(params, data)
-    ...   opt_state = eve_update_state(opt_state, loss)   # <-- Update state here
+    ...   opt_state = eve_update_state_fn(opt_state, loss)   # <-- Update state here
     ...   updates, opt_state = optimizer.update(grads, opt_state)
     ...   params = optax.apply_updates(params, updates)
     """
