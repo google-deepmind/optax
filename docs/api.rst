@@ -13,6 +13,7 @@ Common Optimizers
     adamax
     adamaxw
     amsgrad
+    eve
     fromage
     lamb
     lars
@@ -66,6 +67,11 @@ AMSGrad
 ~~~~~
 
 .. autofunction:: amsgrad
+
+Eve
+~~~
+
+.. autofunction:: eve
 
 Fromage
 ~~~~~~~
@@ -289,6 +295,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_adamax
 .. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
+.. autofunction:: scale_by_eve
 .. autofunction:: scale_by_factored_rms
 .. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
@@ -308,6 +315,9 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByNovogradState
+    :members:
+
+.. autoclass:: ScaleByEveState
     :members:
 
 .. autoclass:: ScaleByRmsState
