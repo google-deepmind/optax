@@ -450,12 +450,12 @@ def scale_by_adamax(
 
 
 class ScaleByEveState(NamedTuple):
-    """State for the Eve algorithm."""
-    count: chex.Array  # shape=(), dtype=jnp.int32.
-    mu: base.Updates
-    nu: base.Updates
-    d: float
-    f_prev: float
+  """State for the Eve algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+  nu: base.Updates
+  d: float
+  f_prev: float
 
 
 def scale_by_eve(
@@ -471,22 +471,22 @@ def scale_by_eve(
   """Rescale updates according to the Eve algorithm.
 
   References:
-      [Hayashi et al, 2018](https://arxiv.org/abs/1611.01505)
+    [Hayashi et al, 2018](https://arxiv.org/abs/1611.01505)
 
   Args:
-      b1: the exponential decay rate to track the first moment of past gradients.
-      b2: the exponential decay rate to track the second moment of past gradients.
-      b3: the exponential decay rate to track the sub-optimality.
-      c: the clipping limit to prevent extreme global learning rate changes
-      eps: a small constant applied to denominator outside of the square root
-      (as in the Adam paper) to avoid dividing by zero when rescaling.
-      f: the current loss value. (needs to be injected before update is called)
-      f_star: estimation of the global minimum
-      mu_dtype: optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype` is inferred from `params` and `updates`.
+    b1: the exponential decay rate to track the first moment of past gradients.
+    b2: the exponential decay rate to track the second moment of past gradients.
+    b3: the exponential decay rate to track the sub-optimality.
+    c: the clipping limit to prevent extreme global learning rate changes
+    eps: a small constant applied to denominator outside of the square root
+    (as in the Adam paper) to avoid dividing by zero when rescaling.
+    f: the current loss value. (needs to be injected before update is called)
+    f_star: estimation of the global minimum
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+    `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-      An (init_fn, update_fn) tuple.
+    An (init_fn, update_fn) tuple.
   """
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
@@ -494,7 +494,9 @@ def scale_by_eve(
     mu = jax.tree_util.tree_map(  # First moment
       lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
-    return ScaleByEveState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f_prev=10.)
+    return ScaleByEveState(
+      count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f_prev=10.
+    )
 
 
   def update_fn(updates: base.Updates, state: ScaleByEveState, params=None):
@@ -504,14 +506,16 @@ def scale_by_eve(
     count_inc = utils.numerics.safe_int32_increment(state.count)
     mu_hat = jax.tree_util.tree_map(lambda m: m / (1-b1), mu)
     nu_hat = jax.tree_util.tree_map(lambda v: v / (1-b2), nu)
-    d_new = jnp.abs(f - state.f_prev) / (jnp.min(jnp.array([f,state.f_prev])) - f_star)
+    d_new = jnp.abs(f-state.f_prev) /\
+      (jnp.min(jnp.array([f,state.f_prev]))-f_star)
     d_tilde = jnp.clip(d_new,1/c,c)
     d = jnp.where(count_inc > 1, b3*state.d + (1-b3)*d_tilde, 1.)
     updates = jax.tree_util.tree_map(
       lambda m, v: m / (jnp.sqrt(v) + eps) / d, mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
-    # assign a decayed f to ScaleByEveState for testing purposes. User will need to update f in practice
-    return updates, ScaleByEveState(count=count_inc, mu=mu, nu=nu, d=d, f_prev=f)
+    return updates, ScaleByEveState(
+      count=count_inc, mu=mu, nu=nu, d=d, f_prev=f
+    )
 
   return base.GradientTransformation(init_fn, update_fn)
 

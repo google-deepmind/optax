@@ -226,7 +226,7 @@ __all__ = (
     "ema",
     "EmaState",
     "EmptyState",
-    "eve"
+    "eve",
     "exponential_decay",
     "FactoredState",
     "fisher_diag",
