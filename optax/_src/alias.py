@@ -14,7 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimizers."""
 
-from typing import Any, Callable, Optional, Union, Tuple
+from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
 
