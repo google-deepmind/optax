@@ -479,6 +479,7 @@ def scale_by_eve(b1: float = 0.9,
       c: the clipping limit to prevent extreme global learning rate changes
       eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
+      f: the current loss value. (needs to be injected before update is called)
       f_star: estimation of the global minimum
       mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.

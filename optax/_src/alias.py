@@ -357,7 +357,8 @@ def _eve(
     used for each weight is computed from estimates of first- and second-order
     moments of the gradients (using suitable exponential moving averages) as in ADAM.
     The global learning rate is scaled by some notion of sub-optimality and is increased
-    when far from optimal and is decreased when approaching optimality
+    when far from optimal and is decreased when approaching optimality. This is also computed
+    with exponential moving averages, similar to the first and second moments.
 
     References:
       Hayashi et al, 2018: https://arXiv.org/abs/1611.01505
