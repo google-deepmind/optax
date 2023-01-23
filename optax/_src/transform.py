@@ -455,7 +455,6 @@ class ScaleByEveState(NamedTuple):
     mu: base.Updates
     nu: base.Updates
     d: float
-    f: float
     f_prev: float
 
 
@@ -464,6 +463,7 @@ def scale_by_eve(b1: float = 0.9,
     b3: float = 0.999,
     c: float = 10.,
     eps: float = 1e-8,
+    f: float = 1.,
     f_star: float = 0.,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
@@ -492,42 +492,24 @@ def scale_by_eve(b1: float = 0.9,
     mu = jax.tree_util.tree_map(  # First moment
       lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
-    return ScaleByEveState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f= 1., f_prev=10.)
+    return ScaleByEveState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, d=1., f_prev=10.)
+
 
   def update_fn(updates: base.Updates, state: ScaleByEveState, params=None):
-    """
-    Eve requires an additional parameter: the loss for the current iteration: state.f = f_t
-    ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
-    It is up to the user to update the state with the current loss before injecting using the
-    second returned function from optax.eve() as follows:
-    
-    Example
-    --------
-    Initialize:
-    >>> optimizer, eve_update_state_fn = optax.eve()
-    >>> opt_state = optimizer.init(params)
-
-    Train:
-    >>> while training:
-    ...   loss, grads = jax.value_and_grad(loss_fn)(params, data)
-    ...   opt_state = eve_update_state_fn(opt_state, loss)   # <-- Update state here
-    ...   updates, opt_state = optimizer.update(grads, opt_state)
-    ...   params = optax.apply_updates(params, updates)
-    """
     del params
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = utils.numerics.safe_int32_increment(state.count)
     mu_hat = jax.tree_util.tree_map(lambda m: m / (1-b1), mu)
     nu_hat = jax.tree_util.tree_map(lambda v: v / (1-b2), nu)
-    d_new = jnp.abs(state.f - state.f_prev) / (jnp.min(jnp.array([state.f,state.f_prev])) - f_star)
+    d_new = jnp.abs(f - state.f_prev) / (jnp.min(jnp.array([f,state.f_prev])) - f_star)
     d_tilde = jnp.clip(d_new,1/c,c)
     d = jnp.where(count_inc > 1, b3*state.d + (1-b3)*d_tilde, 1.)
     updates = jax.tree_util.tree_map(
       lambda m, v: m / (jnp.sqrt(v) + eps) / d, mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
     # assign a decayed f to ScaleByEveState for testing purposes. User will need to update f in practice
-    return updates, ScaleByEveState(count=count_inc, mu=mu, nu=nu, d=d, f=b3*state.f, f_prev=state.f)
+    return updates, ScaleByEveState(count=count_inc, mu=mu, nu=nu, d=d, f_prev=f)
 
   return base.GradientTransformation(init_fn, update_fn)
 

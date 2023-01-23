@@ -23,6 +23,7 @@ from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
 from optax._src import privacy
+from optax._src import schedule
 from optax._src import transform
 from optax._src import wrappers
 
@@ -339,17 +340,18 @@ def amsgrad(
       _scale_by_learning_rate(learning_rate),
   )
 
-def eve(
-    learning_rate: float = 1e-3,
+def _eve(
+    a1: float = 1e-3,
     b1: float = 0.9,
     b2: float = 0.999,
     b3: float = 0.999,
     c: float = 10.,
     eps: float = 1e-8,
+    f: float = 1.,
     f_star: float = 0.,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """The Eve optimizer.
+  """The Eve optimizer (uninjectable, see eve() below).
 
     Eve is an SGD variant with adaptive global and local learning rates. The `learning_rate`
     used for each weight is computed from estimates of first- and second-order
@@ -361,7 +363,7 @@ def eve(
       Hayashi et al, 2018: https://arXiv.org/abs/1611.01505
 
     Args:
-      learning_rate: this is the initial global scaling factor.
+      a1: this is the initial global scaling factor.
       b1: the exponential decay rate to track the first moment of past gradients.
       b2: the exponential decay rate to track the second moment of past gradients.
       b3: the exponential decay rate to track the sub-optimality.
@@ -374,23 +376,73 @@ def eve(
 
     Returns:
       the corresponding `GradientTransformation`
-      a function with which to update the optimizer state with the required loss parameter before injecting.
+    
+    Note:
+      Eve requires an additional parameter: the loss for the current iteration: state.f = f_t
+      ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
+      Since it is up to the user to inject the current loss before calling update on the
+      parameters, the eve alias returns an injectable state by default by wrapping _eve in
+      inject_hyperparameters.
   """
-  def eve_update_state_fn(opt_state: Tuple[transform.ScaleByEveState,transform.ScaleState], f: float):
-    return transform.ScaleByEveState(
-      count=opt_state[0].count,
-      mu=opt_state[0].mu,
-      nu=opt_state[0].nu,
-      d=opt_state[0].d,
-      f=f,
-      f_prev=opt_state[0].f_prev
-    ), transform.ScaleState()
-
   return combine.chain(
     transform.scale_by_eve(
-      b1=b1, b2=b2, b3=b3, c=c, eps=eps, f_star=f_star, mu_dtype=mu_dtype),
-    _scale_by_learning_rate(learning_rate)
-  ), eve_update_state_fn
+      b1=b1, b2=b2, b3=b3, c=c, eps=eps, f=f, f_star=f_star, mu_dtype=mu_dtype),
+    _scale_by_learning_rate(a1)
+  )
+
+
+def eve(
+    a1: float = 1e-3,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    b3: float = 0.999,
+    c: float = 10.,
+    eps: float = 1e-8,
+    f: float = 1.,
+    f_star: float = 0.,
+    mu_dtype: Optional[Any] = None,
+):
+  """Injectable Eve optimizer.
+  
+    Eve requires an additional parameter: the loss for the current iteration: state.f = f_t
+    ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
+    Since it is up to the user to inject the current loss before calling update on the
+    parameters, the eve alias returns an injectable state by default.
+
+    Args:
+      a1: this is the initial global scaling factor.
+      b1: the exponential decay rate to track the first moment of past gradients.
+      b2: the exponential decay rate to track the second moment of past gradients.
+      b3: the exponential decay rate to track the sub-optimality.
+      c: the clipping limit to prevent extreme global learning rate changes
+      eps: a small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+      f_star: estimation of the global minimum
+      mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+
+    Returns:
+      the corresponding `GradientTransformation` wrapped in inject_hyperparameters
+
+    Inject the current loss as follows:
+
+    Initialize::
+
+      optimizer = optax.eve()
+      opt_state = optimizer.init(params)
+
+    Train::
+    
+      while training:
+        loss, grads = jax.value_and_grad(loss_fn)(params, data)
+        opt_state.hyperparams['f'] = loss   # <-- Update state here
+        updates, opt_state = optimizer.update(grads, opt_state)
+        params = optax.apply_updates(params, updates)
+  """
+  return schedule.inject_hyperparams(_eve)(
+    a1=a1, b1=b1, b2=b2, b3=b3, c=c, eps=eps, f=f, f_star=f_star, mu_dtype=mu_dtype
+  )
+
 
 def fromage(
     learning_rate: float,
