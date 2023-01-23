@@ -458,7 +458,8 @@ class ScaleByEveState(NamedTuple):
     f_prev: float
 
 
-def scale_by_eve(b1: float = 0.9,
+def scale_by_eve(
+    b1: float = 0.9,
     b2: float = 0.999,
     b3: float = 0.999,
     c: float = 10.,
