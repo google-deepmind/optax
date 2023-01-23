@@ -382,7 +382,7 @@ def _eve(
       ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
       Since it is up to the user to inject the current loss before calling update on the
       parameters, the eve alias returns an injectable state by default by wrapping _eve in
-      inject_hyperparameters.
+      inject_hyperparams.
   """
   return combine.chain(
     transform.scale_by_eve(
@@ -407,7 +407,8 @@ def eve(
     Eve requires an additional parameter: the loss for the current iteration: state.f = f_t
     ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
     Since it is up to the user to inject the current loss before calling update on the
-    parameters, the eve alias returns an injectable state by default.
+    parameters, the eve alias returns an injectable state by default by wrapping _eve in
+    inject_hyperparams.
 
     Args:
       a1: this is the initial global scaling factor.
@@ -422,7 +423,7 @@ def eve(
       `None` then the `dtype` is inferred from `params` and `updates`.
 
     Returns:
-      the corresponding `GradientTransformation` wrapped in inject_hyperparameters
+      the corresponding `GradientTransformation` wrapped in inject_hyperparams
 
     Inject the current loss as follows:
 
