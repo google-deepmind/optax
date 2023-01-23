@@ -351,14 +351,14 @@ def _eve(
     f_star: float = 0.,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """The Eve optimizer (uninjectable, see eve() below).
+  """The Eve optimizer (uninjectable, see `eve()`).
 
-    Eve is an SGD variant with adaptive global and local learning rates. The `learning_rate`
-    used for each weight is computed from estimates of first- and second-order
-    moments of the gradients (using suitable exponential moving averages) as in ADAM.
-    The global learning rate is scaled by some notion of sub-optimality and is increased
-    when far from optimal and is decreased when approaching optimality. This is also computed
-    with exponential moving averages, similar to the first and second moments.
+    Eve is an SGD variant with adaptive global and local learning rates. The local learning rate
+    used for each weight is computed from estimates of first- and second-order moments of the
+    gradients (using suitable exponential moving averages) as in ADAM. These are then scaled by the
+    global learning rate `a1`, which is scaled by some notion of sub-optimality `d`: increasing the
+    global rate when far from optimal and decreasing it when approaching optimality. This is also
+    computed with exponential moving averages, similar to the first and second moments.
 
     References:
       Hayashi et al, 2018: https://arXiv.org/abs/1611.01505
@@ -371,6 +371,7 @@ def _eve(
       c: the clipping limit to prevent extreme global learning rate changes
       eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
+      f: the current loss value. (needs to be injected before update is called)
       f_star: estimation of the global minimum
       mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
@@ -379,10 +380,10 @@ def _eve(
       the corresponding `GradientTransformation`
     
     Note:
-      Eve requires an additional parameter: the loss for the current iteration: f = f_t
-      ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
+      Eve requires an additional parameter: the loss for the current iteration: `f` = `f_t`
+      ScaleByEveState also holds the loss from the previous iteration: `state.f_prev` = `f_{t-1}`
       Since it is up to the user to inject the current loss before calling the update function,
-      the eve alias returns an injectable state by default by wrapping _eve in inject_hyperparams.
+      the `eve` alias returns an injectable state by default by wrapping `_eve` in `inject_hyperparams`.
   """
   return combine.chain(
     transform.scale_by_eve(
@@ -404,10 +405,10 @@ def eve(
 ):
   """Injectable Eve optimizer.
   
-    Eve requires an additional parameter: the loss for the current iteration: f = f_t
-    ScaleByEveState also holds the loss from the previous iteration: state.f_prev = f_{t-1}
+    Eve requires an additional parameter: the loss for the current iteration: `f` = `f_t`
+    ScaleByEveState also holds the loss from the previous iteration: `state.f_prev` = `f_{t-1}`
     Since it is up to the user to inject the current loss before calling the update function,
-    the eve alias returns an injectable state by default by wrapping _eve in inject_hyperparams.
+    the `eve` alias returns an injectable state by default by wrapping `_eve` in `inject_hyperparams`.
 
     Args:
       a1: this is the initial global scaling factor.
@@ -417,6 +418,7 @@ def eve(
       c: the clipping limit to prevent extreme global learning rate changes
       eps: a small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
+      f: the current loss value. (needs to be injected before update is called)
       f_star: estimation of the global minimum
       mu_dtype: optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
@@ -425,6 +427,7 @@ def eve(
       the corresponding `GradientTransformation` wrapped in inject_hyperparams
 
     Inject the current loss as follows:
+    -----------------------------------
 
     Initialize::
 
