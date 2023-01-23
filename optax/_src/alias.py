@@ -356,9 +356,9 @@ def _eve(
     Eve is an SGD variant with adaptive global and local learning rates. The local learning rate
     used for each weight is computed from estimates of first- and second-order moments of the
     gradients (using suitable exponential moving averages) as in ADAM. These are then scaled by the
-    global learning rate `a1`, which is scaled by some notion of sub-optimality `d`: increasing the
-    global rate when far from optimal and decreasing it when approaching optimality. This is also
-    computed with exponential moving averages, similar to the first and second moments.
+    global learning rate `a1`, which is adaptively modified by some notion of sub-optimality `d`:
+    increasing the global rate when far from optimal and decreasing it when approaching optimality.
+    This is also computed with exponential moving averages, similar to the first and second moments.
 
     References:
       Hayashi et al, 2018: https://arXiv.org/abs/1611.01505
