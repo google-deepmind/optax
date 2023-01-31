@@ -207,7 +207,8 @@ def exponential_decay(
 def cosine_decay_schedule(
     init_value: float,
     decay_steps: int,
-    alpha: float = 0.0
+    alpha: float = 0.0,
+    exponent: float = 1.0,
 ) -> base.Schedule:
   """Returns a function which implements cosine learning rate decay.
 
@@ -224,6 +225,9 @@ def cosine_decay_schedule(
       the decay for.
     alpha: Float. The minimum value of the multiplier used to adjust the
       learning rate.
+    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
+      the current timestep and T is the `decay_steps`. The exponent modifies
+      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
 
   Returns:
     schedule: A function that maps step counts to values.
@@ -234,7 +238,7 @@ def cosine_decay_schedule(
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
-    decayed = (1 - alpha) * cosine_decay + alpha
+    decayed = (1 - alpha) * cosine_decay ** exponent + alpha
     return init_value * decayed
 
   return schedule
@@ -401,7 +405,8 @@ def warmup_cosine_decay_schedule(
     peak_value: float,
     warmup_steps: int,
     decay_steps: int,
-    end_value: float = 0.0
+    end_value: float = 0.0,
+    exponent: float = 1.0,
 ) -> base.Schedule:
   """Linear warmup followed by cosine decay.
 
@@ -413,6 +418,9 @@ def warmup_cosine_decay_schedule(
       this includes the warmup time, so the number of steps during which cosine
       annealing is applied is `decay_steps - warmup_steps`.
     end_value: End value of the scalar to be annealed.
+    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
+      the current timestep and T is the `decay_steps`. The exponent modifies
+      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
   Returns:
     schedule: A function that maps step counts to values.
   """
@@ -424,7 +432,8 @@ def warmup_cosine_decay_schedule(
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=end_value/peak_value)]
+          alpha=end_value/peak_value,
+          exponent=exponent)]
   return join_schedules(schedules, [warmup_steps])
 
 
