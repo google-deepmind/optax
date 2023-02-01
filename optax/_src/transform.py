@@ -323,7 +323,7 @@ def scale_by_adam(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
@@ -379,7 +379,7 @@ def scale_by_amsgrad(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
@@ -775,7 +775,7 @@ def scale_by_trust_ratio(
     trust_coefficient: float = 1.,
     eps: float = 0.,
 ) -> base.GradientTransformation:
-  """Scale updates by trust ratio`.
+  """Scale updates by `trust ratio`.
 
   References:
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
@@ -952,7 +952,7 @@ def scale_by_sm3(
     b2: float = 1.0,
     eps: float = 1e-8
 ) -> base.GradientTransformation:
-  """Scale updates by sm3`.
+  """Scale updates by `sm3`.
 
   References:
     [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
@@ -1044,7 +1044,7 @@ def scale_by_novograd(
       numerical stability when backpropagating gradients through the rescaling.
     weight_decay: A scalar weight decay rate.
     mu_dtype: An optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     The corresponding `GradientTransformation`.
