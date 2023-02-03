@@ -162,7 +162,7 @@ def softmax_cross_entropy(
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
     labels: Valid probability distributions (non-negative, sum to 1), e.g a
       one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]``
+      must have a shape broadcastable to `[..., num_classes]`.
 
   Returns:
     cross entropy between each prediction and the corresponding target
