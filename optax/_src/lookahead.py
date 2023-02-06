@@ -116,7 +116,7 @@ def lookahead(
     updates, fast_state = fast_optimizer.update(updates, state.fast_state,
                                                 params.fast)
 
-    sync_next = (state.steps_since_sync == sync_period - 1)
+    sync_next = state.steps_since_sync == sync_period - 1
     updates = _lookahead_update(updates, sync_next, params, slow_step_size)
     if reset_state:
       # Jittable way of resetting the fast optimizer state if parameters will be
