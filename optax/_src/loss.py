@@ -119,25 +119,32 @@ def smooth_labels(
 def sigmoid_binary_cross_entropy(logits, labels):
   """Computes element-wise sigmoid cross entropy given logits and labels.
 
-  This can be used to measure the error in discrete classification tasks in
-  which each class is an independent binary prediction and different classes
-  are not mutually exclusive. This may be used for multilabel image
-  classification for instance a model may predict that an image contains both a
-  cat and a dog.
+  This function can be used for binary or multiclass classification (where each
+  class is an independent binary prediction and different classes are not
+  mutually exclusive e.g. predicting that an image contains both a cat
+  and a dog.)
+
+  Because this function is overloaded, please ensure your `logits` and `labels`
+  are compatible with each other. If you're passing in binary `labels` (values
+  in {0, 1}), ensure your `logits` correspond to class 1 only. If you're
+  passing in per-class target probabilities or one-hot `labels`, please ensure
+  your `logits` are also multiclass. Be particularly careful if you're relying
+  on implicit broadcasting to reshape `logits` or `labels`.
 
   References:
     [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
 
   Args:
     logits: Each element is the unnormalized log probability of a binary
-      prediction.
-    labels: The target probabilities, must have a shape broadcastable to that of
-      `logits`.
+      prediction. See note about compatibility with `labels` above.
+    labels: Binary labels whose values are {0,1} or multi-class target
+      probabilities. See note about compatibility with `logits` above.
 
   Returns:
     cross entropy for each binary prediction, same shape as `logits`.
   """
   chex.assert_type([logits], float)
+  labels = labels.astype(logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
