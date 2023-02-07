@@ -494,6 +494,8 @@ Common Losses
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
+    kl_divergence
+    convex_kl_divergence
 
 
 Losses
@@ -511,6 +513,8 @@ Losses
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
+.. autofunction:: kl_divergence
+.. autofunction:: convex_kl_divergence
 
 
 
