@@ -444,7 +444,7 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(loss.kl_divergence)(self.log_ps, self.qs),
+        self.variant(loss.convex_kl_divergence)(self.log_ps, self.qs),
         self.exp,
         atol=1e-4)
 
