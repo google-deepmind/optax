@@ -457,9 +457,9 @@ class KLDivergenceTest(parameterized.TestCase):
         [[-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
          [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971]])
     self.qs = np.array([[0.2, 0.2, 0.2, 0.1, 0.15, 0.15],
-                        [0.05, 0.03, 0.02, 0.3, 0.5, 0.1]])
+                        [0.05, 0.03, 0.02, 0.3, 0.5, 0.]])
     # Computed kullback-leibler divergence of P from Q.
-    self.exp = np.array([0.8875625, 0.7187435584901326])
+    self.exp = np.array([0.8875577, 0.7592807])
 
   @chex.all_variants
   def test_scalar(self):
