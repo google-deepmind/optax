@@ -27,6 +27,7 @@ from absl import logging
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax._src import base
 from optax._src import numerics
@@ -585,7 +586,7 @@ def inject_hyperparams(
         other_hps[name] = value
       elif callable(value):
         sched_hps[name] = value
-      elif isinstance(value, (int, float, chex.Array)):
+      elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
