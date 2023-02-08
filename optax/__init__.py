@@ -75,12 +75,14 @@ from optax._src.linear_algebra import power_iteration
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
+from optax._src.loss import convex_kl_divergence
 from optax._src.loss import cosine_distance
 from optax._src.loss import cosine_similarity
 from optax._src.loss import ctc_loss
 from optax._src.loss import ctc_loss_with_forward_probs
 from optax._src.loss import hinge_loss
 from optax._src.loss import huber_loss
+from optax._src.loss import kl_divergence
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
@@ -213,6 +215,7 @@ __all__ = (
     "ctc_loss_with_forward_probs",
     "control_delta_method",
     "control_variates_jacobians",
+    "convex_kl_divergence",
     "cosine_decay_schedule",
     "cosine_distance",
     "cosine_onecycle_schedule",
@@ -240,6 +243,7 @@ __all__ = (
     "InjectHyperparamsState",
     "join_schedules",
     "keep_params_nonnegative",
+    "kl_divergence",
     "l2_loss",
     "lamb",
     "lars",

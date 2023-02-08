@@ -468,8 +468,36 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
-def kl_divergence(log_predictions: chex.Array,
-                  targets: chex.Array) -> chex.Array:
+def convex_kl_divergence(
+    log_predictions: chex.Array, targets: chex.Array
+) -> chex.Array:
+  """Computes a convex version of the Kullback-Leibler divergence loss.
+
+  Measures the information gain achieved if target probability distribution
+  would be used instead of predicted probability distribution.
+  This version is jointly convex in p (targets) and q (log_predictions).
+
+  References:
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
+
+  Args:
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
+    targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be strictly positive.
+
+  Returns:
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
+  """
+  return kl_divergence(log_predictions, targets) + jnp.sum(
+      jnp.exp(log_predictions) - targets, axis=-1
+  )
+
+
+def kl_divergence(
+    log_predictions: chex.Array, targets: chex.Array
+) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if target probability distribution
@@ -479,8 +507,8 @@ def kl_divergence(log_predictions: chex.Array,
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    log_predictions: Probabilities of predicted distribution with shape
-      [..., dim]. Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
 
@@ -489,7 +517,9 @@ def kl_divergence(log_predictions: chex.Array,
     distribution with shape [...].
   """
   chex.assert_type([log_predictions, targets], float)
-  loss = targets * (jnp.log(targets) - log_predictions)
+  loss = targets * (
+      jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
+  )
   return jnp.sum(loss, axis=-1)
 
 
