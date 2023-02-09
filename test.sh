@@ -51,7 +51,7 @@ PYLINT_ARGS="-efail -wfail -cfail -rfail"
 # Download Google OSS config.
 wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
-echo "disable=unnecessary-lambda-assignment,no-value-for-parameter" >> .pylintrc
+echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
