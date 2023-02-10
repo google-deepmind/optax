@@ -3,7 +3,7 @@ sphinx-book-theme==0.3.3
 sphinxcontrib-katex==0.9.0
 sphinxcontrib-bibtex==2.4.2
 sphinx-autodoc-typehints==1.11.1
-IPython==7.16.3
+IPython==8.10.0
 ipykernel==5.3.4
 pandoc==1.0.2
 myst_nb==0.13.1
