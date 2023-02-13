@@ -14,12 +14,11 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, Sequence, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
-import typing_extensions
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
@@ -35,7 +34,7 @@ Updates = Params  # Gradient updates are of the same type as parameters.
 Schedule = Callable[[chex.Numeric], chex.Numeric]
 
 
-class TransformInitFn(typing_extensions.Protocol):
+class TransformInitFn(Protocol):
   """A callable type for the `init` step of a `GradientTransformation`.
 
   The `init` step takes a tree of `params` and uses these to construct an
@@ -54,7 +53,7 @@ class TransformInitFn(typing_extensions.Protocol):
     """
 
 
-class TransformUpdateFn(typing_extensions.Protocol):
+class TransformUpdateFn(Protocol):
   """A callable type for the `update` step of a `GradientTransformation`.
 
   The `update` step takes a tree of candidate parameter `updates` (e.g. their
@@ -68,7 +67,8 @@ class TransformUpdateFn(typing_extensions.Protocol):
       self,
       updates: Updates,
       state: OptState,
-      params: Optional[Params] = None
+      params: Optional[Params] = None,
+      **kwargs,
     ) -> Tuple[Updates, OptState]:
     """The `update` function.
 
@@ -76,6 +76,9 @@ class TransformUpdateFn(typing_extensions.Protocol):
       updates: A tree of candidate updates.
       state: The state of the gradient transformation.
       params: (Optionally) the current value of the parameters.
+      **kwargs: optional extra keyword arguments. These will be passed down
+        to all optimizers in the chain, and should be consumed and ignored by
+        any optimizer that does not need them.
 
     Returns:
       The transformed updates, and the updated state.
