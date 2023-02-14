@@ -26,6 +26,7 @@ import numpy as np
 
 from optax._src import clipping
 from optax._src import schedule
+from optax._src import state_utils
 from optax._src import transform
 from optax._src import wrappers
 
@@ -540,6 +541,10 @@ class InjectHyperparamsTest(chex.TestCase):
 
     params = [jnp.zeros([], dtype=jnp.float32)]
     state = self.variant(optim.init)(params)
+
+    # A no-op change, to verify that tree map works.
+    state = state_utils.tree_map_params(optim, lambda v: v, state)
+
     update_fn = self.variant(optim.update)
     expected_step_size = [3.0]*2 + [15.0]*6 + [30.0]*5 + [45.0]*3
 

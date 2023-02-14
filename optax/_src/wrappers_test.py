@@ -27,6 +27,7 @@ import numpy as np
 from optax._src import alias
 from optax._src import combine
 from optax._src import constrain
+from optax._src import state_utils
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
@@ -62,6 +63,7 @@ class WrappersTest(parameterized.TestCase):
     # And now calculate new params with flattening
     optax_sgd_params = init_params()
     sgd = wrappers.flatten(sgd)
+
     state_sgd = sgd.init(optax_sgd_params)
     updates_sgd, state_sgd = sgd.update(per_step_updates, state_sgd)
     sgd_params_flatten = update.apply_updates(optax_sgd_params, updates_sgd)
@@ -189,6 +191,7 @@ class WrappersTest(parameterized.TestCase):
         combine.chain(transform.scale_by_adam(),
                       transform.additive_weight_decay(1e-2),
                       transform.scale(-1e-4)), k_steps)
+
     opt_init, opt_update = ms_opt.gradient_transformation()
 
     # Put the training in one function, to check that the update is indeed
@@ -396,6 +399,12 @@ class MaskedTest(chex.TestCase):
     init_fn, update_fn = wrappers.masked(opt_builder(), mask_arg)
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
+
+    # Known issue: masked does not work with arbitrary parameter trees, and
+    # so does not work with tree_map_params.
+    with self.assertRaises(ValueError):
+      state_utils.tree_map_params(init_fn, lambda v: v, state)
+
     updates, state = update_fn(input_updates, state, params)
     chex.assert_trees_all_close(updates, correct_updates)
 

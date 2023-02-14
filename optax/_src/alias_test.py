@@ -24,6 +24,7 @@ import jax.numpy as jnp
 from optax._src import alias
 from optax._src import numerics
 from optax._src import schedule
+from optax._src import state_utils
 from optax._src import update
 
 _OPTIMIZERS_UNDER_TEST = (
@@ -125,6 +126,9 @@ class AliasTest(chex.TestCase):
 
     params = initial_params
     state = opt.init(params)
+    # A no-op change, to verify that tree map works.
+    state = state_utils.tree_map_params(opt, lambda v: v, state)
+
     for _ in range(10000):
       params, state = step(params, state)
 

@@ -112,6 +112,7 @@ from optax._src.schedule import warmup_exponential_decay_schedule
 from optax._src.second_order import fisher_diag
 from optax._src.second_order import hessian_diag
 from optax._src.second_order import hvp
+from optax._src.state_utils import tree_map_params
 from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
 from optax._src.stochastic_gradient_estimators import pathwise_jacobians
 from optax._src.stochastic_gradient_estimators import score_function_jacobians
