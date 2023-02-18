@@ -14,7 +14,7 @@
 # ==============================================================================
 """A lookahead optimization wrapper."""
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Tuple, Union
 
 from absl import logging
 import jax
@@ -133,8 +133,8 @@ def lookahead(
 
 
 def _lookahead_update(
-    updates: base.Updates, sync_next: bool, params: LookaheadParams,
-    slow_step_size: float) -> LookaheadParams:
+    updates: base.Updates, sync_next: Union[bool, jax.Array],
+    params: LookaheadParams, slow_step_size: float) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 
   References:
