@@ -588,6 +588,49 @@ def scale_by_belief(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByLionState(NamedTuple):
+  """State for the Lion algorithm."""
+
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+
+
+def scale_by_lion(
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Lion algorithm.
+
+  Args:
+    b1: rate for combining moment and the current grad.
+    b2: decay rate for the exponentially weighted average of grads.
+    mu_dtype: optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params
+    )
+    return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = update_moment(updates, state.mu, b2, 1)
+    mu = jax.tree_map(lambda x: x.astype(mu_dtype), mu)
+    count_inc = numerics.safe_int32_increment(state.count)
+    updates = jax.tree_util.tree_map(
+        lambda g, m: jnp.sign((1.0 - b1) * g + b1 * m), updates, state.mu
+    )
+    return updates, ScaleByLionState(count=count_inc, mu=mu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 def scale_by_yogi(
     b1: float = 0.9,
     b2: float = 0.999,
@@ -1136,4 +1179,3 @@ AdditiveWeightDecayState = AddDecayedWeightsState
 additive_weight_decay = add_decayed_weights
 ClipState = clipping.ClipState
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
-
