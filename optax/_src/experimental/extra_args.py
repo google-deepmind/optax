@@ -24,13 +24,12 @@ transformations. We will then monitor users to understand how they use it and
 gather feedback from optax users before merging this into the stable API.
 """
 
-from typing import Any, Mapping, Optional, Tuple, Union, NamedTuple
+from typing import Any, Mapping, Optional, Protocol, Tuple, Union, NamedTuple
 
 from optax._src import base
-import typing_extensions
 
 
-class InitFnWithExtraArgs(typing_extensions.Protocol):
+class InitFnWithExtraArgs(Protocol):
   """Like `TransformInitFn` but with optional `extra_args`."""
 
   def __call__(
@@ -42,7 +41,7 @@ class InitFnWithExtraArgs(typing_extensions.Protocol):
     """The `init` function."""
 
 
-class UpdateFnWithExtraArgs(typing_extensions.Protocol):
+class UpdateFnWithExtraArgs(Protocol):
   """Like `TransformUpdateFn` but with optional `extra_args`."""
 
   def __call__(

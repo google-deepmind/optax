@@ -39,6 +39,7 @@ from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
+from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
 from optax._src.base import OptState
 from optax._src.base import Params
@@ -47,8 +48,10 @@ from optax._src.base import set_to_zero
 from optax._src.base import stateless
 from optax._src.base import stateless_with_tree_map
 from optax._src.base import TransformInitFn
+from optax._src.base import TransformUpdateExtraArgsFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
+from optax._src.base import with_extra_args_support
 from optax._src.clipping import adaptive_grad_clip
 from optax._src.clipping import AdaptiveGradClipState
 from optax._src.clipping import clip
@@ -234,6 +237,7 @@ __all__ = (
     "fromage",
     "global_norm",
     "GradientTransformation",
+    "GradientTransformationExtraArgs",
     "hinge_loss",
     "hessian_diag",
     "huber_loss",
@@ -332,6 +336,7 @@ __all__ = (
     "TraceState",
     "TransformInitFn",
     "TransformUpdateFn",
+    "TransformUpdateExtraArgsFn",
     "Updates",
     "warmup_cosine_decay_schedule",
     "warmup_exponential_decay_schedule",

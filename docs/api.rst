@@ -165,6 +165,7 @@ Gradient Transforms
     FactoredState
     global_norm
     GradientTransformation
+    GradientTransformationExtraArgs
     identity
     keep_params_nonnegative
     NonNegativeParamsState
@@ -202,15 +203,18 @@ Gradient Transforms
     stateless_with_tree_map
     set_to_zero
     trace
+    tree_map_params
     TraceState
     TransformInitFn
     TransformUpdateFn
+    TransformUpdateFnExtraArgs
     update_infinity_moment
     update_moment
     update_moment_per_elem_norm
     Updates
     zero_nans
     ZeroNansState
+    with_extra_args_support
 
 
 Optax Types

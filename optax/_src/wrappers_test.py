@@ -25,6 +25,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import constrain
 from optax._src import state_utils
@@ -43,6 +44,20 @@ def _build_stateful_sgd():
   # momentum is set to zero rather than None so that the momentum terms are
   # calculated, but do not change the results.
   return alias.sgd(1., momentum=0.)
+
+
+def _build_sgd_extra_args():
+
+  def init_fn(params):
+    del params
+    return {'foo': 1}
+
+  def update_fn(grads, state, params=None, *, foo=None, **extra_args):
+    del extra_args, foo, params
+    return grads, state
+
+  t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+  return combine.chain(_build_sgd(), t)
 
 
 class WrappersTest(parameterized.TestCase):
@@ -76,6 +91,7 @@ class WrappersTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
       ('stateful_sgd', _build_stateful_sgd),
+      ('sgd_extra_args', _build_sgd_extra_args),
   )
   def test_apply_if_finite(self, opt_builder):
     one = jnp.ones([])
