@@ -165,6 +165,7 @@ def _assert_is_gradient_transformation(tx):
         'that is an instance of either `GradientTransformation` or '
         'an instance of `GradientTransformationWithExtraArgs`')
 
+
 class ReduceLROnPlateauState(NamedTuple):
     """State for the ReduceLROnPlateau callback."""
     reduce_factor: float
@@ -174,6 +175,7 @@ class ReduceLROnPlateauState(NamedTuple):
     plateau_count: int
     lr: float
     cooldown_counter: int
+    cooldown:int
 
 
 def reduce_on_plateau(
@@ -200,6 +202,7 @@ def reduce_on_plateau(
                                       reduce_factor=reduce_factor,
                                       min_improvement=min_improvement,
                                       cooldown=cooldown,
+                                      cooldown_counter=0,
                                       plateau_count=0,
                                       best_loss=float("inf"),
                                       lr=1,
@@ -215,14 +218,16 @@ def reduce_on_plateau(
         current_loss = extra_args.get("loss")
 
         # Check if the current loss is the best so far
+
         best_loss = state.best_loss
         # Update plateau count and check if plateaued
         has_improved = jnp.where(
-            (current_loss / best_loss - 1) < -state.min_improvement, 0, 1
+            (current_loss / best_loss - 1) < -state.min_improvement, 1, 0
         )
-        curr_plateau_count = state.plateau_count + has_improved
         new_best_loss = jnp.where(has_improved, current_loss, best_loss)
-
+        
+        curr_plateau_count = jnp.where(has_improved, 0, state.plateau_count + 1)
+        
         
         # We're in cooldown, so reduce the counter and ignore any bad epochs
         def in_cooldown():
@@ -258,6 +263,7 @@ def reduce_on_plateau(
             best_loss=new_best_loss,
             lr=new_lr,
             cooldown_counter=new_cooldown_counter,
+            cooldown=state.cooldown,
         )
         return updates, new_state
 
