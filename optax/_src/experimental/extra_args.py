@@ -164,3 +164,101 @@ def _assert_is_gradient_transformation(tx):
         'The transformation `tx` must be a valid gradient transformation, '
         'that is an instance of either `GradientTransformation` or '
         'an instance of `GradientTransformationWithExtraArgs`')
+
+class ReduceLROnPlateauState(NamedTuple):
+    """State for the ReduceLROnPlateau callback."""
+    reduce_factor: float
+    patience: int
+    min_improvement: float
+    best_loss: float
+    plateau_count: int
+    lr: float
+    cooldown_counter: int
+
+
+def reduce_on_plateau(
+    reduce_factor: float,
+    patience: int,
+    min_improvement:float,
+    cooldown:int
+) -> GradientTransformationWithExtraArgs:
+    """        Args:
+            reduce_factor: Factor by which the learning rate will be reduced. 
+                new_lr = lr * factor.
+            patience: Number of epochs with no improvement after which learning 
+                rate will be reduced.
+            min_improvement: Threshold for measuring the new optimum, to only focus on 
+                significant changes.
+            cooldown: Number of epochs to wait before resuming normal operation 
+                after lr has been reduced.
+            """
+
+
+    def init_fn(params):
+        del params
+        return ReduceLROnPlateauState(patience=patience,
+                                      reduce_factor=reduce_factor,
+                                      min_improvement=min_improvement,
+                                      cooldown=cooldown,
+                                      plateau_count=0,
+                                      best_loss=float("inf"),
+                                      lr=1,
+                                      )
+
+    def update_fn(
+        updates,
+        state,
+        params=None,
+        extra_args={},
+    ):
+        del params
+        current_loss = extra_args.get("loss")
+
+        # Check if the current loss is the best so far
+        best_loss = state.best_loss
+        # Update plateau count and check if plateaued
+        has_improved = jnp.where(
+            (current_loss / best_loss - 1) < -state.min_improvement, 0, 1
+        )
+        curr_plateau_count = state.plateau_count + has_improved
+        new_best_loss = jnp.where(has_improved, current_loss, best_loss)
+
+        
+        # We're in cooldown, so reduce the counter and ignore any bad epochs
+        def in_cooldown():
+            new_plateau_count = 0
+            new_lr = state.lr
+            new_cooldown_counter = state.cooldown_counter - 1
+            return new_plateau_count, new_lr, new_cooldown_counter
+
+        # We're not in cooldown, so update the plateau count and lr as usual
+        def not_in_cooldown():
+            new_plateau_count = jnp.where(
+                curr_plateau_count == state.patience, 0, curr_plateau_count
+            )
+            new_lr = jnp.where(
+                curr_plateau_count == state.patience,
+                state.lr * state.reduce_factor,
+                state.lr,
+            )
+            new_cooldown_counter = jnp.where(
+                curr_plateau_count == state.patience, state.cooldown, 0
+            )
+            return new_plateau_count, new_lr, new_cooldown_counter
+        
+        new_plateau_count, new_lr, new_cooldown_counter = jax.lax.cond(state.cooldown_counter > 0, in_cooldown, not_in_cooldown)
+
+        updates = jax.tree_util.tree_map(lambda g: new_lr * g, updates)
+
+        new_state = ReduceLROnPlateauState(
+            patience=state.patience,
+            reduce_factor=state.reduce_factor,
+            min_improvement=state.min_improvement,
+            plateau_count=new_plateau_count,
+            best_loss=new_best_loss,
+            lr=new_lr,
+            cooldown_counter=new_cooldown_counter,
+        )
+        return updates, new_state
+
+    return GradientTransformationWithExtraArgs(init_fn, update_fn)
