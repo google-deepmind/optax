@@ -16,6 +16,7 @@ Common Optimizers
     fromage
     lamb
     lars
+    lion
     noisy_sgd
     novograd
     optimistic_gradient_descent
@@ -81,6 +82,11 @@ Lars
 ~~~~
 
 .. autofunction:: lars
+
+Lion
+~~~~
+
+.. autofunction:: lion
 
 SM3
 ~~~
@@ -177,6 +183,7 @@ Gradient Transforms
     scale_by_amsgrad
     scale_by_belief
     scale_by_factored_rms
+    scale_by_lion
     scale_by_novograd
     scale_by_optimistic_gradient
     scale_by_param_block_norm
@@ -191,6 +198,7 @@ Gradient Transforms
     scale_by_yogi
     ScaleByAdamState
     ScaleByAmsgradState
+    ScaleByLionState
     ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
@@ -294,6 +302,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_lion
 .. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
@@ -309,6 +318,9 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByAmsgradState
+    :members:
+
+.. autoclass:: ScaleByLionState
     :members:
 
 .. autoclass:: ScaleByNovogradState

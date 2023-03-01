@@ -309,7 +309,7 @@ def scale_by_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
@@ -365,7 +365,7 @@ def scale_by_amsgrad(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -445,6 +445,51 @@ def scale_by_adamax(
     mu_hat = bias_correction(mu, b1, count_inc)
     updates = jax.tree_util.tree_map(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+class ScaleByLionState(NamedTuple):
+  """State for the Lion algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+
+
+def scale_by_lion(
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Lion algorithm.
+
+  References:
+    [Chen et al, 2023](https://arxiv.org/abs/2302.06675)
+
+  Args:
+    b1: Rate for combining the momentum and the current grad.
+    b2: Decay rate for the exponentially weighted average of grads.
+    mu_dtype: Optional `dtype` to be used for the momentum; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates_new = jax.tree_util.tree_map(
+        lambda g, m: jnp.sign((1. - b1) * g + b1 * m), updates, state.mu)
+    mu = update_moment(updates, state.mu, b2, 1)
+    mu = utils.cast_tree(mu, mu_dtype)
+    count_inc = numerics.safe_int32_increment(state.count)
+    return updates_new, ScaleByLionState(count=count_inc, mu=mu)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -1029,7 +1074,7 @@ def scale_by_novograd(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
 
