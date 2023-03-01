@@ -287,8 +287,8 @@ def piecewise_interpolate_schedule(
   else:
     boundaries, scales = (), ()
 
-  bounds = jnp.stack((0,) + boundaries)
-  values = jnp.cumprod(jnp.stack((init_value,) + scales))
+  bounds = np.stack((0,) + boundaries)
+  values = np.cumprod(np.stack((init_value,) + scales))
   interval_sizes = bounds[1:] - bounds[:-1]
 
   def schedule(count):
