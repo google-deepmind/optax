@@ -330,6 +330,7 @@ __all__ = (
     "sm3",
     "smooth_labels",
     "softmax_cross_entropy",
+    "softmax_cross_entropy_with_integer_labels",
     "stateless",
     "stateless_with_tree_map",
     "trace",
