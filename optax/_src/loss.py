@@ -29,6 +29,37 @@ import jax.numpy as jnp
 from optax._src import utils
 
 
+def squared_error(
+    predictions: chex.Array,
+    targets: Optional[chex.Array] = None,
+) -> chex.Array:
+  """Calculates the squared error for a set of predictions.
+
+  Mean Squared Error can be computed as squared_error(a, b).mean().
+
+  Note: l2_loss = 0.5 * squared_error, where the 0.5 term is standard in
+  "Pattern Recognition and Machine Learning" by Bishop, but not
+  "The Elements of Statistical Learning" by Tibshirani.
+
+  References:
+    [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
+
+  Args:
+    predictions: a vector of arbitrary shape `[...]`.
+    targets: a vector with shape broadcastable to that of `predictions`;
+      if not provided then it is assumed to be a vector of zeros.
+
+  Returns:
+    elementwise squared differences, with same shape as `predictions`.
+  """
+  chex.assert_type([predictions], float)
+  if targets is not None:
+    # Avoid broadcasting logic for "-" operator.
+    chex.assert_equal_shape((predictions, targets))
+  errors = predictions - targets if targets is not None else predictions
+  return errors ** 2
+
+
 def l2_loss(
     predictions: chex.Array,
     targets: Optional[chex.Array] = None,
@@ -49,12 +80,7 @@ def l2_loss(
   Returns:
     elementwise squared differences, with same shape as `predictions`.
   """
-  chex.assert_type([predictions], float)
-  if targets is not None:
-    # Avoid broadcasting logic for "-" operator.
-    chex.assert_equal_shape((predictions, targets))
-  errors = (predictions - targets) if (targets is not None) else predictions
-  return 0.5 * (errors)**2
+  return 0.5 * squared_error(predictions, targets)
 
 
 def huber_loss(

@@ -93,6 +93,7 @@ from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
 from optax._src.loss import softmax_cross_entropy_with_integer_labels
+from optax._src.loss import squared_error
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares

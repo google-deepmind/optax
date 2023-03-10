@@ -512,6 +512,7 @@ Common Losses
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
+    squared_error
 
 
 Losses
@@ -531,7 +532,7 @@ Losses
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
-
+.. autofunction:: squared_error
 
 Linear Algebra Operators
 ========================
