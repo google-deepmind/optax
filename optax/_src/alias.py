@@ -16,6 +16,7 @@
 
 from typing import Any, Callable, Optional, Union
 
+import jax
 import jax.numpy as jnp
 
 from optax._src import base
@@ -27,7 +28,7 @@ from optax._src import transform
 from optax._src import wrappers
 
 
-ScalarOrSchedule = Union[float, base.Schedule]
+ScalarOrSchedule = Union[float, jax.Array, base.Schedule]
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 

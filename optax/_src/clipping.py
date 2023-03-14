@@ -125,8 +125,9 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def per_example_global_norm_clip(grads: chex.Array,
-                                 l2_norm_clip: float) -> Tuple[chex.Array, int]:
+def per_example_global_norm_clip(
+    grads: chex.Array, l2_norm_clip: float
+) -> Tuple[chex.Array, jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
   References:
