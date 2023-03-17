@@ -158,7 +158,7 @@ class StateUtilsTest(absltest.TestCase):
     )
 
     expected = (
-        transform.ScaleByAdamState(
+        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
             count=FakeShardSpec(sharding_axis=None),
             mu={
                 'my/fake/module': {
@@ -225,12 +225,13 @@ class StateUtilsTest(absltest.TestCase):
     )
 
     expected = (
-        transform.ScaleByAdamState(
+        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
             count=None,
             mu={'a': 1},
             nu={'a': 1},
         ),
-        transform.ScaleByScheduleState(count=None),
+        transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
+            count=None),
     )
     self.assertEqual(state, expected)
 

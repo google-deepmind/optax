@@ -63,7 +63,7 @@ from optax._src import base
 
 
 CvState = Any
-ComputeCv = Callable[[base.Params, chex.Array, CvState], float]
+ComputeCv = Callable[[base.Params, chex.Array, CvState], chex.Array]
 CvExpectedValue = Callable[[base.Params, CvState], CvState]
 UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = Tuple[ComputeCv, CvExpectedValue, UpdateCvState]

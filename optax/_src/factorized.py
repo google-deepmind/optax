@@ -29,9 +29,9 @@ from optax._src import utils
 # pylint:disable=no-value-for-parameter
 
 
-def _decay_rate_pow(i: int, exponent: float = 0.8) -> float:
+def _decay_rate_pow(i: int, exponent: float = 0.8) -> chex.Array:
   """Second-order moment decay schedule."""
-  t = jnp.array(i, jnp.float32) + 1.0
+  t = jnp.array(i + 1, jnp.float32)
   return 1.0 - t**(-exponent)
 
 
