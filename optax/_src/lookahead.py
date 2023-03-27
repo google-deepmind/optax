@@ -97,7 +97,7 @@ def lookahead(
 
   def init_fn(params: base.Params) -> LookaheadState:
     try:
-      fast_params = params.fast
+      fast_params = params.fast  # pytype: disable=attribute-error  # numpy-scalars  # pylint: disable=line-too-long
     except AttributeError:
       # Allowing init_fn to be called with fast parameters reduces the
       # modifications necessary to adapt code to use lookahead in some cases.

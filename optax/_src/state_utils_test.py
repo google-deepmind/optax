@@ -50,8 +50,8 @@ def _scale_by_adam_with_dicts():
     state = t.init(params)
 
     return ScaleByAdamStateDict(
-        count=state.count,
-        params={'mu': state.mu, 'nu': state.nu},
+        count=state.count,  # pytype: disable=attribute-error  # numpy-scalars
+        params={'mu': state.mu, 'nu': state.nu},  # pytype: disable=attribute-error  # numpy-scalars
     )
 
   def update(updates, state, params=None):
@@ -63,8 +63,8 @@ def _scale_by_adam_with_dicts():
 
     updates, state = t.update(updates, state, params)
     return ScaleByAdamStateDict(
-        count=state.count,
-        params={'mu': state.mu, 'nu': state.nu},
+        count=state.count,  # pytype: disable=attribute-error  # numpy-scalars
+        params={'mu': state.mu, 'nu': state.nu},  # pytype: disable=attribute-error  # numpy-scalars
     )
 
   return base.GradientTransformation(init, update)
@@ -139,8 +139,8 @@ class StateUtilsTest(absltest.TestCase):
     state = init(params)
     state = state_utils.tree_map_params(init, lambda v: v+1, state)
 
-    self.assertEqual(state.count, 0)
-    self.assertEqual(state.v, {'w': 1})
+    self.assertEqual(state.count, 0)  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertEqual(state.v, {'w': 1})  # pytype: disable=attribute-error  # numpy-scalars
 
   def test_adam(self):
     params = _fake_params()
@@ -193,9 +193,9 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
     state = state_utils.tree_map_params(opt, lambda v: v+1, state)
 
-    self.assertEqual(1e-3, state.hyperparams['learning_rate'])
+    self.assertEqual(1e-3, state.hyperparams['learning_rate'])  # pytype: disable=attribute-error  # numpy-scalars
     params_plus_one = jax.tree_map(lambda v: v+1, params)
-    chex.assert_trees_all_close(state.inner_state[0].mu, params_plus_one)
+    chex.assert_trees_all_close(state.inner_state[0].mu, params_plus_one)  # pytype: disable=attribute-error  # numpy-scalars
 
   def test_map_params_to_none(self):
     opt = alias.adagrad(1e-4)

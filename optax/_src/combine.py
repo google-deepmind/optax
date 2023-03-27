@@ -146,7 +146,7 @@ def multi_transform(
         group: wrappers.masked(tx, make_mask(labels, group)).init(params)
         for group, tx in transforms.items()
     }
-    return MultiTransformState(inner_states)
+    return MultiTransformState(inner_states)  # pytype: disable=wrong-arg-types  # numpy-scalars  # pylint: disable=line-too-long
 
   def update_fn(updates, state, params=None):
     labels = param_labels(updates) if callable(param_labels) else param_labels
@@ -155,6 +155,6 @@ def multi_transform(
       masked_tx = wrappers.masked(tx, make_mask(labels, group))
       updates, new_inner_state[group] = masked_tx.update(
           updates, state.inner_states[group], params)
-    return updates, MultiTransformState(new_inner_state)
+    return updates, MultiTransformState(new_inner_state)  # pytype: disable=wrong-arg-types  # numpy-scalars  # pylint: disable=line-too-long
 
   return base.GradientTransformation(init_fn, update_fn)

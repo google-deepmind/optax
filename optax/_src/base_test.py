@@ -148,7 +148,7 @@ class StatelessTest(chex.TestCase):
     def opt(g, _):
       return jax.tree_util.tree_map(lambda g_: g_ * 2, g)
 
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     update_fn = self.variant(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -159,7 +159,7 @@ class StatelessTest(chex.TestCase):
       return jax.tree_util.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     opt = base.stateless(weight_decay)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     self.assertIsInstance(state, base.EmptyState)
 
 
@@ -183,7 +183,7 @@ class StatelessWithTreeMapTest(chex.TestCase):
     updates = {'linear': jnp.full((5, 3), 3.0)}
 
     opt = base.stateless_with_tree_map(lambda g, _: g * 2.0)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     update_fn = self.variant(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -191,7 +191,7 @@ class StatelessWithTreeMapTest(chex.TestCase):
 
   def test_init_returns_emptystate(self):
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     self.assertIsInstance(state, base.EmptyState)
 
 

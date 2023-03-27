@@ -79,9 +79,9 @@ def tree_map_params(
   """
 
   if isinstance(initable, Initable):
-    state_with_placeholders = initable.init(_ParamsPlaceholder())
+    state_with_placeholders = initable.init(_ParamsPlaceholder())  # type: ignore  # numpy-scalars  # pylint: disable=line-too-long
   else:
-    state_with_placeholders = initable(_ParamsPlaceholder())
+    state_with_placeholders = initable(_ParamsPlaceholder())  # pytype: disable=wrong-arg-types  # numpy-scalars  # pylint: disable=line-too-long
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
