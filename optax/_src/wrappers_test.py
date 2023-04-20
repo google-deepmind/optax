@@ -111,35 +111,35 @@ class WrappersTest(parameterized.TestCase):
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
     self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))  # pytype: disable=attribute-error  # numpy-scalars
-      self.assertEqual(step + 1, int(state.notfinite_count))  # pytype: disable=attribute-error  # numpy-scalars
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))  # pytype: disable=attribute-error  # numpy-scalars
-      self.assertEqual(step + 1, int(state.notfinite_count))  # pytype: disable=attribute-error  # numpy-scalars
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
-    self.assertEqual(5, int(state.total_notfinite))  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:
@@ -247,18 +247,18 @@ class WrappersTest(parameterized.TestCase):
     params = dict(a=jnp.zeros([]))
     opt_state = opt_init(params)
     grad = dict(a=jnp.zeros([]))
-    self.assertFalse(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+    self.assertFalse(ms_opt.has_updated(opt_state))
     # First two steps have 1 mini-step per update.
     for _ in range(2):
       _, opt_state = opt_update(grad, opt_state, params)
-      self.assertTrue(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+      self.assertTrue(ms_opt.has_updated(opt_state))
     # Subsequently, mini-steps should have 3 mini-steps per update.
     for _ in range(5):
       for _ in range(2):
         _, opt_state = opt_update(grad, opt_state, params)
-        self.assertFalse(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+        self.assertFalse(ms_opt.has_updated(opt_state))
       _, opt_state = opt_update(grad, opt_state, params)
-      self.assertTrue(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+      self.assertTrue(ms_opt.has_updated(opt_state))
 
   def test_multi_steps_computes_mean(self):
     k_steps = 4
@@ -268,16 +268,16 @@ class WrappersTest(parameterized.TestCase):
     params = dict(a=jnp.zeros([]))
     opt_state = opt_init(params)
     grads = [dict(a=jnp.ones([]) * i) for i in [1, 2, 3, 4]]
-    self.assertFalse(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+    self.assertFalse(ms_opt.has_updated(opt_state))
 
     # First 3 steps don't update.
     for grad in grads[:-1]:
       _, opt_state = opt_update(grad, opt_state, params)
-      self.assertFalse(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+      self.assertFalse(ms_opt.has_updated(opt_state))
 
     # Actual update.
     new_params, opt_state = opt_update(grads[-1], opt_state, params)
-    self.assertTrue(ms_opt.has_updated(opt_state))  # pytype: disable=wrong-arg-types  # numpy-scalars
+    self.assertTrue(ms_opt.has_updated(opt_state))
     np.testing.assert_array_equal(new_params['a'], 2.5)
 
   def test_skip_not_finite(self):

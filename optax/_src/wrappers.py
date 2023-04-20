@@ -427,8 +427,11 @@ class MultiSteps:
 
     return new_updates, new_state
 
-  def has_updated(self, state: MultiStepsState) -> Array:
-    return jnp.logical_and(state.mini_step == 0, state.gradient_step > 0)
+  def has_updated(self, state: Union[MultiStepsState, chex.ArrayTree]) -> Array:
+    # Use `getattr` to bypass pytype checks.
+    return jnp.logical_and(
+        getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0
+    )
 
   def gradient_transformation(self) -> base.GradientTransformation:
     return base.GradientTransformation(init=self.init, update=self.update)

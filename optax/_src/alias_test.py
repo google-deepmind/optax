@@ -188,13 +188,13 @@ class AliasTest(chex.TestCase):
     expected_dtype = jax.dtypes.canonicalize_dtype(dtype)  # None -> float32
     tx = alias.sgd(0.1, momentum=0.9, accumulator_dtype=dtype)
     trace_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, trace_state.trace.dtype)  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertEqual(expected_dtype, getattr(trace_state, 'trace').dtype)
     tx = alias.adam(0.1, mu_dtype=dtype)
     adam_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, adam_state.mu.dtype)  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
     tx = alias.adamw(0.1, mu_dtype=dtype)
     adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, adam_state.mu.dtype)  # pytype: disable=attribute-error  # numpy-scalars
+    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
 
 
 if __name__ == '__main__':

@@ -271,7 +271,7 @@ def control_variates_jacobians(
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate
-  data_dim = params[0].shape[0]  # pytype: disable=attribute-error  # numpy-scalars  # pylint: disable=line-too-long
+  data_dim = jax.tree_util.tree_leaves(params)[0].shape[0]
   if estimate_cv_coeffs:
     cv_coeffs = estimate_control_variate_coefficients(
         function, control_variate_from_function, grad_estimator, params,
@@ -315,7 +315,7 @@ def control_variates_jacobians(
       lambda x: expected_value_cv(x, control_variate_state))(params)
 
   jacobians = []
-  for param_index, param in enumerate(params):
+  for param_index, param in enumerate(jax.tree_util.tree_leaves(params)):
     chex.assert_shape(function_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_param_grads[param_index], (data_dim,))
@@ -330,7 +330,7 @@ def control_variates_jacobians(
     # \nabla_{\theta} E_{p(x; \theta)}]
     param_jacobians += cv_coeff * expected_value_grads[param_index]
 
-    chex.assert_shape(param_jacobians, (num_samples,) + param.shape)  # pytype: disable=attribute-error  # numpy-scalars  # pylint: disable=line-too-long
+    chex.assert_shape(param_jacobians, (num_samples,) + param.shape)
     jacobians.append(param_jacobians)
 
   return jacobians, control_variate_state
