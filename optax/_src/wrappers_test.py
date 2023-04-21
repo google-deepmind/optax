@@ -111,35 +111,35 @@ class WrappersTest(parameterized.TestCase):
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
     self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
-    self.assertEqual(5, int(state.total_notfinite))
+    self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:

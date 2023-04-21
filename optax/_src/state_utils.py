@@ -15,7 +15,7 @@
 """Tools for mapping over optimizer states."""
 
 import typing
-from typing import Any, Callable, Optional, Protocol, Union
+from typing import Any, Callable, Optional, Protocol, Union, cast
 
 import jax
 from optax._src import base
@@ -78,10 +78,14 @@ def tree_map_params(
     optional extra arguments.
   """
 
+  # Cast for pytype checks (no-op for other usages).
+  placeholder = cast(base.chex.ArrayTree, _ParamsPlaceholder())
+
   if isinstance(initable, Initable):
-    state_with_placeholders = initable.init(_ParamsPlaceholder())
+    initable = cast(Initable, initable)  # for pytype checks
+    state_with_placeholders = initable.init(placeholder)
   else:
-    state_with_placeholders = initable(_ParamsPlaceholder())
+    state_with_placeholders = initable(placeholder)
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
