@@ -576,8 +576,9 @@ def inject_hyperparams(
         other_hps[name] = value
       elif callable(value):
         sched_hps[name] = value
-      elif isinstance(value, (int, float, chex.Array)):
-        numeric_hps[name] = value
+      elif value is not None:
+        if isinstance(value, (int, float, chex.Array)):
+          numeric_hps[name] = value
       else:
         other_hps[name] = value
 
