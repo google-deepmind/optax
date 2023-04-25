@@ -458,10 +458,7 @@ def eve(
       updates, opt_state = optimizer.update(grads, opt_state)
       params = optax.apply_updates(params, updates)
   """
-  return schedule.inject_hyperparams(_eve)(
-    a1=a1, b1=b1, b2=b2, b3=b3, c=c, eps=eps,
-    f=f, f_star=f_star, mu_dtype=mu_dtype
-  )
+  return schedule.inject_hyperparams(_eve)(f=f)
 
 
 def fromage(
