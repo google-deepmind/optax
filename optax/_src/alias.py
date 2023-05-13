@@ -249,6 +249,7 @@ def adam(
       _scale_by_learning_rate(learning_rate),
   )
 
+
 def nadam(
     learning_rate: ScalarOrSchedule,
     b1: float = 0.9,
