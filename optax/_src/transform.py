@@ -352,6 +352,62 @@ def scale_by_adam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByNadamState(NamedTuple):
+  """State for the Adam algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+  nu: base.Updates
+
+
+def scale_by_nadam(
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the NAdam algorithm.
+
+  References:
+    [Dozat et al, 2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+
+  Args:
+    b1: Decay rate for the exponentially weighted average of grads.
+    b2: Decay rate for the exponentially weighted average of squared grads.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # First moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    nu = jax.tree_util.tree_map(jnp.zeros_like, params)  # Second moment
+    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = update_moment(updates, state.mu, b1, 1)
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
+    count_inc = numerics.safe_int32_increment(state.count)
+    mu_hat = b1 * bias_correction(mu, b1, count_inc + 1)
+    mu_hat += (1 - b1) * bias_correction(updates, b1, count_inc)
+    nu_hat = b2 * bias_correction(nu, b2, count_inc)
+    updates = jax.tree_util.tree_map(
+        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+    mu = utils.cast_tree(mu, mu_dtype)
+    return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByAmsgradState(NamedTuple):
   """State for the AMSGrad algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.

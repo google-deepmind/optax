@@ -249,6 +249,42 @@ def adam(
       _scale_by_learning_rate(learning_rate),
   )
 
+def nadam(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: Optional[Any] = None,
+) -> base.GradientTransformation:
+  r"""The classic Adam optimizer.
+
+  Nadam is an Adam variant with Nesterov's momentum.
+
+  References:
+    [Dozat et al, 2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      example when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_nadam(
+          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+      _scale_by_learning_rate(learning_rate),
+  )
+
 
 def adamw(
     learning_rate: ScalarOrSchedule,
