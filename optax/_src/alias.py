@@ -258,7 +258,7 @@ def nadam(
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  r"""The classic Adam optimizer.
+  r"""The Nadam optimizer.
 
   Nadam is an Adam variant with Nesterov's momentum.
 
