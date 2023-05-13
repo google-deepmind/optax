@@ -19,7 +19,6 @@ from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
-from optax._src.alias import nadam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
@@ -30,6 +29,7 @@ from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
+from optax._src.alias import nadam
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
@@ -140,6 +140,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_lion
+from optax._src.transform import scale_by_nadam
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
@@ -195,7 +196,6 @@ __all__ = (
     "adafactor",
     "adagrad",
     "adam",
-    "nadam"
     "adamax",
     "adamaxw",
     "adamw",
@@ -278,6 +278,7 @@ __all__ = (
     "MultiSteps",
     "MultiStepsState",
     "MultiTransformState",
+    "nadam",
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",
@@ -297,12 +298,12 @@ __all__ = (
     "safe_root_mean_squares",
     "ScalarOrSchedule",
     "scale_by_adam",
-    "scale_by_nadam",
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
-    "scale_by_lion",
     "scale_by_factored_rms",
+    "scale_by_lion",
+    "scale_by_nadam",
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
