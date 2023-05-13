@@ -32,7 +32,6 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='nadam', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
@@ -42,6 +41,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(
         opt_name='lion', opt_kwargs=dict(learning_rate=1e-2, weight_decay=1e-4),
     ),
+    dict(opt_name='nadam', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
     dict(opt_name='novograd', opt_kwargs=dict(learning_rate=1e-3)),
     dict(
