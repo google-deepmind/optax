@@ -352,13 +352,6 @@ def scale_by_adam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByNadamState(NamedTuple):
-  """State for the Adam algorithm."""
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  mu: base.Updates
-  nu: base.Updates
-
-
 def scale_by_nadam(
     b1: float = 0.9,
     b2: float = 0.999,
