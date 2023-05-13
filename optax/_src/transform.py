@@ -359,7 +359,7 @@ def scale_by_nadam(
     eps_root: float = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
-  """Rescale updates according to the NAdam algorithm.
+  """Rescale updates according to the Nadam algorithm.
 
   References:
     [Dozat et al, 2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
