@@ -9,6 +9,7 @@ Common Optimizers
     adafactor
     adagrad
     adam
+    nadam
     adamw
     adamax
     adamaxw
@@ -47,6 +48,11 @@ Adam
 ~~~~
 
 .. autofunction:: adam
+
+Nadam
+~~~~
+
+.. autofunction:: nadam
 
 Adamax
 ~~~~
@@ -179,6 +185,7 @@ Gradient Transforms
     Params
     scale
     scale_by_adam
+    scale_by_nadam
     scale_by_adamax
     scale_by_amsgrad
     scale_by_belief
@@ -298,6 +305,7 @@ Optax Transforms and States
 
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
+.. autofunction:: scale_by_nadam
 .. autofunction:: scale_by_adamax
 .. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
