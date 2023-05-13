@@ -19,6 +19,7 @@ from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
+from optax._src.alias import nadam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
@@ -194,6 +195,7 @@ __all__ = (
     "adafactor",
     "adagrad",
     "adam",
+    "nadam"
     "adamax",
     "adamaxw",
     "adamw",
@@ -295,6 +297,7 @@ __all__ = (
     "safe_root_mean_squares",
     "ScalarOrSchedule",
     "scale_by_adam",
+    "scale_by_nadam",
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
