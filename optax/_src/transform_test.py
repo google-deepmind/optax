@@ -43,6 +43,7 @@ class TransformTest(parameterized.TestCase):
   @chex.all_variants
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
+      ('nadam', transform.scale_by_nadam),
       ('adamax', transform.scale_by_adamax),
       ('lion', transform.scale_by_lion),
       ('rmsprop', transform.scale_by_rms),
