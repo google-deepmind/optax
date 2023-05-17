@@ -26,16 +26,14 @@ python --version
 # Install dependencies.
 pip install --upgrade pip setuptools wheel
 pip install flake8 pytest-xdist pytype pylint pylint-exit
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
-pip install -r requirements/requirements-examples.txt
+pip install -e ".[test, examples]"
 
 # Dp-accounting specifies exact minor versions as requirements which sometimes
 # become incompatible with other libraries optax needs. We therefore install
 # dependencies for dp-accounting manually.
 # TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
 # version requirements.
-pip install -r requirements/minimum-requirements-dp-accounting.txt
+pip install -e ".[dp-accounting]"
 pip install "dp-accounting>=0.1.1" --no-deps
 
 # Ensure optax was not installed by one of the dependencies above,
@@ -60,7 +58,8 @@ pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W02
 rm .pylintrc
 
 # Build the package.
-python setup.py sdist
+pip install build
+python -m build
 pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
 pip install optax*.whl
 
@@ -78,7 +77,7 @@ python -m pytest -n auto .
 cd ..
 
 # Build Sphinx docs.
-pip install -r requirements/requirements-docs.txt
+pip install -e ".[docs]"
 cd docs && make html
 cd ..
 
