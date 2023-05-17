@@ -17,7 +17,7 @@
 Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
-from typing import Tuple
+from typing import List, Tuple
 
 import chex
 import jax
@@ -125,8 +125,9 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def per_example_global_norm_clip(grads: chex.Array,
-                                 l2_norm_clip: float) -> Tuple[chex.Array, int]:
+def per_example_global_norm_clip(
+    grads: List[chex.Array], l2_norm_clip: float
+) -> Tuple[List[chex.Array], jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
   References:

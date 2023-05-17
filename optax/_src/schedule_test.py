@@ -26,6 +26,7 @@ import numpy as np
 
 from optax._src import clipping
 from optax._src import schedule
+from optax._src import state_utils
 from optax._src import transform
 from optax._src import wrappers
 
@@ -368,6 +369,20 @@ class CosineDecayTest(chex.TestCase):
         initial_value * expected_multipliers,
         np.array(generated_vals), atol=1e-3)
 
+  @chex.all_variants
+  def test_with_exponent(self):
+    """Check cosine schedule decay with exponent on."""
+    schedule_fn = self.variant(
+        schedule.cosine_decay_schedule(init_value=0.1,
+                                       decay_steps=100,
+                                       alpha=0.0,
+                                       exponent=2))
+    output = schedule_fn(np.array([0, 10, 50, 75, 100]))
+    np.testing.assert_allclose(
+        output,
+        np.array([0.1, 0.09516553580760956, 0.025, 0.0021446612663567066, 0.0]),
+        rtol=1e-6, atol=1e-8)
+
 
 class WarmupCosineDecayTest(chex.TestCase):
 
@@ -388,6 +403,26 @@ class WarmupCosineDecayTest(chex.TestCase):
     np.testing.assert_allclose(init_value, schedule_fn(0))
     np.testing.assert_allclose(peak_value, schedule_fn(100))
     np.testing.assert_allclose(end_value, schedule_fn(1000), rtol=1e-3)
+
+  @chex.all_variants
+  def test_with_exponent(self):
+    """Check that we get correct results when running with exponent on."""
+    schedule_fn = self.variant(schedule.warmup_cosine_decay_schedule(
+        init_value=0.2,
+        peak_value=1.21,
+        end_value=-3.0,
+        warmup_steps=50,
+        decay_steps=100,
+        exponent=2))
+    output = schedule_fn(np.array([0, 10, 50, 75, 100]))
+    np.testing.assert_allclose(
+        output, np.array([0.20000004768371582,
+                          0.4020000100135803,
+                          1.2100000381469727,
+                          -1.947500228881836,
+                          -3.000000238418579]),
+        rtol=1e-6, atol=1e-8
+    )
 
 
 class SGDRTest(chex.TestCase):
@@ -506,6 +541,10 @@ class InjectHyperparamsTest(chex.TestCase):
 
     params = [jnp.zeros([], dtype=jnp.float32)]
     state = self.variant(optim.init)(params)
+
+    # A no-op change, to verify that tree map works.
+    state = state_utils.tree_map_params(optim, lambda v: v, state)
+
     update_fn = self.variant(optim.update)
     expected_step_size = [3.0]*2 + [15.0]*6 + [30.0]*5 + [45.0]*3
 

@@ -15,7 +15,7 @@
 """Transformation wrappers."""
 
 import functools
-from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Protocol, Tuple, Union
 
 import chex
 import jax
@@ -27,14 +27,13 @@ from jax.tree_util import tree_unflatten
 import numpy as np
 from optax._src import base
 from optax._src import numerics
-import typing_extensions
 
 Array = jnp.ndarray
 
 
 def flatten(
     inner: base.GradientTransformation
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Flattens parameters and gradients for init and update of inner transform.
 
   This can reduce the overhead of performing many calculations on lots of small
@@ -44,8 +43,10 @@ def flatten(
     inner: Inner transformation to flatten inputs for.
 
   Returns:
-    New GradientTransformation.
+    New ``GradientTransformationExtraArgs``
   """
+
+  inner = base.with_extra_args_support(inner)
 
   def _flatten(params):
     """Flattens and concatenates all tensors in params to a single vector."""
@@ -74,14 +75,16 @@ def flatten(
     flat = _flatten(params)
     return inner.init(flat)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     if params is not None:
       params = _flatten(params)
-    updates_flat, state = inner.update(_flatten(updates), state, params)
+    updates_flat, state = inner.update(
+        _flatten(updates), state, params, **extra_args
+    )
     updates = _unflatten(updates, updates_flat)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
 class ApplyIfFiniteState(NamedTuple):
@@ -122,8 +125,10 @@ def apply_if_finite(
       that many ignored updates, the optimizer will give up and accept.
 
   Returns:
-    New GradientTransformation.
+    New ``GradientTransformationExtraArgs``.
   """
+
+  inner = base.with_extra_args_support(inner)
 
   def init(params):
     return ApplyIfFiniteState(
@@ -132,7 +137,7 @@ def apply_if_finite(
         total_notfinite=jnp.zeros([], jnp.int32),
         inner_state=inner.init(params))
 
-  def update(updates, state, params=None):
+  def update(updates, state, params=None, **extra_args):
     inner_state = state.inner_state
     flat_updates = tree_flatten(updates)[0]
     isfinite = jnp.all(
@@ -142,7 +147,7 @@ def apply_if_finite(
         numerics.safe_int32_increment(state.notfinite_count))
 
     def do_update(_):
-      return inner.update(updates, inner_state, params)
+      return inner.update(updates, inner_state, params, **extra_args)
     def reject_update(_):
       return (tree_map(jnp.zeros_like, updates), inner_state)
 
@@ -158,7 +163,7 @@ def apply_if_finite(
             numerics.safe_int32_increment(state.total_notfinite)),
         inner_state=new_inner_state)
 
-  return base.GradientTransformation(init=init, update=update)
+  return base.GradientTransformationExtraArgs(init=init, update=update)
 
 
 def _zeros_tree_like(inp_tree):
@@ -188,7 +193,7 @@ class MultiStepsState(NamedTuple):
   skip_state: chex.ArrayTree = ()
 
 
-class ShouldSkipUpdateFunction(typing_extensions.Protocol):
+class ShouldSkipUpdateFunction(Protocol):
 
   def __call__(self, updates: base.Updates, gradient_step: Array,
                params: Optional[base.Params]) -> Tuple[Array, chex.ArrayTree]:
@@ -319,7 +324,8 @@ class MultiSteps:
         `skip_state` in which debugging and monitoring information returned
         by `should_skip_update_fn` is written.
     """
-    self._opt = opt
+    self._opt = base.with_extra_args_support(opt)
+
     if isinstance(every_k_schedule, int):
       self._every_k_schedule = lambda step: every_k_schedule
     else:
@@ -360,7 +366,8 @@ class MultiSteps:
   def update(self,
              updates: base.Updates,
              state: MultiStepsState,
-             params: Optional[base.Params] = None
+             params: Optional[base.Params] = None,
+             **extra_args: Any,
              ) -> Tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
@@ -374,7 +381,7 @@ class MultiSteps:
     def final_step(args):
       del args
       final_updates, new_inner_state = self._opt.update(
-          acc_grads, state.inner_opt_state, params=params)
+          acc_grads, state.inner_opt_state, params=params, **extra_args)
       new_state = MultiStepsState(
           mini_step=jnp.zeros([], dtype=jnp.int32),
           gradient_step=numerics.safe_int32_increment(state.gradient_step),
@@ -420,8 +427,11 @@ class MultiSteps:
 
     return new_updates, new_state
 
-  def has_updated(self, state: MultiStepsState) -> Array:
-    return jnp.logical_and(state.mini_step == 0, state.gradient_step > 0)
+  def has_updated(self, state: Union[MultiStepsState, chex.ArrayTree]) -> Array:
+    # Use `getattr` to bypass pytype checks.
+    return jnp.logical_and(
+        getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0
+    )
 
   def gradient_transformation(self) -> base.GradientTransformation:
     return base.GradientTransformation(init=self.init, update=self.update)
@@ -444,7 +454,7 @@ class MaskedNode(NamedTuple):
 def masked(
     inner: base.GradientTransformation,
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Mask updates so only some are transformed, the rest are passed through.
 
   For example, it is common to skip weight decay for BatchNorm scale and all
@@ -472,8 +482,10 @@ def masked(
       be static for the gradient transformation to be jit-compilable.
 
   Returns:
-    New GradientTransformation wrapping ``inner``.
+    New ``GradientTransformationExtraArgs`` wrapping ``inner``.
   """
+  inner = base.with_extra_args_support(inner)
+
   def mask_pytree(pytree, mask_tree):
     return tree_map(lambda m, p: p if m else MaskedNode(), mask_tree, pytree)
 
@@ -482,20 +494,20 @@ def masked(
     masked_params = mask_pytree(params, mask_tree)
     return MaskedState(inner_state=inner.init(masked_params))
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     mask_tree = mask(updates) if callable(mask) else mask
     masked_updates = mask_pytree(updates, mask_tree)
     masked_params = None if params is None else mask_pytree(params, mask_tree)
 
     new_masked_updates, new_inner_state = inner.update(
-        masked_updates, state.inner_state, masked_params)
+        masked_updates, state.inner_state, masked_params, **extra_args)
 
     new_updates = tree_map(
         lambda m, new_u, old_u: new_u if m else old_u,
         mask_tree, new_masked_updates, updates)
     return new_updates, MaskedState(inner_state=new_inner_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
 class MaybeUpdateState(NamedTuple):
@@ -507,7 +519,7 @@ class MaybeUpdateState(NamedTuple):
 def maybe_update(
     inner: base.GradientTransformation,
     should_update_fn: Callable[[Array], Array]
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Calls the inner update function only at certain steps.
 
   Creates a transformation wrapper which counts the number of times the `update`
@@ -524,17 +536,18 @@ def maybe_update(
       and dtype int32), and returns a boolean array of shape [].
 
   Returns:
-    An `optax.GradientTransformation`.
+    A new ``GradientTransformationExtraArgs``.
   """
+  inner = base.with_extra_args_support(inner)
 
   def init_fn(params):
     return MaybeUpdateState(
         inner_state=inner.init(params), step=jnp.zeros([], dtype=jnp.int32))
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
 
     def do_update(_):
-      return inner.update(updates, state.inner_state, params)
+      return inner.update(updates, state.inner_state, params, **extra_args)
 
     def reject_update(_):
       return updates, state.inner_state
@@ -544,4 +557,4 @@ def maybe_update(
     return updates, MaybeUpdateState(new_inner_state,
                                      numerics.safe_int32_increment(state.step))
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)

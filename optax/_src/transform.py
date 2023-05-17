@@ -309,7 +309,7 @@ def scale_by_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
@@ -323,7 +323,7 @@ def scale_by_adam(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
@@ -365,7 +365,7 @@ def scale_by_amsgrad(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -379,7 +379,7 @@ def scale_by_amsgrad(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
@@ -445,6 +445,51 @@ def scale_by_adamax(
     mu_hat = bias_correction(mu, b1, count_inc)
     updates = jax.tree_util.tree_map(lambda m, v: m / v, mu_hat, nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+class ScaleByLionState(NamedTuple):
+  """State for the Lion algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+
+
+def scale_by_lion(
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Lion algorithm.
+
+  References:
+    [Chen et al, 2023](https://arxiv.org/abs/2302.06675)
+
+  Args:
+    b1: Rate for combining the momentum and the current grad.
+    b2: Decay rate for the exponentially weighted average of grads.
+    mu_dtype: Optional `dtype` to be used for the momentum; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates_new = jax.tree_util.tree_map(
+        lambda g, m: jnp.sign((1. - b1) * g + b1 * m), updates, state.mu)
+    mu = update_moment(updates, state.mu, b2, 1)
+    mu = utils.cast_tree(mu, mu_dtype)
+    count_inc = numerics.safe_int32_increment(state.count)
+    return updates_new, ScaleByLionState(count=count_inc, mu=mu)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -698,7 +743,7 @@ AddDecayedWeightsState = base.EmptyState
 
 
 def add_decayed_weights(
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, jax.Array] = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
@@ -775,7 +820,7 @@ def scale_by_trust_ratio(
     trust_coefficient: float = 1.,
     eps: float = 0.,
 ) -> base.GradientTransformation:
-  """Scale updates by trust ratio`.
+  """Scale updates by `trust ratio`.
 
   References:
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
@@ -952,7 +997,7 @@ def scale_by_sm3(
     b2: float = 1.0,
     eps: float = 1e-8
 ) -> base.GradientTransformation:
-  """Scale updates by sm3`.
+  """Scale updates by `sm3`.
 
   References:
     [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
@@ -1029,7 +1074,7 @@ def scale_by_novograd(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
 
@@ -1044,7 +1089,7 @@ def scale_by_novograd(
       numerical stability when backpropagating gradients through the rescaling.
     weight_decay: A scalar weight decay rate.
     mu_dtype: An optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -1136,3 +1181,4 @@ AdditiveWeightDecayState = AddDecayedWeightsState
 additive_weight_decay = add_decayed_weights
 ClipState = clipping.ClipState
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
+

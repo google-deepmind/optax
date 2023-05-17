@@ -43,11 +43,11 @@ def ravel(p: Any) -> Array:
 
 def hvp(
     loss: LossFun,
-    v: jnp.DeviceArray,
+    v: jax.Array,
     params: Any,
-    inputs: jnp.DeviceArray,
-    targets: jnp.DeviceArray,
-) -> jnp.DeviceArray:
+    inputs: jax.Array,
+    targets: jax.Array,
+) -> jax.Array:
   """Performs an efficient vector-Hessian (of `loss`) product.
 
   Args:
@@ -69,9 +69,9 @@ def hvp(
 def hessian_diag(
     loss: LossFun,
     params: Any,
-    inputs: jnp.DeviceArray,
-    targets: jnp.DeviceArray,
-) -> jnp.DeviceArray:
+    inputs: jax.Array,
+    targets: jax.Array,
+) -> jax.Array:
   """Computes the diagonal hessian of `loss` at (`inputs`, `targets`).
 
   Args:
@@ -94,7 +94,7 @@ def fisher_diag(
     params: Any,
     inputs: jnp.ndarray,
     targets: jnp.ndarray,
-) -> jnp.DeviceArray:
+) -> jax.Array:
   """Computes the diagonal of the (observed) Fisher information matrix.
 
   Args:

@@ -80,7 +80,7 @@ def main(unused_argv) -> None:
                                     test_dataset.as_numpy_iterator())
     print(f'Epoch {epoch+1}: test acc: {test_acc:.2f}')
 
-  return test_acc
+  return test_acc  # pytype: disable=bad-return-type  # numpy-scalars
 
 
 if __name__ == '__main__':

@@ -25,6 +25,34 @@ import numpy as np
 from optax._src import loss
 
 
+class SquaredErrorTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = jnp.array([-2., -1., 0.5, 1.])
+    self.ts = jnp.array([-1.5, 0., -1, 1.])
+    # compute expected outputs in numpy.
+    self.exp = (self.ts - self.ys) ** 2
+
+  @chex.all_variants
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(loss.squared_error)(
+            self.ys[0], self.ts[0]), self.exp[0])
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(loss.squared_error)(
+            self.ys, self.ts), self.exp)
+
+  @chex.all_variants
+  def test_shape_mismatch(self):
+    with self.assertRaises(AssertionError):
+      _ = self.variant(loss.squared_error)(
+          self.ys, jnp.expand_dims(self.ts, axis=-1))
+
+
 class L2LossTest(parameterized.TestCase):
 
   def setUp(self):
@@ -421,6 +449,38 @@ class CTCTest(parameterized.TestCase):
           jnp.array(expected_loss), per_seq_loss[n], rtol=self._rtol)
 
 
+class ConvexKLDivergenceTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.log_ps = np.array([
+        [-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
+        [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971],
+    ])
+    self.qs = np.array(
+        [[0.2, 0.2, 0.2, 0.1, 0.15, 0.15], [0.05, 0.03, 0.02, 0.3, 0.5, 0.0]]
+    )
+
+    # Computed convex kullback-leibler divergence of P from Q.
+    self.exp = np.array([0.88757247, 0.859308])
+
+  @chex.all_variants
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(loss.convex_kl_divergence)(self.log_ps[0], self.qs[0]),
+        self.exp[0],
+        atol=1e-4,
+    )
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(loss.convex_kl_divergence)(self.log_ps, self.qs),
+        self.exp,
+        atol=1e-4,
+    )
+
+
 class KLDivergenceTest(parameterized.TestCase):
 
   def setUp(self):
@@ -429,9 +489,9 @@ class KLDivergenceTest(parameterized.TestCase):
         [[-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
          [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971]])
     self.qs = np.array([[0.2, 0.2, 0.2, 0.1, 0.15, 0.15],
-                        [0.05, 0.03, 0.02, 0.3, 0.5, 0.1]])
+                        [0.05, 0.03, 0.02, 0.3, 0.5, 0.]])
     # Computed kullback-leibler divergence of P from Q.
-    self.exp = np.array([0.8875625, 0.7187435584901326])
+    self.exp = np.array([0.8875577, 0.7592807])
 
   @chex.all_variants
   def test_scalar(self):

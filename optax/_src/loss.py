@@ -29,6 +29,37 @@ import jax.numpy as jnp
 from optax._src import utils
 
 
+def squared_error(
+    predictions: chex.Array,
+    targets: Optional[chex.Array] = None,
+) -> chex.Array:
+  """Calculates the squared error for a set of predictions.
+
+  Mean Squared Error can be computed as squared_error(a, b).mean().
+
+  Note: l2_loss = 0.5 * squared_error, where the 0.5 term is standard in
+  "Pattern Recognition and Machine Learning" by Bishop, but not
+  "The Elements of Statistical Learning" by Tibshirani.
+
+  References:
+    [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
+
+  Args:
+    predictions: a vector of arbitrary shape `[...]`.
+    targets: a vector with shape broadcastable to that of `predictions`;
+      if not provided then it is assumed to be a vector of zeros.
+
+  Returns:
+    elementwise squared differences, with same shape as `predictions`.
+  """
+  chex.assert_type([predictions], float)
+  if targets is not None:
+    # Avoid broadcasting logic for "-" operator.
+    chex.assert_equal_shape((predictions, targets))
+  errors = predictions - targets if targets is not None else predictions
+  return errors ** 2
+
+
 def l2_loss(
     predictions: chex.Array,
     targets: Optional[chex.Array] = None,
@@ -49,12 +80,7 @@ def l2_loss(
   Returns:
     elementwise squared differences, with same shape as `predictions`.
   """
-  chex.assert_type([predictions], float)
-  if targets is not None:
-    # Avoid broadcasting logic for "-" operator.
-    chex.assert_equal_shape((predictions, targets))
-  errors = (predictions - targets) if (targets is not None) else predictions
-  return 0.5 * (errors)**2
+  return 0.5 * squared_error(predictions, targets)
 
 
 def huber_loss(
@@ -119,25 +145,32 @@ def smooth_labels(
 def sigmoid_binary_cross_entropy(logits, labels):
   """Computes element-wise sigmoid cross entropy given logits and labels.
 
-  This can be used to measure the error in discrete classification tasks in
-  which each class is an independent binary prediction and different classes
-  are not mutually exclusive. This may be used for multilabel image
-  classification for instance a model may predict that an image contains both a
-  cat and a dog.
+  This function can be used for binary or multiclass classification (where each
+  class is an independent binary prediction and different classes are not
+  mutually exclusive e.g. predicting that an image contains both a cat
+  and a dog.)
+
+  Because this function is overloaded, please ensure your `logits` and `labels`
+  are compatible with each other. If you're passing in binary `labels` (values
+  in {0, 1}), ensure your `logits` correspond to class 1 only. If you're
+  passing in per-class target probabilities or one-hot `labels`, please ensure
+  your `logits` are also multiclass. Be particularly careful if you're relying
+  on implicit broadcasting to reshape `logits` or `labels`.
 
   References:
     [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
 
   Args:
     logits: Each element is the unnormalized log probability of a binary
-      prediction.
-    labels: The target probabilities, must have a shape broadcastable to that of
-      `logits`.
+      prediction. See note about compatibility with `labels` above.
+    labels: Binary labels whose values are {0,1} or multi-class target
+      probabilities. See note about compatibility with `logits` above.
 
   Returns:
     cross entropy for each binary prediction, same shape as `logits`.
   """
   chex.assert_type([logits], float)
+  labels = labels.astype(logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
@@ -162,7 +195,7 @@ def softmax_cross_entropy(
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
     labels: Valid probability distributions (non-negative, sum to 1), e.g a
       one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]``
+      must have a shape broadcastable to `[..., num_classes]`.
 
   Returns:
     cross entropy between each prediction and the corresponding target
@@ -461,8 +494,36 @@ def ctc_loss(logits: chex.Array,
   return per_seq_loss
 
 
-def kl_divergence(log_predictions: chex.Array,
-                  targets: chex.Array) -> chex.Array:
+def convex_kl_divergence(
+    log_predictions: chex.Array, targets: chex.Array
+) -> chex.Array:
+  """Computes a convex version of the Kullback-Leibler divergence loss.
+
+  Measures the information gain achieved if target probability distribution
+  would be used instead of predicted probability distribution.
+  This version is jointly convex in p (targets) and q (log_predictions).
+
+  References:
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
+
+  Args:
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
+    targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be strictly positive.
+
+  Returns:
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
+  """
+  return kl_divergence(log_predictions, targets) + jnp.sum(
+      jnp.exp(log_predictions) - targets, axis=-1
+  )
+
+
+def kl_divergence(
+    log_predictions: chex.Array, targets: chex.Array
+) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if target probability distribution
@@ -472,8 +533,8 @@ def kl_divergence(log_predictions: chex.Array,
     [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    log_predictions: Probabilities of predicted distribution with shape
-      [..., dim]. Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
 
@@ -482,7 +543,9 @@ def kl_divergence(log_predictions: chex.Array,
     distribution with shape [...].
   """
   chex.assert_type([log_predictions, targets], float)
-  loss = targets * (jnp.log(targets) - log_predictions)
+  loss = targets * (
+      jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
+  )
   return jnp.sum(loss, axis=-1)
 
 

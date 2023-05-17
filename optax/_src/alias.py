@@ -16,6 +16,7 @@
 
 from typing import Any, Callable, Optional, Union
 
+import jax
 import jax.numpy as jnp
 
 from optax._src import base
@@ -27,7 +28,7 @@ from optax._src import transform
 from optax._src import wrappers
 
 
-ScalarOrSchedule = Union[float, base.Schedule]
+ScalarOrSchedule = Union[float, jax.Array, base.Schedule]
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
@@ -297,6 +298,54 @@ def adamw(
   return combine.chain(
       transform.scale_by_adam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+      transform.add_decayed_weights(weight_decay, mask),
+      _scale_by_learning_rate(learning_rate),
+  )
+
+
+def lion(
+    learning_rate: ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[Any] = None,
+    weight_decay: float = 1e-3,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+  """The Lion optimizer.
+
+  Lion is discovered by symbolic program search. Unlike most adaptive optimizers
+  such as AdamW, Lion only tracks momentum, making it more memory-efficient.
+  The update of Lion is produced through the sign operation, resulting in a
+  larger norm compared to updates produced by other optimizers such as SGD and
+  AdamW. A suitable learning rate for Lion is typically 3-10x smaller than that
+  for AdamW, the weight decay for Lion should be in turn 3-10x larger than that
+  for AdamW to maintain a similar strength (lr * wd).
+
+  References:
+    Chen et al, 2023: https://arxiv.org/abs/2302.06675
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Rate to combine the momentum and the current gradient.
+    b2: Exponential decay rate to track the momentum of past gradients.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_lion(b1=b1, b2=b2, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
       _scale_by_learning_rate(learning_rate),
   )

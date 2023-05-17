@@ -24,6 +24,7 @@ import jax.numpy as jnp
 from optax._src import alias
 from optax._src import numerics
 from optax._src import schedule
+from optax._src import state_utils
 from optax._src import update
 
 _OPTIMIZERS_UNDER_TEST = (
@@ -37,11 +38,15 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
+    dict(
+        opt_name='lion', opt_kwargs=dict(learning_rate=1e-2, weight_decay=1e-4),
+    ),
     dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
     dict(opt_name='novograd', opt_kwargs=dict(learning_rate=1e-3)),
     dict(
         opt_name='optimistic_gradient_descent',
-        opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1)),
+        opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1),
+    ),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
     dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
@@ -53,10 +58,12 @@ _OPTIMIZERS_UNDER_TEST = (
         opt_name='dpsgd',
         opt_kwargs=dict(
             learning_rate=1e-3,
-            l2_norm_clip=10.,
+            l2_norm_clip=10.0,
             noise_multiplier=1e-3,
             seed=0,
-            momentum=0.2)),
+            momentum=0.2,
+        ),
+    ),
 )
 
 
@@ -102,11 +109,16 @@ class AliasTest(chex.TestCase):
       dtype=(jnp.float32, jnp.complex64),
   )
   def test_optimization(self, opt_name, opt_kwargs, target, dtype):
-    if (opt_name
-        in ('fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent') and
-        jnp.iscomplexobj(dtype)):
+    if opt_name in (
+        'fromage',
+        'noisy_sgd',
+        'sm3',
+        'optimistic_gradient_descent',
+        'lion',
+    ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
-          f'{opt_name} does not support complex parameters.')
+          f'{opt_name} does not support complex parameters.'
+      )
 
     opt = getattr(alias, opt_name)(**opt_kwargs)
     initial_params, final_params, get_updates = target(dtype)
@@ -125,6 +137,9 @@ class AliasTest(chex.TestCase):
 
     params = initial_params
     state = opt.init(params)
+    # A no-op change, to verify that tree map works.
+    state = state_utils.tree_map_params(opt, lambda v: v, state)
+
     for _ in range(10000):
       params, state = step(params, state)
 
@@ -173,13 +188,13 @@ class AliasTest(chex.TestCase):
     expected_dtype = jax.dtypes.canonicalize_dtype(dtype)  # None -> float32
     tx = alias.sgd(0.1, momentum=0.9, accumulator_dtype=dtype)
     trace_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, trace_state.trace.dtype)
+    self.assertEqual(expected_dtype, getattr(trace_state, 'trace').dtype)
     tx = alias.adam(0.1, mu_dtype=dtype)
     adam_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, adam_state.mu.dtype)
+    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
     tx = alias.adamw(0.1, mu_dtype=dtype)
     adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, adam_state.mu.dtype)
+    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
 
 
 if __name__ == '__main__':

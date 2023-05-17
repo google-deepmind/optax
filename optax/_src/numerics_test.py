@@ -89,7 +89,7 @@ class NumericsTest(chex.TestCase):
     real_sq_fns = (lambda x: x**2, lambda x: x * x, jnp.square)
 
     def _get_hlo_repr(f, x):
-      hlo_string = jax.xla_computation(f)(x).as_hlo_text()
+      hlo_string = jax.jit(f).lower(x).compiler_ir(dialect='hlo').as_hlo_text()
       return re.sub('HloModule.*?\n', '',
                     re.sub('ENTRY.*?{', 'ENTRY XXXX', hlo_string))
 

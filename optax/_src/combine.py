@@ -23,8 +23,8 @@ from optax._src import wrappers
 
 
 def chain(
-    *args: base.GradientTransformation
-) -> base.GradientTransformation:
+    *args: base.GradientTransformation,
+) -> base.GradientTransformationExtraArgs:
   """Applies a list of chainable update transformations.
 
   Given a sequence of chainable transforms, `chain` returns an `init_fn`
@@ -36,30 +36,40 @@ def chain(
     *args: a sequence of chainable (init_fn, update_fn) tuples.
 
   Returns:
-    A single (init_fn, update_fn) tuple.
+    A ``GradientTransformationExtraArgs``, created by chaining the input
+    transformations. Note that independent of the argument types, the resulting
+    transformation always supports extra args. Any extra arguments passed to the
+    returned transformation will be passed only to those transformations in the
+    chain that support extra args.
   """
 
-  init_fns, update_fns = zip(*args)
+  transforms = [base.with_extra_args_support(t) for t in args]
+  init_fns, update_fns = zip(*transforms)
 
   def init_fn(params):
     return tuple(fn(params) for fn in init_fns)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     if len(update_fns) != len(state):
       raise ValueError('The number of updates and states has to be the same in '
                        'chain! Make sure you have called init first!')
 
     new_state = []
     for s, fn in zip(state, update_fns):
-      updates, new_s = fn(updates, s, params)
+      updates, new_s = fn(updates, s, params, **extra_args)
       new_state.append(new_s)
     return updates, tuple(new_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  # We opt to always return the GradientTransformationExtraArgs type here,
+  # instead of selecting the return type based on the arguments, since it works
+  # much better with the currently available type checkers. It also means that
+  # users will not get unexpected signature errors if they remove all of the
+  # transformations in a chain accepting extra args.
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
 class MultiTransformState(NamedTuple):
-  inner_states: Mapping[Hashable, NamedTuple]
+  inner_states: Mapping[Hashable, base.OptState]
 
 
 def multi_transform(

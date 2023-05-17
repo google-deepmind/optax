@@ -25,8 +25,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import constrain
+from optax._src import state_utils
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
@@ -42,6 +44,20 @@ def _build_stateful_sgd():
   # momentum is set to zero rather than None so that the momentum terms are
   # calculated, but do not change the results.
   return alias.sgd(1., momentum=0.)
+
+
+def _build_sgd_extra_args():
+
+  def init_fn(params):
+    del params
+    return {'foo': 1}
+
+  def update_fn(grads, state, params=None, *, foo=None, **extra_args):
+    del extra_args, foo, params
+    return grads, state
+
+  t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+  return combine.chain(_build_sgd(), t)
 
 
 class WrappersTest(parameterized.TestCase):
@@ -62,6 +78,7 @@ class WrappersTest(parameterized.TestCase):
     # And now calculate new params with flattening
     optax_sgd_params = init_params()
     sgd = wrappers.flatten(sgd)
+
     state_sgd = sgd.init(optax_sgd_params)
     updates_sgd, state_sgd = sgd.update(per_step_updates, state_sgd)
     sgd_params_flatten = update.apply_updates(optax_sgd_params, updates_sgd)
@@ -74,6 +91,7 @@ class WrappersTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
       ('stateful_sgd', _build_stateful_sgd),
+      ('sgd_extra_args', _build_sgd_extra_args),
   )
   def test_apply_if_finite(self, opt_builder):
     one = jnp.ones([])
@@ -93,35 +111,35 @@ class WrappersTest(parameterized.TestCase):
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
     self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
       self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
-    self.assertEqual(5, int(state.total_notfinite))
+    self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:
@@ -189,6 +207,7 @@ class WrappersTest(parameterized.TestCase):
         combine.chain(transform.scale_by_adam(),
                       transform.additive_weight_decay(1e-2),
                       transform.scale(-1e-4)), k_steps)
+
     opt_init, opt_update = ms_opt.gradient_transformation()
 
     # Put the training in one function, to check that the update is indeed
@@ -396,6 +415,12 @@ class MaskedTest(chex.TestCase):
     init_fn, update_fn = wrappers.masked(opt_builder(), mask_arg)
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
+
+    # Known issue: masked does not work with arbitrary parameter trees, and
+    # so does not work with tree_map_params.
+    with self.assertRaises(ValueError):
+      state_utils.tree_map_params(init_fn, lambda v: v, state)
+
     updates, state = update_fn(input_updates, state, params)
     chex.assert_trees_all_close(updates, correct_updates)
 

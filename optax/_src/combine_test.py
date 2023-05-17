@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
@@ -81,6 +82,70 @@ def _map_keys_fn(fn):
     return {k: (map_fn(v) if isinstance(v, dict) else fn(k, v))
             for k, v in nested_dict.items()}
   return map_fn
+
+
+class ExtraArgsTest(chex.TestCase):
+
+  def test_extra_args(self):
+    def init_fn(params):
+      del params
+      return tuple()
+
+    # Arguments required by a transformation should be keyword-only.
+    # For example, the loss argument in this transformation.
+    def update_fn(updates, state, params=None, *, loss, **extra_args):
+      # Extra args should always be accepted.
+      del extra_args, params
+      assert loss == 1
+      return updates, state
+
+    t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+    result = combine.chain(alias.adam(1e-3), t)
+    self.assertIsInstance(result, base.GradientTransformationExtraArgs)
+
+    params = {'a': 1, 'b': 2}
+    state = result.init(params)
+    result.update(params, state, loss=1, ignored_kwarg='hi')
+
+  def test_extra_args_chaining(self):
+    def init_fn(params):
+      del params
+      return {}
+    def update_fn(updates, state, params=None):
+      del params
+      return updates, state
+
+    # Possible gotcha: Chaining regular gradient transformations results in
+    # a transformation that supports extra args.
+    t1 = base.GradientTransformation(init_fn, update_fn)
+    t2 = combine.chain(t1, t1)
+    self.assertIsInstance(t2, base.GradientTransformation)
+    self.assertIsInstance(t2, base.GradientTransformationExtraArgs)
+
+    t3 = base.with_extra_args_support(t2)
+    self.assertIsInstance(t3, base.GradientTransformationExtraArgs)
+
+  def test_extra_args_positional_params(self):
+    def init_fn(params):
+      del params
+      return tuple()
+
+    def update_fn(updates, state, params=None):
+      assert params is not None
+      return updates, state
+
+    def update_fn_kwargs(updates, state, params=None, **extra_args):
+      del extra_args
+      assert params is not None
+      return updates, state
+
+    t1 = base.GradientTransformation(init_fn, update_fn)
+    t2 = base.GradientTransformationExtraArgs(init_fn, update_fn_kwargs)
+    opt = combine.chain(t1, t2)
+    params = {'a': 1, 'b': 2}
+    state = opt.init(params)
+    opt.update(params, state, params, ignored_kwarg='hi')
+    opt.update(params, state, params=params, ignored_kwarg='hi')
 
 
 class MultiTransformTest(chex.TestCase):

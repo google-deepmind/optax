@@ -16,6 +16,7 @@ Common Optimizers
     fromage
     lamb
     lars
+    lion
     noisy_sgd
     novograd
     optimistic_gradient_descent
@@ -81,6 +82,11 @@ Lars
 ~~~~
 
 .. autofunction:: lars
+
+Lion
+~~~~
+
+.. autofunction:: lion
 
 SM3
 ~~~
@@ -165,6 +171,7 @@ Gradient Transforms
     FactoredState
     global_norm
     GradientTransformation
+    GradientTransformationExtraArgs
     identity
     keep_params_nonnegative
     NonNegativeParamsState
@@ -176,6 +183,7 @@ Gradient Transforms
     scale_by_amsgrad
     scale_by_belief
     scale_by_factored_rms
+    scale_by_lion
     scale_by_novograd
     scale_by_optimistic_gradient
     scale_by_param_block_norm
@@ -190,6 +198,7 @@ Gradient Transforms
     scale_by_yogi
     ScaleByAdamState
     ScaleByAmsgradState
+    ScaleByLionState
     ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
@@ -202,15 +211,18 @@ Gradient Transforms
     stateless_with_tree_map
     set_to_zero
     trace
+    tree_map_params
     TraceState
     TransformInitFn
     TransformUpdateFn
+    TransformUpdateFnExtraArgs
     update_infinity_moment
     update_moment
     update_moment_per_elem_norm
     Updates
     zero_nans
     ZeroNansState
+    with_extra_args_support
 
 
 Optax Types
@@ -290,6 +302,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_lion
 .. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
@@ -305,6 +318,9 @@ Optax Transforms and States
     :members:
 
 .. autoclass:: ScaleByAmsgradState
+    :members:
+
+.. autoclass:: ScaleByLionState
     :members:
 
 .. autoclass:: ScaleByNovogradState
@@ -482,37 +498,41 @@ Common Losses
 
 .. autosummary::
 
+    convex_kl_divergence
     cosine_distance
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
     hinge_loss
     huber_loss
+    kl_divergence
     l2_loss
     log_cosh
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
+    squared_error
 
 
 Losses
 ~~~~~~~
 
+.. autofunction:: convex_kl_divergence
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
 .. autofunction:: ctc_loss
 .. autofunction:: ctc_loss_with_forward_probs
 .. autofunction:: hinge_loss
 .. autofunction:: huber_loss
+.. autofunction:: kl_divergence
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
-
-
+.. autofunction:: squared_error
 
 Linear Algebra Operators
 ========================
