@@ -129,9 +129,8 @@ def smooth_labels(
     [Müller et al, 2019](https://arxiv.org/pdf/1906.02629.pdf)
 
   Args:
-    labels: one hot labels to be smoothed.
-    alpha: the smoothing factor, the greedy category with be assigned
-      probability `(1-alpha) + alpha / num_categories`
+    labels: One hot labels to be smoothed.
+    alpha: The smoothing factor.
 
   Returns:
     a smoothed version of the one hot input labels.
@@ -601,7 +600,7 @@ def poly_loss_cross_entropy(logits: chex.Array,
     \frac{1}{N + 1} \cdot (1 - P_t)^{N + 1} + \ldots = \\
     - \log(P_t) + \sum_{j = 1}^N \epsilon_j \cdot (1 - P_t)^j
 
-  This function provides a simplified version of the :math:`L_{Poly-N}`
+  This function provides a simplified version of :math:`L_{Poly-N}`
   with only the coefficient of the first polynomial term being changed.
 
     References:
@@ -609,15 +608,15 @@ def poly_loss_cross_entropy(logits: chex.Array,
 
     Args:
       logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
-      labels: Valid probability distributions (non-negative, sum to 1), e.g a
+      labels: Valid probability distributions (non-negative, sum to 1), e.g. a
         one hot encoding specifying the correct class for each input;
         must have a shape broadcastable to `[..., num_classes]`.
       epsilon: The coefficient of the first polynomial term.
         According to the paper, the following values are recommended:
         - For the ImageNet 2d image classification, epsilon = 2.0.
         - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
-        - It is also recommended to adjust this value
-          based on the task, e.g. by using grid search.
+        - It is also recommended to adjust this value based on the task, e.g. by
+          using grid search.
 
     Returns:
       Poly loss between each prediction and the corresponding target
@@ -629,6 +628,5 @@ def poly_loss_cross_entropy(logits: chex.Array,
     labels * (1 - jax.nn.softmax(logits)), axis=-1)
 
   cross_entropy = softmax_cross_entropy(logits=logits, labels=labels)
-  poly_loss = cross_entropy + epsilon * one_minus_pt
 
-  return poly_loss
+  return cross_entropy + epsilon * one_minus_pt

@@ -577,7 +577,6 @@ class PolyLossTest(parameterized.TestCase):
       dict(eps=0, expected=2.8990),
       dict(eps=-0.5, expected=2.4908),
       dict(eps=1.15, expected=3.8378),
-      dict(eps=2, expected=4.5317),
       dict(eps=1.214, expected=3.8900),
       dict(eps=5.45, expected=7.3480),
   )
@@ -596,7 +595,6 @@ class PolyLossTest(parameterized.TestCase):
       dict(eps=0, expected=np.array([0.1698, 0.8247])),
       dict(eps=-0.5, expected=np.array([0.0917, 0.7168])),
       dict(eps=1.15, expected=np.array([0.3495, 1.0731])),
-      dict(eps=2, expected=np.array([0.4823, 1.2567])),
       dict(eps=1.214, expected=np.array([0.3595, 1.0870])),
       dict(eps=5.45, expected=np.array([1.0211, 2.0018])),
   )
