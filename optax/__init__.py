@@ -89,6 +89,7 @@ from optax._src.loss import huber_loss
 from optax._src.loss import kl_divergence
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
+from optax._src.loss import poly_loss_cross_entropy
 from optax._src.loss import sigmoid_binary_cross_entropy
 from optax._src.loss import smooth_labels
 from optax._src.loss import softmax_cross_entropy
