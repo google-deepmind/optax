@@ -287,6 +287,7 @@ __all__ = (
     "per_example_global_norm_clip",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
+    "poly_loss_cross_entropy",
     "polynomial_schedule",
     "power_iteration",
     "radam",
