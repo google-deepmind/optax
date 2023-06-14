@@ -508,6 +508,7 @@ Common Losses
     kl_divergence
     l2_loss
     log_cosh
+    poly_loss_cross_entropy
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
@@ -528,6 +529,7 @@ Losses
 .. autofunction:: kl_divergence
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
+.. autofunction:: poly_loss_cross_entropy
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
