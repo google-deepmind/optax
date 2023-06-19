@@ -179,6 +179,44 @@ class MultiTransformTest(chex.TestCase):
     updates, state = update_fn(updates, state)
     chex.assert_trees_all_close(updates, correct_updates)
 
+  def test_extra_args(self):
+
+    class ArgNotEqual1Error(ValueError):
+      """Raised when argument not set as expected."""
+
+    def init(params):
+      return {'mu': params}
+
+    def update_with_arg(updates, state, params=None, *, arg, **extra_args):
+      del params, extra_args
+      if arg != 1:
+        raise ArgNotEqual1Error()
+      return updates, state
+
+    def update_without_arg(updates, state, params=None):
+      del params
+      return updates, state
+
+    opt_no_arg = base.GradientTransformation(init, update_without_arg)
+    opt_extra_arg = base.GradientTransformationExtraArgs(init, update_with_arg)
+
+    opt = combine.multi_transform(
+        {
+            'a': opt_no_arg,
+            'b': opt_extra_arg,
+        },
+        ('a', 'b'),
+    )
+
+    fake_params = ({'u': jnp.array([1])}, {'v': jnp.array([1])})
+    state = opt.init(fake_params)
+
+    with self.assertRaises(TypeError):
+      opt.update(fake_params, state)
+    with self.assertRaises(ArgNotEqual1Error):
+      opt.update(fake_params, state, arg=2, ignored_kwarg='hi')
+    opt.update(fake_params, state, arg=1, ignored_kwarg='hi')
+
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
     init_fn, update_fn = combine.multi_transform(
