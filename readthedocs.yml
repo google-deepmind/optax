@@ -9,7 +9,7 @@ sphinx:
   fail_on_warning: false
 
 python:
-  version: 3.8
+  version: 3.9
   install:
     # Equivalent to 'pip install .'
     - method: pip
