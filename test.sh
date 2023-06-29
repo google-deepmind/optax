@@ -25,7 +25,7 @@ python --version
 
 # Install dependencies.
 pip install --upgrade pip setuptools wheel
-pip install flake8 pytest-xdist pytype pylint pylint-exit
+pip install flake8 pytest-xdist pylint pylint-exit
 pip install -e ".[test, examples]"
 
 # Dp-accounting specifies exact minor versions as requirements which sometimes
@@ -64,7 +64,13 @@ pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
 pip install optax*.whl
 
 # Check types with pytype.
-pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+# Note: pytype does not support 3.11 as of 25.06.23
+# See https://github.com/google/pytype/issues/1308
+if [ `python -c 'import sys; print(sys.version_info.minor)'` -lt 11 ];
+then
+  pip install pytype
+  pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+fi;
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
