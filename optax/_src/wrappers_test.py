@@ -569,7 +569,7 @@ class MaskedTest(chex.TestCase):
         'a': [jnp.zeros(1), (jnp.zeros(2), wrappers.MaskedNode())],
         'b': wrappers.MaskedNode()
     }
-    chex.assert_tree_all_equal_structs(trace, expected_trace)
+    chex.assert_trees_all_equal_structs(trace, expected_trace)
 
   def test_masked_state_is_compatible_with_deepmind_tree(self):
     """Checks that the masked state is compatible with deepmind/tree.

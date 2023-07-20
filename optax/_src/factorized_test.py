@@ -43,7 +43,7 @@ class FactorizedTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    chex.assert_tree_all_equal_shapes(params, updates)
+    chex.assert_trees_all_equal_shapes(params, updates)
 
 
 if __name__ == '__main__':
