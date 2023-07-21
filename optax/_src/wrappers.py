@@ -27,6 +27,8 @@ from jax.tree_util import tree_unflatten
 import numpy as np
 from optax._src import base
 from optax._src import numerics
+from optax._src import state_utils
+
 
 Array = jnp.ndarray
 
@@ -473,6 +475,11 @@ def masked(
   For the ``inner`` transform, state will only be stored for the parameters that
   have a mask value of ``True``.
 
+  Note that, when using ``tree_map_params``, it may be required to pass the
+  argument `is_leaf=lambda v: isinstance(v, optax.MaskedNode)`, if the tree
+  map needs to take additional arguments with the same shape as the original
+  input tree.
+
   Args:
     inner: Inner transformation to mask.
     mask: a PyTree with same structure as (or a prefix of) the params PyTree, or
@@ -490,6 +497,21 @@ def masked(
     return tree_map(lambda m, p: p if m else MaskedNode(), mask_tree, pytree)
 
   def init_fn(params):
+    # This is a workaround to make tree_map_params work with masking.
+    # The API of `masked` takes a mask on construction, instead of at init.
+    # This means that this gradient transformation can only work for parameter
+    # trees that match the shape of the mask. Technically this breaks the API
+    # of optax, and this causes tree_map_params to break. This is because
+    # tree_map_params calls init with a placeholder in order to detect copies
+    # of the parameter tree. As a (slightly ugly) workaround, we detect when
+    # the init is being called by tree_map_params, and pass the placeholder
+    # down without masking. This is safe, since tree_map_params does not impose
+    # any particular constraints on the shape of the parameter tree, as long
+    # as tree_map_params is being called on a tree with the correct structure.
+    # See wrappers_test for proof that this works!
+    if isinstance(params, state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
+      return MaskedState(inner_state=inner.init(params))
+
     mask_tree = mask(params) if callable(mask) else mask
     masked_params = mask_pytree(params, mask_tree)
     return MaskedState(inner_state=inner.init(masked_params))

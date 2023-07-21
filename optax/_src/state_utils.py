@@ -39,6 +39,7 @@ def tree_map_params(
     /,
     *rest: Any,
     transform_non_params: Optional[Callable[..., Any]] = None,
+    is_leaf: Optional[Callable[[base.Params], bool]] = None,
 ) -> base.OptState:
   """Apply a callable over all params in the given optimizer state.
 
@@ -71,6 +72,9 @@ def tree_map_params(
       that will be passed to f.
     transform_non_params: An optional function that will be called on all
       non-parameter fields within the optimizer state.
+    is_leaf: Passed through to `jax.tree_map`. This makes it possible to ignore
+      parts of the parameter tree e.g. when the gradient transformations modify
+      the shape of the original pytree, such as for ``optax.masked``.
 
   Returns:
     The result of applying the function f on all trees in the optimizer's state
@@ -89,7 +93,7 @@ def tree_map_params(
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
-      return jax.tree_map(f, value, *rest)
+      return jax.tree_map(f, value, *rest, is_leaf=is_leaf)
     elif transform_non_params is not None:
       return transform_non_params(value)
     else:
