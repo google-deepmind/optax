@@ -117,7 +117,9 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     chex.assert_shape(trigger, ())  # A scalar.
 
     def clip_fn(t):
-      return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
+      return jax.lax.select(
+          trigger, t, (t / g_norm.astype(t.dtype)) * jnp.array(
+              max_norm).astype(t.dtype))
 
     updates = jax.tree_util.tree_map(clip_fn, updates)
     return updates, state
