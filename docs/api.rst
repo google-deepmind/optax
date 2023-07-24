@@ -762,6 +762,17 @@ scale_gradient
 .. autofunction:: scale_gradient
 
 
+🔧 Contrib
+===============
+
+.. currentmodule:: optax.contrib
+
+.. autosummary::
+
+    mechanize
+    MechanicState
+
+
 🚧 Experimental
 ===============
 
