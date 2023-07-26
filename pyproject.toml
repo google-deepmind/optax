@@ -78,8 +78,5 @@ dp-accounting = [
     "scipy>=1.7.1"
 ]
 
-[tool.setuptools]
-zip_safe = false
-
 [tool.setuptools.packages.find]
 exclude = ["*_test.py"]
