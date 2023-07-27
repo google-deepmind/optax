@@ -519,7 +519,7 @@ class MaskedTest(chex.TestCase):
 
     with self.subTest('tree_map_params'):
       result = state_utils.tree_map_params(init_fn, lambda v: v, state)
-      chex.assert_tree_all_equal_structs(result, state)
+      chex.assert_trees_all_equal_structs(result, state)
 
     updates, state = update_fn(input_updates, state, params)
     chex.assert_trees_all_close(updates, correct_updates)
