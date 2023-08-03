@@ -180,7 +180,7 @@ class MultiStepsState(NamedTuple):
       1 or is reset to 0.
     gradient_step: gradient step counter. This only increases after enough
       mini-steps have been accumulated.
-    inner_opt_state: the state of the wrapped otpimiser.
+    inner_opt_state: the state of the wrapped optimizer.
     acc_grads: accumulated gradients over multiple mini-steps.
     skip_state: an arbitrarily nested tree of arrays. This is only
       relevant when passing a `should_skip_update_fn` to `MultiSteps`. This
