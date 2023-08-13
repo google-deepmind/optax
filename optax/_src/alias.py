@@ -262,6 +262,17 @@ def nadam(
 
   Nadam is an Adam variant with Nesterov's momentum.
 
+  With respect to Adam, this optimizer replaces the assignment
+
+  .. math::
+      \hat{m}_t \leftarrow m_t / {(1-\beta_1^t)}
+
+  with
+
+  .. math::
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+
   References:
     Timothy Dozat, 2015: https://cs229.stanford.edu/proj2015/054_report.pdf
 
