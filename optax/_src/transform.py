@@ -390,9 +390,12 @@ def scale_by_nadam(
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = b1 * bias_correction(mu, b1, count_inc + 1)
-    mu_hat += (1 - b1) * bias_correction(updates, b1, count_inc)
-    nu_hat = b2 * bias_correction(nu, b2, count_inc)
+    mu_hat = jax.tree_util.tree_map(
+        lambda m, g: b1 * m + (1 - b1) * g,
+        bias_correction(mu, b1, numerics.safe_int32_increment(count_inc)),
+        bias_correction(updates, b1, count_inc))
+    nu_hat = jax.tree_util.tree_map(
+        lambda v: b2 * v, bias_correction(nu, b2, count_inc))
     updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
