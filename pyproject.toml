@@ -46,7 +46,10 @@ documentation = "https://optax.readthedocs.io/"
 test = [
     "dm-haiku>=0.0.3",
     "dm-tree>=0.1.7",
-    "flax==0.5.3"
+    "flax==0.5.3",
+    # Flax 0.5.3 is incompatible with JAX 0.4.14; see #568
+    "jax<0.4.14",
+    "jaxlib<0.4.14"
 ]
 
 examples = [
