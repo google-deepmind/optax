@@ -50,12 +50,12 @@ Adam
 .. autofunction:: adam
 
 Adamax
-~~~~
+~~~~~~
 
 .. autofunction:: adamax
 
 AdamaxW
-~~~~~
+~~~~~~~
 
 .. autofunction:: adamaxw
 
@@ -65,7 +65,7 @@ AdamW
 .. autofunction:: adamw
 
 AMSGrad
-~~~~~
+~~~~~~~
 
 .. autofunction:: amsgrad
 
@@ -218,7 +218,6 @@ Gradient Transforms
     TraceState
     TransformInitFn
     TransformUpdateFn
-    TransformUpdateFnExtraArgs
     update_infinity_moment
     update_moment
     update_moment_per_elem_norm
@@ -765,6 +764,17 @@ scale_gradient
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction:: scale_gradient
+
+
+🔧 Contrib
+===============
+
+.. currentmodule:: optax.contrib
+
+.. autosummary::
+
+    mechanize
+    MechanicState
 
 
 🚧 Experimental

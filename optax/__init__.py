@@ -14,6 +14,7 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
+from optax import contrib
 from optax import experimental
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
@@ -189,7 +190,7 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
-__version__ = "0.1.5"
+__version__ = "0.1.8.dev"
 
 __all__ = (
     "adabelief",

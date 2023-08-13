@@ -84,7 +84,7 @@ You can continue the quick start in [the Optax quickstart notebook.](https://git
 
 We refer to the [docs](https://optax.readthedocs.io/en/latest/index.html)
 for a detailed list of available Optax components. Here, we highlight
-the main categories of buiilding blocks provided by Optax.
+the main categories of building blocks provided by Optax.
 
 ### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
 
