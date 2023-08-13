@@ -263,7 +263,7 @@ def nadam(
   Nadam is an Adam variant with Nesterov's momentum.
 
   References:
-    [Dozat et al, 2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+    Timothy Dozat, 2015: https://cs229.stanford.edu/proj2015/054_report.pdf
 
   Args:
     learning_rate: A fixed global scaling factor.

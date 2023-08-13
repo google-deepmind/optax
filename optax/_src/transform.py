@@ -362,7 +362,7 @@ def scale_by_nadam(
   """Rescale updates according to the Nadam algorithm.
 
   References:
-    [Dozat et al, 2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+    [Timothy Dozat, 2015](https://cs229.stanford.edu/proj2015/054_report.pdf)
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -394,8 +394,10 @@ def scale_by_nadam(
         lambda m, g: b1 * m + (1 - b1) * g,
         bias_correction(mu, b1, numerics.safe_int32_increment(count_inc)),
         bias_correction(updates, b1, count_inc))
-    nu_hat = jax.tree_util.tree_map(
-        lambda v: b2 * v, bias_correction(nu, b2, count_inc))
+    # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ Algorithm 2
+    # further multiplies this standard nu_hat by b2, without explanation.
+    # Other implementations also neglect that factor.
+    nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
     mu = utils.cast_tree(mu, mu_dtype)
