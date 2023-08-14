@@ -111,7 +111,7 @@ def control_delta_method(
     return control_variate
 
   def expected_value_delta(
-      params: base.Params, state: CvState) -> float:
+      params: base.Params, state: CvState) -> jax.Array:
     """"Expected value of second order expansion of `function` at dist mean."""
     del state
     mean_dist = params[0]
