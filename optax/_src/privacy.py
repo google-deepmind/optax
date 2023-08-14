@@ -14,10 +14,9 @@
 # ==============================================================================
 """Differential Privacy utilities."""
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import jax
-import jax.numpy as jnp
 
 from optax._src import base
 from optax._src import clipping
@@ -26,7 +25,10 @@ from optax._src import clipping
 # pylint:disable=no-value-for-parameter
 class DifferentiallyPrivateAggregateState(NamedTuple):
   """State containing PRNGKey for `differentially_private_aggregate`."""
-  rng_key: jnp.array
+  # TODO(optax-dev): rng_key used to be annotated as `jnp.array` but that is
+  # not a valid annotation (it's a function and secretely resolved to `Any`).
+  # We should add back typing.
+  rng_key: Any
 
 
 def differentially_private_aggregate(

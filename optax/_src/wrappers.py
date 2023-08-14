@@ -102,9 +102,12 @@ class ApplyIfFiniteState(NamedTuple):
       a NaN since this optimizer was initialised. This number is never reset.
     inner_state: The state of the inner `GradientTransformation`.
   """
-  notfinite_count: jnp.array
-  last_finite: jnp.array
-  total_notfinite: jnp.array
+  # TODO(optax-dev): notfinite_count, last_finite and inner_state used to be
+  # annotated as `jnp.array` but that is not a valid annotation (it's a function
+  # and secretely resolved to `Any`. We should add back typing.
+  notfinite_count: Any
+  last_finite: Any
+  total_notfinite: Any
   inner_state: Any
 
 
