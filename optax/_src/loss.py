@@ -240,6 +240,38 @@ def softmax_cross_entropy_with_integer_labels(
   return log_normalizers - label_logits
 
 
+def focal_loss(
+    logits: chex.Array,
+    labels: chex.Array,
+    alpha: chex.Array,
+    gamma: float = 2.0,
+) -> chex.Array:
+  """Computes the focal loss between sets of logits and labels.
+
+  Computes the focal loss
+
+  References:
+    [Lin et al, 2017](https://arxiv.org/abs/1708.02002)
+
+  Args:
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g a
+      one hot encoding specifying the correct class for each input;
+      must have a shape broadcastable to `[..., num_classes]`.
+    alpha: Weighting factor, with shape `[num_classes]` and values in the range `[0, 1]`.
+    gamma: Focusing parameter `>=0`. It controls the contribution of higher confidence predictions.
+      Defaults to 2.
+
+  Returns:
+    focal loss between each prediction and the corresponding target
+    distributions, with shape `[...]`.
+  """
+  chex.assert_type([logits], float)
+  focus = jnp.power(-jax.nn.softmax(logits, axis=-1) + 1.0, gamma)
+  loss = -labels * alpha * focus * jax.nn.log_softmax(logits, axis=-1)
+  return jnp.sum(loss, axis=-1)
+
+
 def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,

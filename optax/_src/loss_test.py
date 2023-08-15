@@ -226,6 +226,31 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
     np.testing.assert_allclose(tested, expected, rtol=1e-6, atol=1e-6)
 
 
+class FocalLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([[0.8, 0.1, 0.1], [0.2, 0.7, 0.1], [0.2, 0.2, 0.6]], dtype=np.float32)
+    self.ts = np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]], dtype=np.float32)
+    self.alpha = np.array([1, 1, 1], dtype=np.float32)
+    # taken expected outputs from rlax.
+    self.exp = np.array([0.1713, 0.2207, 0.2790], dtype=np.float32)
+
+  @chex.all_variants
+  def test_scalar(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(loss.focal_loss)(self.ys[0], self.ts[0], self.alpha),
+        self.exp[0], atol=1e-4)
+
+  @chex.all_variants
+  def test_batched(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(loss.focal_loss)(self.ys, self.ts, self.alpha),
+        self.exp, atol=1e-4)
+
+
 class CosineDistanceTest(parameterized.TestCase):
 
   def setUp(self):
