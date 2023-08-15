@@ -15,7 +15,7 @@
 """Tests for state_utils."""
 
 import dataclasses
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, cast
 
 from absl.testing import absltest
 import chex
@@ -37,7 +37,7 @@ class FakeShardSpec:
 class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
-  count: int
+  count: chex.Array
   params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
 
 
@@ -48,6 +48,7 @@ def _scale_by_adam_with_dicts():
 
   def init(params):
     state = t.init(params)
+    state = cast(transform.ScaleByAdamState, state)
 
     return ScaleByAdamStateDict(
         count=state.count,
@@ -62,6 +63,7 @@ def _scale_by_adam_with_dicts():
     )
 
     updates, state = t.update(updates, state, params)
+    state = cast(transform.ScaleByAdamState, state)
     return ScaleByAdamStateDict(
         count=state.count,
         params={'mu': state.mu, 'nu': state.nu},
@@ -138,9 +140,10 @@ class StateUtilsTest(absltest.TestCase):
 
     state = init(params)
     state = state_utils.tree_map_params(init, lambda v: v+1, state)
+    state = cast(Foo, state)
 
-    self.assertEqual(state.count, 0)
-    self.assertEqual(state.v, {'w': 1})
+    self.assertEqual(int(state.count), 0)
+    self.assertEqual(state.v, {'w': jnp.array(1)})
 
   def test_adam(self):
     params = _fake_params()
@@ -192,10 +195,12 @@ class StateUtilsTest(absltest.TestCase):
     params = _fake_params()
     state = opt.init(params)
     state = state_utils.tree_map_params(opt, lambda v: v+1, state)
+    state = cast(schedule.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree_map(lambda v: v+1, params)
-    chex.assert_trees_all_close(state.inner_state[0].mu, params_plus_one)
+    mu = getattr(state.inner_state[0], 'mu')
+    chex.assert_trees_all_close(mu, params_plus_one)
 
   def test_map_params_to_none(self):
     opt = alias.adagrad(1e-4)

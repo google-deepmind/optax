@@ -69,13 +69,13 @@ def chain(
 
 
 class MultiTransformState(NamedTuple):
-  inner_states: Mapping[Hashable, NamedTuple]
+  inner_states: Mapping[Hashable, base.OptState]
 
 
 def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
     param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]]
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Partitions params and applies a different transformation to each subset.
 
   Below is an example where we apply Adam to the weights and SGD to the biases
@@ -130,6 +130,12 @@ def multi_transform(
   Returns:
     An ``optax.GradientTransformation``.
   """
+
+  transforms = {
+      k: base.with_extra_args_support(v)
+      for k, v in transforms.items()
+  }
+
   def make_mask(labels, group):
     return jax.tree_util.tree_map(lambda label: label == group, labels)
 
@@ -148,13 +154,13 @@ def multi_transform(
     }
     return MultiTransformState(inner_states)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     labels = param_labels(updates) if callable(param_labels) else param_labels
     new_inner_state = {}
     for group, tx in transforms.items():
       masked_tx = wrappers.masked(tx, make_mask(labels, group))
       updates, new_inner_state[group] = masked_tx.update(
-          updates, state.inner_states[group], params)
+          updates, state.inner_states[group], params, **extra_args)
     return updates, MultiTransformState(new_inner_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)

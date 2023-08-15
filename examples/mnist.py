@@ -54,7 +54,7 @@ def model_accuracy(model: Callable[[chex.Array], chex.Array],
     accuracy_sum += _single_batch_accuracy(logits, batch['label']) * batch_size
     dataset_size += batch_size
 
-  return accuracy_sum / dataset_size
+  return accuracy_sum / dataset_size  # pytype: disable=bad-return-type  # numpy-scalars  # pylint: disable=line-too-long
 
 
 # Optax is agnostic to which (if any) neural network library is used. Below we
@@ -111,7 +111,7 @@ def train_on_mnist(optimizer: optax.GradientTransformation,
     test_acc = model_accuracy(eval_model, test_dataset.as_numpy_iterator())
     print(f'Epoch {epoch+1}: test acc: {test_acc:.2f}')
 
-  return test_acc
+  return test_acc  # pytype: disable=bad-return-type  # numpy-scalars
 
 
 def main(unused_argv):

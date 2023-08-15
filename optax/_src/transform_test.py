@@ -221,7 +221,7 @@ class TransformTest(parameterized.TestCase):
       factor = 0.1 ** i
       rescaler = transform.scale(factor)
       # Apply rescaling.
-      scaled_updates, _ = rescaler.update(updates, None)
+      scaled_updates, _ = rescaler.update(updates, {})
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
@@ -240,7 +240,7 @@ class TransformTest(parameterized.TestCase):
     inputs = jnp.asarray(inputs)
     outputs = jnp.asarray(outputs)
     centralizer = transform.centralize()
-    centralized_inputs, _ = centralizer.update(inputs, None)
+    centralized_inputs, _ = centralizer.update(inputs, {})
     chex.assert_trees_all_close(centralized_inputs, outputs)
 
   @chex.all_variants
@@ -282,10 +282,10 @@ class TransformTest(parameterized.TestCase):
     og = transform.scale_by_optimistic_gradient()
     og_state = og.init(initial_params)
     # Provide some arbitrary previous gradient.
-    og_state.trace['x'] = 1.5
+    getattr(og_state, 'trace')['x'] = 1.5
 
     g = jax.grad(f)(initial_params)
-    og_true = 2 * g['x'] - og_state.trace['x']
+    og_true = 2 * g['x'] - getattr(og_state, 'trace')['x']
     og, og_state = og.update(g, og_state)
 
     # Compare transformation output with manually computed optimistic gradient.

@@ -96,9 +96,8 @@ def lookahead(
     raise ValueError('Synchronization period must be >= 1.')
 
   def init_fn(params: base.Params) -> LookaheadState:
-    try:
-      fast_params = params.fast
-    except AttributeError:
+    fast_params = getattr(params, 'fast', None)
+    if fast_params is None:
       # Allowing init_fn to be called with fast parameters reduces the
       # modifications necessary to adapt code to use lookahead in some cases.
       logging.warning(

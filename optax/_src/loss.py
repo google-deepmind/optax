@@ -129,13 +129,11 @@ def smooth_labels(
     [Müller et al, 2019](https://arxiv.org/pdf/1906.02629.pdf)
 
   Args:
-    labels: one hot labels to be smoothed.
-    alpha: the smoothing factor, the greedy category with be assigned
-      probability `(1-alpha) + alpha / num_categories`
+    labels: One hot labels to be smoothed.
+    alpha: The smoothing factor.
 
   Returns:
     a smoothed version of the one hot input labels.
-
   """
   chex.assert_type([labels], float)
   num_categories = labels.shape[-1]
@@ -483,7 +481,7 @@ def ctc_loss_with_forward_probs(
 
   # extract per_seq_loss
   one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
-  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)
+  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)  # pylint:disable=invalid-unary-operand-type
 
   return per_seq_loss, logalpha_phi, logalpha_emit
 
@@ -614,3 +612,48 @@ def hinge_loss(predictor_outputs: chex.Array,
     Binary Hinge Loss.
   """
   return jnp.maximum(0, 1 - predictor_outputs * targets)
+
+
+def poly_loss_cross_entropy(
+    logits: chex.Array, labels: chex.Array, epsilon: float = 2.0
+) -> chex.Array:
+  r"""Computes PolyLoss between logits and labels.
+
+  The PolyLoss is a loss function that decomposes commonly
+  used classification loss functions into a series of weighted
+  polynomial bases. It is inspired by the Taylor expansion of
+  cross-entropy loss and focal loss in the bases of :math:`(1 − P_t)^j`.
+
+  .. math::
+    L_{Poly} = \sum_1^\infty \alpha_j \cdot (1 - P_t)^j \\
+    L_{Poly-N} = (\epsilon_1 + 1) \cdot (1 - P_t) + \ldots + \\
+    (\epsilon_N + \frac{1}{N}) \cdot (1 - P_t)^N +
+    \frac{1}{N + 1} \cdot (1 - P_t)^{N + 1} + \ldots = \\
+    - \log(P_t) + \sum_{j = 1}^N \epsilon_j \cdot (1 - P_t)^j
+
+  This function provides a simplified version of :math:`L_{Poly-N}`
+  with only the coefficient of the first polynomial term being changed.
+
+  References:
+    [Zhaoqi Leng et al, 2022](https://arxiv.org/pdf/2204.12511.pdf)
+
+  Args:
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g. a
+      one hot encoding specifying the correct class for each input;
+      must have a shape broadcastable to `[..., num_classes]`.
+    epsilon: The coefficient of the first polynomial term.
+      According to the paper, the following values are recommended:
+      - For the ImageNet 2d image classification, epsilon = 2.0.
+      - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
+      - It is also recommended to adjust this value based on the task, e.g. by
+        using grid search.
+
+  Returns:
+    Poly loss between each prediction and the corresponding target
+    distributions, with shape `[...]`.
+  """
+  chex.assert_type([logits, labels], float)
+  one_minus_pt = jnp.sum(labels * (1 - jax.nn.softmax(logits)), axis=-1)
+  cross_entropy = softmax_cross_entropy(logits=logits, labels=labels)
+  return cross_entropy + epsilon * one_minus_pt
