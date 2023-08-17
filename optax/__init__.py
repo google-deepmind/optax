@@ -88,6 +88,7 @@ from optax._src.loss import ctc_loss_with_forward_probs
 from optax._src.loss import hinge_loss
 from optax._src.loss import huber_loss
 from optax._src.loss import kl_divergence
+from optax._src.loss import kl_divergence_with_log_targets
 from optax._src.loss import l2_loss
 from optax._src.loss import log_cosh
 from optax._src.loss import sigmoid_binary_cross_entropy
@@ -254,6 +255,7 @@ __all__ = (
     "join_schedules",
     "keep_params_nonnegative",
     "kl_divergence",
+    "kl_divergence_with_log_targets",
     "l2_loss",
     "lamb",
     "lars",
