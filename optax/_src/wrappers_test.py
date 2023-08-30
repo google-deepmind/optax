@@ -205,7 +205,7 @@ class WrappersTest(parameterized.TestCase):
         # * it has a state,
         # * it requires the params for the update.
         combine.chain(transform.scale_by_adam(),
-                      transform.additive_weight_decay(1e-2),
+                      transform.add_decayed_weights(1e-2),
                       transform.scale(-1e-4)), k_steps)
 
     opt_init, opt_update = ms_opt.gradient_transformation()
@@ -574,7 +574,7 @@ class MaskedTest(chex.TestCase):
         mask, input_updates, params)
 
     init_fn, update_fn = wrappers.masked(
-        transform.additive_weight_decay(weight_decay), mask)
+        transform.add_decayed_weights(weight_decay), mask)
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)

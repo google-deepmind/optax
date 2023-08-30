@@ -125,8 +125,6 @@ from optax._src.stochastic_gradient_estimators import score_function_jacobians
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
-from optax._src.transform import additive_weight_decay
-from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
@@ -203,8 +201,6 @@ __all__ = (
     "add_decayed_weights",
     "add_noise",
     "AddDecayedWeightsState",
-    "additive_weight_decay",
-    "AdditiveWeightDecayState",
     "AddNoiseState",
     "amsgrad",
     "apply_every",

@@ -1175,10 +1175,7 @@ def scale_by_optimistic_gradient(alpha: float = 1.0,
 # TODO(b/183800387): remove legacy aliases.
 # These legacy aliases are here for checkpoint compatibility
 # To be removed once checkpoints have updated.
-_safe_int32_increment = numerics.safe_int32_increment
 safe_int32_increment = numerics.safe_int32_increment
-AdditiveWeightDecayState = AddDecayedWeightsState
-additive_weight_decay = add_decayed_weights
 ClipState = clipping.ClipState
 ClipByGlobalNormState = clipping.ClipByGlobalNormState
 

@@ -40,7 +40,7 @@ ALL_MODULES = [
     ('scale_by_stddev', transform.scale_by_stddev, {}),
     ('adam', transform.scale_by_adam, {}),
     ('scale', transform.scale, dict(step_size=3.0)),
-    ('additive_weight_decay', transform.additive_weight_decay,
+    ('add_decayed_weights', transform.add_decayed_weights,
      dict(weight_decay=0.1)),
     ('scale_by_schedule', transform.scale_by_schedule,
      dict(step_size_fn=lambda x: x * 0.1)),
