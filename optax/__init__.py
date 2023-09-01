@@ -137,6 +137,7 @@ from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_distance_over_gradients
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
