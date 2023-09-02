@@ -17,6 +17,7 @@ Common Optimizers
     lamb
     lars
     lion
+    nadam
     noisy_sgd
     novograd
     optimistic_gradient_descent
@@ -93,24 +94,25 @@ SM3
 
 .. autofunction:: sm3
 
+Nadam
+~~~~
+
+.. autofunction:: nadam
 
 Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
 
-
 Novograd
 ~~~~~~~~~
 
 .. autofunction:: novograd
 
-
 Optimistic GD
 ~~~~~~~~~~~~~
 
 .. autofunction:: optimistic_gradient_descent
-
 
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,6 +186,7 @@ Gradient Transforms
     scale_by_belief
     scale_by_factored_rms
     scale_by_lion
+    scale_by_nadam
     scale_by_novograd
     scale_by_optimistic_gradient
     scale_by_param_block_norm
@@ -302,6 +305,7 @@ Optax Transforms and States
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
 .. autofunction:: scale_by_lion
+.. autofunction:: scale_by_nadam
 .. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
