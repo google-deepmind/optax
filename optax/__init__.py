@@ -16,6 +16,7 @@
 
 from optax import contrib
 from optax import experimental
+from optax import second_order
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
@@ -115,9 +116,6 @@ from optax._src.schedule import polynomial_schedule
 from optax._src.schedule import sgdr_schedule
 from optax._src.schedule import warmup_cosine_decay_schedule
 from optax._src.schedule import warmup_exponential_decay_schedule
-from optax._src.second_order import fisher_diag
-from optax._src.second_order import hessian_diag
-from optax._src.second_order import hvp
 from optax._src.state_utils import tree_map_params
 from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
 from optax._src.stochastic_gradient_estimators import pathwise_jacobians
@@ -234,16 +232,13 @@ __all__ = (
     "EmptyState",
     "exponential_decay",
     "FactoredState",
-    "fisher_diag",
     "flatten",
     "fromage",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",
     "hinge_loss",
-    "hessian_diag",
     "huber_loss",
-    "hvp",
     "identity",
     "incremental_update",
     "inject_hyperparams",

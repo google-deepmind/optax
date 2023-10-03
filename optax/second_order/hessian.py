@@ -12,37 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Functions for computing diagonals of Hessians & Fisher info of parameters.
+"""Functions for computing diagonals of the Hessian wrt to a set of parameters.
 
-Computing the Hessian or Fisher information matrices for neural networks is
-typically intractible due to the quadratic memory requirements. Solving for the
-diagonals of these matrices is often a better solution.
-
-This module provides two functions for computing these diagonals, `hessian_diag`
-and `fisher_diag`., each with sub-quadratic memory requirements.
-
+Computing the Hessian for neural networks is typically intractible due to the
+quadratic memory requirements. Solving for the diagonal can be done cheaply,
+with sub-quadratic memory requirements.
 """
 
-from typing import Any, Callable
+from typing import Any
 
 import jax
-from jax.flatten_util import ravel_pytree
+from jax import flatten_util
 import jax.numpy as jnp
 
-
-# This covers both Jax and Numpy arrays.
-# TODO(b/160876114): use the pytypes defined in Chex.
-Array = jnp.ndarray
-# LossFun of type f(params, inputs, targets).
-LossFun = Callable[[Any, Array, Array], Array]
+from optax.second_order import base
 
 
-def ravel(p: Any) -> Array:
-  return ravel_pytree(p)[0]
+def _ravel(p: Any) -> jax.Array:
+  return flatten_util.ravel_pytree(p)[0]
 
 
 def hvp(
-    loss: LossFun,
+    loss: base.LossFn,
     v: jax.Array,
     params: Any,
     inputs: jax.Array,
@@ -61,13 +52,13 @@ def hvp(
     An Array corresponding to the product of `v` and the Hessian of `loss`
     evaluated at `(params, inputs, targets)`.
   """
-  _, unravel_fn = ravel_pytree(params)
+  _, unravel_fn = flatten_util.ravel_pytree(params)
   loss_fn = lambda p: loss(p, inputs, targets)
   return jax.jvp(jax.grad(loss_fn), [params], [unravel_fn(v)])[1]
 
 
 def hessian_diag(
-    loss: LossFun,
+    loss: base.LossFn,
     params: Any,
     inputs: jax.Array,
     targets: jax.Array,
@@ -84,28 +75,6 @@ def hessian_diag(
     A DeviceArray corresponding to the product to the Hessian of `loss`
     evaluated at `(params, inputs, targets)`.
   """
-  vs = jnp.eye(ravel(params).size)
-  comp = lambda v: jnp.vdot(v, ravel(hvp(loss, v, params, inputs, targets)))
+  vs = jnp.eye(_ravel(params).size)
+  comp = lambda v: jnp.vdot(v, _ravel(hvp(loss, v, params, inputs, targets)))
   return jax.vmap(comp)(vs)
-
-
-def fisher_diag(
-    negative_log_likelihood: LossFun,
-    params: Any,
-    inputs: jnp.ndarray,
-    targets: jnp.ndarray,
-) -> jax.Array:
-  """Computes the diagonal of the (observed) Fisher information matrix.
-
-  Args:
-    negative_log_likelihood: the negative log likelihood function.
-    params: model parameters.
-    inputs: inputs at which `negative_log_likelihood` is evaluated.
-    targets: targets at which `negative_log_likelihood` is evaluated.
-
-  Returns:
-    An Array corresponding to the product to the Hessian of
-    `negative_log_likelihood` evaluated at `(params, inputs, targets)`.
-  """
-  return jnp.square(
-      ravel(jax.grad(negative_log_likelihood)(params, inputs, targets)))
