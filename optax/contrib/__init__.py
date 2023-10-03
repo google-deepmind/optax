@@ -14,5 +14,5 @@
 # ==============================================================================
 """Contributed optimizers in Optax."""
 
-from optax._src.contrib.mechanic import MechanicState
-from optax._src.contrib.mechanic import mechanize
+from optax.contrib.mechanic import MechanicState
+from optax.contrib.mechanic import mechanize

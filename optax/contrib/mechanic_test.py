@@ -27,7 +27,7 @@ from optax._src import base
 from optax._src import numerics
 from optax._src import state_utils
 from optax._src import update
-from optax._src.contrib import mechanic
+from optax.contrib import mechanic
 
 
 # TODO(harshm): make LARS and Fromage work with mechanic.
