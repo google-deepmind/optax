@@ -14,18 +14,43 @@
 # ==============================================================================
 """Asserts all public symbols are covered in the docs."""
 
-from typing import Any, Mapping
+import inspect
+import types
+from typing import Any, Mapping, Sequence, Tuple
 
 import optax
-from optax._src import test_utils
 from sphinx import application
 from sphinx import builders
 from sphinx import errors
 
 
+def find_internal_python_modules(
+    root_module: types.ModuleType,
+) -> Sequence[Tuple[str, types.ModuleType]]:
+  """Returns `(name, module)` for all Optax submodules under `root_module`."""
+  modules = set([(root_module.__name__, root_module)])
+  visited = set()
+  to_visit = [root_module]
+
+  while to_visit:
+    mod = to_visit.pop()
+    visited.add(mod)
+
+    for name in dir(mod):
+      obj = getattr(mod, name)
+      if inspect.ismodule(obj) and obj not in visited:
+        if obj.__name__.startswith("optax"):
+          if "_src" not in obj.__name__:
+            to_visit.append(obj)
+            modules.add((obj.__name__, obj))
+
+  return sorted(modules)
+
+
 def optax_public_symbols():
+  """Collect all optax public symbols."""
   names = set()
-  for module_name, module in test_utils.find_internal_python_modules(optax):
+  for module_name, module in find_internal_python_modules(optax):
     for name in module.__all__:
       names.add(module_name + "." + name)
   return names
