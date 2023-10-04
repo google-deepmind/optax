@@ -16,6 +16,7 @@
 
 from optax import contrib
 from optax import experimental
+from optax import monte_carlo
 from optax import second_order
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
@@ -70,9 +71,6 @@ from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans
 from optax._src.constrain import ZeroNansState
-from optax._src.control_variates import control_delta_method
-from optax._src.control_variates import control_variates_jacobians
-from optax._src.control_variates import moving_avg_baseline
 from optax._src.factorized import FactoredState
 from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
@@ -117,9 +115,6 @@ from optax._src.schedule import sgdr_schedule
 from optax._src.schedule import warmup_cosine_decay_schedule
 from optax._src.schedule import warmup_exponential_decay_schedule
 from optax._src.state_utils import tree_map_params
-from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
-from optax._src.stochastic_gradient_estimators import pathwise_jacobians
-from optax._src.stochastic_gradient_estimators import score_function_jacobians
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
@@ -217,8 +212,6 @@ __all__ = (
     "constant_schedule",
     "ctc_loss",
     "ctc_loss_with_forward_probs",
-    "control_delta_method",
-    "control_variates_jacobians",
     "convex_kl_divergence",
     "cosine_decay_schedule",
     "cosine_distance",
@@ -262,8 +255,6 @@ __all__ = (
     "matrix_inverse_pth_root",
     "maybe_update",
     "MaybeUpdateState",
-    "measure_valued_jacobians",
-    "moving_avg_baseline",
     "multi_normal",
     "multi_transform",
     "MultiSteps",
@@ -274,7 +265,6 @@ __all__ = (
     "NonNegativeParamsState",
     "OptState",
     "Params",
-    "pathwise_jacobians",
     "periodic_update",
     "per_example_global_norm_clip",
     "piecewise_constant_schedule",
@@ -319,7 +309,6 @@ __all__ = (
     "ScaleByTrustRatioState",
     "ScaleState",
     "Schedule",
-    "score_function_jacobians",
     "set_to_zero",
     "sgd",
     "sgdr_schedule",
