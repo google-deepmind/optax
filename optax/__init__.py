@@ -16,6 +16,7 @@
 
 from optax import contrib
 from optax import experimental
+from optax import losses
 from optax import monte_carlo
 from optax import second_order
 from optax._src.alias import adabelief
@@ -79,21 +80,6 @@ from optax._src.linear_algebra import power_iteration
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
-from optax._src.loss import convex_kl_divergence
-from optax._src.loss import cosine_distance
-from optax._src.loss import cosine_similarity
-from optax._src.loss import ctc_loss
-from optax._src.loss import ctc_loss_with_forward_probs
-from optax._src.loss import hinge_loss
-from optax._src.loss import huber_loss
-from optax._src.loss import kl_divergence
-from optax._src.loss import l2_loss
-from optax._src.loss import log_cosh
-from optax._src.loss import sigmoid_binary_cross_entropy
-from optax._src.loss import smooth_labels
-from optax._src.loss import softmax_cross_entropy
-from optax._src.loss import softmax_cross_entropy_with_integer_labels
-from optax._src.loss import squared_error
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -179,6 +165,25 @@ from optax._src.wrappers import MultiStepsState
 from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
+
+# TODO(mtthss): remove loss aliases from flat namespace once users have updated.
+convex_kl_divergence = losses.convex_kl_divergence
+cosine_distance = losses.cosine_distance
+cosine_similarity = losses.cosine_similarity
+ctc_loss = losses.ctc_loss
+ctc_loss_with_forward_probs = losses.ctc_loss_with_forward_probs
+hinge_loss = losses.hinge_loss
+huber_loss = losses.huber_loss
+kl_divergence = losses.kl_divergence
+l2_loss = losses.l2_loss
+log_cosh = losses.log_cosh
+sigmoid_binary_cross_entropy = losses.sigmoid_binary_cross_entropy
+smooth_labels = losses.smooth_labels
+softmax_cross_entropy = losses.softmax_cross_entropy
+softmax_cross_entropy_with_integer_labels = (
+    losses.softmax_cross_entropy_with_integer_labels
+)
+squared_error = losses.squared_error
 
 __version__ = "0.1.8.dev"
 
