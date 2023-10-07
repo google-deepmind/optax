@@ -23,6 +23,7 @@ import jax
 from jax import random
 import jax.numpy as jnp
 import optax
+from optax import losses
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -90,7 +91,7 @@ def train_on_mnist(optimizer: optax.GradientTransformation,
 
   def get_loss(params, batch):
     logits = apply_params_fn(params, batch['image'])
-    return jnp.mean(optax.softmax_cross_entropy(logits, batch['label']))
+    return jnp.mean(losses.softmax_cross_entropy(logits, batch['label']))
 
   @jax.jit
   def train_step(params, optimizer_state, batch):

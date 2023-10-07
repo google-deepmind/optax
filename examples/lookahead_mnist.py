@@ -20,6 +20,7 @@ import jax
 from jax import random
 import jax.numpy as jnp
 import optax
+from optax import losses
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -50,7 +51,7 @@ def main(unused_argv) -> None:
 
   def get_loss(fast_params, batch):
     logits = apply_params_fn(fast_params, batch['image'])
-    return jnp.mean(optax.softmax_cross_entropy(logits, batch['label']))
+    return jnp.mean(losses.softmax_cross_entropy(logits, batch['label']))
 
   @jax.jit
   def train_step(params, optimizer_state, batch):

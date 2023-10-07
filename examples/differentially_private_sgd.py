@@ -71,6 +71,7 @@ import jax
 from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
+from optax import losses
 
 # pylint: disable=g-bad-import-order
 import datasets  # Located in the examples folder.
@@ -119,7 +120,7 @@ def compute_epsilon(steps, target_delta=1e-5):
 
 def loss_fn(params, batch):
   logits = predict(params, batch['image'])
-  return optax.softmax_cross_entropy(logits, batch['label']).mean(), logits
+  return losses.softmax_cross_entropy(logits, batch['label']).mean(), logits
 
 
 @jax.jit
