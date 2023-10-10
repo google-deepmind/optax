@@ -682,7 +682,7 @@ def rmsprop(
   WARNING: PyTorch and optax's RMSprop implementations differ and could impact
     performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
     PyTorch uses $\sqrt{v} + \epsilon$. See
-     https://github.com/google-deepmind/optax/issues/532 for more detail.
+    https://github.com/google-deepmind/optax/issues/532 for more detail.
 
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
