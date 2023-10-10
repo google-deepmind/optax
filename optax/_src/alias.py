@@ -679,6 +679,11 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
+  WARNING: PyTorch and optax's RMSprop implementations differ and could impact
+    performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
+    PyTorch uses $\sqrt{v} + \epsilon$. See
+     https://github.com/google-deepmind/optax/issues/532 for more detail.
+
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
     Graves, 2013: https://arxiv.org/abs/1308.0850
