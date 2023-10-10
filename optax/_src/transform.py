@@ -225,7 +225,7 @@ def scale_by_rms(
     eps: float = 1e-8,
     initial_scale: float = 0.
 ) -> base.GradientTransformation:
-  """Rescale updates by the root of the exp. moving avg of the square.
+  r"""Rescale updates by the root of the exp. moving avg of the square.
 
   WARNING: PyTorch and optax's RMSprop implementations differ and could impact
     performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas

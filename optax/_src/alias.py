@@ -671,7 +671,7 @@ def rmsprop(
     nesterov: bool = False
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
-  """A flexible RMSProp optimizer.
+  r"""A flexible RMSProp optimizer.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
   used for each weight is scaled by a suitable estimate of the magnitude of the
