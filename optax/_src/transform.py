@@ -316,6 +316,11 @@ def scale_by_adam(
   References:
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
 
+  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma 
+    and Ba's Adam paper, if reproducing old results note that TensorFlow 
+    used instead the formulation just before Section 2.1 of the paper.
+    See https://github.com/deepmind/optax/issues/571 for more detail.
+
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate for the exponentially weighted average of squared grads.
