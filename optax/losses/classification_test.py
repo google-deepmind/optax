@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax._src.loss."""
+"""Tests for optax.losses.classification."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -22,86 +22,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax._src import loss
-
-
-class L2LossTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ys = jnp.array([-2., -1., 0.5, 1.])
-    self.ts = jnp.array([-1.5, 0., -1, 1.])
-    # compute expected outputs in numpy.
-    self.exp = 0.5 * (self.ts - self.ys) ** 2
-
-  @chex.all_variants
-  def test_scalar(self):
-    np.testing.assert_allclose(
-        self.variant(loss.l2_loss)(self.ys[0], self.ts[0]), self.exp[0])
-
-  @chex.all_variants
-  def test_batched(self):
-    np.testing.assert_allclose(
-        self.variant(loss.l2_loss)(self.ys, self.ts), self.exp)
-
-
-class HuberLossTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ys = np.array([-2.0, 0.5, 0., 0.5, 2.0, 4.0, 132.])
-    self.ts = np.array([0.0, -0.5, 0., 1., 1.0, 2.0, 0.3])
-    # computed expected outputs manually.
-    self.exp = np.array([1.5, 0.5, 0., 0.125, 0.5, 1.5, 131.2])
-
-  @chex.all_variants
-  def test_scalar(self):
-    np.testing.assert_allclose(
-        self.variant(loss.huber_loss)(self.ys[0], self.ts[0], delta=1.0),
-        self.exp[0])
-
-  @chex.all_variants
-  def test_batched(self):
-    np.testing.assert_allclose(
-        self.variant(loss.huber_loss)(self.ys, self.ts, delta=1.0),
-        self.exp)
-
-
-class SmoothLabelsTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ts = np.array([[0., 1., 0.], [1., 0., 0.]], dtype=np.float32)
-    # compute expected outputs in numpy.
-    self.exp_alpha_zero = self.ts
-    self.exp_alpha_zero_point_one = 0.9 * self.ts + 0.1 / self.ts.shape[-1]
-    self.exp_alpha_one = jnp.ones_like(self.ts) / self.ts.shape[-1]
-
-  @chex.all_variants()
-  def test_scalar(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts[0], 0.),
-        self.exp_alpha_zero[0], atol=1e-4)
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts[0], 0.1),
-        self.exp_alpha_zero_point_one[0], atol=1e-4)
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts[0], 1.),
-        self.exp_alpha_one[0], atol=1e-4)
-
-  @chex.all_variants()
-  def test_batched(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts, 0.),
-        self.exp_alpha_zero, atol=1e-4)
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts, 0.1),
-        self.exp_alpha_zero_point_one, atol=1e-4)
-    np.testing.assert_allclose(
-        self.variant(loss.smooth_labels)(self.ts, 1.),
-        self.exp_alpha_one, atol=1e-4)
+from optax.losses import classification
 
 
 class SoftmaxCrossEntropyTest(parameterized.TestCase):
@@ -113,18 +34,19 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     # taken expected outputs from rlax.
     self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(loss.softmax_cross_entropy)(self.ys[0], self.ts[0]),
+        self.variant(
+            classification.softmax_cross_entropy)(self.ys[0], self.ts[0]),
         self.exp[0], atol=1e-4)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(loss.softmax_cross_entropy)(self.ys, self.ts),
+        self.variant(classification.softmax_cross_entropy)(self.ys, self.ts),
         self.exp, atol=1e-4)
 
 
@@ -135,21 +57,23 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
     self.ts = np.array([1, 0], dtype=np.int32)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_scalar(self):
     """Tests for a scalar."""
-    exp = loss.softmax_cross_entropy(self.ys[0], jax.nn.one_hot(self.ts[0], 3))
+    exp = classification.softmax_cross_entropy(
+        self.ys[0], jax.nn.one_hot(self.ts[0], 3))
     np.testing.assert_allclose(
-        self.variant(loss.softmax_cross_entropy_with_integer_labels)(
+        self.variant(classification.softmax_cross_entropy_with_integer_labels)(
             self.ys[0], self.ts[0]),
         exp, rtol=1e-6)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_batched(self):
     """Tests for a full batch."""
-    exp = loss.softmax_cross_entropy(self.ys, jax.nn.one_hot(self.ts, 3))
+    exp = classification.softmax_cross_entropy(
+        self.ys, jax.nn.one_hot(self.ts, 3))
     np.testing.assert_allclose(
-        self.variant(loss.softmax_cross_entropy_with_integer_labels)(
+        self.variant(classification.softmax_cross_entropy_with_integer_labels)(
             self.ys, self.ts),
         exp, rtol=1e-6)
 
@@ -189,80 +113,206 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
            expected=0.6931472),
   )
   def testSigmoidCrossEntropy(self, preds, labels, expected):
-    tested = jnp.mean(loss.sigmoid_binary_cross_entropy(preds, labels))
+    tested = jnp.mean(
+        classification.sigmoid_binary_cross_entropy(preds, labels))
     np.testing.assert_allclose(tested, expected, rtol=1e-6, atol=1e-6)
 
 
-class CosineDistanceTest(parameterized.TestCase):
+class PolyLossTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
-    self.ts = np.array([[0., 1.2, 0.2], [1., -0.3, 0.]], dtype=np.float32)
-    # distance computed expected output from `scipy 1.20`.
-    self.exp = np.array([0.9358251989, 1.0464068465], dtype=np.float32)
+    self.logits = np.array([0.14, 1.456, 2.356, -0.124, -2.47])
+    self.labels = np.array([0.1, 0.15, 0.2, 0.25, 0.3])
 
-  @chex.all_variants()
-  def test_scalar_distance(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.cosine_distance)(self.ys[0], self.ts[0]),
-        self.exp[0], atol=1e-4)
-
-  @chex.all_variants()
-  def test_scalar_similarity(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.cosine_similarity)(self.ys[0], self.ts[0]),
-        1. - self.exp[0], atol=1e-4)
-
-  @chex.all_variants()
-  def test_batched_distance(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.cosine_distance)(self.ys, self.ts),
-        self.exp, atol=1e-4)
-
-  @chex.all_variants()
-  def test_batched_similarity(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        self.variant(loss.cosine_similarity)(self.ys, self.ts),
-        1. - self.exp, atol=1e-4)
-
-
-# TODO(b/188419459): add test for grad and second order grad.
-class LogCoshTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    # Test large values for overflow
-    self.ys = jnp.array([500, -2., -1., 0.5, 1.])
-    self.ts = jnp.array([-200, -1.5, 0., -1, 1.])
-    # computed using tensorflow.keras.losses.log_cosh v2.4.1
-    self.exp = jnp.array([699.3068, 0.12011445, 0.4337809, 0.85544014, 0.])
-    self.exp_ys_only = jnp.array(
-        [499.30685, 1.3250027, 0.4337809, 0.12011451, 0.43378082])
+    self.batched_logits = np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]])
+    self.batched_labels = np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]])
+    # all expected values are computed using tf version of `poly1_cross_entropy`
+    # see page 10 here https://arxiv.org/pdf/2204.12511.pdf for more
 
   @chex.all_variants
-  def test_scalar(self):
-    out = self.variant(loss.log_cosh)(self.ys[0], self.ts[0])
-    np.testing.assert_allclose(out, self.exp[0], atol=1e-5)
+  @parameterized.parameters(
+      dict(eps=2, expected=4.5317),
+      dict(eps=1, expected=3.7153),
+      dict(eps=-1, expected=2.0827),
+      dict(eps=0, expected=2.8990),
+      dict(eps=-0.5, expected=2.4908),
+      dict(eps=1.15, expected=3.8378),
+      dict(eps=1.214, expected=3.8900),
+      dict(eps=5.45, expected=7.3480),
+  )
+  def test_scalar(self, eps, expected):
+    np.testing.assert_allclose(
+        self.variant(classification.poly_loss_cross_entropy)(
+            self.logits, self.labels, eps
+        ),
+        expected,
+        atol=1e-4,
+    )
+
+  @chex.all_variants
+  @parameterized.parameters(
+      dict(eps=2, expected=np.array([0.4823, 1.2567])),
+      dict(eps=1, expected=np.array([0.3261, 1.0407])),
+      dict(eps=0, expected=np.array([0.1698, 0.8247])),
+      dict(eps=-0.5, expected=np.array([0.0917, 0.7168])),
+      dict(eps=1.15, expected=np.array([0.3495, 1.0731])),
+      dict(eps=1.214, expected=np.array([0.3595, 1.0870])),
+      dict(eps=5.45, expected=np.array([1.0211, 2.0018])),
+  )
+  def test_batched(self, eps, expected):
+    np.testing.assert_allclose(
+        self.variant(classification.poly_loss_cross_entropy)(
+            self.batched_logits, self.batched_labels, eps
+        ),
+        expected,
+        atol=1e-4,
+    )
+
+  @chex.all_variants
+  @parameterized.parameters(
+      dict(
+          logits=np.array(
+              [[4.0, 2.0, 1.0], [0.0, 5.0, 1.0], [0.134, 1.234, 3.235]]
+          ),
+          labels=np.array(
+              [[1.0, 0.0, 0.0], [0.0, 0.8, 0.2], [0.34, 0.33, 0.33]]
+          ),
+      ),
+      dict(
+          logits=np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]]),
+          labels=np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]]),
+      ),
+      dict(
+          logits=np.array(
+              [[4.0, 2.0, 1.0, 0.134, 1.3515], [0.0, 5.0, 1.0, 0.5215, 5.616]]
+          ),
+          labels=np.array(
+              [[0.5, 0.0, 0.0, 0.0, 0.5], [0.0, 0.12, 0.2, 0.56, 0.12]]
+          ),
+      ),
+      dict(logits=np.array([1.89, 2.39]), labels=np.array([0.34, 0.66])),
+      dict(logits=np.array([0.314]), labels=np.array([1.0])),
+  )
+  def test_equals_to_cross_entropy_when_eps0(self, logits, labels):
+    np.testing.assert_allclose(
+        self.variant(classification.poly_loss_cross_entropy)(
+            logits, labels, epsilon=0.0),
+        self.variant(classification.softmax_cross_entropy)(
+            logits, labels),
+        atol=1e-4,
+    )
+
+
+class HingeLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([
+        -0.97740268, -1.01812625, -0.81675726, -0.73605974, 2.08235648,
+        1.84101354, -1.0581002
+    ])
+    self.ts = np.array([-1, -1, -1, -1, 1, 1, -1])
+    # Computed expected outputs.
+    self.correct_result = np.array(
+        [0.02259731, 0., 0.18324274, 0.26394027, 0., 0., 0.])
 
   @chex.all_variants
   def test_batched(self):
-    out = self.variant(loss.log_cosh)(self.ys, self.ts)
-    np.testing.assert_allclose(out, self.exp, atol=1e-5)
+    np.testing.assert_allclose(
+        self.variant(classification.hinge_loss)(self.ys, self.ts),
+        self.correct_result,
+        atol=1e-4)
+
+
+class ConvexKLDivergenceTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.log_ps = np.array([
+        [-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
+        [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971],
+    ])
+    self.qs = np.array(
+        [[0.2, 0.2, 0.2, 0.1, 0.15, 0.15], [0.05, 0.03, 0.02, 0.3, 0.5, 0.0]]
+    )
+
+    # Computed convex kullback-leibler divergence of P from Q.
+    self.exp = np.array([0.88757247, 0.859308])
 
   @chex.all_variants
-  def test_scalar_predictions_only(self):
-    out = self.variant(loss.log_cosh)(self.ys[0])
-    np.testing.assert_allclose(out, self.exp_ys_only[0], atol=1e-5)
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(classification.convex_kl_divergence)(
+            self.log_ps[0], self.qs[0]),
+        self.exp[0],
+        atol=1e-4,
+    )
 
   @chex.all_variants
-  def test_batched_predictions_only(self):
-    out = self.variant(loss.log_cosh)(self.ys)
-    np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(classification.convex_kl_divergence)(
+            self.log_ps, self.qs),
+        self.exp,
+        atol=1e-4,
+    )
+
+
+class KLDivergenceTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.log_ps = np.array(
+        [[-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
+         [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971]])
+    self.qs = np.array([[0.2, 0.2, 0.2, 0.1, 0.15, 0.15],
+                        [0.05, 0.03, 0.02, 0.3, 0.5, 0.]])
+    # Computed kullback-leibler divergence of P from Q.
+    self.exp = np.array([0.8875577, 0.7592807])
+
+  @chex.all_variants
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(classification.kl_divergence)(self.log_ps[0], self.qs[0]),
+        self.exp[0],
+        atol=1e-4)
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(classification.kl_divergence)(self.log_ps, self.qs),
+        self.exp,
+        atol=1e-4)
+
+
+class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.log_ps = np.array(
+        [[-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026],
+         [-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971]])
+    self.qs = np.array([[-1.6094, -1.6094, -1.6094, -2.3026, -1.8971, -1.8971],
+                        [-2.9957, -3.5066, -3.9120, -1.2040, -0.6931, -2.3026]])
+    # Computed kullback-leibler divergence of P from Q.
+    self.exp = np.array([0.8875625, 0.7187435584901326])
+
+  @chex.all_variants
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        self.variant(classification.kl_divergence_with_log_targets)(
+            self.log_ps[0], self.qs[0]),
+        self.exp[0],
+        atol=1e-4)
+
+  @chex.all_variants
+  def test_batched(self):
+    np.testing.assert_allclose(
+        self.variant(classification.kl_divergence_with_log_targets)(
+            self.log_ps, self.qs),
+        self.exp,
+        atol=1e-4)
 
 
 def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
@@ -272,11 +322,14 @@ def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
   return np.logical_not(elem_valid).astype(np.float32)
 
 
-def _average_ctc_loss(logprobs: chex.Array, logprob_paddings: chex.Array,
-                      labels: chex.Array,
-                      label_paddings: chex.Array) -> chex.Array:
+def _average_ctc_loss(
+    logprobs: chex.Array, logprob_paddings: chex.Array,
+    labels: chex.Array,
+    label_paddings: chex.Array
+) -> chex.Array:
   return jnp.average(
-      loss.ctc_loss(logprobs, logprob_paddings, labels, label_paddings))
+      classification.ctc_loss(
+          logprobs, logprob_paddings, labels, label_paddings))
 
 
 class CTCTest(parameterized.TestCase):
@@ -304,7 +357,7 @@ class CTCTest(parameterized.TestCase):
         while labels[n, t] == labels[n, t - 1]:
           labels[n, t] = np.random.uniform(1, nclasses)
 
-    results = self.variant(loss.ctc_loss_with_forward_probs)(
+    results = self.variant(classification.ctc_loss_with_forward_probs)(
         logits, np.zeros(logits.shape[:2]),
         labels, np.zeros(labels.shape))
     (per_seq_loss, logalpha_blank, logalpha_emit) = results
@@ -355,12 +408,12 @@ class CTCTest(parameterized.TestCase):
     lengths = np.random.randint(3, 6, size=(batch_size,))
     paddings = _lengths_to_paddings(lengths, steps)
 
-    actual_loss = self.variant(loss.ctc_loss)(logits, paddings, labels,
-                                              paddings)
+    actual_loss = self.variant(classification.ctc_loss)(
+        logits, paddings, labels, paddings)
 
     value_and_grad = self.variant(jax.value_and_grad(_average_ctc_loss))
-    unused_avg_loss, actual_gradients = value_and_grad(logits, paddings, labels,
-                                                       paddings)
+    unused_avg_loss, actual_gradients = value_and_grad(
+        logits, paddings, labels, paddings)
 
     for n in range(batch_size):
       expected_loss = -sum(logprobs[n, t, k]
@@ -405,8 +458,8 @@ class CTCTest(parameterized.TestCase):
     logits = np.random.randn(batch_size, logit_steps, nclasses)
     logit_paddings = _lengths_to_paddings(logit_lengths, logit_steps)
 
-    per_seq_loss = self.variant(loss.ctc_loss)(logits, logit_paddings, labels,
-                                               label_paddings)
+    per_seq_loss = self.variant(classification.ctc_loss)(
+        logits, logit_paddings, labels, label_paddings)
 
     logprobs = jax.nn.log_softmax(logits)
     for n in range(batch_size):

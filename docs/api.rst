@@ -10,10 +10,16 @@ Common Optimizers
     adagrad
     adam
     adamw
+    adamax
+    adamaxw
+    amsgrad
     fromage
     lamb
     lars
+    lion
     noisy_sgd
+    novograd
+    optimistic_gradient_descent
     dpsgd
     radam
     rmsprop
@@ -42,10 +48,25 @@ Adam
 
 .. autofunction:: adam
 
+Adamax
+~~~~~~
+
+.. autofunction:: adamax
+
+AdamaxW
+~~~~~~~
+
+.. autofunction:: adamaxw
+
 AdamW
 ~~~~~
 
 .. autofunction:: adamw
+
+AMSGrad
+~~~~~~~
+
+.. autofunction:: amsgrad
 
 Fromage
 ~~~~~~~
@@ -62,6 +83,11 @@ Lars
 
 .. autofunction:: lars
 
+Lion
+~~~~
+
+.. autofunction:: lion
+
 SM3
 ~~~
 
@@ -72,6 +98,19 @@ Noisy SGD
 ~~~~~~~~~
 
 .. autofunction:: noisy_sgd
+
+
+Novograd
+~~~~~~~~~
+
+.. autofunction:: novograd
+
+
+Optimistic GD
+~~~~~~~~~~~~~
+
+.. autofunction:: optimistic_gradient_descent
+
 
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,6 +171,7 @@ Gradient Transforms
     FactoredState
     global_norm
     GradientTransformation
+    GradientTransformationExtraArgs
     identity
     keep_params_nonnegative
     NonNegativeParamsState
@@ -139,8 +179,13 @@ Gradient Transforms
     Params
     scale
     scale_by_adam
+    scale_by_adamax
+    scale_by_amsgrad
     scale_by_belief
     scale_by_factored_rms
+    scale_by_lion
+    scale_by_novograd
+    scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
     scale_by_radam
@@ -152,7 +197,9 @@ Gradient Transforms
     scale_by_trust_ratio
     scale_by_yogi
     ScaleByAdamState
-    ScaleByFromageState
+    ScaleByAmsgradState
+    ScaleByLionState
+    ScaleByNovogradState
     ScaleByRmsState
     ScaleByRssState
     ScaleByRStdDevState
@@ -164,6 +211,7 @@ Gradient Transforms
     stateless_with_tree_map
     set_to_zero
     trace
+    tree_map_params
     TraceState
     TransformInitFn
     TransformUpdateFn
@@ -173,6 +221,7 @@ Gradient Transforms
     Updates
     zero_nans
     ZeroNansState
+    with_extra_args_support
 
 
 Optax Types
@@ -248,8 +297,12 @@ Optax Transforms and States
 
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
+.. autofunction:: scale_by_adamax
+.. autofunction:: scale_by_amsgrad
 .. autofunction:: scale_by_belief
 .. autofunction:: scale_by_factored_rms
+.. autofunction:: scale_by_lion
+.. autofunction:: scale_by_novograd
 .. autofunction:: scale_by_param_block_norm
 .. autofunction:: scale_by_param_block_rms
 .. autofunction:: scale_by_radam
@@ -263,7 +316,13 @@ Optax Transforms and States
 .. autoclass:: ScaleByAdamState
     :members:
 
-.. autoclass:: ScaleByFromageState
+.. autoclass:: ScaleByAmsgradState
+    :members:
+
+.. autoclass:: ScaleByLionState
+    :members:
+
+.. autoclass:: ScaleByNovogradState
     :members:
 
 .. autoclass:: ScaleByRmsState
@@ -371,6 +430,9 @@ Optimizer Wrappers
     MaybeUpdateState
     MultiSteps
     MultiStepsState
+    ShouldSkipUpdateFunction
+    skip_large_updates
+    skip_not_finite
 
 
 Apply if Finite
@@ -435,34 +497,41 @@ Common Losses
 
 .. autosummary::
 
+    convex_kl_divergence
     cosine_distance
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
+    hinge_loss
     huber_loss
+    kl_divergence
     l2_loss
     log_cosh
     sigmoid_binary_cross_entropy
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
+    squared_error
 
 
 Losses
 ~~~~~~~
 
+.. autofunction:: convex_kl_divergence
 .. autofunction:: cosine_distance
 .. autofunction:: cosine_similarity
 .. autofunction:: ctc_loss
 .. autofunction:: ctc_loss_with_forward_probs
+.. autofunction:: hinge_loss
 .. autofunction:: huber_loss
+.. autofunction:: kl_divergence
 .. autofunction:: l2_loss
 .. autofunction:: log_cosh
 .. autofunction:: sigmoid_binary_cross_entropy
 .. autofunction:: smooth_labels
 .. autofunction:: softmax_cross_entropy
-
-
+.. autofunction:: softmax_cross_entropy_with_integer_labels
+.. autofunction:: squared_error
 
 Linear Algebra Operators
 ========================
@@ -691,6 +760,17 @@ scale_gradient
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction:: scale_gradient
+
+
+🔧 Contrib
+===============
+
+.. currentmodule:: optax.contrib
+
+.. autosummary::
+
+    mechanize
+    MechanicState
 
 
 🚧 Experimental

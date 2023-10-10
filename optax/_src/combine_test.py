@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
@@ -38,7 +39,7 @@ class ComposeTest(chex.TestCase):
     self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
     self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
@@ -73,7 +74,7 @@ class ComposeTest(chex.TestCase):
       states = new_states
 
     # Check equivalence.
-    chex.assert_tree_all_close(manual_params, chain_params, rtol=1e-4)
+    chex.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
 
 
 def _map_keys_fn(fn):
@@ -83,6 +84,70 @@ def _map_keys_fn(fn):
   return map_fn
 
 
+class ExtraArgsTest(chex.TestCase):
+
+  def test_extra_args(self):
+    def init_fn(params):
+      del params
+      return tuple()
+
+    # Arguments required by a transformation should be keyword-only.
+    # For example, the loss argument in this transformation.
+    def update_fn(updates, state, params=None, *, loss, **extra_args):
+      # Extra args should always be accepted.
+      del extra_args, params
+      assert loss == 1
+      return updates, state
+
+    t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+    result = combine.chain(alias.adam(1e-3), t)
+    self.assertIsInstance(result, base.GradientTransformationExtraArgs)
+
+    params = {'a': 1, 'b': 2}
+    state = result.init(params)
+    result.update(params, state, loss=1, ignored_kwarg='hi')
+
+  def test_extra_args_chaining(self):
+    def init_fn(params):
+      del params
+      return {}
+    def update_fn(updates, state, params=None):
+      del params
+      return updates, state
+
+    # Possible gotcha: Chaining regular gradient transformations results in
+    # a transformation that supports extra args.
+    t1 = base.GradientTransformation(init_fn, update_fn)
+    t2 = combine.chain(t1, t1)
+    self.assertIsInstance(t2, base.GradientTransformation)
+    self.assertIsInstance(t2, base.GradientTransformationExtraArgs)
+
+    t3 = base.with_extra_args_support(t2)
+    self.assertIsInstance(t3, base.GradientTransformationExtraArgs)
+
+  def test_extra_args_positional_params(self):
+    def init_fn(params):
+      del params
+      return tuple()
+
+    def update_fn(updates, state, params=None):
+      assert params is not None
+      return updates, state
+
+    def update_fn_kwargs(updates, state, params=None, **extra_args):
+      del extra_args
+      assert params is not None
+      return updates, state
+
+    t1 = base.GradientTransformation(init_fn, update_fn)
+    t2 = base.GradientTransformationExtraArgs(init_fn, update_fn_kwargs)
+    opt = combine.chain(t1, t2)
+    params = {'a': 1, 'b': 2}
+    state = opt.init(params)
+    opt.update(params, state, params, ignored_kwarg='hi')
+    opt.update(params, state, params=params, ignored_kwarg='hi')
+
+
 class MultiTransformTest(chex.TestCase):
   """Tests for the multi_transform wrapper."""
 
@@ -90,8 +155,8 @@ class MultiTransformTest(chex.TestCase):
   @parameterized.parameters(True, False)
   def test_multi_transform(self, use_fn):
     params = {'a1': 1., 'b1': 2., 'z1': {'a2': 3., 'z2': {'c1': 4.}}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x / 10.0, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
     tx_dict = {'a': transform.scale(-1.0),
                'b': transform.ema(0.0),  # stateful
                'c': transform.scale(2.0)}
@@ -107,12 +172,50 @@ class MultiTransformTest(chex.TestCase):
 
     updates, state = update_fn(input_updates, state, params)
     correct_updates = correct_update_fn(input_updates)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = correct_update_fn(correct_updates)
     updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
+
+  def test_extra_args(self):
+
+    class ArgNotEqual1Error(ValueError):
+      """Raised when argument not set as expected."""
+
+    def init(params):
+      return {'mu': params}
+
+    def update_with_arg(updates, state, params=None, *, arg, **extra_args):
+      del params, extra_args
+      if arg != 1:
+        raise ArgNotEqual1Error()
+      return updates, state
+
+    def update_without_arg(updates, state, params=None):
+      del params
+      return updates, state
+
+    opt_no_arg = base.GradientTransformation(init, update_without_arg)
+    opt_extra_arg = base.GradientTransformationExtraArgs(init, update_with_arg)
+
+    opt = combine.multi_transform(
+        {
+            'a': opt_no_arg,
+            'b': opt_extra_arg,
+        },
+        ('a', 'b'),
+    )
+
+    fake_params = ({'u': jnp.array([1])}, {'v': jnp.array([1])})
+    state = opt.init(fake_params)
+
+    with self.assertRaises(TypeError):
+      opt.update(fake_params, state)
+    with self.assertRaises(ArgNotEqual1Error):
+      opt.update(fake_params, state, arg=2, ignored_kwarg='hi')
+    opt.update(fake_params, state, arg=1, ignored_kwarg='hi')
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
@@ -127,7 +230,7 @@ class MultiTransformTest(chex.TestCase):
   def test_labels_mismatch(self, use_extra_label, use_fn):
     # The labels from label_fn must be a subet of the keys for the tx.
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
     label_tree = {'a': 0, 'b': [1, 0], 'c': 1}  # prefix of params
 
     if use_extra_label:
@@ -144,7 +247,7 @@ class MultiTransformTest(chex.TestCase):
         self.variant(init_fn)(params)
     else:
       state = self.variant(init_fn)(params)
-      updates = jax.tree_map(lambda x: x / 10.0, params)
+      updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
       self.variant(update_fn)(updates, state)
 
 

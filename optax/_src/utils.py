@@ -14,6 +14,8 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+from typing import Optional, Tuple, Sequence
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -23,28 +25,30 @@ from optax._src import linear_algebra
 from optax._src import numerics
 
 
-def tile_second_to_last_dim(a):
+def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
 
 
-def canonicalize_dtype(dtype):
+def canonicalize_dtype(
+    dtype: Optional[chex.ArrayDType]) -> Optional[chex.ArrayDType]:
   """Canonicalise a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
   return dtype
 
 
-def cast_tree(tree, dtype):
+def cast_tree(tree: chex.ArrayTree,
+              dtype: Optional[chex.ArrayDType]) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None."""
   if dtype is not None:
-    return jax.tree_map(lambda t: t.astype(dtype), tree)
+    return jax.tree_util.tree_map(lambda t: t.astype(dtype), tree)
   else:
     return tree
 
 
-def set_diags(a, new_diags):
+def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -55,8 +59,25 @@ def set_diags(a, new_diags):
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
+  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)
+  if a_dim != 3:
+    raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
+  if new_diags_dim != 2:
+    raise ValueError(
+        f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
+    )
   n, d, d1 = a.shape
-  assert d == d1
+  n_diags, d_diags = new_diags.shape
+  if d != d1:
+    raise ValueError(
+        f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
+        f'got {(n, d, d1)} instead'
+    )
+  if d_diags != d or n_diags != n:
+    raise ValueError(
+        f'Shape mismatch: expected `new_diags.shape` to be {(n, d)}, '
+        f'got {(n_diags, d_diags)} instead'
+    )
 
   indices1 = jnp.repeat(jnp.arange(n), d)
   indices2 = jnp.tile(jnp.arange(d), n)
@@ -67,53 +88,57 @@ def set_diags(a, new_diags):
   return a
 
 
-def multi_normal(loc, log_scale):
-  return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
-
-
 class MultiNormalDiagFromLogScale():
   """MultiNormalDiag which directly exposes its input parameters."""
 
-  def __init__(self, loc, log_scale):
+  def __init__(self, loc: chex.Array, log_scale: chex.Array):
     self._log_scale = log_scale
     self._scale = jnp.exp(log_scale)
     self._mean = loc
     self._param_shape = jax.lax.broadcast_shapes(
         self._mean.shape, self._scale.shape)
 
-  def sample(self, shape, seed):
-    sample_shape = shape + self._param_shape
+  def sample(self, shape: Sequence[int],
+             seed: chex.PRNGKey) -> chex.Array:
+    sample_shape = tuple(shape) + self._param_shape
     return jax.random.normal(
         seed, shape=sample_shape) * self._scale  + self._mean
 
-  def log_prob(self, x):
+  def log_prob(self, x: chex.Array) -> chex.Array:
     log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
     # Sum over parameter axes.
     sum_axis = [-(i + 1) for i in range(len(self._param_shape))]
     return jnp.sum(log_prob, axis=sum_axis)
 
   @property
-  def log_scale(self):
+  def log_scale(self) -> chex.Array:
     return self._log_scale
 
   @property
-  def params(self):
+  def params(self) -> Sequence[chex.Array]:
     return [self._mean, self._log_scale]
 
 
+def multi_normal(loc: chex.Array,
+                 log_scale: chex.Array) -> MultiNormalDiagFromLogScale:
+  return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
+
+
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.Array, scale: float)  -> chex.ArrayTree:
+def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
-def _scale_gradient_fwd(inputs, scale):
+def _scale_gradient_fwd(inputs: chex.ArrayTree,
+                        scale: float) -> Tuple[chex.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
-def _scale_gradient_bwd(scale, g):
-  return (jax.tree_map(lambda g_: g_ * scale, g), None)
+def _scale_gradient_bwd(scale: float,
+                        g: chex.ArrayTree) -> Tuple[chex.ArrayTree, None]:
+  return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)

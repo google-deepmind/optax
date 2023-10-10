@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `second_order.py`."""
+"""Tests for `hessian.py`."""
 
 import collections
 import functools
@@ -26,7 +26,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax._src import second_order
+from optax import second_order
 
 
 NUM_CLASSES = 2
@@ -34,7 +34,7 @@ NUM_SAMPLES = 3
 NUM_FEATURES = 4
 
 
-class SecondOrderTest(chex.TestCase):
+class HessianTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -69,24 +69,17 @@ class SecondOrderTest(chex.TestCase):
             n_params, n_params)).reshape(params_shape)
       for k, v in hess_diag.items():
         hess_diag[k] = v
-      return second_order.ravel(hess_diag)
+      return jax.flatten_util.ravel_pytree(hess_diag)[0]
 
     self.hessian = jax_hessian_diag(
         self.loss_fn, self.parameters, self.data, self.labels)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_hessian_diag(self):
     hessian_diag_fn = self.variant(
         functools.partial(second_order.hessian_diag, self.loss_fn))
     actual = hessian_diag_fn(self.parameters, self.data, self.labels)
     np.testing.assert_array_almost_equal(self.hessian, actual, 5)
-
-  @chex.all_variants()
-  def test_fisher_diag_shape(self):
-    fisher_diag_fn = self.variant(
-        functools.partial(second_order.fisher_diag, self.loss_fn))
-    fisher_diagonal = fisher_diag_fn(self.parameters, self.data, self.labels)
-    chex.assert_equal_shape([fisher_diagonal, self.hessian])
 
 
 if __name__ == '__main__':

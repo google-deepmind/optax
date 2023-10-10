@@ -1,0 +1,82 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "optax"
+dynamic = ["version"]
+description = "A gradient processing and optimisation library in JAX."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+authors = [
+    {name = "DeepMind", email = "optax-dev@google.com"},
+]
+keywords = [
+    "python", 
+    "machine learning", 
+    "reinforcement-learning"
+]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "absl-py>=0.7.1",
+  "chex>=0.1.5",
+  "jax>=0.1.55",
+  "jaxlib>=0.1.37",
+  "numpy>=1.18.0",
+]
+
+[project.urls]
+homepage = "https://github.com/deepmind/optax"
+repository = "https://github.com/deepmind/optax"
+documentation = "https://optax.readthedocs.io/"
+
+[project.optional-dependencies]
+test = [
+    "dm-haiku>=0.0.3",
+    "dm-tree>=0.1.7",
+    "flax==0.5.3"
+]
+
+examples = [
+  "dm-haiku>=0.0.3",
+  "tensorflow-datasets>=4.2.0",
+  "tensorflow>=2.4.0"
+]
+
+docs = [
+    "sphinx==4.5.0",
+    "sphinx-book-theme==0.3.3",
+    "sphinxcontrib-katex==0.9.0",
+    "sphinxcontrib-bibtex==2.4.2",
+    "sphinx-autodoc-typehints==1.11.1",
+    "IPython==7.16.3",
+    "ipykernel==5.3.4",
+    "pandoc==1.0.2",
+    "myst_nb==0.13.1",
+    "docutils==0.16",
+    "matplotlib==3.5.0",
+    "dm-haiku==0.0.8"
+]
+
+dp-accounting = [
+    "absl-py>=1.0.0",
+    "attrs>=21.4.0",
+    "mpmath>=1.2.1",
+    "numpy>=1.21.4",
+    "scipy>=1.7.1"
+]
+
+[tool.setuptools.packages.find]
+exclude = ["*_test.py"]

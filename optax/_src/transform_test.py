@@ -44,11 +44,13 @@ class TransformTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
+      ('lion', transform.scale_by_lion),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
       ('param_block_norm', transform.scale_by_param_block_norm),
       ('param_block_rms', transform.scale_by_param_block_rms),
+      ('distance_over_gradients', transform.scale_by_distance_over_gradients),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params
@@ -62,9 +64,10 @@ class TransformTest(parameterized.TestCase):
 
     updates, state = transform_fn(self.per_step_updates, state, params)
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_map(lambda *args: chex.assert_equal_shape(args), params, updates)
+    jax.tree_util.tree_map(
+        lambda *args: chex.assert_equal_shape(args), params, updates)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_add_decayed_weights(self):
     # Define a transform that add decayed weights.
     # We can define a mask either as a pytree, or as a function that
@@ -94,9 +97,9 @@ class TransformTest(parameterized.TestCase):
     transform_fn = self.variant(tx.update)
     new_updates, _ = transform_fn(updates, state, weights)
     # Assert output as expected.
-    chex.assert_tree_all_close(new_updates, expected_tx_updates)
+    chex.assert_trees_all_close(new_updates, expected_tx_updates)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_ema(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -114,7 +117,7 @@ class TransformTest(parameterized.TestCase):
         mean,
         (1 - d) * (values[1] + d * values[0]), atol=1e-2)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_ema_debias(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -138,7 +141,7 @@ class TransformTest(parameterized.TestCase):
         (1 - d) * values[1] + d * (1 - d) * values[0],
         atol=1e-2)
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_update_infinity_moment(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
@@ -172,7 +175,7 @@ class TransformTest(parameterized.TestCase):
         atol=1e-4
     )
 
-  @chex.all_variants()
+  @chex.all_variants
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
@@ -205,12 +208,12 @@ class TransformTest(parameterized.TestCase):
 
       # Every k steps, check equivalence.
       if i % k == k-1:
-        chex.assert_tree_all_close(
+        chex.assert_trees_all_close(
             optax_sgd_apply_every_params, optax_sgd_params,
             atol=1e-6, rtol=1e-5)
       # Otherwise, check update is zero.
       else:
-        chex.assert_tree_all_close(
+        chex.assert_trees_all_close(
             updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0)
 
   def test_scale(self):
@@ -219,13 +222,13 @@ class TransformTest(parameterized.TestCase):
       factor = 0.1 ** i
       rescaler = transform.scale(factor)
       # Apply rescaling.
-      scaled_updates, _ = rescaler.update(updates, None)
+      scaled_updates, _ = rescaler.update(updates, {})
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-      manual_updates = jax.tree_map(rescale, updates)
+      manual_updates = jax.tree_util.tree_map(rescale, updates)
       # Check the rescaled updates match.
-      chex.assert_tree_all_close(scaled_updates, manual_updates)
+      chex.assert_trees_all_close(scaled_updates, manual_updates)
 
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
@@ -238,8 +241,8 @@ class TransformTest(parameterized.TestCase):
     inputs = jnp.asarray(inputs)
     outputs = jnp.asarray(outputs)
     centralizer = transform.centralize()
-    centralized_inputs, _ = centralizer.update(inputs, None)
-    chex.assert_tree_all_close(centralized_inputs, outputs)
+    centralized_inputs, _ = centralizer.update(inputs, {})
+    chex.assert_trees_all_close(centralized_inputs, outputs)
 
   @chex.all_variants
   def test_add_noise_has_correct_variance_scaling(self):
@@ -255,7 +258,7 @@ class TransformTest(parameterized.TestCase):
     state_unit = noise_unit.init(params)
 
     # Check the noise itself by adding it to zeros.
-    updates = jax.tree_map(jnp.zeros_like, params)
+    updates = jax.tree_util.tree_map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
       updates_i, state = self.variant(noise.update)(updates, state)
@@ -263,10 +266,41 @@ class TransformTest(parameterized.TestCase):
 
       scale = jnp.sqrt(eta / i**gamma)
 
-      updates_i_rescaled = jax.tree_map(
+      updates_i_rescaled = jax.tree_util.tree_map(
           lambda g, s=scale: g * s, updates_i_unit)
 
-      chex.assert_tree_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+      chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+
+  def test_scale_by_optimistic_gradient(self):
+
+    def f(params: jnp.ndarray) -> jnp.ndarray:
+      return params['x'] ** 2
+
+    initial_params = {
+        'x': jnp.array(2.0)
+    }
+
+    og = transform.scale_by_optimistic_gradient()
+    og_state = og.init(initial_params)
+    # Provide some arbitrary previous gradient.
+    getattr(og_state, 'trace')['x'] = 1.5
+
+    g = jax.grad(f)(initial_params)
+    og_true = 2 * g['x'] - getattr(og_state, 'trace')['x']
+    og, og_state = og.update(g, og_state)
+
+    # Compare transformation output with manually computed optimistic gradient.
+    chex.assert_trees_all_close(og_true, og['x'])
+
+  @chex.all_variants
+  def test_bias_correction_bf16(self):
+    bias_correction_fn = self.variant(transform.bias_correction)
+    m = jnp.logspace(-10, 10, num=21, dtype=jnp.bfloat16)  # 1e-10 ... 1e10
+    for decay in (0.9, 0.99, 0.999, 0.9995):
+      for count in (1, 10, 100, 1000):
+        chex.assert_tree_all_finite(
+            bias_correction_fn(m, decay, count),
+            custom_message=f'failed with decay={decay}, count={count}')
 
 
 if __name__ == '__main__':

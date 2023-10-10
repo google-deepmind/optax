@@ -39,12 +39,12 @@ class ClippingTest(absltest.TestCase):
     # For a sufficiently high delta the update should not be changed.
     clipper = clipping.clip(1e6)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(clipped_updates, clipped_updates)
+    chex.assert_trees_all_close(clipped_updates, clipped_updates)
     # Clipping at delta=1 should make all updates exactly 1.
     clipper = clipping.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(
-        clipped_updates, jax.tree_map(jnp.ones_like, updates))
+    chex.assert_trees_all_close(
+        clipped_updates, jax.tree_util.tree_map(jnp.ones_like, updates))
 
   def test_clip_by_block_rms(self):
     rmf_fn = lambda t: jnp.sqrt(jnp.mean(t**2))
@@ -57,7 +57,7 @@ class ClippingTest(absltest.TestCase):
       self.assertAlmostEqual(rmf_fn(updates[1]), 1. / i)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
 
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
@@ -69,7 +69,7 @@ class ClippingTest(absltest.TestCase):
           linear_algebra.global_norm(updates), 1. / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
 
   def test_adaptive_grad_clip(self):
     updates = self.per_step_updates
@@ -80,15 +80,16 @@ class ClippingTest(absltest.TestCase):
 
       # Check that the clipper actually works and upd_norm is < c * param_norm.
       updates, _ = clipper.update(updates, None, params)
-      u_norm, p_norm = jax.tree_map(clipping.unitwise_norm, (updates, params))
-      cmp = jax.tree_map(
+      u_norm, p_norm = jax.tree_util.tree_map(
+          clipping.unitwise_norm, (updates, params))
+      cmp = jax.tree_util.tree_map(
           lambda u, p, c=clip_r: u - c * p < 1e-6, u_norm, p_norm)
-      for leaf in jax.tree_leaves(cmp):
+      for leaf in jax.tree_util.tree_leaves(cmp):
         self.assertTrue(leaf.all())
 
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None, params)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
 
 
 if __name__ == '__main__':

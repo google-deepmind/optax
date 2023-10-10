@@ -12,131 +12,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Standard losses used in optimisation.
+"""Classification losses."""
 
-We provide implementations of the most canonical losses used in deep
-learning. These operate transparently on batches, and do not perform any
-reduction over the batch dimensions, leaving it to the user to, for instance,
-mean or sum losses across batch dimensions.
-"""
-
-from typing import Optional, Tuple
+from typing import Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
 
-from optax._src import utils
 
+def sigmoid_binary_cross_entropy(
+    logits,
+    labels,
+):
+  """Computes element-wise sigmoid cross entropy given logits and labels.
 
-def l2_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
-  """Calculates the L2 loss for a set of predictions.
+  This function can be used for binary or multiclass classification (where each
+  class is an independent binary prediction and different classes are not
+  mutually exclusive e.g. predicting that an image contains both a cat
+  and a dog.)
 
-  Note: the 0.5 term is standard in "Pattern Recognition and Machine Learning"
-  by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
-
-  References:
-    [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
-
-  Args:
-    predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
-
-  Returns:
-    elementwise squared differences, with same shape as `predictions`.
-  """
-  chex.assert_type([predictions], float)
-  errors = (predictions - targets) if (targets is not None) else predictions
-  return 0.5 * (errors)**2
-
-
-def huber_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-    delta: float = 1.) -> chex.Array:
-  """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
-
-  If gradient descent is applied to the `huber loss`, it is equivalent to
-  clipping gradients of an `l2_loss` to `[-delta, delta]` in the backward pass.
-
-  References:
-    [Huber, 1964](www.projecteuclid.org/download/pdf_1/euclid.aoms/1177703732)
-
-  Args:
-    predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
-    delta: the bounds for the huber loss transformation, defaults at 1.
-
-  Returns:
-    elementwise huber losses, with the same shape of `predictions`.
-  """
-  chex.assert_type([predictions], float)
-  errors = (predictions - targets) if (targets is not None) else predictions
-  # 0.5 * err^2                  if |err| <= d
-  # 0.5 * d^2 + d * (|err| - d)  if |err| > d
-  abs_errors = jnp.abs(errors)
-  quadratic = jnp.minimum(abs_errors, delta)
-  # Same as max(abs_x - delta, 0) but avoids potentially doubling gradient.
-  linear = abs_errors - quadratic
-  return 0.5 * quadratic ** 2 + delta * linear
-
-
-def smooth_labels(
-    labels: chex.Array,
-    alpha: float,
-) -> jnp.ndarray:
-  """Apply label smoothing.
-
-  Label smoothing is often used in combination with a cross-entropy loss.
-  Smoothed labels favour small logit gaps, and it has been shown that this can
-  provide better model calibration by preventing overconfident predictions.
-
-  References:
-    [Müller et al, 2019](https://arxiv.org/pdf/1906.02629.pdf)
-
-  Args:
-    labels: one hot labels to be smoothed.
-    alpha: the smoothing factor, the greedy category with be assigned
-      probability `(1-alpha) + alpha / num_categories`
-
-  Returns:
-    a smoothed version of the one hot input labels.
-
-  """
-  chex.assert_type([labels], float)
-  num_categories = labels.shape[-1]
-  return (1.0 - alpha) * labels + alpha / num_categories
-
-
-def sigmoid_binary_cross_entropy(logits, labels):
-  """Computes sigmoid cross entropy given logits and multiple class labels.
-
-  Measures the probability error in discrete classification tasks in which
-  each class is an independent binary prediction and different classes are
-  not mutually exclusive. This may be used for multilabel image classification
-  for instance a model may predict that an image contains both a cat and a dog.
+  Because this function is overloaded, please ensure your `logits` and `labels`
+  are compatible with each other. If you're passing in binary `labels` (values
+  in {0, 1}), ensure your `logits` correspond to class 1 only. If you're
+  passing in per-class target probabilities or one-hot `labels`, please ensure
+  your `logits` are also multiclass. Be particularly careful if you're relying
+  on implicit broadcasting to reshape `logits` or `labels`.
 
   References:
     [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
 
   Args:
-    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
-    labels: The target probabilities for each class, must have a shape
-        broadcastable to that of `logits`;
+    logits: Each element is the unnormalized log probability of a binary
+      prediction. See note about compatibility with `labels` above.
+    labels: Binary labels whose values are {0,1} or multi-class target
+      probabilities. See note about compatibility with `logits` above.
 
   Returns:
-    cross entropy for each binary class prediction, shape `[..., num_classes]`.
+    cross entropy for each binary prediction, same shape as `logits`.
   """
   chex.assert_type([logits], float)
+  labels = labels.astype(logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
   return -labels * log_p - (1. - labels) * log_not_p
+
+
+def hinge_loss(
+    predictor_outputs: chex.Array,
+    targets: chex.Array
+) -> chex.Array:
+  """Computes the hinge loss for binary classification.
+
+  Args:
+    predictor_outputs: Outputs of the decision function.
+    targets: Target values. Target values should be strictly in the set {-1, 1}.
+
+  Returns:
+    Binary Hinge Loss.
+  """
+  return jnp.maximum(0, 1 - predictor_outputs * targets)
 
 
 def softmax_cross_entropy(
@@ -157,7 +93,7 @@ def softmax_cross_entropy(
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
     labels: Valid probability distributions (non-negative, sum to 1), e.g a
       one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]``
+      must have a shape broadcastable to `[..., num_classes]`.
 
   Returns:
     cross entropy between each prediction and the corresponding target
@@ -202,91 +138,128 @@ def softmax_cross_entropy_with_integer_labels(
   return log_normalizers - label_logits
 
 
-def cosine_similarity(
-    predictions: chex.Array,
-    targets: chex.Array,
-    epsilon: float = 0.,
+def poly_loss_cross_entropy(
+    logits: chex.Array, labels: chex.Array, epsilon: float = 2.0
 ) -> chex.Array:
-  r"""Computes the cosine similarity between targets and predictions.
+  r"""Computes PolyLoss between logits and labels.
 
-  The cosine **similarity** is a measure of similarity between vectors defined
-  as the cosine of the angle between them, which is also the inner product of
-  those vectors normalized to have unit norm.
+  The PolyLoss is a loss function that decomposes commonly
+  used classification loss functions into a series of weighted
+  polynomial bases. It is inspired by the Taylor expansion of
+  cross-entropy loss and focal loss in the bases of :math:`(1 − P_t)^j`.
+
+  .. math::
+    L_{Poly} = \sum_1^\infty \alpha_j \cdot (1 - P_t)^j \\
+    L_{Poly-N} = (\epsilon_1 + 1) \cdot (1 - P_t) + \ldots + \\
+    (\epsilon_N + \frac{1}{N}) \cdot (1 - P_t)^N +
+    \frac{1}{N + 1} \cdot (1 - P_t)^{N + 1} + \ldots = \\
+    - \log(P_t) + \sum_{j = 1}^N \epsilon_j \cdot (1 - P_t)^j
+
+  This function provides a simplified version of :math:`L_{Poly-N}`
+  with only the coefficient of the first polynomial term being changed.
 
   References:
-    [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
+    [Zhaoqi Leng et al, 2022](https://arxiv.org/pdf/2204.12511.pdf)
 
   Args:
-    predictions: The predicted vectors, with shape `[..., dim]`.
-    targets: Ground truth target vectors, with shape `[..., dim]`.
-    epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g. a
+      one hot encoding specifying the correct class for each input;
+      must have a shape broadcastable to `[..., num_classes]`.
+    epsilon: The coefficient of the first polynomial term.
+      According to the paper, the following values are recommended:
+      - For the ImageNet 2d image classification, epsilon = 2.0.
+      - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
+      - It is also recommended to adjust this value based on the task, e.g. by
+        using grid search.
 
   Returns:
-    cosine similarity measures, with shape `[...]`.
+    Poly loss between each prediction and the corresponding target
+    distributions, with shape `[...]`.
   """
-  chex.assert_type([predictions, targets], float)
-  # vectorize norm fn, to treat all dimensions except the last as batch dims.
-  batched_norm_fn = jnp.vectorize(
-      utils.safe_norm, signature='(k)->()', excluded={1})
-  # normalise the last dimension of targets and predictions.
-  unit_targets = targets / jnp.expand_dims(
-      batched_norm_fn(targets, epsilon), axis=-1)
-  unit_predictions = predictions / jnp.expand_dims(
-      batched_norm_fn(predictions, epsilon), axis=-1)
-  # return cosine similarity.
-  return jnp.sum(unit_targets * unit_predictions, axis=-1)
+  chex.assert_type([logits, labels], float)
+  one_minus_pt = jnp.sum(labels * (1 - jax.nn.softmax(logits)), axis=-1)
+  cross_entropy = softmax_cross_entropy(logits=logits, labels=labels)
+  return cross_entropy + epsilon * one_minus_pt
 
 
-def cosine_distance(
-    predictions: chex.Array,
-    targets: chex.Array,
-    epsilon: float = 0.,
+def kl_divergence(
+    log_predictions: chex.Array,
+    targets: chex.Array
 ) -> chex.Array:
-  r"""Computes the cosine distance between targets and predictions.
+  """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
-  The cosine **distance**, implemented here, measures the **dissimilarity**
-  of two vectors as the opposite of cosine **similarity**: `1 - cos(\theta)`.
+  Measures the information gain achieved if target probability distribution
+  would be used instead of predicted probability distribution.
 
   References:
-    [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    predictions: The predicted vectors, with shape `[..., dim]`.
-    targets: Ground truth target vectors, with shape `[..., dim]`.
-    epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
+    targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be strictly positive.
 
   Returns:
-    cosine distances, with shape `[...]`.
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
   """
-  chex.assert_type([predictions, targets], float)
-  # cosine distance = 1 - cosine similarity.
-  return 1. - cosine_similarity(predictions, targets, epsilon)
+  chex.assert_type([log_predictions, targets], float)
+  loss = targets * (
+      jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
+  )
+  return jnp.sum(loss, axis=-1)
 
 
-def log_cosh(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
+def kl_divergence_with_log_targets(
+    log_predictions: chex.Array,
+    log_targets: chex.Array
 ) -> chex.Array:
-  """Calculates the log-cosh loss for a set of predictions.
+  """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
-  log(cosh(x)) is approximately `(x**2) / 2` for small x and `abs(x) - log(2)`
-  for large x.  It is a twice differentiable alternative to the Huber loss.
+  Version of kl_div_loss where targets are given in log-space.
+
+  Args:
+    log_predictions: Probabilities of predicted distribution with shape
+      [..., dim]. Expected to be in the log-space to avoid underflow.
+    log_targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be in the log-space.
+
+  Returns:
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
+  """
+  chex.assert_type([log_predictions, log_targets], float)
+  loss = jnp.exp(log_targets) * (log_targets - log_predictions)
+  return jnp.sum(loss, axis=-1)
+
+
+def convex_kl_divergence(
+    log_predictions: chex.Array, targets: chex.Array
+) -> chex.Array:
+  """Computes a convex version of the Kullback-Leibler divergence loss.
+
+  Measures the information gain achieved if target probability distribution
+  would be used instead of predicted probability distribution.
+  This version is jointly convex in p (targets) and q (log_predictions).
 
   References:
-    [Chen et al, 2019](https://openreview.net/pdf?id=rkglvsC9Ym)
+    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
 
   Args:
-    predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
+    targets: Probabilities of target distribution with shape [..., dim].
+      Expected to be strictly positive.
 
   Returns:
-    the log-cosh loss, with same shape as `predictions`.
+    Kullback-Leibler divergence of predicted distribution from target
+    distribution with shape [...].
   """
-  chex.assert_type([predictions], float)
-  errors = (predictions - targets) if (targets is not None) else predictions
-  # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+  return kl_divergence(log_predictions, targets) + jnp.sum(
+      jnp.exp(log_predictions) - targets, axis=-1
+  )
 
 
 def ctc_loss_with_forward_probs(
@@ -295,7 +268,8 @@ def ctc_loss_with_forward_probs(
     labels: chex.Array,
     label_paddings: chex.Array,
     blank_id: int = 0,
-    log_epsilon: float = -1e5) -> Tuple[chex.Array, chex.Array, chex.Array]:
+    log_epsilon: float = -1e5
+) -> Tuple[chex.Array, chex.Array, chex.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
   The CTC loss is a loss function based on log-likelihoods of the model that
@@ -413,17 +387,19 @@ def ctc_loss_with_forward_probs(
 
   # extract per_seq_loss
   one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
-  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)
+  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)  # pylint:disable=invalid-unary-operand-type
 
   return per_seq_loss, logalpha_phi, logalpha_emit
 
 
-def ctc_loss(logits: chex.Array,
-             logit_paddings: chex.Array,
-             labels: chex.Array,
-             label_paddings: chex.Array,
-             blank_id: int = 0,
-             log_epsilon: float = -1e5) -> chex.Array:
+def ctc_loss(
+    logits: chex.Array,
+    logit_paddings: chex.Array,
+    labels: chex.Array,
+    label_paddings: chex.Array,
+    blank_id: int = 0,
+    log_epsilon: float = -1e5
+) -> chex.Array:
   """Computes CTC loss.
 
   See docstring for ``ctc_loss_with_forward_probs`` for details.

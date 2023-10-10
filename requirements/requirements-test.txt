@@ -1,3 +1,2 @@
 dm-haiku>=0.0.3
 dm-tree>=0.1.7
-flax>=0.3.1

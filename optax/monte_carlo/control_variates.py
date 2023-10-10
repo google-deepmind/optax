@@ -63,7 +63,7 @@ from optax._src import base
 
 
 CvState = Any
-ComputeCv = Callable[[base.Params, chex.Array, CvState], float]
+ComputeCv = Callable[[base.Params, chex.Array, CvState], chex.Array]
 CvExpectedValue = Callable[[base.Params, CvState], CvState]
 UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = Tuple[ComputeCv, CvExpectedValue, UpdateCvState]
@@ -111,7 +111,7 @@ def control_delta_method(
     return control_variate
 
   def expected_value_delta(
-      params: base.Params, state: CvState) -> float:
+      params: base.Params, state: CvState) -> jax.Array:
     """"Expected value of second order expansion of `function` at dist mean."""
     del state
     mean_dist = params[0]
@@ -210,17 +210,18 @@ def _map(cv, params, samples, state):
 
 def control_variates_jacobians(
     function: Callable[[chex.Array], float],
-    control_variate_from_function: Callable[[Callable[[chex.Array], float]],
-                                            ControlVariate],
-    grad_estimator: Callable[..., jnp.array],
+    control_variate_from_function: Callable[
+        [Callable[[chex.Array], float]], ControlVariate
+    ],
+    grad_estimator: Callable[..., jnp.ndarray],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
     control_variate_state: CvState = None,
     estimate_cv_coeffs: bool = False,
-    estimate_cv_coeffs_num_samples: int = 20) -> Tuple[
-        Sequence[chex.Array], CvState]:
+    estimate_cv_coeffs_num_samples: int = 20,
+) -> Tuple[Sequence[chex.Array], CvState]:
   r"""Obtain jacobians using control variates.
 
   We will compute each term individually. The first term will use stochastic
@@ -271,7 +272,7 @@ def control_variates_jacobians(
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate
-  data_dim = params[0].shape[0]
+  data_dim = jax.tree_util.tree_leaves(params)[0].shape[0]
   if estimate_cv_coeffs:
     cv_coeffs = estimate_control_variate_coefficients(
         function, control_variate_from_function, grad_estimator, params,
@@ -315,7 +316,7 @@ def control_variates_jacobians(
       lambda x: expected_value_cv(x, control_variate_state))(params)
 
   jacobians = []
-  for param_index, param in enumerate(params):
+  for param_index, param in enumerate(jax.tree_util.tree_leaves(params)):
     chex.assert_shape(function_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_param_grads[param_index], (data_dim,))
@@ -338,15 +339,17 @@ def control_variates_jacobians(
 
 def estimate_control_variate_coefficients(
     function: Callable[[chex.Array], float],
-    control_variate_from_function: Callable[[Callable[[chex.Array], float]],
-                                            ControlVariate],
-    grad_estimator: Callable[..., jnp.array],
+    control_variate_from_function: Callable[
+        [Callable[[chex.Array], float]], ControlVariate
+    ],
+    grad_estimator: Callable[..., jnp.ndarray],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
     control_variate_state: CvState = None,
-    eps: float = 1e-3) -> Sequence[float]:
+    eps: float = 1e-3,
+) -> Sequence[float]:
   r"""Estimates the control variate coefficients for the given parameters.
 
   For each variable `var_k`, the coefficient is given by:

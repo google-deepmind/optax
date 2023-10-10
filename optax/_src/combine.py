@@ -23,8 +23,8 @@ from optax._src import wrappers
 
 
 def chain(
-    *args: base.GradientTransformation
-) -> base.GradientTransformation:
+    *args: base.GradientTransformation,
+) -> base.GradientTransformationExtraArgs:
   """Applies a list of chainable update transformations.
 
   Given a sequence of chainable transforms, `chain` returns an `init_fn`
@@ -36,36 +36,46 @@ def chain(
     *args: a sequence of chainable (init_fn, update_fn) tuples.
 
   Returns:
-    A single (init_fn, update_fn) tuple.
+    A ``GradientTransformationExtraArgs``, created by chaining the input
+    transformations. Note that independent of the argument types, the resulting
+    transformation always supports extra args. Any extra arguments passed to the
+    returned transformation will be passed only to those transformations in the
+    chain that support extra args.
   """
 
-  init_fns, update_fns = zip(*args)
+  transforms = [base.with_extra_args_support(t) for t in args]
+  init_fns, update_fns = zip(*transforms)
 
   def init_fn(params):
     return tuple(fn(params) for fn in init_fns)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     if len(update_fns) != len(state):
       raise ValueError('The number of updates and states has to be the same in '
                        'chain! Make sure you have called init first!')
 
     new_state = []
     for s, fn in zip(state, update_fns):
-      updates, new_s = fn(updates, s, params)
+      updates, new_s = fn(updates, s, params, **extra_args)
       new_state.append(new_s)
     return updates, tuple(new_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  # We opt to always return the GradientTransformationExtraArgs type here,
+  # instead of selecting the return type based on the arguments, since it works
+  # much better with the currently available type checkers. It also means that
+  # users will not get unexpected signature errors if they remove all of the
+  # transformations in a chain accepting extra args.
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
 class MultiTransformState(NamedTuple):
-  inner_states: Mapping[Hashable, NamedTuple]
+  inner_states: Mapping[Hashable, base.OptState]
 
 
 def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
     param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]]
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Partitions params and applies a different transformation to each subset.
 
   Below is an example where we apply Adam to the weights and SGD to the biases
@@ -84,7 +94,7 @@ def multi_transform(
 
     params = {'linear_1': {'w': jnp.zeros((5, 6)), 'b': jnp.zeros(5)},
               'linear_2': {'w': jnp.zeros((6, 1)), 'b': jnp.zeros(1)}}
-    gradients = jax.tree_map(jnp.ones_like, params)  # dummy gradients
+    gradients = jax.tree_util.tree_map(jnp.ones_like, params)  # dummy gradients
 
     label_fn = map_nested_fn(lambda k, _: k)
     tx = optax.multi_transform({'w': optax.adam(1.0), 'b': optax.sgd(1.0)},
@@ -120,13 +130,19 @@ def multi_transform(
   Returns:
     An ``optax.GradientTransformation``.
   """
+
+  transforms = {
+      k: base.with_extra_args_support(v)
+      for k, v in transforms.items()
+  }
+
   def make_mask(labels, group):
-    return jax.tree_map(lambda label: label == group, labels)
+    return jax.tree_util.tree_map(lambda label: label == group, labels)
 
   def init_fn(params):
     labels = param_labels(params) if callable(param_labels) else param_labels
 
-    label_set = set(jax.tree_leaves(labels))
+    label_set = set(jax.tree_util.tree_leaves(labels))
     if not label_set.issubset(transforms.keys()):
       raise ValueError('Some parameters have no corresponding transformation.\n'
                        f'Parameter labels: {list(sorted(label_set))} \n'
@@ -138,13 +154,13 @@ def multi_transform(
     }
     return MultiTransformState(inner_states)
 
-  def update_fn(updates, state, params=None):
+  def update_fn(updates, state, params=None, **extra_args):
     labels = param_labels(updates) if callable(param_labels) else param_labels
     new_inner_state = {}
     for group, tx in transforms.items():
       masked_tx = wrappers.masked(tx, make_mask(labels, group))
       updates, new_inner_state[group] = masked_tx.update(
-          updates, state.inner_states[group], params)
+          updates, state.inner_states[group], params, **extra_args)
     return updates, MultiTransformState(new_inner_state)
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)

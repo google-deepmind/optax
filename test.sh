@@ -25,10 +25,16 @@ python --version
 
 # Install dependencies.
 pip install --upgrade pip setuptools wheel
-pip install flake8 pytest-xdist pytype pylint pylint-exit
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
-pip install -r requirements/requirements-examples.txt
+pip install flake8 pytest-xdist pylint pylint-exit
+pip install -e ".[test, examples]"
+
+# Dp-accounting specifies exact minor versions as requirements which sometimes
+# become incompatible with other libraries optax needs. We therefore install
+# dependencies for dp-accounting manually.
+# TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
+# version requirements.
+pip install -e ".[dp-accounting]"
+pip install "dp-accounting>=0.1.1" --no-deps
 
 # Ensure optax was not installed by one of the dependencies above,
 # since if it is, the tests below will be run against that version instead of
@@ -39,33 +45,45 @@ pip uninstall -y optax || true
 flake8 `find optax examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
-# Fail on errors, warning, conventions and refactoring messages.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
+# Download Google OSS config.
+wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
+# Append specific config lines.
+echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
 pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
+# Cleanup.
+rm .pylintrc
 
 # Build the package.
-python setup.py sdist
+pip install build
+python -m build
 pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
 pip install optax*.whl
 
 # Check types with pytype.
-pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+# Note: pytype does not support 3.11 as of 25.06.23
+# See https://github.com/google/pytype/issues/1308
+if [ `python -c 'import sys; print(sys.version_info.minor)'` -lt 11 ];
+then
+  pip install pytype
+  pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+fi;
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
 mkdir _testing && cd _testing
-python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs optax
+python -m pytest -n auto --pyargs optax
 cd ..
 
 cd examples
-python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" .
+python -m pytest -n auto .
 cd ..
 
 # Build Sphinx docs.
-pip install -r requirements/requirements-docs.txt
+pip install -e ".[docs]"
 cd docs && make html
 cd ..
 

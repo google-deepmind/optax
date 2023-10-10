@@ -5,6 +5,8 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
   build-and-test:
@@ -13,14 +15,16 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11"]
         os: [ubuntu-latest]
 
     steps:
       - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v1"
+      - uses: "actions/setup-python@v4"
         with:
             python-version: "${{ matrix.python-version }}"
+            cache: "pip"
+            cache-dependency-path: 'pyproject.toml'
       - name: Run CI tests
         run: bash test.sh
         shell: bash

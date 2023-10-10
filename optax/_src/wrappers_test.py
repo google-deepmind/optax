@@ -15,18 +15,20 @@
 """Tests for `wrappers.py`."""
 
 import copy
+from typing import cast
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import constrain
+from optax._src import state_utils
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
@@ -42,6 +44,20 @@ def _build_stateful_sgd():
   # momentum is set to zero rather than None so that the momentum terms are
   # calculated, but do not change the results.
   return alias.sgd(1., momentum=0.)
+
+
+def _build_sgd_extra_args():
+
+  def init_fn(params):
+    del params
+    return {'foo': 1}
+
+  def update_fn(grads, state, params=None, *, foo=None, **extra_args):
+    del extra_args, foo, params
+    return grads, state
+
+  t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+  return combine.chain(_build_sgd(), t)
 
 
 class WrappersTest(parameterized.TestCase):
@@ -62,18 +78,20 @@ class WrappersTest(parameterized.TestCase):
     # And now calculate new params with flattening
     optax_sgd_params = init_params()
     sgd = wrappers.flatten(sgd)
+
     state_sgd = sgd.init(optax_sgd_params)
     updates_sgd, state_sgd = sgd.update(per_step_updates, state_sgd)
     sgd_params_flatten = update.apply_updates(optax_sgd_params, updates_sgd)
 
     # Test that both give the same result
-    chex.assert_tree_all_close(
+    chex.assert_trees_all_close(
         sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7)
 
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
       ('stateful_sgd', _build_stateful_sgd),
+      ('sgd_extra_args', _build_sgd_extra_args),
   )
   def test_apply_if_finite(self, opt_builder):
     one = jnp.ones([])
@@ -92,36 +110,36 @@ class WrappersTest(parameterized.TestCase):
     params = update.apply_updates(params, updates)
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
-    self.assertEqual(-1., float(jax.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-1., float(jax.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertEqual(-2., float(jax.tree_flatten(params)[0][0]))
-    self.assertTrue(bool(state.last_finite))
+    self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
+    self.assertTrue(bool(getattr(state, 'last_finite')))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-2., float(jax.tree_flatten(params)[0][0]))
-      self.assertFalse(bool(state.last_finite))
-      self.assertEqual(step + 1, int(state.notfinite_count))
+      self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
+      self.assertFalse(bool(getattr(state, 'last_finite')))
+      self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertTrue(bool(jnp.isnan(jax.tree_flatten(params)[0][0])))
-    self.assertEqual(5, int(state.total_notfinite))
+    self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
+    self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:
@@ -145,8 +163,8 @@ class WrappersTest(parameterized.TestCase):
 
     params = fn.init(jax.random.PRNGKey(1905), half)
     opt_state = opt.init(params)
-    params = jax.tree_map(lambda x: x[None], params)
-    opt_state = jax.tree_map(lambda x: x[None], opt_state)
+    params = jax.tree_util.tree_map(lambda x: x[None], params)
+    opt_state = jax.tree_util.tree_map(lambda x: x[None], opt_state)
     # Do one successful param update
     params, opt_state = fn_update(params, opt_state, half)
     self.assertTrue(bool(opt_state.last_finite))
@@ -187,8 +205,9 @@ class WrappersTest(parameterized.TestCase):
         # * it has a state,
         # * it requires the params for the update.
         combine.chain(transform.scale_by_adam(),
-                      transform.additive_weight_decay(1e-2),
+                      transform.add_decayed_weights(1e-2),
                       transform.scale(-1e-4)), k_steps)
+
     opt_init, opt_update = ms_opt.gradient_transformation()
 
     # Put the training in one function, to check that the update is indeed
@@ -208,7 +227,8 @@ class WrappersTest(parameterized.TestCase):
       if idx % k_steps < k_steps - 1:
         # The parameters should not have changed and the loss should be
         # constant.
-        jax.tree_map(np.testing.assert_array_equal, new_params, params)
+        jax.tree_util.tree_map(
+            np.testing.assert_array_equal, new_params, params)
         np.testing.assert_equal(new_loss, prev_loss)
         self.assertFalse(ms_opt.has_updated(opt_state))
       else:
@@ -260,9 +280,216 @@ class WrappersTest(parameterized.TestCase):
     self.assertTrue(ms_opt.has_updated(opt_state))
     np.testing.assert_array_equal(new_params['a'], 2.5)
 
+  def test_skip_not_finite(self):
+    step = jnp.zeros([], dtype=jnp.int32)
+
+    with self.subTest('test_pos_inf'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(float('inf')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_neg_inf'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(-float('inf')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_nan'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(float('nan')), jnp.zeros([])], step, None)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 1)
+
+    with self.subTest('test_finite'):
+      should_skip, skip_state = wrappers.skip_not_finite(
+          [jnp.array(11.), jnp.zeros([])], step, None)
+      self.assertFalse(bool(should_skip))
+      self.assertFalse(bool(skip_state['should_skip']))
+      self.assertEqual(int(skip_state['num_not_finite']), 0)
+
+  def test_skip_large_updates(self):
+    step = jnp.zeros([], dtype=jnp.int32)
+
+    with self.subTest('test_inf'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(float('inf')), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), float('inf'))
+
+    with self.subTest('test_nan'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(float('nan')), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      # Recall that NaN != NaN.
+      norm_squared = float(skip_state['norm_squared'])
+      self.assertNotEqual(norm_squared, norm_squared)
+
+    with self.subTest('test_large'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.array(11.), jnp.zeros([])], step, None, 100.)
+      self.assertTrue(bool(should_skip))
+      self.assertTrue(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), 121.)
+
+    with self.subTest('test_small'):
+      should_skip, skip_state = wrappers.skip_large_updates(
+          [jnp.zeros([]), jnp.zeros([])], step, None, 100.)
+      self.assertFalse(bool(should_skip))
+      self.assertFalse(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), 0.)
+
+  def test_multi_steps_skip_not_finite(self):
+    k_steps = 2
+    ms_opt = wrappers.MultiSteps(
+        alias.sgd(1.), k_steps, should_skip_update_fn=wrappers.skip_not_finite)
+    opt_init, opt_update = ms_opt.gradient_transformation()
+    opt_init = jax.jit(opt_init)
+    opt_update = jax.jit(opt_update)
+    params = dict(a=jnp.zeros([]))
+    opt_state = opt_init(params)
+
+    with self.subTest('test_good_updates'):
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 1)
+      params = update.apply_updates(params, updates)
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_inf_updates'):
+      updates, opt_state = opt_update(
+          dict(a=jnp.array(float('inf'))), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_nan_updates'):
+      updates, opt_state = opt_update(
+          dict(a=jnp.full([], float('nan'))), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+
+    with self.subTest('test_final_good_updates'):
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 1)
+      params = update.apply_updates(params, updates)
+      updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
+      self.assertEqual(int(opt_state.mini_step), 0)
+      params = update.apply_updates(params, updates)
+      np.testing.assert_array_equal(params['a'], -jnp.full([], 2.))
+
 
 class MaskedTest(chex.TestCase):
   """Tests for the masked wrapper."""
+
+  def test_tree_map_params(self):
+    params = {
+        'a': {
+            'b': (jnp.zeros((1, 2)), jnp.zeros((2, 2))),
+        },
+        'c': {
+            'd': jnp.zeros((1, 2)),
+            'e': (jnp.zeros((1, 2)), jnp.zeros((1, 2))),
+        },
+    }
+
+    sharding_axes = {
+        'a': {
+            'b': (1, 2),
+        },
+        'c': {
+            'd': 1,
+            'e': (1, 2),
+        },
+    }
+
+    mask = {
+        'a': {
+            'b': (True, False),
+        },
+        'c': {
+            'd': True,
+            'e': (False, True),
+        },
+    }
+
+    expected = {
+        'a': {
+            'b': (jnp.ones((1, 2)), jnp.zeros((2, 2))),
+        },
+        'c': {
+            'd': jnp.ones((1, 2)),
+            'e': (jnp.ones((1, 2)), jnp.ones((1, 2))),
+        },
+    }
+
+    def init_fn(params):
+      return {'count': 1, 'params': params, 'params_copy': params}
+
+    def update_fn(updates, state, params=None):
+      del params
+      return updates, state
+
+    inner = base.GradientTransformation(init_fn, update_fn)
+    masked = wrappers.masked(inner, mask)
+
+    def increment_dim_1(v):
+      return v + 1 if v.shape[0] == 1 else v
+
+    # For this optimizer, tree_map_params should have the same effect on a
+    # masked optimizer state as it does on an unmasked optimizer state.
+    with self.subTest('inner'):
+      state = inner.init(params)
+      result = state_utils.tree_map_params(inner, increment_dim_1, state)
+      chex.assert_trees_all_equal(result, inner.init(expected))
+
+    with self.subTest('masked'):
+      state = masked.init(params)
+      result = state_utils.tree_map_params(masked, increment_dim_1, state)
+      chex.assert_trees_all_equal(result, masked.init(expected))
+
+    with self.subTest('masked_with_extra_args'):
+      # Users wishing to pass additional arguments with the same tree structure
+      # as the original params pytree will need to add the additional `is_leaf`
+      # callable. This makes it possible to ignore the masked parts of the
+      # pytree.
+
+      # Replace all non-masked parameters in the opt-state tree with the
+      # sharding axis values given in the tree above. Everything else is set to
+      # None.
+      new_state = state_utils.tree_map_params(
+          masked,
+          lambda p, axis: None if isinstance(p, wrappers.MaskedNode) else axis,
+          state,
+          sharding_axes,
+          is_leaf=lambda v: isinstance(v, wrappers.MaskedNode),
+          transform_non_params=lambda v: None,
+      )
+
+      sharded_params = {
+          'a': {
+              'b': (1, None),
+          },
+          'c': {
+              'd': 1,
+              'e': (None, 2),
+          },
+      }
+
+      # Required to make pytype happy
+      new_state = cast(wrappers.MaskedState, new_state)
+
+      chex.assert_equal(None, new_state.inner_state['count'])
+      chex.assert_equal(sharded_params, new_state.inner_state['params'])
+      chex.assert_equal(sharded_params, new_state.inner_state['params_copy'])
 
   @chex.all_variants
   @parameterized.named_parameters(
@@ -277,25 +504,30 @@ class MaskedTest(chex.TestCase):
             'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
-      return jax.tree_map(
+      return jax.tree_util.tree_map(
           lambda upd, m: -upd if m else upd, updates, mask)
     correct_updates = masked_negate(input_updates)
 
     init_fn, update_fn = wrappers.masked(opt_builder(), mask_arg)
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
+
+    with self.subTest('tree_map_params'):
+      result = state_utils.tree_map_params(init_fn, lambda v: v, state)
+      chex.assert_trees_all_equal_structs(result, state)
+
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = masked_negate(correct_updates)
     updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
   @chex.all_variants
   @parameterized.named_parameters(
@@ -306,26 +538,26 @@ class MaskedTest(chex.TestCase):
     """Test when the mask is a prefix of the updates PyTree."""
     mask = {'a': True, 'b': False, 'c': {'d': False, 'e': True}}
     params = {'a': 1., 'b': {'f': 2.}, 'c': {'d': 3., 'e': ([4., 5.], 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
     # Negate the updates wherever the mask (or mask parent) is True
     def _masked_sgd_on_updates(m, upd):
-      return jax.tree_map(lambda x: -x, upd) if m else upd
-    correct_updates = jax.tree_map(
+      return jax.tree_util.tree_map(lambda x: -x, upd) if m else upd
+    correct_updates = jax.tree_util.tree_map(
         _masked_sgd_on_updates, mask, input_updates)
 
     init_fn, update_fn = wrappers.masked(opt_builder(), mask)
     update_fn = self.variant(update_fn)
     state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
-    correct_updates = jax.tree_map(
+    correct_updates = jax.tree_util.tree_map(
         _masked_sgd_on_updates, mask, correct_updates)
-    updates, state = update_fn(updates, state)
-    chex.assert_tree_all_close(updates, correct_updates)
+    updates, _ = update_fn(updates, state)
+    chex.assert_trees_all_close(updates, correct_updates)
 
   @chex.all_variants
   def test_update_requires_params(self):
@@ -334,29 +566,29 @@ class MaskedTest(chex.TestCase):
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
-    input_updates = jax.tree_map(lambda x: x/10., params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
+    input_updates = jax.tree_util.tree_map(lambda x: x/10., params)
 
-    correct_updates = jax.tree_map(
+    correct_updates = jax.tree_util.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, input_updates, params)
 
     init_fn, update_fn = wrappers.masked(
-        transform.additive_weight_decay(weight_decay), mask)
+        transform.add_decayed_weights(weight_decay), mask)
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_tree_all_close(updates, correct_updates)
+    chex.assert_trees_all_close(updates, correct_updates)
 
     params = update.apply_updates(params, updates)
 
     # Test repeated application
-    new_correct_updates = jax.tree_map(
+    new_correct_updates = jax.tree_util.tree_map(
         lambda m, u, p: u + weight_decay * p if m else u,
         mask, correct_updates, params)
     updates, state = update_fn(correct_updates, state, params)
-    chex.assert_tree_all_close(updates, new_correct_updates)
+    chex.assert_trees_all_close(updates, new_correct_updates)
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
@@ -371,7 +603,7 @@ class MaskedTest(chex.TestCase):
             'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
-    params = jax.tree_map(jnp.asarray, params)
+    params = jax.tree_util.tree_map(jnp.asarray, params)
 
     if extra_key_in_mask:
       mask['c']['extra'] = True
@@ -385,13 +617,13 @@ class MaskedTest(chex.TestCase):
   @chex.all_variants
   def test_mask_fn(self):
     params = {'a': jnp.ones((1, 2)), 'b': (jnp.ones((1,)), np.ones((1, 2, 3)))}
-    mask_fn = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
+    mask_fn = lambda p: jax.tree_util.tree_map(lambda x: x.ndim > 1, p)
     init_fn, update_fn = wrappers.masked(transform.add_decayed_weights(0.1),
                                          mask_fn)
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)
-    grads = jax.tree_map(lambda x: x*2, params)
+    grads = jax.tree_util.tree_map(lambda x: x*2, params)
     updates, state = update_fn(grads, state, params)
     np.testing.assert_allclose(updates['a'], grads['a'] + 0.1*params['a'])
     np.testing.assert_allclose(updates['b'][0], grads['b'][0])
@@ -409,14 +641,14 @@ class MaskedTest(chex.TestCase):
               'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
               'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
 
-    outer_mask = lambda p: jax.tree_map(lambda x: x.ndim > 1, p)
-    inner_mask = jax.tree_map(lambda _: True, params)
+    outer_mask = lambda p: jax.tree_util.tree_map(lambda x: x.ndim > 1, p)
+    inner_mask = jax.tree_util.tree_map(lambda _: True, params)
     inner_mask['linear_2'] = False
 
     inner = wrappers.masked(opt_builder(), inner_mask)
     init_fn, update_fn = wrappers.masked(inner, outer_mask)
 
-    input_updates = jax.tree_map(jnp.ones_like, params)
+    input_updates = jax.tree_util.tree_map(jnp.ones_like, params)
     correct_updates = copy.deepcopy(input_updates)
     correct_updates['linear_1']['w'] *= -1.0
     correct_updates['linear_3']['w'] *= -1.0
@@ -437,7 +669,7 @@ class MaskedTest(chex.TestCase):
         'a': [jnp.zeros(1), (jnp.zeros(2), wrappers.MaskedNode())],
         'b': wrappers.MaskedNode()
     }
-    chex.assert_tree_all_equal_structs(trace, expected_trace)
+    chex.assert_trees_all_equal_structs(trace, expected_trace)
 
   def test_masked_state_is_compatible_with_deepmind_tree(self):
     """Checks that the masked state is compatible with deepmind/tree.

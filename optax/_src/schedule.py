@@ -27,6 +27,7 @@ from absl import logging
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax._src import base
 from optax._src import numerics
@@ -207,7 +208,8 @@ def exponential_decay(
 def cosine_decay_schedule(
     init_value: float,
     decay_steps: int,
-    alpha: float = 0.0
+    alpha: float = 0.0,
+    exponent: float = 1.0,
 ) -> base.Schedule:
   """Returns a function which implements cosine learning rate decay.
 
@@ -224,6 +226,9 @@ def cosine_decay_schedule(
       the decay for.
     alpha: Float. The minimum value of the multiplier used to adjust the
       learning rate.
+    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
+      the current timestep and T is the `decay_steps`. The exponent modifies
+      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
 
   Returns:
     schedule: A function that maps step counts to values.
@@ -234,7 +239,7 @@ def cosine_decay_schedule(
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
-    decayed = (1 - alpha) * cosine_decay + alpha
+    decayed = (1 - alpha) * cosine_decay ** exponent + alpha
     return init_value * decayed
 
   return schedule
@@ -282,9 +287,9 @@ def piecewise_interpolate_schedule(
   else:
     boundaries, scales = (), ()
 
-  bounds = jnp.stack((0,) + boundaries)
-  values = jnp.cumprod(jnp.stack((init_value,) + scales))
-  interval_sizes = (bounds[1:] - bounds[:-1])
+  bounds = np.stack((0,) + boundaries)
+  values = np.cumprod(np.stack((init_value,) + scales))
+  interval_sizes = bounds[1:] - bounds[:-1]
 
   def schedule(count):
     indicator = (bounds[:-1] <= count) & (count < bounds[1:])
@@ -388,7 +393,7 @@ def join_schedules(schedules: Sequence[base.Schedule],
   Returns:
     schedule: A function that maps step counts to values.
   """
-  def schedule(step: jnp.DeviceArray) -> jnp.DeviceArray:
+  def schedule(step: chex.Numeric) -> chex.Numeric:
     output = schedules[0](step)
     for boundary, schedule in zip(boundaries, schedules[1:]):
       output = jnp.where(step < boundary, output, schedule(step - boundary))
@@ -401,7 +406,8 @@ def warmup_cosine_decay_schedule(
     peak_value: float,
     warmup_steps: int,
     decay_steps: int,
-    end_value: float = 0.0
+    end_value: float = 0.0,
+    exponent: float = 1.0,
 ) -> base.Schedule:
   """Linear warmup followed by cosine decay.
 
@@ -413,6 +419,9 @@ def warmup_cosine_decay_schedule(
       this includes the warmup time, so the number of steps during which cosine
       annealing is applied is `decay_steps - warmup_steps`.
     end_value: End value of the scalar to be annealed.
+    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
+      the current timestep and T is the `decay_steps`. The exponent modifies
+      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
   Returns:
     schedule: A function that maps step counts to values.
   """
@@ -424,7 +433,8 @@ def warmup_cosine_decay_schedule(
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=end_value/peak_value)]
+          alpha=end_value/peak_value,
+          exponent=exponent)]
   return join_schedules(schedules, [warmup_steps])
 
 
@@ -512,7 +522,8 @@ class InjectHyperparamsState(NamedTuple):
 
 def inject_hyperparams(
     inner_factory: Callable[..., base.GradientTransformation],
-    static_args: Union[str, Iterable[str]] = ()
+    static_args: Union[str, Iterable[str]] = (),
+    hyperparam_dtype: Optional[jnp.dtype] = None,
 ) -> Callable[..., base.GradientTransformation]:
   """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
@@ -546,6 +557,8 @@ def inject_hyperparams(
       callable parameters are not schedules. inject_hyperparams treats all
       callables as schedules by default, so if a hyperparameter is a
       non-schedule callable, you must specify that using this argument.
+    hyperparam_dtype: Optional datatype override. If specified, all float
+      hyperparameters will be cast to this type.
 
   Returns:
     A callable that returns a ``optax.GradientTransformation``. This callable
@@ -573,7 +586,7 @@ def inject_hyperparams(
         other_hps[name] = value
       elif callable(value):
         sched_hps[name] = value
-      elif isinstance(value, (int, float, chex.Array)):
+      elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
@@ -583,7 +596,11 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      dtype = getattr(next(iter(jax.tree_leaves(params)), None), 'dtype', None)
+      if hyperparam_dtype is None:
+        dtype = getattr(next(iter(
+            jax.tree_util.tree_leaves(params)), None), 'dtype', None)
+      else:
+        dtype = hyperparam_dtype
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
@@ -592,13 +609,17 @@ def inject_hyperparams(
           count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
     def update_fn(updates, state, params=None):
-      count_inc = numerics.safe_int32_increment(state.count)
-      dtype = getattr(next(iter(jax.tree_leaves(updates)), None), 'dtype', None)
+      if hyperparam_dtype is None:
+        dtype = getattr(next(iter(
+            jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
+      else:
+        dtype = hyperparam_dtype
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
-      hparams.update(schedule_fn(count_inc, dtype))
+      hparams.update(schedule_fn(state.count, dtype))
       updates, inner_state = inner_factory(**other_hps, **hparams).update(
           updates, state.inner_state, params)
+      count_inc = numerics.safe_int32_increment(state.count)
 
       # pylint:disable=too-many-function-args
       return updates, InjectHyperparamsState(count_inc, hparams, inner_state)

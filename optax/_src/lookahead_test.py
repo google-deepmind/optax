@@ -25,6 +25,7 @@ import numpy as np
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
+from optax._src import state_utils
 from optax._src import update
 
 
@@ -46,7 +47,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   # Use SGD for simplicity but add non-trivial optimizer state so that the
   # resetting behaviour of lookahead can be tested.
   def init_fn(params):
-    aggregate_grads = jax.tree_map(jnp.zeros_like, params)
+    aggregate_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
     return TestOptimizerState(aggregate_grads, is_reset=True)
 
   def update_fn(updates, state, params):
@@ -54,7 +55,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     # have been passed correctly.
     chex.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
-    updates = jax.tree_map(lambda u: step_size * u, updates)
+    updates = jax.tree_util.tree_map(lambda u: step_size * u, updates)
     return updates, TestOptimizerState(aggregate_grads, is_reset=False)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -76,6 +77,10 @@ class LookaheadTest(chex.TestCase):
     # Use the chex variant to check various function versions (jit, pmap, etc).
     step = self.variant(update_fn)
     opt_state = self.variant(init_fn)(params)
+
+    # A no-op change, to verify that tree map works.
+    opt_state = state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
+
     for _ in range(num_steps):
       updates, opt_state = step(self.grads, opt_state, params)
       params = update.apply_updates(params, updates)
@@ -94,7 +99,7 @@ class LookaheadTest(chex.TestCase):
     # x steps must be: 3 -> 2 -> 1 -> 2 (sync) -> 1 -> 0 -> 1 (sync).
     # Similarly for y (with sign flipped).
     correct_final_params = {'x': 1, 'y': -1}
-    chex.assert_tree_all_close(final_params.slow, correct_final_params)
+    chex.assert_trees_all_close(final_params.slow, correct_final_params)
 
   @chex.all_variants
   @parameterized.parameters([False], [True])
@@ -109,6 +114,10 @@ class LookaheadTest(chex.TestCase):
         reset_state=reset_state)
 
     _, opt_state = self.loop(optimizer, num_steps, self.synced_initial_params)
+
+    # A no-op change, to verify that this does not break anything
+    opt_state = state_utils.tree_map_params(optimizer, lambda v: v, opt_state)
+
     fast_state = opt_state.fast_state
     if reset_state:
       correct_state = fast_optimizer.init(self.initial_params)
@@ -116,7 +125,7 @@ class LookaheadTest(chex.TestCase):
       _, correct_state = self.loop(fast_optimizer, num_steps,
                                    self.initial_params)
 
-    chex.assert_tree_all_close(fast_state, correct_state)
+    chex.assert_trees_all_close(fast_state, correct_state)
 
   @chex.all_variants
   @parameterized.parameters(
@@ -133,7 +142,7 @@ class LookaheadTest(chex.TestCase):
         _test_optimizer(-1), sync_period, slow_step_size)
     final_params, _ = self.loop(
         optimizer, num_steps=2, params=self.synced_initial_params)
-    chex.assert_tree_all_close(final_params.slow, correct_result)
+    chex.assert_trees_all_close(final_params.slow, correct_result)
 
 
 if __name__ == '__main__':

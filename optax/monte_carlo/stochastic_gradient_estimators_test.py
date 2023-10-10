@@ -22,8 +22,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax._src import stochastic_gradient_estimators as sge
 from optax._src import utils
+from optax.monte_carlo import stochastic_gradient_estimators as sge
 
 
 # Set seed for deterministic sampling.
