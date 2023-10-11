@@ -2,7 +2,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from classification import sigmoid_binary_cross_entropy
+from optax.losses.classification import sigmoid_binary_cross_entropy
 
 def sigmoid_focal_loss(
     logits:  chex.Array,
@@ -34,7 +34,7 @@ def sigmoid_focal_loss(
     """
     chex.assert_type([logits], float)
     labels = labels.astype(logits.dtype)
-    # see also the original implementation at:
+    # see also the original papers implementation at:
     # https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
     p = jax.nn.sigmoid(logits)
     ce_loss = sigmoid_binary_cross_entropy(logits, labels)
