@@ -16,6 +16,7 @@
 
 from optax import contrib
 from optax import experimental
+from optax import large_scale
 from optax import losses
 from optax import monte_carlo
 from optax import second_order
@@ -97,7 +98,6 @@ from optax._src.schedule import polynomial_schedule
 from optax._src.schedule import sgdr_schedule
 from optax._src.schedule import warmup_cosine_decay_schedule
 from optax._src.schedule import warmup_exponential_decay_schedule
-from optax._src.state_utils import tree_map_params
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
@@ -162,6 +162,9 @@ from optax._src.wrappers import MultiStepsState
 from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
+
+# TODO(mtthss): remove large_scale aliases from top namespace once users update.
+tree_map_params = large_scale.tree_map_params
 
 # TODO(mtthss): remove loss aliases from flat namespace once users have updated.
 convex_kl_divergence = losses.convex_kl_divergence

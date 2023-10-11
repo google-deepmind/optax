@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for state_utils."""
+"""Tests for optax.large_scale.partitioning."""
 
 import dataclasses
 from typing import Optional, TypedDict, cast
@@ -25,8 +25,8 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import schedule
-from optax._src import state_utils
 from optax._src import transform
+from optax.large_scale import partitioning
 
 
 @dataclasses.dataclass
@@ -85,7 +85,7 @@ class StateUtilsTest(absltest.TestCase):
     params_sharding_spec = _fake_param_sharding()
     opt_state = opt.init(params)
 
-    opt_state_sharding_spec = state_utils.tree_map_params(
+    opt_state_sharding_spec = partitioning.tree_map_params(
         opt,
         lambda _, spec: spec,
         opt_state,
@@ -139,7 +139,7 @@ class StateUtilsTest(absltest.TestCase):
     }
 
     state = init(params)
-    state = state_utils.tree_map_params(init, lambda v: v+1, state)
+    state = partitioning.tree_map_params(init, lambda v: v+1, state)
     state = cast(Foo, state)
 
     self.assertEqual(int(state.count), 0)
@@ -152,7 +152,7 @@ class StateUtilsTest(absltest.TestCase):
     opt = alias.adam(1e-4)
     opt_state = opt.init(params)
 
-    opt_state_sharding_spec = state_utils.tree_map_params(
+    opt_state_sharding_spec = partitioning.tree_map_params(
         opt,
         lambda _, spec: spec,
         opt_state,
@@ -194,7 +194,7 @@ class StateUtilsTest(absltest.TestCase):
 
     params = _fake_params()
     state = opt.init(params)
-    state = state_utils.tree_map_params(opt, lambda v: v+1, state)
+    state = partitioning.tree_map_params(opt, lambda v: v+1, state)
     state = cast(schedule.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
@@ -207,7 +207,7 @@ class StateUtilsTest(absltest.TestCase):
 
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
-    state = state_utils.tree_map_params(opt, lambda _: None, state)
+    state = partitioning.tree_map_params(opt, lambda _: None, state)
     self.assertEqual(
         state,
         (
@@ -224,7 +224,7 @@ class StateUtilsTest(absltest.TestCase):
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
 
-    state = state_utils.tree_map_params(
+    state = partitioning.tree_map_params(
         opt,
         lambda v: 1, state, transform_non_params=lambda _: None
     )
