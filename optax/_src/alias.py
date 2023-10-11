@@ -671,13 +671,18 @@ def rmsprop(
     nesterov: bool = False
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
-  """A flexible RMSProp optimizer.
+  r"""A flexible RMSProp optimizer.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
   used for each weight is scaled by a suitable estimate of the magnitude of the
   gradients on previous steps. Several variants of RMSProp can be found
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
+
+  WARNING: PyTorch and optax's RMSprop implementations differ and could impact
+    performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
+    PyTorch uses $\sqrt{v} + \epsilon$. See
+    https://github.com/google-deepmind/optax/issues/532 for more detail.
 
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
