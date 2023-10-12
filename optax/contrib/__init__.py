@@ -19,3 +19,7 @@ from optax.contrib.mechanic import mechanize
 from optax.contrib.privacy import differentially_private_aggregate
 from optax.contrib.privacy import DifferentiallyPrivateAggregateState
 from optax.contrib.privacy import dpsgd
+from optax.contrib.sam import normalize
+from optax.contrib.sam import NormalizeState
+from optax.contrib.sam import sam
+from optax.contrib.sam import SAMState
