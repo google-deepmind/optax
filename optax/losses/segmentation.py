@@ -1,3 +1,5 @@
+from typing import Optional
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -7,7 +9,7 @@ from optax.losses.classification import sigmoid_binary_cross_entropy
 def sigmoid_focal_loss(
     logits:  chex.Array,
     labels:  chex.Array,
-    alpha: float = None,
+    alpha: Optional[float] = None,
     gamma: float = 2,
 ) ->  chex.Array:
     """Compute a sigmoid focal loss.
