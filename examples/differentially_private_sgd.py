@@ -71,6 +71,7 @@ import jax
 from jax.example_libraries import stax
 import jax.numpy as jnp
 import optax
+from optax import contrib
 from optax import losses
 
 # pylint: disable=g-bad-import-order
@@ -137,10 +138,9 @@ def main(_):
   full_test_batch = next(test_dataset.as_numpy_iterator())
 
   if FLAGS.dpsgd:
-    tx = optax.dpsgd(learning_rate=FLAGS.learning_rate,
-                     l2_norm_clip=FLAGS.l2_norm_clip,
-                     noise_multiplier=FLAGS.noise_multiplier,
-                     seed=FLAGS.seed)
+    tx = contrib.dpsgd(
+        learning_rate=FLAGS.learning_rate, l2_norm_clip=FLAGS.l2_norm_clip,
+        noise_multiplier=FLAGS.noise_multiplier, seed=FLAGS.seed)
   else:
     tx = optax.sgd(learning_rate=FLAGS.learning_rate)
 

@@ -21,7 +21,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax._src import privacy
+from optax.contrib import privacy
 
 
 class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
@@ -86,22 +86,20 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=noise_multiplier,
         seed=1337)
-    state = dp_agg.init(None)
+    state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
     expected_std = l2_norm_clip * noise_multiplier
 
     grads = [jnp.ones((1, 100, 100))]  # batch size 1
     for _ in range(3):
       updates, state = update_fn(grads, state)
-      chex.assert_trees_all_close(expected_std,
-                                  jnp.std(updates[0]),
-                                  atol=0.1 * expected_std)
+      chex.assert_trees_all_close(
+          expected_std, jnp.std(updates[0]), atol=0.1 * expected_std)
 
   def test_aggregated_updates_as_input_fails(self):
     """Expect per-example gradients as input to this transform."""
-    dp_agg = privacy.differentially_private_aggregate(l2_norm_clip=0.1,
-                                                      noise_multiplier=1.1,
-                                                      seed=2021)
+    dp_agg = privacy.differentially_private_aggregate(
+        l2_norm_clip=0.1, noise_multiplier=1.1, seed=2021)
     state = dp_agg.init(self.params)
     mean_grads = jax.tree_util.tree_map(lambda g: g.mean(0), self.per_eg_grads)
     with self.assertRaises(ValueError):

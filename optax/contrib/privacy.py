@@ -14,12 +14,15 @@
 # ==============================================================================
 """Differential Privacy utilities."""
 
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Optional
 
 import jax
 
+from optax._src import alias
 from optax._src import base
 from optax._src import clipping
+from optax._src import combine
+from optax._src import transform
 
 
 # pylint:disable=no-value-for-parameter
@@ -74,3 +77,49 @@ def differentially_private_aggregate(
             DifferentiallyPrivateAggregateState(rng_key=new_key))
 
   return base.GradientTransformation(init_fn, update_fn)
+
+
+def dpsgd(
+    learning_rate: alias.ScalarOrSchedule,
+    l2_norm_clip: float,
+    noise_multiplier: float,
+    seed: int,
+    momentum: Optional[float] = None,
+    nesterov: bool = False
+) -> base.GradientTransformation:
+  """The DPSGD optimizer.
+
+  Differential privacy is a standard for privacy guarantees of algorithms
+  learning from aggregate databases including potentially sensitive information.
+  DPSGD offers protection against a strong adversary with full knowledge of the
+  training mechanism and access to the model’s parameters.
+
+  WARNING: This `GradientTransformation` expects input updates to have a batch
+  dimension on the 0th axis. That is, this function expects per-example
+  gradients as input (which are easy to obtain in JAX using `jax.vmap`).
+
+  References:
+    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    l2_norm_clip: Maximum L2 norm of the per-example gradients.
+    noise_multiplier: Ratio of standard deviation to the clipping norm.
+    seed: Initial seed used for the jax.random.PRNGKey
+    momentum: Decay rate used by the momentum term, when it is set to `None`,
+      then momentum is not used at all.
+    nesterov: Whether Nesterov momentum is used.
+
+  Returns:
+    A `GradientTransformation`.
+  """
+  return combine.chain(
+      differentially_private_aggregate(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          seed=seed),
+      (transform.trace(decay=momentum, nesterov=nesterov)
+       if momentum is not None else base.identity()),
+
+      alias._scale_by_learning_rate(learning_rate)  # pylint: disable=protected-access
+  )

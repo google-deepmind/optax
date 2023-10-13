@@ -27,7 +27,6 @@ from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
-from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
@@ -83,8 +82,6 @@ from optax._src.lookahead import LookaheadState
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
-from optax._src.privacy import differentially_private_aggregate
-from optax._src.privacy import DifferentiallyPrivateAggregateState
 from optax._src.schedule import constant_schedule
 from optax._src.schedule import cosine_decay_schedule
 from optax._src.schedule import cosine_onecycle_schedule
@@ -184,6 +181,13 @@ softmax_cross_entropy_with_integer_labels = (
     losses.softmax_cross_entropy_with_integer_labels
 )
 squared_error = losses.squared_error
+
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+differentially_private_aggregate = contrib.differentially_private_aggregate
+DifferentiallyPrivateAggregateState = (
+    contrib.DifferentiallyPrivateAggregateState
+)
+dpsgd = contrib.dpsgd
 
 __version__ = "0.1.8.dev"
 

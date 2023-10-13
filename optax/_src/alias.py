@@ -23,7 +23,6 @@ from optax._src import base
 from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
-from optax._src import privacy
 from optax._src import transform
 from optax._src import wrappers
 
@@ -820,51 +819,6 @@ def yogi(
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
       _scale_by_learning_rate(learning_rate),
-  )
-
-
-def dpsgd(
-    learning_rate: ScalarOrSchedule,
-    l2_norm_clip: float,
-    noise_multiplier: float,
-    seed: int,
-    momentum: Optional[float] = None,
-    nesterov: bool = False
-) -> base.GradientTransformation:
-  """The DPSGD optimizer.
-
-  Differential privacy is a standard for privacy guarantees of algorithms
-  learning from aggregate databases including potentially sensitive information.
-  DPSGD offers protection against a strong adversary with full knowledge of the
-  training mechanism and access to the model’s parameters.
-
-  WARNING: This `GradientTransformation` expects input updates to have a batch
-  dimension on the 0th axis. That is, this function expects per-example
-  gradients as input (which are easy to obtain in JAX using `jax.vmap`).
-
-  References:
-    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
-
-  Args:
-    learning_rate: A fixed global scaling factor.
-    l2_norm_clip: Maximum L2 norm of the per-example gradients.
-    noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
-    momentum: Decay rate used by the momentum term, when it is set to `None`,
-      then momentum is not used at all.
-    nesterov: Whether Nesterov momentum is used.
-
-  Returns:
-    A `GradientTransformation`.
-  """
-  return combine.chain(
-      privacy.differentially_private_aggregate(
-          l2_norm_clip=l2_norm_clip,
-          noise_multiplier=noise_multiplier,
-          seed=seed),
-      (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else base.identity()),
-      _scale_by_learning_rate(learning_rate)
   )
 
 

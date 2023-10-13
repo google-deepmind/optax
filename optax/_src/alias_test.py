@@ -54,16 +54,6 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(
-        opt_name='dpsgd',
-        opt_kwargs=dict(
-            learning_rate=1e-3,
-            l2_norm_clip=10.0,
-            noise_multiplier=1e-3,
-            seed=0,
-            momentum=0.2,
-        ),
-    ),
 )
 
 
@@ -126,8 +116,6 @@ class AliasTest(chex.TestCase):
     @jax.jit
     def step(params, state):
       updates = get_updates(params)
-      if opt_name == 'dpsgd':
-        updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
