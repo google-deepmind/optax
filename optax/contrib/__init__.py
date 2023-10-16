@@ -14,6 +14,8 @@
 # ==============================================================================
 """Contributed optimizers in Optax."""
 
+from optax.contrib.complex_valued import split_real_and_imaginary
+from optax.contrib.complex_valued import SplitRealAndImaginaryState
 from optax.contrib.mechanic import MechanicState
 from optax.contrib.mechanic import mechanize
 from optax.contrib.privacy import differentially_private_aggregate
