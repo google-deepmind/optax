@@ -21,7 +21,7 @@ import jax.numpy as jnp
 
 from optax._src import base
 from optax._src import transform
-from optax._src.experimental import extra_args as extra
+from optax.experimental import extra_args as extra
 
 
 def scale_by_loss():
@@ -56,7 +56,7 @@ class ExtraArgsTest(absltest.TestCase):
         'scale_by_value_loss': {'loss': 10.0}}
 
     opt_state = tx.init(params, extra_args=extra_args)
-    updates, opt_state = tx.update(
+    updates, _ = tx.update(
         grads, opt_state, params, extra_args=extra_args)
     chex.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
 

@@ -19,8 +19,8 @@ Features may be removed or modified at any time.
 
 # TODO(mtthss): delete import stubs after user updates.
 from optax import contrib
-from optax._src.experimental.extra_args import GradientTransformationWithExtraArgs
-from optax._src.experimental.extra_args import named_chain
+from optax.experimental.extra_args import GradientTransformationWithExtraArgs
+from optax.experimental.extra_args import named_chain
 
 # TODO(mtthss): delete import stubs after user updates.
 split_real_and_imaginary = contrib.split_real_and_imaginary
