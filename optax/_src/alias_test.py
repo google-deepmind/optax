@@ -23,9 +23,10 @@ import jax.numpy as jnp
 
 from optax._src import alias
 from optax._src import numerics
-from optax._src import schedule
 from optax._src import state_utils
 from optax._src import update
+from optax.schedules import inject
+
 
 _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
@@ -145,10 +146,10 @@ class AliasTest(chex.TestCase):
       # Adafactor wrapped in inject_hyperparams currently needs a static
       # argument to be specified in order to be jittable. See issue
       # https://github.com/deepmind/optax/issues/412.
-      opt_inject = schedule.inject_hyperparams(
+      opt_inject = inject.inject_hyperparams(
           opt_factory, static_args=('min_dim_size_to_factor',))(**opt_kwargs)
     else:
-      opt_inject = schedule.inject_hyperparams(opt_factory)(**opt_kwargs)
+      opt_inject = inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
     params = [-jnp.ones((2, 3)), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), -jnp.ones((2, 5, 2))]

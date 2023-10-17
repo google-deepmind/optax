@@ -18,6 +18,7 @@ from optax import contrib
 from optax import experimental
 from optax import losses
 from optax import monte_carlo
+from optax import schedules
 from optax import second_order
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
@@ -82,21 +83,6 @@ from optax._src.lookahead import LookaheadState
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
-from optax._src.schedule import constant_schedule
-from optax._src.schedule import cosine_decay_schedule
-from optax._src.schedule import cosine_onecycle_schedule
-from optax._src.schedule import exponential_decay
-from optax._src.schedule import inject_hyperparams
-from optax._src.schedule import InjectHyperparamsState
-from optax._src.schedule import join_schedules
-from optax._src.schedule import linear_onecycle_schedule
-from optax._src.schedule import linear_schedule
-from optax._src.schedule import piecewise_constant_schedule
-from optax._src.schedule import piecewise_interpolate_schedule
-from optax._src.schedule import polynomial_schedule
-from optax._src.schedule import sgdr_schedule
-from optax._src.schedule import warmup_cosine_decay_schedule
-from optax._src.schedule import warmup_exponential_decay_schedule
 from optax._src.state_utils import tree_map_params
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
@@ -162,6 +148,23 @@ from optax._src.wrappers import MultiStepsState
 from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
+
+# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+constant_schedule = schedules.constant_schedule
+cosine_decay_schedule = schedules.cosine_decay_schedule
+cosine_onecycle_schedule = schedules.cosine_onecycle_schedule
+exponential_decay = schedules.exponential_decay
+inject_hyperparams = schedules.inject_hyperparams
+InjectHyperparamsState = schedules.InjectHyperparamsState
+join_schedules = schedules.join_schedules
+linear_onecycle_schedule = schedules.linear_onecycle_schedule
+linear_schedule = schedules.linear_schedule
+piecewise_constant_schedule = schedules.piecewise_constant_schedule
+piecewise_interpolate_schedule = schedules.piecewise_interpolate_schedule
+polynomial_schedule = schedules.polynomial_schedule
+sgdr_schedule = schedules.sgdr_schedule
+warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
+warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule
 
 # TODO(mtthss): remove loss aliases from flat namespace once users have updated.
 convex_kl_divergence = losses.convex_kl_divergence

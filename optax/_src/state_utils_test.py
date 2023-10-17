@@ -21,12 +21,14 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
+
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
-from optax._src import schedule
 from optax._src import state_utils
 from optax._src import transform
+from optax.schedules import inject
+from optax.schedules import schedule
 
 
 @dataclasses.dataclass
@@ -190,12 +192,12 @@ class StateUtilsTest(absltest.TestCase):
     self.assertEqual(expected, opt_state_sharding_spec)
 
   def test_inject_hparams(self):
-    opt = schedule.inject_hyperparams(alias.adamw)(learning_rate=1e-3)
+    opt = inject.inject_hyperparams(alias.adamw)(learning_rate=1e-3)
 
     params = _fake_params()
     state = opt.init(params)
     state = state_utils.tree_map_params(opt, lambda v: v+1, state)
-    state = cast(schedule.InjectHyperparamsState, state)
+    state = cast(inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree_map(lambda v: v+1, params)
