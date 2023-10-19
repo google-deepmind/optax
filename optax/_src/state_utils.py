@@ -117,3 +117,7 @@ class _ParamsPlaceholder:
   def tree_unflatten(cls, aux, children):
     del aux, children
     return cls()
+
+
+def is_params_place_holder(placeholder) -> bool:
+  return isinstance(placeholder, _ParamsPlaceholder)

@@ -83,6 +83,7 @@ from optax._src.lookahead import LookaheadState
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
+from optax._src.state_utils import is_params_place_holder
 from optax._src.state_utils import tree_map_params
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
