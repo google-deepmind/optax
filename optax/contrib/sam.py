@@ -137,7 +137,7 @@ def sam(
         updates, state.adv_state, params
     )
     sync_next = state.steps_since_sync == sync_period - 1
-    updates, cache = _sam_update(
+    updates, cache = _sam_update(  # pytype: disable=wrong-arg-types
         updates, adv_updates, state.cache, sync_next, params, learning_rate
     )
     if reset_state:
