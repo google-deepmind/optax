@@ -29,3 +29,6 @@ from optax.schedules.schedule import polynomial_schedule
 from optax.schedules.schedule import sgdr_schedule
 from optax.schedules.schedule import warmup_cosine_decay_schedule
 from optax.schedules.schedule import warmup_exponential_decay_schedule
+from optax.schedules.stateful import inject_stateful_hyperparams
+from optax.schedules.stateful import InjectStatefulHyperparamsState
+from optax.schedules.stateful import WrappedSchedule

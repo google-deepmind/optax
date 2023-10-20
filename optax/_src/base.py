@@ -14,11 +14,12 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
+
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
@@ -32,6 +33,30 @@ Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
+ScheduleState = Any
+
+
+@runtime_checkable
+class StatefulSchedule(Protocol):
+  """Base interface for stateful schedules."""
+
+  def init(
+      self
+  ) -> ScheduleState:
+    """Initialize the state of the stateful schedule."""
+
+  def update(
+      self,
+      state: ScheduleState,
+      **extra_kwargs,
+  ) -> ScheduleState:
+    """Updates the current schedule state."""
+
+  def __call__(
+      self,
+      state: ScheduleState,
+  ) -> chex.Numeric:
+    """Computes the current schedule value."""
 
 
 class TransformInitFn(Protocol):

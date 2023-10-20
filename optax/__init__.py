@@ -165,6 +165,9 @@ polynomial_schedule = schedules.polynomial_schedule
 sgdr_schedule = schedules.sgdr_schedule
 warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
 warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule
+inject_stateful_hyperparams = schedules.inject_stateful_hyperparams
+InjectStatefulHyperparamsState = schedules.InjectStatefulHyperparamsState
+WrappedSchedule = schedules.WrappedSchedule
 
 # TODO(mtthss): remove loss aliases from flat namespace once users have updated.
 convex_kl_divergence = losses.convex_kl_divergence
