@@ -41,7 +41,7 @@ class ExampleStatefulSchedule(base.StatefulSchedule):
     total = state.total + extra_args['addendum']
     return ExampleState(total=total)
 
-  def __call__(self, state: ExampleState) -> chex.Numeric:
+  def __call__(self, state: ExampleState, **extra_args) -> chex.Numeric:
     return state.total
 
 

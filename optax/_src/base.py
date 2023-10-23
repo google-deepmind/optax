@@ -48,13 +48,14 @@ class StatefulSchedule(Protocol):
   def update(
       self,
       state: ScheduleState,
-      **extra_kwargs,
+      **extra_args,
   ) -> ScheduleState:
     """Updates the current schedule state."""
 
   def __call__(
       self,
       state: ScheduleState,
+      **extra_args,
   ) -> chex.Numeric:
     """Computes the current schedule value."""
 

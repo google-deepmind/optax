@@ -137,7 +137,8 @@ def inject_stateful_hyperparams(
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
       hparams.update({
-          k: _convert_floats(f(state.hyperparams_states[k]), dtype)
+          k: _convert_floats(
+              f(state.hyperparams_states[k], **extra_args), dtype)
           for k, f in sched_hps.items()
       })
       hyperparams_states = {
@@ -179,14 +180,15 @@ class WrappedSchedule:
   def update(
       self,
       state: WrappedScheduleState,
-      **extra_kwargs,
+      **extra_args,
   ) -> WrappedScheduleState:
-    del extra_kwargs
+    del extra_args
     new_count = numerics.safe_int32_increment(state.count)
     return WrappedScheduleState(count=new_count)
 
   def __call__(
       self,
       state: WrappedScheduleState,
+      **extra_args,
   ) -> chex.Numeric:
     return self.schedule_fn(state.count)
