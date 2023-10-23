@@ -19,7 +19,7 @@ from absl.testing import parameterized
 
 import chex
 import jax
-from jax.config import config
+from jax import config
 import jax.numpy as jnp
 
 from optax._src import alias
