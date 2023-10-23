@@ -14,6 +14,8 @@
 # ==============================================================================
 """Utilities for creating schedules."""
 
+from optax._src.base import Schedule
+from optax._src.base import StatefulSchedule
 from optax.schedules.inject import inject_hyperparams
 from optax.schedules.inject import InjectHyperparamsState
 from optax.schedules.join import join_schedules
