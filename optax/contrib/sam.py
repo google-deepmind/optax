@@ -81,17 +81,19 @@ class SAMState:
   Attributes:
     steps_since_sync: Number of adversarial steps taken since the last outer
       update.
+    opt_state: State of the outer optimizer.
     adv_state: State of the inner adversarial optimizer.
     cache: a place to store the last out updates.
   """
 
   steps_since_sync: jax.Array
+  opt_state: base.OptState
   adv_state: base.OptState
   cache: base.Params
 
 
 def sam(
-    learning_rate: float,
+    optimizer: base.GradientTransformation,
     adv_optimizer: base.GradientTransformation,
     sync_period: int = 2,
     reset_state: bool = True,
@@ -102,16 +104,17 @@ def sam(
   updates an outer set of true parameters.  By default, resets
   the state of the adversarial optimizer after syncronization.  For example:
 
+      opt = optax.sgd(lr)
       adv_opt = optax.chain(normalize(), optax.sgd(rho))
-      sam_opt = sam(lr, adv_opt, sync_period=2)
+      sam_opt = sam(opt, adv_opt, sync_period=2)
 
   Would implement the simple drop-in SAM version from the paper which uses
   an inner adversarial optimizer of a normalized sgd for one step.
 
   Arguments:
-    learning_rate: float, the learning rate for the outer optimizer.
+    optimizer: the outer optimizer.
     adv_optimizer: the inner adversarial optimizer.
-    sync_period: int, how often to run the other optimizer, defaults to 2, or
+    sync_period: int, how often to run the outer optimizer, defaults to 2, or
       every other step.
     reset_state: bool, whether to reset the state of the inner optimizer after
       every sync period, defaults to True.
@@ -126,6 +129,7 @@ def sam(
   def init_fn(params: base.Params) -> SAMState:
     return SAMState(
         steps_since_sync=jnp.zeros(shape=(), dtype=jnp.int32),
+        opt_state=optimizer.init(params),
         adv_state=adv_optimizer.init(params),
         cache=params,
     )
@@ -136,9 +140,10 @@ def sam(
     adv_updates, adv_state = adv_optimizer.update(
         updates, state.adv_state, params
     )
+    opt_updates, opt_state = optimizer.update(updates, state.opt_state, params)
     sync_next = state.steps_since_sync == sync_period - 1
     updates, cache = _sam_update(  # pytype: disable=wrong-arg-types
-        updates, adv_updates, state.cache, sync_next, params, learning_rate
+        opt_updates, adv_updates, state.cache, sync_next, params
     )
     if reset_state:
       # Jittable way of resetting the fast optimizer state if parameters
@@ -150,9 +155,16 @@ def sam(
           initial_state,
       )
 
+    opt_state = jax.tree_map(
+        lambda current, prev: sync_next * current + (1 - sync_next) * prev,
+        opt_state,
+        state.opt_state,
+    )
+
     steps_since_sync = (state.steps_since_sync + 1) % sync_period
     return updates, SAMState(
-        steps_since_sync=steps_since_sync, adv_state=adv_state, cache=cache
+        steps_since_sync=steps_since_sync,
+        adv_state=adv_state, opt_state=opt_state, cache=cache,
     )
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -164,7 +176,6 @@ def _sam_update(
     cache: base.Params,
     sync_next: jax.Array,
     params: SAMState,
-    learning_rate: float,
 ) -> Tuple[base.Updates, base.Params]:
   """Returns the updates according to a sam step."""
 
@@ -173,10 +184,10 @@ def _sam_update(
     #   params = params - sam_rho * adv_updates
     #   cache = cache
     # if sync_next:
-    #   params = cache - learning_rate * updates
+    #   params = cache - params + updates
     #   cache = params  (notice this has to be the updated params).
     return (1 - sync_next) * (-adv_updates) + sync_next * (
-        cache - params - learning_rate * updates
+        cache - params + updates
     )
 
   param_updates = jax.tree_map(
