@@ -637,7 +637,7 @@ def radam(
   by analytically reducing the large variance.
 
   References:
-    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+    Liu et al, 2020: https://arxiv.org/abs/1908.03265
 
   Args:
     learning_rate: A fixed global scaling factor.
