@@ -176,7 +176,7 @@ class MultiTransformTest(chex.TestCase):
 
     # Check repeated application, this time with no params.
     correct_updates = correct_update_fn(correct_updates)
-    updates, state = update_fn(updates, state)
+    updates, _ = update_fn(updates, state)
     chex.assert_trees_all_close(updates, correct_updates)
 
   def test_extra_args(self):
@@ -249,6 +249,39 @@ class MultiTransformTest(chex.TestCase):
       state = self.variant(init_fn)(params)
       updates = jax.tree_util.tree_map(lambda x: x / 10.0, params)
       self.variant(update_fn)(updates, state)
+
+
+def scale_by_loss():
+  """Scale the gradient by the absolute value of the loss."""
+
+  def init_fn(params):
+    del params
+    return base.EmptyState()
+
+  def update_fn(updates, state, params, *, loss, **extra_args):
+    del params, extra_args
+    updates = jax.tree_util.tree_map(
+        lambda u: u / loss, updates)
+    return updates, state
+
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+class NamedChainTest(absltest.TestCase):
+
+  def test_named_chain(self):
+    tx = combine.named_chain(
+        ('scale', transform.scale(0.1)),
+        ('scale_loss', scale_by_loss()),
+    )
+
+    params = {'a': jnp.ones((4,))}
+    grads = params
+
+    opt_state = tx.init(params)
+    updates, _ = tx.update(grads, opt_state, params, loss=0.1)
+
+    chex.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
 
 
 if __name__ == '__main__':

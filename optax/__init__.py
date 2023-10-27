@@ -15,7 +15,6 @@
 """Optax: composable gradient processing and optimization, in JAX."""
 
 from optax import contrib
-from optax import experimental
 from optax import losses
 from optax import monte_carlo
 from optax import schedules
@@ -68,6 +67,7 @@ from optax._src.clipping import per_example_global_norm_clip
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
+from optax._src.combine import named_chain
 from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans
