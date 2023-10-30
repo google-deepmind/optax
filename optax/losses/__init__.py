@@ -24,6 +24,7 @@ from optax.losses.classification import poly_loss_cross_entropy
 from optax.losses.classification import sigmoid_binary_cross_entropy
 from optax.losses.classification import softmax_cross_entropy
 from optax.losses.classification import softmax_cross_entropy_with_integer_labels
+from optax.losses.ranking import ranking_softmax_loss
 from optax.losses.regression import cosine_distance
 from optax.losses.regression import cosine_similarity
 from optax.losses.regression import huber_loss
