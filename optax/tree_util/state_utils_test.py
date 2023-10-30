@@ -25,10 +25,10 @@ import jax.numpy as jnp
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
-from optax._src import state_utils
 from optax._src import transform
 from optax.schedules import inject
 from optax.schedules import schedule
+from optax.tree_util import state_utils
 
 
 @dataclasses.dataclass
@@ -64,7 +64,7 @@ def _scale_by_adam_with_dicts():
         nu=state['params']['nu'],
     )
 
-    updates, state = t.update(updates, state, params)
+    _, state = t.update(updates, state, params)
     state = cast(transform.ScaleByAdamState, state)
     return ScaleByAdamStateDict(
         count=state.count,

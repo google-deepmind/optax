@@ -18,15 +18,17 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
-from optax._src import state_utils
 from optax._src import update
+from optax.tree_util import state_utils
 
 
 def _build_sgd():

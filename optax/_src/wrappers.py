@@ -21,9 +21,10 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import base
 from optax._src import numerics
-from optax._src import state_utils
+from optax.tree_util import state_utils
 
 
 Array = jnp.ndarray

@@ -25,11 +25,11 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax._src import clipping
-from optax._src import state_utils
 from optax._src import transform
 from optax._src import wrappers
 from optax.schedules import inject
 from optax.schedules import schedule
+from optax.tree_util import state_utils
 
 
 class InjectHyperparamsTest(chex.TestCase):
