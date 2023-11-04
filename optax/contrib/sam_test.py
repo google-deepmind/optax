@@ -112,7 +112,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   """Inner optimizer for the SAM tests."""
 
   # Use SGD for simplicity but add non-trivial optimizer state so that the
-  # resetting behaviour of lookahead can be tested.
+  # resetting behaviour of SAM can be tested.
   def init_fn(params):
     aggregate_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
     return TestOptimizerState(aggregate_grads)
@@ -166,7 +166,7 @@ class SAMTest(chex.TestCase):
   @parameterized.product(
       _OPTIMIZERS_UNDER_TEST,
       sync_period=(2,),
-      target=(_setup_parabola,),  # _setup_rosenbrock),
+      target=(_setup_parabola,),
       dtype=(jnp.float32,),
   )
   def test_optimization(self, opt_name, opt_kwargs, sync_period, target, dtype):
@@ -181,6 +181,39 @@ class SAMTest(chex.TestCase):
     def step(params, state):
       updates = get_updates(params)
       updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+    # A no-op change, to verify that tree map works.
+    state = state_utils.tree_map_params(opt, lambda v: v, state)
+
+    for _ in range(25000 * sync_period):
+      params, state = step(params, state)
+
+    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+
+  @parameterized.product(
+      _OPTIMIZERS_UNDER_TEST,
+      sync_period=(2,),
+      target=(_setup_parabola,),
+      dtype=(jnp.float32,),
+  )
+  def test_opaque_optimization(
+      self, opt_name, opt_kwargs, sync_period, target, dtype):
+    opt = alias.sgd(0.003)
+    adv_opt = combine.chain(
+        contrib.normalize(), getattr(alias, opt_name)(**opt_kwargs)
+    )
+    opt = contrib.sam(opt, adv_opt, sync_period=sync_period, opaque_mode=True)
+    initial_params, final_params, get_updates = target(dtype)
+
+    @jax.jit
+    def step(params, state):
+      updates = get_updates(params)
+      updates, state = opt.update(
+          updates, state, params, grad_fn=lambda p, _: get_updates(p))
       params = update.apply_updates(params, updates)
       return params, state
 
