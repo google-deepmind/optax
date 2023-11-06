@@ -177,6 +177,8 @@ Gradient Transforms
     NonNegativeParamsState
     OptState
     Params
+    per_example_global_norm_clip
+    per_example_layer_norm_clip
     scale
     scale_by_adam
     scale_by_adamax
@@ -295,6 +297,8 @@ Optax Transforms and States
 .. autoclass:: NonNegativeParamsState
     :members:
 
+.. autofunction:: per_example_global_norm_clip
+.. autofunction:: per_example_layer_norm_clip
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax

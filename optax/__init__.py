@@ -65,6 +65,7 @@ from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
 from optax._src.clipping import per_example_global_norm_clip
+from optax._src.clipping import per_example_layer_norm_clip
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
@@ -285,6 +286,7 @@ __all__ = (
     "Params",
     "periodic_update",
     "per_example_global_norm_clip",
+    "per_example_layer_norm_clip",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
