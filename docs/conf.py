@@ -151,6 +151,7 @@ extensions = [
     'sphinx_book_theme',
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
+    'sphinx_gallery.gen_gallery',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -168,6 +169,18 @@ autodoc_default_options = {
     'special-members': True,
     'exclude-members': '__repr__, __str__, __weakref__',
 }
+
+# -- Options for sphinx-gallery ----------------------------------------------
+
+sphinx_gallery_conf = {
+     'examples_dirs': 'examples',   # path to your example scripts
+     'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
+     'ignore_pattern': '_test\.py',  # no gallery for test of examples
+     'doc_module': 'optax',
+     'backreferences_dir': os.path.join('modules', 'generated'),
+     'show_api_usage': True,
+}
+
 
 # -- Options for bibtex ------------------------------------------------------
 
@@ -193,7 +206,6 @@ html_favicon = 'images/favicon.svg'
 html_static_path = []
 
 # -- Options for myst -------------------------------------------------------
-
 jupyter_execute_notebooks = 'force'
 execution_allow_errors = False
 

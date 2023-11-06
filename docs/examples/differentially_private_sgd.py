@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Trains a differentially private convolutional neural network on MNIST.
+r"""
+Trains a differentially private convolutional neural network on MNIST.
+======================================================================
 
 A large portion of this code is forked from the differentially private SGD
 example in the JAX repo:

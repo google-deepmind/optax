@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""An example showing how to train an MLP classifier on MNIST using optax."""
+"""
+Train an MLP classifier on MNIST using Optax.
+=============================================
+"""
 import functools
 from typing import Callable, Iterable, Mapping, Sequence
 

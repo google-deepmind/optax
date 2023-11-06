@@ -46,11 +46,11 @@ for instructions on installing JAX.
 
 
 .. toctree::
-   :caption: Examples
    :maxdepth: 1
+   :caption: Examples
 
-   gradient_accumulation
-   meta_learning
+   examples/index
+
 
 
 .. toctree::

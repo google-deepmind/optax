@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""An MNIST example using the Adam optimizer and lookahead wrapper."""
+"""
+Adam optimizer and lookahead wrapper on the MNIST dataset.
+==========================================================
+"""
 import functools
 
 from absl import app

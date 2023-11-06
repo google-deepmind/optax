@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A simple example of using Optax to train the parameters of a Haiku module."""
+"""
+Train the parameters of a Haiku module.
+=======================================
+"""
 
 from absl import app
 

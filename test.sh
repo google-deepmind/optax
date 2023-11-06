@@ -42,7 +42,7 @@ pip install "dp-accounting>=0.1.1" --no-deps
 pip uninstall -y optax || true
 
 # Lint with flake8.
-flake8 `find optax examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+flake8 `find optax docs/examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
@@ -51,9 +51,9 @@ wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
 echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
-pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax docs/examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax docs/examples -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
 # Cleanup.
 rm .pylintrc
 
@@ -69,7 +69,7 @@ pip install optax*.whl
 if [ `python -c 'import sys; print(sys.version_info.minor)'` -lt 11 ];
 then
   pip install pytype
-  pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+  pytype `find optax/_src/ docs/examples -name '*.py' | xargs` -k -d import-error
 fi;
 
 # Run tests using pytest.
@@ -78,9 +78,11 @@ mkdir _testing && cd _testing
 python -m pytest -n auto --pyargs optax
 cd ..
 
-cd examples
+cd docs/examples
 python -m pytest -n auto .
-cd ..
+# remove __pycache__ directories created by pytest
+rm -rf __pycache__
+cd ../..
 
 # Build Sphinx docs.
 pip install -e ".[docs]"
