@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for state_utils."""
+"""Tests for _state_utils."""
 
 import dataclasses
 from typing import Optional, TypedDict, cast
@@ -28,7 +28,7 @@ from optax._src import combine
 from optax._src import transform
 from optax.schedules import inject
 from optax.schedules import schedule
-from optax.tree_util import state_utils
+from optax.tree_utils import _state_utils
 
 
 @dataclasses.dataclass
@@ -87,7 +87,7 @@ class StateUtilsTest(absltest.TestCase):
     params_sharding_spec = _fake_param_sharding()
     opt_state = opt.init(params)
 
-    opt_state_sharding_spec = state_utils.tree_map_params(
+    opt_state_sharding_spec = _state_utils.tree_map_params(
         opt,
         lambda _, spec: spec,
         opt_state,
@@ -141,7 +141,7 @@ class StateUtilsTest(absltest.TestCase):
     }
 
     state = init(params)
-    state = state_utils.tree_map_params(init, lambda v: v+1, state)
+    state = _state_utils.tree_map_params(init, lambda v: v+1, state)
     state = cast(Foo, state)
 
     self.assertEqual(int(state.count), 0)
@@ -154,7 +154,7 @@ class StateUtilsTest(absltest.TestCase):
     opt = alias.adam(1e-4)
     opt_state = opt.init(params)
 
-    opt_state_sharding_spec = state_utils.tree_map_params(
+    opt_state_sharding_spec = _state_utils.tree_map_params(
         opt,
         lambda _, spec: spec,
         opt_state,
@@ -196,7 +196,7 @@ class StateUtilsTest(absltest.TestCase):
 
     params = _fake_params()
     state = opt.init(params)
-    state = state_utils.tree_map_params(opt, lambda v: v+1, state)
+    state = _state_utils.tree_map_params(opt, lambda v: v+1, state)
     state = cast(inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
@@ -209,7 +209,7 @@ class StateUtilsTest(absltest.TestCase):
 
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
-    state = state_utils.tree_map_params(opt, lambda _: None, state)
+    state = _state_utils.tree_map_params(opt, lambda _: None, state)
     self.assertEqual(
         state,
         (
@@ -226,7 +226,7 @@ class StateUtilsTest(absltest.TestCase):
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
 
-    state = state_utils.tree_map_params(
+    state = _state_utils.tree_map_params(
         opt,
         lambda v: 1, state, transform_non_params=lambda _: None
     )

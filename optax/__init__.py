@@ -19,7 +19,7 @@ from optax import losses
 from optax import monte_carlo
 from optax import schedules
 from optax import second_order
-from optax import tree_util
+from optax import tree_utils
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
@@ -150,8 +150,8 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
-# TODO(mtthss): remove tree_util aliases after updates.
-tree_map_params = tree_util.tree_map_params
+# TODO(mtthss): remove tree_utils aliases after updates.
+tree_map_params = tree_utils.tree_map_params
 
 # TODO(mtthss): remove schedules alises from flat namespaces after user updates.
 constant_schedule = schedules.constant_schedule

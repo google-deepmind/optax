@@ -33,7 +33,7 @@ from optax._src import constrain
 from optax._src import transform
 from optax._src import update
 from optax._src import wrappers
-from optax.tree_util import state_utils
+from optax.tree_utils import _state_utils
 
 import tree
 
@@ -451,12 +451,12 @@ class MaskedTest(chex.TestCase):
     # masked optimizer state as it does on an unmasked optimizer state.
     with self.subTest('inner'):
       state = inner.init(params)
-      result = state_utils.tree_map_params(inner, increment_dim_1, state)
+      result = _state_utils.tree_map_params(inner, increment_dim_1, state)
       chex.assert_trees_all_equal(result, inner.init(expected))
 
     with self.subTest('masked'):
       state = masked.init(params)
-      result = state_utils.tree_map_params(masked, increment_dim_1, state)
+      result = _state_utils.tree_map_params(masked, increment_dim_1, state)
       chex.assert_trees_all_equal(result, masked.init(expected))
 
     with self.subTest('masked_with_extra_args'):
@@ -468,7 +468,7 @@ class MaskedTest(chex.TestCase):
       # Replace all non-masked parameters in the opt-state tree with the
       # sharding axis values given in the tree above. Everything else is set to
       # None.
-      new_state = state_utils.tree_map_params(
+      new_state = _state_utils.tree_map_params(
           masked,
           lambda p, axis: None if isinstance(p, wrappers.MaskedNode) else axis,
           state,
@@ -521,7 +521,7 @@ class MaskedTest(chex.TestCase):
     state = self.variant(init_fn)(params)
 
     with self.subTest('tree_map_params'):
-      result = state_utils.tree_map_params(init_fn, lambda v: v, state)
+      result = _state_utils.tree_map_params(init_fn, lambda v: v, state)
       chex.assert_trees_all_equal_structs(result, state)
 
     updates, state = update_fn(input_updates, state, params)

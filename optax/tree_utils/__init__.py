@@ -14,4 +14,4 @@
 # ==============================================================================
 """The tree_util optimisation sub-package."""
 
-from optax.tree_util.state_utils import tree_map_params
+from optax.tree_utils._state_utils import tree_map_params

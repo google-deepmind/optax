@@ -24,7 +24,7 @@ import numpy as np
 
 from optax._src import base
 from optax._src import numerics
-from optax.tree_util import state_utils
+from optax.tree_utils import _state_utils
 
 
 Array = jnp.ndarray
@@ -516,7 +516,7 @@ def masked(
     # any particular constraints on the shape of the parameter tree, as long
     # as tree_map_params is being called on a tree with the correct structure.
     # See wrappers_test for proof that this works!
-    if isinstance(params, state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
+    if isinstance(params, _state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
       return MaskedState(inner_state=inner.init(params))
 
     mask_tree = mask(params) if callable(mask) else mask
