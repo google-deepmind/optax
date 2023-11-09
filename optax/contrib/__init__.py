@@ -14,6 +14,8 @@
 # ==============================================================================
 """Contributed optimizers in Optax."""
 
+from optax.contrib.cocob import cocob
+from optax.contrib.cocob import COCOBState
 from optax.contrib.complex_valued import split_real_and_imaginary
 from optax.contrib.complex_valued import SplitRealAndImaginaryState
 from optax.contrib.mechanic import MechanicState
