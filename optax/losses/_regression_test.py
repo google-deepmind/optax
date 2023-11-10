@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses.regression."""
+"""Tests for optax.losses._regression."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -21,7 +21,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 
-from optax.losses import regression
+from optax.losses import _regression
 
 
 class SquaredErrorTest(parameterized.TestCase):
@@ -36,19 +36,19 @@ class SquaredErrorTest(parameterized.TestCase):
   @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(regression.squared_error)(
+        self.variant(_regression.squared_error)(
             self.ys[0], self.ts[0]), self.exp[0])
 
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(regression.squared_error)(
+        self.variant(_regression.squared_error)(
             self.ys, self.ts), self.exp)
 
   @chex.all_variants
   def test_shape_mismatch(self):
     with self.assertRaises(AssertionError):
-      _ = self.variant(regression.squared_error)(
+      _ = self.variant(_regression.squared_error)(
           self.ys, jnp.expand_dims(self.ts, axis=-1))
 
 
@@ -64,17 +64,17 @@ class L2LossTest(parameterized.TestCase):
   @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(regression.l2_loss)(self.ys[0], self.ts[0]), self.exp[0])
+        self.variant(_regression.l2_loss)(self.ys[0], self.ts[0]), self.exp[0])
 
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(regression.l2_loss)(self.ys, self.ts), self.exp)
+        self.variant(_regression.l2_loss)(self.ys, self.ts), self.exp)
 
   @chex.all_variants
   def test_shape_mismatch(self):
     with self.assertRaises(AssertionError):
-      _ = self.variant(regression.l2_loss)(
+      _ = self.variant(_regression.l2_loss)(
           self.ys, jnp.expand_dims(self.ts, axis=-1))
 
 
@@ -90,14 +90,14 @@ class HuberLossTest(parameterized.TestCase):
   @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(regression.huber_loss)(
+        self.variant(_regression.huber_loss)(
             self.ys[0], self.ts[0], delta=1.0),
         self.exp[0])
 
   @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(regression.huber_loss)(
+        self.variant(_regression.huber_loss)(
             self.ys, self.ts, delta=1.0),
         self.exp)
 
@@ -117,22 +117,22 @@ class LogCoshTest(parameterized.TestCase):
 
   @chex.all_variants
   def test_scalar(self):
-    out = self.variant(regression.log_cosh)(self.ys[0], self.ts[0])
+    out = self.variant(_regression.log_cosh)(self.ys[0], self.ts[0])
     np.testing.assert_allclose(out, self.exp[0], atol=1e-5)
 
   @chex.all_variants
   def test_batched(self):
-    out = self.variant(regression.log_cosh)(self.ys, self.ts)
+    out = self.variant(_regression.log_cosh)(self.ys, self.ts)
     np.testing.assert_allclose(out, self.exp, atol=1e-5)
 
   @chex.all_variants
   def test_scalar_predictions_only(self):
-    out = self.variant(regression.log_cosh)(self.ys[0])
+    out = self.variant(_regression.log_cosh)(self.ys[0])
     np.testing.assert_allclose(out, self.exp_ys_only[0], atol=1e-5)
 
   @chex.all_variants
   def test_batched_predictions_only(self):
-    out = self.variant(regression.log_cosh)(self.ys)
+    out = self.variant(_regression.log_cosh)(self.ys)
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
 
 
@@ -149,28 +149,28 @@ class CosineDistanceTest(parameterized.TestCase):
   def test_scalar_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(regression.cosine_distance)(self.ys[0], self.ts[0]),
+        self.variant(_regression.cosine_distance)(self.ys[0], self.ts[0]),
         self.exp[0], atol=1e-4)
 
   @chex.all_variants
   def test_scalar_similarity(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(regression.cosine_similarity)(self.ys[0], self.ts[0]),
+        self.variant(_regression.cosine_similarity)(self.ys[0], self.ts[0]),
         1. - self.exp[0], atol=1e-4)
 
   @chex.all_variants
   def test_batched_distance(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(regression.cosine_distance)(self.ys, self.ts),
+        self.variant(_regression.cosine_distance)(self.ys, self.ts),
         self.exp, atol=1e-4)
 
   @chex.all_variants
   def test_batched_similarity(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(regression.cosine_similarity)(self.ys, self.ts),
+        self.variant(_regression.cosine_similarity)(self.ys, self.ts),
         1. - self.exp, atol=1e-4)
 
 

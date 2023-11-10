@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses.ranking."""
+"""Tests for optax.losses._ranking."""
 
 import doctest
 import functools
@@ -24,7 +24,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import optax
-from optax.losses import ranking
+from optax.losses import _ranking
 
 # Export symbols from math for conciser test value definitions.
 exp = math.exp
@@ -37,7 +37,7 @@ class RankingLossesTest(parameterized.TestCase):
 
   @parameterized.parameters([
       {
-          "loss_fn": ranking.ranking_softmax_loss,
+          "loss_fn": _ranking.ranking_softmax_loss,
           "expected_value": -(
               log(exp(2.0) / (exp(0.0) + exp(3.0) + exp(1.0) + exp(2.0)))
               + log(exp(1.0) / (exp(0.0) + exp(3.0) + exp(1.0) + exp(2.0)))
@@ -54,7 +54,7 @@ class RankingLossesTest(parameterized.TestCase):
 
   @parameterized.parameters([
       {
-          "loss_fn": ranking.ranking_softmax_loss,
+          "loss_fn": _ranking.ranking_softmax_loss,
           "expected_value": -(
               (-2.1e26 - (0.0 + -2.1e26 + 3.4e37 + 42.0))
               + (3.4e37 - (0.0 + -2.1e26 + 3.4e37 + 42.0))
@@ -70,7 +70,7 @@ class RankingLossesTest(parameterized.TestCase):
     np.testing.assert_allclose(jnp.asarray(expected_value), loss, rtol=1e-3)
 
   @parameterized.parameters([
-      {"loss_fn": ranking.ranking_softmax_loss, "expected_value": 0.0},
+      {"loss_fn": _ranking.ranking_softmax_loss, "expected_value": 0.0},
   ])
   def test_computes_loss_for_zero_labels(self, loss_fn, expected_value):
     scores = jnp.asarray([0.0, 3.0, 1.0, 2.0])
@@ -82,7 +82,7 @@ class RankingLossesTest(parameterized.TestCase):
 
   @parameterized.parameters([
       {
-          "loss_fn": ranking.ranking_softmax_loss,
+          "loss_fn": _ranking.ranking_softmax_loss,
           "expected_value": -(
               2.0 * log(exp(2.0) / (exp(0.0) + exp(3.0) + exp(1.0) + exp(2.0)))
               + log(exp(1.0) / (exp(0.0) + exp(3.0) + exp(1.0) + exp(2.0)))
@@ -100,7 +100,7 @@ class RankingLossesTest(parameterized.TestCase):
 
   @parameterized.parameters([
       {
-          "loss_fn": ranking.ranking_softmax_loss,
+          "loss_fn": _ranking.ranking_softmax_loss,
           "expected_value": [
               -(
                   log(exp(2.0) / (exp(0.0) + exp(3.0) + exp(1.0) + exp(2.0)))
@@ -126,7 +126,7 @@ class RankingLossesTest(parameterized.TestCase):
 
   @parameterized.parameters([
       {
-          "loss_fn": ranking.ranking_softmax_loss,
+          "loss_fn": _ranking.ranking_softmax_loss,
           "expected_value": [
               -log(exp(2.0) / (exp(2.0) + exp(1.0) + exp(3.0))),
               -log(exp(1.5) / (exp(1.0) + exp(0.5) + exp(1.5))),
@@ -148,7 +148,7 @@ class RankingLossesTest(parameterized.TestCase):
     np.testing.assert_allclose(sum_loss, jnp.sum(expected_value), rtol=1e-3)
 
   @parameterized.parameters([
-      {"loss_fn": ranking.ranking_softmax_loss, "expected_shape": (2,)},
+      {"loss_fn": _ranking.ranking_softmax_loss, "expected_shape": (2,)},
   ])
   def test_computes_unreduced_loss(self, loss_fn, expected_shape):
     scores = jnp.array([[2.0, 1.0, 3.0], [1.0, 0.5, 1.5]])
@@ -161,7 +161,7 @@ class RankingLossesTest(parameterized.TestCase):
     self.assertEqual(jnp.sum(none_loss), sum_loss)
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_computes_loss_value_with_where(self, loss_fn):
     scores = jnp.asarray([0.0, 3.0, 1.0, 2.0])
@@ -176,7 +176,7 @@ class RankingLossesTest(parameterized.TestCase):
     np.testing.assert_allclose(expected_loss, loss, rtol=1e-3)
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_computes_loss_value_with_all_masked(self, loss_fn):
     scores = jnp.asarray([0.0, 3.0, 1.0, 2.0])
@@ -188,7 +188,7 @@ class RankingLossesTest(parameterized.TestCase):
     np.testing.assert_allclose(jnp.asarray(0.0), loss, rtol=1e-3)
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_computes_loss_with_arbitrary_batch_dimensions(self, loss_fn):
     scores = jnp.asarray([2.0, 3.0, 1.0])
@@ -204,7 +204,7 @@ class RankingLossesTest(parameterized.TestCase):
     np.testing.assert_allclose(original_loss, batched_loss, rtol=1e-3)
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_grad_does_not_return_nan_for_zero_labels(self, loss_fn):
     scores = jnp.asarray([0.0, 3.0, 1.0, 2.0])
@@ -217,7 +217,7 @@ class RankingLossesTest(parameterized.TestCase):
     )
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_grad_does_not_return_nan_with_all_masked(self, loss_fn):
     scores = jnp.asarray([0.0, 3.0, 1.0, 2.0])
@@ -231,7 +231,7 @@ class RankingLossesTest(parameterized.TestCase):
     )
 
   @parameterized.parameters([
-      ranking.ranking_softmax_loss,
+      _ranking.ranking_softmax_loss,
   ])
   def test_ignores_lists_containing_only_invalid_items(self, loss_fn):
     scores = jnp.asarray([[0.0, 3.0, 1.0, 2.0], [3.0, 1.0, 4.0, 2.0]])
@@ -248,7 +248,7 @@ def load_tests(loader, tests, ignore):
   del loader, ignore  # Unused.
   tests.addTests(
       doctest.DocTestSuite(
-          ranking, globs={"jax": jax, "jnp": jnp, "optax": optax}
+          _ranking, globs={"jax": jax, "jnp": jnp, "optax": optax}
       )
   )
   return tests
