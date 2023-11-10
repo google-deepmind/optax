@@ -14,6 +14,6 @@
 # ==============================================================================
 """The second order optimisation sub-package."""
 
-from optax.second_order.fisher import fisher_diag
-from optax.second_order.hessian import hessian_diag
-from optax.second_order.hessian import hvp
+from optax.second_order._fisher import fisher_diag
+from optax.second_order._hessian import hessian_diag
+from optax.second_order._hessian import hvp

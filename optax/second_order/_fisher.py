@@ -25,7 +25,7 @@ import jax
 from jax import flatten_util
 import jax.numpy as jnp
 
-from optax.second_order import base
+from optax.second_order import _base
 
 
 def _ravel(p: Any) -> jax.Array:
@@ -33,7 +33,7 @@ def _ravel(p: Any) -> jax.Array:
 
 
 def fisher_diag(
-    negative_log_likelihood: base.LossFn,
+    negative_log_likelihood: _base.LossFn,
     params: Any,
     inputs: jax.Array,
     targets: jax.Array,

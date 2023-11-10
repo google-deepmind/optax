@@ -26,7 +26,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from optax import second_order
+from optax.second_order import _hessian
 
 
 NUM_CLASSES = 2
@@ -77,7 +77,7 @@ class HessianTest(chex.TestCase):
   @chex.all_variants
   def test_hessian_diag(self):
     hessian_diag_fn = self.variant(
-        functools.partial(second_order.hessian_diag, self.loss_fn))
+        functools.partial(_hessian.hessian_diag, self.loss_fn))
     actual = hessian_diag_fn(self.parameters, self.data, self.labels)
     np.testing.assert_array_almost_equal(self.hessian, actual, 5)
 

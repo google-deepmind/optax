@@ -25,7 +25,7 @@ import jax
 from jax import flatten_util
 import jax.numpy as jnp
 
-from optax.second_order import base
+from optax.second_order import _base
 
 
 def _ravel(p: Any) -> jax.Array:
@@ -33,7 +33,7 @@ def _ravel(p: Any) -> jax.Array:
 
 
 def hvp(
-    loss: base.LossFn,
+    loss: _base.LossFn,
     v: jax.Array,
     params: Any,
     inputs: jax.Array,
@@ -58,7 +58,7 @@ def hvp(
 
 
 def hessian_diag(
-    loss: base.LossFn,
+    loss: _base.LossFn,
     params: Any,
     inputs: jax.Array,
     targets: jax.Array,
