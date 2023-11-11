@@ -24,14 +24,14 @@ Installation
 ------------
 
 The latest release of Optax can be installed from
-`PyPI <https://pypi.org/project/optax/>`_ using
+`PyPI <https://pypi.org/project/optax/>`_ using::
 
-``pip install optax``
+   pip install optax
 
 You may also install directly from GitHub, using the following command. This
-can be used to obtain the most recent version of Optax.
+can be used to obtain the most recent version of Optax::
 
-``pip install git+git://github.com/deepmind/optax.git``
+   pip install git+git://github.com/google-deepmind/optax.git
 
 Note that Optax is built on top of JAX.
 See `here <https://github.com/google/jax#pip-installation-cpu>`_
