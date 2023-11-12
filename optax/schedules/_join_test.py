@@ -18,18 +18,18 @@ from absl.testing import absltest
 
 import numpy as np
 
-from optax.schedules import join
-from optax.schedules import schedule
+from optax.schedules import _join
+from optax.schedules import _schedule
 
 
 class JoinTest(absltest.TestCase):
 
   def test_join_schedules(self):
-    my_schedule = join.join_schedules(
+    my_schedule = _join.join_schedules(
         schedules=[
-            schedule.constant_schedule(1.),
-            schedule.constant_schedule(2.),
-            schedule.constant_schedule(1.)],
+            _schedule.constant_schedule(1.),
+            _schedule.constant_schedule(2.),
+            _schedule.constant_schedule(1.)],
         boundaries=[3, 6])
     np.testing.assert_allclose(1., my_schedule(0), atol=0.0)
     np.testing.assert_allclose(1., my_schedule(1), atol=0.0)

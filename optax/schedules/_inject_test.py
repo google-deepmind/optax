@@ -27,8 +27,8 @@ import numpy as np
 from optax._src import clipping
 from optax._src import transform
 from optax._src import wrappers
-from optax.schedules import inject
-from optax.schedules import schedule
+from optax.schedules import _inject
+from optax.schedules import _schedule
 from optax.tree_utils import _state_utils
 
 
@@ -37,8 +37,8 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_updates(self):
-    optim = inject.inject_hyperparams(transform.scale)(  # stateless
-        step_size=schedule.piecewise_constant_schedule(
+    optim = _inject.inject_hyperparams(transform.scale)(  # stateless
+        step_size=_schedule.piecewise_constant_schedule(
             3.0, {1: 5, 7: 2, 12: 1.5}))
 
     params = [jnp.zeros([], dtype=jnp.float32)]
@@ -57,8 +57,8 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_hyperparams_state(self):
-    optim = inject.inject_hyperparams(transform.trace)(  # stateful
-        decay=schedule.piecewise_constant_schedule(
+    optim = _inject.inject_hyperparams(transform.trace)(  # stateful
+        decay=_schedule.piecewise_constant_schedule(
             0.8, {3: 0.5, 9: 1.25}),
         nesterov=True)
 
@@ -78,7 +78,7 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_constant_hyperparams(self):
-    optim = inject.inject_hyperparams(transform.scale_by_adam)(b1=0., b2=0.)
+    optim = _inject.inject_hyperparams(transform.scale_by_adam)(b1=0., b2=0.)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
     state = self.variant(optim.init)(params)
@@ -96,7 +96,7 @@ class InjectHyperparamsTest(chex.TestCase):
 
   @chex.all_variants
   def test_overriding_hyperparam(self):
-    optim = inject.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
+    optim = _inject.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
     params = jnp.zeros((3, 5, 7))
     state = self.variant(optim.init)(params)
     update_fn = self.variant(optim.update)
@@ -110,7 +110,7 @@ class InjectHyperparamsTest(chex.TestCase):
   @chex.all_variants
   @parameterized.named_parameters(('string', 'mask'), ('list', ['mask']))
   def test_static_args(self, static_args):
-    @functools.partial(inject.inject_hyperparams, static_args=static_args)
+    @functools.partial(_inject.inject_hyperparams, static_args=static_args)
     def custom_optim(learning_rate, mask):
       return wrappers.masked(transform.scale(-learning_rate), mask)
 
@@ -129,7 +129,7 @@ class InjectHyperparamsTest(chex.TestCase):
   @chex.all_variants
   @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
   def test_numeric_static_args(self, static_args):
-    optim = inject.inject_hyperparams(
+    optim = _inject.inject_hyperparams(
         transform.scale_by_adam, static_args=static_args)(b1=0.9, b2=0.95)
 
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
@@ -152,7 +152,7 @@ class InjectHyperparamsTest(chex.TestCase):
                              param_dtype,
                              grad_dtype):
     """Tests that hyperparam dtype override works as desired."""
-    optim = inject.inject_hyperparams(
+    optim = _inject.inject_hyperparams(
         transform.scale_by_adam,
         hyperparam_dtype=hyperparam_dtype)(b1=0.9, b2=0.95)
 
@@ -173,13 +173,13 @@ class InjectHyperparamsTest(chex.TestCase):
   @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):
-      inject.inject_hyperparams(transform.scale, static_args=static_args)
+      _inject.inject_hyperparams(transform.scale, static_args=static_args)
 
   @chex.all_variants
   def test_inject_hyperparams_starts_with_step_count_zero(self):
     """Checks that inject_hyperparams uses step count 0 in the first update."""
     # See also: https://github.com/deepmind/optax/issues/415.
-    opt = inject.inject_hyperparams(transform.scale)(lambda count: count)
+    opt = _inject.inject_hyperparams(transform.scale)(lambda count: count)
     params = jnp.zeros(3)
     grads = jnp.array([-1, 0, 1])
     updates, _ = self.variant(opt.update)(grads, opt.init(params))

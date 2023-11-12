@@ -27,11 +27,6 @@ from optax._src import base
 from optax._src import numerics
 
 
-Transforms = Union[
-    base.GradientTransformation,
-    base.GradientTransformationExtraArgs]
-
-
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
   if jax.dtypes.scalar_type_of(x) == float:
@@ -48,7 +43,7 @@ class InjectStatefulHyperparamsState(NamedTuple):
 
 
 def inject_stateful_hyperparams(
-    inner_factory: Callable[..., Transforms],
+    inner_factory: Callable[..., base.GradientTransformation],
     static_args: Union[str, Iterable[str]] = (),
     hyperparam_dtype: Optional[jnp.dtype] = None,
 ) -> Callable[..., base.GradientTransformationExtraArgs]:
