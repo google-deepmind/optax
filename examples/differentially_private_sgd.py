@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Trains a differentially private convolutional neural network on MNIST.
+# sphinx-gallery requires a heading at the beginning of the file
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-space-before-docstring-summary
+r"""
+Trains a differentially private convolutional neural network on MNIST.
+======================================================================
 
 A large portion of this code is forked from the differentially private SGD
 example in the JAX repo:
@@ -60,6 +65,8 @@ Example invocations from within the `examples/` directory:
    --epochs=45 \
    --learning_rate=.25
 """
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-space-before-docstring-summary
 
 import time
 import warnings

@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""An MNIST example using the Adam optimizer and lookahead wrapper."""
+# sphinx-gallery requires a heading at the beginning of the file
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-space-before-docstring-summary
+"""
+Adam optimizer and lookahead wrapper on the MNIST dataset.
+==========================================================
+"""
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-space-before-docstring-summary
 import functools
 
 from absl import app

@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Datasets used in the examples."""
+# sphinx-gallery requires a heading at the beginning of the file
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-space-before-docstring-summary
+"""
+Datasets used in the examples.
+===============================
+"""
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-space-before-docstring-summary
+
 import functools
 from typing import Dict, Mapping
 

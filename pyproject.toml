@@ -67,7 +67,9 @@ docs = [
     "myst_nb==0.13.1",
     "docutils==0.16",
     "matplotlib==3.5.0",
-    "dm-haiku==0.0.8"
+    "dm-haiku==0.0.8",
+    "sphinx-gallery==0.14.0",
+    "sphinx-collections==0.0.1"
 ]
 
 dp-accounting = [

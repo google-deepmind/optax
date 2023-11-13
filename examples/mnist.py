@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""An example showing how to train an MLP classifier on MNIST using optax."""
+# sphinx-gallery requires a heading at the beginning of the file
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-space-before-docstring-summary
+"""
+Train an MLP classifier on MNIST using Optax.
+=============================================
+"""
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-space-before-docstring-summary
 import functools
 from typing import Callable, Iterable, Mapping, Sequence
 

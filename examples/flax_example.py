@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A simple example of using Optax to train the parameters of a Flax module."""
+# sphinx-gallery requires a heading at the beginning of the file
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-space-before-docstring-summary
+"""
+Train the parameters of a Flax module.
+======================================
+"""
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-space-before-docstring-summary
 
 from absl import app
 
