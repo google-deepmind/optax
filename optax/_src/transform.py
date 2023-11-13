@@ -22,7 +22,6 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
@@ -1258,11 +1257,3 @@ def scale_by_distance_over_gradients(
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
-
-
-# TODO(b/183800387): remove legacy aliases.
-# These legacy aliases are here for checkpoint compatibility
-# To be removed once checkpoints have updated.
-safe_int32_increment = numerics.safe_int32_increment
-ClipState = clipping.ClipState
-ClipByGlobalNormState = clipping.ClipByGlobalNormState
