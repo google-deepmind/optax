@@ -17,6 +17,7 @@
 from optax import contrib
 from optax import losses
 from optax import monte_carlo
+from optax import projections
 from optax import schedules
 from optax import second_order
 from optax import tree_utils
