@@ -460,7 +460,9 @@ class MaskedNode(NamedTuple):
 
 def masked(
     inner: base.GradientTransformation,
-    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
+    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]],
+    *,
+    mask_compatible_extra_args: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Mask updates so only some are transformed, the rest are passed through.
 
@@ -492,6 +494,8 @@ def masked(
       should be booleans, ``True`` for leaves/subtrees you want to apply the
       transformation to, and ``False`` for those you want to skip. The mask must
       be static for the gradient transformation to be jit-compilable.
+    mask_compatible_extra_args: whether to also apply the same masking to
+      extra_arg fields with the same tree structure as params/updates.
 
   Returns:
     New ``GradientTransformationExtraArgs`` wrapping ``inner``.
@@ -502,6 +506,21 @@ def masked(
     return jax.tree_util.tree_map(
         lambda m, p: p if m else MaskedNode(), mask_tree, pytree
     )
+
+  # It is possible that `extra_args` of update_fn has pytrees with the same
+  # structure as params/updates, e.g. parameter tags. This function applies
+  # the mask to those pytrees.
+  def maybe_mask_values(pytree_dict, base_pytree, mask_tree):
+    base_structure = jax.tree_util.tree_structure(base_pytree)
+
+    def maybe_mask(pytree):
+      if mask_compatible_extra_args and (
+          jax.tree_util.tree_structure(pytree) == base_structure):
+        return mask_pytree(pytree, mask_tree)
+      else:
+        return pytree
+
+    return {k: maybe_mask(v) for k, v in pytree_dict.items()}
 
   def init_fn(params):
     # This is a workaround to make tree_map_params work with masking.
@@ -525,11 +544,12 @@ def masked(
 
   def update_fn(updates, state, params=None, **extra_args):
     mask_tree = mask(updates) if callable(mask) else mask
+    masked_extra_args = maybe_mask_values(extra_args, updates, mask_tree)
     masked_updates = mask_pytree(updates, mask_tree)
     masked_params = None if params is None else mask_pytree(params, mask_tree)
 
     new_masked_updates, new_inner_state = inner.update(
-        masked_updates, state.inner_state, masked_params, **extra_args)
+        masked_updates, state.inner_state, masked_params, **masked_extra_args)
 
     new_updates = jax.tree_util.tree_map(
         lambda m, new_u, old_u: new_u if m else old_u,
