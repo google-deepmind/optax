@@ -26,29 +26,16 @@ of O(d) computations. We largely expect the wall clock time with and without
 using Mechanic to be the same for reasonably large batch sizes (>1k).
 """
 
-
-import functools
 import operator
 from typing import NamedTuple, Optional, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
+
+from optax import tree_utils
 from optax._src import base
 from optax._src import utils
-
-
-def _vdot_safe(a, b):
-  vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
-  cvdot = vdot(jnp.asarray(a), jnp.asarray(b))
-  return cvdot
-
-
-@jax.jit
-def _tree_vdot(tree_x, tree_y):
-  """Compute the inner product <tree_x, tree_y>."""
-  vdots = jax.tree_util.tree_map(_vdot_safe, tree_x, tree_y)
-  return jax.tree_util.tree_reduce(operator.add, vdots)
 
 
 @jax.jit
@@ -193,7 +180,7 @@ def mechanize(
     )
 
     # Now we are ready to run the actual Mechanic algorithm.
-    h = _tree_vdot(updates, delta_prev)
+    h = tree_utils.tree_vdot(updates, delta_prev)
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
