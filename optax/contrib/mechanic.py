@@ -26,7 +26,6 @@ of O(d) computations. We largely expect the wall clock time with and without
 using Mechanic to be the same for reasonably large batch sizes (>1k).
 """
 
-import operator
 from typing import NamedTuple, Optional, Tuple
 
 import chex
@@ -36,19 +35,6 @@ import jax.numpy as jnp
 from optax import tree_utils
 from optax._src import base
 from optax._src import utils
-
-
-@jax.jit
-def _tree_sum(tree_x):
-  """Compute sum(tree_x)."""
-  sums = jax.tree_util.tree_map(jnp.sum, tree_x)
-  return jax.tree_util.tree_reduce(operator.add, sums)
-
-
-@jax.jit
-def _tree_norm(tree):
-  """Compute the l2 norm ||tree_x||."""
-  return jnp.sqrt(_tree_sum(jax.tree_map(lambda x: jnp.sum(x**2), tree)))
 
 
 class MechanicState(NamedTuple):
@@ -155,8 +141,8 @@ def mechanize(
     # Add weight decay to raw gradients, note that this is othogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
-    grad_norm = _tree_norm(updates)
-    param_norm = _tree_norm(params)
+    grad_norm = tree_utils.tree_l2_norm(updates)
+    param_norm = tree_utils.tree_l2_norm(params)
 
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi
