@@ -75,6 +75,20 @@ Example gallery
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="ResNet on CIFAR10 with Haiku and Optax.">
+
+.. only:: html
+
+  .. image:: /images/examples/cifar10_resnet.png
+    :alt:
+  :doc:`_collections/examples/cifar10_resnet`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">ResNet on CIFAR10 with Haiku and Optax.</div>
+    </div>
 
 .. raw:: html
 
