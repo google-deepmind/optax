@@ -121,5 +121,5 @@ def dpsgd(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
 
-      alias._scale_by_learning_rate(learning_rate)  # pylint: disable=protected-access
+      transform.scale_by_learning_rate(learning_rate)
   )
