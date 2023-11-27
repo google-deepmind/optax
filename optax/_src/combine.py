@@ -14,7 +14,7 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
-from typing import Callable, NamedTuple, Union, Mapping, Hashable
+from typing import Callable, NamedTuple, Union, Mapping, Hashable, Tuple
 
 import jax
 
@@ -69,7 +69,7 @@ def chain(
 
 
 def named_chain(
-    *transforms: tuple[str, base.GradientTransformation]
+    *transforms: Tuple[str, base.GradientTransformation]
 ) -> base.GradientTransformationExtraArgs:
   """Chains optax gradient transformations.
 
