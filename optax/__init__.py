@@ -39,7 +39,6 @@ from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
-from optax._src.alias import ScalarOrSchedule
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -49,6 +48,7 @@ from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
 from optax._src.base import OptState
 from optax._src.base import Params
+from optax._src.base import ScalarOrSchedule
 from optax._src.base import Schedule
 from optax._src.base import set_to_zero
 from optax._src.base import stateless
@@ -102,6 +102,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient

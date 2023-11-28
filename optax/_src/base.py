@@ -14,12 +14,11 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
-
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
@@ -34,6 +33,7 @@ Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
 ScheduleState = Any
+ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
 
 @runtime_checkable
