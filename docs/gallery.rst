@@ -133,7 +133,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :ref:`sphx_glr__collections_generated_examples_lookahead_mnist.py`
+  :doc:`_collections/examples/lookahead_mnist`
 
 .. raw:: html
 
