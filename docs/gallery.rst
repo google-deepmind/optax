@@ -150,7 +150,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :ref:`sphx_glr__collections_generated_examples_mnist.py`
+  :doc:`_collections/examples/mlp_mnist`
 
 .. raw:: html
 
