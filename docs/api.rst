@@ -776,6 +776,10 @@ scale_gradient
     SAMState
     cocob
     COCOBState
+    dadapt_adamw
+    DAdaptAdamWState
+    prodigy
+    ProdigyState
 
 
 Complex-Valued Optimization

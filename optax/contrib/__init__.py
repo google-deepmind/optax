@@ -27,3 +27,5 @@ from optax.contrib.sam import normalize
 from optax.contrib.sam import NormalizeState
 from optax.contrib.sam import sam
 from optax.contrib.sam import SAMState
+from optax.contrib.dadapt_adamw import dadapt_adamw
+from optax.contrib.prodigy import prodigy
