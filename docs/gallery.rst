@@ -167,7 +167,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :ref:`sphx_glr__collections_generated_examples_differentially_private_sgd.py`
+  :doc:`_collections/examples/differentially_private_sgd`
 
 .. raw:: html
 
