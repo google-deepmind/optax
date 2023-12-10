@@ -70,7 +70,8 @@ docs = [
     "dm-haiku==0.0.11",
     "sphinx-gallery==0.14.0",
     "sphinx-collections==0.0.1",
-    "tensorflow>=2.4.0"
+    "tensorflow>=2.4.0",
+    "tensorflow-datasets>=4.2.0",
 ]
 
 dp-accounting = [
