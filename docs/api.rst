@@ -770,12 +770,16 @@ scale_gradient
 .. autosummary::
     :toctree: _autosummary
 
-    mechanize
-    MechanicState
-    sam
-    SAMState
     cocob
     COCOBState
+    dadapt_adamw
+    DAdaptAdamWState
+    mechanize
+    MechanicState
+    prodigy
+    ProdigyState
+    sam
+    SAMState
 
 
 Complex-Valued Optimization
