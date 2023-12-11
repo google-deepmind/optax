@@ -26,8 +26,8 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import transform
-from optax.schedules import inject
-from optax.schedules import schedule
+from optax.schedules import _inject
+from optax.schedules import _schedule
 from optax.tree_utils import _state_utils
 
 
@@ -192,12 +192,12 @@ class StateUtilsTest(absltest.TestCase):
     self.assertEqual(expected, opt_state_sharding_spec)
 
   def test_inject_hparams(self):
-    opt = inject.inject_hyperparams(alias.adamw)(learning_rate=1e-3)
+    opt = _inject.inject_hyperparams(alias.adamw)(learning_rate=1e-3)
 
     params = _fake_params()
     state = opt.init(params)
     state = _state_utils.tree_map_params(opt, lambda v: v+1, state)
-    state = cast(inject.InjectHyperparamsState, state)
+    state = cast(_inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree_map(lambda v: v+1, params)
@@ -221,7 +221,7 @@ class StateUtilsTest(absltest.TestCase):
   def test_map_non_params_to_none(self):
     """Test for dangerous edge-cases in tree when returning None values."""
 
-    opt = alias.adam(schedule.linear_schedule(1e-2, 1e-4, 10))
+    opt = alias.adam(_schedule.linear_schedule(1e-2, 1e-4, 10))
 
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)

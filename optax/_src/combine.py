@@ -133,7 +133,9 @@ class MultiTransformState(NamedTuple):
 
 def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
-    param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]]
+    param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]],
+    *,
+    mask_compatible_extra_args: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Partitions params and applies a different transformation to each subset.
 
@@ -185,6 +187,8 @@ def multi_transform(
       parameters/updates (or a function that returns one given the parameters as
       input). The leaves of this PyTree correspond to the keys of the transforms
       (therefore the values at the leaves must be a subset of the keys).
+    mask_compatible_extra_args: Whether to also apply the same masking to
+      extra_arg fields with the same tree structure as params/updates.
 
   Returns:
     An ``optax.GradientTransformation``.
@@ -208,7 +212,9 @@ def multi_transform(
                        f'Transforms keys: {list(sorted(transforms.keys()))} \n')
 
     inner_states = {
-        group: wrappers.masked(tx, make_mask(labels, group)).init(params)
+        group: wrappers.masked(
+            tx, make_mask(labels, group),
+            mask_compatible_extra_args=mask_compatible_extra_args).init(params)
         for group, tx in transforms.items()
     }
     return MultiTransformState(inner_states)
@@ -217,7 +223,9 @@ def multi_transform(
     labels = param_labels(updates) if callable(param_labels) else param_labels
     new_inner_state = {}
     for group, tx in transforms.items():
-      masked_tx = wrappers.masked(tx, make_mask(labels, group))
+      masked_tx = wrappers.masked(
+          tx, make_mask(labels, group),
+          mask_compatible_extra_args=mask_compatible_extra_args)
       updates, new_inner_state[group] = masked_tx.update(
           updates, state.inner_states[group], params, **extra_args)
     return updates, MultiTransformState(new_inner_state)

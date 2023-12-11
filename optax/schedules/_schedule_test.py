@@ -21,7 +21,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 
-from optax.schedules import schedule
+from optax.schedules import _schedule
 
 
 class ConstantTest(chex.TestCase):
@@ -32,7 +32,7 @@ class ConstantTest(chex.TestCase):
     # Get schedule function.
     const_value = 10
     num_steps = 15
-    schedule_fn = self.variant(schedule.constant_schedule(const_value))
+    schedule_fn = self.variant(_schedule.constant_schedule(const_value))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(num_steps):
@@ -51,7 +51,7 @@ class PolynomialTest(chex.TestCase):
     """Check linear schedule."""
     # Get schedule function.
     schedule_fn = self.variant(
-        schedule.polynomial_schedule(
+        _schedule.polynomial_schedule(
             init_value=10., end_value=20., power=1, transition_steps=10))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
@@ -71,7 +71,7 @@ class PolynomialTest(chex.TestCase):
 
     for num_steps in [-1, 0]:
       schedule_fn = self.variant(
-          schedule.polynomial_schedule(
+          _schedule.polynomial_schedule(
               init_value=initial_value, end_value=end_value,
               power=1, transition_steps=num_steps))
       for count in range(15):
@@ -82,7 +82,7 @@ class PolynomialTest(chex.TestCase):
     """Check non-linear (quadratic) schedule."""
     # Get schedule function.
     schedule_fn = self.variant(
-        schedule.polynomial_schedule(
+        _schedule.polynomial_schedule(
             init_value=25., end_value=10., power=2, transition_steps=10))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
@@ -101,7 +101,7 @@ class PolynomialTest(chex.TestCase):
     """Check quadratic schedule with non-zero schedule begin."""
     # Get schedule function.
     schedule_fn = self.variant(
-        schedule.polynomial_schedule(
+        _schedule.polynomial_schedule(
             init_value=30., end_value=10., power=2,
             transition_steps=10, transition_begin=4))
     # Test that generated values equal the expected schedule values.
@@ -125,7 +125,7 @@ class PiecewiseConstantTest(chex.TestCase):
     """Check piecewise constant schedule of positive values."""
     # Get schedule function.
     schedule_fn = self.variant(
-        schedule.piecewise_constant_schedule(0.1, {3: 2., 6: 0.5}))
+        _schedule.piecewise_constant_schedule(0.1, {3: 2., 6: 0.5}))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(10):
@@ -141,7 +141,7 @@ class PiecewiseConstantTest(chex.TestCase):
     """Check piecewise constant schedule of negative values."""
     # Get schedule function.
     schedule_fn = self.variant(
-        schedule.piecewise_constant_schedule(-0.1, {3: 2., 6: 0.5}))
+        _schedule.piecewise_constant_schedule(-0.1, {3: 2., 6: 0.5}))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(10):
@@ -164,7 +164,7 @@ class ExponentialTest(chex.TestCase):
     # Get schedule function.
     init_value = 1.
     schedule_fn = self.variant(
-        schedule.exponential_decay(
+        _schedule.exponential_decay(
             init_value=init_value, transition_steps=num_steps,
             decay_rate=1., staircase=staircase))
     # Test that generated values equal the expected schedule values.
@@ -182,7 +182,7 @@ class ExponentialTest(chex.TestCase):
     init_value = 1.
     for transition_steps in [-1, 0]:
       schedule_fn = self.variant(
-          schedule.exponential_decay(
+          _schedule.exponential_decay(
               init_value=init_value, transition_steps=transition_steps,
               decay_rate=1., staircase=staircase))
       for count in range(15):
@@ -194,7 +194,7 @@ class ExponentialTest(chex.TestCase):
     """Checks nonvalid decay steps results in a constant schedule."""
     init_value = 1.
     schedule_fn = self.variant(
-        schedule.exponential_decay(
+        _schedule.exponential_decay(
             init_value=init_value, transition_steps=2,
             decay_rate=0., staircase=staircase))
     for count in range(15):
@@ -210,7 +210,7 @@ class ExponentialTest(chex.TestCase):
     transition_steps = 2
     decay_rate = 2.
     schedule_fn = self.variant(
-        schedule.exponential_decay(
+        _schedule.exponential_decay(
             init_value=init_value, transition_steps=transition_steps,
             decay_rate=decay_rate, transition_begin=transition_begin,
             staircase=staircase))
@@ -245,7 +245,7 @@ class ExponentialTest(chex.TestCase):
     transition_steps = 2
     transition_begin = 3
     schedule_fn = self.variant(
-        schedule.exponential_decay(
+        _schedule.exponential_decay(
             init_value=init_value, transition_steps=transition_steps,
             decay_rate=decay_rate, transition_begin=transition_begin,
             staircase=staircase, end_value=end_value))
@@ -282,7 +282,7 @@ class ExponentialTest(chex.TestCase):
     # Get schedule function.
     init_value = 32.
     schedule_fn = self.variant(
-        schedule.exponential_decay(
+        _schedule.exponential_decay(
             init_value=init_value, transition_steps=1,
             decay_rate=0.5))
     # Test that generated values equal the expected schedule values.
@@ -303,7 +303,7 @@ class CosineDecayTest(chex.TestCase):
     """Check cosine schedule decay for the entire training schedule."""
     initial_value = 0.1
     schedule_fn = self.variant(
-        schedule.cosine_decay_schedule(initial_value, 10, 0.0))
+        _schedule.cosine_decay_schedule(initial_value, 10, 0.0))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(10):
@@ -323,7 +323,7 @@ class CosineDecayTest(chex.TestCase):
     """Check cosine schedule decay for a part of the training schedule."""
     initial_value = 0.1
     schedule_fn = self.variant(
-        schedule.cosine_decay_schedule(initial_value, 5, 0.0))
+        _schedule.cosine_decay_schedule(initial_value, 5, 0.0))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(12):
@@ -345,7 +345,7 @@ class CosineDecayTest(chex.TestCase):
     # Get schedule function.
     initial_value = 0.1
     schedule_fn = self.variant(
-        schedule.cosine_decay_schedule(initial_value, 5, 0.1))
+        _schedule.cosine_decay_schedule(initial_value, 5, 0.1))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(12):
@@ -366,10 +366,11 @@ class CosineDecayTest(chex.TestCase):
   def test_with_exponent(self):
     """Check cosine schedule decay with exponent on."""
     schedule_fn = self.variant(
-        schedule.cosine_decay_schedule(init_value=0.1,
-                                       decay_steps=100,
-                                       alpha=0.0,
-                                       exponent=2))
+        _schedule.cosine_decay_schedule(
+            init_value=0.1,
+            decay_steps=100,
+            alpha=0.0,
+            exponent=2))
     output = schedule_fn(np.array([0, 10, 50, 75, 100]))
     np.testing.assert_allclose(
         output,
@@ -385,7 +386,7 @@ class WarmupCosineDecayTest(chex.TestCase):
       ('without end value', 5, 3, 0.),)
   def test_limits(self, init_value, peak_value, end_value):
     """Check cosine schedule decay for the entire training schedule."""
-    schedule_fn = self.variant(schedule.warmup_cosine_decay_schedule(
+    schedule_fn = self.variant(_schedule.warmup_cosine_decay_schedule(
         init_value=init_value,
         peak_value=peak_value,
         warmup_steps=100,
@@ -400,7 +401,7 @@ class WarmupCosineDecayTest(chex.TestCase):
   @chex.all_variants
   def test_with_exponent(self):
     """Check that we get correct results when running with exponent on."""
-    schedule_fn = self.variant(schedule.warmup_cosine_decay_schedule(
+    schedule_fn = self.variant(_schedule.warmup_cosine_decay_schedule(
         init_value=0.2,
         peak_value=1.21,
         end_value=-3.0,
@@ -430,7 +431,7 @@ class SGDRTest(chex.TestCase):
     for step, lr in zip([2e3, 3e3, 5e3], [lr0, lr1, lr2]):
       lr_kwargs += [dict(decay_steps=int(step), peak_value=lr,
                          init_value=0, end_value=0.0, warmup_steps=500)]
-    schedule_fn = self.variant(schedule.sgdr_schedule(lr_kwargs))
+    schedule_fn = self.variant(_schedule.sgdr_schedule(lr_kwargs))
     np.testing.assert_allclose(lr0, schedule_fn(500))
     np.testing.assert_allclose(lr1, schedule_fn(2500))
     np.testing.assert_allclose(lr2, schedule_fn(5500))
@@ -440,7 +441,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants
   def test_linear_piecewise(self):
-    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+    schedule_fn = self.variant(_schedule.piecewise_interpolate_schedule(
         'linear', 200., {5: 1.5, 10: 0.25}))
     generated_vals = [schedule_fn(step) for step in range(13)]
     expected_vals = [200., 220., 240., 260., 280., 300., 255., 210., 165.,
@@ -449,7 +450,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants
   def test_cos_piecewise(self):
-    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+    schedule_fn = self.variant(_schedule.piecewise_interpolate_schedule(
         'cosine', 400., {5: 1.2, 3: 0.6, 7: 1.}))
     generated_vals = [schedule_fn(step) for step in range(9)]
     expected_vals = [400., 360., 280., 240., 264., 288., 288., 288., 288.]
@@ -457,7 +458,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants
   def test_empty_dict(self):
-    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+    schedule_fn = self.variant(_schedule.piecewise_interpolate_schedule(
         'linear', 13., {}))
     generated_vals = [schedule_fn(step) for step in range(5)]
     expected_vals = [13., 13., 13., 13., 13.]
@@ -465,7 +466,7 @@ class PiecewiseInterpolateTest(chex.TestCase):
 
   @chex.all_variants
   def test_no_dict(self):
-    schedule_fn = self.variant(schedule.piecewise_interpolate_schedule(
+    schedule_fn = self.variant(_schedule.piecewise_interpolate_schedule(
         'cosine', 17.))
     generated_vals = [schedule_fn(step) for step in range(3)]
     expected_vals = [17., 17., 17.]
@@ -474,23 +475,23 @@ class PiecewiseInterpolateTest(chex.TestCase):
   def test_invalid_type(self):
     # pytype: disable=wrong-arg-types
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule('linar', 13.)
+      _schedule.piecewise_interpolate_schedule('linar', 13.)
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
+      _schedule.piecewise_interpolate_schedule('', 13., {5: 3.})
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule(None, 13., {})
+      _schedule.piecewise_interpolate_schedule(None, 13., {})
     # pytype: enable=wrong-arg-types
 
   def test_invalid_scale(self):
     with self.assertRaises(ValueError):
-      schedule.piecewise_interpolate_schedule('linear', 13., {5: -3})
+      _schedule.piecewise_interpolate_schedule('linear', 13., {5: -3})
 
 
 class OneCycleTest(chex.TestCase):
 
   @chex.all_variants
   def test_linear(self):
-    schedule_fn = self.variant(schedule.linear_onecycle_schedule(
+    schedule_fn = self.variant(_schedule.linear_onecycle_schedule(
         transition_steps=10,
         peak_value=1000,
         pct_start=0.3,
@@ -505,7 +506,7 @@ class OneCycleTest(chex.TestCase):
 
   @chex.all_variants
   def test_cosine(self):
-    schedule_fn = self.variant(schedule.cosine_onecycle_schedule(
+    schedule_fn = self.variant(_schedule.cosine_onecycle_schedule(
         transition_steps=5,
         peak_value=1000.,
         pct_start=0.4,
@@ -518,9 +519,9 @@ class OneCycleTest(chex.TestCase):
 
   def test_nonpositive_transition_steps(self):
     with self.assertRaises(ValueError):
-      schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.)
+      _schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.)
     with self.assertRaises(ValueError):
-      schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.)
+      _schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.)
 
 
 if __name__ == '__main__':

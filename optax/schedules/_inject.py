@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities for building stateful schedules."""
+"""Utilities to inject dynamically changing hyper-parameters."""
 
 import functools
 import inspect
-from typing import Callable, Dict, Iterable, NamedTuple, Optional, Union
+from typing import Any, Callable, Dict, Iterable, NamedTuple, Optional, Tuple, Union
 
 import chex
 import jax
@@ -27,11 +27,6 @@ from optax._src import base
 from optax._src import numerics
 
 
-Transforms = Union[
-    base.GradientTransformation,
-    base.GradientTransformationExtraArgs]
-
-
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
   if jax.dtypes.scalar_type_of(x) == float:
@@ -39,29 +34,46 @@ def _convert_floats(x, dtype):
   return x
 
 
-class InjectStatefulHyperparamsState(NamedTuple):
+class InjectHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: Dict[str, chex.Numeric]
-  hyperparams_states: Dict[str, base.ScheduleState]
   inner_state: base.OptState
 
 
-def inject_stateful_hyperparams(
-    inner_factory: Callable[..., Transforms],
+def inject_hyperparams(
+    inner_factory: Callable[..., base.GradientTransformation],
     static_args: Union[str, Iterable[str]] = (),
     hyperparam_dtype: Optional[jnp.dtype] = None,
-) -> Callable[..., base.GradientTransformationExtraArgs]:
-  """Wrapper to injects stateful hyperparameters into GradientTransformations.
+) -> Callable[..., base.GradientTransformation]:
+  """Wrapper that injects hyperparameters into the inner GradientTransformation.
 
-  Similar to `inject_hyperparams`, but supports both passing simple schedules
-  that are function exclusively of the step count and also passing stateful
-  schedules that rely on a complex internal state. The state updating can rely
-  on additional information fed to gradient transformations via extra_args.
+  This wrapper allows you to pass schedules (i.e. a function that returns a
+  numeric value given a step count) instead of constants for
+  hyperparameters. You may only schedule numeric hyperparameters (i.e. boolean
+  flags cannot be scheduled).
+
+  For example, to use ``scale_by_adam`` with a piecewise linear
+  schedule for beta_1 and constant for beta_2::
+
+    scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+        b1=optax.piecewise_linear_schedule(...),
+        b2=0.99)
+
+  You may manually change numeric hyperparameters that were not scheduled
+  through the ``hyperparams`` dict in the ``InjectHyperparamState``::
+
+    state = scheduled_adam.init(params)
+    updates, state = scheduled_adam.update(grads, state)
+    state.hyperparams['b2'] = 0.95
+    updates, state = scheduled_adam.update(updates, state)  # uses b2 = 0.95
+
+  Manually overriding scheduled hyperparameters will have no effect (e.g.
+  in the code sample above, you cannot manually adjust ``b1``).
 
   Args:
     inner_factory: a function that returns the inner
-      ``optax.GradientTransformation`` with dynamic hyperparameters.
+      ``optax.GradientTransformation`` given the hyperparameters.
     static_args: a string or iterable of strings specifying which
       callable parameters are not schedules. inject_hyperparams treats all
       callables as schedules by default, so if a hyperparameter is a
@@ -85,9 +97,7 @@ def inject_stateful_hyperparams(
         f'{set(inner_signature.parameters.keys())}')
 
   @functools.wraps(inner_factory)
-  def wrapped_transform(
-      *args, **kwargs
-  ) -> base.GradientTransformationExtraArgs:
+  def wrapped_transform(*args, **kwargs) -> base.GradientTransformation:
     bound_arguments = inner_signature.bind(*args, **kwargs)
     bound_arguments.apply_defaults()
 
@@ -95,16 +105,17 @@ def inject_stateful_hyperparams(
     for name, value in bound_arguments.arguments.items():
       if name in static_args or isinstance(value, bool):
         other_hps[name] = value
-      elif isinstance(value, base.StatefulSchedule):
-        sched_hps[name] = value
       elif callable(value):
-        sched_hps[name] = WrappedSchedule(value)
+        sched_hps[name] = value
       elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
 
-    def init_fn(params):
+    def schedule_fn(count, dtype):
+      return {k: _convert_floats(f(count), dtype) for k, f in sched_hps.items()}
+
+    def init_fn(params) -> InjectHyperparamsState:
       count = jnp.zeros([], jnp.int32)
       if hyperparam_dtype is None:
         dtype = getattr(next(iter(
@@ -114,21 +125,12 @@ def inject_stateful_hyperparams(
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()}
-      hparams_states = {
-          k: f.init()
-          for k, f in sched_hps.items()
-      }
-      hparams.update({
-          k: _convert_floats(f(hparams_states[k]), dtype)
-          for k, f in sched_hps.items()
-      })
-      return InjectStatefulHyperparamsState(
-          count=count,
-          hyperparams=hparams,
-          hyperparams_states=hparams_states,
-          inner_state=inner_factory(**other_hps, **hparams).init(params))
+      hparams.update(schedule_fn(count, dtype))
+      return InjectHyperparamsState(  # pylint:disable=too-many-function-args
+          count, hparams, inner_factory(**other_hps, **hparams).init(params))
 
-    def update_fn(updates, state, params=None, **extra_args):
+    def update_fn(
+        updates, state, params=None) -> Tuple[Any, InjectHyperparamsState]:
       if hyperparam_dtype is None:
         dtype = getattr(next(iter(
             jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
@@ -136,59 +138,15 @@ def inject_stateful_hyperparams(
         dtype = hyperparam_dtype
       hparams = {k: _convert_floats(v, dtype)
                  for k, v in state.hyperparams.items()}
-      hparams.update({
-          k: _convert_floats(
-              f(state.hyperparams_states[k], **extra_args), dtype)
-          for k, f in sched_hps.items()
-      })
-      hyperparams_states = {
-          k: f.update(state.hyperparams_states[k], **extra_args)
-          for k, f in sched_hps.items()
-      }
+      hparams.update(schedule_fn(state.count, dtype))
+      updates, inner_state = inner_factory(**other_hps, **hparams).update(
+          updates, state.inner_state, params)
+      count_inc = numerics.safe_int32_increment(state.count)
 
-      updates, inner_state = base.with_extra_args_support(
-          inner_factory(**other_hps, **hparams)).update(
-              updates, state.inner_state, params, **extra_args)
+      # pylint:disable=too-many-function-args
+      return updates, InjectHyperparamsState(count_inc, hparams, inner_state)
+      # pylint:enable=too-many-function-args
 
-      return updates, InjectStatefulHyperparamsState(
-          count=numerics.safe_int32_increment(state.count),
-          hyperparams=hparams,
-          hyperparams_states=hyperparams_states,
-          inner_state=inner_state)
-
-    return base.GradientTransformationExtraArgs(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
 
   return wrapped_transform
-
-
-class WrappedScheduleState(NamedTuple):
-  """The state for a wrapped schedule."""
-  count: chex.Numeric
-
-
-class WrappedSchedule:
-  """A stateful schedule that wraps a stateless schedule."""
-
-  def __init__(self, schedule_fn: base.Schedule):
-    self.schedule_fn = schedule_fn
-
-  def init(
-      self,
-  ) -> WrappedScheduleState:
-    return WrappedScheduleState(count=jnp.zeros([], jnp.int32))
-
-  def update(
-      self,
-      state: WrappedScheduleState,
-      **extra_args,
-  ) -> WrappedScheduleState:
-    del extra_args
-    new_count = numerics.safe_int32_increment(state.count)
-    return WrappedScheduleState(count=new_count)
-
-  def __call__(
-      self,
-      state: WrappedScheduleState,
-      **extra_args,
-  ) -> chex.Numeric:
-    return self.schedule_fn(state.count)

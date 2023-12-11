@@ -24,8 +24,8 @@ import numpy as np
 
 from optax._src import base
 from optax._src import transform
-from optax.schedules import schedule
-from optax.schedules import stateful
+from optax.schedules import _schedule
+from optax.schedules import _stateful
 
 
 class ExampleState(NamedTuple):
@@ -48,8 +48,8 @@ class ExampleStatefulSchedule(base.StatefulSchedule):
 class StatefulTest(chex.TestCase):
 
   def test_wrap_stateless_schedule(self):
-    my_schedule = schedule.linear_schedule(1., 1., 10)
-    my_wrapped_schedule = stateful.WrappedSchedule(my_schedule)
+    my_schedule = _schedule.linear_schedule(1., 1., 10)
+    my_wrapped_schedule = _stateful.WrappedSchedule(my_schedule)
 
     count = jnp.zeros([], dtype=jnp.int32)
     state = my_wrapped_schedule.init()
@@ -71,7 +71,7 @@ class StatefulTest(chex.TestCase):
     params = grads
 
     my_stateful_schedule = ExampleStatefulSchedule()
-    tx = stateful.inject_stateful_hyperparams(
+    tx = _stateful.inject_stateful_hyperparams(
         transform.scale)(step_size=my_stateful_schedule)
     state = self.variant(tx.init)(params)
 

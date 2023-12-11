@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2021 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Import stub."""
 
-# TODO(mtthss): delete this file asap.
+"""The projections sub-package."""
 
-from optax.schedules import _inject
-
-InjectHyperparamsState = _inject.InjectHyperparamsState
-inject_hyperparams = _inject.inject_hyperparams
+from optax.projections._projections import projection_box
+from optax.projections._projections import projection_hypercube
+from optax.projections._projections import projection_non_negative

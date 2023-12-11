@@ -18,7 +18,6 @@ from typing import Any, NamedTuple, Optional
 
 import jax
 
-from optax._src import alias
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
@@ -80,7 +79,7 @@ def differentially_private_aggregate(
 
 
 def dpsgd(
-    learning_rate: alias.ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     l2_norm_clip: float,
     noise_multiplier: float,
     seed: int,
@@ -121,5 +120,5 @@ def dpsgd(
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity()),
 
-      alias._scale_by_learning_rate(learning_rate)  # pylint: disable=protected-access
+      transform.scale_by_learning_rate(learning_rate)
   )

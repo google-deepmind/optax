@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""The tree_util optimisation sub-package."""
+"""The tree_utils sub-package."""
 
 from optax.tree_utils._state_utils import tree_map_params
+
+from optax.tree_utils._tree_math import tree_add
+from optax.tree_utils._tree_math import tree_add_scalar_mul
+from optax.tree_utils._tree_math import tree_div
+from optax.tree_utils._tree_math import tree_l2_norm
+from optax.tree_utils._tree_math import tree_mul
+from optax.tree_utils._tree_math import tree_ones_like
+from optax.tree_utils._tree_math import tree_scalar_mul
+from optax.tree_utils._tree_math import tree_sub
+from optax.tree_utils._tree_math import tree_sum
+from optax.tree_utils._tree_math import tree_vdot
+from optax.tree_utils._tree_math import tree_zeros_like

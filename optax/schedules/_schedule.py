@@ -27,7 +27,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax._src import base
-from optax.schedules import join
+from optax.schedules import _join
 
 
 def constant_schedule(
@@ -411,7 +411,7 @@ def warmup_cosine_decay_schedule(
           decay_steps=decay_steps - warmup_steps,
           alpha=end_value/peak_value,
           exponent=exponent)]
-  return join.join_schedules(schedules, [warmup_steps])
+  return _join.join_schedules(schedules, [warmup_steps])
 
 
 def warmup_exponential_decay_schedule(
@@ -454,7 +454,7 @@ def warmup_exponential_decay_schedule(
           transition_begin=transition_begin,
           staircase=staircase,
           end_value=end_value)]
-  return join.join_schedules(schedules, [warmup_steps])
+  return _join.join_schedules(schedules, [warmup_steps])
 
 
 def sgdr_schedule(cosine_kwargs: Iterable[Dict[str, chex.Numeric]]
@@ -479,4 +479,4 @@ def sgdr_schedule(cosine_kwargs: Iterable[Dict[str, chex.Numeric]]
     schedules += [warmup_cosine_decay_schedule(**kwargs)]
     boundaries += [step + kwargs['decay_steps']]
     step += kwargs['decay_steps']
-  return join.join_schedules(schedules, boundaries[:-1])
+  return _join.join_schedules(schedules, boundaries[:-1])

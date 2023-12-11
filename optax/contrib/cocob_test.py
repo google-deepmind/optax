@@ -24,7 +24,7 @@ import jax.numpy as jnp
 from optax import contrib
 from optax._src import numerics
 from optax._src import update
-from optax.schedules import inject
+from optax.schedules import _inject
 from optax.tree_utils import _state_utils
 
 
@@ -94,7 +94,7 @@ class AliasTest(chex.TestCase):
     # See also https://github.com/deepmind/optax/issues/412.
     opt_factory = getattr(contrib, opt_name)
     opt = opt_factory(**opt_kwargs)
-    opt_inject = inject.inject_hyperparams(opt_factory)(**opt_kwargs)
+    opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
     params = [-jnp.ones((2, 3)), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), -jnp.ones((2, 5, 2))]

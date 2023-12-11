@@ -260,10 +260,6 @@ Optax Transforms and States
 .. autoclass:: AddDecayedWeightsState
     :members:
 
-.. autofunction:: additive_weight_decay
-.. autoclass:: AdditiveWeightDecayState
-    :members:
-
 .. autoclass:: AddNoiseState
     :members:
 
@@ -639,7 +635,7 @@ Schedules
 Second Order Optimization Utilities
 =====================================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.second_order
 
 .. autosummary::
 
@@ -670,7 +666,7 @@ hvp
 Control Variates
 ================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.monte_carlo
 
 .. autosummary::
 
@@ -699,7 +695,7 @@ moving_avg_baseline
 Stochastic Gradient Estimators
 ==============================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.monte_carlo
 
 .. autosummary::
 
@@ -772,26 +768,22 @@ scale_gradient
 .. currentmodule:: optax.contrib
 
 .. autosummary::
+    :toctree: _autosummary
 
     mechanize
     MechanicState
-
-
-🚧 Experimental
-===============
-
-.. currentmodule:: optax.experimental
-
-.. autosummary::
-
-    split_real_and_imaginary
-    SplitRealAndImaginaryState
+    sam
+    SAMState
+    cocob
+    COCOBState
 
 
 Complex-Valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction::  split_real_and_imaginary
+.. currentmodule:: optax.contrib
+.. autosummary::
+    :toctree: _autosummary
 
-.. autoclass::  SplitRealAndImaginaryState
-   :members:
+    split_real_and_imaginary
+    SplitRealAndImaginaryState
