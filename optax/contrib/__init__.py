@@ -18,6 +18,8 @@ from optax.contrib.cocob import cocob
 from optax.contrib.cocob import COCOBState
 from optax.contrib.complex_valued import split_real_and_imaginary
 from optax.contrib.complex_valued import SplitRealAndImaginaryState
+from optax.contrib.dadapt_adamw import dadapt_adamw
+from optax.contrib.dadapt_adamw import DAdaptAdamWState
 from optax.contrib.mechanic import MechanicState
 from optax.contrib.mechanic import mechanize
 from optax.contrib.privacy import differentially_private_aggregate
@@ -25,6 +27,8 @@ from optax.contrib.privacy import DifferentiallyPrivateAggregateState
 from optax.contrib.privacy import dpsgd
 from optax.contrib.reduce_on_plateau import reduce_on_plateau
 from optax.contrib.reduce_on_plateau import ReduceLROnPlateauState
+from optax.contrib.prodigy import prodigy
+from optax.contrib.prodigy import ProdigyState
 from optax.contrib.sam import normalize
 from optax.contrib.sam import NormalizeState
 from optax.contrib.sam import sam
