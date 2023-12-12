@@ -1,8 +1,10 @@
+"""Segmentation losses."""
+
 from typing import Optional
 
 import chex
 import jax
-import jax.numpy as jnp
+# import jax.numpy as jnp
 
 from optax.losses.classification import sigmoid_binary_cross_entropy
 
