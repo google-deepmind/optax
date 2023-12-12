@@ -20,8 +20,8 @@ class SigmoidFocalLossTest(parameterized.TestCase):
   def test_gamma_zero(self):
     """From gamma == 0 we expect a CE loss."""
     np.testing.assert_allclose(
-        self.variant(
-            segmentation.sigmoid_focal_loss)(self.ys, self.ts, gamma=0.),
+      self.variant(
+        segmentation.sigmoid_focal_loss)(self.ys, self.ts, gamma=0.),
         classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
         atol=1e-4)
 
