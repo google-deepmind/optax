@@ -300,11 +300,13 @@ class MultiSteps:
       every_k_schedule: Union[int, Callable[[Array], Array]],
       use_grad_mean: bool = True,
       should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None):
+    # pylint: disable=line-too-long
     """Initialiser.
 
     Args:
       opt: the wrapped optimizer.
       every_k_schedule: an int or f a function.
+
         * As a function, it returns how many mini-steps should be accumulated
           in a single gradient step. Its only argument is the current
           gradient step count. By varying the returned value, users can vary the
@@ -317,15 +319,17 @@ class MultiSteps:
         to accept or reject the updates from a mini-step. When a mini-step is
         rejected, the inner state of `MultiSteps` is not updated. In other
         words, it is as if this mini-step never happened. For example:
+
         * to ignore updates containing inf or NaN, do
-          `should_skip_update_fn=skip_not_finite`;
-        * to ignore updates with a norm square larger then 42, do
-          `should_skip_update_fn=functools.partial(skip_large_updates,
-                                                   max_norm_sq=42.)`.
-        Note that the optimizer's state `MultiStepsState` contains a field
-        `skip_state` in which debugging and monitoring information returned
-        by `should_skip_update_fn` is written.
+          ``should_skip_update_fn=skip_not_finite``;
+        * to ignore updates with a norm square larger then 42, do:
+          ``should_skip_update_fn=functools.partial(skip_large_updates, max_norm_sq=42.)``
+
+        Note that the optimizer's state :class:`optax.MultiStepsState` contains
+        a keyword argument ``skip_state`` in which debugging and monitoring
+        information returned by ``should_skip_update_fn`` is written.
     """
+    # pylint: enable=line-too-long
     self._opt = base.with_extra_args_support(opt)
 
     if isinstance(every_k_schedule, int):
