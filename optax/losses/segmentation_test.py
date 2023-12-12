@@ -9,7 +9,7 @@ import numpy as np
 from optax.losses import segmentation
 from optax.losses import classification
 
-class SoftmaxCrossEntropyTest(parameterized.TestCase):
+class SigmoidFocalLossTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
