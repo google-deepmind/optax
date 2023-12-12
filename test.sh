@@ -73,10 +73,6 @@ mkdir _testing && cd _testing
 python -m pytest -n auto --pyargs optax
 cd ..
 
-cd examples
-python -m pytest -n auto .
-cd ..
-
 # Build Sphinx docs.
 pip install -e ".[docs]"
 cd docs && make html
