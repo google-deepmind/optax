@@ -619,6 +619,7 @@ Schedules
 .. autofunction:: piecewise_constant_schedule
 .. autofunction:: piecewise_interpolate_schedule
 .. autofunction:: polynomial_schedule
+.. autofunction:: optax.contrib.reduce_on_plateau.reduce_on_plateau
 .. autofunction:: sgdr_schedule
 .. autofunction:: warmup_cosine_decay_schedule
 .. autofunction:: warmup_exponential_decay_schedule
