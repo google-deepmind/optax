@@ -30,6 +30,7 @@ from optax.tree_utils import _state_utils
 
 _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
+    dict(opt_name='adadelta', opt_kwargs=dict(learning_rate=0.1)),
     dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
@@ -40,7 +41,8 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
     dict(
-        opt_name='lion', opt_kwargs=dict(learning_rate=1e-2, weight_decay=1e-4),
+        opt_name='lion',
+        opt_kwargs=dict(learning_rate=1e-2, weight_decay=1e-4),
     ),
     dict(opt_name='nadam', opt_kwargs=dict(learning_rate=1e-2)),
     dict(opt_name='nadamw', opt_kwargs=dict(learning_rate=1e-2)),
@@ -110,6 +112,7 @@ class AliasTest(chex.TestCase):
         'optimistic_gradient_descent',
         'lion',
         'rprop',
+        'adadelta',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'

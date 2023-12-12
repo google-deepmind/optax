@@ -608,6 +608,53 @@ def scale_by_param_block_rms(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByAdadelta(NamedTuple):
+  """State for the rescaling by Adadelta algoritm."""
+
+  e_g: base.Updates
+  e_x: base.Updates
+
+
+def scale_by_adadelta(
+    rho: float = 0.9, eps: float = 1e-6
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adadelta algorithm.
+
+  References:
+    [Matthew D. Zeiler, 2012](https://arxiv.org/pdf/1212.5701.pdf)
+
+  Args:
+    rho: A coefficient used for computing a running average of squared
+      gradients.
+    eps: Term added to the denominator to improve numerical stability.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    e_g = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared gradient]
+    e_x = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared update]
+    return ScaleByAdadelta(e_g=e_g, e_x=e_x)
+
+  def update_fn(updates, state, params=None):
+    del params
+    e_g = update_moment(updates, state.e_g, rho, 2)
+    updates = jax.tree_util.tree_map(
+        lambda g, cur_e_g, prev_e_x: (
+            jnp.sqrt(prev_e_x + eps) / jnp.sqrt(cur_e_g + eps)
+        )
+        * g,
+        updates,
+        e_g,
+        state.e_x,
+    )
+    e_x = update_moment(updates, state.e_x, rho, 2)
+    return updates, ScaleByAdadelta(e_g=e_g, e_x=e_x)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByBeliefState(NamedTuple):
   """State for the rescaling by AdaBelief algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.
