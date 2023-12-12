@@ -99,7 +99,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :ref:`sphx_glr__collections_generated_examples_haiku_example.py`
+  :doc:`_collections/examples/haiku_example`
 
 .. raw:: html
 
