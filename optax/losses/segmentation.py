@@ -12,11 +12,14 @@ def sigmoid_focal_loss(
     alpha: Optional[float] = None,
     gamma: float = 2,
 ) ->  chex.Array:
-    """Compute a sigmoid focal loss.
-    Implementation of the focal loss as used https://arxiv.org/abs/1708.02002.
+    """Compute a sigmoid focal loss as proposed by Lin et al.
+
     This loss often appears in the segmentation context.
     Use this loss function if classes are not mutually exclusive.
     See `sigmoid_binary_cross_entropy` for more information.
+
+    References:
+        Lin et al. https://arxiv.org/pdf/1708.02002.pdf
     
     Args:
         logits: A float array of arbitrary shape.
@@ -30,6 +33,7 @@ def sigmoid_focal_loss(
                 positive vs negative examples. Default None (no weighting).
         gamma: Exponent of the modulating factor (1 - p_t) to
                balance easy vs hard examples.
+
     Returns:
         A loss value array with a shape identical to the logits and target
         arrays.
