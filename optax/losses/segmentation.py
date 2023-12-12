@@ -31,6 +31,7 @@ def sigmoid_focal_loss(
       positive vs negative examples. Default None (no weighting).
     gamma: Exponent of the modulating factor (1 - p_t) to
       balance easy vs hard examples.
+
   Returns:
     A loss value array with a shape identical to the logits and target
     arrays.
