@@ -116,7 +116,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :ref:`sphx_glr__collections_generated_examples_flax_example.py`
+  :doc:`_collections/examples/flax_example`
 
 .. raw:: html
 
