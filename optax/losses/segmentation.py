@@ -6,7 +6,7 @@ import chex
 import jax
 # import jax.numpy as jnp
 
-from optax.losses.classification import sigmoid_binary_cross_entropy
+from optax.losses import sigmoid_binary_cross_entropy
 
 def sigmoid_focal_loss(
     logits:  chex.Array,
