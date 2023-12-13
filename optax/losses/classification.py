@@ -440,7 +440,7 @@ def sigmoid_focal_loss(
     gamma: float = 2,
 ) ->  chex.Array:
   """Compute a sigmoid focal loss as proposed by Lin et al.
-  This loss often appears in the segmentation context.
+  The focal loss is a re-weighted cross entropy for unbalanced problems.
   Use this loss function if classes are not mutually exclusive.
   See `sigmoid_binary_cross_entropy` for more information.
 
