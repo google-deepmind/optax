@@ -18,6 +18,7 @@ def sigmoid_focal_loss(
   This loss often appears in the segmentation context.
   Use this loss function if classes are not mutually exclusive.
   See `sigmoid_binary_cross_entropy` for more information.
+
   References:
     Lin et al. https://arxiv.org/pdf/1708.02002.pdf
   

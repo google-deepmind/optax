@@ -31,3 +31,4 @@ from optax.losses.regression import l2_loss
 from optax.losses.regression import log_cosh
 from optax.losses.regression import squared_error
 from optax.losses.smoothing import smooth_labels
+from optax.losses.segmentation import sigmoid_focal_loss
