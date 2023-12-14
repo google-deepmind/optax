@@ -42,10 +42,17 @@ class ReduceLROnPlateauState(NamedTuple):
 def reduce_on_plateau(
   reduce_factor: float,
   patience: int,
-  min_improvement:float,
-  cooldown:int
+  min_improvement: float,
+  cooldown: int
 ) -> base.GradientTransformationExtraArgs:
-  """ Args:
+  """ Reduce learning rate when a metric has stopped improving. 
+
+  Models often benefit from reducing the learning once learning stagnates.
+  his scheduler reads a metrics quantity and if no improvement is seen for
+  a ‘patience’ number of epochs, the learning rate is reduced
+
+  Args:
+
   reduce_factor: Factor by which the learning rate will be reduced. 
       new_lr = lr * factor.
   patience: Number of epochs with no improvement after which learning 
