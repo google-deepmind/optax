@@ -36,7 +36,7 @@ class ReduceLROnPlateauState(NamedTuple):
   plateau_count: int
   lr: float
   cooldown_counter: int
-  cooldown:int
+  cooldown: int
 
 
 def reduce_on_plateau(
@@ -49,17 +49,17 @@ def reduce_on_plateau(
 
   Models often benefit from reducing the learning once learning stagnates.
   his scheduler reads a metrics quantity and if no improvement is seen for
-  a ‘patience’ number of epochs, the learning rate is reduced
+  a ‘patience’ number of epochs, the learning rate is reduced.
 
   Args:
 
   reduce_factor: Factor by which the learning rate will be reduced. 
       new_lr = lr * factor.
-  patience: Number of epochs with no improvement after which learning 
+  patience: Number of iterations with no improvement after which learning 
       rate will be reduced.
   min_improvement: Threshold for measuring the new optimum, to only focus on 
       significant changes.
-  cooldown: Number of epochs to wait before resuming normal operation 
+  cooldown: Number of iterations to wait before resuming normal operation 
       after lr has been reduced.
   """
 
@@ -88,7 +88,6 @@ def reduce_on_plateau(
     current_loss = extra_args.get("loss")
 
     # Check if the current loss is the best so far
-
     best_loss = state.best_loss
     # Update plateau count and check if plateaued
     has_improved = jnp.where(
