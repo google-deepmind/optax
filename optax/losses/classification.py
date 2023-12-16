@@ -451,7 +451,7 @@ def sigmoid_focal_loss(
     logits: A float array of arbitrary shape.
       The predictions for each example.
     labels: A float array, its shape must be identical to
-      that of logits. It containes the binary
+      that of logits. Contains the binary
       classification label for each element in logits
       (0 for the out of class and 1 for in class).
       This array is often one-hot encoded.
