@@ -445,7 +445,7 @@ def sigmoid_focal_loss(
   See `sigmoid_binary_cross_entropy` for more information.
 
   References:
-    Lin et al. https://arxiv.org/pdf/1708.02002.pdf
+    Lin et al. 2018. https://arxiv.org/pdf/1708.02002.pdf
   
   Args:
     logits: A float array of arbitrary shape.
