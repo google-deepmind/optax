@@ -25,9 +25,9 @@ import numpy as np
 from optax._src import alias
 from optax._src import base
 from optax._src import numerics
-from optax._src import state_utils
 from optax._src import update
 from optax.contrib import mechanic
+from optax.tree_utils import _state_utils
 
 
 # TODO(harshm): make LARS and Fromage work with mechanic.
@@ -136,7 +136,7 @@ class MechanicTest(chex.TestCase):
     opt_state = self.variant(init_fn)(params)
 
     # A no-op change, to verify that tree map works.
-    opt_state = state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
+    opt_state = _state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
 
     for _ in range(num_steps):
       updates, opt_state = step(self.grads, opt_state, params)
@@ -193,7 +193,7 @@ class MechanicTest(chex.TestCase):
     params = initial_params
     state = opt.init(params)
     # A no-op change, to verify that tree map works.
-    state = state_utils.tree_map_params(opt, lambda v: v, state)
+    state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
     for _ in range(25000):
       params, state = step(params, state)

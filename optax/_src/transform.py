@@ -22,7 +22,6 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
@@ -321,8 +320,8 @@ def scale_by_adam(
   References:
     [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
 
-  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma 
-    and Ba's Adam paper, if reproducing old results note that TensorFlow 
+  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma
+    and Ba's Adam paper, if reproducing old results note that TensorFlow
     used instead the formulation just before Section 2.1 of the paper.
     See https://github.com/deepmind/optax/issues/571 for more detail.
 
@@ -793,6 +792,30 @@ class ScaleByScheduleState(NamedTuple):
   count: chex.Array  # shape=(), dtype=jnp.int32
 
 
+def scale_by_learning_rate(
+    learning_rate: base.ScalarOrSchedule,
+    *,
+    flip_sign: bool = True,
+) -> base.GradientTransformation:
+  """Scale by the (negative) learning rate (either as scalar or as schedule).
+
+  Args:
+    learning_rate: Can either be a scalar or a schedule (i.e. a callable that
+      maps an (int) step to a float).
+    flip_sign: When set to True (the default) this corresponds to scaling by the
+      negative learning rate.
+
+  Returns:
+    An optax.GradientTransformation that corresponds to multiplying the gradient
+    with `-learning_rate` (if flip_sign is True) or with `learning_rate` (if
+    flip_sign is False).
+  """
+  m = -1 if flip_sign else 1
+  if callable(learning_rate):
+    return scale_by_schedule(lambda count: m * learning_rate(count))
+  return scale(m * learning_rate)
+
+
 def scale_by_schedule(
     step_size_fn: base.Schedule
 ) -> base.GradientTransformation:
@@ -1258,11 +1281,3 @@ def scale_by_distance_over_gradients(
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
-
-
-# TODO(b/183800387): remove legacy aliases.
-# These legacy aliases are here for checkpoint compatibility
-# To be removed once checkpoints have updated.
-safe_int32_increment = numerics.safe_int32_increment
-ClipState = clipping.ClipState
-ClipByGlobalNormState = clipping.ClipByGlobalNormState

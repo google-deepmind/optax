@@ -23,9 +23,10 @@ import jax.numpy as jnp
 
 from optax._src import alias
 from optax._src import numerics
-from optax._src import schedule
-from optax._src import state_utils
 from optax._src import update
+from optax.schedules import _inject
+from optax.tree_utils import _state_utils
+
 
 _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
@@ -54,16 +55,6 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(
-        opt_name='dpsgd',
-        opt_kwargs=dict(
-            learning_rate=1e-3,
-            l2_norm_clip=10.0,
-            noise_multiplier=1e-3,
-            seed=0,
-            momentum=0.2,
-        ),
-    ),
 )
 
 
@@ -126,8 +117,6 @@ class AliasTest(chex.TestCase):
     @jax.jit
     def step(params, state):
       updates = get_updates(params)
-      if opt_name == 'dpsgd':
-        updates = updates[None]
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
@@ -138,7 +127,7 @@ class AliasTest(chex.TestCase):
     params = initial_params
     state = opt.init(params)
     # A no-op change, to verify that tree map works.
-    state = state_utils.tree_map_params(opt, lambda v: v, state)
+    state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
     for _ in range(10000):
       params, state = step(params, state)
@@ -157,10 +146,10 @@ class AliasTest(chex.TestCase):
       # Adafactor wrapped in inject_hyperparams currently needs a static
       # argument to be specified in order to be jittable. See issue
       # https://github.com/deepmind/optax/issues/412.
-      opt_inject = schedule.inject_hyperparams(
+      opt_inject = _inject.inject_hyperparams(
           opt_factory, static_args=('min_dim_size_to_factor',))(**opt_kwargs)
     else:
-      opt_inject = schedule.inject_hyperparams(opt_factory)(**opt_kwargs)
+      opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
     params = [-jnp.ones((2, 3)), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), -jnp.ones((2, 5, 2))]

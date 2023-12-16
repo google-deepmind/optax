@@ -16,31 +16,21 @@
 
 from typing import Any, Callable, Optional, Union
 
-import jax
 import jax.numpy as jnp
 
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
-from optax._src import privacy
 from optax._src import transform
 from optax._src import wrappers
 
 
-ScalarOrSchedule = Union[float, jax.Array, base.Schedule]
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
-def _scale_by_learning_rate(learning_rate: ScalarOrSchedule, flip_sign=True):
-  m = -1 if flip_sign else 1
-  if callable(learning_rate):
-    return transform.scale_by_schedule(lambda count: m * learning_rate(count))
-  return transform.scale(m * learning_rate)
-
-
 def adabelief(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-16,
@@ -71,12 +61,12 @@ def adabelief(
   """
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adafactor(
-    learning_rate: Optional[ScalarOrSchedule] = None,
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
     decay_rate: float = 0.8,
     decay_offset: int = 0,
@@ -138,7 +128,7 @@ def adafactor(
   if clipping_threshold is not None:
     tx.append(clipping.clip_by_block_rms(clipping_threshold))
   if learning_rate is not None:
-    tx.append(_scale_by_learning_rate(learning_rate, flip_sign=False))
+    tx.append(transform.scale_by_learning_rate(learning_rate, flip_sign=False))
   if multiply_by_parameter_scale:
     tx.append(transform.scale_by_param_block_rms())
   if momentum is not None:
@@ -153,7 +143,7 @@ def adafactor(
 
 
 def adagrad(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7
 ) -> base.GradientTransformation:
@@ -181,12 +171,12 @@ def adagrad(
   return combine.chain(
       transform.scale_by_rss(
           initial_accumulator_value=initial_accumulator_value, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adam(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -228,8 +218,8 @@ def adam(
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
-  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma 
-    and Ba's Adam paper, if reproducing old results note that TensorFlow 
+  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma
+    and Ba's Adam paper, if reproducing old results note that TensorFlow
     used instead the formulation just before Section 2.1 of the paper.
     See https://github.com/deepmind/optax/issues/571 for more detail.
 
@@ -251,12 +241,12 @@ def adam(
   return combine.chain(
       transform.scale_by_adam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adamw(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -304,12 +294,12 @@ def adamw(
       transform.scale_by_adam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def lion(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.99,
     mu_dtype: Optional[Any] = None,
@@ -352,12 +342,12 @@ def lion(
   return combine.chain(
       transform.scale_by_lion(b1=b1, b2=b2, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def amsgrad(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -390,7 +380,7 @@ def amsgrad(
   return combine.chain(
       transform.scale_by_amsgrad(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
@@ -421,13 +411,13 @@ def fromage(
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
-      _scale_by_learning_rate(learning_rate * mult),
+      transform.scale_by_learning_rate(learning_rate * mult),
       transform.add_decayed_weights((mult - 1)),
   )
 
 
 def lars(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     weight_decay: float = 0.,
     weight_decay_mask: MaskOrFn = True,
     trust_coefficient: float = 0.001,
@@ -469,13 +459,13 @@ def lars(
           inner=transform.scale_by_trust_ratio(
               trust_coefficient=trust_coefficient, eps=eps),
           mask=trust_ratio_mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
       transform.trace(decay=momentum, nesterov=nesterov),
   )
 
 
 def lamb(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-6,
@@ -516,12 +506,12 @@ def lamb(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay=weight_decay, mask=mask),
       transform.scale_by_trust_ratio(),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def noisy_sgd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     eta: float = 0.01,
     gamma: float = 0.55,
     seed: int = 0
@@ -546,12 +536,12 @@ def noisy_sgd(
   """
   return combine.chain(
       transform.add_noise(eta, gamma, seed),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def novograd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.25,
     eps: float = 1e-6,
@@ -589,14 +579,14 @@ def novograd(
   return combine.chain(
       transform.scale_by_novograd(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def optimistic_gradient_descent(
-    learning_rate: ScalarOrSchedule,
-    alpha: ScalarOrSchedule = 1.0,
-    beta: ScalarOrSchedule = 1.0
+    learning_rate: base.ScalarOrSchedule,
+    alpha: base.ScalarOrSchedule = 1.0,
+    beta: base.ScalarOrSchedule = 1.0
 ) -> base.GradientTransformation:
   """An Optimistic Gradient Descent optimizer.
 
@@ -618,12 +608,12 @@ def optimistic_gradient_descent(
   """
   return combine.chain(
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate)
   )
 
 
 def radam(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -638,7 +628,7 @@ def radam(
   by analytically reducing the large variance.
 
   References:
-    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+    Liu et al, 2020: https://arxiv.org/abs/1908.03265
 
   Args:
     learning_rate: A fixed global scaling factor.
@@ -657,12 +647,12 @@ def radam(
   return combine.chain(
       transform.scale_by_radam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, threshold=threshold),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def rmsprop(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     decay: float = 0.9,
     eps: float = 1e-8,
     initial_scale: float = 0.,
@@ -709,21 +699,21 @@ def rmsprop(
     return combine.chain(
         transform.scale_by_stddev(
             decay=decay, eps=eps, initial_scale=initial_scale),
-        _scale_by_learning_rate(learning_rate),
+        transform.scale_by_learning_rate(learning_rate),
         (transform.trace(decay=momentum, nesterov=nesterov)
          if momentum is not None else base.identity())
     )
   return combine.chain(
       transform.scale_by_rms(
           decay=decay, eps=eps, initial_scale=initial_scale),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity())
   )
 
 
 def sgd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     momentum: Optional[float] = None,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
@@ -752,7 +742,7 @@ def sgd(
       (transform.trace(decay=momentum, nesterov=nesterov,
                        accumulator_dtype=accumulator_dtype)
        if momentum is not None else base.identity()),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate)
   )
 
 
@@ -789,7 +779,7 @@ def sm3(
 
 
 def yogi(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-3,
@@ -819,57 +809,12 @@ def yogi(
   # pylint: enable=line-too-long
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
-      _scale_by_learning_rate(learning_rate),
-  )
-
-
-def dpsgd(
-    learning_rate: ScalarOrSchedule,
-    l2_norm_clip: float,
-    noise_multiplier: float,
-    seed: int,
-    momentum: Optional[float] = None,
-    nesterov: bool = False
-) -> base.GradientTransformation:
-  """The DPSGD optimizer.
-
-  Differential privacy is a standard for privacy guarantees of algorithms
-  learning from aggregate databases including potentially sensitive information.
-  DPSGD offers protection against a strong adversary with full knowledge of the
-  training mechanism and access to the model’s parameters.
-
-  WARNING: This `GradientTransformation` expects input updates to have a batch
-  dimension on the 0th axis. That is, this function expects per-example
-  gradients as input (which are easy to obtain in JAX using `jax.vmap`).
-
-  References:
-    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
-
-  Args:
-    learning_rate: A fixed global scaling factor.
-    l2_norm_clip: Maximum L2 norm of the per-example gradients.
-    noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
-    momentum: Decay rate used by the momentum term, when it is set to `None`,
-      then momentum is not used at all.
-    nesterov: Whether Nesterov momentum is used.
-
-  Returns:
-    A `GradientTransformation`.
-  """
-  return combine.chain(
-      privacy.differentially_private_aggregate(
-          l2_norm_clip=l2_norm_clip,
-          noise_multiplier=noise_multiplier,
-          seed=seed),
-      (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else base.identity()),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adamax(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -891,12 +836,12 @@ def adamax(
   """
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps,),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adamaxw(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -940,5 +885,5 @@ def adamaxw(
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps),
       transform.add_decayed_weights(weight_decay, mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )

@@ -21,9 +21,10 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import base
 from optax._src import numerics
-from optax._src import state_utils
+from optax.tree_utils import _state_utils
 
 
 Array = jnp.ndarray
@@ -299,11 +300,13 @@ class MultiSteps:
       every_k_schedule: Union[int, Callable[[Array], Array]],
       use_grad_mean: bool = True,
       should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None):
+    # pylint: disable=line-too-long
     """Initialiser.
 
     Args:
       opt: the wrapped optimizer.
       every_k_schedule: an int or f a function.
+
         * As a function, it returns how many mini-steps should be accumulated
           in a single gradient step. Its only argument is the current
           gradient step count. By varying the returned value, users can vary the
@@ -316,15 +319,17 @@ class MultiSteps:
         to accept or reject the updates from a mini-step. When a mini-step is
         rejected, the inner state of `MultiSteps` is not updated. In other
         words, it is as if this mini-step never happened. For example:
+
         * to ignore updates containing inf or NaN, do
-          `should_skip_update_fn=skip_not_finite`;
-        * to ignore updates with a norm square larger then 42, do
-          `should_skip_update_fn=functools.partial(skip_large_updates,
-                                                   max_norm_sq=42.)`.
-        Note that the optimizer's state `MultiStepsState` contains a field
-        `skip_state` in which debugging and monitoring information returned
-        by `should_skip_update_fn` is written.
+          ``should_skip_update_fn=skip_not_finite``;
+        * to ignore updates with a norm square larger then 42, do:
+          ``should_skip_update_fn=functools.partial(skip_large_updates, max_norm_sq=42.)``
+
+        Note that the optimizer's state :class:`optax.MultiStepsState` contains
+        a keyword argument ``skip_state`` in which debugging and monitoring
+        information returned by ``should_skip_update_fn`` is written.
     """
+    # pylint: enable=line-too-long
     self._opt = base.with_extra_args_support(opt)
 
     if isinstance(every_k_schedule, int):
@@ -382,39 +387,38 @@ class MultiSteps:
       )
 
     # Note: we do not enclose variables to allow JAX to re-use memory buffers.
-
-    def _final_step(state, params, acc_grads):
-      final_updates, new_inner_state = self._opt.update(
-          acc_grads, state.inner_opt_state, params=params, **extra_args)
-      new_state = MultiStepsState(
-          mini_step=jnp.zeros([], dtype=jnp.int32),
-          gradient_step=numerics.safe_int32_increment(state.gradient_step),
-          inner_opt_state=new_inner_state,
-          acc_grads=_zeros_tree_like(acc_grads),
-          skip_state=skip_state)
-      return final_updates, new_state
-
-    def _mid_step(state, params, acc_grads):
-      updates_shape_dtype, _ = jax.eval_shape(
-          self._opt.update, acc_grads, state.inner_opt_state, params=params)
-      mid_updates = jax.tree_util.tree_map(
-          lambda sd: jnp.zeros(sd.shape, sd.dtype), updates_shape_dtype)
-      new_state = MultiStepsState(
-          mini_step=numerics.safe_int32_increment(state.mini_step),
-          gradient_step=state.gradient_step,
-          inner_opt_state=state.inner_opt_state,
-          acc_grads=acc_grads,
-          skip_state=skip_state)
-      return mid_updates, new_state
-
     def _do_update(updates, state, params):
       acc_grads = jax.tree_util.tree_map(
           lambda upd, acc: self._acc_update(upd, acc, n_acc=state.mini_step),
-          updates, state.acc_grads)
-      new_updates, new_state = jax.lax.cond(
-          state.mini_step < k_steps - 1,
-          _mid_step, _final_step, *(state, params, acc_grads))
-      return new_updates, new_state
+          updates,
+          state.acc_grads,
+      )
+
+      final_updates, new_inner_state = self._opt.update(
+          acc_grads, state.inner_opt_state, params=params, **extra_args
+      )
+
+      emit = state.mini_step == (k_steps - 1)
+      new_state = MultiStepsState(
+          mini_step=numerics.safe_int32_increment(state.mini_step) % k_steps,
+          gradient_step=emit
+          * numerics.safe_int32_increment(state.gradient_step)
+          + (1 - emit) * state.gradient_step,
+          inner_opt_state=jax.tree_util.tree_map(
+              lambda st, nst: (1 - emit) * st + emit * nst,
+              state.inner_opt_state,
+              new_inner_state,
+          ),
+          acc_grads=jax.tree_util.tree_map(
+              lambda ga: (1 - emit) * ga, acc_grads
+          ),
+          skip_state=skip_state,
+      )
+
+      final_updates = jax.tree_util.tree_map(
+          lambda ga: emit * ga, final_updates
+      )
+      return final_updates, new_state
 
     def _skip_update(updates, state, params):
       del updates, params
@@ -459,7 +463,9 @@ class MaskedNode(NamedTuple):
 
 def masked(
     inner: base.GradientTransformation,
-    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
+    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]],
+    *,
+    mask_compatible_extra_args: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Mask updates so only some are transformed, the rest are passed through.
 
@@ -491,6 +497,8 @@ def masked(
       should be booleans, ``True`` for leaves/subtrees you want to apply the
       transformation to, and ``False`` for those you want to skip. The mask must
       be static for the gradient transformation to be jit-compilable.
+    mask_compatible_extra_args: whether to also apply the same masking to
+      extra_arg fields with the same tree structure as params/updates.
 
   Returns:
     New ``GradientTransformationExtraArgs`` wrapping ``inner``.
@@ -501,6 +509,21 @@ def masked(
     return jax.tree_util.tree_map(
         lambda m, p: p if m else MaskedNode(), mask_tree, pytree
     )
+
+  # It is possible that `extra_args` of update_fn has pytrees with the same
+  # structure as params/updates, e.g. parameter tags. This function applies
+  # the mask to those pytrees.
+  def maybe_mask_values(pytree_dict, base_pytree, mask_tree):
+    base_structure = jax.tree_util.tree_structure(base_pytree)
+
+    def maybe_mask(pytree):
+      if mask_compatible_extra_args and (
+          jax.tree_util.tree_structure(pytree) == base_structure):
+        return mask_pytree(pytree, mask_tree)
+      else:
+        return pytree
+
+    return {k: maybe_mask(v) for k, v in pytree_dict.items()}
 
   def init_fn(params):
     # This is a workaround to make tree_map_params work with masking.
@@ -515,7 +538,7 @@ def masked(
     # any particular constraints on the shape of the parameter tree, as long
     # as tree_map_params is being called on a tree with the correct structure.
     # See wrappers_test for proof that this works!
-    if isinstance(params, state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
+    if isinstance(params, _state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
       return MaskedState(inner_state=inner.init(params))
 
     mask_tree = mask(params) if callable(mask) else mask
@@ -524,11 +547,12 @@ def masked(
 
   def update_fn(updates, state, params=None, **extra_args):
     mask_tree = mask(updates) if callable(mask) else mask
+    masked_extra_args = maybe_mask_values(extra_args, updates, mask_tree)
     masked_updates = mask_pytree(updates, mask_tree)
     masked_params = None if params is None else mask_pytree(params, mask_tree)
 
     new_masked_updates, new_inner_state = inner.update(
-        masked_updates, state.inner_state, masked_params, **extra_args)
+        masked_updates, state.inner_state, masked_params, **masked_extra_args)
 
     new_updates = jax.tree_util.tree_map(
         lambda m, new_u, old_u: new_u if m else old_u,

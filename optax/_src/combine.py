@@ -68,13 +68,74 @@ def chain(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
+def named_chain(
+    *transforms: tuple[str, base.GradientTransformation]
+) -> base.GradientTransformationExtraArgs:
+  """Chains optax gradient transformations.
+
+  The `transforms` are `(name, transformation)` pairs, constituted of a string
+  `name` and an associated gradient transformation `transformation`. The
+  gradient transformation must be an instance of either `GradientTransformation`
+  or `GradientTransformationExtraArgs`.
+
+  Each `name` is used as key for the state of the corresponding transformation
+  within the `named_chain` state. Thus the state of the gradient transformation
+  with a given `name` can be retrieved as `opt_state[name]`.
+
+  Example:
+
+    # tx1 is a GradientTransformation with no extra_args. 
+    # tx2 is a GradientTransformationExtraArgs that requires `loss`.
+    # tx3 is a GradientTransformationExtraArgs that requires `temperature`.
+
+    tx = named_chain(('one', tx1), ('two', tx2), ('three', tx3))
+    extra_args={'loss': 0.3, 'temperature': 0.01}
+    tx.init(params)
+    tx.update(grads, state, params, **extra_args)
+
+  Args:
+    *transforms: an arbitrary number of `(name, tx)` pairs, constituted of a
+      string `name` and an associated gradient transformation `tx`. The latter 
+      is a `GradientTransformation` or `GradientTransformationExtraArgs`.
+
+  Returns: 
+    A single (init_fn, update_fn) tuple. 
+  """
+
+  names = [name for name, _ in transforms]
+
+  if len(names) != len(set(names)):
+    raise ValueError(
+        f'Named transformations must have unique names, but got {names}')
+
+  transforms = [
+      (name, base.with_extra_args_support(t))
+      for name, t in transforms]
+
+  def init_fn(params):
+    states = {}
+    for (name, tx) in transforms:
+      states[name] = tx.init(params)
+    return states
+  def update_fn(updates, state, params=None, **extra_args):
+    new_state = {}
+    for (name, tx) in transforms:
+      updates, new_state[name] = tx.update(
+          updates, state[name], params, **extra_args)
+    return updates, new_state
+
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
 class MultiTransformState(NamedTuple):
   inner_states: Mapping[Hashable, base.OptState]
 
 
 def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
-    param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]]
+    param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]],
+    *,
+    mask_compatible_extra_args: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Partitions params and applies a different transformation to each subset.
 
@@ -126,6 +187,8 @@ def multi_transform(
       parameters/updates (or a function that returns one given the parameters as
       input). The leaves of this PyTree correspond to the keys of the transforms
       (therefore the values at the leaves must be a subset of the keys).
+    mask_compatible_extra_args: Whether to also apply the same masking to
+      extra_arg fields with the same tree structure as params/updates.
 
   Returns:
     An ``optax.GradientTransformation``.
@@ -149,7 +212,9 @@ def multi_transform(
                        f'Transforms keys: {list(sorted(transforms.keys()))} \n')
 
     inner_states = {
-        group: wrappers.masked(tx, make_mask(labels, group)).init(params)
+        group: wrappers.masked(
+            tx, make_mask(labels, group),
+            mask_compatible_extra_args=mask_compatible_extra_args).init(params)
         for group, tx in transforms.items()
     }
     return MultiTransformState(inner_states)
@@ -158,7 +223,9 @@ def multi_transform(
     labels = param_labels(updates) if callable(param_labels) else param_labels
     new_inner_state = {}
     for group, tx in transforms.items():
-      masked_tx = wrappers.masked(tx, make_mask(labels, group))
+      masked_tx = wrappers.masked(
+          tx, make_mask(labels, group),
+          mask_compatible_extra_args=mask_compatible_extra_args)
       updates, new_inner_state[group] = masked_tx.update(
           updates, state.inner_states[group], params, **extra_args)
     return updates, MultiTransformState(new_inner_state)

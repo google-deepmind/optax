@@ -15,10 +15,12 @@
 """Optax: composable gradient processing and optimization, in JAX."""
 
 from optax import contrib
-from optax import experimental
 from optax import losses
 from optax import monte_carlo
+from optax import projections
+from optax import schedules
 from optax import second_order
+from optax import tree_utils
 from optax._src.alias import adabelief
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
@@ -27,7 +29,6 @@ from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
-from optax._src.alias import dpsgd
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
@@ -38,7 +39,6 @@ from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
-from optax._src.alias import ScalarOrSchedule
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -48,6 +48,7 @@ from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
 from optax._src.base import OptState
 from optax._src.base import Params
+from optax._src.base import ScalarOrSchedule
 from optax._src.base import Schedule
 from optax._src.base import set_to_zero
 from optax._src.base import stateless
@@ -65,9 +66,11 @@ from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
 from optax._src.clipping import per_example_global_norm_clip
+from optax._src.clipping import per_example_layer_norm_clip
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
+from optax._src.combine import named_chain
 from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans
@@ -83,24 +86,6 @@ from optax._src.lookahead import LookaheadState
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
-from optax._src.privacy import differentially_private_aggregate
-from optax._src.privacy import DifferentiallyPrivateAggregateState
-from optax._src.schedule import constant_schedule
-from optax._src.schedule import cosine_decay_schedule
-from optax._src.schedule import cosine_onecycle_schedule
-from optax._src.schedule import exponential_decay
-from optax._src.schedule import inject_hyperparams
-from optax._src.schedule import InjectHyperparamsState
-from optax._src.schedule import join_schedules
-from optax._src.schedule import linear_onecycle_schedule
-from optax._src.schedule import linear_schedule
-from optax._src.schedule import piecewise_constant_schedule
-from optax._src.schedule import piecewise_interpolate_schedule
-from optax._src.schedule import polynomial_schedule
-from optax._src.schedule import sgdr_schedule
-from optax._src.schedule import warmup_cosine_decay_schedule
-from optax._src.schedule import warmup_exponential_decay_schedule
-from optax._src.state_utils import tree_map_params
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
@@ -117,6 +102,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
@@ -166,6 +152,29 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
+# TODO(mtthss): remove tree_utils aliases after updates.
+tree_map_params = tree_utils.tree_map_params
+
+# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+constant_schedule = schedules.constant_schedule
+cosine_decay_schedule = schedules.cosine_decay_schedule
+cosine_onecycle_schedule = schedules.cosine_onecycle_schedule
+exponential_decay = schedules.exponential_decay
+inject_hyperparams = schedules.inject_hyperparams
+InjectHyperparamsState = schedules.InjectHyperparamsState
+join_schedules = schedules.join_schedules
+linear_onecycle_schedule = schedules.linear_onecycle_schedule
+linear_schedule = schedules.linear_schedule
+piecewise_constant_schedule = schedules.piecewise_constant_schedule
+piecewise_interpolate_schedule = schedules.piecewise_interpolate_schedule
+polynomial_schedule = schedules.polynomial_schedule
+sgdr_schedule = schedules.sgdr_schedule
+warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
+warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule
+inject_stateful_hyperparams = schedules.inject_stateful_hyperparams
+InjectStatefulHyperparamsState = schedules.InjectStatefulHyperparamsState
+WrappedSchedule = schedules.WrappedSchedule
+
 # TODO(mtthss): remove loss aliases from flat namespace once users have updated.
 convex_kl_divergence = losses.convex_kl_divergence
 cosine_distance = losses.cosine_distance
@@ -184,6 +193,13 @@ softmax_cross_entropy_with_integer_labels = (
     losses.softmax_cross_entropy_with_integer_labels
 )
 squared_error = losses.squared_error
+
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+differentially_private_aggregate = contrib.differentially_private_aggregate
+DifferentiallyPrivateAggregateState = (
+    contrib.DifferentiallyPrivateAggregateState
+)
+dpsgd = contrib.dpsgd
 
 __version__ = "0.1.8.dev"
 
@@ -272,6 +288,7 @@ __all__ = (
     "Params",
     "periodic_update",
     "per_example_global_norm_clip",
+    "per_example_layer_norm_clip",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
