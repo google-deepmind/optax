@@ -466,7 +466,7 @@ def sigmoid_focal_loss(
   """
   chex.assert_type([logits], float)
   labels = labels.astype(logits.dtype)
-  # see also the original papers implementation at:
+  # see also the original paper's implementation at:
   # https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
   p = jax.nn.sigmoid(logits)
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
