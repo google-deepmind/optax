@@ -448,7 +448,7 @@ def sigmoid_focal_loss(
     Lin et al. 2018. https://arxiv.org/pdf/1708.02002.pdf
   
   Args:
-    logits: A float array of arbitrary shape.
+    logits: Array of floats. The predictions for each example.
       The predictions for each example.
     labels: A float array, its shape must be identical to
       that of logits. Contains the binary
