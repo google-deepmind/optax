@@ -434,8 +434,8 @@ def ctc_loss(
 
 
 def sigmoid_focal_loss(
-    logits:  chex.Array,
-    labels:  chex.Array,
+    logits: chex.Array,
+    labels: chex.Array,
     alpha: Optional[float] = None,
     gamma: float = 2,
 ) ->  chex.Array:
@@ -456,13 +456,15 @@ def sigmoid_focal_loss(
       (0 for the out-of-class and 1 for in-class).
     alpha: (optional) Weighting factor in range (0,1) to balance
       positive vs negative examples. Default None (no weighting).
-    gamma: Exponent of the modulating factor (1 - p_t) to
-      balance easy vs hard examples.
+    gamma: Exponent of the modulating factor (1 - p_t).
+      Balances easy vs hard examples.
 
   Returns:
     A loss value array with a shape identical to the logits and target
     arrays.
   """
+  alpha = -1 if alpha is None else alpha
+
   chex.assert_type([logits], float)
   labels = labels.astype(logits.dtype)
   # see also the original paper's implementation at:
@@ -471,7 +473,15 @@ def sigmoid_focal_loss(
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
   p_t = p * labels + (1 - p) * (1 - labels)
   loss = ce_loss * ((1 - p_t) ** gamma)
-  if alpha:
-    alpha_t = alpha * labels + (1 - alpha) * (1 - labels)
-    loss = alpha_t * loss
+
+  weighted = lambda loss_arg: (alpha * labels
+                               + (1 - alpha) * (1 - labels)
+                              )*loss_arg
+  not_weighted = lambda loss_arg: loss_arg
+
+  loss = jax.lax.cond(alpha >= 0,
+                      weighted,
+                      not_weighted,
+                      loss)
+
   return loss
