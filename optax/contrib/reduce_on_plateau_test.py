@@ -23,7 +23,7 @@ from optax import contrib
 class ReduceLROnPlateauTest(absltest.TestCase):
 
   def test_learning_rate_reduced_after_cooldown_period_is_over(self):
-    """Test that learning rate is reduced again after cooldown period is over."""
+    """Test that learning rate is reduced after the cooldown period."""
 
     # Define a dummy update and extra_args
     updates = {'params': jnp.array(1.0)}
