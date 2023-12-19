@@ -65,7 +65,7 @@ pip install optax*.whl
 
 # Check types with pytype.
 pip install pytype
-pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+pytype `find optax/_src/ examples optax/contrib -name '*.py' | xargs` -k -d import-error
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
