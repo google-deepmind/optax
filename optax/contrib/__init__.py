@@ -27,6 +27,8 @@ from optax.contrib.privacy import DifferentiallyPrivateAggregateState
 from optax.contrib.privacy import dpsgd
 from optax.contrib.prodigy import prodigy
 from optax.contrib.prodigy import ProdigyState
+from optax.contrib.reduce_on_plateau import reduce_on_plateau
+from optax.contrib.reduce_on_plateau import ReduceLROnPlateauState
 from optax.contrib.sam import normalize
 from optax.contrib.sam import NormalizeState
 from optax.contrib.sam import sam
