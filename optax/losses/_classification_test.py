@@ -485,6 +485,17 @@ class SigmoidFocalLossTest(parameterized.TestCase):
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
         atol=1e-4)
 
+  @chex.all_variants
+  def test_alpha(self):
+    """Test if alpha is ok."""
+    np.testing.assert_allclose(
+      self.variant(
+        _classification.sigmoid_focal_loss)(
+          self.ys, self.ts, gamma=0., alpha=1),
+        _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)*self.ts,
+        atol=1e-4)
+
+
 
 if __name__ == '__main__':
   absltest.main()
