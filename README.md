@@ -84,7 +84,7 @@ You can continue the quick start in [the Optax quickstart notebook.](https://git
 
 We refer to the [docs](https://optax.readthedocs.io/en/latest/index.html)
 for a detailed list of available Optax components. Here, we highlight
-the main categories of buiilding blocks provided by Optax.
+the main categories of building blocks provided by Optax.
 
 ### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
 
@@ -277,8 +277,14 @@ where `optim` is an optax optimizer.
 
 ## Citing Optax
 
-Optax is part of the [DeepMind JAX Ecosystem], to cite Optax please use
-the [DeepMind JAX Ecosystem citation].
+This repository is part of the DeepMind JAX Ecosystem, to cite Optax
+please use the citation:
 
-[DeepMind JAX Ecosystem]: https://deepmind.com/blog/article/using-jax-to-accelerate-our-research "DeepMind JAX Ecosystem"
-[DeepMind JAX Ecosystem citation]: https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt "Citation"
+```bibtex
+@software{deepmind2020jax,
+  title = {The {D}eep{M}ind {JAX} {E}cosystem},
+  author = {DeepMind and Babuschkin, Igor and Baumli, Kate and Bell, Alison and Bhupatiraju, Surya and Bruce, Jake and Buchlovsky, Peter and Budden, David and Cai, Trevor and Clark, Aidan and Danihelka, Ivo and Dedieu, Antoine and Fantacci, Claudio and Godwin, Jonathan and Jones, Chris and Hemsley, Ross and Hennigan, Tom and Hessel, Matteo and Hou, Shaobo and Kapturowski, Steven and Keck, Thomas and Kemaev, Iurii and King, Michael and Kunesch, Markus and Martens, Lena and Merzic, Hamza and Mikulik, Vladimir and Norman, Tamara and Papamakarios, George and Quan, John and Ring, Roman and Ruiz, Francisco and Sanchez, Alvaro and Sartran, Laurent and Schneider, Rosalia and Sezener, Eren and Spencer, Stephen and Srinivasan, Srivatsan and Stanojevi\'{c}, Milo\v{s} and Stokowiec, Wojciech and Wang, Luyu and Zhou, Guangyao and Viola, Fabio},
+  url = {http://github.com/google-deepmind},
+  year = {2020},
+}
+```

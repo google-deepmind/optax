@@ -51,6 +51,7 @@ class TransformTest(parameterized.TestCase):
       ('trust_ratio', transform.scale_by_trust_ratio),
       ('param_block_norm', transform.scale_by_param_block_norm),
       ('param_block_rms', transform.scale_by_param_block_rms),
+      ('distance_over_gradients', transform.scale_by_distance_over_gradients),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params

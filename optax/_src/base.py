@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union, Tuple
 
 import chex
 import jax
@@ -32,6 +32,32 @@ Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
+ScheduleState = Any
+ScalarOrSchedule = Union[float, jax.Array, Schedule]
+
+
+@runtime_checkable
+class StatefulSchedule(Protocol):
+  """Base interface for stateful schedules."""
+
+  def init(
+      self
+  ) -> ScheduleState:
+    """Initialize the state of the stateful schedule."""
+
+  def update(
+      self,
+      state: ScheduleState,
+      **extra_args,
+  ) -> ScheduleState:
+    """Updates the current schedule state."""
+
+  def __call__(
+      self,
+      state: ScheduleState,
+      **extra_args,
+  ) -> chex.Numeric:
+    """Computes the current schedule value."""
 
 
 class TransformInitFn(Protocol):

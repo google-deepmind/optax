@@ -50,12 +50,12 @@ Adam
 .. autofunction:: adam
 
 Adamax
-~~~~
+~~~~~~
 
 .. autofunction:: adamax
 
 AdamaxW
-~~~~~
+~~~~~~~
 
 .. autofunction:: adamaxw
 
@@ -65,7 +65,7 @@ AdamW
 .. autofunction:: adamw
 
 AMSGrad
-~~~~~
+~~~~~~~
 
 .. autofunction:: amsgrad
 
@@ -179,6 +179,8 @@ Gradient Transforms
     NonNegativeParamsState
     OptState
     Params
+    per_example_global_norm_clip
+    per_example_layer_norm_clip
     scale
     scale_by_adam
     scale_by_adamax
@@ -218,7 +220,6 @@ Gradient Transforms
     TraceState
     TransformInitFn
     TransformUpdateFn
-    TransformUpdateFnExtraArgs
     update_infinity_moment
     update_moment
     update_moment_per_elem_norm
@@ -262,10 +263,6 @@ Optax Transforms and States
 .. autoclass:: AddDecayedWeightsState
     :members:
 
-.. autofunction:: additive_weight_decay
-.. autoclass:: AdditiveWeightDecayState
-    :members:
-
 .. autoclass:: AddNoiseState
     :members:
 
@@ -299,6 +296,8 @@ Optax Transforms and States
 .. autoclass:: NonNegativeParamsState
     :members:
 
+.. autofunction:: per_example_global_norm_clip
+.. autofunction:: per_example_layer_norm_clip
 .. autofunction:: scale
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
@@ -624,6 +623,7 @@ Schedules
 .. autofunction:: piecewise_constant_schedule
 .. autofunction:: piecewise_interpolate_schedule
 .. autofunction:: polynomial_schedule
+.. autofunction:: optax.contrib.reduce_on_plateau
 .. autofunction:: sgdr_schedule
 .. autofunction:: warmup_cosine_decay_schedule
 .. autofunction:: warmup_exponential_decay_schedule
@@ -640,7 +640,7 @@ Schedules
 Second Order Optimization Utilities
 =====================================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.second_order
 
 .. autosummary::
 
@@ -671,7 +671,7 @@ hvp
 Control Variates
 ================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.monte_carlo
 
 .. autosummary::
 
@@ -700,7 +700,7 @@ moving_avg_baseline
 Stochastic Gradient Estimators
 ==============================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.monte_carlo
 
 .. autosummary::
 
@@ -767,21 +767,32 @@ scale_gradient
 .. autofunction:: scale_gradient
 
 
-🚧 Experimental
+🔧 Contrib
 ===============
 
-.. currentmodule:: optax.experimental
+.. currentmodule:: optax.contrib
 
 .. autosummary::
+    :toctree: _autosummary
 
-    split_real_and_imaginary
-    SplitRealAndImaginaryState
+    cocob
+    COCOBState
+    dadapt_adamw
+    DAdaptAdamWState
+    mechanize
+    MechanicState
+    prodigy
+    ProdigyState
+    sam
+    SAMState
 
 
 Complex-Valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction::  split_real_and_imaginary
+.. currentmodule:: optax.contrib
+.. autosummary::
+    :toctree: _autosummary
 
-.. autoclass::  SplitRealAndImaginaryState
-   :members:
+    split_real_and_imaginary
+    SplitRealAndImaginaryState
