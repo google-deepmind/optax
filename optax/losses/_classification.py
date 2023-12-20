@@ -483,5 +483,4 @@ def sigmoid_focal_loss(
                       weighted,
                       not_weighted,
                       loss)
-
   return loss
