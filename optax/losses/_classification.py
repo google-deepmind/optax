@@ -455,7 +455,7 @@ def sigmoid_focal_loss(
       classification labels for each element in the data set
       (0 for the out-of-class and 1 for in-class).
     alpha: (optional) Weighting factor in range (0,1) to balance
-      positive vs negative examples. Default None (no weighting).
+      positive vs negative examples. Defaults to None (no weighting).
     gamma: Exponent of the modulating factor (1 - p_t).
       Balances easy vs hard examples.
 

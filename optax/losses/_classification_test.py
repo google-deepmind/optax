@@ -473,28 +473,62 @@ class SigmoidFocalLossTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ys = np.array([[2., 1., -2.], [.3, 2., 1.2]], dtype=np.float32)
+    self.ys = np.array([[2., .1, -2.], [.3, -.1, 1.2]], dtype=np.float32)
     self.ts = np.array([[0., 0., 1.], [1., 0., 0.]])
+    self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
 
   @chex.all_variants
-  def test_gamma_zero(self):
-    """From gamma == 0 we expect a CE loss."""
+  def test_focal_equals_ce(self):
+    """If gamma == 0 and alpha == 0 we expect a CE loss."""
     np.testing.assert_allclose(
       self.variant(
         _classification.sigmoid_focal_loss)(self.ys, self.ts, gamma=0.),
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
-        atol=1e-4)
+        rtol=self._rtol)
 
   @chex.all_variants
-  def test_alpha(self):
-    """Test if alpha is ok."""
+  def test_gamma_two(self):
+    """Ensure correct scaling if gamma == 2."""
+    gamma = 2
+    focal_loss =  self.variant(
+        _classification.sigmoid_focal_loss)(self.ys, self.ts, gamma=gamma)
+    p = jax.nn.sigmoid(self.ys)
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    p_t = p * self.ts + (1 - p) * (1 - self.ts)
+    scale = (1 - p_t) ** gamma
+    focal_scale = focal_loss/ce_loss
+    np.testing.assert_allclose(
+      focal_scale,
+      scale,
+      rtol=self._rtol)
+
+  @chex.all_variants
+  def test_alpha_one(self):
+    """Test if re-weighting with alpha=1 is ok."""
     np.testing.assert_allclose(
       self.variant(
         _classification.sigmoid_focal_loss)(
           self.ys, self.ts, gamma=0., alpha=1),
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)*self.ts,
-        atol=1e-4)
+        rtol=self._rtol)
 
+  @chex.all_variants
+  def test_ignore_positive(self):
+    """If alpha == 0 positive examples do not matter"""
+    focal_loss =  self.variant(
+        _classification.sigmoid_focal_loss)(self.ys, self.ts, alpha=0)
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    assert all(ce_loss[self.ts == 1] > 0)
+    assert all(focal_loss[self.ts == 1] == 0)
+
+  @chex.all_variants
+  def test_ignore_negative(self):
+    """If alpha == 1 negative examples do not matter"""
+    focal_loss =  self.variant(
+        _classification.sigmoid_focal_loss)(self.ys, self.ts, alpha=1)
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    assert all(ce_loss[self.ts == 0] > 0)
+    assert all(focal_loss[self.ts == 0] == 0)
 
 
 if __name__ == '__main__':
