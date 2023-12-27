@@ -191,6 +191,23 @@ Examples that make use of the :ref:`contrib` module.
 
 .. raw:: html
 
+      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learing rate scheduler.">
+
+.. only:: html
+
+  .. image:: /images/contrib/reduce_on_plateau.png
+    :alt:
+
+  :doc:`_collections/examples/contrib/reduce_on_plateau`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learing rate scheduler.</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Sharpness-Aware Minimization (SAM).">
 
 .. only:: html
