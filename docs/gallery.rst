@@ -195,7 +195,7 @@ Examples that make use of the :ref:`contrib` module.
 
 .. only:: html
 
-  .. image:: /images/contrib/reduce_on_plateau.png
+  .. image:: /images/examples/contrib/reduce_on_plateau.png
     :alt:
 
   :doc:`_collections/examples/contrib/reduce_on_plateau`
