@@ -157,6 +157,20 @@ Example gallery
       <div class="sphx-glr-thumbnail-title">Train an MLP classifier on MNIST using Optax.</div>
     </div>
 
+.. raw:: html
+
+    </div>
+
+
+Contrib Examples
+----------------
+
+Examples that make use of the :ref:`contrib` module.
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
 
 .. raw:: html
 
@@ -184,7 +198,7 @@ Example gallery
   .. image:: /images/favicon.svg
     :alt:
 
-  :doc:`_collections/examples/differentially_private_sgd`
+  :doc:`_collections/examples/contrib/differentially_private_sgd`
 
 .. raw:: html
 
@@ -194,6 +208,39 @@ Example gallery
 
 .. raw:: html
 
+      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learing rate scheduler.">
+
+.. only:: html
+
+  .. image:: /images/examples/contrib/reduce_on_plateau.png
+    :alt:
+
+  :doc:`_collections/examples/contrib/reduce_on_plateau`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learing rate scheduler.</div>
     </div>
 
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Sharpness-Aware Minimization (SAM).">
+
+.. only:: html
+
+  .. image:: /images/examples/contrib/sam.png
+    :alt:
+
+  :doc:`_collections/examples/contrib/sam`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Sharpness-Aware Minimization (SAM).</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
 

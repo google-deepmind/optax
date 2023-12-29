@@ -763,6 +763,8 @@ scale_gradient
 .. autofunction:: scale_gradient
 
 
+.. _contrib:
+
 🔧 Contrib
 ===============
 
