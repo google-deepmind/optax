@@ -160,6 +160,23 @@ Example gallery
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Adversarial training of CNN on MNIST.">
+
+.. only:: html
+
+  .. image:: /images/favicon.svg
+     :alt: adversarial_training
+
+  :doc:`_collections/examples/adversarial_training`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Differentially private convolutional neural network on MNIST.">
 
 .. only:: html
