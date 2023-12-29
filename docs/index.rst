@@ -64,7 +64,21 @@ for instructions on installing JAX.
    :caption: API Documentation
    :maxdepth: 2
 
-   api
+   api/common_optimizers
+   api/optax_transformations
+   api/apply_updates
+   api/combining_optimizers
+   api/optimizer_wrappers
+   api/common_losses
+   api/linear_algebra_operators
+   api/utilities_for_numerical_stability
+   api/optimizer_schedules
+   api/second_order_optimization_utilities
+   api/control_variates
+   api/stochastic_gradient_estimators
+   api/privacy_sensitive
+   api/general_utilities
+   api/contrib
 
 The Team
 --------
