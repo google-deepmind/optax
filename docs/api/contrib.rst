@@ -4,7 +4,6 @@
 .. currentmodule:: optax.contrib
 
 .. autosummary::
-    :toctree: _autosummary
 
     cocob
     COCOBState
@@ -23,7 +22,6 @@ Complex-Valued Optimization
 
 .. currentmodule:: optax.contrib
 .. autosummary::
-    :toctree: _autosummary
-
+    
     split_real_and_imaginary
     SplitRealAndImaginaryState
