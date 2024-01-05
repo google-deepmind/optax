@@ -159,7 +159,25 @@ Example gallery
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Adversarial training of CNN on MNIST.">
+
+.. only:: html
+
+  .. image:: /images/examples/adversarial.png
+     :alt: Adversarial training of CNN on MNIST
+
+  :doc:`_collections/examples/adversarial_training`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
     </div>
+
+.. raw:: html
+
+    </div>
+
+
 
 
 Contrib Examples
@@ -171,23 +189,6 @@ Examples that make use of the :ref:`contrib` module.
 .. raw:: html
 
     <div class="sphx-glr-thumbnails">
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Adversarial training of CNN on MNIST.">
-
-.. only:: html
-
-  .. image:: /images/favicon.svg
-     :alt: adversarial_training
-
-  :doc:`_collections/examples/adversarial_training`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
-    </div>
-
 
 .. raw:: html
 
