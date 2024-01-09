@@ -63,7 +63,7 @@ class ReduceLROnPlateauTest(absltest.TestCase):
     updates = {'params': 1}
     # Apply the transformation to the updates and state
     transform = contrib.reduce_on_plateau(
-        factor=0.5, patience=5, threshold=1e-4, cooldown=5
+        factor=0.5, patience=5, rtol=1e-4, atol=0.0, cooldown=5
     )
     _, new_state = transform.update(updates=updates, state=state, loss=0.01)
     lr, best_loss, plateau_count, _ = new_state
@@ -85,7 +85,7 @@ class ReduceLROnPlateauTest(absltest.TestCase):
     updates = {'params': 1}
     # Apply the transformation to the updates and state
     transform = contrib.reduce_on_plateau(
-        factor=0.5, patience=5, threshold=1e-4, cooldown=5
+        factor=0.5, patience=5, rtol=1e-4, atol=0.0, cooldown=5
     )
     _, new_state = transform.update(updates=updates, state=state, loss=0.15)
     # Check that learning rate is not reduced
