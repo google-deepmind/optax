@@ -93,7 +93,7 @@ class ApplyIfFiniteState(NamedTuple):
     notfinite_count: Number of consecutive gradient updates containing an Inf or
       a NaN. This number is reset to 0 whenever a gradient update without an Inf
       or a NaN is done.
-    last_finite: Whether or not the last gradient update contained an Inf of a
+    last_finite: Whether or not the last gradient update contained an Inf or a
       NaN.
     total_notfinite: Total number of gradient updates containing an Inf or
       a NaN since this optimizer was initialised. This number is never reset.
@@ -115,7 +115,7 @@ def apply_if_finite(
   """A function that wraps an optimizer to make it robust to a few NaNs or Infs.
 
   The purpose of this function is to prevent any optimization to happen if the
-  gradients contain NaNs or Infs. That is, when a NaN of Inf is detected in the
+  gradients contain NaNs or Infs. That is, when a NaN or Inf is detected in the
   gradients, the wrapped optimizer ignores that gradient update. If the NaNs or
   Infs persist after a given number of updates, the wrapped optimizer gives up
   and accepts the update.
@@ -123,7 +123,7 @@ def apply_if_finite(
   Args:
     inner: Inner transformation to be wrapped.
     max_consecutive_errors: Maximum number of consecutive gradient updates
-      containing NaNs of Infs that the wrapped optimizer will ignore. After
+      containing NaNs or Infs that the wrapped optimizer will ignore. After
       that many ignored updates, the optimizer will give up and accept.
 
   Returns:
