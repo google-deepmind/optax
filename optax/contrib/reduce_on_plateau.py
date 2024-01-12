@@ -62,6 +62,21 @@ def reduce_on_plateau(
   Returns:
     A GradientTransformationExtraArgs object.
   """
+  if rtol < 0.0 or atol < 0.0:
+    raise ValueError(
+      "Both rtol and atol must be non-negative, got "
+      f"rtol = {rtol} and atol = {atol}."
+    )
+  elif rtol == 0.0 and atol == 0.0:
+    raise ValueError(
+      "At least one of rtol or atol must be positive, got "
+      f"rtol = {rtol} and atol = {atol}."
+    )
+  elif rtol > 1.0:
+    raise ValueError(
+      f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
+    )
+  
 
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
