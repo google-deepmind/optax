@@ -76,7 +76,7 @@ def reduce_on_plateau(
     raise ValueError(
       f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
     )
-  
+
 
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
