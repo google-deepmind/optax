@@ -469,5 +469,102 @@ class CTCTest(parameterized.TestCase):
           jnp.array(expected_loss), per_seq_loss[n], rtol=self._rtol)
 
 
+class SigmoidFocalLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([[2.0, 0.1, -2.0], [0.3, -0.1, 1.2]], dtype=np.float32)
+    self.ts = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
+
+    logit = lambda x: jnp.log(x / (1.0 - x))
+    self.large_ys = logit(jnp.array([0.9, 0.98, 0.3, 0.99]))
+    self.small_ys = logit(jnp.array([0.1, 0.02, 0.09, 0.15]))
+    self.ones_ts = jnp.array([1.0, 1.0, 1.0, 1.0])
+
+  @chex.all_variants
+  def test_focal_equals_ce(self):
+    """If gamma == 0 and alpha == 0 we expect a CE loss."""
+    np.testing.assert_allclose(
+        self.variant(_classification.sigmoid_focal_loss)(
+            self.ys, self.ts, gamma=0.0
+        ),
+        _classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
+        rtol=self._rtol,
+    )
+
+  @chex.all_variants
+  def test_scale(self):
+    """This test should catch problems with p_t."""
+    gamma = 2
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        self.ys, self.ts, gamma=gamma
+    )
+    p = jax.nn.sigmoid(self.ys)
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    p_t = p * self.ts + (1 - p) * (1 - self.ts)
+    scale = (1 - p_t) ** gamma
+    focal_scale = focal_loss / ce_loss
+    np.testing.assert_allclose(focal_scale, scale, rtol=self._rtol)
+
+  @chex.all_variants
+  def test_large_logit_fl_less_than_ce(self):
+    """If gamma == 2 and alpha == 0.5, the impact of large logits is reduced."""
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        self.large_ys, self.ones_ts, gamma=2, alpha=0.5
+    )
+    ce_loss = _classification.sigmoid_binary_cross_entropy(
+        self.large_ys, self.ones_ts
+    )
+    loss_ratio = ce_loss / focal_loss
+    expected_ratio = 2.0 / ((1.0 - jax.nn.sigmoid(self.large_ys)) ** 2)
+    np.testing.assert_allclose(loss_ratio, expected_ratio, rtol=self._rtol)
+
+  @chex.all_variants
+  def test_small_logit_fl_less_than_ce(self):
+    """If gamma == 2, small logits retain their weight."""
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        self.small_ys, self.ones_ts, gamma=2
+    )
+    ce_loss = _classification.sigmoid_binary_cross_entropy(
+        self.small_ys, self.ones_ts
+    )
+    loss_ratio = ce_loss / focal_loss
+    expected_ratio = 1.0 / ((1.0 - jax.nn.sigmoid(self.small_ys)) ** 2)
+    np.testing.assert_allclose(loss_ratio, expected_ratio, rtol=self._rtol)
+
+  @chex.all_variants
+  def test_alpha_one(self):
+    """Test if re-weighting with alpha=1 is ok."""
+    np.testing.assert_allclose(
+        self.variant(_classification.sigmoid_focal_loss)(
+            self.ys, self.ts, gamma=0.0, alpha=1
+        ),
+        _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+        * self.ts,
+        rtol=self._rtol,
+    )
+
+  @chex.all_variants
+  def test_ignore_positive(self):
+    """If alpha == 0 positive examples do not matter."""
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        self.ys, self.ts, alpha=0
+    )
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    assert all(ce_loss[self.ts == 1] > 0)
+    assert all(focal_loss[self.ts == 1] == 0)
+
+  @chex.all_variants
+  def test_ignore_negative(self):
+    """If alpha == 1 negative examples do not matter."""
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        self.ys, self.ts, alpha=1
+    )
+    ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
+    assert all(ce_loss[self.ts == 0] > 0)
+    assert all(focal_loss[self.ts == 0] == 0)
+
+
 if __name__ == '__main__':
   absltest.main()

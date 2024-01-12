@@ -14,7 +14,7 @@
 # ==============================================================================
 """Classification losses."""
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 import chex
 import jax
@@ -430,3 +430,58 @@ def ctc_loss(
       logits, logit_paddings, labels, label_paddings,
       blank_id=blank_id, log_epsilon=log_epsilon)
   return per_seq_loss
+
+
+def sigmoid_focal_loss(
+    logits: chex.Array,
+    labels: chex.Array,
+    alpha: Optional[float] = None,
+    gamma: float = 2.,
+) ->  chex.Array:
+  """Sigmoid focal loss.
+
+  The focal loss is a re-weighted cross entropy for unbalanced problems.
+  Use this loss function if classes are not mutually exclusive.
+  See `sigmoid_binary_cross_entropy` for more information.
+
+  References:
+    Lin et al. 2018. https://arxiv.org/pdf/1708.02002.pdf
+
+  Args:
+    logits: Array of floats. The predictions for each example.
+      The predictions for each example.
+    labels: Array of floats. Labels and logits must have
+      the same shape. The label array must contain the binary
+      classification labels for each element in the data set
+      (0 for the out-of-class and 1 for in-class).
+    alpha: (optional) Weighting factor in range (0,1) to balance
+      positive vs negative examples. Default None (no weighting).
+    gamma: Exponent of the modulating factor (1 - p_t).
+      Balances easy vs hard examples.
+
+  Returns:
+    A loss value array with a shape identical to the logits and target
+    arrays.
+  """
+  alpha = -1 if alpha is None else alpha
+
+  chex.assert_type([logits], float)
+  labels = labels.astype(logits.dtype)
+  # see also the original paper's implementation at:
+  # https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
+  p = jax.nn.sigmoid(logits)
+  ce_loss = sigmoid_binary_cross_entropy(logits, labels)
+  p_t = p * labels + (1 - p) * (1 - labels)
+  loss = ce_loss * ((1 - p_t) ** gamma)
+
+  weighted = lambda loss_arg: (alpha * labels
+                               + (1 - alpha) * (1 - labels)
+                              )*loss_arg
+  not_weighted = lambda loss_arg: loss_arg
+
+  loss = jax.lax.cond(alpha >= 0,
+                      weighted,
+                      not_weighted,
+                      loss)
+
+  return loss
