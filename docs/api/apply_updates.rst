@@ -1,6 +1,5 @@
 Apply Updates
 =============
-.. currentmodule:: optax
 
 .. autosummary::
     apply_updates
