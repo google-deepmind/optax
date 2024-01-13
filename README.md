@@ -46,8 +46,8 @@ pip install git+https://github.com/deepmind/optax.git
 
 ## Quickstart
 
-Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api.html#Common-Optimizers) and
-[loss functions](https://optax.readthedocs.io/en/latest/api.html#common-losses).
+Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api/common_optimizers.html) and
+[loss functions](https://optax.readthedocs.io/en/latest/api/common_losses.html).
 For example, the following code snippet uses the Adam optimizer from `optax.adam`
 and the mean squared error from `optax.l2_loss`. We initialize the optimizer
 state using the `init` function and `params` of the model.
@@ -212,7 +212,7 @@ critical to support composing a sequence of transformations (e.g. `chain`), as
 well as combining multiple updates to the same parameters (e.g. in multi-task
 settings where different tasks need different sets of gradient transformations).
 
-### Losses ([loss.py](https://github.com/deepmind/optax/blob/master/optax/_src/loss.py))
+### Losses ([loss.py](https://github.com/google-deepmind/optax/tree/master/optax/losses))
 
 Optax provides a number of standard losses used in deep learning, such as
 `l2_loss`, `softmax_cross_entropy`, `cosine_distance`, etc.
@@ -229,14 +229,14 @@ avg_loss = jnp.mean(huber_loss(predictions, targets))
 sum_loss = jnp.sum(huber_loss(predictions, targets))
 ```
 
-### Second Order ([second_order.py](https://github.com/deepmind/optax/blob/master/optax/_src/second_order.py))
+### Second Order ([second_order.py](https://github.com/google-deepmind/optax/tree/master/optax/second_order))
 
 Computing the Hessian or Fisher information matrices for neural networks is
 typically intractable due to the quadratic memory requirements. Solving for the
 diagonals of these matrices is often a better solution. The library offers
 functions for computing these diagonals with sub-quadratic memory requirements.
 
-### Stochastic gradient estimators ([stochastic_gradient_estimators.py](https://github.com/deepmind/optax/blob/master/optax/_src/stochastic_gradient_estimators.py))
+### Stochastic gradient estimators ([stochastic_gradient_estimators.py](https://github.com/google-deepmind/optax/blob/master/optax/monte_carlo/stochastic_gradient_estimators.py))
 
 Stochastic gradient estimators compute Monte Carlo estimates of gradients of
 the expectation of a function under a distribution with respect to the
