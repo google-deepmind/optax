@@ -91,7 +91,7 @@ def reduce_on_plateau(
 
     # We're in cooldown, so reduce the counter and ignore any bad epochs
     def in_cooldown():
-      new_plateau_count = 0
+      new_plateau_count = jnp.asarray(0, jnp.int32)
       new_lr = state.lr
       new_cooldown_counter = state.cooldown_counter - 1
       return new_plateau_count, new_lr, new_cooldown_counter
@@ -108,7 +108,7 @@ def reduce_on_plateau(
       )
       new_cooldown_counter = jnp.where(
           curr_plateau_count == patience, cooldown, 0
-      )
+      ).astype(jnp.int32)
       return new_plateau_count, new_lr, new_cooldown_counter
 
     new_plateau_count, new_lr, new_cooldown_counter = jax.lax.cond(
