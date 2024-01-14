@@ -82,7 +82,8 @@ Example gallery
 .. only:: html
 
   .. image:: /images/examples/cifar10_resnet.png
-    :alt:
+    :alt: ResNet on CIFAR10 with Flax and Optax.
+
   :doc:`_collections/examples/cifar10_resnet`
 
 .. raw:: html

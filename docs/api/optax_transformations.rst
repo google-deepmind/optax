@@ -8,8 +8,6 @@ Optax Transformations
     add_decayed_weights
     add_noise
     AddDecayedWeightsState
-    additive_weight_decay
-    AdditiveWeightDecayState
     AddNoiseState
     apply_every
     ApplyEvery
@@ -104,7 +102,7 @@ Optax types
 
 
 Optax transformations and states
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: adaptive_grad_clip
 .. autoclass:: AdaptiveGradClipState
@@ -165,7 +163,7 @@ Optax transformations and states
     :members:
 
 .. autofunction:: scale_by_belief
-.. autoclass:: ScaleByyBeliefState
+.. autoclass:: ScaleByBeliefState
     :members:
 
 .. autofunction:: scale_by_factored_rms

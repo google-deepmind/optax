@@ -748,6 +748,48 @@ def scale_by_radam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByRpropState(NamedTuple):
+  step_sizes: base.Updates
+  prev_updates: base.Updates
+
+
+def scale_by_rprop(
+    learning_rate: float,
+    eta_minus: float = 0.5,
+    eta_plus: float = 1.2,
+    min_step_size: float = 1e-6,
+    max_step_size: float = 50.0,
+) -> base.GradientTransformation:
+
+  def init_fn(params):
+    step_sizes = jax.tree_util.tree_map(
+      lambda p: learning_rate * jnp.ones_like(p), params)
+    prev_updates = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return ScaleByRpropState(step_sizes, prev_updates)
+
+  def update_fn(updates, state, params=None):
+    del params
+    sign = jax.tree_util.tree_map(
+      lambda g, prev_g: g * prev_g, updates, state.prev_updates)
+    step_sizes = jax.tree_util.tree_map(
+      lambda s, step_size: jnp.where(
+        s == 0,
+        step_size,
+        jnp.clip(step_size * jnp.where(s > 0, eta_plus, eta_minus),
+                 a_min=min_step_size, a_max=max_step_size)),
+      sign, state.step_sizes)
+    prev_updates = jax.tree_util.tree_map(
+      lambda s, g, step_size: jnp.where(
+        s < 0, jnp.zeros_like(g), step_size * jnp.sign(g)),
+      sign, updates, step_sizes)
+    updates = jax.tree_util.tree_map(
+      lambda s, g, prev_g: jnp.where(s < 0, jnp.zeros_like(prev_g), prev_g),
+      sign, prev_updates, state.prev_updates)
+    return updates, ScaleByRpropState(step_sizes, prev_updates)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 AddDecayedWeightsState = base.EmptyState
 
 

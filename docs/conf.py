@@ -29,7 +29,6 @@
 import inspect
 import os
 import sys
-import typing
 
 # The following typenames are re-written for public-facing type annotations.
 TYPE_REWRITES = [
@@ -111,13 +110,6 @@ if 'READTHEDOCS' in os.environ:
   _recursive_add_annotations_import()
   _monkey_patch_doc_strings()
 
-
-# TODO(b/254461517) Remove the annotation filtering when we drop Python 3.8
-# support.
-# We remove `None` type annotations as this breaks Sphinx under Python 3.7 and
-# 3.8 with error `AssertionError: Invalid annotation [...] None is not a class.`
-filter_nones = lambda x: dict((k, v) for k, v in x.items() if v is not None)
-typing.get_type_hints = lambda obj, *unused: filter_nones(obj.__annotations__)
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
@@ -145,10 +137,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.bibtex',
     'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
-    'sphinx_book_theme',
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
@@ -195,10 +185,6 @@ sphinx_gallery_conf = {
 }
 
 
-# -- Options for bibtex ------------------------------------------------------
-
-bibtex_bibfiles = []
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -206,8 +192,10 @@ bibtex_bibfiles = []
 html_theme = 'sphinx_book_theme'
 
 html_theme_options = {
-    'logo_only': True,
     'show_toc_level': 2,
+    'repository_url': 'https://github.com/google-deepmind/optax',
+    'use_repository_button': True,     # add a "link to repository" button
+    'navigation_with_keys': False,
 }
 
 html_logo = 'images/logo.svg'
@@ -219,9 +207,9 @@ html_favicon = 'images/favicon.svg'
 html_static_path = []
 
 # -- Options for myst -------------------------------------------------------
-jupyter_execute_notebooks = 'force'
-execution_allow_errors = False
-execution_excludepatterns = [
+nb_execution_mode = 'force'
+nb_execution_allow_errors = False
+nb_execution_excludepatterns = [
     # slow examples
     '_collections/examples/cifar10_resnet.ipynb'
 ]

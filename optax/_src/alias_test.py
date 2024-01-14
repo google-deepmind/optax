@@ -53,6 +53,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1e-2)),
     dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
+    dict(opt_name='rprop', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
 )
@@ -106,6 +107,7 @@ class AliasTest(chex.TestCase):
         'sm3',
         'optimistic_gradient_descent',
         'lion',
+        'rprop',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'

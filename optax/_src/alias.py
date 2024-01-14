@@ -887,3 +887,47 @@ def adamaxw(
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )
+
+
+def rprop(
+    learning_rate: float,
+    eta_minus: float = 0.5,
+    eta_plus: float = 1.2,
+    min_step_size: float = 1e-6,
+    max_step_size: float = 50.0,
+) -> base.GradientTransformation:
+  """The Rprop optimizer.
+
+  Rprop, short for resillient backpropogation, is a first order variant of
+  gradient descent. It responds only to the sign of the gradient by increasing
+  or decreasing the step size selected per parameter exponentially to speed up
+  convergence and avoid oscillations.
+
+  References:
+    PyTorch implementation: 
+      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
+    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
+    Igel and Hüsken, 2003:
+      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+
+  Args:
+    learning_rate: The initial step size.
+    eta_minus: Multiplicative factor for decreasing step size. This is applied
+      when the gradient changes sign from one step to the next.
+    eta_plus: Multiplicative factor for increasing step size. This is applied
+      when the gradient has the same sign from one step to the next.
+    min_step_size: Minimum allowed step size. Smaller steps will be clipped to
+      this value.
+    max_step_size: Maximum allowed step size. Larger steps will be clipped to
+      this value.
+  """
+  return combine.chain(
+    transform.scale_by_rprop(
+      learning_rate=learning_rate,
+      eta_minus=eta_minus,
+      eta_plus=eta_plus,
+      min_step_size=min_step_size,
+      max_step_size=max_step_size,
+    ),
+    transform.scale(-1.0),
+  )

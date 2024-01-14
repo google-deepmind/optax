@@ -15,10 +15,12 @@ Common Losses
     l2_loss
     log_cosh
     sigmoid_binary_cross_entropy
+    sigmoid_focal_loss
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
     squared_error
+
 
 Convex Kullback Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,7 +51,7 @@ Kullback-Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: kl_divergence
 
-Squared loss
+L2 Squared loss
 ~~~~~~~~~~~~
 .. autofunction:: squared_error
 .. autofunction:: l2_loss
@@ -62,7 +64,11 @@ Sigmoid binary cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sigmoid_binary_cross_entropy
 
-Labels smoothing
+Sigmoid focal loss
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: sigmoid_focal_loss
+
+Smoothing labels
 ~~~~~~~~~~~~~~~~
 .. autofunction:: smooth_labels
 
@@ -70,3 +76,6 @@ Soft-max cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
+
+
+
