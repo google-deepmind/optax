@@ -22,6 +22,7 @@ from optax.losses._classification import kl_divergence
 from optax.losses._classification import kl_divergence_with_log_targets
 from optax.losses._classification import poly_loss_cross_entropy
 from optax.losses._classification import sigmoid_binary_cross_entropy
+from optax.losses._classification import sigmoid_focal_loss
 from optax.losses._classification import softmax_cross_entropy
 from optax.losses._classification import softmax_cross_entropy_with_integer_labels
 from optax.losses._ranking import ranking_softmax_loss

@@ -14,19 +14,19 @@ that can be easily recombined in custom ways.
 Our goals are to
 
 *   Provide simple, well-tested, efficient implementations of core components.
-*   Improve research productivity by enabling to easily combine low level
+*   Improve research productivity by enabling to easily combine low-level
     ingredients into custom optimisers (or other gradient processing components).
 *   Accelerate adoption of new ideas by making it easy for anyone to contribute.
 
 We favour focusing on small composable building blocks that can be effectively
 combined into custom solutions. Others may build upon these basic components
-more complicated abstractions. Whenever reasonable, implementations prioritise
+in more complicated abstractions. Whenever reasonable, implementations prioritise
 readability and structuring code to match standard equations, over code reuse.
 
 An initial prototype of this library was made available in JAX's experimental
 folder as `jax.experimental.optix`. Given the wide adoption across DeepMind
 of `optix`, and after a few iterations on the API, `optix` was eventually moved
-out of `experimental` as a standalone open-source library, renamed `optax`.
+out of `experimental` as a standalone open-source library, and renamed `optax`.
 
 Documentation on Optax can be found at [optax.readthedocs.io](https://optax.readthedocs.io/).
 
@@ -48,7 +48,7 @@ pip install git+https://github.com/deepmind/optax.git
 
 Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api.html#Common-Optimizers) and
 [loss functions](https://optax.readthedocs.io/en/latest/api.html#common-losses).
-For example the following code snippet uses the Adam optimizer from `optax.adam`
+For example, the following code snippet uses the Adam optimizer from `optax.adam`
 and the mean squared error from `optax.l2_loss`. We initialize the optimizer
 state using the `init` function and `params` of the model.
 
@@ -69,8 +69,8 @@ grads = jax.grad(compute_loss)(params, xs, ys)
 ```
 
 The gradients are then converted via `optimizer.update` to obtain the updates
-that should be applied to the current params to obtain the new ones.
-`optax.apply_updates` is a convinience utility to do this.
+that should be applied to the current parameters to obtain the new ones.
+`optax.apply_updates` is a convenience utility to do this.
 
 ```python
 updates, opt_state = optimizer.update(grads, opt_state)
@@ -90,7 +90,7 @@ the main categories of building blocks provided by Optax.
 
 One of the key building blocks of `optax` is a `GradientTransformation`.
 
-Each transformation is defined two functions:
+Each transformation is defined by two functions:
 
 *   `state = init(params)`
 *   `grads, state = update(grads, state, params=None)`
@@ -133,9 +133,9 @@ Optax also provides several wrappers that take a `GradientTransformation` as
 input and return a new `GradientTransformation` that modifies the behaviour
 of the inner transformation in a specific way.
 
-For instance the `flatten` wrapper flattens gradients into a single large vector
-before applying the inner GradientTransformation. The transformed updated are
-then unflattened before being returned to the user. This can be used to reduce
+For instance, the `flatten` wrapper flattens gradients into a single large vector
+before applying the inner GradientTransformation. The transformed updates are then
+unflattened before being returned to the user. This can be used to reduce
 the overhead of performing many calculations on lots of small variables,
 at the cost of increasing memory usage.
 
@@ -144,17 +144,17 @@ For example:
 my_optimiser = flatten(adam(learning_rate))
 ```
 
-Other examples of wrappers include accumulating gradients over multiple steps,
+Other examples of wrappers include accumulating gradients over multiple steps
 or applying the inner transformation only to specific parameters or at
 specific steps.
 
 ### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/master/optax/_src/schedule.py))
 
-Many popular transformations use time dependent components, e.g. to anneal
+Many popular transformations use time-dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
 `schedules` that can be used to decay scalars as a function of a `step` count.
 
-For example you may use a polynomial schedule (with `power=1`) to decay
+For example, you may use a polynomial schedule (with `power=1`) to decay
 a hyper-parameter linearly over a number of steps:
 
 ```python
@@ -165,7 +165,7 @@ for step_count in range(6):
   print(schedule_fn(step_count))  # [1., 0.8, 0.6, 0.4, 0.2, 0.]
 ```
 
-Schedules are used by certain gradient transformation, for instance:
+Schedules are used by certain gradient transformations, for instance:
 
 ```python
 schedule_fn = polynomial_schedule(
@@ -178,7 +178,7 @@ optimiser = chain(
 
 ### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/master/optax/_src/alias.py))
 
-In addition to the low level building blocks we also provide aliases for popular
+In addition to the low-level building blocks, we also provide aliases for popular
 optimisers built using these components (e.g. RMSProp, Adam, AdamW, etc, ...).
 These are all still instances of a `GradientTransformation`, and can therefore
 be further combined with any of the individual building blocks.
@@ -208,8 +208,8 @@ new_params = optax.apply_updates(params, updates)  # update the parameters.
 ```
 
 Note that separating gradient transformations from the parameter update is
-critical to support composing sequence of transformations (e.g. `chain`), as
-well as combine multiple updates to the same parameters (e.g. in multi-task
+critical to support composing a sequence of transformations (e.g. `chain`), as
+well as combining multiple updates to the same parameters (e.g. in multi-task
 settings where different tasks need different sets of gradient transformations).
 
 ### Losses ([loss.py](https://github.com/deepmind/optax/blob/master/optax/_src/loss.py))
@@ -221,7 +221,7 @@ Optax provides a number of standard losses used in deep learning, such as
 loss = huber_loss(predictions, targets)
 ```
 
-The losses accept batches as inputs, however they perform no reduction across
+The losses accept batches as inputs, however, they perform no reduction across
 the batch dimension(s). This is trivial to do in JAX, for example:
 
 ```python
@@ -254,7 +254,7 @@ variates see `delta` and `moving_avg_baseline`.
 
 The result of a gradient estimator or `control_variates_jacobians` contains the
 Jacobians of the function with respect to the samples from the input
-distribution. These can then be used to update distributional parameters, or
+distribution. These can then be used to update distributional parameters or
 to assess gradient variance.
 
 Example of how to use the `pathwise_jacobians` estimator:
