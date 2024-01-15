@@ -202,7 +202,7 @@ DifferentiallyPrivateAggregateState = (
 )
 dpsgd = contrib.dpsgd
 
-__version__ = "0.1.8"
+__version__ = "0.1.9.dev"
 
 __all__ = (
     "adabelief",
