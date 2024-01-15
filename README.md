@@ -77,7 +77,7 @@ updates, opt_state = optimizer.update(grads, opt_state)
 params = optax.apply_updates(params, updates)
 ```
 
-You can continue the quick start in [the Optax quickstart notebook.](https://github.com/deepmind/optax/blob/master/examples/quick_start.ipynb)
+You can continue the quick start in [the Optax quickstart notebook.](https://github.com/deepmind/optax/blob/main/examples/quick_start.ipynb)
 
 
 ## Components
@@ -86,7 +86,7 @@ We refer to the [docs](https://optax.readthedocs.io/en/latest/index.html)
 for a detailed list of available Optax components. Here, we highlight
 the main categories of building blocks provided by Optax.
 
-### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/master/optax/_src/transform.py))
+### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/main/optax/_src/transform.py))
 
 One of the key building blocks of `optax` is a `GradientTransformation`.
 
@@ -107,7 +107,7 @@ state = tx.init(params)  # init stats
 grads, state = tx.update(grads, state, params)  # transform & update stats.
 ```
 
-### Composing Gradient Transformations ([combine.py](https://github.com/deepmind/optax/blob/master/optax/_src/combine.py))
+### Composing Gradient Transformations ([combine.py](https://github.com/deepmind/optax/blob/main/optax/_src/combine.py))
 
 The fact that transformations take candidate gradients as input and return
 processed gradients as output (in contrast to returning the updated parameters)
@@ -127,7 +127,7 @@ my_optimiser = chain(
     scale(-learning_rate))
 ```
 
-### Wrapping Gradient Transformations ([wrappers.py](https://github.com/deepmind/optax/blob/master/optax/_src/wrappers.py))
+### Wrapping Gradient Transformations ([wrappers.py](https://github.com/deepmind/optax/blob/main/optax/_src/wrappers.py))
 
 Optax also provides several wrappers that take a `GradientTransformation` as
 input and return a new `GradientTransformation` that modifies the behaviour
@@ -148,7 +148,7 @@ Other examples of wrappers include accumulating gradients over multiple steps
 or applying the inner transformation only to specific parameters or at
 specific steps.
 
-### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/master/optax/_src/schedule.py))
+### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/main/optax/_src/schedule.py))
 
 Many popular transformations use time-dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
@@ -176,7 +176,7 @@ optimiser = chain(
     scale_by_schedule(schedule_fn))
 ```
 
-### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/master/optax/_src/alias.py))
+### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/main/optax/_src/alias.py))
 
 In addition to the low-level building blocks, we also provide aliases for popular
 optimisers built using these components (e.g. RMSProp, Adam, AdamW, etc, ...).
@@ -192,7 +192,7 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
       scale_and_decay(-learning_rate, weight_decay=weight_decay))
 ```
 
-### Applying updates ([update.py](https://github.com/deepmind/optax/blob/master/optax/_src/update.py))
+### Applying updates ([update.py](https://github.com/deepmind/optax/blob/main/optax/_src/update.py))
 
 After transforming an update using a `GradientTransformation` or any custom
 manipulation of the update, you will typically apply the update to a set
@@ -236,7 +236,7 @@ typically intractable due to the quadratic memory requirements. Solving for the
 diagonals of these matrices is often a better solution. The library offers
 functions for computing these diagonals with sub-quadratic memory requirements.
 
-### Stochastic gradient estimators ([stochastic_gradient_estimators.py](https://github.com/google-deepmind/optax/blob/master/optax/monte_carlo/stochastic_gradient_estimators.py))
+### Stochastic gradient estimators ([stochastic_gradient_estimators.py](https://github.com/google-deepmind/optax/blob/main/optax/monte_carlo/stochastic_gradient_estimators.py))
 
 Stochastic gradient estimators compute Monte Carlo estimates of gradients of
 the expectation of a function under a distribution with respect to the

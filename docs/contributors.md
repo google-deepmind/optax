@@ -13,7 +13,7 @@ discussion on the best way to land new features, and can also provide
 opportunities for collaborations with other contributors.
 
 Some more details on contributing code are provided in the
-[CONTRIBUTING.md](https://github.com/deepmind/optax/blob/master/CONTRIBUTING.md)
+[CONTRIBUTING.md](https://github.com/deepmind/optax/blob/main/CONTRIBUTING.md)
 file in the source tree.
 
 #### Design Documents
