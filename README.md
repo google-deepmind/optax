@@ -1,6 +1,6 @@
 # Optax
 
-![CI status](https://github.com/deepmind/optax/workflows/tests/badge.svg)
+![CI status](https://github.com/google-deepmind/optax/workflows/tests/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/optax/badge/?version=latest)](http://optax.readthedocs.io)
 ![pypi](https://img.shields.io/pypi/v/optax)
 
@@ -41,7 +41,7 @@ pip install optax
 or you can install the latest development version from GitHub:
 
 ```sh
-pip install git+https://github.com/deepmind/optax.git
+pip install git+https://github.com/google-deepmind/optax.git
 ```
 
 ## Quickstart
@@ -77,7 +77,7 @@ updates, opt_state = optimizer.update(grads, opt_state)
 params = optax.apply_updates(params, updates)
 ```
 
-You can continue the quick start in [the Optax quickstart notebook.](https://github.com/deepmind/optax/blob/main/examples/quick_start.ipynb)
+You can continue the quick start in [the Optax quickstart notebook.](https://github.com/google-deepmind/optax/blob/main/examples/quick_start.ipynb)
 
 
 ## Components
@@ -86,7 +86,7 @@ We refer to the [docs](https://optax.readthedocs.io/en/latest/index.html)
 for a detailed list of available Optax components. Here, we highlight
 the main categories of building blocks provided by Optax.
 
-### Gradient Transformations ([transform.py](https://github.com/deepmind/optax/blob/main/optax/_src/transform.py))
+### Gradient Transformations ([transform.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/transform.py))
 
 One of the key building blocks of `optax` is a `GradientTransformation`.
 
@@ -107,7 +107,7 @@ state = tx.init(params)  # init stats
 grads, state = tx.update(grads, state, params)  # transform & update stats.
 ```
 
-### Composing Gradient Transformations ([combine.py](https://github.com/deepmind/optax/blob/main/optax/_src/combine.py))
+### Composing Gradient Transformations ([combine.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/combine.py))
 
 The fact that transformations take candidate gradients as input and return
 processed gradients as output (in contrast to returning the updated parameters)
@@ -127,7 +127,7 @@ my_optimiser = chain(
     scale(-learning_rate))
 ```
 
-### Wrapping Gradient Transformations ([wrappers.py](https://github.com/deepmind/optax/blob/main/optax/_src/wrappers.py))
+### Wrapping Gradient Transformations ([wrappers.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/wrappers.py))
 
 Optax also provides several wrappers that take a `GradientTransformation` as
 input and return a new `GradientTransformation` that modifies the behaviour
@@ -148,7 +148,7 @@ Other examples of wrappers include accumulating gradients over multiple steps
 or applying the inner transformation only to specific parameters or at
 specific steps.
 
-### Schedules ([schedule.py](https://github.com/deepmind/optax/blob/main/optax/_src/schedule.py))
+### Schedules ([schedule.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/schedule.py))
 
 Many popular transformations use time-dependent components, e.g. to anneal
 some hyper-parameter (e.g. the learning rate). Optax provides for this purpose
@@ -176,7 +176,7 @@ optimiser = chain(
     scale_by_schedule(schedule_fn))
 ```
 
-### Popular optimisers ([alias.py](https://github.com/deepmind/optax/blob/main/optax/_src/alias.py))
+### Popular optimisers ([alias.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/alias.py))
 
 In addition to the low-level building blocks, we also provide aliases for popular
 optimisers built using these components (e.g. RMSProp, Adam, AdamW, etc, ...).
@@ -192,7 +192,7 @@ def adamw(learning_rate, b1, b2, eps, weight_decay):
       scale_and_decay(-learning_rate, weight_decay=weight_decay))
 ```
 
-### Applying updates ([update.py](https://github.com/deepmind/optax/blob/main/optax/_src/update.py))
+### Applying updates ([update.py](https://github.com/google-deepmind/optax/blob/main/optax/_src/update.py))
 
 After transforming an update using a `GradientTransformation` or any custom
 manipulation of the update, you will typically apply the update to a set
@@ -212,7 +212,7 @@ critical to support composing a sequence of transformations (e.g. `chain`), as
 well as combining multiple updates to the same parameters (e.g. in multi-task
 settings where different tasks need different sets of gradient transformations).
 
-### Losses ([loss.py](https://github.com/google-deepmind/optax/tree/master/optax/losses))
+### Losses ([loss.py](https://github.com/google-deepmind/optax/tree/main/optax/losses))
 
 Optax provides a number of standard losses used in deep learning, such as
 `l2_loss`, `softmax_cross_entropy`, `cosine_distance`, etc.
@@ -229,7 +229,7 @@ avg_loss = jnp.mean(huber_loss(predictions, targets))
 sum_loss = jnp.sum(huber_loss(predictions, targets))
 ```
 
-### Second Order ([second_order.py](https://github.com/google-deepmind/optax/tree/master/optax/second_order))
+### Second Order ([second_order.py](https://github.com/google-deepmind/optax/tree/main/optax/second_order))
 
 Computing the Hessian or Fisher information matrices for neural networks is
 typically intractable due to the quadratic memory requirements. Solving for the
