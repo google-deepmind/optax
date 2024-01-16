@@ -22,6 +22,8 @@ from optax.contrib.dadapt_adamw import dadapt_adamw
 from optax.contrib.dadapt_adamw import DAdaptAdamWState
 from optax.contrib.mechanic import MechanicState
 from optax.contrib.mechanic import mechanize
+from optax.contrib.polyak_step import polyak_step_sgd
+from optax.contrib.polyak_step import scale_by_polyak_step
 from optax.contrib.privacy import differentially_private_aggregate
 from optax.contrib.privacy import DifferentiallyPrivateAggregateState
 from optax.contrib.privacy import dpsgd

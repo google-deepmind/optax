@@ -10,6 +10,8 @@
     DAdaptAdamWState
     mechanize
     MechanicState
+    polyak_step_sgd
+    PolyakStepSGDState
     prodigy
     ProdigyState
     sam
@@ -40,6 +42,13 @@ Mechanize
 .. autofunction:: mechanize
 .. autoclass:: MechanicState
     :members:
+
+Polyak step-size
+~~~~~~~~~~~~~~~~
+.. autofunction:: polyak_step_sgd
+.. autoclass:: PolyakStepSGDState
+    :members:
+
 
 Prodigy
 ~~~~~~~
