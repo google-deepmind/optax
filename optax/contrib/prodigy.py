@@ -45,7 +45,7 @@ class ProdigyState(NamedTuple):
 
 def prodigy(
     learning_rate: base.ScalarOrSchedule = 0.1,
-    betas: tuple[float, float] = (0.9, 0.999),
+    betas: Tuple[float, float] = (0.9, 0.999),
     beta3: Optional[float] = None,
     eps: float = 1e-8,
     estim_lr0: float = 1e-6,

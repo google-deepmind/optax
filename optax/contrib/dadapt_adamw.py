@@ -42,7 +42,7 @@ class DAdaptAdamWState(NamedTuple):
 
 def dadapt_adamw(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    betas: tuple[float, float] = (0.9, 0.999),
+    betas: Tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-8,
     estim_lr0: float = 1e-6,
     weight_decay: float = 0.,
