@@ -26,7 +26,7 @@ of O(d) computations. We largely expect the wall clock time with and without
 using Mechanic to be the same for reasonably large batch sizes (>1k).
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 import chex
 import jax
@@ -125,7 +125,7 @@ def mechanize(
       updates: base.Updates,
       state: MechanicState,
       params: Optional[base.Params] = None,
-  ) -> Tuple[base.Params, MechanicState]:
+  ) -> tuple[base.Params, MechanicState]:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 

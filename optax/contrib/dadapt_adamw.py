@@ -18,7 +18,7 @@ A contributed implementation of the method from "Learning-Rate-Free Learning by
 D-Adaptation" (https://arxiv.org/abs/2301.07733) by Aaron Defazio and Konstantin
 Mishchenko (ICML 2023 Outstanding Paper award).
 """
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 import chex
 import jax.numpy as jnp
 import jax.tree_util as tu
@@ -84,7 +84,7 @@ def dadapt_adamw(
       updates: base.Updates,
       state: DAdaptAdamWState,
       params: Optional[base.Params] = None,
-  ) -> Tuple[base.Updates, DAdaptAdamWState]:
+  ) -> tuple[base.Updates, DAdaptAdamWState]:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count

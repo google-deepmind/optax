@@ -14,7 +14,7 @@
 # ==============================================================================
 """Utility functions for testing."""
 
-from typing import Optional, Tuple, Sequence
+from typing import Optional, Sequence
 
 import chex
 import jax
@@ -132,12 +132,12 @@ def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
 
 
 def _scale_gradient_fwd(inputs: chex.ArrayTree,
-                        scale: float) -> Tuple[chex.ArrayTree, float]:
+                        scale: float) -> tuple[chex.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(scale: float,
-                        g: chex.ArrayTree) -> Tuple[chex.ArrayTree, None]:
+                        g: chex.ArrayTree) -> tuple[chex.ArrayTree, None]:
   return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
 
 

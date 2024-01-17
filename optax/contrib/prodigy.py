@@ -19,7 +19,7 @@ Adaptive Parameter-Free Learner" (https://arxiv.org/abs/2306.06101) by
 Konstantin Mishchenko and Aaron Defazio. A new variant of D-Adapt Adam that
 adapts the learning rate faster.
 """
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 import chex
 import jax.numpy as jnp
 import jax.tree_util as tu
@@ -103,7 +103,7 @@ def prodigy(
       updates: base.Updates,
       state: ProdigyState,
       params: Optional[base.Params] = None,
-  ) -> Tuple[base.Updates, ProdigyState]:
+  ) -> tuple[base.Updates, ProdigyState]:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count

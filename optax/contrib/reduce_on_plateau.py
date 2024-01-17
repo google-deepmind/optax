@@ -19,7 +19,7 @@ number of epochs, the learning rate is reduced by a factor of 'reduce_factor'.
 Optionally, a cooldown period can be specified during which the learning rate
 will not be reduced.
 """
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
 
 import chex
 import jax
@@ -78,7 +78,7 @@ def reduce_on_plateau(
       *,
       loss,
       **extra_args,
-  ) -> Tuple[base.Params, ReduceLROnPlateauState]:
+  ) -> tuple[base.Params, ReduceLROnPlateauState]:
     del params, extra_args
 
     # Update plateau count and check if plateaued

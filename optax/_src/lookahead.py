@@ -14,7 +14,7 @@
 # ==============================================================================
 """A lookahead optimization wrapper."""
 
-from typing import NamedTuple, Tuple, Union
+from typing import NamedTuple, Union
 
 from absl import logging
 import jax
@@ -111,7 +111,7 @@ def lookahead(
 
   def update_fn(
       updates: base.Updates, state: LookaheadState,
-      params: LookaheadParams) -> Tuple[LookaheadParams, LookaheadState]:
+      params: LookaheadParams) -> tuple[LookaheadParams, LookaheadState]:
     updates, fast_state = fast_optimizer.update(updates, state.fast_state,
                                                 params.fast)
 

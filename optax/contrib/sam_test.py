@@ -201,19 +201,23 @@ class SAMTest(chex.TestCase):
       dtype=(jnp.float32,),
   )
   def test_opaque_optimization(
-      self, opt_name, opt_kwargs, sync_period, target, dtype):
-    opt = alias.sgd(0.003)
+      self, opt_name, opt_kwargs, sync_period, target, dtype
+  ):
+    base_opt = alias.sgd(0.003)
     adv_opt = combine.chain(
         contrib.normalize(), getattr(alias, opt_name)(**opt_kwargs)
     )
-    opt = contrib.sam(opt, adv_opt, sync_period=sync_period, opaque_mode=True)
+    opt = contrib.sam(
+        base_opt, adv_opt, sync_period=sync_period, opaque_mode=True
+    )
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
     def step(params, state):
       updates = get_updates(params)
       updates, state = opt.update(
-          updates, state, params, grad_fn=lambda p, _: get_updates(p))
+          updates, state, params, grad_fn=lambda p, _: get_updates(p)
+      )
       params = update.apply_updates(params, updates)
       return params, state
 

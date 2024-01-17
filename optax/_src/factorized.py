@@ -15,7 +15,7 @@
 """Factorized optimizers."""
 
 import dataclasses
-from typing import NamedTuple, Optional, Tuple, Callable
+from typing import NamedTuple, Optional, Callable
 
 import chex
 import jax
@@ -39,7 +39,7 @@ def _factored_dims(
     shape: base.Shape,
     factored: bool,
     min_dim_size_to_factor: int
-) -> Optional[Tuple[int, int]]:
+) -> Optional[tuple[int, int]]:
   """Whether to use a factored second moment estimator.
 
   This function returns a tuple with the two largest axes to reduce over.

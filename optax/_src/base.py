@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
 
 import chex
 import jax
@@ -97,7 +97,7 @@ class TransformUpdateFn(Protocol):
       updates: Updates,
       state: OptState,
       params: Optional[Params] = None
-    ) -> Tuple[Updates, OptState]:
+    ) -> tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
@@ -119,7 +119,7 @@ class TransformUpdateExtraArgsFn(Protocol):
       state: OptState,
       params: Optional[Params] = None,
       **extra_args: Any,
-  ) -> Tuple[Updates, OptState]:
+  ) -> tuple[Updates, OptState]:
     """Update function with optional extra arguments.
 
     For example, an update function that requires an additional loss parameter
