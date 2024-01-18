@@ -404,8 +404,8 @@ def scale_by_nadam(
         bias_correction(mu, b1, numerics.safe_int32_increment(count_inc)),
         bias_correction(updates, b1, count_inc))
     # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ Algorithm 2
-    # further multiplies this nu_hat by b2. Other implementations also neglect
-    # that factor.
+    # further multiplies Adam's standard nu_hat by b2. It is unclear why. Other
+    # Nadam implementations also omit the extra b2 factor.
     nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
