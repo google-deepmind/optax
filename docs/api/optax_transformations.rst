@@ -39,6 +39,7 @@ Optax Transformations
     scale_by_belief
     scale_by_factored_rms
     scale_by_lion
+    scale_by_nadam
     scale_by_novograd
     scale_by_optimistic_gradient
     scale_by_param_block_norm
@@ -173,6 +174,8 @@ Optax transformations and states
 .. autofunction:: scale_by_lion
 .. autoclass:: ScaleByLionState
     :members:
+
+.. autofunction:: scale_by_nadam
 
 .. autofunction:: scale_by_novograd
 .. autoclass:: ScaleByNovogradState

@@ -16,6 +16,7 @@ Common Optimizers
     lamb
     lars
     lion
+    nadam
     noisy_sgd
     novograd
     optimistic_gradient_descent
@@ -79,6 +80,10 @@ SM3
 ~~~
 .. autofunction:: sm3
 
+Nadam
+~~~~
+
+.. autofunction:: nadam
 
 Noisy SGD
 ~~~~~~~~~
