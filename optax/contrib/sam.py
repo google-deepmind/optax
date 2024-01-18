@@ -47,7 +47,7 @@ This is the simple drop-in SAM optimizer from the paper.
 """
 # pytype: skip-file
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 import chex
 import jax
 import jax.numpy as jnp
@@ -191,7 +191,7 @@ def sam(
   def transparent_update_fn(
       updates: base.Updates, state: SAMState, params: Optional[base.Params],
       *, grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
-  ) -> Tuple[base.Updates, SAMState]:
+  ) -> tuple[base.Updates, SAMState]:
     del grad_fn
     first_step = state.steps_since_sync == 0
     last_step = state.steps_since_sync == sync_period - 1
@@ -227,7 +227,7 @@ def sam(
   def opaque_update_fn(
       updates: base.Updates, state: SAMState, params: Optional[base.Params],
       *, grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
-  ) -> Tuple[base.Updates, SAMState]:
+  ) -> tuple[base.Updates, SAMState]:
     if grad_fn is None:
       raise ValueError("grad_fn must be provided when opaque_mode=True.")
 

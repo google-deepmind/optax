@@ -18,7 +18,7 @@ Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import chex
 import jax.numpy as jnp
@@ -48,7 +48,7 @@ def abs_sq(x: chex.Array) -> chex.Array:
 def safe_norm(x: chex.Array,
               min_norm: chex.Numeric,
               ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
-              axis: Union[None, Tuple[int, ...], int] = None,
+              axis: Union[None, tuple[int, ...], int] = None,
               keepdims: bool = False) -> chex.Array:
   """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
 

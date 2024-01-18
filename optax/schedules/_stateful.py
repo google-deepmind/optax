@@ -16,7 +16,7 @@
 
 import functools
 import inspect
-from typing import Callable, Dict, Iterable, NamedTuple, Optional, Union
+from typing import Callable, Iterable, NamedTuple, Optional, Union
 
 import chex
 import jax
@@ -37,8 +37,8 @@ def _convert_floats(x, dtype):
 class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: Dict[str, chex.Numeric]
-  hyperparams_states: Dict[str, base.ScheduleState]
+  hyperparams: dict[str, chex.Numeric]
+  hyperparams_states: dict[str, base.ScheduleState]
   inner_state: base.OptState
 
 

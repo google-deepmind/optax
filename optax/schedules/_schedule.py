@@ -19,7 +19,7 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Dict, Union, Optional, Iterable
+from typing import Union, Optional, Iterable
 
 from absl import logging
 import chex
@@ -101,7 +101,7 @@ def linear_schedule(
 
 def piecewise_constant_schedule(
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None
+    boundaries_and_scales: Optional[dict[int, float]] = None
 ) -> base.Schedule:
   """Returns a function which implements a piecewise constant schedule.
 
@@ -255,7 +255,7 @@ def _cosine_interpolate(start: float, end: float, pct: float):
 def piecewise_interpolate_schedule(
     interpolate_type: str,
     init_value: float,
-    boundaries_and_scales: Optional[Dict[int, float]] = None
+    boundaries_and_scales: Optional[dict[int, float]] = None
 ) -> base.Schedule:
   """Returns a function which implements a piecewise interpolated schedule.
 
@@ -459,7 +459,7 @@ def warmup_exponential_decay_schedule(
   return _join.join_schedules(schedules, [warmup_steps])
 
 
-def sgdr_schedule(cosine_kwargs: Iterable[Dict[str, chex.Numeric]]
+def sgdr_schedule(cosine_kwargs: Iterable[dict[str, chex.Numeric]]
                   ) -> base.Schedule:
   """SGD with warm restarts, from Loschilov & Hutter (arXiv:1608.03983).
 

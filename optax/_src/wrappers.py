@@ -14,7 +14,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Protocol, Union
 
 import chex
 import jax
@@ -198,7 +198,7 @@ class MultiStepsState(NamedTuple):
 class ShouldSkipUpdateFunction(Protocol):
 
   def __call__(self, updates: base.Updates, gradient_step: Array,
-               params: Optional[base.Params]) -> Tuple[Array, chex.ArrayTree]:
+               params: Optional[base.Params]) -> tuple[Array, chex.ArrayTree]:
     """Returns true to indicate that updates should be skipped in a multi-step.
 
     Args:
@@ -222,7 +222,7 @@ class ShouldSkipUpdateFunction(Protocol):
 
 def skip_not_finite(
     updates: base.Updates, gradient_step: Array,
-    params: Optional[base.Params]) -> Tuple[Array, chex.ArrayTree]:
+    params: Optional[base.Params]) -> tuple[Array, chex.ArrayTree]:
   """Returns True iff any of the `updates` contains an inf or a NaN.
 
   Args:
@@ -249,7 +249,7 @@ def skip_not_finite(
 def skip_large_updates(updates: base.Updates,
                        gradient_step: Array,
                        params: Optional[base.Params],
-                       max_squared_norm: float) -> Tuple[Array, chex.ArrayTree]:
+                       max_squared_norm: float) -> tuple[Array, chex.ArrayTree]:
   """Returns True if the global norm square of `updates` is small enough.
 
   Args:
@@ -374,7 +374,7 @@ class MultiSteps:
              state: MultiStepsState,
              params: Optional[base.Params] = None,
              **extra_args: Any,
-             ) -> Tuple[base.Updates, MultiStepsState]:
+             ) -> tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
     should_skip_update, skip_state = self._should_skip_update_fn(

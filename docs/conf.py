@@ -263,9 +263,14 @@ def linkcode_resolve(domain, info):
     return None
 
   # TODO(slebedev): support tags after we release an initial version.
-  return 'https://github.com/deepmind/optax/tree/master/optax/%s#L%d#L%d' % (
-      os.path.relpath(filename, start=os.path.dirname(
-          optax.__file__)), lineno, lineno + len(source) - 1)
+  return (
+      'https://github.com/google-deepmind/optax/tree/main/optax/%s#L%d#L%d'
+      % (
+          os.path.relpath(filename, start=os.path.dirname(optax.__file__)),
+          lineno,
+          lineno + len(source) - 1,
+      )
+  )
 
 
 # -- Intersphinx configuration -----------------------------------------------

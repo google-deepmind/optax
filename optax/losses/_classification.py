@@ -14,7 +14,7 @@
 # ==============================================================================
 """Classification losses."""
 
-from typing import Tuple, Optional
+from typing import Optional
 
 import chex
 import jax
@@ -269,7 +269,7 @@ def ctc_loss_with_forward_probs(
     label_paddings: chex.Array,
     blank_id: int = 0,
     log_epsilon: float = -1e5
-) -> Tuple[chex.Array, chex.Array, chex.Array]:
+) -> tuple[chex.Array, chex.Array, chex.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
   The CTC loss is a loss function based on log-likelihoods of the model that

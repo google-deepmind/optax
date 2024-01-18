@@ -53,7 +53,7 @@ r"""Implementation of control variates.
 
   For examples, see `control_delta_method` and `moving_avg_baseline`.
 """
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Sequence
 
 import chex
 import jax
@@ -66,7 +66,7 @@ CvState = Any
 ComputeCv = Callable[[base.Params, chex.Array, CvState], chex.Array]
 CvExpectedValue = Callable[[base.Params, CvState], CvState]
 UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
-ControlVariate = Tuple[ComputeCv, CvExpectedValue, UpdateCvState]
+ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
 def control_delta_method(
@@ -221,7 +221,7 @@ def control_variates_jacobians(
     control_variate_state: CvState = None,
     estimate_cv_coeffs: bool = False,
     estimate_cv_coeffs_num_samples: int = 20,
-) -> Tuple[Sequence[chex.Array], CvState]:
+) -> tuple[Sequence[chex.Array], CvState]:
   r"""Obtain jacobians using control variates.
 
   We will compute each term individually. The first term will use stochastic
