@@ -246,7 +246,7 @@ def adam(
 
 
 def nadam(
-   learning_rate: base.ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
