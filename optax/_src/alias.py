@@ -244,6 +244,7 @@ def adam(
       transform.scale_by_learning_rate(learning_rate),
   )
 
+
 def nadam(
    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
@@ -286,6 +287,7 @@ def nadam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
       transform.scale_by_learning_rate(learning_rate),
   )
+
 
 def adamw(
     learning_rate: base.ScalarOrSchedule,

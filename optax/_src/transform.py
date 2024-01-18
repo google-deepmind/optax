@@ -360,6 +360,7 @@ def scale_by_adam(
 
   return base.GradientTransformation(init_fn, update_fn)
 
+
 def scale_by_nadam(
     b1: float = 0.9,
     b2: float = 0.999,
@@ -412,6 +413,7 @@ def scale_by_nadam(
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
+
 
 class ScaleByAmsgradState(NamedTuple):
   """State for the AMSGrad algorithm."""
