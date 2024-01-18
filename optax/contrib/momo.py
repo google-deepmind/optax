@@ -42,12 +42,16 @@ def momo(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
-  This algorithm is SGD with momentum with a Polyak-type learning rate. The effective step size is
+  MoMo typically needs less tuning for value of `learning_rate`,
+  by exploting the fact that a lower bound of the loss (or the optimal value) is known.
+  For most tasks, zero is a lower bound and an accurate estimate of the final loss.
+
+  MoMo performs SGD with momentum with a Polyak-type learning rate. The effective step size is
     `min(learning_rate, <adaptive term>)`
 
   where the adaptive term is computed on the fly. 
-  MoMo typically needs less tuning for value of `learning_rate` value.
-  This relies on having a good guess for a lower bund of the loss (or the optimal value), typically zero.
+
+  Note that in `update_fn` you need to pass the latest (batch) loss to the argument `loss`.
 
   References:
     [Schaipp et al., 2023](https://arxiv.org/abs/2305.07583)
