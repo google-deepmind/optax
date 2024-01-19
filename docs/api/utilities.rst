@@ -1,5 +1,20 @@
-Tree Utilities
-==============
+Utilities
+=========
+
+General
+-------
+
+.. currentmodule:: optax
+
+.. autosummary::
+    scale_gradient
+
+Scale gradient
+~~~~~~~~~~~~~~
+.. autofunction:: scale_gradient
+
+Tree
+----
 
 .. currentmodule:: optax.tree_utils
 
