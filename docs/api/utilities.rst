@@ -92,8 +92,16 @@ Numerical Stability
     safe_norm
     safe_root_mean_squares
 
+Safe int32 increment
+~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: safe_int32_increment
+
+Safe norm
+~~~~~~~~~
 .. autofunction:: safe_norm
+
+Safe root mean squares
+~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: safe_root_mean_squares
 
 
