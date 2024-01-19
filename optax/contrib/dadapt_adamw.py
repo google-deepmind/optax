@@ -53,6 +53,7 @@ def dadapt_adamw(
   initial distance to solution in the infinity norm.
   This method works best when combined with a learning rate schedule that
   treats 1.0 as the base (usually max) value.
+
   References:
     [Defazio & Mishchenko, 2023](https://arxiv.org/abs/2301.07733)
   Args:
