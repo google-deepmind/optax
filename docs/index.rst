@@ -78,6 +78,7 @@ for instructions on installing JAX.
    api/stochastic_gradient_estimators
    api/privacy_sensitive
    api/general_utilities
+   api/tree_utilities
    api/contrib
 
 The Team
