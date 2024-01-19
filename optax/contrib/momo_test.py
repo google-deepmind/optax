@@ -30,7 +30,7 @@ def _setup_parabola(dtype):
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
 
-  @jax.grad
+  @jax.value_and_grad
   def get_updates(params):
     return jnp.sum(numerics.abs_sq(params - final_params))
 
@@ -45,7 +45,7 @@ def _setup_rosenbrock(dtype):
   initial_params = jnp.array([0.0, 0.0], dtype=dtype)
   final_params = jnp.array([a, a**2], dtype=dtype)
 
-  @jax.grad
+  @jax.value_and_grad
   def get_updates(params):
     return numerics.abs_sq(a - params[0]) + b * numerics.abs_sq(
         params[1] - params[0] ** 2
@@ -65,11 +65,10 @@ class MomoTest(chex.TestCase):
   def test_optimization(self, opt_name, target, dtype):
     opt = getattr(contrib, opt_name)()
     initial_params, final_params, get_updates = target(dtype)
-
-    @jax.jit
+    #@jax.jit
     def step(params, state):
-      updates = get_updates(params)
-      updates, state = opt.update(updates, state, params)
+      loss, updates = get_updates(params)
+      updates, state = opt.update(updates, state, params, loss)
       params = update.apply_updates(params, updates)
       return params, state
 
@@ -78,7 +77,7 @@ class MomoTest(chex.TestCase):
     # A no-op change, to verify that tree map works.
     state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
-    for _ in range(15000):
+    for _ in range(1500):
       params, state = step(params, state)
 
     chex.assert_trees_all_close(params, final_params, rtol=1e-1, atol=1e-1)
