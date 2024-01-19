@@ -13,6 +13,7 @@ Scale gradient
 ~~~~~~~~~~~~~~
 .. autofunction:: scale_gradient
 
+
 Tree
 ----
 
@@ -80,3 +81,40 @@ Tree ones like
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_ones_like
 
+
+Numerical Stability
+-------------------
+
+.. currentmodule:: optax
+
+.. autosummary::
+    safe_int32_increment
+    safe_norm
+    safe_root_mean_squares
+
+.. autofunction:: safe_int32_increment
+.. autofunction:: safe_norm
+.. autofunction:: safe_root_mean_squares
+
+
+Second Order Optimization
+-------------------------
+
+.. currentmodule:: optax.second_order
+
+.. autosummary::
+    fisher_diag
+    hessian_diag
+    hvp
+
+Fisher diagonal
+~~~~~~~~~~~~~~~
+.. autofunction:: fisher_diag
+
+Hessian diagonal
+~~~~~~~~~~~~~~~~
+.. autofunction:: hessian_diag
+
+Hessian vector product
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: hvp
