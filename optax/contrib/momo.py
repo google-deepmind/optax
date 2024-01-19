@@ -23,6 +23,7 @@ import chex
 import jax.numpy as jnp
 import jax.tree_util as tu
 from jax import Array
+from jax.lax import cond
 from optax import tree_utils
 from optax._src import base
 from optax._src import utils
@@ -88,18 +89,14 @@ def momo(
                        Use `jax.value_and_grad` for this.""")
     count = state.count
     # initialize at first gradient, and loss
-    if count == jnp.zeros([], jnp.int32):
-      barf = loss
-      exp_avg = tu.tree_map(lambda g: g, updates)
-      gamma = tree_utils.tree_vdot(updates, params)
-    else:
-      barf = beta*state.barf + (1-beta)*loss
-      exp_avg = tu.tree_map(
-        lambda ea, g: beta*ea + (1-beta)*g,
-        state.exp_avg,
-        updates
-        )
-      gamma = beta*state.gamma + (1-beta)*tree_utils.tree_vdot(updates, params)
+    bt = cond(count == 0, lambda: 0., lambda: beta)
+    barf = bt*state.barf + (1-bt)*loss
+    exp_avg = tu.tree_map(
+      lambda ea, g: bt*ea + (1-bt)*g,
+      state.exp_avg,
+      updates
+      )
+    gamma = bt*state.gamma + (1-bt)*tree_utils.tree_vdot(updates, params)
     exp_avg_norm = tree_utils.tree_l2_norm(exp_avg,squared=True)
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate

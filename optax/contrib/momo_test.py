@@ -65,7 +65,7 @@ class MomoTest(chex.TestCase):
   def test_optimization(self, opt_name, target, dtype):
     opt = getattr(contrib, opt_name)()
     initial_params, final_params, get_updates = target(dtype)
-    #@jax.jit
+    @jax.jit
     def step(params, state):
       loss, updates = get_updates(params)
       updates, state = opt.update(updates, state, params, loss)
