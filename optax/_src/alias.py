@@ -721,7 +721,7 @@ def sgd(
   """A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
-  momentum, and nesterov acceleration, as these are standard practice when
+  momentum, and Nesterov acceleration, as these are standard practice when
   using stochastic gradient descent to train deep neural networks.
 
   References:
