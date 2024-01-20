@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """MoMo.
-A contributed implementation of the method from 
+Implementation of
 "MoMo: Momentum Models for Adaptive Learning Rates" 
 (https://arxiv.org/abs/2305.07583) by Fabian Schaipp, Ruben Ohana,
 Michael Eickenberg, Aaron Defazio and Robert M. Gower.
