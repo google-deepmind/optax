@@ -411,7 +411,7 @@ def warmup_cosine_decay_schedule(
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=end_value/peak_value,
+          alpha=peak_value and end_value/peak_value,
           exponent=exponent)]
   return _join.join_schedules(schedules, [warmup_steps])
 
