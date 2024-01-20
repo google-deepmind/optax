@@ -39,7 +39,7 @@ def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
     beta: float = 0.9,
     lb: float = 0.0,
-    weight_decay: float = 0,
+    weight_decay: float = 0.,
     delta: float = 1e-10
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
