@@ -40,7 +40,8 @@ class ReduceLROnPlateauState(NamedTuple):
 def reduce_on_plateau(
     factor: float = 0.1,
     patience: int = 10,
-    threshold: float = 1e-4,
+    rtol: float = 1e-4,
+    atol: float = 0.0,
     cooldown: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
@@ -53,14 +54,28 @@ def reduce_on_plateau(
     factor: Factor by which to reduce the learning rate. new_lr = lr * factor.
     patience: Number of iterations with no improvement after which learning rate
       will be reduced.
-    threshold: Threshold for measuring the new optimum, to only focus on
-      significant changes.
+    rtol: Relative tolerance for measuring new optimum.
+    atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
       after lr has been reduced.
 
   Returns:
     A GradientTransformationExtraArgs object.
   """
+  if rtol < 0.0 or atol < 0.0:
+    raise ValueError(
+        "Both rtol and atol must be non-negative, got "
+        f"rtol = {rtol} and atol = {atol}."
+    )
+  elif rtol == 0.0 and atol == 0.0:
+    raise ValueError(
+        "At least one of rtol or atol must be positive, got "
+        f"rtol = {rtol} and atol = {atol}."
+    )
+  elif rtol > 1.0:
+    raise ValueError(
+        f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
+    )
 
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
@@ -82,7 +97,7 @@ def reduce_on_plateau(
     del params, extra_args
 
     # Update plateau count and check if plateaued
-    has_improved = jnp.where((loss / state.best_loss - 1) < -threshold, 1, 0)
+    has_improved = jnp.where(loss < (1 - rtol) * state.best_loss - atol, 1, 0)
     new_best_loss = jnp.where(has_improved, loss, state.best_loss)
 
     curr_plateau_count = jnp.where(

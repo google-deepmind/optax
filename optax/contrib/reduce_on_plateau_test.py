@@ -32,7 +32,8 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     self.transform = contrib.reduce_on_plateau(
         factor=0.1,
         patience=self.patience,
-        threshold=1e-4,
+        rtol=1e-4,
+        atol=0.0,
         cooldown=self.cooldown,
     )
     self.updates = {'params': jnp.array(1.0)}  # dummy updates
