@@ -72,12 +72,10 @@ for instructions on installing JAX.
    api/apply_updates
    api/common_losses
    api/linear_algebra_operators
-   api/utilities_for_numerical_stability
-   api/second_order_optimization_utilities
    api/control_variates
    api/stochastic_gradient_estimators
    api/privacy_sensitive
-   api/general_utilities
+   api/utilities
    api/contrib
 
 The Team
