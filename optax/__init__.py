@@ -34,6 +34,8 @@ from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
+from optax._src.alias import nadam
+from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
@@ -282,6 +284,8 @@ __all__ = (
     "MultiSteps",
     "MultiStepsState",
     "MultiTransformState",
+    "nadam",
+    "nadamw",
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",

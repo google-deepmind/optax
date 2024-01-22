@@ -16,6 +16,8 @@ Optimizers
     lamb
     lars
     lion
+    nadam
+    nadamw
     noisy_sgd
     novograd
     optimistic_gradient_descent
@@ -75,25 +77,25 @@ Lion
 ~~~~
 .. autofunction:: lion
 
-SM3
-~~~
-.. autofunction:: sm3
+Nadam
+~~~~~
+.. autofunction:: nadam
 
+NadamW
+~~~~~~
+.. autofunction:: nadamw
 
 Noisy SGD
 ~~~~~~~~~
 .. autofunction:: noisy_sgd
 
-
 Novograd
 ~~~~~~~~
 .. autofunction:: novograd
 
-
 Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
-
 
 Differentially Private SGD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,6 +112,10 @@ RMSProp
 SGD
 ~~~
 .. autofunction:: sgd
+
+SM3
+~~~
+.. autofunction:: sm3
 
 Yogi
 ~~~~

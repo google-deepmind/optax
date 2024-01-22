@@ -14,6 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimizers."""
 
+import functools
 from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
@@ -152,9 +153,10 @@ def adagrad(
   Adagrad is an algorithm for gradient based optimization that anneals the
   learning rate for each parameter during the course of training.
 
-  WARNING: Adagrad's main limit is the monotonic accumulation of squared
-  gradients in the denominator: since all terms are >0, the sum keeps growing
-  during training and the learning rate eventually becomes vanishingly small.
+  .. warning::
+    Adagrad's main limit is the monotonic accumulation of squared
+    gradients in the denominator: since all terms are >0, the sum keeps growing
+    during training and the learning rate eventually becomes vanishingly small.
 
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
@@ -182,8 +184,10 @@ def adam(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
+    *,
+    nesterov: bool = False
 ) -> base.GradientTransformation:
-  r"""The classic Adam optimizer.
+  r"""The Adam optimizer.
 
   Adam is an SGD variant with gradient scaling adaptation. The scaling
   used for each parameter is computed from estimates of first and second-order
@@ -205,6 +209,7 @@ def adam(
   :math:`t > 0`, we have,
 
   .. math::
+
     \begin{align*}
       m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
@@ -215,13 +220,81 @@ def adam(
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
 
-  References:
-    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+  With the keyword argument `nesterov=True`, the optimizer uses Nesterov
+  momentum, replacing the above :math:`\hat{m}_t` with
 
-  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma
-    and Ba's Adam paper, if reproducing old results note that TensorFlow
-    used instead the formulation just before Section 2.1 of the paper.
-    See https://github.com/deepmind/optax/issues/571 for more detail.
+  .. math::
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+
+
+  References:
+    Kingma et al, `Adam: A Method for Stochastic Optimization
+    <https://arxiv.org/abs/1412.6980>`_, 2014
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  .. warning::
+    PyTorch and optax's implementation follow Algorithm 1 of [Kingma et al.
+    2014]. Note that TensorFlow used instead the formulation just before Section
+    2.1 of the paper. See https://github.com/deepmind/optax/issues/571 for more
+    detail.
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      example when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    nesterov: Whether to use Nesterov momentum. The solver with
+      nesterov=True is equivalent to the :class:`optax.nadam` optimizer, and
+      described in [Dozat 2016].
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adam(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          nesterov=nesterov,
+      ),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+nadam = functools.partial(adam, nesterov=True)
+nadam.__doc__ = (
+    r"""The NAdam optimizer.
+
+  Nadam is a variant of :class:`optax.adam` with Nesterov's momentum. The update
+  fule of this solver is as follows: 
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
+      \hat{m}_t &\leftarrow
+      \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}\\
+      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      \bar{\varepsilon}} + \varepsilon} \right)\\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
+
+  References:
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
 
   Args:
     learning_rate: A fixed global scaling factor.
@@ -237,12 +310,8 @@ def adam(
 
   Returns:
     The corresponding `GradientTransformation`.
-  """
-  return combine.chain(
-      transform.scale_by_adam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+"""
+)
 
 
 def adamw(
@@ -254,6 +323,8 @@ def adamw(
     mu_dtype: Optional[Any] = None,
     weight_decay: float = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """Adam with weight decay regularization.
 
@@ -262,8 +333,82 @@ def adamw(
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
 
+  This implementation can incorporate a momentum a la Nesterov introduced by
+  [Dozat 2016]. The resulting optimizer is then often referred as NAdamW.
+
   References:
-    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
+    Loshchilov et al, `Decoupled Weight Decay 
+    Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
+    nesterov: Whether to use Nesterov momentum. The solver with
+      nesterov=True is equivalent to the :class:`optax.nadamw` optimizer. This
+      modification is described in [Dozat 2016].
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_adam(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          nesterov=nesterov,
+      ),
+      transform.add_decayed_weights(weight_decay, mask),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+nadamw = functools.partial(adamw, nesterov=True)
+nadamw.__doc__ = (
+    r"""NAdamW optimizer, implemented as part of the AdamW optimizer.
+
+  NadamW is variant of :class:`optax.adamw` with Nesterov's momentum. Compared
+  to AdamW, this optimizer replaces the assignment
+
+  .. math::
+
+      \hat{m}_t \leftarrow m_t / {(1-\beta_1^t)}
+
+  with
+
+  .. math::
+
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+
+  References:
+    Loshchilov et al, `Decoupled Weight Decay 
+    Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
 
   Args:
     learning_rate: A fixed global scaling factor.
@@ -289,13 +434,9 @@ def adamw(
 
   Returns:
     The corresponding `GradientTransformation`.
-  """
-  return combine.chain(
-      transform.scale_by_adam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      transform.add_decayed_weights(weight_decay, mask),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+
+"""
+)
 
 
 def lion(

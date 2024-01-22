@@ -314,13 +314,20 @@ def scale_by_adam(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
+    *,
+    nesterov: bool = False
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
-    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+    Kingma et al, `Adam: A Method for Stochastic Optimization
+    <https://arxiv.org/abs/1412.6980>`_, 2014
 
-  WARNING: PyTorch and optax's adam follow Algorithm 1 of the Kingma
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_ 2016
+
+  .. warning::
+    PyTorch and optax's adam follow Algorithm 1 of the Kingma
     and Ba's Adam paper, if reproducing old results note that TensorFlow
     used instead the formulation just before Section 2.1 of the paper.
     See https://github.com/deepmind/optax/issues/571 for more detail.
@@ -333,6 +340,8 @@ def scale_by_adam(
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
+    nesterov: Whether to use Nesterov momentum. The variant of Adam with
+      Nesterov momentum is described in [Dozat 2016]
 
   Returns:
     A `GradientTransformation` object.
@@ -351,7 +360,16 @@ def scale_by_adam(
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = bias_correction(mu, b1, count_inc)
+    if nesterov:
+      mu_hat = jax.tree_util.tree_map(
+          lambda m, g: b1 * m + (1 - b1) * g,
+          bias_correction(mu, b1, numerics.safe_int32_increment(count_inc)),
+          bias_correction(updates, b1, count_inc))
+    else:
+      mu_hat = bias_correction(mu, b1, count_inc)
+    # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ
+    # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
+    # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
