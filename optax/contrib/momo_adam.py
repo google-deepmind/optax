@@ -105,14 +105,14 @@ def momo_adam(
         updates,
     )
     bc2 = 1-beta2**(count+1)
-    Dk = tu.tree_map(
+    precond = tu.tree_map(
       lambda eas: eps + jnp.sqrt(eas/bc2),
       exp_avg_sq
-    )    
+    )
     exp_avg_weighted = tu.tree_map(
       lambda ea, prec: ea/prec,
       exp_avg,
-      Dk
+      precond
     )
     exp_avg_norm = tree_utils.tree_vdot(exp_avg,exp_avg_weighted)
     gamma = beta1*state.gamma + (1-beta1)*tree_utils.tree_vdot(updates, params)
@@ -133,7 +133,7 @@ def momo_adam(
       -(alpha*weight_decay)/(1+alpha*weight_decay)*p
       - tau*ea/prec,
       exp_avg,
-      Dk,
+      precond,
       params
     )
     new_state = MomoAdamState(
