@@ -1,5 +1,5 @@
-Common Losses
-===============
+Losses
+======
 
 .. currentmodule:: optax
 

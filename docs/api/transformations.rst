@@ -1,4 +1,4 @@
-Optax Transformations
+Transformations
 =====================
 
 .. currentmodule:: optax

@@ -46,8 +46,8 @@ pip install git+https://github.com/google-deepmind/optax.git
 
 ## Quickstart
 
-Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api/common_optimizers.html) and
-[loss functions](https://optax.readthedocs.io/en/latest/api/common_losses.html).
+Optax contains implementations of [many popular optimizers](https://optax.readthedocs.io/en/latest/api/optimizers.html) and
+[loss functions](https://optax.readthedocs.io/en/latest/api/losses.html).
 For example, the following code snippet uses the Adam optimizer from `optax.adam`
 and the mean squared error from `optax.l2_loss`. We initialize the optimizer
 state using the `init` function and `params` of the model.

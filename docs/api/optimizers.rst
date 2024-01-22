@@ -1,5 +1,5 @@
-Common Optimizers
-===================
+Optimizers
+==========
 
 .. currentmodule:: optax
 
