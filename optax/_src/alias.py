@@ -253,11 +253,13 @@ def adam(
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
     nesterov: Whether to use Nesterov momentum. The solver with
-      nesterov=True is equivalent to the :class:`optax.nadam` optimizer, and
+      nesterov=True is equivalent to the :func:`optax.nadam` optimizer, and
       described in [Dozat 2016].
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.nadam`, :func:`optax.adamw`.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -276,8 +278,8 @@ nadam = functools.partial(adam, nesterov=True)
 nadam.__doc__ = (
     r"""The NAdam optimizer.
 
-  Nadam is a variant of :class:`optax.adam` with Nesterov's momentum. The update
-  fule of this solver is as follows: 
+  Nadam is a variant of :func:`optax.adam` with Nesterov's momentum. The update
+  rule of this solver is as follows:
 
   .. math::
 
@@ -296,6 +298,8 @@ nadam.__doc__ = (
     Dozat, `Incorporating Nesterov Momentum into Adam
     <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
 
+  .. versionadded:: 0.1.9
+
   Args:
     learning_rate: A fixed global scaling factor.
     b1: Exponential decay rate to track the first moment of past gradients.
@@ -310,6 +314,8 @@ nadam.__doc__ = (
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
 """
 )
 
@@ -365,11 +371,13 @@ def adamw(
       apply the weight decay to, and `False` for those you want to skip. Note
       that the Adam gradient transformations are applied to all parameters.
     nesterov: Whether to use Nesterov momentum. The solver with
-      nesterov=True is equivalent to the :class:`optax.nadamw` optimizer. This
+      nesterov=True is equivalent to the :func:`optax.nadamw` optimizer. This
       modification is described in [Dozat 2016].
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -389,7 +397,7 @@ nadamw = functools.partial(adamw, nesterov=True)
 nadamw.__doc__ = (
     r"""NAdamW optimizer, implemented as part of the AdamW optimizer.
 
-  NadamW is variant of :class:`optax.adamw` with Nesterov's momentum. Compared
+  NadamW is variant of :func:`optax.adamw` with Nesterov's momentum. Compared
   to AdamW, this optimizer replaces the assignment
 
   .. math::
@@ -409,6 +417,8 @@ nadamw.__doc__ = (
 
     Dozat, `Incorporating Nesterov Momentum into Adam
     <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  .. versionadded:: 0.1.9
 
   Args:
     learning_rate: A fixed global scaling factor.
@@ -435,6 +445,7 @@ nadamw.__doc__ = (
   Returns:
     The corresponding `GradientTransformation`.
 
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamw`.
 """
 )
 
@@ -810,9 +821,10 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
-  WARNING: PyTorch and optax's RMSprop implementations differ and could impact
-    performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
-    PyTorch uses $\sqrt{v} + \epsilon$. See
+  ..warning::
+    PyTorch and optax's RMSprop implementations differ and could impact
+    performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
+    whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
 
   References:
@@ -974,6 +986,8 @@ def adamax(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamaxw`.
   """
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps,),
@@ -1022,6 +1036,8 @@ def adamaxw(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamax`.
   """
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps),
