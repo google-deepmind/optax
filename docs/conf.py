@@ -29,7 +29,6 @@
 import inspect
 import os
 import sys
-import typing
 
 # The following typenames are re-written for public-facing type annotations.
 TYPE_REWRITES = [
@@ -111,12 +110,11 @@ if 'READTHEDOCS' in os.environ:
   _recursive_add_annotations_import()
   _monkey_patch_doc_strings()
 
-typing.get_type_hints = lambda obj, *unused: obj.__annotations__
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
 import optax
-import sphinxcontrib.katex as katex
+from sphinxcontrib import katex
 
 # -- Project information -----------------------------------------------------
 
@@ -139,12 +137,12 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.bibtex',
     'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
-    'sphinx_book_theme',
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
+    'sphinx_gallery.gen_gallery',
+    'sphinxcontrib.collections'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -163,9 +161,29 @@ autodoc_default_options = {
     'exclude-members': '__repr__, __str__, __weakref__',
 }
 
-# -- Options for bibtex ------------------------------------------------------
+# -- Options for sphinx-collections
 
-bibtex_bibfiles = []
+collections = {
+    'examples': {
+        'driver': 'copy_folder',
+        'source': '../examples/',
+        'ignore': 'BUILD'
+    }
+}
+
+
+# -- Options for sphinx-gallery ----------------------------------------------
+
+sphinx_gallery_conf = {
+    'examples_dirs': '_collections/examples',  # path to your example scripts
+    'gallery_dirs': (
+        '_collections/generated_examples/'
+    ),  # path to where to save gallery generated output
+    'ignore_pattern': r'_test\.py',  # no gallery for test of examples
+    'doc_module': 'optax',
+    'backreferences_dir': os.path.join('modules', 'generated')
+}
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -174,8 +192,10 @@ bibtex_bibfiles = []
 html_theme = 'sphinx_book_theme'
 
 html_theme_options = {
-    'logo_only': True,
     'show_toc_level': 2,
+    'repository_url': 'https://github.com/google-deepmind/optax',
+    'use_repository_button': True,     # add a "link to repository" button
+    'navigation_with_keys': False,
 }
 
 html_logo = 'images/logo.svg'
@@ -187,9 +207,12 @@ html_favicon = 'images/favicon.svg'
 html_static_path = []
 
 # -- Options for myst -------------------------------------------------------
-
-jupyter_execute_notebooks = 'force'
-execution_allow_errors = False
+nb_execution_mode = 'force'
+nb_execution_allow_errors = False
+nb_execution_excludepatterns = [
+    # slow examples
+    '_collections/examples/cifar10_resnet.ipynb'
+]
 
 # -- Options for katex ------------------------------------------------------
 
@@ -200,7 +223,9 @@ latex_macros = r"""
 
 # Translate LaTeX macros to KaTeX and add to options for HTML builder
 katex_macros = katex.latex_defs_to_katex_macros(latex_macros)
-katex_options = '{displayMode: true, fleqn: true, macros: {' + katex_macros + '}}'
+katex_options = (
+    '{displayMode: true, fleqn: true, macros: {' + katex_macros + '}}'
+)
 
 # Add LaTeX macros for LATEX builder
 latex_elements = {'preamble': latex_macros}
@@ -238,9 +263,14 @@ def linkcode_resolve(domain, info):
     return None
 
   # TODO(slebedev): support tags after we release an initial version.
-  return 'https://github.com/deepmind/optax/tree/master/optax/%s#L%d#L%d' % (
-      os.path.relpath(filename, start=os.path.dirname(
-          optax.__file__)), lineno, lineno + len(source) - 1)
+  return (
+      'https://github.com/google-deepmind/optax/tree/main/optax/%s#L%d#L%d'
+      % (
+          os.path.relpath(filename, start=os.path.dirname(optax.__file__)),
+          lineno,
+          lineno + len(source) - 1,
+      )
+  )
 
 
 # -- Intersphinx configuration -----------------------------------------------

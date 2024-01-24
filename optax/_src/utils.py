@@ -14,7 +14,7 @@
 # ==============================================================================
 """Utility functions for testing."""
 
-from typing import Optional, Tuple, Sequence
+from typing import Optional, Sequence
 
 import chex
 import jax
@@ -59,8 +59,25 @@ def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
+  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)
+  if a_dim != 3:
+    raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
+  if new_diags_dim != 2:
+    raise ValueError(
+        f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
+    )
   n, d, d1 = a.shape
-  assert d == d1
+  n_diags, d_diags = new_diags.shape
+  if d != d1:
+    raise ValueError(
+        f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
+        f'got {(n, d, d1)} instead'
+    )
+  if d_diags != d or n_diags != n:
+    raise ValueError(
+        f'Shape mismatch: expected `new_diags.shape` to be {(n, d)}, '
+        f'got {(n_diags, d_diags)} instead'
+    )
 
   indices1 = jnp.repeat(jnp.arange(n), d)
   indices2 = jnp.tile(jnp.arange(d), n)
@@ -115,12 +132,12 @@ def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
 
 
 def _scale_gradient_fwd(inputs: chex.ArrayTree,
-                        scale: float) -> Tuple[chex.ArrayTree, float]:
+                        scale: float) -> tuple[chex.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(scale: float,
-                        g: chex.ArrayTree) -> Tuple[chex.ArrayTree, None]:
+                        g: chex.ArrayTree) -> tuple[chex.ArrayTree, None]:
   return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
 
 

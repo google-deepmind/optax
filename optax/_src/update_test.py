@@ -32,7 +32,7 @@ class UpdateTest(chex.TestCase):
     exp_params = jax.tree_util.tree_map(lambda t: 3 * t, params)
     new_params = self.variant(update.apply_updates)(params, grads)
 
-    chex.assert_tree_all_close(
+    chex.assert_trees_all_close(
         exp_params, new_params, atol=1e-10, rtol=1e-5)
 
   @chex.all_variants
@@ -55,7 +55,7 @@ class UpdateTest(chex.TestCase):
     new_params = self.variant(
         update.incremental_update)(params_2, params_1, 0.5)
 
-    chex.assert_tree_all_close(
+    chex.assert_trees_all_close(
         exp_params, new_params, atol=1e-10, rtol=1e-5)
 
   @chex.all_variants
@@ -70,12 +70,12 @@ class UpdateTest(chex.TestCase):
       for i in range(1, update_period):
         new_params = update_fn(
             params_2, params_1, j*update_period+i, update_period)
-        chex.assert_tree_all_close(
+        chex.assert_trees_all_close(
             params_1, new_params, atol=1e-10, rtol=1e-5)
 
       new_params = update_fn(
           params_2, params_1, (j+1)*update_period, update_period)
-      chex.assert_tree_all_close(
+      chex.assert_trees_all_close(
           params_2, new_params, atol=1e-10, rtol=1e-5)
 
 

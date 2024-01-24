@@ -4,4 +4,4 @@
 
 This proposal authored by [Dian Wu](https://github.com/wdphy16) lead to
 implementations that may be found in
-[optax.experimental](https://optax.readthedocs.io/en/latest/api.html#experimental).
+[optax.experimental](https://optax.readthedocs.io/en/latest/api/contrib.html?complex-valued-optimization#complex-valued-optimization).

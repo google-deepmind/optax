@@ -19,7 +19,7 @@ from absl.testing import parameterized
 
 import chex
 import jax
-from jax.config import config
+from jax import config
 import jax.numpy as jnp
 
 from optax._src import alias
@@ -40,7 +40,7 @@ ALL_MODULES = [
     ('scale_by_stddev', transform.scale_by_stddev, {}),
     ('adam', transform.scale_by_adam, {}),
     ('scale', transform.scale, dict(step_size=3.0)),
-    ('additive_weight_decay', transform.additive_weight_decay,
+    ('add_decayed_weights', transform.add_decayed_weights,
      dict(weight_decay=0.1)),
     ('scale_by_schedule', transform.scale_by_schedule,
      dict(step_size_fn=lambda x: x * 0.1)),
@@ -55,8 +55,6 @@ ALL_MODULES = [
     ('noisy_sgd', alias.noisy_sgd, dict(learning_rate=0.1)),
     ('rmsprop', alias.rmsprop, dict(learning_rate=0.1)),
     ('sgd', alias.sgd, dict(learning_rate=0.1)),
-    ('dpsgd', alias.dpsgd,
-     dict(learning_rate=0.1, l2_norm_clip=0.9, noise_multiplier=1.1, seed=42)),
 ]
 
 

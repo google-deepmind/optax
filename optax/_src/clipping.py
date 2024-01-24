@@ -17,7 +17,6 @@
 Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
-from typing import Tuple
 
 import chex
 import jax
@@ -125,8 +124,9 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def per_example_global_norm_clip(grads: chex.Array,
-                                 l2_norm_clip: float) -> Tuple[chex.Array, int]:
+def per_example_global_norm_clip(
+    grads: list[chex.Array], l2_norm_clip: float
+) -> tuple[list[chex.Array], jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
   References:
@@ -152,6 +152,91 @@ def per_example_global_norm_clip(grads: chex.Array,
   divisors = jnp.maximum(global_grad_norms / l2_norm_clip, 1.0)
   num_clipped = jnp.greater(divisors, 1.0).sum()
   clipped_sum = [(jnp.moveaxis(g, 0, -1) / divisors).sum(-1) for g in grads]
+  return clipped_sum, num_clipped
+
+
+def per_example_layer_norm_clip(
+    grads: list[chex.Array],
+    global_l2_norm_clip: float,
+    uniform: bool = True,
+    eps: float = 1e-8,
+) -> tuple[list[chex.Array], list[chex.Array]]:
+  """Applies gradient clipping per-example using per-layer norms.
+
+  References:
+    [McMahan et al, 2012](https://arxiv.org/abs/1710.06963)]
+
+  Args:
+    grads: flattened update; i.e. a list of gradients in which each item is
+      the gradient for one layer; the function expects these to have a batch
+      dimension on the 0th axis.
+    global_l2_norm_clip: overall L2 clip norm to use.
+    uniform: If `True`, per-layer clip norm is global_l2_norm_clip/sqrt(L),
+      where L is the number of layers. Otherwise, per-layer clip norm is
+      global_l2_norm_clip * sqrt(f), where f is the fraction of total model
+      parameters that are in this layer.
+    eps: Small positive value to add to norms to avoid possible division by
+      zero.
+
+  Let C = `global_l2_norm_clip value`. Then per-layer clipping is done as
+  follows:
+  (1) If `uniform` is `True`, each of the K layers has an individual clip
+      norm of C / sqrt(K).
+  (2) If `uniform` is `False`, each of the K layers has an individual clip
+      norm of C * sqrt(D_i / D) where D_i is the number of parameters in
+      layer i, and D is the total number of parameters in the model.
+
+  Returns:
+    A tuple containing sum of the clipped per-example grads and the number of
+    per-example grads that were clipped for each layer.
+  """
+  bsize = grads[0].shape[0]
+
+  if any(g.ndim == 0 or bsize != g.shape[0] for g in grads):
+    raise ValueError(
+        'Unlike other transforms, `per_example_layer_norm_clip` expects'
+        ' `grads` to have a batch dimension in the 0th axis; got shapes:'
+        f' {(g.shape for g in grads)}.'
+    )
+
+  num_layers = len(grads)
+
+  # Compute per-layer clip norms, based on whether we are using uniform
+  # variant or not.
+  if uniform:
+    # Create list of length `num_layers` of per-layer clip norm.
+    layer_clip_norms = (
+        global_l2_norm_clip * (1.0 / num_layers) ** 0.5,
+    ) * num_layers
+  else:
+    total_params = sum(g[0].size for g in grads)
+    layer_clip_norms = tuple(
+        global_l2_norm_clip * (g[0].size / float(total_params)) ** 0.5
+        for g in grads
+    )
+
+  # Compute per-layer grad norms.
+  def map_layer_norm(grads_list):
+    return [jnp.linalg.norm(g, ord=None, axis=None) for g in grads_list]
+
+  layer_grad_norms_per_example = jax.vmap(map_layer_norm)(grads)
+
+  # Perform clipping.
+  divisors = (
+      tuple(
+          jnp.maximum(
+              layer_grad_norm / (layer_clip_norm + eps), 1.0
+          )
+          for layer_grad_norm, layer_clip_norm in zip(
+              layer_grad_norms_per_example, layer_clip_norms
+          )
+      )
+  )
+  num_clipped = [jnp.greater(divisor, 1.0).sum() for divisor in divisors]
+  clipped_sum = [
+      (g / jnp.expand_dims(d, axis=[i for i in range(1, g.ndim)])).sum(0)
+      for g, d in zip(grads, divisors)
+  ]
   return clipped_sum, num_clipped
 
 

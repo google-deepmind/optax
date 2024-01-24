@@ -39,11 +39,11 @@ class ClippingTest(absltest.TestCase):
     # For a sufficiently high delta the update should not be changed.
     clipper = clipping.clip(1e6)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(clipped_updates, clipped_updates)
+    chex.assert_trees_all_close(clipped_updates, clipped_updates)
     # Clipping at delta=1 should make all updates exactly 1.
     clipper = clipping.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_tree_all_close(
+    chex.assert_trees_all_close(
         clipped_updates, jax.tree_util.tree_map(jnp.ones_like, updates))
 
   def test_clip_by_block_rms(self):
@@ -57,7 +57,7 @@ class ClippingTest(absltest.TestCase):
       self.assertAlmostEqual(rmf_fn(updates[1]), 1. / i)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
 
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
@@ -69,7 +69,7 @@ class ClippingTest(absltest.TestCase):
           linear_algebra.global_norm(updates), 1. / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
 
   def test_adaptive_grad_clip(self):
     updates = self.per_step_updates
@@ -89,7 +89,54 @@ class ClippingTest(absltest.TestCase):
 
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None, params)
-      chex.assert_tree_all_close(updates, updates_step)
+      chex.assert_trees_all_close(updates, updates_step)
+
+  def test_per_example_layer_norm_clip(self):
+    # Test data for a model with two layers and a batch size of 4. The
+    # 0th layer has one parameter (shape (1)), and the 1st layer has shape
+    # (3, 3, 2).
+    grads_flat = [
+        jnp.array([[0.5], [1.5], [-2.0], [3.0]]),
+        jnp.ones([4, 3, 3, 2], dtype=jnp.float32),
+    ]
+
+    with self.subTest(name='Uniform Variant'):
+      sum_clipped_grads, num_clipped = clipping.per_example_layer_norm_clip(
+          grads_flat, global_l2_norm_clip=jnp.sqrt(2), uniform=True
+      )
+
+      # For the uniform variant, with global_l2_norm_clip=sqrt(2), the per-layer
+      # clip norm is 1.0. Thus the per-example per-layer clipped grads are
+      # [[0.5], [1.0], [-1.0], [1.0]] and [1 / sqrt(18) ... ]. The sum of
+      # these over the 4 input gradients are [1.5] and [4 / sqrt(18) ...].
+      self.assertAlmostEqual(sum_clipped_grads[0], 1.5)
+      for element in sum_clipped_grads[1].flatten():
+        self.assertAlmostEqual(element, 4 / jnp.sqrt(18), places=4)
+
+      # The three values in grads_flat[0] with magnitude > 1.0 are clipped, as
+      # are all four values in grads_flat[1].
+      self.assertEqual(num_clipped[0], 3)
+      self.assertEqual(num_clipped[1], 4)
+
+    with self.subTest(name='Scaled Variant'):
+      sum_clipped_grads, num_clipped = clipping.per_example_layer_norm_clip(
+          grads_flat, global_l2_norm_clip=jnp.sqrt(19), uniform=False
+      )
+
+      # For the scaled variant, with global_l2_norm_clip=sqrt(19), the per-layer
+      # clip norm for the 0th layer is 1.0, and the per-layer clip norm for
+      # the 1st layer is sqrt(18). Thus the per-example per-layer clipped grads
+      # are [[0.5], [1.0], [-1.0], [1.0]] and [[1.0)] ... ]. The sum of
+      # these over the 4 input gradients are [1.5] and [4.0 ...].
+      self.assertAlmostEqual(sum_clipped_grads[0], 1.5)
+      for element in sum_clipped_grads[1].flatten():
+        self.assertAlmostEqual(element, 4.0)
+
+      # The three values in grads_flat[0] with magnitude > 1.0 are clipped. The
+      # grad norms for grads_flat[1] are all equal to the per-layer clip norm,
+      # so none of these grads are clipped.
+      self.assertEqual(num_clipped[0], 3)
+      self.assertEqual(num_clipped[1], 0)
 
 
 if __name__ == '__main__':

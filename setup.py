@@ -31,16 +31,6 @@ def _get_version():
     raise ValueError('`__version__` not defined in `optax/__init__.py`')
 
 
-def _parse_requirements(path):
-
-  with open(os.path.join(_CURRENT_DIR, path)) as f:
-    return [
-        line.rstrip()
-        for line in f
-        if not (line.isspace() or line.startswith('#'))
-    ]
-
-
 setup(
     name='optax',
     version=_get_version(),
@@ -53,12 +43,8 @@ setup(
     author_email='optax-dev@google.com',
     keywords='reinforcement-learning python machine learning',
     packages=find_namespace_packages(exclude=['*_test.py']),
-    install_requires=_parse_requirements(
-        os.path.join(_CURRENT_DIR, 'requirements', 'requirements.txt')),
-    tests_require=_parse_requirements(
-        os.path.join(_CURRENT_DIR, 'requirements', 'requirements-test.txt')),
     zip_safe=False,  # Required for full installation.
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
