@@ -51,16 +51,16 @@ def tree_map_params(
   `transform_non_params` can be used to replace any remaining fields as
   required, in this case, we replace those fields by None.
 
-  >>> params, specs = ...  # Trees with the same shape
+  >>> params, specs = jnp.array(0.), jnp.array(0.)  # Trees with the same shape
+  >>> opt = optax.sgd(1e-3)
   >>> state = opt.init(params)
-  >>>
   >>> opt_specs = optax.tree_map_params(
-  >>>     opt,
-  >>>     lambda _, spec: spec,
-  >>>     state,
-  >>>     specs,
-  >>>     transform_non_params=lambda _: None,
-  >>> )
+  ...     opt,
+  ...     lambda _, spec: spec,
+  ...     state,
+  ...     specs,
+  ...     transform_non_params=lambda _: None,
+  ...     )
 
   Args:
     initable: A callable taking parameters and returning an optimizer state, or
