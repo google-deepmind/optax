@@ -76,6 +76,8 @@ cd ..
 # Build Sphinx docs.
 pip install -e ".[docs]"
 cd docs && make html
+# run doctests
+make doctest
 cd ..
 
 set +u

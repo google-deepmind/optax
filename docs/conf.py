@@ -145,6 +145,13 @@ extensions = [
     'sphinxcontrib.collections'
 ]
 
+# so we don't have to do the canonical imports on every doctest
+doctest_global_setup = '''
+import optax
+import jax
+import jax.numpy as jnp
+'''
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 

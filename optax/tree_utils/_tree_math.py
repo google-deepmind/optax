@@ -119,10 +119,10 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
     inner product between ``tree_x`` and ``tree_y``, a scalar value.
 
   >>> optax.tree_utils.tree_vdot(
-  >>>   {a: jnp.array([1, 2]), b: jnp.array([1, 2])},
-  >>>   {a: jnp.array([-1, -1]), b: jnp.array([1, 1])},
-  >>> )
-  0.0
+  ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
+  ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
+  ... )
+  Array(0, dtype=int32)
 
   Implementation detail: we upcast the values to the highest precision to avoid
   numerical issues.
