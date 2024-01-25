@@ -57,3 +57,7 @@ Multi-step update
    :members:
 .. autoclass:: MultiStepsState
    :members:
+.. autoclass:: ShouldSkipUpdateFunction
+   :members:
+.. autofunction:: skip_large_updates
+.. autofunction:: skip_not_finite
