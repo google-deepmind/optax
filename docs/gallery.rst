@@ -184,7 +184,7 @@ Example gallery
 Contrib Examples
 ----------------
 
-Examples that make use of the :ref:`contrib` module.
+Examples that make use of the :doc:`api/contrib` module.
 
 
 .. raw:: html
