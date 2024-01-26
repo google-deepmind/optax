@@ -21,8 +21,7 @@ jobs:
       run: |
         pip install .
         RELEASE_VER=${GITHUB_REF#refs/*/}
-        VER = python -c "import optax; print(optax.__version__)"
-        PACKAGE_VER="v`VER`"
+        PACKAGE_VER="v`python -c "import optax; print(optax.__version__)"`"
         if [ $RELEASE_VER != $PACKAGE_VER ]
         then
           echo "package ver. ($PACKAGE_VER) != release ver. ($RELEASE_VER)"; exit 1
