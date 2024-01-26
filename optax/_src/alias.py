@@ -1082,12 +1082,73 @@ def rprop(
     The corresponding `GradientTransformation`.
   """
   return combine.chain(
-      transform.scale_by_rprop(
-          learning_rate=learning_rate,
-          eta_minus=eta_minus,
-          eta_plus=eta_plus,
-          min_step_size=min_step_size,
-          max_step_size=max_step_size,
-      ),
-      transform.scale(-1.0),
+    transform.scale_by_rprop(
+      learning_rate=learning_rate,
+      eta_minus=eta_minus,
+      eta_plus=eta_plus,
+      min_step_size=min_step_size,
+      max_step_size=max_step_size,
+    ),
+    transform.scale(-1.0),
   )
+
+
+def ftrl(
+  learning_rate: float = 0.001,
+  learning_rate_power: float = 0.5,
+  lambda_1: float = 0,
+  lambda_2: float = 0,
+  beta: float = 0
+  ) -> base.GradientTransformation:
+  """The FTRL optimizer.
+  
+  FTRL, or Follow the Regularized Leader, is an optimization algorithm developed
+  at Google for click-through rate prediction in the early 2010s. It is most
+  suitable for shallow models with large and sparse feature spaces.
+  
+  McMahan et al. gives a closed form update for the parameters as,
+  
+  .. math::
+  
+    \begin{align*}
+      w_{t,i} = \begin{cases} 
+        0 & \text{if } |z_i| \leq \lambda_1 \\
+        -\left( \frac{\beta + \sqrt{n_i}}{\alpha} + \lambda_2 \right)^{-1} \left( z_i - \text{sgn}(z_i)\lambda_1 \right) & \text{otherwise}.
+      \end{cases}
+      
+      \sigma_i = \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right)
+      z_i \leftarrow z_i + g_i - \sigma_i w_{t,i}
+      n_i \leftarrow n_i + g_i^2
+    \end{align*}
+    
+  However, since `params` is not always passed into the `update` function, this
+  implementation finds the gradient transformation by computing :math:`w_t`,
+  updating :math:`z_i` and :math:`n_i`, computing :math:`w_{t+1}`, and then
+  taking the difference :math:`w_{t+1} - w_t`.
+  
+  References:
+    McMahan et al, 2013: https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf>
+    Keras implementation: https://keras.io/api/optimizers/ftrl
+  
+  Args:
+    learning_rate: learning rate (same as alpha in the paper)
+    learning_rate_power: Controls how the learning rate decreases during
+      training. Use zero for a fixed learning rate.
+    # initial_accumulator_value: The starting value for accumulators
+    lambda_1: l1 regularization strength
+    lambda_2: l2 regularization strength
+    beta: same as beta in the paper
+  
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+    transform.scale_by_ftrl(
+      learning_rate=learning_rate,
+      learning_rate_power=learning_rate_power,
+      lambda_1=lambda_1,
+      lambda_2=lambda_2,
+      beta=beta,
+    )
+  )
+  

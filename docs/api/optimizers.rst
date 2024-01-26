@@ -12,6 +12,7 @@ Optimizers
     adamax
     adamaxw
     amsgrad
+    ftrl
     fromage
     lamb
     lars
@@ -60,6 +61,10 @@ AdamW
 AMSGrad
 ~~~~~~~
 .. autofunction:: amsgrad
+
+FTRL
+~~~~
+.. autofunction:: ftrl
 
 Fromage
 ~~~~~~~

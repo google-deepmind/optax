@@ -43,6 +43,8 @@ Transformations
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_ftrl
+    ScaleByFtrlState
     scale_by_lion
     ScaleByLionState
     scale_by_novograd
@@ -174,6 +176,10 @@ Transformations and states
 
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
+    :members:
+
+.. autofunction:: scale_by_ftrl
+.. autoclass:: ScaleByFTRLState
     :members:
 
 .. autofunction:: scale_by_lion
