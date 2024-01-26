@@ -4,6 +4,14 @@
 Example gallery
 ===============
 
+.. toctree::
+   :glob:
+   :hidden:
+   :maxdepth: 1
+
+   _collections/examples/README.md
+   _collections/examples/contrib/README.md
+
 .. raw:: html
 
     <div class="sphx-glr-thumbnails">
