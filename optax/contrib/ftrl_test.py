@@ -63,7 +63,10 @@ class FtrlTest(chex.TestCase):
       dtype=(jnp.float32,),
   )
   def test_optimization(self, opt_name, target, dtype):
-    opt = getattr(contrib, opt_name)()
+    opt = getattr(contrib, opt_name)(learning_rate=0.1,
+                                     lambda_1 = 2,
+                                     lambda_2 = 2,
+                                     beta = 0)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit

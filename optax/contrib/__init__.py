@@ -20,6 +20,8 @@ from optax.contrib.complex_valued import split_real_and_imaginary
 from optax.contrib.complex_valued import SplitRealAndImaginaryState
 from optax.contrib.dadapt_adamw import dadapt_adamw
 from optax.contrib.dadapt_adamw import DAdaptAdamWState
+from optax.contrib.ftrl import ftrl
+from optax.contrib.ftrl import FtrlState
 from optax.contrib.mechanic import MechanicState
 from optax.contrib.mechanic import mechanize
 from optax.contrib.privacy import differentially_private_aggregate
