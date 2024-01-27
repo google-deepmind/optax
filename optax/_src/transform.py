@@ -1383,34 +1383,32 @@ class ScaleByFtrlState(NamedTuple):
     
     
 def scale_by_ftrl(
-  learning_rate: float = 0.001,
-  learning_rate_power: float = 0.5,
+  learning_rate: float = 1e-3,
+  initial_accumulator_value: float = 0,
   lambda_1: float = 0,
   lambda_2: float = 0,
-  beta: float = 0,
+  beta: float = 1,
 ) -> base.GradientTransformation:
-  """Computes FTRL updates.
+  """Scale updates according to FTRL algorithm.
   
   References:
-    McMahan et al, `Ad Click Prediction: a View from the Trenchehttps://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf>`_, 2013
+    [McMahan et al](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf)
     [Keras implementation](https://keras.io/api/optimizers/ftrl)
     
   Args:
-    learning_rate: learning rate (same as alpha in the paper)
-    learning_rate_power: Controls how the learning rate decreases during
-      training. Use zero for a fixed learning rate.
-    # initial_accumulator_value: The starting value for accumulators
-    lambda_1: l1 regularization strength
-    lambda_2: l2 regularization strength
-    beta: same as beta in the paper
+    learning_rate: learning rate (same as alpha in the paper).
+    initial_accumulator_value: the starting value for accumulators.
+    lambda_1: l1 regularization strength. must be greater than or equal to 0.
+    lambda_2: l2 regularization strength. must be greater than or equal to 0.
+    beta: same as beta in the paper. must be greater than or equal to 0.
   
   Returns:
     A `GradientTransformation` object.
   """
   
   def init_fn(params: base.Params) -> ScaleByFtrlState:
-    z = jax.tree_util.tree_map(jnp.zeros_like, params)
-    n = jax.tree_util.tree_map(jnp.zeros_like, params)
+    z = jax.tree_util.tree_map(lambda t: jnp.full_like(t, initial_accumulator_value), params)
+    n = jax.tree_util.tree_map(lambda t: jnp.full_like(t, initial_accumulator_value), params)
     return ScaleByFtrlState(z=z, n=n)
     
   def update_fn(updates: base.Updates, 
@@ -1421,37 +1419,32 @@ def scale_by_ftrl(
     n = state.n
     alpha = learning_rate
     
-    # find w_t
+    # compute w_t
     mask = jax.tree_util.tree_map(lambda x: jnp.abs(x) >= lambda_1, z) # dtype is bool
     sgn_z = jax.tree_util.tree_map(jnp.sign, z)
-    numerator = tu.tree_scalar_mul(lambda_1, sgn_z)
-    numerator = tu.tree_sub(numerator, z)
+    numerator = tu.tree_sub(tu.tree_scalar_mul(lambda_1, sgn_z), z)
     
     root_n = jax.tree_util.tree_map(jnp.sqrt, n)
     denominator = jax.tree_util.tree_map(lambda x: (x + beta) / alpha + lambda_2, root_n)
-    prev_w = tu.tree_div(numerator, denominator)
     prev_w = tu.tree_mul(tu.tree_div(numerator, denominator), mask) # multiplying float with bool
     
     # update z, n
     g_squared = jax.tree_util.tree_map(jnp.square, updates)
     inside = tu.tree_add(n, g_squared)
     root_inside = jax.tree_util.tree_map(jnp.sqrt, inside)
-    sigma = tu.tree_sub(root_inside, root_n)
-    sigma = tu.tree_scalar_mul(1 / alpha, sigma)
+    sigma = tu.tree_scalar_mul(1 / alpha, tu.tree_sub(root_inside, root_n))
     
     z = tu.tree_sub(tu.tree_add(z, updates), tu.tree_mul(sigma, prev_w))
     n = inside
     
-    # find w_t+1
+    # compute w_t+1
     mask = jax.tree_util.tree_map(lambda x: jnp.abs(x) >= lambda_1, z)
     sgn_z = jax.tree_util.tree_map(jnp.sign, z)
-    numerator = tu.tree_scalar_mul(lambda_1, sgn_z)
-    numerator = tu.tree_sub(numerator, z)
+    numerator = tu.tree_sub(tu.tree_scalar_mul(lambda_1, sgn_z), z)
     
     root_n = jax.tree_util.tree_map(jnp.sqrt, n)
     denominator = jax.tree_util.tree_map(lambda x: (x + beta) / alpha + lambda_2, root_n)
-    w = tu.tree_div(numerator, denominator)
-    w = tu.tree_mul(w, mask)
+    w = tu.tree_mul(tu.tree_div(numerator, denominator), mask)
     
     return tu.tree_sub(w, prev_w), ScaleByFtrlState(z=z, n=n)
     

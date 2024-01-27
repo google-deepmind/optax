@@ -30,6 +30,7 @@ from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
 from optax._src.alias import fromage
+from optax._src.alias import ftrl
 from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import lion
@@ -104,6 +105,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_ftrl
 from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
@@ -121,6 +123,7 @@ from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByFtrlState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
@@ -251,6 +254,7 @@ __all__ = (
     "FactoredState",
     "flatten",
     "fromage",
+    "ftrl",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",
@@ -308,6 +312,7 @@ __all__ = (
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
+    "scale_by_ftrl",
     "scale_by_lion",
     "scale_by_factored_rms",
     "scale_by_novograd",
@@ -326,6 +331,7 @@ __all__ = (
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
+    "ScaleByFtrlState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",

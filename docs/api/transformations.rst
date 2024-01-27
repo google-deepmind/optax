@@ -179,7 +179,7 @@ Transformations and states
     :members:
 
 .. autofunction:: scale_by_ftrl
-.. autoclass:: ScaleByFTRLState
+.. autoclass:: ScaleByFtrlState
     :members:
 
 .. autofunction:: scale_by_lion

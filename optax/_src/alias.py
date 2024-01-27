@@ -1094,13 +1094,13 @@ def rprop(
 
 
 def ftrl(
-  learning_rate: float = 0.001,
-  learning_rate_power: float = 0.5,
+  learning_rate: float = 1e-3,
+  initial_accumulator_value: float = 0,
   lambda_1: float = 0,
   lambda_2: float = 0,
-  beta: float = 0
+  beta: float = 1
   ) -> base.GradientTransformation:
-  """The FTRL optimizer.
+  r"""The FTRL optimizer.
   
   FTRL, or Follow the Regularized Leader, is an optimization algorithm developed
   at Google for click-through rate prediction in the early 2010s. It is most
@@ -1114,10 +1114,9 @@ def ftrl(
       w_{t,i} = \begin{cases} 
         0 & \text{if } |z_i| \leq \lambda_1 \\
         -\left( \frac{\beta + \sqrt{n_i}}{\alpha} + \lambda_2 \right)^{-1} \left( z_i - \text{sgn}(z_i)\lambda_1 \right) & \text{otherwise}.
-      \end{cases}
-      
-      \sigma_i = \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right)
-      z_i \leftarrow z_i + g_i - \sigma_i w_{t,i}
+      \end{cases} \\
+      \sigma_i = \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right) \\
+      z_i \leftarrow z_i + g_i - \sigma_i w_{t,i} \\
       n_i \leftarrow n_i + g_i^2
     \end{align*}
     
@@ -1127,17 +1126,15 @@ def ftrl(
   taking the difference :math:`w_{t+1} - w_t`.
   
   References:
-    McMahan et al, 2013: https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf>
+    McMahan et al, 2013: https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf
     Keras implementation: https://keras.io/api/optimizers/ftrl
   
   Args:
-    learning_rate: learning rate (same as alpha in the paper)
-    learning_rate_power: Controls how the learning rate decreases during
-      training. Use zero for a fixed learning rate.
-    # initial_accumulator_value: The starting value for accumulators
-    lambda_1: l1 regularization strength
-    lambda_2: l2 regularization strength
-    beta: same as beta in the paper
+    learning_rate: learning rate (same as alpha in the paper).
+    initial_accumulator_value: the starting value for accumulators.
+    lambda_1: l1 regularization strength. must be greater than or equal to 0.
+    lambda_2: l2 regularization strength. must be greater than or equal to 0.
+    beta: same as beta in the paper. must be greater than or equal to 0.
   
   Returns:
     The corresponding `GradientTransformation`.
@@ -1145,7 +1142,7 @@ def ftrl(
   return combine.chain(
     transform.scale_by_ftrl(
       learning_rate=learning_rate,
-      learning_rate_power=learning_rate_power,
+      initial_accumulator_value=initial_accumulator_value,
       lambda_1=lambda_1,
       lambda_2=lambda_2,
       beta=beta,
