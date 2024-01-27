@@ -1100,6 +1100,7 @@ def ftrl(
   lambda_2: float = 0,
   beta: float = 1
   ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   r"""The FTRL optimizer.
   
   FTRL, or Follow the Regularized Leader, is an optimization algorithm developed
@@ -1113,7 +1114,8 @@ def ftrl(
     \begin{align*}
       w_{t,i} = \begin{cases} 
         0 & \text{if } |z_i| \leq \lambda_1 \\
-        -\left( \frac{\beta + \sqrt{n_i}}{\alpha} + \lambda_2 \right)^{-1} \left( z_i - \text{sgn}(z_i)\lambda_1 \right) & \text{otherwise}.
+        -\left( \frac{\beta + \sqrt{n_i}}{\alpha} + \lambda_2 \right)^{-1} 
+          \left( z_i - \text{sgn}(z_i)\lambda_1 \right) & \text{otherwise}.
       \end{cases} \\
       \sigma_i = \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right) \\
       z_i \leftarrow z_i + g_i - \sigma_i w_{t,i} \\
@@ -1139,6 +1141,7 @@ def ftrl(
   Returns:
     The corresponding `GradientTransformation`.
   """
+  # pylint: enable=line-too-long
   return combine.chain(
     transform.scale_by_ftrl(
       learning_rate=learning_rate,

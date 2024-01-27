@@ -668,13 +668,14 @@ def scale_by_yogi(
     eps_root: float = 0.0,
     initial_accumulator_value: float = 1e-6
 ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   """Rescale updates according to the Yogi algorithm.
 
   Supports complex numbers, see
   https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 
   References:
-    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html)
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -688,6 +689,7 @@ def scale_by_yogi(
   Returns:
     A `GradientTransformation` object.
   """
+  # pylint: enable=line-too-long
 
   def init_fn(params):
     value_like = lambda p: jnp.full_like(p, initial_accumulator_value)
@@ -1377,11 +1379,11 @@ def scale_by_distance_over_gradients(
 
 
 class ScaleByFtrlState(NamedTuple):
-    """State of the `GradientTransformation` returned by `ftrl`."""
-    z: base.Updates
-    n: base.Updates
-    
-    
+  """State for FTRL."""
+  z: base.Updates
+  n: base.Updates
+
+
 def scale_by_ftrl(
   learning_rate: float = 1e-3,
   initial_accumulator_value: float = 0,
@@ -1389,12 +1391,13 @@ def scale_by_ftrl(
   lambda_2: float = 0,
   beta: float = 1,
 ) -> base.GradientTransformation:
+  # pylint: disable=line-too-long
   """Scale updates according to FTRL algorithm.
   
   References:
     [McMahan et al](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf)
     [Keras implementation](https://keras.io/api/optimizers/ftrl)
-    
+  
   Args:
     learning_rate: learning rate (same as alpha in the paper).
     initial_accumulator_value: the starting value for accumulators.
@@ -1405,47 +1408,53 @@ def scale_by_ftrl(
   Returns:
     A `GradientTransformation` object.
   """
-  
+  # pylint: enable=line-too-long
+
   def init_fn(params: base.Params) -> ScaleByFtrlState:
-    z = jax.tree_util.tree_map(lambda t: jnp.full_like(t, initial_accumulator_value), params)
-    n = jax.tree_util.tree_map(lambda t: jnp.full_like(t, initial_accumulator_value), params)
+    z = jax.tree_util.tree_map(
+      lambda t: jnp.full_like(t, initial_accumulator_value), params)
+    n = jax.tree_util.tree_map(
+      lambda t: jnp.full_like(t, initial_accumulator_value), params)
     return ScaleByFtrlState(z=z, n=n)
-    
-  def update_fn(updates: base.Updates, 
-                state: ScaleByFtrlState, 
+
+  def update_fn(updates: base.Updates,
+                state: ScaleByFtrlState,
                 params: Optional[base.Params] = None,
                 ) -> Tuple[base.Updates, ScaleByFtrlState]:
+    del params
     z = state.z
     n = state.n
     alpha = learning_rate
-    
+
     # compute w_t
-    mask = jax.tree_util.tree_map(lambda x: jnp.abs(x) >= lambda_1, z) # dtype is bool
+    mask = jax.tree_util.tree_map(lambda x: jnp.abs(x) >= lambda_1, z)
     sgn_z = jax.tree_util.tree_map(jnp.sign, z)
     numerator = tu.tree_sub(tu.tree_scalar_mul(lambda_1, sgn_z), z)
-    
+
     root_n = jax.tree_util.tree_map(jnp.sqrt, n)
-    denominator = jax.tree_util.tree_map(lambda x: (x + beta) / alpha + lambda_2, root_n)
-    prev_w = tu.tree_mul(tu.tree_div(numerator, denominator), mask) # multiplying float with bool
-    
+    denominator = jax.tree_util.tree_map(
+      lambda x: (x + beta) / alpha + lambda_2, root_n)
+    prev_w = tu.tree_mul(tu.tree_div(numerator, denominator), mask)
+
     # update z, n
     g_squared = jax.tree_util.tree_map(jnp.square, updates)
     inside = tu.tree_add(n, g_squared)
     root_inside = jax.tree_util.tree_map(jnp.sqrt, inside)
     sigma = tu.tree_scalar_mul(1 / alpha, tu.tree_sub(root_inside, root_n))
-    
+
     z = tu.tree_sub(tu.tree_add(z, updates), tu.tree_mul(sigma, prev_w))
     n = inside
-    
+
     # compute w_t+1
     mask = jax.tree_util.tree_map(lambda x: jnp.abs(x) >= lambda_1, z)
     sgn_z = jax.tree_util.tree_map(jnp.sign, z)
     numerator = tu.tree_sub(tu.tree_scalar_mul(lambda_1, sgn_z), z)
-    
+
     root_n = jax.tree_util.tree_map(jnp.sqrt, n)
-    denominator = jax.tree_util.tree_map(lambda x: (x + beta) / alpha + lambda_2, root_n)
+    denominator = jax.tree_util.tree_map(
+      lambda x: (x + beta) / alpha + lambda_2, root_n)
     w = tu.tree_mul(tu.tree_div(numerator, denominator), mask)
-    
+
     return tu.tree_sub(w, prev_w), ScaleByFtrlState(z=z, n=n)
-    
+
   return base.GradientTransformation(init_fn, update_fn)
