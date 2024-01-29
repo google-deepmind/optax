@@ -79,4 +79,5 @@ dp-accounting = [
 ]
 
 [tool.setuptools.packages.find]
+include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
