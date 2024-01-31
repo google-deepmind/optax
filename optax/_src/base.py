@@ -27,13 +27,19 @@ NO_PARAMS_MSG = (
 PyTree = Any
 Shape = Sequence[int]
 
-OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
+
+
+class EmptyState(NamedTuple):
+  """An empty state for the simplest stateless transformations."""
+
+# States are either empty or arbitrary nests of `jnp.ndarrays`.
+OptState = Union[EmptyState, chex.ArrayTree]
 
 
 @runtime_checkable
@@ -206,10 +212,6 @@ class GradientTransformationExtraArgs(GradientTransformation):
       accept extra arguments.
   """
   update: TransformUpdateExtraArgsFn
-
-
-class EmptyState(NamedTuple):
-  """An empty state for the simplest stateless transformations."""
 
 
 def identity() -> GradientTransformation:
