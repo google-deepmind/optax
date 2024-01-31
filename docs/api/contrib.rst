@@ -1,6 +1,9 @@
 🔧 Contrib
 ===============
 
+Experimental features and algorithms that don't meet the
+:ref:`inclusion_criteria`.
+
 .. currentmodule:: optax.contrib
 
 .. autosummary::

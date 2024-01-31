@@ -16,6 +16,21 @@ Some more details on contributing code are provided in the
 [CONTRIBUTING.md](https://github.com/deepmind/optax/blob/main/CONTRIBUTING.md)
 file in the source tree.
 
+
+(inclusion_criteria)=
+## Inclusion Criteria
+
+We only consider well-established algorithms for inclusion in the main `optax`
+package. A rule of thumb is at least 2 years since publication, 100+ citations,
+and wide usefulness. A small modification of an existing algorithm that provides
+a clear-cut improvement on a widely-used method will also be considered for
+inclusion.
+
+Algorithms that don't meet these criteria should instead be submitted to the
+{doc}`api/contrib` directory. When in doubt, we recommend submitting new
+algorithms to this directory.
+
+
 #### Design Documents
 
 For more complex or involved features, we recommend starting out by writing a
