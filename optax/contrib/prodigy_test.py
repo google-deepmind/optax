@@ -78,7 +78,7 @@ class ProdigyTest(chex.TestCase):
     # A no-op change, to verify that tree map works.
     state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
-    for _ in range(10000):
+    for _ in range(100000):
       params, state = step(params, state)
 
     chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
