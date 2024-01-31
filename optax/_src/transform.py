@@ -536,11 +536,15 @@ def scale(
     A `GradientTransformation` object.
   """
 
-  def init_fn(params):
+  def init_fn(params: base.Params) -> ScaleState:
     del params
     return ScaleState()
 
-  def update_fn(updates, state, params=None):
+  def update_fn(
+      updates: base.Updates,
+      state: ScaleState,
+      params: Optional[base.Params] = None,
+  ) -> tuple[base.Updates, ScaleState]:
     del params
     updates = jax.tree_util.tree_map(lambda g: step_size * g, updates)
     return updates, state

@@ -208,7 +208,8 @@ class GradientTransformationExtraArgs(GradientTransformation):
   update: TransformUpdateExtraArgsFn
 
 
-class EmptyState(NamedTuple):
+@chex.dataclass
+class EmptyState:
   """An empty state for the simplest stateless transformations."""
 
 
