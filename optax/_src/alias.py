@@ -1101,25 +1101,26 @@ def ftrl(
   beta: float = 1
   ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
-  r"""The FTRL optimizer.
+  r"""The Follow the Regularized Leader (FTRL) optimizer.
   
-  FTRL, or Follow the Regularized Leader, is an optimization algorithm developed
-  at Google for click-through rate prediction in the early 2010s. It is most
-  suitable for shallow models with large and sparse feature spaces.
+  FTRL-Proximal, or Follow the Regularized Leader - Proximal, is an optimization
+  algorithm developed at Google for click-through rate prediction in the early
+  2010s. It is most suitable for shallow models with large and sparse feature
+  spaces.
   
   McMahan et al. gives a closed form update for the parameters as,
   
   .. math::
   
     \begin{align*}
-      w_{t,i} = \begin{cases} 
+      w_{t,i} &= \begin{cases} 
         0 & \text{if } |z_i| \leq \lambda_1 \\
         -\left( \frac{\beta + \sqrt{n_i}}{\alpha} + \lambda_2 \right)^{-1} 
           \left( z_i - \text{sgn}(z_i)\lambda_1 \right) & \text{otherwise}.
       \end{cases} \\
-      \sigma_i = \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right) \\
-      z_i \leftarrow z_i + g_i - \sigma_i w_{t,i} \\
-      n_i \leftarrow n_i + g_i^2
+      \sigma_i &= \frac{1}{\alpha} \left( \sqrt{n_i + g_i^2} - \sqrt{n_i} \right) \\
+      z_i &\leftarrow z_i + g_i - \sigma_i w_{t,i} \\
+      n_i &\leftarrow n_i + g_i^2
     \end{align*}
     
   However, since `params` is not always passed into the `update` function, this
@@ -1128,8 +1129,14 @@ def ftrl(
   taking the difference :math:`w_{t+1} - w_t`.
   
   References:
-    McMahan et al, 2013: https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf
-    Keras implementation: https://keras.io/api/optimizers/ftrl
+    McMahan and Streeter, `Adaptive Bound Optimization for Online Convex Optimization
+    <https://arxiv.org/pdf/1002.4908.pdf>`_, 2010
+    
+    McMahan et al, `Ad Click Prediction: a View from the Trenches
+    <https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf>`_,
+    2013
+    
+    `Keras implementation <https://keras.io/api/optimizers/ftrl>`_
   
   Args:
     learning_rate: learning rate (same as alpha in the paper).
@@ -1142,13 +1149,11 @@ def ftrl(
     The corresponding `GradientTransformation`.
   """
   # pylint: enable=line-too-long
-  return combine.chain(
-    transform.scale_by_ftrl(
-      learning_rate=learning_rate,
-      initial_accumulator_value=initial_accumulator_value,
-      lambda_1=lambda_1,
-      lambda_2=lambda_2,
-      beta=beta,
-    )
+  return transform.scale_by_ftrl(
+    learning_rate=learning_rate,
+    initial_accumulator_value=initial_accumulator_value,
+    lambda_1=lambda_1,
+    lambda_2=lambda_2,
+    beta=beta,
   )
   

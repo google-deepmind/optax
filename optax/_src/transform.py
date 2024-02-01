@@ -1395,8 +1395,14 @@ def scale_by_ftrl(
   """Scale updates according to FTRL algorithm.
   
   References:
-    [McMahan et al](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf)
-    [Keras implementation](https://keras.io/api/optimizers/ftrl)
+    McMahan and Streeter, `Adaptive Bound Optimization for Online Convex Optimization
+    <https://arxiv.org/pdf/1002.4908.pdf>`_, 2010
+    
+    McMahan et al, `Ad Click Prediction: a View from the Trenches
+    <https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41159.pdf>`_,
+    2013
+    
+    `Keras implementation <https://keras.io/api/optimizers/ftrl>`_
   
   Args:
     learning_rate: learning rate (same as alpha in the paper).
