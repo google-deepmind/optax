@@ -62,6 +62,14 @@ contributors are given in the
 [issue tracker](https://github.com/deepmind/optax/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue).
 Ideas for good starter contributions are also welcomed.
 
+#### Improving the documentation
+
+If you would like to help contributing to the documentation, install the
+required packages by running `pip install .[docs]`.
+Then, to build the docs, from the docs folder, run `make html` to build all docs
+and notebooks or `make html-noplot` to build the docs without executing
+the notebooks (much faster).
+
 ## Core Maintainers
 
 *   [Iurii Kemaev](https://github.com/hbq1)
