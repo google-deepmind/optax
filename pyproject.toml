@@ -68,8 +68,8 @@ docs = [
     "sphinx-collections>=0.0.1",
     "tensorflow>=2.4.0",
     "tensorflow-datasets>=4.2.0",
-    "grain-nightly>=0.0.4",
-    "orbax-checkpoint@git+https://github.com/google/orbax/#subdirectory=checkpoint"
+    "orbax-checkpoint",
+    "grain-nightly"
 ]
 
 dp-accounting = [
