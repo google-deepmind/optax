@@ -223,6 +223,7 @@ nb_execution_allow_errors = False
 nb_execution_excludepatterns = [
     # slow examples
     '_collections/examples/cifar10_resnet.ipynb'
+    '_collections/examples/adversarial_training.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
