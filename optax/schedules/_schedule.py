@@ -403,16 +403,20 @@ def warmup_cosine_decay_schedule(
   Returns:
     schedule: A function that maps step counts to values.
   """
+  alpha = 0. if peak_value == 0. else end_value / peak_value
   schedules = [
       linear_schedule(
           init_value=init_value,
           end_value=peak_value,
-          transition_steps=warmup_steps),
+          transition_steps=warmup_steps,
+      ),
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=end_value/peak_value,
-          exponent=exponent)]
+          alpha=alpha,
+          exponent=exponent,
+      ),
+  ]
   return _join.join_schedules(schedules, [warmup_steps])
 
 
