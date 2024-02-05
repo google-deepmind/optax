@@ -41,6 +41,7 @@ from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
+from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi

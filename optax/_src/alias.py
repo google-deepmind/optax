@@ -44,6 +44,26 @@ def adabelief(
   the step size by the difference between the predicted and observed gradients.
   AdaBelief is a modified version of Adam and contains the same number of
   parameters.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adabelief(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 1.19E-05
+    Objective function: 7.06E-06
+    Objective function: 4.69E-06
+    Objective function: 3.33E-06
 
   References:
     Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
@@ -85,6 +105,26 @@ def adafactor(
   Adafactor is an adaptive learning rate optimizer that focuses on fast
   training of large scale neural networks. It saves memory by using a factored
   estimate of the second order moments used to scale gradients.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adafactor(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.26E-04
+    Objective function: 5.08E-14
+    Objective function: 1.45E-24
+    Objective function: 7.40E-35
+    Objective function: 0.00E+00
 
   References:
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
@@ -157,6 +197,26 @@ def adagrad(
     Adagrad's main limit is the monotonic accumulation of squared
     gradients in the denominator: since all terms are >0, the sum keeps growing
     during training and the learning rate eventually becomes vanishingly small.
+    
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adagrad(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.67E-05
+    Objective function: 1.06E-10
+    Objective function: 7.31E-16
+    Objective function: 6.05E-21
+    Objective function: 5.24E-26
 
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
@@ -227,6 +287,25 @@ def adam(
       \hat{m}_t \leftarrow
         \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
 
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adam(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 1.21E-05
+    Objective function: 7.19E-06
+    Objective function: 4.81E-06
+    Objective function: 3.43E-06
 
   References:
     Kingma et al, `Adam: A Method for Stochastic Optimization
@@ -294,6 +373,26 @@ nadam.__doc__ = (
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
 
+  Examples:
+      >>> import optax
+      >>> import jax
+      >>> import jax.numpy as jnp
+      >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+      >>> solver = optax.nadam(learning_rate=0.003)
+      >>> params = jnp.array([1., 2., 3.])
+      >>> print('Objective function: ', f(params))
+      Objective function:  14.0
+      >>> opt_state = solver.init(params)
+      >>> for _ in range(5):
+      ...  grad = jax.grad(f)(params)
+      ...  params, opt_state = solver.update(grad, opt_state, params)
+      ...  print('Objective function: {:.2E}'.format(f(params)))
+      Objective function: 5.86E-05
+      Objective function: 4.75E-06
+      Objective function: 3.60E-06
+      Objective function: 2.74E-06
+      Objective function: 2.12E-06
+
   References:
     Dozat, `Incorporating Nesterov Momentum into Adam
     <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
@@ -341,6 +440,26 @@ def adamw(
 
   This implementation can incorporate a momentum a la Nesterov introduced by
   [Dozat 2016]. The resulting optimizer is then often referred as NAdamW.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 1.21E-05
+    Objective function: 7.19E-06
+    Objective function: 4.81E-06
+    Objective function: 3.43E-06
 
   References:
     Loshchilov et al, `Decoupled Weight Decay 
@@ -410,6 +529,26 @@ nadamw.__doc__ = (
 
       \hat{m}_t \leftarrow
         \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+        
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.nadamw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 5.87E-05
+    Objective function: 4.75E-06
+    Objective function: 3.60E-06
+    Objective function: 2.74E-06
+    Objective function: 2.12E-06
 
   References:
     Loshchilov et al, `Decoupled Weight Decay 
@@ -467,6 +606,26 @@ def lion(
   AdamW. A suitable learning rate for Lion is typically 3-10x smaller than that
   for AdamW, the weight decay for Lion should be in turn 3-10x larger than that
   for AdamW to maintain a similar strength (lr * wd).
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lion(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.71E-05
+    Objective function: 2.70E-05
+    Objective function: 2.70E-05
+    Objective function: 2.70E-05
+    Objective function: 2.70E-05
 
   References:
     Chen et al, 2023: https://arxiv.org/abs/2302.06675
@@ -510,6 +669,26 @@ def amsgrad(
 
   The original Adam can fail to converge to the optimal solution in some cases.
   AMSGrad guarantees convergence by using a long-term memory of past gradients.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.amsgrad(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 6.03E-06
+    Objective function: 2.40E-06
+    Objective function: 1.20E-06
+    Objective function: 6.87E-07
 
   References:
     Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
@@ -547,6 +726,26 @@ def fromage(
   trust (a distance function on deep neural networks). Fromage is similar to the
   LARS optimizer and can work on a range of standard neural network benchmarks,
   such as natural language Transformers and generative adversarial networks.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.fromage(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.26E-04
+    Objective function: 1.14E-09
+    Objective function: 1.03E-14
+    Objective function: 3.71E-19
+    Objective function: 1.34E-23
 
   References:
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
@@ -582,6 +781,26 @@ def lars(
 
   LARS is a layer-wise adaptive optimizer introduced to help scale SGD to
   larger batch sizes. LARS later inspired the LAMB optimizer.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lars(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.26E-10
+    Objective function: 1.02E-10
+    Objective function: 8.27E-11
+    Objective function: 6.70E-11
+    Objective function: 5.42E-11
 
   References:
     You et al, 2017: https://arxiv.org/abs/1708.03888
@@ -632,6 +851,26 @@ def lamb(
   including those that use attention-based models (such as Transformers) and
   ResNet-50. The optimizer is able to work with small and large batch sizes.
   LAMB was inspired by the LARS learning algorithm.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lamb(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.26E-04
+    Objective function: 1.13E-09
+    Objective function: 1.02E-14
+    Objective function: 9.19E-20
+    Objective function: 8.27E-25
 
   References:
     You et al, 2019: https://arxiv.org/abs/1904.00962
@@ -672,6 +911,26 @@ def noisy_sgd(
 
   It has been found that adding noise to the gradients can improve
   both the training error and the generalization error in very deep networks.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.noisy_sgd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 4.93E-04
+    Objective function: 3.80E-08
+    Objective function: 2.92E-07
+    Objective function: 8.29E-09
+    Objective function: 1.37E-07
 
   References:
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
@@ -709,6 +968,26 @@ def novograd(
   outperforms other methods for ResNet-50 for all batches up to 32K.
   In addition, NovoGrad requires half the memory compared to Adam.
   It was introduced together with Jasper ASR model.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.novograd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 9.00E-06
+    Objective function: 7.26E-06
+    Objective function: 5.84E-06
+    Objective function: 4.66E-06
+    Objective function: 3.67E-06
 
   References:
     Ginsburg et al, 2019: https://arxiv.org/abs/1905.11286
@@ -746,6 +1025,26 @@ def optimistic_gradient_descent(
   which require multiple gradient calls to compute the next update. It has
   strong formal guarantees for last-iterate convergence in min-max games, for
   which standard gradient descent can oscillate or even diverge.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.optimistic_gradient_descent(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.02E-03
+    Objective function: 5.28E-04
+    Objective function: 2.97E-07
+    Objective function: 2.09E-08
+    Objective function: 2.51E-11
 
   References:
     Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
@@ -778,6 +1077,26 @@ def radam(
   stages of training, due to the limited number of training samples used to
   estimate the optimizer's statistics. Rectified Adam addresses this issue
   by analytically reducing the large variance.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.radam(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 5.04E-04
+    Objective function: 1.12E-04
+    Objective function: 4.41E-05
+    Objective function: 2.21E-05
+    Objective function: 1.26E-05
 
   References:
     Liu et al, 2020: https://arxiv.org/abs/1908.03265
@@ -826,6 +1145,26 @@ def rmsprop(
     performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
     whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
+    
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.rmsprop(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-04
+    Objective function: 1.22E-08
+    Objective function: 1.07E-12
+    Objective function: 1.26E-16
+    Objective function: 1.70E-20
 
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
@@ -876,6 +1215,26 @@ def sgd(
   This implements stochastic gradient descent. It also includes support for
   momentum, and Nesterov acceleration, as these are standard practice when
   using stochastic gradient descent to train deep neural networks.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.sgd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 5.04E-04
+    Objective function: 1.81E-08
+    Objective function: 6.53E-13
+    Objective function: 2.35E-17
+    Objective function: 8.47E-22
 
   References:
     Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
@@ -913,6 +1272,26 @@ def sm3(
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.sm3(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-07
+    Objective function: 2.19E-07
+    Objective function: 1.77E-07
+    Objective function: 1.43E-07
+    Objective function: 1.16E-07
 
   References:
     Anil et al, 2019: https://arxiv.org/abs/1901.11150
@@ -945,6 +1324,26 @@ def yogi(
   addressing the issues of convergence and generalization in exponential moving
   average-based adaptive methods (such as Adam and RMSprop). Yogi is a
   modification of Adam and uses the same parameters.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.yogi(learning_rate=0.002)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.20E-05
+    Objective function: 5.36E-06
+    Objective function: 3.19E-06
+    Objective function: 2.14E-06
+    Objective function: 1.52E-06
 
   References:
     Zaheer et al, 2018: https://proceedings.neurips.cc/paper/2018/file/90365351ccc7437a1309dc64e4db32a3-Paper.pdf
@@ -973,6 +1372,26 @@ def adamax(
     eps: float = 1e-8,
 ) -> base.GradientTransformation:
   """A variant of the Adam optimizer that uses the infinity norm.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamax(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 6.05E-06
+    Objective function: 2.41E-06
+    Objective function: 1.21E-06
+    Objective function: 6.92E-07
 
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
@@ -1013,6 +1432,26 @@ def adamaxw(
   WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
   for the bias parameters. You can use `optax.masked` to make your own AdamaxW
   variant where `additive_weight_decay` is applied only to a subset of `params`.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamaxw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 2.70E-05
+    Objective function: 6.05E-06
+    Objective function: 2.41E-06
+    Objective function: 1.21E-06
+    Objective function: 6.92E-07
 
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
@@ -1059,6 +1498,26 @@ def rprop(
   gradient descent. It responds only to the sign of the gradient by increasing
   or decreasing the step size selected per parameter exponentially to speed up
   convergence and avoid oscillations.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.rprop(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 0.00E+00
+    Objective function: 2.70E-05
+    Objective function: 0.00E+00
+    Objective function: 2.70E-05
+    Objective function: 0.00E+00
 
   References:
     PyTorch implementation:
