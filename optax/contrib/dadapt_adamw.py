@@ -53,8 +53,10 @@ def dadapt_adamw(
   initial distance to solution in the infinity norm.
   This method works best when combined with a learning rate schedule that
   treats 1.0 as the base (usually max) value.
+
   References:
-    [Defazio & Mishchenko, 2023](https://arxiv.org/abs/2301.07733)
+    [Defazio & Mishchenko, 2023](https://arxiv.org/abs/2301.07733.pdf)
+
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
       is a linear_schedule with init_value=1.0 and end_value=0, combined with a

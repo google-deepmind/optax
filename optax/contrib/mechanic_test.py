@@ -114,17 +114,6 @@ class MechanicTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    rng = np.random.RandomState(0)
-
-    self.tree_a = (rng.randn(20, 10), rng.randn(20))
-    self.tree_b = (rng.randn(20, 10), rng.randn(20))
-
-    self.tree_a_dict = (1.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
-    self.tree_b_dict = (1.0, {'k1': 2.0, 'k2': (3.0, 4.0)}, 5.0)
-
-    self.array_a = rng.randn(20)
-    self.array_b = rng.randn(20)
-
     self.grads = {'x': np.array(2.), 'y': np.array(-2.)}
     self.initial_params = {'x': np.array(3.), 'y': np.array(-3.)}
 

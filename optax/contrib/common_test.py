@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2023 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `cocob.py`."""
+"""Common tests for contributed optimizers.
+
+Additional specific tests are implemented in additional files
+(see e.g. sam_test)
+"""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax import contrib
 from optax._src import numerics
 from optax._src import update
 from optax.schedules import _inject
 from optax.tree_utils import _state_utils
+
+# Testing contributions coded as GradientTransformations
+_OPTIMIZERS_UNDER_TEST = (
+    dict(opt_name='cocob', opt_kwargs=dict(alpha=100.0, eps=1e-8)),
+    dict(opt_name='dadapt_adamw', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
+)
 
 
 def _setup_parabola(dtype):
@@ -50,22 +59,22 @@ def _setup_rosenbrock(dtype):
 
   @jax.grad
   def get_updates(params):
-    return (numerics.abs_sq(a - params[0]) +
-            b * numerics.abs_sq(params[1] - params[0]**2))
+    return numerics.abs_sq(a - params[0]) + b * numerics.abs_sq(
+        params[1] - params[0] ** 2
+    )
 
   return initial_params, final_params, get_updates
 
 
-class AliasTest(chex.TestCase):
+class ContribTest(chex.TestCase):
 
   @parameterized.product(
-      opt_name=('cocob',),
+      _OPTIMIZERS_UNDER_TEST,
       target=(_setup_parabola, _setup_rosenbrock),
       dtype=(jnp.float32,),
   )
-  def test_optimization(self, opt_name, target, dtype):
-
-    opt = getattr(contrib, opt_name)()
+  def test_optimizers(self, opt_name, opt_kwargs, target, dtype):
+    opt = getattr(contrib, opt_name)(**opt_kwargs)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -80,14 +89,13 @@ class AliasTest(chex.TestCase):
     # A no-op change, to verify that tree map works.
     state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
-    for _ in range(10000):
+    for _ in range(20_000):
       params, state = step(params, state)
 
     chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
   @chex.all_variants
-  @parameterized.product(opt_name=('cocob',),
-                         opt_kwargs=(dict(alpha=100, eps=1e-8),))
+  @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs):
     """Checks that optimizers can be wrapped in inject_hyperparams."""
