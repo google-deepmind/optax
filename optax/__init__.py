@@ -22,6 +22,7 @@ from optax import schedules
 from optax import second_order
 from optax import tree_utils
 from optax._src.alias import adabelief
+from optax._src.alias import adadelta
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam

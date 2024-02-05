@@ -86,6 +86,64 @@ def adabelief(
   )
 
 
+def adadelta(
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
+    rho: float = 0.9,
+    eps: float = 1e-6,
+    weight_decay: float = 0.0,
+    weight_decay_mask: MaskOrFn = None,
+) -> base.GradientTransformation:
+  """The Adadelta optimizer.
+
+  Adadelta is a stochastic gradient descent method that adapts learning rates
+  based on a moving window of gradient updates. Adadelta is a modification of
+  Adagrad.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> f = lambda x: jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adadelta(learning_rate=0.01)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  print('Objective function: ', f(params))
+    Objective function:  2.9999965e-09
+    Objective function:  3.0246748e-18
+    Objective function:  5.602703e-27
+    Objective function:  1.316194e-35
+    Objective function:  0.0
+
+  References:
+
+    [Matthew D. Zeiler, 2012](https://arxiv.org/pdf/1212.5701.pdf)
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    rho: A coefficient used for computing a running average of squared
+      gradients.
+    eps: Term added to the denominator to improve numerical stability.
+    weight_decay: Optional rate at which to decay weights.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
+      transform.scale_by_adadelta(rho=rho, eps=eps),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
 def adafactor(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
