@@ -608,7 +608,7 @@ def scale_by_param_block_rms(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByAdadelta(NamedTuple):
+class ScaleByAdaDeltaState(NamedTuple):
   """State for the rescaling by Adadelta algoritm."""
 
   e_g: base.Updates
@@ -635,7 +635,7 @@ def scale_by_adadelta(
   def init_fn(params):
     e_g = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared gradient]
     e_x = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared update]
-    return ScaleByAdadelta(e_g=e_g, e_x=e_x)
+    return ScaleByAdaDeltaState(e_g=e_g, e_x=e_x)
 
   def update_fn(updates, state, params=None):
     del params
@@ -650,7 +650,7 @@ def scale_by_adadelta(
         state.e_x,
     )
     e_x = update_moment(updates, state.e_x, rho, 2)
-    return updates, ScaleByAdadelta(e_g=e_g, e_x=e_x)
+    return updates, ScaleByAdaDeltaState(e_g=e_g, e_x=e_x)
 
   return base.GradientTransformation(init_fn, update_fn)
 

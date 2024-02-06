@@ -125,7 +125,8 @@ def adadelta(
     [Matthew D. Zeiler, 2012](https://arxiv.org/pdf/1212.5701.pdf)
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     rho: A coefficient used for computing a running average of squared
       gradients.
     eps: Term added to the denominator to improve numerical stability.

@@ -5,6 +5,7 @@ Optimizers
 
 .. autosummary::
     adabelief
+    adadelta
     adafactor
     adagrad
     adam
@@ -32,6 +33,10 @@ Optimizers
 AdaBelief
 ~~~~~~~~~
 .. autofunction:: adabelief
+
+AdaDelta
+~~~~~~~~~
+.. autofunction:: adadelta
 
 AdaGrad
 ~~~~~~~
@@ -108,6 +113,10 @@ RAdam
 RMSProp
 ~~~~~~~
 .. autofunction:: rmsprop
+
+RProp
+~~~~~
+.. autofunction:: rprop
 
 SGD
 ~~~

@@ -101,6 +101,7 @@ from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
 from optax._src.transform import scale
+from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
@@ -114,18 +115,21 @@ from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
+from optax._src.transform import scale_by_rprop
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
+from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
+from optax._src.transform import ScaleByRpropState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
@@ -210,6 +214,7 @@ __version__ = "0.2.0.dev"
 
 __all__ = (
     "adabelief",
+    "adadelta",
     "adafactor",
     "adagrad",
     "adam",
@@ -302,10 +307,12 @@ __all__ = (
     "power_iteration",
     "radam",
     "rmsprop",
+    "rprop",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
     "ScalarOrSchedule",
+    "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
     "scale_by_amsgrad",
@@ -317,6 +324,7 @@ __all__ = (
     "scale_by_param_block_rms",
     "scale_by_radam",
     "scale_by_rms",
+    "scale_by_rprop",
     "scale_by_rss",
     "scale_by_schedule",
     "scale_by_sm3",
@@ -325,12 +333,14 @@ __all__ = (
     "scale_by_yogi",
     "scale_gradient",
     "scale",
+    "ScaleByAdaDeltaState",
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
+    "ScaleByRpropState",
     "ScaleByRssState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
