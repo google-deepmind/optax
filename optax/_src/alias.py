@@ -69,7 +69,8 @@ def adabelief(
     Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: Term added to the denominator to improve numerical stability.
@@ -188,9 +189,11 @@ def adafactor(
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
 
   Args:
-      learning_rate: A fixed global scaling factor. Note: the natural scale for
-        Adafactor's LR is markedly different from Adam, one doesn't use the
-        1/sqrt(hidden) correction for this optim with attention-based models.
+      learning_rate: A global scaling factor, either fixed or evolving along
+        iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+        Note that the natural scale for Adafactor's LR is markedly different
+        from Adam, one doesn't use the 1/sqrt(hidden) correction for this optim
+        with attention-based models.
       min_dim_size_to_factor: Only factor the statistics if two array dimensions
         have at least this size.
       decay_rate: Controls second-moment exponential decay schedule.
@@ -280,7 +283,8 @@ def adagrad(
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     initial_accumulator_value: Initial value for the accumulator.
     eps: A small constant applied to denominator inside of the square root
       (as in RMSProp) to avoid dividing by zero when rescaling.
@@ -379,7 +383,8 @@ def adam(
     detail.
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -458,7 +463,8 @@ nadam.__doc__ = (
   .. versionadded:: 0.1.9
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -527,7 +533,8 @@ def adamw(
     <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -618,7 +625,8 @@ nadamw.__doc__ = (
   .. versionadded:: 0.1.9
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -689,7 +697,8 @@ def lion(
     Chen et al, 2023: https://arxiv.org/abs/2302.06675
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Rate to combine the momentum and the current gradient.
     b2: Exponential decay rate to track the momentum of past gradients.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
@@ -752,7 +761,8 @@ def amsgrad(
     Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -809,7 +819,8 @@ def fromage(
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     min_norm: A minimum value that the norm of the gradient updates and the norm
       of the layer parameters can be clipped to to avoid dividing by zero when
       computing the trust ratio (as in the LARS paper).
@@ -864,7 +875,8 @@ def lars(
     You et al, 2017: https://arxiv.org/abs/1708.03888
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     weight_decay: Strength of the weight decay regularization.
     weight_decay_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
@@ -934,7 +946,8 @@ def lamb(
     You et al, 2019: https://arxiv.org/abs/1904.00962
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -994,7 +1007,8 @@ def noisy_sgd(
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time, the
       variance decays according to `(1+t)^-\gamma`.
@@ -1052,7 +1066,8 @@ def novograd(
     Li et al, 2019: https://arxiv.org/abs/1904.03288
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: An exponential decay rate to track the first moment of past gradients.
     b2: An exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root (as
@@ -1108,7 +1123,8 @@ def optimistic_gradient_descent(
     Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     alpha: Coefficient for generalized OGD.
     beta: Coefficient for generalized OGD negative momentum.
 
@@ -1160,7 +1176,8 @@ def radam(
     Liu et al, 2020: https://arxiv.org/abs/1908.03265
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -1229,7 +1246,8 @@ def rmsprop(
     Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     decay: Decay used to track the magnitude of previous gradients.
     eps: A small numerical constant to avoid dividing by zero when rescaling.
     initial_scale: Initial value of accumulators tracking the magnitude of
@@ -1298,7 +1316,8 @@ def sgd(
     Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
@@ -1355,7 +1374,8 @@ def sm3(
     Anil et al, 2019: https://arxiv.org/abs/1901.11150
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     momentum: Decay rate used by the momentum term (when it is not set to
       `None`, then momentum is not used at all).
 
@@ -1407,7 +1427,8 @@ def yogi(
     Zaheer et al, 2018: https://proceedings.neurips.cc/paper/2018/file/90365351ccc7437a1309dc64e4db32a3-Paper.pdf
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -1455,7 +1476,8 @@ def adamax(
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the maximum of past gradients.
     eps: A small constant applied to denominator to avoid dividing by zero when
@@ -1515,7 +1537,8 @@ def adamaxw(
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the maximum of past gradients.
     eps: A small constant applied to denominator to avoid dividing by zero when

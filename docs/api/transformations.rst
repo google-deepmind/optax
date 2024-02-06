@@ -43,6 +43,7 @@ Transformations
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_learning_rate
     scale_by_lion
     ScaleByLionState
     scale_by_novograd
