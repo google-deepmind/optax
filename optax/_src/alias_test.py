@@ -158,8 +158,8 @@ class AliasTest(chex.TestCase):
     else:
       opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
-    params = [-jnp.ones((2, 3)), jnp.ones((2, 5, 2))]
-    grads = [jnp.ones((2, 3)), -jnp.ones((2, 5, 2))]
+    params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
+    grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
     state = self.variant(opt.init)(params)
     updates, new_state = self.variant(opt.update)(grads, state, params)
