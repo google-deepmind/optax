@@ -22,7 +22,6 @@ Optimizers
     noisy_sgd
     novograd
     optimistic_gradient_descent
-    dpsgd
     radam
     rmsprop
     sgd
@@ -101,10 +100,6 @@ Novograd
 Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
-
-Differentially Private SGD
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: dpsgd
 
 RAdam
 ~~~~~

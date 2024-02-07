@@ -33,7 +33,7 @@ def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
 
 def canonicalize_dtype(
     dtype: Optional[chex.ArrayDType]) -> Optional[chex.ArrayDType]:
-  """Canonicalise a dtype, skip if None."""
+  """Canonicalize a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
   return dtype
