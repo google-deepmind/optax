@@ -15,8 +15,16 @@
 """Import stub."""
 
 # TODO(mtthss): delete this file asap.
-
+import warnings
 from optax.schedules import _inject
+
+# warn that this is a deprecated file
+warnings.warn(
+    "module optax.schedules.inject is deprecated. Please use optax.schedules"
+    " instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 InjectHyperparamsState = _inject.InjectHyperparamsState
 inject_hyperparams = _inject.inject_hyperparams
