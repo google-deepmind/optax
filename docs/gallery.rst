@@ -99,22 +99,6 @@ Example gallery
       <div class="sphx-glr-thumbnail-title">ResNet on CIFAR10 with Flax and Optax.</div>
     </div>
 
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Train the parameters of a Haiku module.">
-
-.. only:: html
-
-  .. image:: /images/favicon.svg
-    :alt:
-
-  :doc:`_collections/examples/haiku_example`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Train the parameters of a Haiku module.</div>
-    </div>
-
 
 .. raw:: html
 

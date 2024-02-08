@@ -44,13 +44,11 @@ documentation = "https://optax.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
-    "dm-haiku>=0.0.3",
     "dm-tree>=0.1.7",
-    "flax==0.5.3"
+    "flax>=0.5.3"
 ]
 
 examples = [
-  "dm-haiku>=0.0.3",
   "tensorflow-datasets>=4.2.0",
   "tensorflow>=2.4.0"
 ]
@@ -63,7 +61,6 @@ docs = [
     "ipython>=8.8.0",  # 8.7.0 has ipython3 lexer error
     "myst-nb>=1.0.0",
     "matplotlib>=3.5.0",
-    "dm-haiku>=0.0.11",
     "sphinx-gallery>=0.14.0",
     "sphinx-collections>=0.0.1",
     "tensorflow>=2.4.0",
