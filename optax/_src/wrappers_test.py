@@ -364,21 +364,21 @@ class WrappersTest(parameterized.TestCase):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_inf_updates'):
       updates, opt_state = opt_update(
           dict(a=jnp.array(float('inf'))), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_nan_updates'):
       updates, opt_state = opt_update(
           dict(a=jnp.full([], float('nan'))), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_final_good_updates'):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
@@ -387,7 +387,7 @@ class WrappersTest(parameterized.TestCase):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.full([], 2.))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.full([], 2.)))
 
 
 class MaskedTest(chex.TestCase):
