@@ -79,6 +79,37 @@ params = optax.apply_updates(params, updates)
 
 You can continue the quick start in [the Optax quickstart notebook.](https://github.com/google-deepmind/optax/blob/main/examples/quick_start.ipynb)
 
+## Development
+
+We welcome new contributors.
+
+### Source code
+
+You can check the latest sources with the following command.
+
+```sh
+git clone https://github.com/google-deepmind/optax.git
+```
+### Testing
+
+To run the tests, please execute the following script.
+
+```sh
+sh ./test.sh
+```
+
+### Documentation
+
+To build the documentation, first ensure that all the dependencies are installed.
+```sh
+pip install -e ".[docs]"
+```
+Then, execute the following.
+```sh
+cd docs/
+make html
+```
+
 ## Citing Optax
 
 This repository is part of the DeepMind JAX Ecosystem, to cite Optax
