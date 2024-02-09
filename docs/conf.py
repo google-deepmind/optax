@@ -222,8 +222,10 @@ nb_execution_mode = 'force'
 nb_execution_allow_errors = False
 nb_execution_excludepatterns = [
     # slow examples
-    '_collections/examples/cifar10_resnet.ipynb'
-    '_collections/examples/adversarial_training.ipynb'
+    'cifar10_resnet.ipynb',
+    'adversarial_training.ipynb',
+    'reduce_on_plateau.ipynb',
+    'differentially_private_sgd.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------

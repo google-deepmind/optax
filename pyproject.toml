@@ -50,7 +50,8 @@ test = [
 
 examples = [
   "tensorflow-datasets>=4.2.0",
-  "tensorflow>=2.4.0"
+  "tensorflow>=2.4.0",
+  "dp_accounting>=0.4"
 ]
 
 docs = [
