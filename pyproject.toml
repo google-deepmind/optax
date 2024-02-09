@@ -38,8 +38,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/deepmind/optax"
-repository = "https://github.com/deepmind/optax"
+homepage = "https://github.com/google-deepmind/optax"
+repository = "https://github.com/google-deepmind/optax"
 documentation = "https://optax.readthedocs.io/"
 
 [project.optional-dependencies]
@@ -51,7 +51,8 @@ test = [
 examples = [
   "tensorflow-datasets>=4.2.0",
   "tensorflow>=2.4.0",
-  "dp_accounting>=0.4"
+  "dp_accounting>=0.4",
+  "flax",
 ]
 
 docs = [
@@ -66,6 +67,7 @@ docs = [
     "sphinx-collections>=0.0.1",
     "tensorflow>=2.4.0",
     "tensorflow-datasets>=4.2.0",
+    "flax",
 ]
 
 dp-accounting = [

@@ -7,5 +7,5 @@ Examples that make use of the `optax.contrib` module.
 :glob:
 :maxdepth: 1
 
-[!README.md]*
+*
 ```
