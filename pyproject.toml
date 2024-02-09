@@ -13,8 +13,8 @@ authors = [
     {name = "Google DeepMind", email = "optax-dev@google.com"},
 ]
 keywords = [
-    "python", 
-    "machine learning", 
+    "python",
+    "machine learning",
     "reinforcement-learning"
 ]
 classifiers = [
