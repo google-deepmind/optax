@@ -57,13 +57,14 @@ def adabelief(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 1.19E-05
-    Objective function: 7.06E-06
-    Objective function: 4.69E-06
-    Objective function: 3.33E-06
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
 
   References:
     Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
@@ -112,13 +113,14 @@ def adadelta(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
-    ...  print('Objective function: ', f(params))
-    Objective function:  2.9999965e-09
-    Objective function:  3.0246748e-18
-    Objective function:  5.602703e-27
-    Objective function:  1.316194e-35
-    Objective function:  0.0
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
 
@@ -178,14 +180,15 @@ def adafactor(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.26E-04
-    Objective function: 5.08E-14
-    Objective function: 1.45E-24
-    Objective function: 7.40E-35
-    Objective function: 0.00E+00
-
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
 
@@ -272,14 +275,15 @@ def adagrad(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.67E-05
-    Objective function: 1.06E-10
-    Objective function: 7.31E-16
-    Objective function: 6.05E-21
-    Objective function: 5.24E-26
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
@@ -362,14 +366,15 @@ def adam(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 1.21E-05
-    Objective function: 7.19E-06
-    Objective function: 4.81E-06
-    Objective function: 3.43E-06
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Kingma et al, `Adam: A Method for Stochastic Optimization
     <https://arxiv.org/abs/1412.6980>`_, 2014
@@ -449,13 +454,14 @@ nadam.__doc__ = (
       >>> opt_state = solver.init(params)
       >>> for _ in range(5):
       ...  grad = jax.grad(f)(params)
-      ...  params, opt_state = solver.update(grad, opt_state, params)
+      ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
       ...  print('Objective function: {:.2E}'.format(f(params)))
-      Objective function: 5.86E-05
-      Objective function: 4.75E-06
-      Objective function: 3.60E-06
-      Objective function: 2.74E-06
-      Objective function: 2.12E-06
+      Objective function:  13.947006
+      Objective function:  13.905494
+      Objective function:  13.866892
+      Objective function:  13.829489
+      Objective function:  13.792713
 
   References:
     Dozat, `Incorporating Nesterov Momentum into Adam
@@ -518,13 +524,14 @@ def adamw(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 1.21E-05
-    Objective function: 7.19E-06
-    Objective function: 4.81E-06
-    Objective function: 3.43E-06
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
 
   References:
     Loshchilov et al, `Decoupled Weight Decay 
@@ -608,13 +615,14 @@ nadamw.__doc__ = (
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 5.87E-05
-    Objective function: 4.75E-06
-    Objective function: 3.60E-06
-    Objective function: 2.74E-06
-    Objective function: 2.12E-06
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
 
   References:
     Loshchilov et al, `Decoupled Weight Decay 
@@ -686,14 +694,15 @@ def lion(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.71E-05
-    Objective function: 2.70E-05
-    Objective function: 2.70E-05
-    Objective function: 2.70E-05
-    Objective function: 2.70E-05
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Chen et al, 2023: https://arxiv.org/abs/2302.06675
 
@@ -750,14 +759,15 @@ def amsgrad(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 6.03E-06
-    Objective function: 2.40E-06
-    Objective function: 1.20E-06
-    Objective function: 6.87E-07
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
 
@@ -808,14 +818,15 @@ def fromage(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.26E-04
-    Objective function: 1.14E-09
-    Objective function: 1.03E-14
-    Objective function: 3.71E-19
-    Objective function: 1.34E-23
-
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
@@ -864,13 +875,14 @@ def lars(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.26E-10
-    Objective function: 1.02E-10
-    Objective function: 8.27E-11
-    Objective function: 6.70E-11
-    Objective function: 5.42E-11
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
     You et al, 2017: https://arxiv.org/abs/1708.03888
@@ -935,14 +947,15 @@ def lamb(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.26E-04
-    Objective function: 1.13E-09
-    Objective function: 1.02E-14
-    Objective function: 9.19E-20
-    Objective function: 8.27E-25
-
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     You et al, 2019: https://arxiv.org/abs/1904.00962
 
@@ -996,14 +1009,15 @@ def noisy_sgd(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 4.93E-04
-    Objective function: 3.80E-08
-    Objective function: 2.92E-07
-    Objective function: 8.29E-09
-    Objective function: 1.37E-07
-
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    
   References:
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
@@ -1054,14 +1068,15 @@ def novograd(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 9.00E-06
-    Objective function: 7.26E-06
-    Objective function: 5.84E-06
-    Objective function: 4.66E-06
-    Objective function: 3.67E-06
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    
   References:
     Ginsburg et al, 2019: https://arxiv.org/abs/1905.11286
     Li et al, 2019: https://arxiv.org/abs/1904.03288
@@ -1112,13 +1127,14 @@ def optimistic_gradient_descent(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.02E-03
-    Objective function: 5.28E-04
-    Objective function: 2.97E-07
-    Objective function: 2.09E-08
-    Objective function: 2.51E-11
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    Objective function: 1.30E+01
 
   References:
     Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
@@ -1165,13 +1181,14 @@ def radam(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 5.04E-04
-    Objective function: 1.12E-04
-    Objective function: 4.41E-05
-    Objective function: 2.21E-05
-    Objective function: 1.26E-05
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
 
   References:
     Liu et al, 2020: https://arxiv.org/abs/1908.03265
@@ -1234,13 +1251,14 @@ def rmsprop(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-04
-    Objective function: 1.22E-08
-    Objective function: 1.07E-12
-    Objective function: 1.26E-16
-    Objective function: 1.70E-20
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
 
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
@@ -1305,14 +1323,15 @@ def sgd(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 5.04E-04
-    Objective function: 1.81E-08
-    Objective function: 6.53E-13
-    Objective function: 2.35E-17
-    Objective function: 8.47E-22
-
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    
   References:
     Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
 
@@ -1363,13 +1382,14 @@ def sm3(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-07
-    Objective function: 2.19E-07
-    Objective function: 1.77E-07
-    Objective function: 1.43E-07
-    Objective function: 1.16E-07
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
     Anil et al, 2019: https://arxiv.org/abs/1901.11150
@@ -1416,13 +1436,14 @@ def yogi(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.20E-05
-    Objective function: 5.36E-06
-    Objective function: 3.19E-06
-    Objective function: 2.14E-06
-    Objective function: 1.52E-06
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
 
   References:
     Zaheer et al, 2018: https://proceedings.neurips.cc/paper/2018/file/90365351ccc7437a1309dc64e4db32a3-Paper.pdf
@@ -1465,14 +1486,15 @@ def adamax(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 6.05E-06
-    Objective function: 2.41E-06
-    Objective function: 1.21E-06
-    Objective function: 6.92E-07
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
@@ -1526,14 +1548,15 @@ def adamaxw(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 2.70E-05
-    Objective function: 6.05E-06
-    Objective function: 2.41E-06
-    Objective function: 1.21E-06
-    Objective function: 6.92E-07
-
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
@@ -1593,13 +1616,14 @@ def rprop(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 0.00E+00
-    Objective function: 2.70E-05
-    Objective function: 0.00E+00
-    Objective function: 2.70E-05
-    Objective function: 0.00E+00
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
 
   References:
     PyTorch implementation:
