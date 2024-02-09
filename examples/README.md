@@ -7,5 +7,5 @@ This directory contains examples using the optax library.
 :glob:
 :maxdepth: 1
 
-[!README.md]*
+*
 ```
