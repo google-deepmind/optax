@@ -56,8 +56,7 @@ for instructions on installing JAX.
    :caption: Developer Documentation
    :maxdepth: 1
 
-   design_docs
-   contributors
+   development
 
 
 .. toctree::
