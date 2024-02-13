@@ -35,6 +35,9 @@ Schedule = Callable[[chex.Numeric], chex.Numeric]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
+# An empty state for the simplest stateless transformations.
+EmptyState = tuple
+
 
 @runtime_checkable
 class StatefulSchedule(Protocol):
@@ -206,10 +209,6 @@ class GradientTransformationExtraArgs(GradientTransformation):
       accept extra arguments.
   """
   update: TransformUpdateExtraArgsFn
-
-
-class EmptyState(NamedTuple):
-  """An empty state for the simplest stateless transformations."""
 
 
 def identity() -> GradientTransformation:
