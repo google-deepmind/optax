@@ -233,7 +233,10 @@ def cosine_decay_schedule(
     schedule: A function that maps step counts to values.
   """
   if not decay_steps > 0:
-    raise ValueError('The cosine_decay_schedule requires positive decay_steps!')
+    raise ValueError(
+        'The cosine_decay_schedule requires positive decay_steps, got'
+        f' {decay_steps=}.'
+    )
 
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
