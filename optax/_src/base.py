@@ -35,8 +35,9 @@ Schedule = Callable[[chex.Numeric], chex.Numeric]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
-# An empty state for the simplest stateless transformations.
-EmptyState = tuple
+
+class EmptyState(tuple):
+  """An empty state for the simplest stateless transformations."""
 
 
 @runtime_checkable
