@@ -83,6 +83,7 @@ Tree
 .. currentmodule:: optax.tree_utils
 
 .. autosummary::
+    tree_map_params
     tree_add
     tree_add_scalar_mul
     tree_div
@@ -95,6 +96,11 @@ Tree
     tree_sub
     tree_sum
     tree_zeros_like
+
+Tree map params
+~~~~~~~~~~~~~~~
+.. autofunction:: tree_map_params
+
 
 Tree add
 ~~~~~~~~
