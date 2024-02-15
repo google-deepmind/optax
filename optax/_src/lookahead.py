@@ -29,12 +29,12 @@ class LookaheadState(NamedTuple):
   """State of the `GradientTransformation` returned by `lookahead`.
 
   Attributes:
-    fast_state: Optimizer state of the fast optimizer.
-    steps_since_sync: Number of fast optimizer steps taken since slow and fast
+    fast_state (:class:`optax.OptState`): Optimizer state of the fast optimizer.
+    steps_since_sync (``Union[jax.Array, int]``): Number of fast optimizer steps taken since slow and fast
       parameters were synchronized.
   """
   fast_state: base.OptState
-  steps_since_sync: jnp.ndarray
+  steps_since_sync: Union[jax.Array, int]
 
 
 class LookaheadParams(NamedTuple):
@@ -48,8 +48,8 @@ class LookaheadParams(NamedTuple):
     [Zhang et al, 2019](https://arxiv.org/pdf/1907.08610v1.pdf)
 
   Attributes:
-    fast: Fast parameters.
-    slow: Slow parameters.
+    fast (:class:`optax.Params`): Fast parameters.
+    slow (:class:`optax.Params`): Slow parameters.
   """
   fast: base.Params
   slow: base.Params
