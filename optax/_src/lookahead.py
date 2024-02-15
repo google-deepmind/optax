@@ -30,8 +30,8 @@ class LookaheadState(NamedTuple):
 
   Attributes:
     fast_state (:class:`optax.OptState`): Optimizer state of the fast optimizer.
-    steps_since_sync (``Union[jax.Array, int]``): Number of fast optimizer steps taken since slow and fast
-      parameters were synchronized.
+    steps_since_sync (``Union[jax.Array, int]``): Number of fast optimizer steps
+      taken since slow and fast parameters were synchronized.
   """
   fast_state: base.OptState
   steps_since_sync: Union[jax.Array, int]
