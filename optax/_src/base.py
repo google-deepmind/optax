@@ -14,12 +14,11 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
 
 import chex
 import jax
 import jax.numpy as jnp
-import typing_extensions
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
@@ -33,9 +32,38 @@ Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
+ScheduleState = Any
+ScalarOrSchedule = Union[float, jax.Array, Schedule]
+
+# An empty state for the simplest stateless transformations.
+EmptyState = tuple
 
 
-class TransformInitFn(typing_extensions.Protocol):
+@runtime_checkable
+class StatefulSchedule(Protocol):
+  """Base interface for stateful schedules."""
+
+  def init(
+      self
+  ) -> ScheduleState:
+    """Initialize the state of the stateful schedule."""
+
+  def update(
+      self,
+      state: ScheduleState,
+      **extra_args,
+  ) -> ScheduleState:
+    """Updates the current schedule state."""
+
+  def __call__(
+      self,
+      state: ScheduleState,
+      **extra_args,
+  ) -> chex.Numeric:
+    """Computes the current schedule value."""
+
+
+class TransformInitFn(Protocol):
   """A callable type for the `init` step of a `GradientTransformation`.
 
   The `init` step takes a tree of `params` and uses these to construct an
@@ -54,7 +82,7 @@ class TransformInitFn(typing_extensions.Protocol):
     """
 
 
-class TransformUpdateFn(typing_extensions.Protocol):
+class TransformUpdateFn(Protocol):
   """A callable type for the `update` step of a `GradientTransformation`.
 
   The `update` step takes a tree of candidate parameter `updates` (e.g. their
@@ -62,6 +90,9 @@ class TransformUpdateFn(typing_extensions.Protocol):
   current `params` of the model being optimised. The `params` argument is
   optional, it must however be provided when using transformations that require
   access to the current values of the parameters.
+
+  For the case where additional arguments are required, an alternative interface
+  may be used, see ``TransformUpdateExtraArgsFn`` for details.
   """
 
   def __call__(
@@ -69,7 +100,7 @@ class TransformUpdateFn(typing_extensions.Protocol):
       updates: Updates,
       state: OptState,
       params: Optional[Params] = None
-    ) -> Tuple[Updates, OptState]:
+    ) -> tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
@@ -82,6 +113,45 @@ class TransformUpdateFn(typing_extensions.Protocol):
     """
 
 
+class TransformUpdateExtraArgsFn(Protocol):
+  """An update function accepting additional keyword arguments."""
+
+  def __call__(
+      self,
+      updates: Updates,
+      state: OptState,
+      params: Optional[Params] = None,
+      **extra_args: Any,
+  ) -> tuple[Updates, OptState]:
+    """Update function with optional extra arguments.
+
+    For example, an update function that requires an additional loss parameter
+    (which might be useful for implementing learning rate schedules that depend
+    on the current loss value) could be expressed as follows.
+
+    >>> def update(updates, state, params=None, *, loss, **extra_args):
+    >>>   del extra_args
+    >>>   # use loss value
+
+    Note that the loss value is keyword only, (it follows a `*` in the
+    signature of the function). This means users will get explicit errors if
+    they try to use this gradient transformation without providing the required
+    argument.
+
+    Args:
+      updates: The gradient updates passed to this transformation.
+      state: The state associated with this transformation
+      params: Optional params.
+      **extra_args: Additional keyword arguments passed to this transform. All
+        implementors of this interface should accept arbitrary keyword
+        arguments, ignoring those that are not needed for the current
+        transformation. Transformations that require specific extra args should
+        specify these using keyword-only arguments.
+    Returns:
+      Transformed updates, and an updated value for the state.
+    """
+
+
 class GradientTransformation(NamedTuple):
   """A pair of pure functions implementing a gradient transformation.
 
@@ -89,6 +159,10 @@ class GradientTransformation(NamedTuple):
   A gradient transformation is defined to be a pair of pure functions, which
   are combined together in a `NamedTuple` so that they can be referred to by
   name.
+
+  Note that an extended API is provided for users wishing to build optimizers
+  that take additional arguments during the update step. For more details,
+  see ``GradientTransoformationExtraArgs``.
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer
@@ -117,8 +191,24 @@ class GradientTransformation(NamedTuple):
   update: TransformUpdateFn
 
 
-class EmptyState(NamedTuple):
-  """An empty state for the simplest stateless transformations."""
+class GradientTransformationExtraArgs(GradientTransformation):
+  """A specialization of GradientTransformation that supports extra args.
+
+  Extends the existing GradientTransformation interface by adding support for
+  passing extra arguments to the update function.
+
+  Note that if no extra args are provided, then the API of this function is
+  identical to the case of ``TransformUpdateFn``. This means that we can safely
+  wrap any gradient transformation (that does not support extra args) as one
+  that does. The new gradient transformation will accept (and ignore) any
+  extra arguments that a user might pass to it. This is the behavior implemented
+  by ``optax.with_extra_args_support()``.
+
+  Attributes:
+    update: Overrides the type signature of the update in the base type to
+      accept extra arguments.
+  """
+  update: TransformUpdateExtraArgsFn
 
 
 def identity() -> GradientTransformation:
@@ -231,3 +321,18 @@ def stateless_with_tree_map(
       return jax.tree_util.tree_map(f_, updates), EmptyState()
 
   return GradientTransformation(init_fn, update_fn)
+
+
+def with_extra_args_support(
+    tx: GradientTransformation,
+) -> GradientTransformationExtraArgs:
+  """Wraps a gradient transformation, so that it ignores extra args."""
+
+  if isinstance(tx, GradientTransformationExtraArgs):
+    return tx
+
+  def update(updates, state, params=None, **extra_args):
+    del extra_args
+    return tx.update(updates, state, params)
+
+  return GradientTransformationExtraArgs(tx.init, update)

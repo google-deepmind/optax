@@ -14,6 +14,7 @@
 # ==============================================================================
 """Aliases for popular optimizers."""
 
+import functools
 from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
@@ -22,25 +23,16 @@ from optax._src import base
 from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
-from optax._src import privacy
-from optax._src import schedule
 from optax._src import transform
 from optax._src import wrappers
+import optax.schedules as schedules
 
 
-ScalarOrSchedule = Union[float, base.Schedule]
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
-def _scale_by_learning_rate(learning_rate: ScalarOrSchedule, flip_sign=True):
-  m = -1 if flip_sign else 1
-  if callable(learning_rate):
-    return transform.scale_by_schedule(lambda count: m * learning_rate(count))
-  return transform.scale(m * learning_rate)
-
-
 def adabelief(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-16,
@@ -53,12 +45,34 @@ def adabelief(
   the step size by the difference between the predicted and observed gradients.
   AdaBelief is a modified version of Adam and contains the same number of
   parameters.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adabelief(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
 
   References:
     Zhuang et al, 2020: https://arxiv.org/abs/2010.07468
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: Term added to the denominator to improve numerical stability.
@@ -71,12 +85,72 @@ def adabelief(
   """
   return combine.chain(
       transform.scale_by_belief(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+def adadelta(
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
+    rho: float = 0.9,
+    eps: float = 1e-6,
+    weight_decay: float = 0.0,
+    weight_decay_mask: MaskOrFn = None,
+) -> base.GradientTransformation:
+  """The Adadelta optimizer.
+
+  Adadelta is a stochastic gradient descent method that adapts learning rates
+  based on a moving window of gradient updates. Adadelta is a modification of
+  Adagrad.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> f = lambda x: jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adadelta(learning_rate=0.01)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+
+  References:
+
+    [Matthew D. Zeiler, 2012](https://arxiv.org/pdf/1212.5701.pdf)
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    rho: A coefficient used for computing a running average of squared
+      gradients.
+    eps: Term added to the denominator to improve numerical stability.
+    weight_decay: Optional rate at which to decay weights.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the transformation to, and `False` for those you want to skip.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
+      transform.scale_by_adadelta(rho=rho, eps=eps),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adafactor(
-    learning_rate: Optional[ScalarOrSchedule] = None,
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
     decay_rate: float = 0.8,
     decay_offset: int = 0,
@@ -94,14 +168,37 @@ def adafactor(
   Adafactor is an adaptive learning rate optimizer that focuses on fast
   training of large scale neural networks. It saves memory by using a factored
   estimate of the second order moments used to scale gradients.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adafactor(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
 
   Args:
-      learning_rate: A fixed global scaling factor. Note: the natural scale for
-        Adafactor's LR is markedly different from Adam, one doesn't use the
-        1/sqrt(hidden) correction for this optim with attention-based models.
+      learning_rate: A global scaling factor, either fixed or evolving along
+        iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+        Note that the natural scale for Adafactor's LR is markedly different
+        from Adam, one doesn't use the 1/sqrt(hidden) correction for this optim
+        with attention-based models.
       min_dim_size_to_factor: Only factor the statistics if two array dimensions
         have at least this size.
       decay_rate: Controls second-moment exponential decay schedule.
@@ -138,7 +235,7 @@ def adafactor(
   if clipping_threshold is not None:
     tx.append(clipping.clip_by_block_rms(clipping_threshold))
   if learning_rate is not None:
-    tx.append(_scale_by_learning_rate(learning_rate, flip_sign=False))
+    tx.append(transform.scale_by_learning_rate(learning_rate, flip_sign=False))
   if multiply_by_parameter_scale:
     tx.append(transform.scale_by_param_block_rms())
   if momentum is not None:
@@ -153,7 +250,7 @@ def adafactor(
 
 
 def adagrad(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7
 ) -> base.GradientTransformation:
@@ -162,15 +259,38 @@ def adagrad(
   Adagrad is an algorithm for gradient based optimization that anneals the
   learning rate for each parameter during the course of training.
 
-  WARNING: Adagrad's main limit is the monotonic accumulation of squared
-  gradients in the denominator: since all terms are >0, the sum keeps growing
-  during training and the learning rate eventually becomes vanishingly small.
-
+  .. warning::
+    Adagrad's main limit is the monotonic accumulation of squared
+    gradients in the denominator: since all terms are >0, the sum keeps growing
+    during training and the learning rate eventually becomes vanishingly small.
+    
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adagrad(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     initial_accumulator_value: Initial value for the accumulator.
     eps: A small constant applied to denominator inside of the square root
       (as in RMSProp) to avoid dividing by zero when rescaling.
@@ -181,19 +301,21 @@ def adagrad(
   return combine.chain(
       transform.scale_by_rss(
           initial_accumulator_value=initial_accumulator_value, eps=eps),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adam(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
+    *,
+    nesterov: bool = False
 ) -> base.GradientTransformation:
-  r"""The classic Adam optimizer.
+  r"""The Adam optimizer.
 
   Adam is an SGD variant with gradient scaling adaptation. The scaling
   used for each parameter is computed from estimates of first and second-order
@@ -215,6 +337,7 @@ def adam(
   :math:`t > 0`, we have,
 
   .. math::
+
     \begin{align*}
       m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
@@ -225,11 +348,131 @@ def adam(
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
 
+  With the keyword argument `nesterov=True`, the optimizer uses Nesterov
+  momentum, replacing the above :math:`\hat{m}_t` with
+
+  .. math::
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adam(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
-    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+    Kingma et al, `Adam: A Method for Stochastic Optimization
+    <https://arxiv.org/abs/1412.6980>`_, 2014
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  .. warning::
+    PyTorch and optax's implementation follow Algorithm 1 of [Kingma et al.
+    2014]. Note that TensorFlow used instead the formulation just before Section
+    2.1 of the paper. See https://github.com/deepmind/optax/issues/571 for more
+    detail.
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      example when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    nesterov: Whether to use Nesterov momentum. The solver with
+      nesterov=True is equivalent to the :func:`optax.nadam` optimizer, and
+      described in [Dozat 2016].
+
+  Returns:
+    The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.nadam`, :func:`optax.adamw`.
+  """
+  return combine.chain(
+      transform.scale_by_adam(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          nesterov=nesterov,
+      ),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+nadam = functools.partial(adam, nesterov=True)
+nadam.__doc__ = (
+    r"""The NAdam optimizer.
+
+  Nadam is a variant of :func:`optax.adam` with Nesterov's momentum. The update
+  rule of this solver is as follows:
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
+      \hat{m}_t &\leftarrow
+      \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}\\
+      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      \bar{\varepsilon}} + \varepsilon} \right)\\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
+
+  Examples:
+      >>> import optax
+      >>> import jax
+      >>> import jax.numpy as jnp
+      >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+      >>> solver = optax.nadam(learning_rate=0.003)
+      >>> params = jnp.array([1., 2., 3.])
+      >>> print('Objective function: ', f(params))
+      Objective function:  14.0
+      >>> opt_state = solver.init(params)
+      >>> for _ in range(5):
+      ...  grad = jax.grad(f)(params)
+      ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+      ...  print('Objective function: {:.2E}'.format(f(params)))
+      Objective function:  13.947006
+      Objective function:  13.905494
+      Objective function:  13.866892
+      Objective function:  13.829489
+      Objective function:  13.792713
+
+  References:
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  .. versionadded:: 0.1.9
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -242,16 +485,14 @@ def adam(
 
   Returns:
     The corresponding `GradientTransformation`.
-  """
-  return combine.chain(
-      transform.scale_by_adam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      _scale_by_learning_rate(learning_rate),
-  )
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
+"""
+)
 
 
 def adamw(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -259,6 +500,8 @@ def adamw(
     mu_dtype: Optional[Any] = None,
     weight_decay: float = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """Adam with weight decay regularization.
 
@@ -267,11 +510,133 @@ def adamw(
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
 
+  This implementation can incorporate a momentum a la Nesterov introduced by
+  [Dozat 2016]. The resulting optimizer is then often referred as NAdamW.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+
   References:
-    Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
+    Loshchilov et al, `Decoupled Weight Decay 
+    Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
+    nesterov: Whether to use Nesterov momentum. The solver with
+      nesterov=True is equivalent to the :func:`optax.nadamw` optimizer. This
+      modification is described in [Dozat 2016].
+
+  Returns:
+    The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
+  """
+  return combine.chain(
+      transform.scale_by_adam(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          nesterov=nesterov,
+      ),
+      transform.add_decayed_weights(weight_decay, mask),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+nadamw = functools.partial(adamw, nesterov=True)
+nadamw.__doc__ = (
+    r"""NAdamW optimizer, implemented as part of the AdamW optimizer.
+
+  NadamW is variant of :func:`optax.adamw` with Nesterov's momentum. Compared
+  to AdamW, this optimizer replaces the assignment
+
+  .. math::
+
+      \hat{m}_t \leftarrow m_t / {(1-\beta_1^t)}
+
+  with
+
+  .. math::
+
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+        
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.nadamw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
+
+  References:
+    Loshchilov et al, `Decoupled Weight Decay 
+    Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+
+  .. versionadded:: 0.1.9
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -294,17 +659,84 @@ def adamw(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamw`.
+"""
+)
+
+
+def lion(
+    learning_rate: base.ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[Any] = None,
+    weight_decay: float = 1e-3,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+  """The Lion optimizer.
+
+  Lion is discovered by symbolic program search. Unlike most adaptive optimizers
+  such as AdamW, Lion only tracks momentum, making it more memory-efficient.
+  The update of Lion is produced through the sign operation, resulting in a
+  larger norm compared to updates produced by other optimizers such as SGD and
+  AdamW. A suitable learning rate for Lion is typically 3-10x smaller than that
+  for AdamW, the weight decay for Lion should be in turn 3-10x larger than that
+  for AdamW to maintain a similar strength (lr * wd).
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lion(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
+  References:
+    Chen et al, 2023: https://arxiv.org/abs/2302.06675
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    b1: Rate to combine the momentum and the current gradient.
+    b2: Exponential decay rate to track the momentum of past gradients.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
+
+  Returns:
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
-      transform.scale_by_adam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+      transform.scale_by_lion(b1=b1, b2=b2, mu_dtype=mu_dtype),
       transform.add_decayed_weights(weight_decay, mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def amsgrad(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -315,12 +747,34 @@ def amsgrad(
 
   The original Adam can fail to converge to the optimal solution in some cases.
   AMSGrad guarantees convergence by using a long-term memory of past gradients.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.amsgrad(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -337,7 +791,7 @@ def amsgrad(
   return combine.chain(
       transform.scale_by_amsgrad(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 def _eve(
@@ -458,7 +912,7 @@ def eve(
       updates, opt_state = optimizer.update(grads, opt_state)
       params = optax.apply_updates(params, updates)
   """
-  return schedule.inject_hyperparams(_eve)(
+  return schedules.inject_hyperparams(_eve)(
     a1=a1, b1=b1, b2=b2, b3=b3, c=c, eps=eps,
     f=f, f_star=f_star, mu_dtype=mu_dtype
   )
@@ -475,12 +929,34 @@ def fromage(
   trust (a distance function on deep neural networks). Fromage is similar to the
   LARS optimizer and can work on a range of standard neural network benchmarks,
   such as natural language Transformers and generative adversarial networks.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.fromage(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     min_norm: A minimum value that the norm of the gradient updates and the norm
       of the layer parameters can be clipped to to avoid dividing by zero when
       computing the trust ratio (as in the LARS paper).
@@ -491,13 +967,13 @@ def fromage(
   mult = 1 / jnp.sqrt(1 + learning_rate ** 2)
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
-      _scale_by_learning_rate(learning_rate * mult),
+      transform.scale_by_learning_rate(learning_rate * mult),
       transform.add_decayed_weights((mult - 1)),
   )
 
 
 def lars(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     weight_decay: float = 0.,
     weight_decay_mask: MaskOrFn = True,
     trust_coefficient: float = 0.001,
@@ -510,12 +986,34 @@ def lars(
 
   LARS is a layer-wise adaptive optimizer introduced to help scale SGD to
   larger batch sizes. LARS later inspired the LAMB optimizer.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lars(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
     You et al, 2017: https://arxiv.org/abs/1708.03888
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     weight_decay: Strength of the weight decay regularization.
     weight_decay_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
@@ -539,13 +1037,13 @@ def lars(
           inner=transform.scale_by_trust_ratio(
               trust_coefficient=trust_coefficient, eps=eps),
           mask=trust_ratio_mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
       transform.trace(decay=momentum, nesterov=nesterov),
   )
 
 
 def lamb(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-6,
@@ -560,12 +1058,34 @@ def lamb(
   including those that use attention-based models (such as Transformers) and
   ResNet-50. The optimizer is able to work with small and large batch sizes.
   LAMB was inspired by the LARS learning algorithm.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.lamb(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+    
   References:
     You et al, 2019: https://arxiv.org/abs/1904.00962
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -586,12 +1106,12 @@ def lamb(
       transform.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
       transform.add_decayed_weights(weight_decay=weight_decay, mask=mask),
       transform.scale_by_trust_ratio(),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def noisy_sgd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     eta: float = 0.01,
     gamma: float = 0.55,
     seed: int = 0
@@ -600,12 +1120,34 @@ def noisy_sgd(
 
   It has been found that adding noise to the gradients can improve
   both the training error and the generalization error in very deep networks.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.noisy_sgd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    
   References:
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time, the
       variance decays according to `(1+t)^-\gamma`.
@@ -616,12 +1158,12 @@ def noisy_sgd(
   """
   return combine.chain(
       transform.add_noise(eta, gamma, seed),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def novograd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.25,
     eps: float = 1e-6,
@@ -637,13 +1179,35 @@ def novograd(
   outperforms other methods for ResNet-50 for all batches up to 32K.
   In addition, NovoGrad requires half the memory compared to Adam.
   It was introduced together with Jasper ASR model.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.novograd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    
   References:
     Ginsburg et al, 2019: https://arxiv.org/abs/1905.11286
     Li et al, 2019: https://arxiv.org/abs/1904.03288
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: An exponential decay rate to track the first moment of past gradients.
     b2: An exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root (as
@@ -659,14 +1223,14 @@ def novograd(
   return combine.chain(
       transform.scale_by_novograd(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def optimistic_gradient_descent(
-    learning_rate: ScalarOrSchedule,
-    alpha: ScalarOrSchedule = 1.0,
-    beta: ScalarOrSchedule = 1.0
+    learning_rate: base.ScalarOrSchedule,
+    alpha: base.ScalarOrSchedule = 1.0,
+    beta: base.ScalarOrSchedule = 1.0
 ) -> base.GradientTransformation:
   """An Optimistic Gradient Descent optimizer.
 
@@ -674,12 +1238,34 @@ def optimistic_gradient_descent(
   which require multiple gradient calls to compute the next update. It has
   strong formal guarantees for last-iterate convergence in min-max games, for
   which standard gradient descent can oscillate or even diverge.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.optimistic_gradient_descent(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    Objective function: 1.30E+01
 
   References:
     Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     alpha: Coefficient for generalized OGD.
     beta: Coefficient for generalized OGD negative momentum.
 
@@ -688,12 +1274,12 @@ def optimistic_gradient_descent(
   """
   return combine.chain(
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate)
   )
 
 
 def radam(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -706,12 +1292,34 @@ def radam(
   stages of training, due to the limited number of training samples used to
   estimate the optimizer's statistics. Rectified Adam addresses this issue
   by analytically reducing the large variance.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.radam(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
 
   References:
-    Kingma et al, 2014: https://arxiv.org/abs/1412.6980
+    Liu et al, 2020: https://arxiv.org/abs/1908.03265
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -727,12 +1335,12 @@ def radam(
   return combine.chain(
       transform.scale_by_radam(
           b1=b1, b2=b2, eps=eps, eps_root=eps_root, threshold=threshold),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def rmsprop(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     decay: float = 0.9,
     eps: float = 1e-8,
     initial_scale: float = 0.,
@@ -741,7 +1349,7 @@ def rmsprop(
     nesterov: bool = False
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
-  """A flexible RMSProp optimizer.
+  r"""A flexible RMSProp optimizer.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
   used for each weight is scaled by a suitable estimate of the magnitude of the
@@ -749,12 +1357,40 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
+  ..warning::
+    PyTorch and optax's RMSprop implementations differ and could impact
+    performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
+    whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
+    https://github.com/google-deepmind/optax/issues/532 for more detail.
+    
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.rmsprop(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.37E+01
+    Objective function: 1.36E+01
+
   References:
     Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
     Graves, 2013: https://arxiv.org/abs/1308.0850
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     decay: Decay used to track the magnitude of previous gradients.
     eps: A small numerical constant to avoid dividing by zero when rescaling.
     initial_scale: Initial value of accumulators tracking the magnitude of
@@ -774,21 +1410,21 @@ def rmsprop(
     return combine.chain(
         transform.scale_by_stddev(
             decay=decay, eps=eps, initial_scale=initial_scale),
-        _scale_by_learning_rate(learning_rate),
+        transform.scale_by_learning_rate(learning_rate),
         (transform.trace(decay=momentum, nesterov=nesterov)
          if momentum is not None else base.identity())
     )
   return combine.chain(
       transform.scale_by_rms(
           decay=decay, eps=eps, initial_scale=initial_scale),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
       (transform.trace(decay=momentum, nesterov=nesterov)
        if momentum is not None else base.identity())
   )
 
 
 def sgd(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     momentum: Optional[float] = None,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
@@ -796,14 +1432,36 @@ def sgd(
   """A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
-  momentum, and nesterov acceleration, as these are standard practice when
+  momentum, and Nesterov acceleration, as these are standard practice when
   using stochastic gradient descent to train deep neural networks.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.sgd(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
+    
   References:
     Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
@@ -817,7 +1475,7 @@ def sgd(
       (transform.trace(decay=momentum, nesterov=nesterov,
                        accumulator_dtype=accumulator_dtype)
        if momentum is not None else base.identity()),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate)
   )
 
 
@@ -835,12 +1493,34 @@ def sm3(
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.sm3(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
     Anil et al, 2019: https://arxiv.org/abs/1901.11150
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     momentum: Decay rate used by the momentum term (when it is not set to
       `None`, then momentum is not used at all).
 
@@ -854,7 +1534,7 @@ def sm3(
 
 
 def yogi(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-3,
@@ -867,12 +1547,34 @@ def yogi(
   addressing the issues of convergence and generalization in exponential moving
   average-based adaptive methods (such as Adam and RMSprop). Yogi is a
   modification of Adam and uses the same parameters.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.yogi(learning_rate=0.002)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
 
   References:
     Zaheer et al, 2018: https://proceedings.neurips.cc/paper/2018/file/90365351ccc7437a1309dc64e4db32a3-Paper.pdf
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
@@ -884,68 +1586,45 @@ def yogi(
   # pylint: enable=line-too-long
   return combine.chain(
       transform.scale_by_yogi(b1=b1, b2=b2, eps=eps),
-      _scale_by_learning_rate(learning_rate),
-  )
-
-
-def dpsgd(
-    learning_rate: ScalarOrSchedule,
-    l2_norm_clip: float,
-    noise_multiplier: float,
-    seed: int,
-    momentum: Optional[float] = None,
-    nesterov: bool = False
-) -> base.GradientTransformation:
-  """The DPSGD optimizer.
-
-  Differential privacy is a standard for privacy guarantees of algorithms
-  learning from aggregate databases including potentially sensitive information.
-  DPSGD offers protection against a strong adversary with full knowledge of the
-  training mechanism and access to the model’s parameters.
-
-  WARNING: This `GradientTransformation` expects input updates to have a batch
-  dimension on the 0th axis. That is, this function expects per-example
-  gradients as input (which are easy to obtain in JAX using `jax.vmap`).
-
-  References:
-    Abadi et al, 2016: https://arxiv.org/abs/1607.00133
-
-  Args:
-    learning_rate: A fixed global scaling factor.
-    l2_norm_clip: Maximum L2 norm of the per-example gradients.
-    noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
-    momentum: Decay rate used by the momentum term, when it is set to `None`,
-      then momentum is not used at all.
-    nesterov: Whether Nesterov momentum is used.
-
-  Returns:
-    A `GradientTransformation`.
-  """
-  return combine.chain(
-      privacy.differentially_private_aggregate(
-          l2_norm_clip=l2_norm_clip,
-          noise_multiplier=noise_multiplier,
-          seed=seed),
-      (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else base.identity()),
-      _scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adamax(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
 ) -> base.GradientTransformation:
   """A variant of the Adam optimizer that uses the infinity norm.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamax(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the maximum of past gradients.
     eps: A small constant applied to denominator to avoid dividing by zero when
@@ -953,15 +1632,17 @@ def adamax(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamaxw`.
   """
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps,),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def adamaxw(
-    learning_rate: ScalarOrSchedule,
+    learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
@@ -978,12 +1659,34 @@ def adamaxw(
   WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
   for the bias parameters. You can use `optax.masked` to make your own AdamaxW
   variant where `additive_weight_decay` is applied only to a subset of `params`.
-
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.adamaxw(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+    
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
   Args:
-    learning_rate: A fixed global scaling factor.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the maximum of past gradients.
     eps: A small constant applied to denominator to avoid dividing by zero when
@@ -1001,9 +1704,79 @@ def adamaxw(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  .. seealso:: :func:`optax.adam`, :func:`optax.adamax`.
   """
   return combine.chain(
       transform.scale_by_adamax(b1=b1, b2=b2, eps=eps),
       transform.add_decayed_weights(weight_decay, mask),
-      _scale_by_learning_rate(learning_rate),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
+def rprop(
+    learning_rate: float,
+    eta_minus: float = 0.5,
+    eta_plus: float = 1.2,
+    min_step_size: float = 1e-6,
+    max_step_size: float = 50.0,
+) -> base.GradientTransformation:
+  """The Rprop optimizer.
+
+  Rprop, short for resillient backpropogation, is a first order variant of
+  gradient descent. It responds only to the sign of the gradient by increasing
+  or decreasing the step size selected per parameter exponentially to speed up
+  convergence and avoid oscillations.
+  
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.rprop(learning_rate=0.003)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
+
+  References:
+    PyTorch implementation:
+      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
+    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
+    Igel and Hüsken, 2003:
+      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+
+  Args:
+    learning_rate: The initial step size.
+    eta_minus: Multiplicative factor for decreasing step size. This is applied
+      when the gradient changes sign from one step to the next.
+    eta_plus: Multiplicative factor for increasing step size. This is applied
+      when the gradient has the same sign from one step to the next.
+    min_step_size: Minimum allowed step size. Smaller steps will be clipped to
+      this value.
+    max_step_size: Maximum allowed step size. Larger steps will be clipped to
+      this value.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+  return combine.chain(
+      transform.scale_by_rprop(
+          learning_rate=learning_rate,
+          eta_minus=eta_minus,
+          eta_plus=eta_plus,
+          min_step_size=min_step_size,
+          max_step_size=max_step_size,
+      ),
+      transform.scale(-1.0),
   )

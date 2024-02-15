@@ -46,6 +46,13 @@ class BaseTest(chex.TestCase):
 
     g(f)
 
+  def test_empty_state_is_optstate(self):
+    """Tests that EmptyState is a valid OptState."""
+    def _identity(s: base.OptState) -> base.OptState:
+      return s
+
+    _identity(base.EmptyState())
+
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
     """Tests that zero transform returns a tree of zeros of correct shape."""
@@ -60,6 +67,66 @@ class BaseTest(chex.TestCase):
     """Tests that the zero transform returns an empty state."""
     self.assertEqual(
         self.variant(base.set_to_zero().init)(params=None), base.EmptyState())
+
+
+class ExtraArgsTest(chex.TestCase):
+
+  def test_isinstance(self):
+    """Locks in behaviour for comparing transformations."""
+
+    def init_fn(params):
+      del params
+      return {}
+
+    def update_fn(updates, state, params=None):
+      del params
+      return updates, state
+
+    t1 = base.GradientTransformation(init_fn, update_fn)
+    self.assertIsInstance(t1, base.GradientTransformation)
+    self.assertNotIsInstance(t1, base.GradientTransformationExtraArgs)
+
+    t2 = base.with_extra_args_support(t1)
+    self.assertIsInstance(t2, base.GradientTransformation)
+    self.assertIsInstance(t2, base.GradientTransformationExtraArgs)
+
+    with self.subTest('args_correctly_ignored'):
+      state = t2.init({})
+      t2.update({}, state, ignored_arg='hi')
+
+    t3 = base.with_extra_args_support(t2)
+    self.assertIsInstance(t3, base.GradientTransformation)
+    self.assertIsInstance(t3, base.GradientTransformationExtraArgs)
+
+  def test_extra_args_with_callback(self):
+    """An example of using extra args to log the learning rate."""
+
+    def init_fn(params):
+      del params
+      return {}
+
+    def update_fn(updates, state, *, metrics_logger=None, **extra_args):
+      del extra_args
+
+      if metrics_logger:
+        metrics_logger('learning_rate', 0.3)
+      return updates, state
+
+    t = base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+    @jax.jit
+    def f(params):
+      state = t.init(params)
+
+      metrics = {}
+      def metrics_logger(name, value):
+        metrics[name] = value
+
+      t.update(params, state, metrics_logger=metrics_logger)
+      return metrics
+
+    metrics = f({'a': 1})
+    self.assertEqual(metrics['learning_rate'], 0.3)
 
 
 class StatelessTest(chex.TestCase):
@@ -88,7 +155,7 @@ class StatelessTest(chex.TestCase):
     def opt(g, _):
       return jax.tree_util.tree_map(lambda g_: g_ * 2, g)
 
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     update_fn = self.variant(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -99,7 +166,7 @@ class StatelessTest(chex.TestCase):
       return jax.tree_util.tree_map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     opt = base.stateless(weight_decay)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     self.assertIsInstance(state, base.EmptyState)
 
 
@@ -123,7 +190,7 @@ class StatelessWithTreeMapTest(chex.TestCase):
     updates = {'linear': jnp.full((5, 3), 3.0)}
 
     opt = base.stateless_with_tree_map(lambda g, _: g * 2.0)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     update_fn = self.variant(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -131,7 +198,7 @@ class StatelessWithTreeMapTest(chex.TestCase):
 
   def test_init_returns_emptystate(self):
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
-    state = opt.init(None)
+    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
     self.assertIsInstance(state, base.EmptyState)
 
 

@@ -17,25 +17,26 @@
 set -xeuo pipefail
 
 # Install deps in a virtual env.
-readonly VENV_DIR=/tmp/optax-env
-rm -rf "${VENV_DIR}"
+rm -rf _testing
+rm -rf .pytype
+mkdir -p _testing
+readonly VENV_DIR="$(mktemp -d -p `pwd`/_testing optax-env.XXXXXXXX)"
+# in the unlikely case in which there was something in that directory
 python3 -m venv "${VENV_DIR}"
 source "${VENV_DIR}/bin/activate"
 python --version
 
 # Install dependencies.
 pip install --upgrade pip setuptools wheel
-pip install flake8 pytest-xdist pytype pylint pylint-exit
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
-pip install -r requirements/requirements-examples.txt
+pip install flake8 pytest-xdist pylint pylint-exit
+pip install -e ".[test, examples]"
 
 # Dp-accounting specifies exact minor versions as requirements which sometimes
 # become incompatible with other libraries optax needs. We therefore install
 # dependencies for dp-accounting manually.
 # TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
 # version requirements.
-pip install -r requirements/minimum-requirements-dp-accounting.txt
+pip install -e ".[dp-accounting]"
 pip install "dp-accounting>=0.1.1" --no-deps
 
 # Ensure optax was not installed by one of the dependencies above,
@@ -51,7 +52,7 @@ PYLINT_ARGS="-efail -wfail -cfail -rfail"
 # Download Google OSS config.
 wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
-echo "disable=unnecessary-lambda-assignment,no-value-for-parameter" >> .pylintrc
+echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
@@ -60,27 +61,30 @@ pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W02
 rm .pylintrc
 
 # Build the package.
-python setup.py sdist
+pip install build
+python -m build
 pip wheel --verbose --no-deps --no-clean dist/optax*.tar.gz
 pip install optax*.whl
 
 # Check types with pytype.
-pytype `find optax/_src/ examples -name '*.py' | xargs` -k -d import-error
+pip install pytype
+pytype `find optax/_src examples optax/contrib -name '*.py' | xargs` -k -d import-error
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
-mkdir _testing && cd _testing
+cd _testing
 python -m pytest -n auto --pyargs optax
 cd ..
 
-cd examples
-python -m pytest -n auto .
+# Build Sphinx docs.
+pip install -e ".[docs]"
+cd docs && make html
+# run doctests
+make doctest
 cd ..
 
-# Build Sphinx docs.
-pip install -r requirements/requirements-docs.txt
-cd docs && make html
-cd ..
+# cleanup
+rm -rf _testing
 
 set +u
 deactivate

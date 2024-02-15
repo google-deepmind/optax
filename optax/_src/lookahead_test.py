@@ -18,14 +18,17 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
 from optax._src import update
+from optax.tree_utils import _state_utils
 
 
 def _build_sgd():
@@ -76,6 +79,10 @@ class LookaheadTest(chex.TestCase):
     # Use the chex variant to check various function versions (jit, pmap, etc).
     step = self.variant(update_fn)
     opt_state = self.variant(init_fn)(params)
+
+    # A no-op change, to verify that tree map works.
+    opt_state = _state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
+
     for _ in range(num_steps):
       updates, opt_state = step(self.grads, opt_state, params)
       params = update.apply_updates(params, updates)
@@ -109,6 +116,10 @@ class LookaheadTest(chex.TestCase):
         reset_state=reset_state)
 
     _, opt_state = self.loop(optimizer, num_steps, self.synced_initial_params)
+
+    # A no-op change, to verify that this does not break anything
+    opt_state = _state_utils.tree_map_params(optimizer, lambda v: v, opt_state)
+
     fast_state = opt_state.fast_state
     if reset_state:
       correct_state = fast_optimizer.init(self.initial_params)

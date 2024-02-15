@@ -1,4 +1,4 @@
-:github_url: https://github.com/deepmind/optax/tree/master/docs
+:github_url: https://github.com/google-deepmind/optax/tree/main/docs
 
 Optax
 -----
@@ -24,17 +24,17 @@ Installation
 ------------
 
 The latest release of Optax can be installed from
-`PyPI <https://pypi.org/project/optax/>`_ using
+`PyPI <https://pypi.org/project/optax/>`_ using::
 
-``pip install optax``
+   pip install optax
 
 You may also install directly from GitHub, using the following command. This
-can be used to obtain the most recent version of Optax.
+can be used to obtain the most recent version of Optax::
 
-``pip install git+git://github.com/deepmind/optax.git``
+   pip install git+git://github.com/google-deepmind/optax.git
 
 Note that Optax is built on top of JAX.
-See `here <https://github.com/google/jax#pip-installation-cpu>`_
+See `here <https://github.com/google/jax?tab=readme-ov-file#installation>`_
 for instructions on installing JAX.
 
 
@@ -49,23 +49,33 @@ for instructions on installing JAX.
    :caption: Examples
    :maxdepth: 1
 
-   gradient_accumulation
-   meta_learning
+   gallery
 
 
 .. toctree::
    :caption: Developer Documentation
    :maxdepth: 1
 
-   design_docs
-   contributors
+   development
 
 
 .. toctree::
    :caption: API Documentation
    :maxdepth: 2
 
-   api
+   api/optimizers
+   api/transformations
+   api/combining_optimizers
+   api/optimizer_wrappers
+   api/optimizer_schedules
+   api/apply_updates
+   api/losses
+   api/linear_algebra_operators
+   api/control_variates
+   api/stochastic_gradient_estimators
+   api/utilities
+   api/contrib
+
 
 The Team
 --------
@@ -73,19 +83,19 @@ The Team
 The development of Optax is led by Ross Hemsley, Matteo Hessel, Markus Kunesch
 and Iurii Kemaev. The team relies on outstanding contributions from Research
 Engineers and Research Scientists from throughout
-`DeepMind <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_ and
-Alphabet. We are also very grateful to Optax's open source community for
+`Google DeepMind <https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/>`_
+and Alphabet. We are also very grateful to Optax's open source community for
 contributing ideas, bug fixes, issues, design docs, and amazing new features.
 
 The work on Optax is part of a wider effort to contribute to making the
-`JAX Ecosystem <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_
+`JAX Ecosystem <https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/>`_
 the best possible environment for ML/AI research.
 
 Support
 -------
 
 If you are having issues, please let us know by filing an issue on our
-`issue tracker <https://github.com/deepmind/optax/issues>`_.
+`issue tracker <https://github.com/google-deepmind/optax/issues>`_.
 
 
 License

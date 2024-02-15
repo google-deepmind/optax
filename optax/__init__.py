@@ -14,8 +14,15 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
-from optax import experimental
+from optax import contrib
+from optax import losses
+from optax import monte_carlo
+from optax import projections
+from optax import schedules
+from optax import second_order
+from optax import tree_utils
 from optax._src.alias import adabelief
+from optax._src.alias import adadelta
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
@@ -23,33 +30,39 @@ from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
-from optax._src.alias import dpsgd
 from optax._src.alias import eve
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
+from optax._src.alias import nadam
+from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
-from optax._src.alias import ScalarOrSchedule
+from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
+from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
 from optax._src.base import OptState
 from optax._src.base import Params
+from optax._src.base import ScalarOrSchedule
 from optax._src.base import Schedule
 from optax._src.base import set_to_zero
 from optax._src.base import stateless
 from optax._src.base import stateless_with_tree_map
 from optax._src.base import TransformInitFn
+from optax._src.base import TransformUpdateExtraArgsFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
+from optax._src.base import with_extra_args_support
 from optax._src.clipping import adaptive_grad_clip
 from optax._src.clipping import AdaptiveGradClipState
 from optax._src.clipping import clip
@@ -58,16 +71,15 @@ from optax._src.clipping import clip_by_global_norm
 from optax._src.clipping import ClipByGlobalNormState
 from optax._src.clipping import ClipState
 from optax._src.clipping import per_example_global_norm_clip
+from optax._src.clipping import per_example_layer_norm_clip
 from optax._src.combine import chain
 from optax._src.combine import multi_transform
 from optax._src.combine import MultiTransformState
+from optax._src.combine import named_chain
 from optax._src.constrain import keep_params_nonnegative
 from optax._src.constrain import NonNegativeParamsState
 from optax._src.constrain import zero_nans
 from optax._src.constrain import ZeroNansState
-from optax._src.control_variates import control_delta_method
-from optax._src.control_variates import control_variates_jacobians
-from optax._src.control_variates import moving_avg_baseline
 from optax._src.factorized import FactoredState
 from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
@@ -76,49 +88,12 @@ from optax._src.linear_algebra import power_iteration
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
-from optax._src.loss import cosine_distance
-from optax._src.loss import cosine_similarity
-from optax._src.loss import ctc_loss
-from optax._src.loss import ctc_loss_with_forward_probs
-from optax._src.loss import hinge_loss
-from optax._src.loss import huber_loss
-from optax._src.loss import l2_loss
-from optax._src.loss import log_cosh
-from optax._src.loss import sigmoid_binary_cross_entropy
-from optax._src.loss import smooth_labels
-from optax._src.loss import softmax_cross_entropy
-from optax._src.loss import softmax_cross_entropy_with_integer_labels
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
-from optax._src.privacy import differentially_private_aggregate
-from optax._src.privacy import DifferentiallyPrivateAggregateState
-from optax._src.schedule import constant_schedule
-from optax._src.schedule import cosine_decay_schedule
-from optax._src.schedule import cosine_onecycle_schedule
-from optax._src.schedule import exponential_decay
-from optax._src.schedule import inject_hyperparams
-from optax._src.schedule import InjectHyperparamsState
-from optax._src.schedule import join_schedules
-from optax._src.schedule import linear_onecycle_schedule
-from optax._src.schedule import linear_schedule
-from optax._src.schedule import piecewise_constant_schedule
-from optax._src.schedule import piecewise_interpolate_schedule
-from optax._src.schedule import polynomial_schedule
-from optax._src.schedule import sgdr_schedule
-from optax._src.schedule import warmup_cosine_decay_schedule
-from optax._src.schedule import warmup_exponential_decay_schedule
-from optax._src.second_order import fisher_diag
-from optax._src.second_order import hessian_diag
-from optax._src.second_order import hvp
-from optax._src.stochastic_gradient_estimators import measure_valued_jacobians
-from optax._src.stochastic_gradient_estimators import pathwise_jacobians
-from optax._src.stochastic_gradient_estimators import score_function_jacobians
 from optax._src.transform import add_decayed_weights
 from optax._src.transform import add_noise
 from optax._src.transform import AddDecayedWeightsState
-from optax._src.transform import additive_weight_decay
-from optax._src.transform import AdditiveWeightDecayState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
@@ -127,29 +102,37 @@ from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
 from optax._src.transform import scale
+from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
+from optax._src.transform import scale_by_distance_over_gradients
 from optax._src.transform import scale_by_eve
+from optax._src.transform import scale_by_learning_rate
+from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
+from optax._src.transform import scale_by_rprop
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
+from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByEveState
+from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
+from optax._src.transform import ScaleByRpropState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
@@ -180,10 +163,61 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
-__version__ = "0.1.5.dev0"
+# TODO(mtthss): remove tree_utils aliases after updates.
+tree_map_params = tree_utils.tree_map_params
+
+# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+constant_schedule = schedules.constant_schedule
+cosine_decay_schedule = schedules.cosine_decay_schedule
+cosine_onecycle_schedule = schedules.cosine_onecycle_schedule
+exponential_decay = schedules.exponential_decay
+inject_hyperparams = schedules.inject_hyperparams
+InjectHyperparamsState = schedules.InjectHyperparamsState
+join_schedules = schedules.join_schedules
+linear_onecycle_schedule = schedules.linear_onecycle_schedule
+linear_schedule = schedules.linear_schedule
+piecewise_constant_schedule = schedules.piecewise_constant_schedule
+piecewise_interpolate_schedule = schedules.piecewise_interpolate_schedule
+polynomial_schedule = schedules.polynomial_schedule
+sgdr_schedule = schedules.sgdr_schedule
+warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
+warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule
+inject_stateful_hyperparams = schedules.inject_stateful_hyperparams
+InjectStatefulHyperparamsState = schedules.InjectStatefulHyperparamsState
+WrappedSchedule = schedules.WrappedSchedule
+
+# TODO(mtthss): remove loss aliases from flat namespace once users have updated.
+convex_kl_divergence = losses.convex_kl_divergence
+cosine_distance = losses.cosine_distance
+cosine_similarity = losses.cosine_similarity
+ctc_loss = losses.ctc_loss
+ctc_loss_with_forward_probs = losses.ctc_loss_with_forward_probs
+hinge_loss = losses.hinge_loss
+huber_loss = losses.huber_loss
+kl_divergence = losses.kl_divergence
+l2_loss = losses.l2_loss
+log_cosh = losses.log_cosh
+sigmoid_binary_cross_entropy = losses.sigmoid_binary_cross_entropy
+smooth_labels = losses.smooth_labels
+softmax_cross_entropy = losses.softmax_cross_entropy
+softmax_cross_entropy_with_integer_labels = (
+    losses.softmax_cross_entropy_with_integer_labels
+)
+squared_error = losses.squared_error
+sigmoid_focal_loss = losses.sigmoid_focal_loss
+
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+differentially_private_aggregate = contrib.differentially_private_aggregate
+DifferentiallyPrivateAggregateState = (
+    contrib.DifferentiallyPrivateAggregateState
+)
+dpsgd = contrib.dpsgd
+
+__version__ = "0.2.0.dev"
 
 __all__ = (
     "adabelief",
+    "adadelta",
     "adafactor",
     "adagrad",
     "adam",
@@ -195,8 +229,6 @@ __all__ = (
     "add_decayed_weights",
     "add_noise",
     "AddDecayedWeightsState",
-    "additive_weight_decay",
-    "AdditiveWeightDecayState",
     "AddNoiseState",
     "amsgrad",
     "apply_every",
@@ -214,8 +246,7 @@ __all__ = (
     "constant_schedule",
     "ctc_loss",
     "ctc_loss_with_forward_probs",
-    "control_delta_method",
-    "control_variates_jacobians",
+    "convex_kl_divergence",
     "cosine_decay_schedule",
     "cosine_distance",
     "cosine_onecycle_schedule",
@@ -229,24 +260,24 @@ __all__ = (
     "eve",
     "exponential_decay",
     "FactoredState",
-    "fisher_diag",
     "flatten",
     "fromage",
     "global_norm",
     "GradientTransformation",
+    "GradientTransformationExtraArgs",
     "hinge_loss",
-    "hessian_diag",
     "huber_loss",
-    "hvp",
     "identity",
     "incremental_update",
     "inject_hyperparams",
     "InjectHyperparamsState",
     "join_schedules",
     "keep_params_nonnegative",
+    "kl_divergence",
     "l2_loss",
     "lamb",
     "lars",
+    "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
     "log_cosh",
@@ -259,42 +290,46 @@ __all__ = (
     "matrix_inverse_pth_root",
     "maybe_update",
     "MaybeUpdateState",
-    "measure_valued_jacobians",
-    "moving_avg_baseline",
     "multi_normal",
     "multi_transform",
     "MultiSteps",
     "MultiStepsState",
     "MultiTransformState",
+    "nadam",
+    "nadamw",
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",
     "OptState",
     "Params",
-    "pathwise_jacobians",
     "periodic_update",
     "per_example_global_norm_clip",
+    "per_example_layer_norm_clip",
     "piecewise_constant_schedule",
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
     "power_iteration",
     "radam",
     "rmsprop",
+    "rprop",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
     "ScalarOrSchedule",
+    "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
     "scale_by_amsgrad",
     "scale_by_belief",
     "scale_by_eve",
+    "scale_by_lion",
     "scale_by_factored_rms",
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
     "scale_by_radam",
     "scale_by_rms",
+    "scale_by_rprop",
     "scale_by_rss",
     "scale_by_schedule",
     "scale_by_sm3",
@@ -303,12 +338,15 @@ __all__ = (
     "scale_by_yogi",
     "scale_gradient",
     "scale",
+    "ScaleByAdaDeltaState",
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBeliefState",
     "ScaleByEveState",
+    "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
+    "ScaleByRpropState",
     "ScaleByRssState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
@@ -316,7 +354,6 @@ __all__ = (
     "ScaleByTrustRatioState",
     "ScaleState",
     "Schedule",
-    "score_function_jacobians",
     "set_to_zero",
     "sgd",
     "sgdr_schedule",
@@ -327,12 +364,14 @@ __all__ = (
     "sm3",
     "smooth_labels",
     "softmax_cross_entropy",
+    "softmax_cross_entropy_with_integer_labels",
     "stateless",
     "stateless_with_tree_map",
     "trace",
     "TraceState",
     "TransformInitFn",
     "TransformUpdateFn",
+    "TransformUpdateExtraArgsFn",
     "Updates",
     "warmup_cosine_decay_schedule",
     "warmup_exponential_decay_schedule",

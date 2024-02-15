@@ -22,7 +22,6 @@ import jax
 import jax.numpy as jnp
 
 from optax._src import base
-from optax._src import clipping
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
@@ -225,7 +224,12 @@ def scale_by_rms(
     eps: float = 1e-8,
     initial_scale: float = 0.
 ) -> base.GradientTransformation:
-  """Rescale updates by the root of the exp. moving avg of the square.
+  r"""Rescale updates by the root of the exp. moving avg of the square.
+
+  WARNING: PyTorch and optax's RMSprop implementations differ and could impact
+    performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
+    PyTorch uses $\sqrt{v} + \epsilon$. See
+    https://github.com/google-deepmind/optax/issues/532 for more detail.
 
   References:
     [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
@@ -309,12 +313,24 @@ def scale_by_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+    *,
+    nesterov: bool = False
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adam algorithm.
 
   References:
-    [Kingma et al, 2014](https://arxiv.org/abs/1412.6980)
+    Kingma et al, `Adam: A Method for Stochastic Optimization
+    <https://arxiv.org/abs/1412.6980>`_, 2014
+
+    Dozat, `Incorporating Nesterov Momentum into Adam
+    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_ 2016
+
+  .. warning::
+    PyTorch and optax's adam follow Algorithm 1 of the Kingma
+    and Ba's Adam paper, if reproducing old results note that TensorFlow
+    used instead the formulation just before Section 2.1 of the paper.
+    See https://github.com/deepmind/optax/issues/571 for more detail.
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -323,7 +339,9 @@ def scale_by_adam(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
+    nesterov: Whether to use Nesterov momentum. The variant of Adam with
+      Nesterov momentum is described in [Dozat 2016]
 
   Returns:
     A `GradientTransformation` object.
@@ -342,7 +360,16 @@ def scale_by_adam(
     mu = update_moment(updates, state.mu, b1, 1)
     nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_int32_increment(state.count)
-    mu_hat = bias_correction(mu, b1, count_inc)
+    if nesterov:
+      mu_hat = jax.tree_util.tree_map(
+          lambda m, g: b1 * m + (1 - b1) * g,
+          bias_correction(mu, b1, numerics.safe_int32_increment(count_inc)),
+          bias_correction(updates, b1, count_inc))
+    else:
+      mu_hat = bias_correction(mu, b1, count_inc)
+    # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ
+    # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
+    # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = bias_correction(nu, b2, count_inc)
     updates = jax.tree_util.tree_map(
         lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
@@ -365,7 +392,7 @@ def scale_by_amsgrad(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -379,7 +406,7 @@ def scale_by_amsgrad(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
@@ -520,6 +547,51 @@ def scale_by_eve(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByLionState(NamedTuple):
+  """State for the Lion algorithm."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
+  mu: base.Updates
+
+
+def scale_by_lion(
+    b1: float = 0.9,
+    b2: float = 0.99,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Lion algorithm.
+
+  References:
+    [Chen et al, 2023](https://arxiv.org/abs/2302.06675)
+
+  Args:
+    b1: Rate for combining the momentum and the current grad.
+    b2: Decay rate for the exponentially weighted average of grads.
+    mu_dtype: Optional `dtype` to be used for the momentum; if
+      `None` then the `dtype is inferred from `params` and `updates`.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = jax.tree_util.tree_map(  # moment
+        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
+
+  def update_fn(updates, state, params=None):
+    del params
+    updates_new = jax.tree_util.tree_map(
+        lambda g, m: jnp.sign((1. - b1) * g + b1 * m), updates, state.mu)
+    mu = update_moment(updates, state.mu, b2, 1)
+    mu = utils.cast_tree(mu, mu_dtype)
+    count_inc = numerics.safe_int32_increment(state.count)
+    return updates_new, ScaleByLionState(count=count_inc, mu=mu)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 ScaleState = base.EmptyState
 
 
@@ -603,6 +675,53 @@ def scale_by_param_block_rms(
         lambda u, p: u * numerics.safe_root_mean_squares(p, min_scale),
         updates, params)
     return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+class ScaleByAdaDeltaState(NamedTuple):
+  """State for the rescaling by Adadelta algoritm."""
+
+  e_g: base.Updates
+  e_x: base.Updates
+
+
+def scale_by_adadelta(
+    rho: float = 0.9, eps: float = 1e-6
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adadelta algorithm.
+
+  References:
+    [Matthew D. Zeiler, 2012](https://arxiv.org/pdf/1212.5701.pdf)
+
+  Args:
+    rho: A coefficient used for computing a running average of squared
+      gradients.
+    eps: Term added to the denominator to improve numerical stability.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    e_g = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared gradient]
+    e_x = jax.tree_util.tree_map(jnp.zeros_like, params)  # E[squared update]
+    return ScaleByAdaDeltaState(e_g=e_g, e_x=e_x)
+
+  def update_fn(updates, state, params=None):
+    del params
+    e_g = update_moment(updates, state.e_g, rho, 2)
+    updates = jax.tree_util.tree_map(
+        lambda g, cur_e_g, prev_e_x: (
+            jnp.sqrt(prev_e_x + eps) / jnp.sqrt(cur_e_g + eps)
+        )
+        * g,
+        updates,
+        e_g,
+        state.e_x,
+    )
+    e_x = update_moment(updates, state.e_x, rho, 2)
+    return updates, ScaleByAdaDeltaState(e_g=e_g, e_x=e_x)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -765,11 +884,85 @@ def scale_by_radam(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByRpropState(NamedTuple):
+  step_sizes: base.Updates
+  prev_updates: base.Updates
+
+
+def scale_by_rprop(
+    learning_rate: float,
+    eta_minus: float = 0.5,
+    eta_plus: float = 1.2,
+    min_step_size: float = 1e-6,
+    max_step_size: float = 50.0,
+) -> base.GradientTransformation:
+  """Scale with the Rprop optimizer.
+
+  Rprop, short for resillient backpropogation, is a first order variant of
+  gradient descent. It responds only to the sign of the gradient by increasing
+  or decreasing the step size selected per parameter exponentially to speed up
+  convergence and avoid oscillations.
+
+  References:
+    PyTorch implementation:
+      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
+    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
+    Igel and Hüsken, 2003:
+      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+
+  Args:
+    learning_rate: The initial step size.
+    eta_minus: Multiplicative factor for decreasing step size. This is applied
+      when the gradient changes sign from one step to the next.
+    eta_plus: Multiplicative factor for increasing step size. This is applied
+      when the gradient has the same sign from one step to the next.
+    min_step_size: Minimum allowed step size. Smaller steps will be clipped to
+      this value.
+    max_step_size: Maximum allowed step size. Larger steps will be clipped to
+      this value.
+
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+
+  def init_fn(params):
+    step_sizes = jax.tree_util.tree_map(
+        lambda p: learning_rate * jnp.ones_like(p), params)
+    prev_updates = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return ScaleByRpropState(step_sizes, prev_updates)
+
+  def update_fn(updates, state, params=None):
+    del params
+    sign = jax.tree_util.tree_map(
+        lambda g, prev_g: g * prev_g, updates, state.prev_updates)
+    step_sizes = jax.tree_util.tree_map(
+        lambda s, step_size: jnp.where(
+            s == 0,
+            step_size,
+            jnp.clip(
+                step_size * jnp.where(s > 0, eta_plus, eta_minus),
+                a_min=min_step_size, a_max=max_step_size
+            )
+        ),
+        sign, state.step_sizes
+    )
+    prev_updates = jax.tree_util.tree_map(
+        lambda s, g, step_size: jnp.where(
+            s < 0, jnp.zeros_like(g), step_size * jnp.sign(g)),
+        sign, updates, step_sizes)
+    updates = jax.tree_util.tree_map(
+        lambda s, g, prev_g: jnp.where(s < 0, jnp.zeros_like(prev_g), prev_g),
+        sign, prev_updates, state.prev_updates)
+    return updates, ScaleByRpropState(step_sizes, prev_updates)
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 AddDecayedWeightsState = base.EmptyState
 
 
 def add_decayed_weights(
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, jax.Array] = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
@@ -809,6 +1002,30 @@ class ScaleByScheduleState(NamedTuple):
   count: chex.Array  # shape=(), dtype=jnp.int32
 
 
+def scale_by_learning_rate(
+    learning_rate: base.ScalarOrSchedule,
+    *,
+    flip_sign: bool = True,
+) -> base.GradientTransformation:
+  """Scale by the (negative) learning rate (either as scalar or as schedule).
+
+  Args:
+    learning_rate: Can either be a scalar or a schedule (i.e. a callable that
+      maps an (int) step to a float).
+    flip_sign: When set to True (the default) this corresponds to scaling by the
+      negative learning rate.
+
+  Returns:
+    An optax.GradientTransformation that corresponds to multiplying the gradient
+    with `-learning_rate` (if flip_sign is True) or with `learning_rate` (if
+    flip_sign is False).
+  """
+  m = -1 if flip_sign else 1
+  if callable(learning_rate):
+    return scale_by_schedule(lambda count: m * learning_rate(count))
+  return scale(m * learning_rate)
+
+
 def scale_by_schedule(
     step_size_fn: base.Schedule
 ) -> base.GradientTransformation:
@@ -846,7 +1063,7 @@ def scale_by_trust_ratio(
     trust_coefficient: float = 1.,
     eps: float = 0.,
 ) -> base.GradientTransformation:
-  """Scale updates by trust ratio`.
+  """Scale updates by `trust ratio`.
 
   References:
     [You et. al 2020](https://arxiv.org/abs/1904.00962)
@@ -1023,7 +1240,7 @@ def scale_by_sm3(
     b2: float = 1.0,
     eps: float = 1e-8
 ) -> base.GradientTransformation:
-  """Scale updates by sm3`.
+  """Scale updates by `sm3`.
 
   References:
     [Anil et. al 2019](https://arxiv.org/abs/1901.11150)
@@ -1100,7 +1317,7 @@ def scale_by_novograd(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-    mu_dtype: Optional[Any] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
 
@@ -1115,7 +1332,7 @@ def scale_by_novograd(
       numerical stability when backpropagating gradients through the rescaling.
     weight_decay: A scalar weight decay rate.
     mu_dtype: An optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype is inferred from `params` and `updates`.
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -1198,12 +1415,79 @@ def scale_by_optimistic_gradient(alpha: float = 1.0,
   return base.GradientTransformation(init_fn, update_fn)
 
 
-# TODO(b/183800387): remove legacy aliases.
-# These legacy aliases are here for checkpoint compatibility
-# To be removed once checkpoints have updated.
-_safe_int32_increment = numerics.safe_int32_increment
-safe_int32_increment = numerics.safe_int32_increment
-AdditiveWeightDecayState = AddDecayedWeightsState
-additive_weight_decay = add_decayed_weights
-ClipState = clipping.ClipState
-ClipByGlobalNormState = clipping.ClipByGlobalNormState
+class ScaleByDistanceOverGradientsState(NamedTuple):
+  """State for scale_by_distance_over_gradients."""
+
+  max_dist: base.OptState
+  grad_sum_of_squares: base.OptState
+  init_params: base.OptState
+
+
+def scale_by_distance_over_gradients(
+    reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0
+) -> base.GradientTransformation:
+  """Distance-over-gradients learning rate-free optimizer.
+
+  This implementation stores a single copy of the model parameters, plus two
+  scalars per parameter array. It is equivalent to "Layer-wise DoG" (LDoG)
+  in the paper.
+
+  The authors recommend using model averaging with this optimizer.
+
+  References:
+    ["DoG is SGD’s Best Friend: A Parameter-Free Dynamic Step Size
+    Schedule"](https://arxiv.org/pdf/2302.12022.pdf)
+
+  Args:
+    reps_rel: Used to compute initial learning rate. Recommended values are 1e-4
+      for models using batch norm, 1e-6 otherwise.
+    eps: Small loading term to avoid divide-by-zero errors.
+    param_dtype: dtype for storing initial parameters.
+    global_scale: Global scale factor, typically 1.0 or -1.0
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def _l2(x, y=0.0):
+    return jnp.sqrt(jnp.square(x - y).sum())
+
+  def init_fn(params):
+    return ScaleByDistanceOverGradientsState(
+        # Initial distance (needed to prevent zero step sizes).
+        jax.tree_util.tree_map(lambda x: reps_rel * (1 + _l2(x)), params),
+        # Initial gradient sum-of-squares.
+        jax.tree_util.tree_map(lambda x: jnp.zeros(1), params),
+        # Initial params, cast to preferred precision.
+        jax.tree_map(lambda x: x.astype(param_dtype), params),
+    )
+
+  def update_fn(updates, state: ScaleByDistanceOverGradientsState, params):
+    # update max distance
+    max_dist = jax.tree_map(
+        lambda d, x, y: jnp.maximum(d, _l2(x, y)),
+        state.max_dist,
+        params,
+        state.init_params,
+    )
+
+    # update gradient sum-of-squares
+    g_sos = jax.tree_map(
+        lambda x, y: x + jnp.square(y).sum(), state.grad_sum_of_squares, updates
+    )
+
+    def _tx(g, d, g_sos):
+      """Apply the transformation."""
+      eta = global_scale * (d / jnp.sqrt(g_sos + eps))
+      return eta * g
+
+    updates = jax.tree_map(_tx, max_dist, g_sos, updates)
+
+    # new state
+    state = ScaleByDistanceOverGradientsState(
+        max_dist, g_sos, state.init_params
+    )
+
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)

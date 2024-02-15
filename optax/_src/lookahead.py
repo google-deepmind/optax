@@ -14,7 +14,7 @@
 # ==============================================================================
 """A lookahead optimization wrapper."""
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Union
 
 from absl import logging
 import jax
@@ -96,9 +96,8 @@ def lookahead(
     raise ValueError('Synchronization period must be >= 1.')
 
   def init_fn(params: base.Params) -> LookaheadState:
-    try:
-      fast_params = params.fast
-    except AttributeError:
+    fast_params = getattr(params, 'fast', None)
+    if fast_params is None:
       # Allowing init_fn to be called with fast parameters reduces the
       # modifications necessary to adapt code to use lookahead in some cases.
       logging.warning(
@@ -112,11 +111,11 @@ def lookahead(
 
   def update_fn(
       updates: base.Updates, state: LookaheadState,
-      params: LookaheadParams) -> Tuple[LookaheadParams, LookaheadState]:
+      params: LookaheadParams) -> tuple[LookaheadParams, LookaheadState]:
     updates, fast_state = fast_optimizer.update(updates, state.fast_state,
                                                 params.fast)
 
-    sync_next = (state.steps_since_sync == sync_period - 1)
+    sync_next = state.steps_since_sync == sync_period - 1
     updates = _lookahead_update(updates, sync_next, params, slow_step_size)
     if reset_state:
       # Jittable way of resetting the fast optimizer state if parameters will be
@@ -133,8 +132,8 @@ def lookahead(
 
 
 def _lookahead_update(
-    updates: base.Updates, sync_next: bool, params: LookaheadParams,
-    slow_step_size: float) -> LookaheadParams:
+    updates: base.Updates, sync_next: Union[bool, jax.Array],
+    params: LookaheadParams, slow_step_size: float) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 
   References:

@@ -5,6 +5,12 @@
 build/
 dist/
 venv/
+_testing/
+
+# Building the documentation
+docs/_autosummary
+docs/_collections
+docs/modules/generated
 
 # Mac OS
 .DS_Store
@@ -17,3 +23,4 @@ venv/
 # Editors
 .idea
 .vscode
+

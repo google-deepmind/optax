@@ -15,7 +15,7 @@
 """Factorized optimizers."""
 
 import dataclasses
-from typing import NamedTuple, Optional, Tuple, Callable
+from typing import NamedTuple, Optional, Callable
 
 import chex
 import jax
@@ -29,9 +29,9 @@ from optax._src import utils
 # pylint:disable=no-value-for-parameter
 
 
-def _decay_rate_pow(i: int, exponent: float = 0.8) -> float:
+def _decay_rate_pow(i: int, exponent: float = 0.8) -> chex.Array:
   """Second-order moment decay schedule."""
-  t = jnp.array(i, jnp.float32) + 1.0
+  t = jnp.array(i + 1, jnp.float32)
   return 1.0 - t**(-exponent)
 
 
@@ -39,7 +39,7 @@ def _factored_dims(
     shape: base.Shape,
     factored: bool,
     min_dim_size_to_factor: int
-) -> Optional[Tuple[int, int]]:
+) -> Optional[tuple[int, int]]:
   """Whether to use a factored second moment estimator.
 
   This function returns a tuple with the two largest axes to reduce over.
