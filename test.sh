@@ -20,7 +20,7 @@ set -xeuo pipefail
 rm -rf _testing
 rm -rf .pytype
 mkdir -p _testing
-readonly VENV_DIR="$(mktemp -d -p `pwd`/_testing optax-env.XXXXXXXX)"
+readonly VENV_DIR="$(mktemp -d `pwd`/_testing/optax-env.XXXXXXXX)"
 # in the unlikely case in which there was something in that directory
 python3 -m venv "${VENV_DIR}"
 source "${VENV_DIR}/bin/activate"
