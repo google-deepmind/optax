@@ -22,6 +22,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax._src import base
+from optax._src import transform
 
 # pylint:disable=no-value-for-parameter
 
@@ -45,6 +46,18 @@ class BaseTest(chex.TestCase):
       f(updates, opt_state, params=params)
 
     g(f)
+
+  def test_empty_state_is_optstate(self):
+    """Tests that EmptyState is a valid OptState."""
+    def _identity(s: base.OptState) -> base.OptState:
+      return s
+
+    _identity(base.EmptyState())
+
+  def test_not_all_states_are_emptystate(self):
+    """Test that not all states are instances of EmptyState."""
+    trace_state = transform.TraceState(jnp.zeros([]))
+    assert not isinstance(trace_state, base.EmptyState)
 
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
