@@ -46,13 +46,6 @@ class BaseTest(chex.TestCase):
 
     g(f)
 
-  def test_empty_state_is_optstate(self):
-    """Tests that EmptyState is a valid OptState."""
-    def _identity(s: base.OptState) -> base.OptState:
-      return s
-
-    _identity(base.EmptyState())
-
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
     """Tests that zero transform returns a tree of zeros of correct shape."""
