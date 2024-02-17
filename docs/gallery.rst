@@ -1,8 +1,8 @@
 
 .. _gallery:
 
-Example gallery
-===============
+🖼️ Example gallery
+=================
 
 .. toctree::
    :glob:
