@@ -15,7 +15,7 @@
 """Tests for _state_utils."""
 
 import dataclasses
-from typing import Optional, TypedDict, cast
+from typing import NamedTuple, Optional, TypedDict, cast
 
 from absl.testing import absltest
 import chex
@@ -128,8 +128,8 @@ class StateUtilsTest(absltest.TestCase):
 
   def test_state_chex_dataclass(self):
 
-    @chex.dataclass
-    class Foo:
+    # @chex.dataclass
+    class Foo(NamedTuple):
       count: int
       v: chex.ArrayTree
 

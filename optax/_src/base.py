@@ -14,7 +14,7 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
+from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union, Tuple
 
 import chex
 import jax
@@ -27,7 +27,8 @@ NO_PARAMS_MSG = (
 PyTree = Any
 Shape = Sequence[int]
 
-OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
+OptState = Tuple[Any]
+
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
