@@ -455,13 +455,13 @@ nadam.__doc__ = (
       >>> for _ in range(5):
       ...  grad = jax.grad(f)(params)
       ...  updates, opt_state = solver.update(grad, opt_state, params)
-    ...  params = optax.apply_updates(params, updates)
+      ...  params = optax.apply_updates(params, updates)
       ...  print('Objective function: {:.2E}'.format(f(params)))
-      Objective function:  13.947006
-      Objective function:  13.905494
-      Objective function:  13.866892
-      Objective function:  13.829489
-      Objective function:  13.792713
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.38E+01
+      Objective function: 1.38E+01
 
   References:
     Dozat, `Incorporating Nesterov Momentum into Adam
