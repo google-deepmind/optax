@@ -1,4 +1,4 @@
-# Development
+# 🛠️ Development
 
 Optax welcomes contributions from the open-source community. This can include
 issues, bug reports, questions, design documents, pull requests, or any other
