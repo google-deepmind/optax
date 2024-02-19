@@ -18,22 +18,6 @@ Example gallery
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Quickstart with Optax.">
-
-.. only:: html
-
-  .. image:: /images/favicon.svg
-     :alt: quick_start
-
-  :doc:`_collections/examples/quick_start`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Quickstart with Optax.</div>
-    </div>
-
-.. raw:: html
-
     <div class="sphx-glr-thumbcontainer" tooltip="Gradient Accumulation.">
 
 .. only:: html
