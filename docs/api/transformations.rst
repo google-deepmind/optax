@@ -41,6 +41,8 @@ Transformations
     ScaleByAdamState
     scale_by_amsgrad
     ScaleByAmsgradState
+    scale_by_backtracking_linesearch
+    ScaleByBacktrackingLinesearchState
     scale_by_belief
     ScaleByBeliefState
     scale_by_factored_rms
@@ -176,6 +178,9 @@ Transformations and states
 .. autofunction:: scale_by_amsgrad
 .. autoclass:: ScaleByAmsgradState
     :members:
+
+.. autofunction:: scale_by_backtracking_linesearch
+.. autoclass:: ScaleByBacktrackingLinesearchState
 
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState

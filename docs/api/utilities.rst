@@ -8,10 +8,15 @@ General
 
 .. autosummary::
     scale_gradient
+    value_and_grad_from_state
 
 Scale gradient
 ~~~~~~~~~~~~~~
 .. autofunction:: scale_gradient
+
+Value and grad from state
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: value_and_grad_from_state
 
 
 Numerical Stability

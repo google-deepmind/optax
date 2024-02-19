@@ -17,7 +17,7 @@
 
 import functools
 import operator
-from typing import Any
+from typing import Any, Union
 
 import chex
 import jax
@@ -31,6 +31,7 @@ def tree_add(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the sum of the two pytrees.
   """
@@ -43,6 +44,7 @@ def tree_sub(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the difference of the two pytrees.
   """
@@ -55,6 +57,7 @@ def tree_mul(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the product of the two pytrees.
   """
@@ -67,13 +70,14 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the quotient of the two pytrees.
   """
   return jtu.tree_map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(scalar: float, tree: Any) -> Any:
+def tree_scalar_mul(scalar: Union[float, jax.Array], tree: Any) -> Any:
   r"""Multiply a tree by a scalar.
 
   In infix notation, the function performs ``out = scalar * tree``.
@@ -81,13 +85,16 @@ def tree_scalar_mul(scalar: float, tree: Any) -> Any:
   Args:
     scalar: scalar value.
     tree: pytree.
+
   Returns:
     a pytree with the same structure as ``tree``.
   """
   return jtu.tree_map(lambda x: scalar * x, tree)
 
 
-def tree_add_scalar_mul(tree_x: Any, scalar: float, tree_y: Any) -> Any:
+def tree_add_scalar_mul(
+    tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
+) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
 
   In infix notation, the function performs ``out = tree_x + scalar * tree_y``.
@@ -96,6 +103,7 @@ def tree_add_scalar_mul(tree_x: Any, scalar: float, tree_y: Any) -> Any:
     tree_x: first pytree.
     scalar: scalar value.
     tree_y: second pytree.
+
   Returns:
     a pytree with the same structure as ``tree_x`` and ``tree_y``.
   """
@@ -115,6 +123,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   Args:
     tree_x: first pytree to use.
     tree_y: second pytree to use.
+
   Returns:
     inner product between ``tree_x`` and ``tree_y``, a scalar value.
 
@@ -136,6 +145,7 @@ def tree_sum(tree: Any) -> chex.Numeric:
 
   Args:
     tree: pytree.
+
   Returns:
     a scalar value.
   """
@@ -153,6 +163,7 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
   Args:
     tree: pytree.
     squared: whether the norm should be returned squared or not.
+
   Returns:
     a scalar value.
   """
@@ -169,6 +180,7 @@ def tree_zeros_like(tree: Any) -> Any:
 
   Args:
     tree: pytree.
+
   Returns:
     an all-zeros tree with the same structure as ``tree``.
   """
@@ -180,6 +192,7 @@ def tree_ones_like(tree: Any) -> Any:
 
   Args:
     tree: pytree.
+
   Returns:
     an all-ones tree with the same structure as ``tree``.
   """

@@ -84,6 +84,8 @@ from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
+from optax._src.linesearch import scale_by_backtracking_linesearch
+from optax._src.linesearch import ScaleByBacktrackingLinesearchState
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
@@ -146,6 +148,7 @@ from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
+from optax._src.utils import value_and_grad_from_state
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
@@ -316,6 +319,7 @@ __all__ = (
     "scale_by_adam",
     "scale_by_adamax",
     "scale_by_amsgrad",
+    "scale_by_backtracking_linesearch",
     "scale_by_belief",
     "scale_by_lion",
     "scale_by_factored_rms",
@@ -336,6 +340,7 @@ __all__ = (
     "ScaleByAdaDeltaState",
     "ScaleByAdamState",
     "ScaleByAmsgradState",
+    "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",
     "ScaleByLionState",
     "ScaleByNovogradState",
@@ -367,6 +372,7 @@ __all__ = (
     "TransformUpdateFn",
     "TransformUpdateExtraArgsFn",
     "Updates",
+    "value_and_grad_from_state",
     "warmup_cosine_decay_schedule",
     "warmup_exponential_decay_schedule",
     "yogi",
