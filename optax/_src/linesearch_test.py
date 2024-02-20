@@ -166,7 +166,6 @@ class BacktrackingLinesearchTest(chex.TestCase):
     final_params = jnp.array([1.0, -1.0, 1.0])
 
     def fn(params):
-      jax.debug.print('function evaluated')
       return jnp.sum((params - final_params) ** 2)
 
     # Base learning rate ensures sufficient decrease, so the linesearch should
