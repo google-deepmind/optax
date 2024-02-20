@@ -14,9 +14,7 @@
 # ==============================================================================
 """Tests for `linesearch.py`."""
 
-import contextlib
 import functools
-import io
 import itertools
 import math
 
@@ -160,17 +158,25 @@ class BacktrackingLinesearchTest(chex.TestCase):
       params = update.apply_updates(params, updates)
     chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
 
-  @parameterized.product(jit=[True, False])
-  def test_recycling_value_and_grad(self, jit):
+  @chex.variants(
+      with_jit=True,
+      without_jit=True,
+      with_pmap=False,
+      with_device=True,
+      without_device=True,
+  )
+  def test_recycling_value_and_grad(self):
+    # A vmap or a pmap makes the cond in value_and_state_from_grad
+    # become a select and in that case this code cannot be optimal.
+    # So we skip the pmap test.
     init_params = jnp.array([1.0, 10.0, 1.0])
     final_params = jnp.array([1.0, -1.0, 1.0])
 
     def fn(params):
-      jax.debug.print('function evaluated')
       return jnp.sum((params - final_params) ** 2)
 
-    # Base learning rate ensures sufficient decrease, so the linesearch should
-    # not make more function evaluations than the total number of iterations.
+    value_and_grad = utils.value_and_grad_from_state(fn)
+
     base_opt = alias.sgd(learning_rate=0.1)
     solver = combine.chain(
         base_opt,
@@ -181,35 +187,34 @@ class BacktrackingLinesearchTest(chex.TestCase):
             store_grad=True,
         ),
     )
-    value_and_grad = utils.value_and_grad_from_state(fn)
     init_state = solver.init(init_params)
     max_iter = 40
 
     update_fn = functools.partial(solver.update, value_fn=fn)
-    update_fn = jax.jit(update_fn)
 
-    def step_(params, state):
-      value, grad = value_and_grad(params, state=state)
+    def fake_fun(_):
+      return 1.0
+
+    fake_value_and_grad = utils.value_and_grad_from_state(fake_fun)
+
+    def step_(params, state, iter_num):
+      # Should still work as the value and grad are extracted from the state
+      value, grad = jax.lax.cond(
+          iter_num > 0,
+          lambda: fake_value_and_grad(params, state=state),
+          lambda: value_and_grad(params, state=state),
+      )
       updates, state = update_fn(grad, state, params, value=value, grad=grad)
       params = update.apply_updates(params, updates)
       return params, state
 
-    if jit:
-      step = jax.jit(step_)
-    else:
-      step = step_
+    step = self.variant(step_)
     params = init_params
     state = init_state
-    stdout = io.StringIO()
-    with contextlib.redirect_stdout(stdout):
-      for _ in range(max_iter):
-        params, state = step(params, state)
+    for iter_num in range(max_iter):
+      params, state = step(params, state, iter_num)
+    params = jax.block_until_ready(params)
     chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
-
-    num_evals = stdout.getvalue().count('function evaluated')
-    # There are two function call sites, so as the function may be compiled
-    # twice, we may get a total of max_iter + 1.
-    self.assertLessEqual(num_evals, max_iter + 1)
 
   def test_armijo_sgd(self):
     def fn(params, x, y):

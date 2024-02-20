@@ -14,12 +14,11 @@
 # ==============================================================================
 """Tests for `utils.py`."""
 
-import contextlib
-import io
 from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -141,7 +140,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     self.assertEqual(probs.shape, ())
 
 
-class HelpersTest(parameterized.TestCase):
+class HelpersTest(chex.TestCase):
 
   @parameterized.parameters([
       (1, 1),
@@ -296,17 +295,20 @@ class HelpersTest(parameterized.TestCase):
     self.assertLen(values_found, 3)
     check_values_found(state, values_found)
 
-  @parameterized.product(jit=[True, False])
-  def test_value_and_grad_from_state(self, jit):
+  @chex.variants(
+      with_jit=True,
+      without_jit=True,
+      with_pmap=False,
+      with_device=True,
+      without_device=True,
+  )
+  def test_value_and_grad_from_state(self):
     def fn(x):
       return jnp.sum(x**2)
 
     value_and_grad_ = utils.value_and_grad_from_state(fn)
 
-    if jit:
-      value_and_grad = jax.jit(value_and_grad_)
-    else:
-      value_and_grad = value_and_grad_
+    value_and_grad = self.variant(value_and_grad_)
 
     params = jnp.array([1.0, 2.0, 3.0])
 
@@ -338,22 +340,16 @@ class HelpersTest(parameterized.TestCase):
     params = update.apply_updates(params, updates)
     params = jax.block_until_ready(params)
 
-    def fn_chatty(x):
-      jax.debug.print('function evaluated')
-      return jnp.sum(x**2)
+    def false_fn(_):
+      return 1.
 
-    value_and_grad_ = utils.value_and_grad_from_state(fn_chatty)
-    if jit:
-      value_and_grad = jax.jit(value_and_grad_)
-    else:
-      value_and_grad = value_and_grad_
+    false_value_and_grad_ = utils.value_and_grad_from_state(false_fn)
+    false_value_and_grad = self.variant(false_value_and_grad_)
 
-    # At the second step we should not need to evaluate the function
-    stdout = io.StringIO()
-    with contextlib.redirect_stdout(stdout):
-      value_and_grad(params, state=state)
-    num_eval = stdout.getvalue().count('function evaluated')
-    self.assertEqual(num_eval, 0)
+    # At the second step we should not evaluate the function
+    # so in this case it should not return the output of false_fn
+    value, _ = false_value_and_grad(params, state=state)
+    self.assertNotEqual(value, 1.)
 
   def test_extract_fns_kwargs(self):
     def fn1(a, b):
