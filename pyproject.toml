@@ -10,11 +10,11 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 authors = [
-    {name = "DeepMind", email = "optax-dev@google.com"},
+    {name = "Google DeepMind", email = "optax-dev@google.com"},
 ]
 keywords = [
-    "python", 
-    "machine learning", 
+    "python",
+    "machine learning",
     "reinforcement-learning"
 ]
 classifiers = [
@@ -38,21 +38,21 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/deepmind/optax"
-repository = "https://github.com/deepmind/optax"
+homepage = "https://github.com/google-deepmind/optax"
+repository = "https://github.com/google-deepmind/optax"
 documentation = "https://optax.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
-    "dm-haiku>=0.0.3",
     "dm-tree>=0.1.7",
-    "flax==0.5.3"
+    "flax>=0.5.3"
 ]
 
 examples = [
-  "dm-haiku>=0.0.3",
   "tensorflow-datasets>=4.2.0",
-  "tensorflow>=2.4.0"
+  "tensorflow>=2.4.0",
+  "dp_accounting>=0.4",
+  "flax",
 ]
 
 docs = [
@@ -63,13 +63,13 @@ docs = [
     "ipython>=8.8.0",  # 8.7.0 has ipython3 lexer error
     "myst-nb>=1.0.0",
     "matplotlib>=3.5.0",
-    "dm-haiku>=0.0.11",
     "sphinx-gallery>=0.14.0",
     "sphinx-collections>=0.0.1",
     "tensorflow>=2.4.0",
     "tensorflow-datasets>=4.2.0",
     "orbax-checkpoint",
-    "grain-nightly"
+    "grain-nightly",
+    "flax",
 ]
 
 dp-accounting = [

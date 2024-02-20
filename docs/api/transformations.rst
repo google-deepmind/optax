@@ -34,15 +34,20 @@ Transformations
     per_example_layer_norm_clip
     scale
     ScaleState
+    scale_by_adadelta
+    ScaleByAdaDeltaState
     scale_by_adam
     scale_by_adamax
     ScaleByAdamState
     scale_by_amsgrad
     ScaleByAmsgradState
+    scale_by_backtracking_linesearch
+    ScaleByBacktrackingLinesearchState
     scale_by_belief
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_learning_rate
     scale_by_lion
     ScaleByLionState
     scale_by_novograd
@@ -53,6 +58,8 @@ Transformations
     scale_by_radam
     scale_by_rms
     ScaleByRmsState
+    scale_by_rprop
+    ScaleByRpropState
     scale_by_rss
     ScaleByRssState
     scale_by_schedule
@@ -159,6 +166,10 @@ Transformations and states
 .. autoclass:: ScaleState
     :members:
 
+.. autofunction:: scale_by_adadelta
+.. autoclass:: ScaleByAdaDeltaState
+    :members:
+
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
 .. autoclass:: ScaleByAdamState
@@ -168,6 +179,9 @@ Transformations and states
 .. autoclass:: ScaleByAmsgradState
     :members:
 
+.. autofunction:: scale_by_backtracking_linesearch
+.. autoclass:: ScaleByBacktrackingLinesearchState
+
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState
     :members:
@@ -175,6 +189,8 @@ Transformations and states
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
     :members:
+
+.. autofunction:: scale_by_learning_rate
 
 .. autofunction:: scale_by_lion
 .. autoclass:: ScaleByLionState
@@ -194,6 +210,10 @@ Transformations and states
 
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState
+    :members:
+
+.. autofunction:: scale_by_rprop
+.. autoclass:: ScaleByRpropState
     :members:
 
 .. autofunction:: scale_by_rss

@@ -8,10 +8,15 @@ General
 
 .. autosummary::
     scale_gradient
+    value_and_grad_from_state
 
 Scale gradient
 ~~~~~~~~~~~~~~
 .. autofunction:: scale_gradient
+
+Value and grad from state
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: value_and_grad_from_state
 
 
 Numerical Stability
@@ -36,22 +41,6 @@ Safe root mean squares
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: safe_root_mean_squares
 
-
-Privacy-Sensitive Optax Methods
--------------------------------
-
-.. currentmodule:: optax
-
-.. autosummary::
-    DifferentiallyPrivateAggregateState
-    differentially_private_aggregate
-
-
-Differentially Private Aggregate
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: differentially_private_aggregate
-.. autoclass:: DifferentiallyPrivateAggregateState
-   :members:
 
 
 Second Order Optimization

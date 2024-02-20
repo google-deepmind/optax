@@ -77,7 +77,57 @@ updates, opt_state = optimizer.update(grads, opt_state)
 params = optax.apply_updates(params, updates)
 ```
 
-You can continue the quick start in [the Optax quickstart notebook.](https://github.com/google-deepmind/optax/blob/main/examples/quick_start.ipynb)
+You can continue the quick start in [the Optax 101 notebook.](https://github.com/google-deepmind/optax/blob/main/docs/optax-101.ipynb)
+
+## Development
+
+We welcome new contributors.
+
+### Source code
+
+You can check the latest sources with the following command.
+
+```sh
+git clone https://github.com/google-deepmind/optax.git
+```
+### Testing
+
+To run the tests, please execute the following script.
+
+```sh
+sh ./test.sh
+```
+
+### Documentation
+
+To build the documentation, first ensure that all the dependencies are installed.
+```sh
+pip install -e ".[docs]"
+```
+Then, execute the following.
+```sh
+cd docs/
+make html
+```
+
+## Benchmarks
+If you feel lost in the crowd of available optimizers for deep learning, there
+exist some extensive benchmarks:
+
+[Benchmarking Neural Network Training Algorithms, Dahl G. et al, 2023](https://arxiv.org/pdf/2306.07179),
+
+[Descending through a Crowded Valley — Benchmarking Deep Learning Optimizers, Schmidt R. et al, 2021](https://proceedings.mlr.press/v139/schmidt21a).
+
+If you are interested in developing your own benchmark for some tasks,
+consider the following framework
+
+[Benchopt: Reproducible, efficient and collaborative optimization benchmarks, Moreau T. et al, 2022](https://arxiv.org/abs/2206.13424).
+
+Finally, if you are searching for some recommendations on tuning optimizers,
+consider taking a look at
+
+[Deep Learning Tuning Playbook, Godbole V. et al, 2023](https://github.com/google-research/tuning_playbook).
+
 
 ## Citing Optax
 

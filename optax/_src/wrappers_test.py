@@ -21,7 +21,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
-import haiku as hk
+import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -97,16 +97,16 @@ class WrappersTest(parameterized.TestCase):
       ('sgd_extra_args', _build_sgd_extra_args),
   )
   def test_apply_if_finite(self, opt_builder):
-    one = jnp.ones([])
+    one = jnp.array(1.)
     nan = jnp.array(jnp.nan)
-    def fn(x):
-      return x * hk.get_parameter('p', [], init=hk.initializers.Constant(0.))
 
-    fn = hk.without_apply_rng(hk.transform(fn))
-    params = fn.init(jax.random.PRNGKey(1905), one)
+    def fn(p, x):
+      return p * x
+
+    params = jnp.array(0.)
     opt = wrappers.apply_if_finite(opt_builder(), 2)
     state = opt.init(params)
-    grads_fn = jax.grad(self.variant(fn.apply))
+    grads_fn = jax.grad(self.variant(fn))
     # Do one successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
@@ -150,21 +150,19 @@ class WrappersTest(parameterized.TestCase):
     # * the NaNs are caused inside the function and do not come from the inputs.
     half = jnp.ones([1]) / 2.
     two = jnp.ones([1]) * 2.  # Causes a NaN in arctanh
-    def fn(x):
-      return jnp.arctanh(x) * hk.get_parameter(
-          'p', [], init=hk.initializers.Constant(0.))
-    fn = hk.without_apply_rng(hk.transform(fn))
+    def fn(p, x):
+      return jnp.arctanh(x) * p
 
     opt = wrappers.apply_if_finite(alias.sgd(1.), 2)
     def fn_update(params, opt_state, x):
-      grads = jax.grad(fn.apply)(params, x)
+      grads = jax.grad(fn)(params, x)
       grads = jax.lax.psum(grads, axis_name='i')
       updates, new_opt_state = opt.update(grads, opt_state, params)
       new_params = update.apply_updates(params, updates)
       return new_params, new_opt_state
     fn_update = jax.pmap(fn_update, axis_name='i')
 
-    params = fn.init(jax.random.PRNGKey(1905), half)
+    params = jnp.array(0.)
     opt_state = opt.init(params)
     params = jax.tree_util.tree_map(lambda x: x[None], params)
     opt_state = jax.tree_util.tree_map(lambda x: x[None], opt_state)
@@ -196,12 +194,17 @@ class WrappersTest(parameterized.TestCase):
     k_steps = 4
     data = jnp.ones([batch_size, x_size])
 
-    def get_loss(x):
-      loss = jnp.sum(hk.Linear(10)(x)**2)
-      return loss
+    class Loss(flax.linen.Module):
+      @flax.linen.compact
+      def __call__(self, x):
+        return jnp.sum(flax.linen.Dense(10)(x)**2)
 
-    loss_init, loss_apply = hk.without_apply_rng(hk.transform(get_loss))
-    params = loss_init(jax.random.PRNGKey(1915), data)
+    loss = Loss()
+
+    params = loss.init({'params': jax.random.PRNGKey(0)}, data)['params']
+
+    def loss_apply(params, data):
+      return loss.apply({'params': params}, data)
 
     ms_opt = wrappers.MultiSteps(
         # Use a non-trivial inner optimiser:
@@ -364,21 +367,21 @@ class WrappersTest(parameterized.TestCase):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_inf_updates'):
       updates, opt_state = opt_update(
           dict(a=jnp.array(float('inf'))), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_nan_updates'):
       updates, opt_state = opt_update(
           dict(a=jnp.full([], float('nan'))), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.ones([]))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_final_good_updates'):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
@@ -387,7 +390,7 @@ class WrappersTest(parameterized.TestCase):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], -jnp.full([], 2.))
+      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.full([], 2.)))
 
 
 class MaskedTest(chex.TestCase):

@@ -22,6 +22,7 @@ from optax import schedules
 from optax import second_order
 from optax import tree_utils
 from optax._src.alias import adabelief
+from optax._src.alias import adadelta
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
@@ -41,6 +42,7 @@ from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
+from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
@@ -82,6 +84,8 @@ from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
+from optax._src.linesearch import scale_by_backtracking_linesearch
+from optax._src.linesearch import ScaleByBacktrackingLinesearchState
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
@@ -99,6 +103,7 @@ from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
 from optax._src.transform import scale
+from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
@@ -112,18 +117,21 @@ from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
+from optax._src.transform import scale_by_rprop
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
 from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
+from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
+from optax._src.transform import ScaleByRpropState
 from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
@@ -140,6 +148,7 @@ from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
+from optax._src.utils import value_and_grad_from_state
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
 from optax._src.wrappers import flatten
@@ -208,6 +217,7 @@ __version__ = "0.2.0.dev"
 
 __all__ = (
     "adabelief",
+    "adadelta",
     "adafactor",
     "adagrad",
     "adam",
@@ -300,13 +310,16 @@ __all__ = (
     "power_iteration",
     "radam",
     "rmsprop",
+    "rprop",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
     "ScalarOrSchedule",
+    "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
     "scale_by_amsgrad",
+    "scale_by_backtracking_linesearch",
     "scale_by_belief",
     "scale_by_lion",
     "scale_by_factored_rms",
@@ -315,6 +328,7 @@ __all__ = (
     "scale_by_param_block_rms",
     "scale_by_radam",
     "scale_by_rms",
+    "scale_by_rprop",
     "scale_by_rss",
     "scale_by_schedule",
     "scale_by_sm3",
@@ -323,12 +337,15 @@ __all__ = (
     "scale_by_yogi",
     "scale_gradient",
     "scale",
+    "ScaleByAdaDeltaState",
     "ScaleByAdamState",
     "ScaleByAmsgradState",
+    "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
+    "ScaleByRpropState",
     "ScaleByRssState",
     "ScaleByRStdDevState",
     "ScaleByScheduleState",
@@ -355,6 +372,7 @@ __all__ = (
     "TransformUpdateFn",
     "TransformUpdateExtraArgsFn",
     "Updates",
+    "value_and_grad_from_state",
     "warmup_cosine_decay_schedule",
     "warmup_exponential_decay_schedule",
     "yogi",

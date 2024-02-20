@@ -42,6 +42,7 @@ class TransformTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters([
+      ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
       ('lion', transform.scale_by_lion),

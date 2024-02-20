@@ -1,6 +1,6 @@
-# Contributors
+# 🛠️ Development
 
-Optax welcomes contributions from the open source community. This can include
+Optax welcomes contributions from the open-source community. This can include
 issues, bug reports, questions, design documents, pull requests, or any other
 input to the project.
 
@@ -33,14 +33,15 @@ algorithms to this directory.
 
 #### Design Documents
 
-For more complex or involved features, we recommend starting out by writing a
+For more complex or involved features, we recommend starting by writing a
 design document, or RFC ("Request For Comments") before spending significant
 time writing code. This can provide an opportunity for other contributors to
-provide input and find the best way to land new features, and also provides a
-reference for future users to understand how the library works. For an example
-of this, please see the following
-[[RFC] Proposal for complex-valued optimization in Optax](https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29),
-which lead to the addition of improved complex support in Optax.
+provide input and find the best way to land new features and also provides a
+reference for future users to understand how the library works.
+
+For an example of this, see the following
+[[RFC] Proposal for complex-valued optimization in Optax](https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29) authored by [Dian [Wu](https://github.com/wdphy16) which led to the addition of improved [complex numbers](https://optax.readthedocs.io/en/latest/api/contrib.html?complex-valued-optimization#complex-valued-optimization) support in Optax.
+
 
 #### Contributor License Agreement
 

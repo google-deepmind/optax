@@ -5,6 +5,7 @@ Optimizers
 
 .. autosummary::
     adabelief
+    adadelta
     adafactor
     adagrad
     adam
@@ -21,7 +22,6 @@ Optimizers
     noisy_sgd
     novograd
     optimistic_gradient_descent
-    dpsgd
     radam
     rmsprop
     sgd
@@ -32,6 +32,10 @@ Optimizers
 AdaBelief
 ~~~~~~~~~
 .. autofunction:: adabelief
+
+AdaDelta
+~~~~~~~~~
+.. autofunction:: adadelta
 
 AdaGrad
 ~~~~~~~
@@ -97,10 +101,6 @@ Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
 
-Differentially Private SGD
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: dpsgd
-
 RAdam
 ~~~~~
 .. autofunction:: radam
@@ -108,6 +108,10 @@ RAdam
 RMSProp
 ~~~~~~~
 .. autofunction:: rmsprop
+
+RProp
+~~~~~
+.. autofunction:: rprop
 
 SGD
 ~~~

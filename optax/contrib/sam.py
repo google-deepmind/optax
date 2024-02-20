@@ -140,8 +140,10 @@ def sam(
         ```
         grad_fn = jax.grad(lambda params, i: loss(params, batches[i]))
         ```
+  References:
+    [Foret et al, 2021](https://arxiv.org/pdf/2010.01412.pdf)
 
-  Arguments:
+  Args:
     optimizer: the outer optimizer.
     adv_optimizer: the inner adversarial optimizer.
     sync_period: int, how often to run the outer optimizer, defaults to 2, or

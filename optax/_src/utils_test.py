@@ -18,11 +18,15 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
+import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-
+from optax._src import alias
+from optax._src import combine
+from optax._src import linesearch
+from optax._src import transform
+from optax._src import update
 from optax._src import utils
 
 
@@ -34,40 +38,45 @@ def _shape_to_tuple(shape):
 
 class ScaleGradientTest(parameterized.TestCase):
 
-  @parameterized.product(inputs=[-1., 0., 1.], scale=[-0.5, 0., 0.5, 1., 2.])
+  @parameterized.product(
+      inputs=[-1.0, 0.0, 1.0], scale=[-0.5, 0.0, 0.5, 1.0, 2.0]
+  )
   @mock.patch.object(jax.lax, 'stop_gradient', wraps=jax.lax.stop_gradient)
   def test_scale_gradient(self, mock_sg, inputs, scale):
-
     def fn(inputs):
       outputs = utils.scale_gradient(inputs, scale)
-      return outputs ** 2
+      return outputs**2
 
     grad = jax.grad(fn)
     self.assertEqual(grad(inputs), 2 * inputs * scale)
-    if scale == 0.:
+    if scale == 0.0:
       mock_sg.assert_called_once_with(inputs)
     else:
       self.assertFalse(mock_sg.called)
-    self.assertEqual(fn(inputs), inputs ** 2)
+    self.assertEqual(fn(inputs), inputs**2)
 
-  @parameterized.product(scale=[-0.5, 0., 0.5, 1., 2.])
+  @parameterized.product(scale=[-0.5, 0.0, 0.5, 1.0, 2.0])
   def test_scale_gradient_pytree(self, scale):
-
     def fn(inputs):
       outputs = utils.scale_gradient(inputs, scale)
-      outputs = jax.tree_util.tree_map(lambda x: x ** 2, outputs)
+      outputs = jax.tree_util.tree_map(lambda x: x**2, outputs)
       return sum(jax.tree_util.tree_leaves(outputs))
 
-    inputs = dict(a=-1., b=dict(c=(2.,), d=0.))
+    inputs = dict(a=-1.0, b=dict(c=(2.0,), d=0.0))
 
     grad = jax.grad(fn)
     grads = grad(inputs)
     jax.tree_util.tree_map(
-        lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
+        lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads
+    )
     self.assertEqual(
         fn(inputs),
-        sum(jax.tree_util.tree_leaves(
-            jax.tree_util.tree_map(lambda x: x**2, inputs))))
+        sum(
+            jax.tree_util.tree_leaves(
+                jax.tree_util.tree_map(lambda x: x**2, inputs)
+            )
+        ),
+    )
 
 
 class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
@@ -131,7 +140,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     self.assertEqual(probs.shape, ())
 
 
-class HelpersTest(parameterized.TestCase):
+class HelpersTest(chex.TestCase):
 
   @parameterized.parameters([
       (1, 1),
@@ -248,6 +257,111 @@ class HelpersTest(parameterized.TestCase):
   def test_canonicalize_dtype(self, dtype, expected_dtype):
     canonical = utils.canonicalize_dtype(dtype)
     self.assertIs(canonical, expected_dtype)
+
+  def test_extract_from_state(self):
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    def check_values_found(state, values_found):
+      for value, state_name, path_to_state in values_found:
+        state_with_value = state
+        for i in path_to_state:
+          state_with_value = state_with_value[i]
+        self.assertEqual(getattr(state_with_value, key), value)
+        self.assertEqual(state_with_value.__class__.__name__, state_name)
+
+    key = 'count'
+    # Single value of 'count', simple OptState
+    opt = transform.scale_by_adam()
+    state = opt.init(params)
+    values_found = utils._extract_from_state(state, key)
+    self.assertLen(values_found, 1)
+    check_values_found(state, values_found)
+
+    # No value of 'count'
+    opt = alias.sgd(learning_rate=1.0)
+    state = opt.init(params)
+    values_found = utils._extract_from_state(state, key)
+    self.assertEmpty(values_found)
+
+    # Several values of 'count', state defined by chain
+    opt = combine.chain(
+        alias.adam(learning_rate=1.0),
+        combine.chain(
+            alias.adam(learning_rate=1.0), alias.adam(learning_rate=1.0)
+        ),
+    )
+    state = opt.init(params)
+    values_found = utils._extract_from_state(state, key)
+    self.assertLen(values_found, 3)
+    check_values_found(state, values_found)
+
+  @chex.variants(
+      with_jit=True,
+      without_jit=True,
+      with_pmap=False,
+      with_device=True,
+      without_device=True,
+  )
+  def test_value_and_grad_from_state(self):
+    def fn(x):
+      return jnp.sum(x**2)
+
+    value_and_grad_ = utils.value_and_grad_from_state(fn)
+
+    value_and_grad = self.variant(value_and_grad_)
+
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    # No value and grad in this transform so it should raise an error
+    opt = transform.scale_by_adam()
+    state = opt.init(params)
+    self.assertRaises(ValueError, value_and_grad, params, state=state)
+
+    # Multiple values and grads in this transform so it should raise an error
+    opt = combine.chain(
+        linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
+        linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
+    )
+    state = opt.init(params)
+    self.assertRaises(ValueError, value_and_grad, params, state=state)
+
+    # It should work efficiently when the linesearch stores the gradient
+    opt = combine.chain(
+        alias.sgd(learning_rate=1.0),
+        linesearch.scale_by_backtracking_linesearch(
+            max_backtracking_steps=15, store_grad=True
+        ),
+    )
+    state = opt.init(params)
+    value, grad = value_and_grad(params, state=state)
+    updates, state = opt.update(
+        grad, state, params, value=value, grad=grad, value_fn=fn
+    )
+    params = update.apply_updates(params, updates)
+    params = jax.block_until_ready(params)
+
+    def false_fn(_):
+      return 1.
+
+    false_value_and_grad_ = utils.value_and_grad_from_state(false_fn)
+    false_value_and_grad = self.variant(false_value_and_grad_)
+
+    # At the second step we should not evaluate the function
+    # so in this case it should not return the output of false_fn
+    value, _ = false_value_and_grad(params, state=state)
+    self.assertNotEqual(value, 1.)
+
+  def test_extract_fns_kwargs(self):
+    def fn1(a, b):
+      return a + b
+
+    def fn2(c, d):
+      return c + d
+
+    kwargs = {'b': 1.0, 'd': 2.0, 'e': 3.0}
+    fns_kwargs, remaining_kwargs = utils._extract_fns_kwargs((fn1, fn2), kwargs)
+    self.assertEqual(fns_kwargs, [{'b': 1.0}, {'d': 2.0}])
+    self.assertEqual(remaining_kwargs, {'e': 3.0})
 
 
 if __name__ == '__main__':

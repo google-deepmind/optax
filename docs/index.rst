@@ -1,7 +1,8 @@
 :github_url: https://github.com/google-deepmind/optax/tree/main/docs
 
+=====
 Optax
------
+=====
 
 Optax is a gradient processing and optimization library for JAX. It is designed
 to facilitate research by providing building blocks that can be recombined in
@@ -39,29 +40,18 @@ for instructions on installing JAX.
 
 
 .. toctree::
-   :caption: Getting Started
-   :maxdepth: 1
+   :hidden:
 
-   optax-101
-
-
-.. toctree::
-   :caption: Examples
-   :maxdepth: 1
+   getting_started
 
    gallery
 
-
-.. toctree::
-   :caption: Developer Documentation
-   :maxdepth: 1
-
-   design_docs
-   contributors
+   development
 
 
 .. toctree::
-   :caption: API Documentation
+   :hidden:
+   :caption: 📖 Reference
    :maxdepth: 2
 
    api/optimizers
