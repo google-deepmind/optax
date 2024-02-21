@@ -115,19 +115,15 @@ Transformations and states
 
 .. autofunction:: adaptive_grad_clip
 .. autoclass:: AdaptiveGradClipState
-  :members:
 
 .. autofunction:: add_decayed_weights
 .. autoclass:: AddDecayedWeightsState
-    :members:
 
 .. autofunction:: add_noise
 .. autoclass:: AddNoiseState
-    :members:
 
 .. autofunction:: apply_every
 .. autoclass:: ApplyEvery
-    :members:
 
 .. autofunction:: bias_correction
 
@@ -136,18 +132,14 @@ Transformations and states
 .. autofunction:: clip
 .. autofunction:: clip_by_block_rms
 .. autoclass:: ClipState
-    :members:
 
 .. autofunction:: clip_by_global_norm
 .. autoclass:: ClipByGlobalNormState
-    :members:
 
 .. autofunction:: ema
 .. autoclass:: EmaState
-    :members:
 
 .. autoclass:: EmptyState
-    :members:
 
 .. autofunction:: global_norm
 
@@ -155,45 +147,36 @@ Transformations and states
 
 .. autofunction:: keep_params_nonnegative
 .. autoclass:: NonNegativeParamsState
-    :members:
 
 .. autofunction:: per_example_global_norm_clip
 .. autofunction:: per_example_layer_norm_clip
 
 .. autofunction:: scale
 .. autoclass:: ScaleState
-    :members:
 
 .. autofunction:: scale_by_adadelta
 .. autoclass:: ScaleByAdaDeltaState
-    :members:
 
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
 .. autoclass:: ScaleByAdamState
-    :members:
 
 .. autofunction:: scale_by_amsgrad
 .. autoclass:: ScaleByAmsgradState
-    :members:
 
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState
-    :members:
 
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
-    :members:
 
 .. autofunction:: scale_by_learning_rate
 
 .. autofunction:: scale_by_lion
 .. autoclass:: ScaleByLionState
-    :members:
 
 .. autofunction:: scale_by_novograd
 .. autoclass:: ScaleByNovogradState
-    :members:
 
 .. autofunction:: scale_by_optimistic_gradient
 
@@ -205,31 +188,24 @@ Transformations and states
 
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState
-    :members:
 
 .. autofunction:: scale_by_rprop
 .. autoclass:: ScaleByRpropState
-    :members:
 
 .. autofunction:: scale_by_rss
 .. autoclass:: ScaleByRssState
-    :members:
 
 .. autofunction:: scale_by_schedule
 .. autoclass:: ScaleByScheduleState
-    :members:
 
 .. autofunction:: scale_by_sm3
 .. autoclass:: ScaleBySM3State
-    :members:
 
 .. autofunction:: scale_by_stddev
 .. autoclass:: ScaleByRStdDevState
-    :members:
 
 .. autofunction:: scale_by_trust_ratio
 .. autoclass:: ScaleByTrustRatioState
-    :members:
 
 .. autofunction:: scale_by_yogi
 
@@ -240,7 +216,6 @@ Transformations and states
 
 .. autofunction:: trace
 .. autoclass:: TraceState
-    :members:
 
 .. autofunction:: update_infinity_moment
 .. autofunction:: update_moment
@@ -250,4 +225,3 @@ Transformations and states
 
 .. autofunction:: zero_nans
 .. autoclass:: ZeroNansState
-    :members:

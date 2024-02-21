@@ -15,4 +15,3 @@ Multi-transform
 ~~~~~~~~~~~~~~~
 .. autofunction:: multi_transform
 .. autoclass::  MultiTransformState
-   :members:

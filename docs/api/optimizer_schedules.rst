@@ -46,7 +46,6 @@ Inject hyperparameters
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: inject_hyperparams
 .. autoclass:: InjectHyperparamsState
-   :members:
 
 Linear schedules
 ~~~~~~~~~~~~~~~~
