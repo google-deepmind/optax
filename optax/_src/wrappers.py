@@ -57,7 +57,7 @@ def flatten(
     updates_flat, treedef = jax.tree_util.tree_flatten(updates)
     offsets = []
     for update in updates_flat:
-      size = np.prod(update.shape)
+      size = np.size(update)
       if offsets:
         offsets.append(size + offsets[-1])
       else:

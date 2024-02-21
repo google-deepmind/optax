@@ -67,9 +67,13 @@ class WrappersTest(parameterized.TestCase):
 
   def test_flatten(self):
     def init_params():
-      return (jnp.array([1., 2.]), jnp.array([3., 4.]))
+      return (jnp.array(2.), jnp.array([1., 2.]), jnp.array([3., 4.]))
 
-    per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    per_step_updates = (
+        jnp.array(1.0),
+        jnp.array([500.0, 5.0]),
+        jnp.array([300.0, 3.0]),
+    )
 
     # First calculate new params without flattening
     optax_sgd_params = init_params()
