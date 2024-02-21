@@ -14,7 +14,7 @@
 # ==============================================================================
 """Gradient transformations used to enforce specific constraints."""
 
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
@@ -57,13 +57,15 @@ def keep_params_nonnegative() -> base.GradientTransformation:
 
 
 class ZeroNansState(NamedTuple):
-  """Contains a tree.
+  """State of the `GradientTransformation` returned by `zero_nans`.
 
-  The entry `found_nan` has the same tree structure as that of the parameters.
-  Each leaf is a single boolean which contains True iff a NaN was detected in
-  the corresponding parameter array at the last call to `update`.
+  Attributes:
+    found_nan (``jax.Array``): tree that has the same structure as that of the
+      parameters. Each leaf is a single boolean which contains True iff a NaN
+      was detected in the corresponding parameter array at the last call to
+      `update`.
   """
-  found_nan: Any
+  found_nan: jax.Array
 
 
 def zero_nans() -> base.GradientTransformation:
