@@ -208,8 +208,15 @@ class GradientTransformationExtraArgs(GradientTransformation):
   update: TransformUpdateExtraArgsFn
 
 
-class EmptyState(NamedTuple):
+class EmptyState(tuple):
   """An empty state for the simplest stateless transformations."""
+
+
+jax.tree_util.register_pytree_node(
+    EmptyState,
+    lambda xs: ((), None),  # Identity-like flattening
+    lambda _, xs: EmptyState()  # Constructor from flattened form
+)
 
 
 def identity() -> GradientTransformation:
