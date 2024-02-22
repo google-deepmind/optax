@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX Schedules.
+"""Optax Schedules.
 
 Schedules may be used to anneal the value of a hyper-parameter over time; for
 instance, they may be used to anneal the learning rate used to update an agent's
@@ -95,7 +95,34 @@ def linear_schedule(
     transition_steps: int,
     transition_begin: int = 0
 ) -> base.Schedule:
-  """Alias polynomial schedule to linear schedule for convenience."""
+  """Schedule with linear transition from init to end value.
+
+  This schedule is equivalent to :func:`optax.polynomial_schedule` with
+  ``power=1``.
+
+  Examples:
+    >>> schedule_fn = optax.linear_schedule(
+    ...    init_value=1.0, end_value=0.01, transition_steps=100)
+    >>> schedule_fn(0)  # learning rate on the first iteration
+    Array(1., dtype=float32, weak_type=True)
+    >>> schedule_fn(100)  # learning rate on the last iteration
+    Array(0.01, dtype=float32, weak_type=True)
+
+  Args:
+    init_value: initial value for the scalar to be annealed.
+    end_value: end value of the scalar to be annealed.
+    transition_steps: number of steps over which annealing takes place. The
+      scalar starts changing at ``transition_begin`` steps and completes the
+      transition by ``transition_begin + transition_steps`` steps. If
+      ``transition_steps <= 0``, then the entire annealing process is disabled
+      and the value is held fixed at ``init_value``.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at ``init_value``).
+
+  Returns:
+    schedule
+      A function that maps step counts to values.
+  """
   return polynomial_schedule(
       init_value=init_value, end_value=end_value, power=1,
       transition_steps=transition_steps, transition_begin=transition_begin)
