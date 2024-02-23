@@ -15,6 +15,7 @@
 
 """Utilities to perform maths on pytrees."""
 
+from collections.abc import Callable
 import functools
 import operator
 from typing import Any, Union
@@ -197,3 +198,62 @@ def tree_ones_like(tree: Any) -> Any:
     an all-ones tree with the same structure as ``tree``.
   """
   return jtu.tree_map(jnp.ones_like, tree)
+
+
+def reduce_across_trees(reduce_fun: Callable[[Any], Any], trees: Any):
+  """Reduce a pytree across a list of trees.
+
+  Args:
+    reduce_fun: reduce function to apply. Must support variadic arguments.
+    trees: pytree. Must be a list of trees with the same structure.
+
+  Returns:
+    a pytree with the same structure as each tree in ``trees''.
+
+  >>> optax.tree_utils.reduce_across_trees(
+  ...   lambda x: sum(x),
+  ...   [{'first': [1, 2], 'last': 3},
+  ...    {'first': [5, 6], 'last': 7}]
+  ...   )
+  {'first': [6, 8], 'last': 10}
+  """
+  return jtu.tree_map(lambda *leaves: reduce_fun(leaves), *trees)
+
+
+def random_split_like_tree(rng_key: chex.PRNGKey, target_tree: chex.ArrayTree):
+  """Split keys to match structure of target tree.
+
+  Args:
+    rng_key: the key to split.
+    target_tree: the tree whose structure to match.
+
+  Returns:
+    a tree of rng keys.
+  """
+  tree_def = jtu.tree_structure(target_tree)
+  keys = jax.random.split(rng_key, tree_def.num_leaves)
+  return jtu.tree_unflatten(tree_def, keys)
+
+
+def random_like_tree(
+    rng_key: chex.PRNGKey,
+    target_tree: chex.ArrayTree,
+    noise_sample: Callable[[chex.PRNGKey, Any], chex.Array] = jax.random.normal,
+):
+  """Create tree with normal random entries of the same shape as target tree.
+
+  Args:
+    rng_key: key for the random number generator.
+    target_tree: the tree whose structure to match. Leaves must have shapes.
+    noise_sample: the noise sampling function
+
+  Returns:
+    a random tree with the same structure as ``target_tree'', whose leaves have
+    distribution ``noise_sample''.
+  """
+  keys_tree = random_split_like_tree(rng_key, target_tree)
+  return jtu.tree_map(
+      lambda l, k: noise_sample(k, l.shape),
+      target_tree,
+      keys_tree,
+  )

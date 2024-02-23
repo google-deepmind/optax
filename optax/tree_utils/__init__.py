@@ -15,7 +15,9 @@
 """The tree_utils sub-package."""
 
 from optax.tree_utils._state_utils import tree_map_params
-
+from optax.tree_utils._tree_math import random_like_tree
+from optax.tree_utils._tree_math import random_split_like_tree
+from optax.tree_utils._tree_math import reduce_across_trees
 from optax.tree_utils._tree_math import tree_add
 from optax.tree_utils._tree_math import tree_add_scalar_mul
 from optax.tree_utils._tree_math import tree_div
