@@ -106,7 +106,7 @@ def adadelta(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> f = lambda x: jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adadelta(learning_rate=0.01)
+    >>> solver = optax.adadelta(learning_rate=10.)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -116,11 +116,11 @@ def adadelta(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
+    Objective function: 1.36E+01
+    Objective function: 1.32E+01
+    Objective function: 1.29E+01
+    Objective function: 1.25E+01
+    Objective function: 1.21E+01
 
   References:
 
@@ -268,7 +268,7 @@ def adagrad(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adagrad(learning_rate=0.003)
+    >>> solver = optax.adagrad(learning_rate=1.0)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -278,12 +278,12 @@ def adagrad(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    
+    Objective function: 5.01E+00
+    Objective function: 2.40E+00
+    Objective function: 1.25E+00
+    Objective function: 6.86E-01
+    Objective function: 3.85E-01
+
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
