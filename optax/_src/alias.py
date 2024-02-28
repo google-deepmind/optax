@@ -342,7 +342,7 @@ def adam(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
       \bar{\varepsilon}} + \varepsilon} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
@@ -374,7 +374,7 @@ def adam(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Kingma et al, `Adam: A Method for Stochastic Optimization
     <https://arxiv.org/abs/1412.6980>`_, 2014
@@ -1305,12 +1305,39 @@ def sgd(
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """A canonical Stochastic Gradient Descent optimizer.
+  r"""A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
   momentum, and Nesterov acceleration, as these are standard practice when
   using stochastic gradient descent to train deep neural networks.
-  
+
+
+  The canonical stochastic gradient descent returns an update
+  :math:`u_t` of the form
+
+  .. math::
+    u_t \leftarrow -\alpha_t g_t,
+
+  where :math:`g_t` is the gradient of the objective (potentially preprocessed
+  by other transformations) and :math:`\alpha_t` is the ``learning_rate`` at
+  time :math:`t` (constant or selected by an :class:`optax.Schedule`).
+
+  Stochastic gradient descent with momentum takes two possible forms.
+
+  .. math::
+
+    \begin{align*}
+      m_t & \leftarrow \begin{cases}
+        g_t + \mu m_t & \mathrm{if \ \texttt{nesterov=False}}\\
+        g_t + \mu (g_t + \mu m_{t-1}) & \mathrm{if \ \texttt{nesterov=True}}
+      \end{cases} \\
+      u_t & \leftarrow - \alpha_t m_t \\
+      S_t & = m_t,
+    \end{align*}
+
+  where :math:`\mu` is the ``momentum`` parameter and :math:`S_t` is the state
+  of the optimizer.
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1331,21 +1358,22 @@ def sgd(
     Objective function: 1.35E+01
     Objective function: 1.33E+01
     Objective function: 1.32E+01
-    
+
   References:
-    Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
+    Sutskever et al, `On the importance of initialization and momentum in deep
+    learning <http://proceedings.mlr.press/v28/sutskever13.pdf>`_, 2013
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
-    momentum: Decay rate used by the momentum term, when it is set to `None`,
+    momentum: Decay rate used by the momentum term, when it is set to ``None``,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
-    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
-      `None` then the `dtype` is inferred from `params` and `updates`.
+    accumulator_dtype: Optional ``dtype`` to be used for the accumulator; if
+      ``None`` then the ``dtype`` is inferred from ``params`` and ``updates``.
 
   Returns:
-    A `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       (transform.trace(decay=momentum, nesterov=nesterov,
