@@ -120,7 +120,7 @@ def sam(
   an inner adversarial optimizer of a normalized sgd for one step.
 
   NOTE: 
-    When `opaque_mode=True`, the `update` function must be called with a
+    When ``opaque_mode=True``, the ``update`` function must be called with a
     gradient function that takes two arguments (the params and the current
     adversarial step) and returns the gradients of the loss. This looks like
     the following::
