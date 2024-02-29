@@ -134,7 +134,7 @@ def sam(
       params = optax.apply_updates(params, updates)
 
     On every call to `opt.update`, `grad_fn` will be called
-    `sync_period - 1` times, once for each adversarial update. It is usually
+    ``sync_period - 1`` times, once for each adversarial update. It is usually
     ok to use the same minibatch in each of those updates, as in the example
     above, but you can use the second argument to select different batches
     at each adversarial step::
