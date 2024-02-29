@@ -110,36 +110,37 @@ def sam(
 
   Performs steps with the inner adversarial optimizer and periodically
   updates an outer set of true parameters.  By default, resets
-  the state of the adversarial optimizer after syncronization.  For example:
+  the state of the adversarial optimizer after syncronization.  For example::
 
-      opt = optax.sgd(lr)
-      adv_opt = optax.chain(normalize(), optax.sgd(rho))
-      sam_opt = sam(opt, adv_opt, sync_period=2)
+    opt = optax.sgd(lr)
+    adv_opt = optax.chain(normalize(), optax.sgd(rho))
+    sam_opt = sam(opt, adv_opt, sync_period=2)
 
   Would implement the simple drop-in SAM version from the paper which uses
   an inner adversarial optimizer of a normalized sgd for one step.
 
-  NOTE: When `opaque_mode=True`, the `update` function must be called with a
-        gradient function that takes two arguments (the params and the current
-        adversarial step) and returns the gradients of the loss. This looks like
-        the following:
-        ```
-        opt = sam(outer_opt, adv_opt, opaque_mode=True)
-        ...
-        # In the training loop:
-        grad_fn = jax.grad(
-            lambda params, _: loss(params, batch, and_other_args))
-        updates, state = opt.update(updates, state, params, grad_fn=grad_fn)
-        params = optax.apply_updates(params, updates)
-        ```
-        On every call to `opt.update`, `grad_fn` will be called
-        `sync_period - 1` times, once for each adversarial update. It is usually
-        ok to use the same minibatch in each of those updates, as in the example
-        above, but you can use the second argument to select different batches
-        at each adversarial step:
-        ```
-        grad_fn = jax.grad(lambda params, i: loss(params, batches[i]))
-        ```
+  NOTE: 
+    When `opaque_mode=True`, the `update` function must be called with a
+    gradient function that takes two arguments (the params and the current
+    adversarial step) and returns the gradients of the loss. This looks like
+    the following::
+
+      opt = sam(outer_opt, adv_opt, opaque_mode=True)
+      ...
+      # In the training loop:
+      grad_fn = jax.grad(
+        lambda params, _: loss(params, batch, and_other_args))
+      updates, state = opt.update(updates, state, params, grad_fn=grad_fn)
+      params = optax.apply_updates(params, updates)
+
+    On every call to `opt.update`, `grad_fn` will be called
+    `sync_period - 1` times, once for each adversarial update. It is usually
+    ok to use the same minibatch in each of those updates, as in the example
+    above, but you can use the second argument to select different batches
+    at each adversarial step::
+
+      grad_fn = jax.grad(lambda params, i: loss(params, batches[i]))
+
   References:
     [Foret et al, 2021](https://arxiv.org/pdf/2010.01412.pdf)
 
