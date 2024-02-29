@@ -218,6 +218,10 @@ html_css_files = [
 ]
 
 # -- Options for myst -------------------------------------------------------
+myst_enable_extensions = [
+    'amsmath',
+    'dollarmath',
+]
 nb_execution_mode = 'force'
 nb_execution_allow_errors = False
 nb_execution_excludepatterns = [
