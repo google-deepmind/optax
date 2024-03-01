@@ -2,7 +2,7 @@
 .. _gallery:
 
 🖼️ Example gallery
-=================
+==================
 
 .. toctree::
    :glob:
