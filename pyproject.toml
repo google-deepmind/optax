@@ -68,6 +68,7 @@ docs = [
     "tensorflow>=2.4.0",
     "tensorflow-datasets>=4.2.0",
     "flax",
+    "sphinx_contributors",
 ]
 
 dp-accounting = [
