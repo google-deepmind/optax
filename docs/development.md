@@ -32,6 +32,14 @@ build the documentation locally as follows:
    * `make html-noplot` (faster, skips running examples)
 
 
+### Running doctest
+You can add examples illustrating how to use the functions in docstrings. For
+inspiration see the `Examples:` section of the code source of `adam` in 
+`optax/_src/alias.py`.
+
+To test locally such examples, run 
+`python -m doctest -v <path_to_your_file>.py`.
+
 (inclusion_criteria)=
 ## Inclusion Criteria
 
@@ -41,7 +49,6 @@ To ensure Optax remains a focused and high-quality library, we have specific gui
 2. **Significant Improvement**: Minor modifications will be considered if they offer clear advantages over widely used methods.
 
 If your algorithm doesn't meet the main package criteria, the {doc}`api/contrib` directory is perfect for sharing innovative work.
-
 
 
 #### Design Documents
