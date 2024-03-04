@@ -270,6 +270,19 @@ class WrappersTest(parameterized.TestCase):
       _, opt_state = opt_update(grad, opt_state, params)
       self.assertTrue(ms_opt.has_updated(opt_state))
 
+  def test_multi_steps_zero_nans(self):
+    # Test that MultiStep is compatible with zero_nans
+    # https://github.com/google-deepmind/optax/issues/828
+    ms_opt = wrappers.MultiSteps(
+        combine.chain(constrain.zero_nans(), alias.sgd(1e-4)),
+        every_k_schedule=2
+    )
+    opt_init, opt_update = ms_opt.gradient_transformation()
+    params = dict(a=jnp.zeros([]))
+    opt_state = opt_init(params)
+    grad = dict(a=jnp.zeros([]))
+    opt_update(grad, opt_state, params)
+
   def test_multi_steps_computes_mean(self):
     k_steps = 4
     ms_opt = wrappers.MultiSteps(
