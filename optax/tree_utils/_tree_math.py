@@ -17,25 +17,31 @@
 
 import functools
 import operator
-from typing import Any, Union
+from typing import Any, Callable, Union
 
 import chex
 import jax
 from jax import tree_util as jtu
 import jax.numpy as jnp
+from optax._src import base
 
 
-def tree_add(tree_x: Any, tree_y: Any) -> Any:
-  r"""Add two pytrees.
+Shape = base.Shape
+
+
+def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
+  r"""Add two (or more) pytrees.
 
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+    *other_trees: optional other trees to add
 
   Returns:
-    the sum of the two pytrees.
+    the sum of the two (or more) pytrees.
   """
-  return jtu.tree_map(operator.add, tree_x, tree_y)
+  trees = [tree_x, tree_y, *other_trees]
+  return jtu.tree_map(lambda *leaves: sum(leaves), *trees)
 
 
 def tree_sub(tree_x: Any, tree_y: Any) -> Any:
@@ -197,3 +203,46 @@ def tree_ones_like(tree: Any) -> Any:
     an all-ones tree with the same structure as ``tree``.
   """
   return jtu.tree_map(jnp.ones_like, tree)
+
+
+def _tree_rng_keys_split(
+    rng_key: chex.PRNGKey, target_tree: chex.ArrayTree
+) -> chex.ArrayTree:
+  """Split keys to match structure of target tree.
+
+  Args:
+    rng_key: the key to split.
+    target_tree: the tree whose structure to match.
+
+  Returns:
+    a tree of rng keys.
+  """
+  tree_def = jtu.tree_structure(target_tree)
+  keys = jax.random.split(rng_key, tree_def.num_leaves)
+  return jtu.tree_unflatten(tree_def, keys)
+
+
+def tree_random_like(
+    rng_key: chex.PRNGKey,
+    target_tree: chex.ArrayTree,
+    sampler: Callable[
+        [chex.PRNGKey, Shape], chex.Array
+    ] = jax.random.normal,
+) -> chex.ArrayTree:
+  """Create tree with normal random entries of the same shape as target tree.
+
+  Args:
+    rng_key: key for the random number generator.
+    target_tree: the tree whose structure to match. Leaves must be arrays.
+    sampler: the noise sampling function
+
+  Returns:
+    a random tree with the same structure as ``target_tree``, whose leaves have
+    distribution ``sampler``.
+  """
+  keys_tree = _tree_rng_keys_split(rng_key, target_tree)
+  return jtu.tree_map(
+      lambda l, k: sampler(k, l.shape),
+      target_tree,
+      keys_tree,
+  )

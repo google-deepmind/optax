@@ -103,6 +103,7 @@ Tree
     tree_map_params
     tree_mul
     tree_ones_like
+    tree_random_like
     tree_scalar_mul
     tree_sub
     tree_sum
@@ -139,6 +140,10 @@ Tree multiply
 Tree ones like
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_ones_like
+
+Tree with random values
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_random_like
 
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
