@@ -69,37 +69,37 @@ def scale_by_backtracking_linesearch(
   condition
 
   .. math::
-    \begin{align*}
       f(w + \gamma u) \leq (1-\delta)f(w)
-        + \gamma c \langle u, \nabla f(w) \rangle + \epsilon,
-    \end{align*}
+        + \gamma c \langle u, \nabla f(w) \rangle + \epsilon \,,
 
-  where :math:`f` is the function to optimize, :math:`\gamma` is the
-  learning rate to find, :math:`u` is the update direction computed by the
-  optimizer, :math:`c` is a coefficient (``slope_rtol``) measuring the
-  decrease of the function in terms of the slope (scalar product between the
-  gradient and the updates), :math:`\delta` is a relative tolerance (``rtol``),
-  :math:`\epsilon` is an absolute tolerance (``atol``).
+  where :math:`f` is the function to minimize, :math:`\gamma` is the learning
+  rate to find, :math:`u` is the update direction, :math:`c` is a coefficient
+  (``slope_rtol``) measuring the relative decrease of the function in terms of
+  the slope (scalar product between the gradient and the updates),
+  :math:`\delta` is a relative tolerance (``rtol``), and :math:`\epsilon` is
+  an absolute tolerance (``atol``).
 
-  We start by a given guess of a learning rate and decrease it by
-  ``decrease_factor`` until the criterion above is met.
+  The algorithm starts with a given guess of a learning rate and decrease it
+  by ``decrease_factor`` until the criterion above is met.
 
   .. warning::
-    The sufficient decrease criterion may not be satisfied for any input
-    updates. To ensure that there exits a learning_rate that can satisfy the
-    criterion, a sufficient condition is that the updates are a descent
-    direction. The update u is a descent direction if the derivative of
-    :math:`f(w + \gamma u)` at :math:`\gamma = 0`, i.e.,
-    :math:`\langle u, \nabla f(w)\rangle`, is negative.
-    This is the case when this transform is chained with e.g., :func:`optax.sgd`
-    without momentum but not for, e.g., :func:`optax.adam`.
-    Precisely, when chained with other transforms using
+    The sufficient decrease condition might be impossible to satisfy for some
+    update directions. To guarantee a non-trivial solution for the sufficient
+    decrease condition, employ a descent direction for updates (:math:`u`). An
+    update (:math:`u`) is considered a descent direction if the derivative of
+    :math:`f(w + \gamma u)` at :math:`\gamma = 0`
+    (i.e.,  :math:`\langle u, \nabla f(w)\rangle`) is negative.  This condition
+    is automatically satisfied when using :func:`optax.sgd` (without momentum),
+    but may not hold true for other optimizers like :func:`optax.adam`.
+
+
+    More generally, when chained with other transforms as
     ``optax.chain(opt_1, ..., opt_k,
     scale_by_backtraking_linesearch(max_backtracking_steps=...),
     opt_kplusone, ..., opt_n)``, the updates returned by chaining
-    ``opt_1, ..., opt_k`` must be a descent direction but any transform after
-    the backtracking line-search doesn't need to satisfy the descent direction
-    property (for example one could use momentum).
+    ``opt_1, ..., opt_k`` must be a descent direction. However, any transform
+    after the backtracking line-search doesn't necessarily need to satisfy the
+    descent direction property (one could for example use momentum).
 
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
@@ -173,10 +173,11 @@ def scale_by_backtracking_linesearch(
 
 
   References:
-    Vaswani et al, `Painless Stochastic Gradient
+    Vaswani et al., `Painless Stochastic Gradient
     <https://arxiv.org/abs/1905.09997>`_, 2019
 
-    Nocedal & Wright, Numerical Optimization, 1999
+    Nocedal & Wright, `Numerical Optimization
+    <https://doi.org/10.1007/978-0-387-40065-5>`_, 1999
 
   Args:
     max_backtracking_steps: maximum number of iterations for the line-search.
