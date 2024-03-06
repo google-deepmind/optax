@@ -95,7 +95,19 @@ def linear_schedule(
     transition_steps: int,
     transition_begin: int = 0
 ) -> base.Schedule:
-  """Schedule with linear transition from init to end value.
+  r"""Schedule with linear transition from ``init_value`` to ``end_value``.
+
+  More precisely, the learning rate at iteration :math:`t` is given by:
+
+  .. math::
+    \begin{cases}
+      I, & \text{if } t < B \\
+      I + \frac{t - B}{T} (E - I), & \text{if } B \leq t < B + T \\
+      E, & \text{if } t \geq B + T
+    \end{cases}
+
+  where :math:`I` is the initial value, :math:`E` is the end value,
+  :math:`B` is the transition begin, and :math:`T` is the transition steps.
 
   This schedule is equivalent to :func:`optax.polynomial_schedule` with
   ``power=1``.
@@ -252,10 +264,10 @@ def cosine_decay_schedule(
 
   .. math::
 
-    \gamma_0 (1 - \alpha) \frac{1}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
+     \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
-  the ``exponent`` and :math:`\gamma_0` is the initial value (``init_value``).
+  the ``exponent`` and :math:`I` is the initial value (``init_value``).
 
   References:
     Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
