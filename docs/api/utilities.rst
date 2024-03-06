@@ -63,7 +63,7 @@ Matrix inverse pth root
 
 Power iteration
 ~~~~~~~~~~~~~~~
-.. autofunction:: power_iteratio
+.. autofunction:: power_iteration
 
 
 Second Order Optimization
