@@ -39,6 +39,9 @@ def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
 
   Returns:
     the sum of the two (or more) pytrees.
+
+  .. versionchanged:: 0.2.1
+    Added optional ``*other_trees`` argument.
   """
   trees = [tree_x, tree_y, *other_trees]
   return jtu.tree_map(lambda *leaves: sum(leaves), *trees)
@@ -239,6 +242,8 @@ def tree_random_like(
   Returns:
     a random tree with the same structure as ``target_tree``, whose leaves have
     distribution ``sampler``.
+
+  .. versionadded:: 0.2.1
   """
   keys_tree = _tree_rng_keys_split(rng_key, target_tree)
   return jtu.tree_map(
