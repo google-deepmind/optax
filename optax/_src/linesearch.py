@@ -69,7 +69,7 @@ def scale_by_backtracking_linesearch(
   condition
 
   .. math::
-      f(w + \gamma u) \leq (1-\delta)f(w)
+      f(w + \gamma u) \leq (1+\delta)f(w)
         + \gamma c \langle u, \nabla f(w) \rangle + \epsilon \,,
 
   where :math:`f` is the function to minimize, :math:`\gamma` is the learning
@@ -224,7 +224,7 @@ def scale_by_backtracking_linesearch(
 
   def _check_condition(learning_rate, slope, value, new_value):
     violation = (
-        new_value - (1 - rtol) * value - learning_rate * slope_rtol * slope
+        new_value - (1 + rtol) * value - learning_rate * slope_rtol * slope
     )
     violation = jnp.where(jnp.isnan(violation), jnp.inf, violation)
     return violation <= atol

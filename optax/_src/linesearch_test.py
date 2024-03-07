@@ -76,7 +76,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     )
     sufficient_decrease = (
         final_value
-        <= (1 - rtol) * init_value + slope_rtol * final_lr * slope + atol
+        <= (1 + rtol) * init_value + slope_rtol * final_lr * slope + atol
     )
     self.assertTrue(sufficient_decrease)
 
