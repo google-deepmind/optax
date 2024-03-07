@@ -61,7 +61,6 @@ for instructions on installing JAX.
    api/optimizer_schedules
    api/apply_updates
    api/losses
-   api/linear_algebra_operators
    api/control_variates
    api/stochastic_gradient_estimators
    api/utilities

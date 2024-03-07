@@ -107,69 +107,78 @@ def scale_by_backtracking_linesearch(
   .. versionadded:: 0.2.0
 
   Examples:
-    >>> import optax
-    >>> import jax
-    >>> import jax.numpy as jnp
-    >>> solver = optax.chain(
-    ...    optax.sgd(learning_rate=1.),
-    ...    optax.scale_by_backtracking_linesearch(max_backtracking_steps=15)
-    ... )
-    >>> # Function with additional inputs other than params
-    >>> def fn(params, x, y): return optax.l2_loss(x.dot(params), y)
-    >>> params = jnp.array([1., 2., 3.])
-    >>> opt_state = solver.init(params)
-    >>> x, y = jnp.array([3., 2., 1.]), jnp.array(0.)
-    >>> xs, ys = jnp.tile(x, (5, 1)), jnp.tile(y, (5,))
-    >>> opt_state = solver.init(params)
-    >>> print('Objective function: {:.2E}'.format(fn(params, x, y)))
-    Objective function: 5.00E+01
-    >>> for x, y in zip(xs, ys):
-    ...   value, grad = jax.value_and_grad(fn)(params, x, y)
-    ...   updates, opt_state = solver.update(
-    ...       grad,
-    ...       opt_state,
-    ...       params,
-    ...       value=value,
-    ...       grad=grad,
-    ...       value_fn=fn,
-    ...       x=x,
-    ...       y=y
-    ...   )
-    ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: {:.2E}'.format(fn(params, x, y)))
-    Objective function: 3.86E+01
-    Objective function: 2.50E+01
-    Objective function: 1.34E+01
-    Objective function: 5.87E+00
-    Objective function: 5.81E+00
-    >>> # Function without extra arguments
-    >>> def fn(params): return jnp.sum(params ** 2)
-    >>> params = jnp.array([1., 2., 3.])
-    >>> # In that case, we may store value and grad with the store_grad field
-    >>> # and reuse them using optax.value_and_grad_state_from_state
-    >>> # rather than recomputing them with jax.value_and_grad
-    >>> solver = optax.chain(
-    ...    optax.sgd(learning_rate=1.),
-    ...    optax.scale_by_backtracking_linesearch(
-    ...        max_backtracking_steps=15, store_grad=True
-    ...    )
-    ... )
-    >>> opt_state = solver.init(params)
-    >>> print('Objective function: {:.2E}'.format(fn(params)))
-    Objective function: 1.40E+01
-    >>> value_and_grad = optax.value_and_grad_from_state(fn)
-    >>> for _ in range(5):
-    ...   value, grad = value_and_grad(params, state=opt_state)
-    ...   updates, opt_state = solver.update(
-    ...       grad, opt_state, params, value=value, grad=grad, value_fn=fn
-    ...   )
-    ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: {:.2E}'.format(fn(params)))
-    Objective function: 5.04E+00
-    Objective function: 1.81E+00
-    Objective function: 6.53E-01
-    Objective function: 2.35E-01
-    Objective function: 8.47E-02
+
+    An example on using the backtracking line-search with SGD::
+
+      >>> import optax
+      >>> import jax
+      >>> import jax.numpy as jnp
+      >>> solver = optax.chain(
+      ...    optax.sgd(learning_rate=1.),
+      ...    optax.scale_by_backtracking_linesearch(max_backtracking_steps=15)
+      ... )
+      >>> # Function with additional inputs other than params
+      >>> def fn(params, x, y): return optax.l2_loss(x.dot(params), y)
+      >>> params = jnp.array([1., 2., 3.])
+      >>> opt_state = solver.init(params)
+      >>> x, y = jnp.array([3., 2., 1.]), jnp.array(0.)
+      >>> xs, ys = jnp.tile(x, (5, 1)), jnp.tile(y, (5,))
+      >>> opt_state = solver.init(params)
+      >>> print('Objective function: {:.2E}'.format(fn(params, x, y)))
+      Objective function: 5.00E+01
+      >>> for x, y in zip(xs, ys):
+      ...   value, grad = jax.value_and_grad(fn)(params, x, y)
+      ...   updates, opt_state = solver.update(
+      ...       grad,
+      ...       opt_state,
+      ...       params,
+      ...       value=value,
+      ...       grad=grad,
+      ...       value_fn=fn,
+      ...       x=x,
+      ...       y=y
+      ...   )
+      ...   params = optax.apply_updates(params, updates)
+      ...   print('Objective function: {:.2E}'.format(fn(params, x, y)))
+      Objective function: 3.86E+01
+      Objective function: 2.50E+01
+      Objective function: 1.34E+01
+      Objective function: 5.87E+00
+      Objective function: 5.81E+00
+
+    A similar example, but with a non-stochastic function where we can reuse
+    the value and the gradient computed at the end of the linesearch:
+
+      >>> import optax
+      >>> import jax
+      >>> import jax.numpy as jnp
+      >>> # Function without extra arguments
+      >>> def fn(params): return jnp.sum(params ** 2)
+      >>> params = jnp.array([1., 2., 3.])
+      >>> # In this case we can store value and grad with the store_grad field
+      >>> # and reuse them using optax.value_and_grad_state_from_state
+      >>> solver = optax.chain(
+      ...    optax.sgd(learning_rate=1.),
+      ...    optax.scale_by_backtracking_linesearch(
+      ...        max_backtracking_steps=15, store_grad=True
+      ...    )
+      ... )
+      >>> opt_state = solver.init(params)
+      >>> print('Objective function: {:.2E}'.format(fn(params)))
+      Objective function: 1.40E+01
+      >>> value_and_grad = optax.value_and_grad_from_state(fn)
+      >>> for _ in range(5):
+      ...   value, grad = value_and_grad(params, state=opt_state)
+      ...   updates, opt_state = solver.update(
+      ...       grad, opt_state, params, value=value, grad=grad, value_fn=fn
+      ...   )
+      ...   params = optax.apply_updates(params, updates)
+      ...   print('Objective function: {:.2E}'.format(fn(params)))
+      Objective function: 5.04E+00
+      Objective function: 1.81E+00
+      Objective function: 6.53E-01
+      Objective function: 2.35E-01
+      Objective function: 8.47E-02
 
 
   References:
