@@ -992,9 +992,9 @@ def noisy_sgd(
     gamma: float = 0.55,
     seed: int = 0
 ) -> base.GradientTransformation:
-  r"""Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian noise 
-  into the updates. It has been found that adding noise to the gradients can 
-  improve both the training error and the generalization error in very deep 
+  r"""Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian 
+  noise into the updates. It has been found that adding noise to the gradients 
+  can improve both the training error and the generalization error in very deep 
   networks.
 
   The update :math:`u_t` is modified to include this noise as follows:
