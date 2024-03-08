@@ -992,9 +992,11 @@ def noisy_sgd(
     gamma: float = 0.55,
     seed: int = 0
 ) -> base.GradientTransformation:
-  r"""Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian 
-  noise into the updates. It has been found that adding noise to the gradients 
-  can improve both the training error and the generalization error in very deep 
+  r"""A variant of SGD with added noise.
+
+  Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian noise
+  into the updates. It has been found that adding noise to the gradients can
+  improve both the training error and the generalization error in very deep
   networks.
 
   The update :math:`u_t` is modified to include this noise as follows:
@@ -1002,7 +1004,7 @@ def noisy_sgd(
   .. math::
     u_t \leftarrow -\alpha_t g_t + N(0, \sigma_t^2),
 
-  where :math:`N(0, \sigma_t^2)` represents Gaussian noise with zero mean and a 
+  where :math:`N(0, \sigma_t^2)` represents Gaussian noise with zero mean and a
   variance of :math:`\sigma_t^2`.
 
   The variance of this noise decays over time according to the formula
@@ -1010,7 +1012,7 @@ def noisy_sgd(
   .. math::
     \sigma_t^2 = \frac{\eta}{(1+t)^\gamma},
 
-  where :math:`\gamma` is the decay rate parameter ``gamma`` and :math:`\eta` 
+  where :math:`\gamma` is the decay rate parameter ``gamma`` and :math:`\eta`
   represents the initial variance ``eta``.
 
   Examples:
