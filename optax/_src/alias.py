@@ -1002,7 +1002,7 @@ def noisy_sgd(
   The update :math:`u_t` is modified to include this noise as follows:
 
   .. math::
-    u_t \leftarrow -\alpha_t g_t + N(0, \sigma_t^2),
+    u_t \leftarrow -\alpha_t (g_t + N(0, \sigma_t^2)),
 
   where :math:`N(0, \sigma_t^2)` represents Gaussian noise with zero mean and a
   variance of :math:`\sigma_t^2`.
