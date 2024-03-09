@@ -1043,8 +1043,8 @@ def noisy_sgd(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     eta: Initial variance for the Gaussian noise added to gradients.
-    gamma: A parameter controlling the annealing of noise over time, the
-      variance decays according to `(1+t)^-\gamma`.
+    gamma: A parameter controlling the annealing of noise over time ``t``, the
+      variance decays according to ``(1+t)**(-gamma)``.
     seed: Seed for the pseudo-random generation process.
 
   Returns:
