@@ -67,6 +67,8 @@ docs = [
     "sphinx-collections>=0.0.1",
     "tensorflow>=2.4.0",
     "tensorflow-datasets>=4.2.0",
+    "orbax-checkpoint",
+    "grain-nightly",
     "flax",
 ]
 
