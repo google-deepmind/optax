@@ -24,7 +24,9 @@ import numpy as np
 
 from optax._src import base
 from optax._src import numerics
+from optax._src import utils
 from optax.tree_utils import _state_utils
+import optax.tree_utils as tu
 
 
 Array = jnp.ndarray
@@ -610,3 +612,62 @@ def maybe_update(
                                      numerics.safe_int32_increment(state.step))
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+class EveState(NamedTuple):
+  """Maintains inner transform state and adds a step counter.
+  
+  Attributes:
+    inner_state: the state of the wrapped optimizer.
+    step: the counter for current step (t).
+    f_prev: the previous loss value.
+  """
+  inner_state: base.OptState
+  step: Union[jax.Array, int]
+  f_prev: Union[jax.Array, float]
+  d_tilde_prev: Union[jax.Array, float]
+
+
+def eve(
+    inner: base.GradientTransformation,
+    b3: float,
+    c: float,
+    f: Union[jax.Array, float],
+    f_star: Union[jax.Array, float]
+) -> base.GradientTransformation:
+  """Eve optimizer.
+  
+  Args:
+    inner: the inner transformation.
+    b3: the exponential decay rate to track the sub-optimality.
+    c: the clipping limit to prevent extreme global learning rate changes.
+    f: the current loss value.
+    f_star: the estimated global minimum.
+  
+  Returns:
+    New ``GradientTransformation``.
+  """
+  
+  def init_fn(params):
+    return EveState(
+      inner_state=inner.init(params),
+      step=0,
+      f_prev=f
+    )
+  
+  def update_fn(updates, state, params=None):
+    del params
+    step = utils.numerics.safe_int32_increment(state.step)
+    d = (jnp.abs(f - state.f_prev) /
+      (jnp.min(jnp.array([f, state.f_prev])) - f_star)
+    )
+    d_hat = jnp.clip(d, 1 / c, c)
+    d_tilde = jnp.where(step > 1, b3 * state.d_tilde_prev + (1 - b3) * d_hat, 1.)
+    
+    new_inner_updates, new_inner_state = inner.update(updates, state.inner_state)
+    new_updates = tu.tree_scalar_mul(1 / d_tilde, new_inner_updates)
+    return new_updates, EveState(inner_state=new_inner_state, 
+                                 step=step, f_prev=f)
+    
+  return base.GradientTransformation(init_fn, update_fn)
+    

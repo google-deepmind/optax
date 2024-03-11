@@ -30,6 +30,7 @@ from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
 from optax._src.alias import amsgrad
+from optax._src.alias import eve
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
@@ -109,6 +110,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_eve
 from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
@@ -128,6 +130,7 @@ from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByEveState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
@@ -257,6 +260,7 @@ __all__ = (
     "ema",
     "EmaState",
     "EmptyState",
+    "eve",
     "exponential_decay",
     "FactoredState",
     "flatten",
@@ -321,6 +325,7 @@ __all__ = (
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
+    "scale_by_eve",
     "scale_by_lion",
     "scale_by_factored_rms",
     "scale_by_novograd",
@@ -342,6 +347,7 @@ __all__ = (
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",
+    "ScaleByEveState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",

@@ -45,6 +45,7 @@ class TransformTest(parameterized.TestCase):
       ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
+      ('eve', transform.scale_by_eve),
       ('lion', transform.scale_by_lion),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
