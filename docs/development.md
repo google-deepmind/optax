@@ -76,24 +76,22 @@ You generally only need to submit a CLA once, so if you've already submitted one
 again.
 
 
-## Core Maintainers
+## The Team
 
-*   [Iurii Kemaev](https://github.com/hbq1)
-*   [Markus Kunesch](https://github.com/mkunesch)
-*   [Matteo Hessel](https://github.com/mtthss)
-*   [Ross Hemsley](https://github.com/rosshemsley)
+Optax is developed by a team of researchers at Google DeepMind and Alphabet, as well as a growing community of open-source contributors. The work on Optax is part of a wider effort to contribute to making the [JAX Ecosystem](https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/) the best possible environment for ML/AI research. Below is the list of the top (in number of commits) 30 contributors to date:
 
-## Collaborators
 
-We'd also like to extend a special thanks to the following open source
-contributors who have made significant contributions to Optax,
+{role-name}`contributors`
 
-*   [n2cholas](https://github.com/n2cholas)
-*   [wdphy16](https://github.com/wdphy16)
-*   [holounic](https://github.com/holounic)
+```{eval-rst}
+.. contributors:: google-deepmind/optax
+    :avatars:
+    :limit: 30
+    :order: ASC
+```
 
-A full list of open source contributors can be found
-[here](https://github.com/deepmind/optax/graphs/contributors).
+A full list of the contributors to date can be found [here](https://github.com/deepmind/optax/graphs/contributors).
+
 
 ## Community Guidelines
 

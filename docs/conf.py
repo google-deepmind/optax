@@ -142,7 +142,8 @@ extensions = [
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.collections'
+    'sphinxcontrib.collections',
+    'sphinx_contributors'
 ]
 
 # so we don't have to do the canonical imports on every doctest
