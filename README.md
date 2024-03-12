@@ -4,6 +4,7 @@
 [![Documentation Status](https://readthedocs.org/projects/optax/badge/?version=latest)](http://optax.readthedocs.io)
 ![pypi](https://img.shields.io/pypi/v/optax)
 
+
 ## Introduction
 
 Optax is a gradient processing and optimization library for JAX.
