@@ -14,7 +14,8 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
-from typing import Callable, NamedTuple, Union, Mapping, Hashable
+from typing import Callable, NamedTuple, Union, Mapping
+from collections.abc import Hashable
 
 import jax
 
