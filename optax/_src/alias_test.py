@@ -60,6 +60,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='rprop', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='polyak_sgd', opt_kwargs=dict(max_learning_rate=1.))
 )
 
 
@@ -71,11 +72,10 @@ def _setup_parabola(dtype):
   if jnp.iscomplexobj(dtype):
     final_params *= 1 + 1j
 
-  @jax.grad
-  def get_updates(params):
+  def objective(params):
     return jnp.sum(numerics.abs_sq(params - final_params))
 
-  return initial_params, final_params, get_updates
+  return initial_params, final_params, objective
 
 
 def _setup_rosenbrock(dtype):
@@ -89,12 +89,11 @@ def _setup_rosenbrock(dtype):
   initial_params = jnp.array([0.0, 0.0], dtype=dtype)
   final_params = jnp.array([a, a**2], dtype=dtype)
 
-  @jax.grad
-  def get_updates(params):
+  def objective(params):
     return (numerics.abs_sq(a - params[0]) +
             b * numerics.abs_sq(params[1] - params[0]**2))
 
-  return initial_params, final_params, get_updates
+  return initial_params, final_params, objective
 
 
 class AliasTest(chex.TestCase):
@@ -113,21 +112,26 @@ class AliasTest(chex.TestCase):
         'lion',
         'rprop',
         'adadelta',
+        'polyak_sgd',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
       )
 
     opt = getattr(alias, opt_name)(**opt_kwargs)
-    initial_params, final_params, get_updates = target(dtype)
+    initial_params, final_params, objective = target(dtype)
 
     @jax.jit
     def step(params, state):
-      updates = get_updates(params)
+      value, updates = jax.value_and_grad(objective)(params)
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
       updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
-      updates, state = opt.update(updates, state, params)
+      if opt_name == 'polyak_sgd':
+        update_kwargs = {'value': value}
+      else:
+        update_kwargs = {}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
       params = update.apply_updates(params, updates)
       return params, state
 
@@ -146,13 +150,13 @@ class AliasTest(chex.TestCase):
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs):
     """Checks that optimizers can be wrapped in inject_hyperparams."""
-    # See also https://github.com/deepmind/optax/issues/412.
+    # See also https://github.com/google-deepmind/optax/issues/412.
     opt_factory = getattr(alias, opt_name)
     opt = opt_factory(**opt_kwargs)
     if opt_name == 'adafactor':
       # Adafactor wrapped in inject_hyperparams currently needs a static
       # argument to be specified in order to be jittable. See issue
-      # https://github.com/deepmind/optax/issues/412.
+      # https://github.com/google-deepmind/optax/issues/412.
       opt_inject = _inject.inject_hyperparams(
           opt_factory, static_args=('min_dim_size_to_factor',))(**opt_kwargs)
     else:
@@ -162,11 +166,17 @@ class AliasTest(chex.TestCase):
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
     state = self.variant(opt.init)(params)
-    updates, new_state = self.variant(opt.update)(grads, state, params)
+    if opt_name == 'polyak_sgd':
+      update_kwargs = {'value': jnp.array(0.)}
+    else:
+      update_kwargs = {}
+    updates, new_state = self.variant(opt.update)(
+        grads, state, params, **update_kwargs
+    )
 
     state_inject = self.variant(opt_inject.init)(params)
     updates_inject, new_state_inject = self.variant(opt_inject.update)(
-        grads, state_inject, params)
+        grads, state_inject, params, **update_kwargs)
 
     with self.subTest('Equality of updates.'):
       chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)

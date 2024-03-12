@@ -55,6 +55,7 @@ Transformations
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
+    scale_by_polyak
     scale_by_radam
     scale_by_rms
     ScaleByRmsState
@@ -207,6 +208,8 @@ Transformations and states
 .. autofunction:: scale_by_param_block_rms
 
 .. autofunction:: scale_by_radam
+
+.. autofunction:: scale_by_polyak
 
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState

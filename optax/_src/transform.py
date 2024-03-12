@@ -21,6 +21,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
+from optax import tree_utils
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
@@ -29,6 +30,12 @@ from optax._src import wrappers
 # pylint:disable=no-value-for-parameter
 
 _abs_sq = numerics.abs_sq
+
+
+def _init_empty_state(params: base.Params) -> base.EmptyState:
+  """Init function for an empty state."""
+  del params
+  return base.EmptyState()
 
 
 class TraceState(NamedTuple):
@@ -563,10 +570,6 @@ def scale_by_param_block_norm(
     A `GradientTransformation` object.
   """
 
-  def init_fn(params):
-    del params
-    return base.EmptyState()
-
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
@@ -575,7 +578,7 @@ def scale_by_param_block_norm(
         updates, params)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(_init_empty_state, update_fn)
 
 
 def scale_by_param_block_rms(
@@ -593,10 +596,6 @@ def scale_by_param_block_rms(
     A `GradientTransformation` object.
   """
 
-  def init_fn(params):
-    del params
-    return base.EmptyState()
-
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
@@ -605,7 +604,7 @@ def scale_by_param_block_rms(
         updates, params)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(_init_empty_state, update_fn)
 
 
 class ScaleByAdaDeltaState(NamedTuple):
@@ -1364,7 +1363,7 @@ def scale_by_distance_over_gradients(
   The authors recommend using model averaging with this optimizer.
 
   References:
-    ["DoG is SGD’s Best Friend: A Parameter-Free Dynamic Step Size
+    ["DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
     Schedule"](https://arxiv.org/pdf/2302.12022.pdf)
 
   Args:
@@ -1420,3 +1419,46 @@ def scale_by_distance_over_gradients(
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
+
+
+def scale_by_polyak(
+    f_min: float = 0.0,
+    max_learning_rate: float = 1.0,
+    eps: float = 0.0,
+) -> base.GradientTransformationExtraArgs:
+  """Scales the update by Polyak's step-size."""
+
+  def update_fn(
+      updates: base.Updates,
+      state: base.EmptyState,
+      params: Optional[base.Params] = None,
+      *,
+      value: float,
+      **extra_args,
+  ) -> tuple[base.Updates, base.EmptyState]:
+    """Scales the update by the Polyak step-size.
+
+    Args:
+      updates: the updates to be scaled.
+      state: the state of the transformation.
+      params: the parameters of the model.
+      value: the value of the loss function.
+      **extra_args: additional keyword arguments. They are ignored by this
+        transformation.
+    Returns:
+      The scaled updates and the state of the transformation.
+    """
+    del params, extra_args
+    grad_sq_norm = tree_utils.tree_l2_norm(updates, squared=True)
+    # avoid division by zero
+    step = jnp.where(
+        grad_sq_norm + eps <= jnp.finfo(float).eps,
+        jnp.array(0.0),
+        jnp.minimum(
+            (value - f_min) / (grad_sq_norm + eps), max_learning_rate
+        ),
+    )
+    updates = tree_utils.tree_scalar_mul(step, updates)
+    return updates, state
+
+  return base.GradientTransformationExtraArgs(_init_empty_state, update_fn)

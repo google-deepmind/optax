@@ -40,6 +40,7 @@ from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
+from optax._src.alias import polyak_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import rprop
@@ -115,6 +116,7 @@ from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
 from optax._src.transform import scale_by_param_block_rms
+from optax._src.transform import scale_by_polyak
 from optax._src.transform import scale_by_radam
 from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rprop
@@ -308,6 +310,7 @@ __all__ = (
     "piecewise_interpolate_schedule",
     "polynomial_schedule",
     "power_iteration",
+    "polyak_sgd",
     "radam",
     "rmsprop",
     "rprop",
@@ -326,6 +329,7 @@ __all__ = (
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
+    "scale_by_polyak",
     "scale_by_radam",
     "scale_by_rms",
     "scale_by_rprop",
