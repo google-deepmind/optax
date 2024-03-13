@@ -1771,7 +1771,9 @@ def polyak_sgd(
     eps: a value to add in the denominator of the update (defaults to 0).
 
   Returns:
-    A :class:`GradientTransformationExtraArgs`.
+    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
+    takes an additional keyword argument ``value`` containing the current
+    value of the objective function.
   """
   return combine.chain(
       sgd(learning_rate=scaling),

@@ -208,7 +208,15 @@ def scale_by_backtracking_linesearch(
       :func:`optax.value_and_grad_from_state`. See the example above.
 
   Returns:
-    The corresponding GradientTransformationExtraArgs.
+    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
+    takes the following additional keyword arguments:
+      * value: value of the function at the current params.
+      * grad: gradient of the function at the current params.
+      * value_fn: function returning the value of the function we seek to
+        optimize.
+      * **extra_args: additional keyword arguments, if the function needs
+          additional arguments such as input data, they should be put there (
+          see example in this docstrihng).
   """
 
   def init_fn(params: base.Params) -> ScaleByBacktrackingLinesearchState:
