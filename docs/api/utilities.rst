@@ -15,7 +15,7 @@ Scale gradient
 .. autofunction:: scale_gradient
 
 Value and grad from state
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: value_and_grad_from_state
 
 
@@ -98,7 +98,8 @@ Tree
     tree_add
     tree_add_scalar_mul
     tree_div
-    tree_vdot
+    tree_get
+    tree_get_all_with_path
     tree_l2_norm
     tree_map_params
     tree_mul
@@ -107,6 +108,7 @@ Tree
     tree_scalar_mul
     tree_sub
     tree_sum
+    tree_vdot
     tree_zeros_like
 
 Tree add
@@ -121,9 +123,13 @@ Tree divide
 ~~~~~~~~~~~
 .. autofunction:: tree_div
 
-Tree inner product
-~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_vdot
+Fetch single value that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get
+
+Fetch all values that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get_all_with_path
 
 Tree l2 norm
 ~~~~~~~~~~~~
@@ -156,6 +162,10 @@ Tree subtract
 Tree sum
 ~~~~~~~~
 .. autofunction:: tree_sum
+
+Tree inner product
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_vdot
 
 Tree zeros like
 ~~~~~~~~~~~~~~~

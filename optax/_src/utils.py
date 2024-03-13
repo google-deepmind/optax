@@ -26,6 +26,7 @@ import jax.scipy.stats.norm as multivariate_normal
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
+from optax.tree_utils import _state_utils
 
 
 def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
@@ -226,69 +227,6 @@ def _extract_fns_kwargs(
   return fns_kwargs, remaining_kwargs
 
 
-def _extract_from_state(
-    state: chex.ArrayTree,
-    key: str,
-) -> list[tuple[Any, str, list[int]]]:
-  r"""Extract values from state.
-
-  Search in a state (potentially a pytree with :class:`optax.OptState` leaves
-  returned by :func:`optax.chain`) for a specific ``key``. That key may appear
-  more than once in the state (see example below). So this function returns a
-  list of all values corresponding to the key with the name of the associated
-  state and the path to the state in the pytree of states.
-
-  Examples:
-    >>> import jax.numpy as jnp
-    >>> import optax
-    >>> params = jnp.array([1., 2., 3.])
-    >>> base_opt = optax.chain(
-    ...   optax.adam(learning_rate=1.),
-    ...   optax.adam(learning_rate=1.)
-    ... )
-    >>> solver = optax.chain(optax.adam(learning_rate=1.), base_opt)
-    >>> state = solver.init(params)
-    >>> values_found = _extract_from_state(state, 'count')
-    >>> print(len(values_found))
-    3
-    >>> count, state_name, path_to_state = values_found[0]
-    >>> print(count, state_name, path_to_state)
-    0 ScaleByAdamState [0, 0]
-    >>> state_with_entry = state
-    >>> for i in path_to_state:
-    ...   state_with_entry = state_with_entry[i]
-    >>> print(state_with_entry.__class__.__name__ == state_name)
-    True
-    >>> print(getattr(state_with_entry, 'count') == count)
-    True
-
-  Args:
-    state: state to search in. It can be an ``optax.OptState`` 
-      or a pytree of ``optax.OptState`` returned by, e.g.,
-      ``optax.chain(...).init(params)``.
-    key: keyword to search state for.
-
-  Returns:
-    values
-      list of tuples where each tuple is of the form (``value``, ``state_name``,
-      ``path_to_state``). Here ``value`` is one entry of the state that
-      corresponds to the ``key``, ``state_name`` is the name of the state where
-      this value has been found, and ``path_to_state`` is a sequence of indexes
-      that lead to the state where the value has been found (see example).
-  """
-  values_found = []
-  tree_flatten, _ = jax.tree_util.tree_flatten_with_path(state)
-  for path, val in tree_flatten:
-    if getattr(path[-1], 'name') == key:
-      path_to_state = [path[i].idx for i in range(len(path)-1)]
-      substate = state
-      for i in path_to_state:
-        substate = substate[i]
-      state_name = substate.__class__.__name__
-      values_found.append((val, state_name, path_to_state))
-  return values_found
-
-
 def value_and_grad_from_state(
     value_fn: Callable[..., Union[jax.Array, float]],
 ) -> Callable[..., tuple[Union[float, jax.Array], base.Updates]]:
@@ -346,20 +284,13 @@ def value_and_grad_from_state(
       state: base.OptState,
       **fn_kwargs: dict[str, Any],
   ):
-    values_found = _extract_from_state(state, 'value')
-    grads_found = _extract_from_state(state, 'grad')
-    if len(values_found) > 1 or len(grads_found) > 1:
-      raise ValueError('Found multiple values or gradients.')
-    elif not values_found or not grads_found:
-      raise ValueError('Found no value or no gradient.')
-    else:
-      value = values_found[0][0]
-      grad = grads_found[0][0]
-    if grad is None:
+    value = _state_utils.tree_get(state, 'value')
+    grad = _state_utils.tree_get(state, 'grad')
+    if (value is None) or (grad is None):
       raise ValueError(
-          'Gradient is None. Make sure that the gradient is stored in the '
-          'state, e.g., using store_grad=True in the definition of, e.g. '
-          'optax.scale_by_backtracking_linesearch.'
+          'Value or gradient not found in the state. '
+          'Make sure that these values are stored in the state by the '
+          'optimizer.'
           )
     value, grad = jax.lax.cond(
         (~jnp.isinf(value)) & (~jnp.isnan(value)),

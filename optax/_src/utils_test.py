@@ -258,43 +258,6 @@ class HelpersTest(chex.TestCase):
     canonical = utils.canonicalize_dtype(dtype)
     self.assertIs(canonical, expected_dtype)
 
-  def test_extract_from_state(self):
-    params = jnp.array([1.0, 2.0, 3.0])
-
-    def check_values_found(state, values_found):
-      for value, state_name, path_to_state in values_found:
-        state_with_value = state
-        for i in path_to_state:
-          state_with_value = state_with_value[i]
-        self.assertEqual(getattr(state_with_value, key), value)
-        self.assertEqual(state_with_value.__class__.__name__, state_name)
-
-    key = 'count'
-    # Single value of 'count', simple OptState
-    opt = transform.scale_by_adam()
-    state = opt.init(params)
-    values_found = utils._extract_from_state(state, key)
-    self.assertLen(values_found, 1)
-    check_values_found(state, values_found)
-
-    # No value of 'count'
-    opt = alias.sgd(learning_rate=1.0)
-    state = opt.init(params)
-    values_found = utils._extract_from_state(state, key)
-    self.assertEmpty(values_found)
-
-    # Several values of 'count', state defined by chain
-    opt = combine.chain(
-        alias.adam(learning_rate=1.0),
-        combine.chain(
-            alias.adam(learning_rate=1.0), alias.adam(learning_rate=1.0)
-        ),
-    )
-    state = opt.init(params)
-    values_found = utils._extract_from_state(state, key)
-    self.assertLen(values_found, 3)
-    check_values_found(state, values_found)
-
   @chex.variants(
       with_jit=True,
       without_jit=True,
@@ -323,7 +286,7 @@ class HelpersTest(chex.TestCase):
         linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
     )
     state = opt.init(params)
-    self.assertRaises(ValueError, value_and_grad, params, state=state)
+    self.assertRaises(KeyError, value_and_grad, params, state=state)
 
     # It should work efficiently when the linesearch stores the gradient
     opt = combine.chain(
@@ -341,7 +304,7 @@ class HelpersTest(chex.TestCase):
     params = jax.block_until_ready(params)
 
     def false_fn(_):
-      return 1.
+      return 1.0
 
     false_value_and_grad_ = utils.value_and_grad_from_state(false_fn)
     false_value_and_grad = self.variant(false_value_and_grad_)
@@ -349,7 +312,7 @@ class HelpersTest(chex.TestCase):
     # At the second step we should not evaluate the function
     # so in this case it should not return the output of false_fn
     value, _ = false_value_and_grad(params, state=state)
-    self.assertNotEqual(value, 1.)
+    self.assertNotEqual(value, 1.0)
 
   def test_extract_fns_kwargs(self):
     def fn1(a, b):
