@@ -175,14 +175,21 @@ def tree_get_all_with_path(
       (``path_to_value``, ``value``). Here ``value`` is one entry of the state
       that corresponds to the ``key``, and ``path_to_value`` is a path returned
       by :func:`jax.tree_util.tree_flatten_with_path`.
+
+  Raises:
+    ValueError: If the input tree is flat, i.e., it is not a tuple/list/dict.
   """
-  values_with_path_found = []
+  found_values_with_path = []
   tree_flatten_with_path, _ = jax.tree_util.tree_flatten_with_path(tree)
+  if not tree_flatten_with_path or not tree_flatten_with_path[0][0]:
+    raise ValueError(
+        "The input tree cannot be flat, i.e., it must be a tuple/list/dict."
+    )
   for path, val in tree_flatten_with_path:
     key_leaf = _convert_jax_key_fn(path[-1])
     if key_leaf == key:
-      values_with_path_found.append((path, val))
-  return values_with_path_found
+      found_values_with_path.append((path, val))
+  return found_values_with_path
 
 
 def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
@@ -190,7 +197,10 @@ def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
 
   Search in the leaves of a pytree for a specific ``key`` (which can be a key
   from a dictionary or a name from a NamedTuple).
+
   If no leaves in the tree have the required ``key`` returns ``default``.
+
+  Raises a ``KeyError`` if multiple values of ``key`` are found in ``tree``.
 
   .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`
 
@@ -217,14 +227,68 @@ def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
 
   Raises:
     KeyError: If multiple values of ``key`` are found in ``tree``.
+    ValueError: If the input tree is flat, i.e., it is not a tuple/list/dict.
   """
-  values_with_path_found = tree_get_all_with_path(tree, key)
-  if len(values_with_path_found) > 1:
+  found_values_with_path = tree_get_all_with_path(tree, key)
+  if len(found_values_with_path) > 1:
     raise KeyError(f"Found multiple values for '{key}' in {tree}.")
-  elif not values_with_path_found:
+  elif not found_values_with_path:
     return default
   else:
-    return values_with_path_found[0][1]
+    return found_values_with_path[0][1]
+
+
+def tree_set(tree: base.PyTree, **kwargs: Any) -> base.PyTree:
+  """Creates a copy of tree with some leaves replaced as specified by kwargs.
+
+  Raises a ``KeyError`` if some keys in ``kwargs`` are not present in the tree.
+
+  Examples:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> params = jnp.array([1., 2., 3.])
+    >>> opt = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
+    >>> state = opt.init(params)
+    >>> new_state = optax.tree_utils.tree_set(state, learning_rate=2.)
+    >>> lr = optax.tree_utils.tree_get(new_state, 'learning_rate')
+    >>> print(lr)
+    2.0
+
+  Args:
+    tree: pytree whose values are to be replaced.
+    **kwargs: dictionary of keys with values to replace in the tree.
+
+  Returns:
+    new_tree
+      new pytree with the same structure as tree. For each leaf whose
+      key/name matches a key in ``**kwargs``, their values are set by the
+      corresponding value in ``**kwargs``.
+
+  Raises:
+    KeyError: If no values of some key in ``**kwargs`` are found in ``tree``.
+    ValueError: If the input tree is flat, i.e., it is not a tuple/list/dict.
+  """
+  tree_flatten_with_path, _ = jax.tree_util.tree_flatten_with_path(tree)
+  if not tree_flatten_with_path or not tree_flatten_with_path[0][0]:
+    raise ValueError(
+        "The input tree cannot be flat, i.e., it must be a tuple/list/dict."
+    )
+  key_leaves = [
+      _convert_jax_key_fn(path[-1]) for path, _ in tree_flatten_with_path
+  ]
+  if (left_keys := set(kwargs) - set(key_leaves)):
+    left_keys_str = " nor ".join({f"'{key}'" for key in left_keys})
+    raise KeyError(f"Found no value for {left_keys_str} in {tree}.")
+
+  def _replace(path, value):
+    """Replace a value in tree if key from path matches some key in kwargs."""
+    key_leaf = _convert_jax_key_fn(path[-1])
+    if key_leaf in kwargs:
+      return kwargs[key_leaf]
+    else:
+      return value
+
+  return jax.tree_util.tree_map_with_path(_replace, tree)
 
 
 @jax.tree_util.register_pytree_node_class

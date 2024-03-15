@@ -17,6 +17,7 @@
 from optax.tree_utils._state_utils import tree_get
 from optax.tree_utils._state_utils import tree_get_all_with_path
 from optax.tree_utils._state_utils import tree_map_params
+from optax.tree_utils._state_utils import tree_set
 
 from optax.tree_utils._tree_math import tree_add
 from optax.tree_utils._tree_math import tree_add_scalar_mul

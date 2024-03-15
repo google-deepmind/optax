@@ -244,6 +244,12 @@ class StateUtilsTest(absltest.TestCase):
   def test_tree_get_all_with_path(self):
     params = jnp.array([1.0, 2.0, 3.0])
 
+    with self.subTest('Test with flat tree'):
+      tree = ()
+      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      tree = jnp.array([1.0, 2.0, 3.0])
+      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+
     with self.subTest('Test with single value in state'):
       key = 'count'
       opt = transform.scale_by_adam()
@@ -253,8 +259,8 @@ class StateUtilsTest(absltest.TestCase):
       self.assertEqual(values_found, expected_result)
 
     with self.subTest('Test with no value in state'):
-      key = 'count'
-      opt = alias.sgd(learning_rate=1.0)
+      key = 'apple'
+      opt = alias.adam(learning_rate=1.0)
       state = opt.init(params)
       values_found = _state_utils.tree_get_all_with_path(state, key)
       self.assertEmpty(values_found)
@@ -318,7 +324,7 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test jitted tree_get'):
       opt = _inject.inject_hyperparams(alias.sgd)(
-          learning_rate=lambda x: 1/(x+1)
+          learning_rate=lambda x: 1 / (x + 1)
       )
       state = opt.init(params)
 
@@ -327,10 +333,64 @@ class StateUtilsTest(absltest.TestCase):
         return _state_utils.tree_get(state, 'learning_rate')
 
       for i in range(4):
-         # we simply update state, we don't care about updates.
+        # we simply update state, we don't care about updates.
         _, state = opt.update(params, state)
         lr = get_learning_rate(state)
-        self.assertEqual(lr, 1/(i+1))
+        self.assertEqual(lr, 1 / (i + 1))
+
+  def test_tree_set(self):
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    with self.subTest('Test with flat tree'):
+      tree = ()
+      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      tree = jnp.array([1.0, 2.0, 3.0])
+      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+
+    with self.subTest('Test modifying an injected hyperparam'):
+      opt = _inject.inject_hyperparams(alias.adam)(learning_rate=1.0)
+      state = opt.init(params)
+      new_state = _state_utils.tree_set(state, learning_rate=2.0, b1=3.0)
+      lr = _state_utils.tree_get(new_state, 'learning_rate')
+      self.assertEqual(lr, 2.0)
+
+    with self.subTest('Test modifying an attribute of the state'):
+      opt = _inject.inject_hyperparams(alias.adam)(learning_rate=1.0)
+      state = opt.init(params)
+      new_state = _state_utils.tree_set(state, learning_rate=2.0, b1=3.0)
+      b1 = _state_utils.tree_get(new_state, 'b1')
+      self.assertEqual(b1, 3.0)
+
+    with self.subTest('Test modifying a value not present in the state'):
+      opt = _inject.inject_hyperparams(alias.adam)(learning_rate=1.0)
+      state = opt.init(params)
+      self.assertRaises(KeyError, _state_utils.tree_set, state, ema=2.0)
+
+    with self.subTest('Test jitted tree_set'):
+
+      @jax.jit
+      def set_learning_rate(state, lr):
+        return _state_utils.tree_set(state, learning_rate=lr)
+
+      modified_state = state
+      lr = 1.0
+      for i in range(4):
+        modified_state = set_learning_rate(modified_state, lr / (i + 1))
+        # we simply update state, we don't care about updates.
+        _, modified_state = opt.update(params, modified_state)
+        modified_lr = _state_utils.tree_get(modified_state, 'learning_rate')
+        self.assertEqual(modified_lr, lr / (i + 1))
+
+    with self.subTest('Test modifying several values at once'):
+      opt = combine.chain(
+          alias.adam(learning_rate=1.0), alias.adam(learning_rate=1.0)
+      )
+      state = opt.init(params)
+      new_state = _state_utils.tree_set(state, count=2.0)
+      values_found = _state_utils.tree_get_all_with_path(new_state, 'count')
+      self.assertLen(values_found, 2)
+      for _, value in values_found:
+        self.assertEqual(value, 2.0)
 
 
 def _fake_params():

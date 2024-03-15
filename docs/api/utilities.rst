@@ -106,6 +106,7 @@ Tree
     tree_ones_like
     tree_random_like
     tree_scalar_mul
+    tree_set
     tree_sub
     tree_sum
     tree_vdot
@@ -154,6 +155,10 @@ Tree with random values
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_scalar_mul
+
+Set values in a tree
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_set
 
 Tree subtract
 ~~~~~~~~~~~~~
