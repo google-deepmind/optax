@@ -106,7 +106,7 @@ def adadelta(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> f = lambda x: jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adadelta(learning_rate=0.01)
+    >>> solver = optax.adadelta(learning_rate=10.)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -116,11 +116,11 @@ def adadelta(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
+    Objective function: 1.36E+01
+    Objective function: 1.32E+01
+    Objective function: 1.29E+01
+    Objective function: 1.25E+01
+    Objective function: 1.21E+01
 
   References:
 
@@ -268,7 +268,7 @@ def adagrad(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adagrad(learning_rate=0.003)
+    >>> solver = optax.adagrad(learning_rate=1.0)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -278,12 +278,12 @@ def adagrad(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    
+    Objective function: 5.01E+00
+    Objective function: 2.40E+00
+    Objective function: 1.25E+00
+    Objective function: 6.86E-01
+    Objective function: 3.85E-01
+
   References:
     Duchi et al, 2011: https://jmlr.org/papers/v12/duchi11a.html
 
@@ -342,7 +342,7 @@ def adam(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
       \bar{\varepsilon}} + \varepsilon} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
@@ -374,7 +374,7 @@ def adam(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Kingma et al, `Adam: A Method for Stochastic Optimization
     <https://arxiv.org/abs/1412.6980>`_, 2014
@@ -455,13 +455,13 @@ nadam.__doc__ = (
       >>> for _ in range(5):
       ...  grad = jax.grad(f)(params)
       ...  updates, opt_state = solver.update(grad, opt_state, params)
-    ...  params = optax.apply_updates(params, updates)
+      ...  params = optax.apply_updates(params, updates)
       ...  print('Objective function: {:.2E}'.format(f(params)))
-      Objective function:  13.947006
-      Objective function:  13.905494
-      Objective function:  13.866892
-      Objective function:  13.829489
-      Objective function:  13.792713
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.38E+01
+      Objective function: 1.38E+01
 
   References:
     Dozat, `Incorporating Nesterov Momentum into Adam
@@ -994,9 +994,27 @@ def noisy_sgd(
 ) -> base.GradientTransformation:
   r"""A variant of SGD with added noise.
 
-  It has been found that adding noise to the gradients can improve
-  both the training error and the generalization error in very deep networks.
-  
+  Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian noise
+  into the updates. It has been found that adding noise to the gradients can
+  improve both the training error and the generalization error in very deep
+  networks.
+
+  The update :math:`u_t` is modified to include this noise as follows:
+
+  .. math::
+    u_t \leftarrow -\alpha_t (g_t + N(0, \sigma_t^2)),
+
+  where :math:`N(0, \sigma_t^2)` represents Gaussian noise with zero mean and a
+  variance of :math:`\sigma_t^2`.
+
+  The variance of this noise decays over time according to the formula
+
+  .. math::
+    \sigma_t^2 = \frac{\eta}{(1+t)^\gamma},
+
+  where :math:`\gamma` is the decay rate parameter ``gamma`` and :math:`\eta`
+  represents the initial variance ``eta``.
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1025,8 +1043,8 @@ def noisy_sgd(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     eta: Initial variance for the Gaussian noise added to gradients.
-    gamma: A parameter controlling the annealing of noise over time, the
-      variance decays according to `(1+t)^-\gamma`.
+    gamma: A parameter controlling the annealing of noise over time ``t``, the
+      variance decays according to ``(1+t)**(-gamma)``.
     seed: Seed for the pseudo-random generation process.
 
   Returns:
@@ -1305,12 +1323,39 @@ def sgd(
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """A canonical Stochastic Gradient Descent optimizer.
+  r"""A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
   momentum, and Nesterov acceleration, as these are standard practice when
   using stochastic gradient descent to train deep neural networks.
-  
+
+
+  The canonical stochastic gradient descent returns an update
+  :math:`u_t` of the form
+
+  .. math::
+    u_t \leftarrow -\alpha_t g_t,
+
+  where :math:`g_t` is the gradient of the objective (potentially preprocessed
+  by other transformations) and :math:`\alpha_t` is the ``learning_rate`` at
+  time :math:`t` (constant or selected by an :class:`optax.Schedule`).
+
+  Stochastic gradient descent with momentum takes two possible forms.
+
+  .. math::
+
+    \begin{align*}
+      m_t & \leftarrow \begin{cases}
+        g_t + \mu m_t & \mathrm{if \ \texttt{nesterov=False}}\\
+        g_t + \mu (g_t + \mu m_{t-1}) & \mathrm{if \ \texttt{nesterov=True}}
+      \end{cases} \\
+      u_t & \leftarrow - \alpha_t m_t \\
+      S_t & = m_t,
+    \end{align*}
+
+  where :math:`\mu` is the ``momentum`` parameter and :math:`S_t` is the state
+  of the optimizer.
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1331,21 +1376,22 @@ def sgd(
     Objective function: 1.35E+01
     Objective function: 1.33E+01
     Objective function: 1.32E+01
-    
+
   References:
-    Sutskever et al, 2013: http://proceedings.mlr.press/v28/sutskever13.pdf
+    Sutskever et al, `On the importance of initialization and momentum in deep
+    learning <http://proceedings.mlr.press/v28/sutskever13.pdf>`_, 2013
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
-    momentum: Decay rate used by the momentum term, when it is set to `None`,
+    momentum: Decay rate used by the momentum term, when it is set to ``None``,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
-    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
-      `None` then the `dtype` is inferred from `params` and `updates`.
+    accumulator_dtype: Optional ``dtype`` to be used for the accumulator; if
+      ``None`` then the ``dtype`` is inferred from ``params`` and ``updates``.
 
   Returns:
-    A `GradientTransformation`.
+    The corresponding `GradientTransformation`.
   """
   return combine.chain(
       (transform.trace(decay=momentum, nesterov=nesterov,
@@ -1603,7 +1649,7 @@ def rprop(
   gradient descent. It responds only to the sign of the gradient by increasing
   or decreasing the step size selected per parameter exponentially to speed up
   convergence and avoid oscillations.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1655,4 +1701,83 @@ def rprop(
           max_step_size=max_step_size,
       ),
       transform.scale(-1.0),
+  )
+
+
+def polyak_sgd(
+    max_learning_rate: float = 1.,
+    scaling: base.ScalarOrSchedule = 1.,
+    f_min: float = 0.0,
+    eps: float = 0.0,
+) -> base.GradientTransformationExtraArgs:
+  r"""SGD with Polyak step-size.
+
+  This solver implements the SGD with Polyak step size of (Loizou et al. 2021).
+  It sets the step-size as
+
+  .. math::
+    s \min\left\{\frac{f(x) - f^\star}{\|\nabla f(x)\|^2 + \epsilon},
+      \gamma_{\max}\right\}\,,
+
+  where :math:`f` is the function from which a gradient is computed,
+  :math:`\gamma_{\max}` is a maximal acceptable learning rate set  by
+  ``max_learning_rate``, :math:`\epsilon` is a constant preventing division by
+  zero set with ``eps``, :math:`s` scales the formula by ``scaling``, and
+  :math:`f^\star` is a guess of the minimum value of the function set with
+  ``f_min``.
+
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.polyak_sgd()
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  value, grad = jax.value_and_grad(f)(params)
+    ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
+    ...  print('Objective function: ', f(params))
+    Objective function:  3.5
+    Objective function:  0.875
+    Objective function:  0.21875
+    Objective function:  0.0546875
+    Objective function:  0.013671875
+
+  .. warning::
+    This method requires knowledge of an approximate value of the of the
+    objective function minimum, passed through the ``f_min`` argument.
+    For models that interpolate the data, this can be set to 0 (default
+    value).
+    Failing to set an appropriate value for ``f_min`` can lead to
+    divergence or convergence to a suboptimal solution.
+
+  References:
+    Loizou et al. `Stochastic polyak step-size for SGD: An adaptive learning
+    rate for fast convergence <https://arxiv.org/abs/2002.10542>`_, 2021
+
+    Berrada et al., `Training neural networks for and by interpolation
+    <https://arxiv.org/pdf/1906.05661.pdf>`_, 2020
+
+  Args:
+    max_learning_rate: a maximum step size to use (defaults to 1).
+    scaling: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler (defaults to 1).
+    f_min: a lower bound on the objective function (defaults to 0). Corresponds
+      to :math:`f^\star` in the formula above.
+    eps: a value to add in the denominator of the update (defaults to 0).
+
+  Returns:
+    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
+    takes an additional keyword argument ``value`` containing the current
+    value of the objective function.
+  """
+  return combine.chain(
+      sgd(learning_rate=scaling),
+      transform.scale_by_polyak(
+          max_learning_rate=max_learning_rate, f_min=f_min, eps=eps
+      ),
   )

@@ -35,9 +35,6 @@ Schedule = Callable[[chex.Numeric], chex.Numeric]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
-# An empty state for the simplest stateless transformations.
-EmptyState = tuple
-
 
 @runtime_checkable
 class StatefulSchedule(Protocol):
@@ -127,14 +124,14 @@ class TransformUpdateExtraArgsFn(Protocol):
 
     For example, an update function that requires an additional loss parameter
     (which might be useful for implementing learning rate schedules that depend
-    on the current loss value) could be expressed as follows.
+    on the current loss value) could be expressed as follows:
 
     >>> def update(updates, state, params=None, *, loss, **extra_args):
-    >>>   del extra_args
-    >>>   # use loss value
+    ...   del extra_args
+    ...   # use loss value
 
-    Note that the loss value is keyword only, (it follows a `*` in the
-    signature of the function). This means users will get explicit errors if
+    Note that the loss value is keyword only, (it follows a ``*`` in the
+    signature of the function). This implies users will get explicit errors if
     they try to use this gradient transformation without providing the required
     argument.
 
@@ -209,6 +206,10 @@ class GradientTransformationExtraArgs(GradientTransformation):
       accept extra arguments.
   """
   update: TransformUpdateExtraArgsFn
+
+
+class EmptyState(NamedTuple):
+  """An empty state for the simplest stateless transformations."""
 
 
 def identity() -> GradientTransformation:

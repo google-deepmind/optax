@@ -142,7 +142,8 @@ extensions = [
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.collections'
+    'sphinxcontrib.collections',
+    'sphinx_contributors'
 ]
 
 # so we don't have to do the canonical imports on every doctest
@@ -218,6 +219,10 @@ html_css_files = [
 ]
 
 # -- Options for myst -------------------------------------------------------
+myst_enable_extensions = [
+    'amsmath',
+    'dollarmath',
+]
 nb_execution_mode = 'force'
 nb_execution_allow_errors = False
 nb_execution_excludepatterns = [

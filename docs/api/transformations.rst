@@ -41,6 +41,8 @@ Transformations
     ScaleByAdamState
     scale_by_amsgrad
     ScaleByAmsgradState
+    scale_by_backtracking_linesearch
+    ScaleByBacktrackingLinesearchState
     scale_by_belief
     ScaleByBeliefState
     scale_by_factored_rms
@@ -53,6 +55,7 @@ Transformations
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
+    scale_by_polyak
     scale_by_radam
     scale_by_rms
     ScaleByRmsState
@@ -164,6 +167,9 @@ Transformations and states
 .. autofunction:: scale_by_amsgrad
 .. autoclass:: ScaleByAmsgradState
 
+.. autofunction:: scale_by_backtracking_linesearch
+.. autoclass:: ScaleByBacktrackingLinesearchState
+
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState
 
@@ -185,6 +191,8 @@ Transformations and states
 .. autofunction:: scale_by_param_block_rms
 
 .. autofunction:: scale_by_radam
+
+.. autofunction:: scale_by_polyak
 
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState

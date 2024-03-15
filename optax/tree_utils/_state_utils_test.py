@@ -21,7 +21,7 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
-
+import jax.tree_util as jtu
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
@@ -127,7 +127,6 @@ class StateUtilsTest(absltest.TestCase):
     self.assertEqual(expected, opt_state_sharding_spec)
 
   def test_state_chex_dataclass(self):
-
     @chex.dataclass
     class Foo:
       count: int
@@ -141,7 +140,7 @@ class StateUtilsTest(absltest.TestCase):
     }
 
     state = init(params)
-    state = _state_utils.tree_map_params(init, lambda v: v+1, state)
+    state = _state_utils.tree_map_params(init, lambda v: v + 1, state)
     state = cast(Foo, state)
 
     self.assertEqual(int(state.count), 0)
@@ -196,11 +195,11 @@ class StateUtilsTest(absltest.TestCase):
 
     params = _fake_params()
     state = opt.init(params)
-    state = _state_utils.tree_map_params(opt, lambda v: v+1, state)
+    state = _state_utils.tree_map_params(opt, lambda v: v + 1, state)
     state = cast(_inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
-    params_plus_one = jax.tree_map(lambda v: v+1, params)
+    params_plus_one = jax.tree_map(lambda v: v + 1, params)
     mu = getattr(state.inner_state[0], 'mu')
     chex.assert_trees_all_close(mu, params_plus_one)
 
@@ -227,8 +226,7 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
 
     state = _state_utils.tree_map_params(
-        opt,
-        lambda v: 1, state, transform_non_params=lambda _: None
+        opt, lambda v: 1, state, transform_non_params=lambda _: None
     )
 
     expected = (
@@ -238,9 +236,101 @@ class StateUtilsTest(absltest.TestCase):
             nu={'a': 1},
         ),
         transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
-            count=None),
+            count=None
+        ),
     )
     self.assertEqual(state, expected)
+
+  def test_tree_get_all_with_path(self):
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    with self.subTest('Test with single value in state'):
+      key = 'count'
+      opt = transform.scale_by_adam()
+      state = opt.init(params)
+      values_found = _state_utils.tree_get_all_with_path(state, key)
+      expected_result = [((jtu.GetAttrKey(name='count'),), jnp.array(0.0))]
+      self.assertEqual(values_found, expected_result)
+
+    with self.subTest('Test with no value in state'):
+      key = 'count'
+      opt = alias.sgd(learning_rate=1.0)
+      state = opt.init(params)
+      values_found = _state_utils.tree_get_all_with_path(state, key)
+      self.assertEmpty(values_found)
+
+    with self.subTest('Test with multiple values in state'):
+      key = 'learning_rate'
+      opt = combine.chain(
+          _inject.inject_hyperparams(alias.sgd)(learning_rate=1.0),
+          combine.chain(
+              alias.adam(learning_rate=1.0),
+              _inject.inject_hyperparams(alias.adam)(learning_rate=1e-4),
+          ),
+      )
+      state = opt.init(params)
+      values_found = _state_utils.tree_get_all_with_path(state, key)
+      expected_result = [
+          (
+              (
+                  jtu.SequenceKey(idx=0),
+                  jtu.GetAttrKey(name='hyperparams'),
+                  jtu.DictKey(key='learning_rate'),
+              ),
+              jnp.array(1.0),
+          ),
+          (
+              (
+                  jtu.SequenceKey(idx=1),
+                  jtu.SequenceKey(idx=1),
+                  jtu.GetAttrKey(name='hyperparams'),
+                  jtu.DictKey(key='learning_rate'),
+              ),
+              jnp.array(1e-4),
+          ),
+      ]
+      self.assertEqual(values_found, expected_result)
+
+  def test_tree_get(self):
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    with self.subTest('Test with unique value matching the key'):
+      solver = _inject.inject_hyperparams(alias.sgd)(learning_rate=42.0)
+      state = solver.init(params)
+      lr = _state_utils.tree_get(state, 'learning_rate')
+      self.assertEqual(lr, 42.0)
+
+    with self.subTest('Test with no value matching the key'):
+      solver = _inject.inject_hyperparams(alias.sgd)(learning_rate=42.0)
+      state = solver.init(params)
+      ema = _state_utils.tree_get(state, 'ema')
+      self.assertIsNone(ema)
+      ema = _state_utils.tree_get(state, 'ema', default=7.0)
+      self.assertEqual(ema, 7.0)
+
+    with self.subTest('Test with multiple values matching the key'):
+      solver = combine.chain(
+          _inject.inject_hyperparams(alias.sgd)(learning_rate=42.0),
+          _inject.inject_hyperparams(alias.sgd)(learning_rate=42.0),
+      )
+      state = solver.init(params)
+      self.assertRaises(KeyError, _state_utils.tree_get, state, 'learning_rate')
+
+    with self.subTest('Test jitted tree_get'):
+      opt = _inject.inject_hyperparams(alias.sgd)(
+          learning_rate=lambda x: 1/(x+1)
+      )
+      state = opt.init(params)
+
+      @jax.jit
+      def get_learning_rate(state):
+        return _state_utils.tree_get(state, 'learning_rate')
+
+      for i in range(4):
+         # we simply update state, we don't care about updates.
+        _, state = opt.update(params, state)
+        lr = get_learning_rate(state)
+        self.assertEqual(lr, 1/(i+1))
 
 
 def _fake_params():

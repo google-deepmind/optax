@@ -15,10 +15,20 @@
 """Tools for mapping over optimizer states."""
 
 import typing
-from typing import Any, Callable, Optional, Protocol, Union, cast
+from typing import Any, Callable, Hashable, Optional, Protocol, Union, cast
 
 import jax
 from optax._src import base
+
+_JaxKeyType = Union[
+    int,
+    str,
+    Hashable,
+    jax.tree_util.SequenceKey,
+    jax.tree_util.DictKey,
+    jax.tree_util.FlattenedIndexKey,
+    jax.tree_util.GetAttrKey,
+]
 
 
 @typing.runtime_checkable
@@ -105,6 +115,116 @@ def tree_map_params(
       state,
       is_leaf=lambda v: isinstance(v, _ParamsPlaceholder),
   )
+
+
+def _convert_jax_key_fn(key: _JaxKeyType) -> Union[int, str]:
+  """Convert a key returned by `jax.tree_util` to a usual type."""
+  if isinstance(key, (str, int)):
+    return key  # int | str.
+  if isinstance(key, jax.tree_util.SequenceKey):
+    return key.idx  # int.
+  if isinstance(key, jax.tree_util.DictKey):
+    if isinstance(key.key, (str, int)):
+      return key.key
+    raise KeyError("Hashable keys not supported")
+  if isinstance(key, jax.tree_util.FlattenedIndexKey):
+    return key.key  # int.
+  if isinstance(key, jax.tree_util.GetAttrKey):
+    return key.name  # str.
+  raise KeyError(f"Jax tree key '{key}' of type '{type(key)}' not valid.")
+
+
+def tree_get_all_with_path(
+    tree: base.PyTree,
+    key: Any,
+) -> list[tuple[jax._src.tree_util.KeyPath, Any]]:
+  r"""Extract values from leaves of a pytree matching a given key.
+
+  Search in the leaves of a pytree for a specific ``key`` (which can be a key
+  from a dictionary or a name from a NamedTuple for example).
+  That key or name may appear more than once in the pytree. So this function
+  returns a list of all values corresponding to ``key`` with the path to
+  that value.
+
+  Examples:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> params = jnp.array([1., 2., 3.])
+    >>> base_opt = optax.chain(
+    ...   optax.adam(learning_rate=1.),
+    ...   optax.adam(learning_rate=1.)
+    ... )
+    >>> solver = optax.chain(optax.adam(learning_rate=1.), base_opt)
+    >>> state = solver.init(params)
+    >>> values_found = optax.tree_utils.tree_get_all_with_path(state, 'count')
+    >>> print(len(values_found))
+    3
+    >>> path_to_count, count = values_found[0]
+    >>> print(path_to_count, count)
+    (SequenceKey(idx=0), SequenceKey(idx=0), GetAttrKey(name='count')) 0
+
+  .. seealso:: :func:`optax.tree_utils.tree_get`
+
+  Args:
+    tree: tree to search in.
+    key: keyword or name to search in tree for.
+
+  Returns:
+    values_with_path
+      list of tuples where each tuple is of the form
+      (``path_to_value``, ``value``). Here ``value`` is one entry of the state
+      that corresponds to the ``key``, and ``path_to_value`` is a path returned
+      by :func:`jax.tree_util.tree_flatten_with_path`.
+  """
+  values_with_path_found = []
+  tree_flatten_with_path, _ = jax.tree_util.tree_flatten_with_path(tree)
+  for path, val in tree_flatten_with_path:
+    key_leaf = _convert_jax_key_fn(path[-1])
+    if key_leaf == key:
+      values_with_path_found.append((path, val))
+  return values_with_path_found
+
+
+def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
+  """Extract a value from leaves of a pytree matching a given key.
+
+  Search in the leaves of a pytree for a specific ``key`` (which can be a key
+  from a dictionary or a name from a NamedTuple).
+  If no leaves in the tree have the required ``key`` returns ``default``.
+
+  .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`
+
+  Examples:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> params = jnp.array([1., 2., 3.])
+    >>> solver = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
+    >>> state = solver.init(params)
+    >>> lr = optax.tree_utils.tree_get(state, 'learning_rate')
+    >>> print(lr)
+    1.0
+
+  Args:
+    tree: tree to search in.
+    key: keyword or name to search in tree for.
+    default: default value to return if no leaves in the tree matched the given
+      ``key``.
+
+  Returns:
+    value
+      value in the tree matching the given ``key``. If none are
+      found return default value. If multiple are found raises an error.
+
+  Raises:
+    KeyError: If multiple values of ``key`` are found in ``tree``.
+  """
+  values_with_path_found = tree_get_all_with_path(tree, key)
+  if len(values_with_path_found) > 1:
+    raise KeyError(f"Found multiple values for '{key}' in {tree}.")
+  elif not values_with_path_found:
+    return default
+  else:
+    return values_with_path_found[0][1]
 
 
 @jax.tree_util.register_pytree_node_class

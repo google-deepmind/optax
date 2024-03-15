@@ -61,6 +61,9 @@ def reduce_on_plateau(
 
   Returns:
     A GradientTransformationExtraArgs object.
+
+  .. seealso::
+    * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
   if rtol < 0.0 or atol < 0.0:
     raise ValueError(

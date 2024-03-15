@@ -8,10 +8,15 @@ General
 
 .. autosummary::
     scale_gradient
+    value_and_grad_from_state
 
 Scale gradient
 ~~~~~~~~~~~~~~
 .. autofunction:: scale_gradient
+
+Value and grad from state
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: value_and_grad_from_state
 
 
 Numerical Stability
@@ -36,6 +41,29 @@ Safe root mean squares
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: safe_root_mean_squares
 
+
+Linear Algebra Operators
+------------------------
+
+.. currentmodule:: optax
+
+.. autosummary::
+    matrix_inverse_pth_root
+    multi_normal
+    power_iteration
+
+
+Multi normal
+~~~~~~~~~~~~
+.. autofunction:: multi_normal
+
+Matrix inverse pth root
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: matrix_inverse_pth_root
+
+Power iteration
+~~~~~~~~~~~~~~~
+.. autofunction:: power_iteration
 
 
 Second Order Optimization
@@ -70,14 +98,17 @@ Tree
     tree_add
     tree_add_scalar_mul
     tree_div
-    tree_vdot
+    tree_get
+    tree_get_all_with_path
     tree_l2_norm
     tree_map_params
     tree_mul
     tree_ones_like
+    tree_random_like
     tree_scalar_mul
     tree_sub
     tree_sum
+    tree_vdot
     tree_zeros_like
 
 Tree add
@@ -92,9 +123,13 @@ Tree divide
 ~~~~~~~~~~~
 .. autofunction:: tree_div
 
-Tree inner product
-~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_vdot
+Fetch single value that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get
+
+Fetch all values that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get_all_with_path
 
 Tree l2 norm
 ~~~~~~~~~~~~
@@ -112,6 +147,10 @@ Tree ones like
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_ones_like
 
+Tree with random values
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_random_like
+
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_scalar_mul
@@ -123,6 +162,10 @@ Tree subtract
 Tree sum
 ~~~~~~~~
 .. autofunction:: tree_sum
+
+Tree inner product
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_vdot
 
 Tree zeros like
 ~~~~~~~~~~~~~~~

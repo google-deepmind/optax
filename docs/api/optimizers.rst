@@ -22,6 +22,7 @@ Optimizers
     noisy_sgd
     novograd
     optimistic_gradient_descent
+    polyak_sgd
     radam
     rmsprop
     sgd
@@ -100,6 +101,10 @@ Novograd
 Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
+
+Polyak step-size SGD
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: polyak_sgd
 
 RAdam
 ~~~~~

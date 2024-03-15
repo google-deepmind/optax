@@ -1,7 +1,8 @@
 :github_url: https://github.com/google-deepmind/optax/tree/main/docs
 
+=====
 Optax
------
+=====
 
 Optax is a gradient processing and optimization library for JAX. It is designed
 to facilitate research by providing building blocks that can be recombined in
@@ -39,28 +40,18 @@ for instructions on installing JAX.
 
 
 .. toctree::
-   :caption: Getting Started
-   :maxdepth: 1
+   :hidden:
 
-   optax-101
-
-
-.. toctree::
-   :caption: Examples
-   :maxdepth: 1
+   getting_started
 
    gallery
-
-
-.. toctree::
-   :caption: Developer Documentation
-   :maxdepth: 1
 
    development
 
 
 .. toctree::
-   :caption: API Documentation
+   :hidden:
+   :caption: 📖 Reference
    :maxdepth: 2
 
    api/optimizers
@@ -70,38 +61,22 @@ for instructions on installing JAX.
    api/optimizer_schedules
    api/apply_updates
    api/losses
-   api/linear_algebra_operators
    api/control_variates
    api/stochastic_gradient_estimators
    api/utilities
    api/contrib
 
 
-The Team
---------
-
-The development of Optax is led by Ross Hemsley, Matteo Hessel, Markus Kunesch
-and Iurii Kemaev. The team relies on outstanding contributions from Research
-Engineers and Research Scientists from throughout
-`Google DeepMind <https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/>`_
-and Alphabet. We are also very grateful to Optax's open source community for
-contributing ideas, bug fixes, issues, design docs, and amazing new features.
-
-The work on Optax is part of a wider effort to contribute to making the
-`JAX Ecosystem <https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/>`_
-the best possible environment for ML/AI research.
-
 Support
 -------
 
-If you are having issues, please let us know by filing an issue on our
-`issue tracker <https://github.com/google-deepmind/optax/issues>`_.
+If you encounter issues with this software, please let us know by filing an issue on our `issue tracker <https://github.com/google-deepmind/optax/issues>`_. We are also happy to receive bug fixes and other contributions. For more information of how to contribute, please see the `development guide <development>`_.
 
 
 License
 -------
 
-Optax is licensed under the Apache 2.0 License.
+Optax is licensed under the `Apache 2.0 License <https://github.com/google-deepmind/optax/blob/main/LICENSE>`_.
 
 
 Indices and Tables

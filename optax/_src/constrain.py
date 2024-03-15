@@ -71,12 +71,9 @@ class ZeroNansState(NamedTuple):
 def zero_nans() -> base.GradientTransformation:
   """A transformation which replaces NaNs with 0.
 
-  Zeroing values in gradients is guaranteed to produce a direction of
-  non-increasing loss.
-
   The state of the transformation has the same tree structure as that of the
   parameters. Each leaf is a single boolean which contains True iff a NaN was
-  detected in the corresponding parameter array at the last call to `update`.
+  detected in the corresponding parameter array at the last call to ``update``.
   This state is not used by the transformation internally, but lets users be
   aware when NaNs have been zeroed out.
 
