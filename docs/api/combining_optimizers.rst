@@ -6,6 +6,7 @@ Combining Optimizers
 .. autosummary::
     chain
     multi_transform
+    MultiTransformState
 
 Chain
 ~~~~~

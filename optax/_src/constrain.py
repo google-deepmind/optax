@@ -16,6 +16,7 @@
 
 from typing import NamedTuple
 
+import chex
 import jax
 import jax.numpy as jnp
 
@@ -65,7 +66,7 @@ class ZeroNansState(NamedTuple):
       was detected in the corresponding parameter array at the last call to
       `update`.
   """
-  found_nan: jax.Array
+  found_nan: chex.ArrayTree
 
 
 def zero_nans() -> base.GradientTransformation:

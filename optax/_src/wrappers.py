@@ -191,7 +191,7 @@ class MultiStepsState(NamedTuple):
   mini_step: Union[jax.Array, int]
   gradient_step: Union[jax.Array, int]
   inner_opt_state: base.OptState
-  acc_grads: jax.Array # TODO: double check this one
+  acc_grads: base.Updates
   skip_state: chex.ArrayTree = ()
 
 
