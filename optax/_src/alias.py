@@ -36,15 +36,43 @@ def adabelief(
     b2: float = 0.999,
     eps: float = 1e-16,
     eps_root: float = 1e-16) -> base.GradientTransformation:
-  """The AdaBelief optimizer.
+  r"""The AdaBelief optimizer.
 
   AdaBelief is an adaptive learning rate optimizer that focuses on fast
   convergence, generalization, and stability. It adapts the step size depending
   on its "belief" in the gradient direction — the optimizer adaptively scales
   the step size by the difference between the predicted and observed gradients.
-  AdaBelief is a modified version of Adam and contains the same number of
-  parameters.
-  
+  AdaBelief is a modified version of :func:`optax.adam` and contains the same
+  number of parameters.
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
+  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
+  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectievly. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, s_0) = (0, 0)`, representing initial estimates for the
+  first and second moments. In practice these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t` and optimizer state :math:`S_t`
+  and computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for
+  :math:`t > 0`, we have,
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2 
+      + \bar{\varepsilon} \\
+      \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
+      \hat{s}_t &\leftarrow s_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left(\sqrt{\hat{s}_t}
+      + \varepsilon \right) \\
+      S_t &\leftarrow (m_t, s_t).
+    \end{align*}
+
   Examples:
     >>> import optax
     >>> import jax
