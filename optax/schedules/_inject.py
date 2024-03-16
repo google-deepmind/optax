@@ -110,8 +110,8 @@ def inject_hyperparams(
     provide schedules in place of the constant arguments.
 
   .. versionchanged:: 0.1.9
-    New parameter `hyperparam_dtype`, the returned callable outputs a
-    `GradientTransformationExtraArgs` instead of a `GradientTransformation`.
+    New parameter ``hyperparam_dtype``, the returned callable outputs a
+    ``GradientTransformationExtraArgs`` instead of a ``GradientTransformation``.
   """
   static_args = ({static_args} if isinstance(static_args, str) else
                  set(static_args))
