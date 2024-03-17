@@ -33,3 +33,5 @@ from optax.contrib.sam import normalize
 from optax.contrib.sam import NormalizeState
 from optax.contrib.sam import sam
 from optax.contrib.sam import SAMState
+from optax.contrib.sophia import sophia
+from optax.contrib.sophia import SophiaState
