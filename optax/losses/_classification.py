@@ -60,6 +60,13 @@ def sigmoid_binary_cross_entropy(
   return -labels * log_p - (1. - labels) * log_not_p
 
 
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='sigmoid_binary_cross_entropy')
+def binary_logistic_loss(logits, labels):
+  return sigmoid_binary_cross_entropy(logits, labels)
+
+
 def hinge_loss(
     predictor_outputs: chex.Array,
     targets: chex.Array
@@ -74,6 +81,25 @@ def hinge_loss(
     Binary Hinge Loss.
   """
   return jnp.maximum(0, 1 - predictor_outputs * targets)
+
+
+def perceptron_loss(
+    predictor_outputs: chex.Numeric,
+    targets: chex.Numeric
+) -> chex.Numeric:
+  """Binary perceptron loss.
+
+  References:
+    https://en.wikipedia.org/wiki/Perceptron
+
+  Args:
+    predictor_outputs: score produced by the model (float).
+    targets: Target values. Target values should be strictly in the set {-1, 1}.
+
+  Returns:
+    loss value.
+  """
+  return jnp.maximum(0, - predictor_outputs * targets)
 
 
 def softmax_cross_entropy(
@@ -137,6 +163,13 @@ def softmax_cross_entropy_with_integer_labels(
   label_logits = jnp.take_along_axis(logits, labels[..., None], axis=-1)[..., 0]
   log_normalizers = jnp.log(jnp.sum(jnp.exp(logits), axis=-1))
   return log_normalizers - label_logits
+
+
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='softmax_cross_entropy_with_integer_labels')
+def multiclass_logistic_loss(logits, labels):
+  return softmax_cross_entropy_with_integer_labels(logits, labels)
 
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
