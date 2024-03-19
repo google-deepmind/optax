@@ -14,6 +14,7 @@
 # ==============================================================================
 """Classification losses."""
 
+import functools
 from typing import Optional
 
 import chex
@@ -138,8 +139,11 @@ def softmax_cross_entropy_with_integer_labels(
   return log_normalizers - label_logits
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def poly_loss_cross_entropy(
-    logits: chex.Array, labels: chex.Array, epsilon: float = 2.0
+    logits: chex.Array,
+    labels: chex.Array,
+    epsilon: float = 2.0
 ) -> chex.Array:
   r"""Computes PolyLoss between logits and labels.
 
@@ -236,7 +240,8 @@ def kl_divergence_with_log_targets(
 
 
 def convex_kl_divergence(
-    log_predictions: chex.Array, targets: chex.Array
+    log_predictions: chex.Array,
+    targets: chex.Array
 ) -> chex.Array:
   """Computes a convex version of the Kullback-Leibler divergence loss.
 
@@ -262,6 +267,7 @@ def convex_kl_divergence(
   )
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss_with_forward_probs(
     logits: chex.Array,
     logit_paddings: chex.Array,
@@ -392,6 +398,7 @@ def ctc_loss_with_forward_probs(
   return per_seq_loss, logalpha_phi, logalpha_emit
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss(
     logits: chex.Array,
     logit_paddings: chex.Array,
@@ -432,6 +439,7 @@ def ctc_loss(
   return per_seq_loss
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def sigmoid_focal_loss(
     logits: chex.Array,
     labels: chex.Array,
