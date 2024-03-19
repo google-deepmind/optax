@@ -254,16 +254,16 @@ class StateUtilsTest(absltest.TestCase):
       key = 'count'
       opt = transform.scale_by_adam()
       state = opt.init(params)
-      values_found = _state_utils.tree_get_all_with_path(state, key)
+      found_values = _state_utils.tree_get_all_with_path(state, key)
       expected_result = [((jtu.GetAttrKey(name='count'),), jnp.array(0.0))]
-      self.assertEqual(values_found, expected_result)
+      self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with no value in state'):
       key = 'apple'
       opt = alias.adam(learning_rate=1.0)
       state = opt.init(params)
-      values_found = _state_utils.tree_get_all_with_path(state, key)
-      self.assertEmpty(values_found)
+      found_values = _state_utils.tree_get_all_with_path(state, key)
+      self.assertEmpty(found_values)
 
     with self.subTest('Test with multiple values in state'):
       key = 'learning_rate'
@@ -275,7 +275,7 @@ class StateUtilsTest(absltest.TestCase):
           ),
       )
       state = opt.init(params)
-      values_found = _state_utils.tree_get_all_with_path(state, key)
+      found_values = _state_utils.tree_get_all_with_path(state, key)
       expected_result = [
           (
               (
@@ -295,7 +295,26 @@ class StateUtilsTest(absltest.TestCase):
               jnp.array(1e-4),
           ),
       ]
-      self.assertEqual(values_found, expected_result)
+      self.assertEqual(found_values, expected_result)
+
+    with self.subTest('Test with optional filtering'):
+      state = dict(hparams=dict(learning_rate=1.0), learning_rate='foo')
+
+      # Without filtering two values are found
+      found_values = _state_utils.tree_get_all_with_path(state, 'learning_rate')
+      self.assertLen(found_values, 2)
+
+      # With filtering only the float entry is returned
+      filtering = lambda path, value: isinstance(value, float)
+      found_values = _state_utils.tree_get_all_with_path(
+          state, 'learning_rate', filtering=filtering
+      )
+      self.assertLen(found_values, 1)
+      expected_result = [(
+          (jtu.DictKey(key='hparams'), jtu.DictKey(key='learning_rate')),
+          1.0,
+      )]
+      self.assertEqual(found_values, expected_result)
 
   def test_tree_get(self):
     params = jnp.array([1.0, 2.0, 3.0])
@@ -337,6 +356,17 @@ class StateUtilsTest(absltest.TestCase):
         _, state = opt.update(params, state)
         lr = get_learning_rate(state)
         self.assertEqual(lr, 1 / (i + 1))
+
+    with self.subTest('Test with optional filtering'):
+      state = dict(hparams=dict(learning_rate=1.0), learning_rate='foo')
+
+      # Without filtering raises an error
+      self.assertRaises(KeyError, _state_utils.tree_get, state, 'learning_rate')
+
+      # With filtering, fetches the float entry
+      filtering = lambda path, value: isinstance(value, float)
+      lr = _state_utils.tree_get(state, 'learning_rate', filtering=filtering)
+      self.assertEqual(lr, 1.0)
 
   def test_tree_set(self):
     params = jnp.array([1.0, 2.0, 3.0])
@@ -387,10 +417,29 @@ class StateUtilsTest(absltest.TestCase):
       )
       state = opt.init(params)
       new_state = _state_utils.tree_set(state, count=2.0)
-      values_found = _state_utils.tree_get_all_with_path(new_state, 'count')
-      self.assertLen(values_found, 2)
-      for _, value in values_found:
+      found_values = _state_utils.tree_get_all_with_path(new_state, 'count')
+      self.assertLen(found_values, 2)
+      for _, value in found_values:
         self.assertEqual(value, 2.0)
+
+    with self.subTest('Test with optional filtering'):
+      state = dict(hparams=dict(learning_rate=1.0), learning_rate='foo')
+      filtering = lambda path, value: isinstance(value, float)
+      new_state = _state_utils.tree_set(state, filtering, learning_rate=0.5)
+      found_values = _state_utils.tree_get_all_with_path(
+          new_state, 'learning_rate'
+      )
+      expected_result = [
+          (
+              (
+                  jtu.DictKey(key='hparams'),
+                  jtu.DictKey(key='learning_rate'),
+              ),
+              0.5,
+          ),
+          ((jtu.DictKey(key='learning_rate'),), 'foo'),
+      ]
+      self.assertEqual(found_values, expected_result)
 
 
 def _fake_params():

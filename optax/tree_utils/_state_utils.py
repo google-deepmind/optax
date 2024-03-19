@@ -30,6 +30,8 @@ _JaxKeyType = Union[
     jax.tree_util.GetAttrKey,
 ]
 
+_JaxKeyPath = jax._src.tree_util.KeyPath  # pylint: disable=protected-access
+
 
 @typing.runtime_checkable
 class Initable(Protocol):
@@ -120,7 +122,7 @@ def tree_map_params(
 def _convert_jax_key_fn(key: _JaxKeyType) -> Union[int, str]:
   """Convert a key returned by `jax.tree_util` to a usual type."""
   if isinstance(key, (str, int)):
-    return key  # int | str.
+    return key
   if isinstance(key, jax.tree_util.SequenceKey):
     return key.idx  # int.
   if isinstance(key, jax.tree_util.DictKey):
@@ -137,7 +139,8 @@ def _convert_jax_key_fn(key: _JaxKeyType) -> Union[int, str]:
 def tree_get_all_with_path(
     tree: base.PyTree,
     key: Any,
-) -> list[tuple[jax._src.tree_util.KeyPath, Any]]:
+    filtering: Optional[Callable[[_JaxKeyPath, Any], bool]] = None,
+) -> list[tuple[_JaxKeyPath, Any]]:
   r"""Extract values from leaves of a pytree matching a given key.
 
   Search in the leaves of a pytree for a specific ``key`` (which can be a key
@@ -147,27 +150,41 @@ def tree_get_all_with_path(
   that value.
 
   Examples:
-    >>> import jax.numpy as jnp
-    >>> import optax
-    >>> params = jnp.array([1., 2., 3.])
-    >>> base_opt = optax.chain(
-    ...   optax.adam(learning_rate=1.),
-    ...   optax.adam(learning_rate=1.)
-    ... )
-    >>> solver = optax.chain(optax.adam(learning_rate=1.), base_opt)
-    >>> state = solver.init(params)
-    >>> values_found = optax.tree_utils.tree_get_all_with_path(state, 'count')
-    >>> print(len(values_found))
-    3
-    >>> path_to_count, count = values_found[0]
-    >>> print(path_to_count, count)
-    (SequenceKey(idx=0), SequenceKey(idx=0), GetAttrKey(name='count')) 0
+    Basic usage
+      >>> import jax.numpy as jnp
+      >>> import optax
+      >>> params = jnp.array([1., 2., 3.])
+      >>> base_opt = optax.chain(
+      ...   optax.adam(learning_rate=1.),
+      ...   optax.adam(learning_rate=1.)
+      ... )
+      >>> solver = optax.chain(optax.adam(learning_rate=1.), base_opt)
+      >>> state = solver.init(params)
+      >>> values_found = optax.tree_utils.tree_get_all_with_path(state, 'count')
+      >>> print(len(values_found))
+      3
+      >>> path_to_count, count = values_found[0]
+      >>> print(path_to_count, count)
+      (SequenceKey(idx=0), SequenceKey(idx=0), GetAttrKey(name='count')) 0
+
+    Usage with a filtering operation
+      >>> import optax
+      >>> state = dict(hparams=dict(learning_rate=1.), learning_rate='foo')
+      >>> filtering = lambda path, value: isinstance(value, float)
+      >>> lrs_with_path = optax.tree_utils.tree_get_all_with_path(
+      ...   state, 'learning_rate', filtering=filtering
+      ... )
+      >>> print(lrs_with_path)
+      [((DictKey(key='hparams'), DictKey(key='learning_rate')), 1.0)]
 
   .. seealso:: :func:`optax.tree_utils.tree_get`
 
   Args:
     tree: tree to search in.
     key: keyword or name to search in tree for.
+    filtering: optional callable to further filter values in tree that match the
+      key. ``filtering`` takes as arugments both the path to the value and the
+      value that match the given key.
 
   Returns:
     values_with_path
@@ -185,14 +202,20 @@ def tree_get_all_with_path(
     raise ValueError(
         "The input tree cannot be flat, i.e., it must be a tuple/list/dict."
     )
-  for path, val in tree_flatten_with_path:
+  for path, value in tree_flatten_with_path:
     key_leaf = _convert_jax_key_fn(path[-1])
-    if key_leaf == key:
-      found_values_with_path.append((path, val))
+    accept = True if filtering is None else filtering(path, value)
+    if (key_leaf == key) and accept:
+      found_values_with_path.append((path, value))
   return found_values_with_path
 
 
-def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
+def tree_get(
+    tree: base.PyTree,
+    key: Any,
+    default: Optional[Any] = None,
+    filtering: Optional[Callable[[_JaxKeyPath, Any], bool]] = None,
+) -> Any:
   """Extract a value from leaves of a pytree matching a given key.
 
   Search in the leaves of a pytree for a specific ``key`` (which can be a key
@@ -205,20 +228,34 @@ def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
   .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`
 
   Examples:
-    >>> import jax.numpy as jnp
-    >>> import optax
-    >>> params = jnp.array([1., 2., 3.])
-    >>> solver = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
-    >>> state = solver.init(params)
-    >>> lr = optax.tree_utils.tree_get(state, 'learning_rate')
-    >>> print(lr)
-    1.0
+    Basic usage
+      >>> import jax.numpy as jnp
+      >>> import optax
+      >>> params = jnp.array([1., 2., 3.])
+      >>> solver = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
+      >>> state = solver.init(params)
+      >>> lr = optax.tree_utils.tree_get(state, 'learning_rate')
+      >>> print(lr)
+      1.0
+
+    Usage with a filtering operation
+      >>> import optax
+      >>> state = dict(hparams=dict(learning_rate=1.), learning_rate='foo')
+      >>> filtering = lambda path, value: isinstance(value, float)
+      >>> lr = optax.tree_utils.tree_get(
+      ...   state, 'learning_rate', filtering=filtering
+      ... )
+      >>> print(lr)
+      1.0
 
   Args:
     tree: tree to search in.
     key: keyword or name to search in tree for.
     default: default value to return if no leaves in the tree matched the given
       ``key``.
+    filtering: optional callable to further filter values in tree that match the
+      key. ``filtering`` takes as arugments both the path to the value and the
+      value that match the given key.
 
   Returns:
     value
@@ -229,7 +266,9 @@ def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
     KeyError: If multiple values of ``key`` are found in ``tree``.
     ValueError: If the input tree is flat, i.e., it is not a tuple/list/dict.
   """
-  found_values_with_path = tree_get_all_with_path(tree, key)
+  found_values_with_path = tree_get_all_with_path(
+      tree, key, filtering=filtering
+  )
   if len(found_values_with_path) > 1:
     raise KeyError(f"Found multiple values for '{key}' in {tree}.")
   elif not found_values_with_path:
@@ -238,24 +277,47 @@ def tree_get(tree: base.PyTree, key: Any, default: Optional[Any] = None) -> Any:
     return found_values_with_path[0][1]
 
 
-def tree_set(tree: base.PyTree, **kwargs: Any) -> base.PyTree:
+def tree_set(
+    tree: base.PyTree,
+    filtering: Optional[Callable[[_JaxKeyPath, Any], bool]] = None,
+    /,
+    **kwargs: Any,
+) -> base.PyTree:
+  # pylint: disable=line-too-long
   """Creates a copy of tree with some leaves replaced as specified by kwargs.
 
   Raises a ``KeyError`` if some keys in ``kwargs`` are not present in the tree.
 
   Examples:
-    >>> import jax.numpy as jnp
-    >>> import optax
-    >>> params = jnp.array([1., 2., 3.])
-    >>> opt = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
-    >>> state = opt.init(params)
-    >>> new_state = optax.tree_utils.tree_set(state, learning_rate=2.)
-    >>> lr = optax.tree_utils.tree_get(new_state, 'learning_rate')
-    >>> print(lr)
-    2.0
+    Basic usage
+      >>> import jax.numpy as jnp
+      >>> import optax
+      >>> params = jnp.array([1., 2., 3.])
+      >>> opt = optax.inject_hyperparams(optax.adam)(learning_rate=1.)
+      >>> state = opt.init(params)
+      >>> new_state = optax.tree_utils.tree_set(state, learning_rate=2.)
+      >>> lr = optax.tree_utils.tree_get(new_state, 'learning_rate')
+      >>> print(lr)
+      2.0
+
+    Usage with a filtering operation
+      >>> import optax
+      >>> state = dict(hparams=dict(learning_rate=1.), learning_rate='foo')
+      >>> filtering = lambda path, value: isinstance(value, float)
+      >>> new_state = optax.tree_utils.tree_set(
+      ...   state, filtering, learning_rate=0.5
+      ... )
+      >>> lrs_with_path = optax.tree_utils.tree_get_all_with_path(
+      ...   new_state, 'learning_rate'
+      ... )
+      >>> print(lrs_with_path)
+      [((DictKey(key='hparams'), DictKey(key='learning_rate')), 0.5), ((DictKey(key='learning_rate'),), 'foo')]
 
   Args:
     tree: pytree whose values are to be replaced.
+    filtering: optional callable to further filter values in tree that match the
+      keys to replace. ``filtering`` takes as arugments both the path to the
+      value and the value that match one of the given keys.
     **kwargs: dictionary of keys with values to replace in the tree.
 
   Returns:
@@ -268,6 +330,7 @@ def tree_set(tree: base.PyTree, **kwargs: Any) -> base.PyTree:
     KeyError: If no values of some key in ``**kwargs`` are found in ``tree``.
     ValueError: If the input tree is flat, i.e., it is not a tuple/list/dict.
   """
+  # pylint: enable=line-too-long
   tree_flatten_with_path, _ = jax.tree_util.tree_flatten_with_path(tree)
   if not tree_flatten_with_path or not tree_flatten_with_path[0][0]:
     raise ValueError(
@@ -276,14 +339,15 @@ def tree_set(tree: base.PyTree, **kwargs: Any) -> base.PyTree:
   key_leaves = [
       _convert_jax_key_fn(path[-1]) for path, _ in tree_flatten_with_path
   ]
-  if (left_keys := set(kwargs) - set(key_leaves)):
+  if left_keys := set(kwargs) - set(key_leaves):
     left_keys_str = " nor ".join({f"'{key}'" for key in left_keys})
     raise KeyError(f"Found no value for {left_keys_str} in {tree}.")
 
   def _replace(path, value):
     """Replace a value in tree if key from path matches some key in kwargs."""
     key_leaf = _convert_jax_key_fn(path[-1])
-    if key_leaf in kwargs:
+    accept = True if filtering is None else filtering(path, value)
+    if (key_leaf in kwargs) and accept:
       return kwargs[key_leaf]
     else:
       return value
