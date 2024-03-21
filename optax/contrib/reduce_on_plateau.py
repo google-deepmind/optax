@@ -32,7 +32,7 @@ class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
   lr: chex.Array  # shape=(), dtype=jnp.float32
-  best_loss: chex.Array  # shape=(), dtype=jnp.float32
+  best_value: chex.Array  # shape=(), dtype=jnp.float32
   plateau_count: chex.Array  # shape=(), dtype=jnp.int32
   cooldown_counter: chex.Array  # shape=(), dtype=jnp.int32
 
@@ -83,7 +83,7 @@ def reduce_on_plateau(
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
     return ReduceLROnPlateauState(
-        best_loss=jnp.asarray(float("inf"), dtype=jnp.float32),
+        best_value=jnp.asarray(float("inf"), dtype=jnp.float32),
         plateau_count=jnp.asarray(0, jnp.int32),
         lr=jnp.asarray(1.0, dtype=jnp.float32),
         cooldown_counter=jnp.asarray(0, jnp.int32),
@@ -94,14 +94,14 @@ def reduce_on_plateau(
       state: ReduceLROnPlateauState,
       params=None,
       *,
-      loss,
+      value: float,
       **extra_args,
   ) -> tuple[base.Params, ReduceLROnPlateauState]:
     del params, extra_args
 
     # Update plateau count and check if plateaued
-    has_improved = jnp.where(loss < (1 - rtol) * state.best_loss - atol, 1, 0)
-    new_best_loss = jnp.where(has_improved, loss, state.best_loss)
+    has_improved = jnp.where(value < (1 - rtol) * state.best_value - atol, 1, 0)
+    new_best_value = jnp.where(has_improved, value, state.best_value)
 
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_int32_increment(state.plateau_count)
@@ -137,7 +137,7 @@ def reduce_on_plateau(
 
     new_state = ReduceLROnPlateauState(
         plateau_count=new_plateau_count,
-        best_loss=new_best_loss,
+        best_value=new_best_value,
         lr=new_lr,
         cooldown_counter=new_cooldown_counter,
     )
