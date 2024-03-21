@@ -246,9 +246,11 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test with flat tree'):
       tree = ()
-      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      found_values = _state_utils.tree_get_all_with_path(tree, 'foo')
+      self.assertEmpty(found_values)
       tree = jnp.array([1.0, 2.0, 3.0])
-      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      found_values = _state_utils.tree_get_all_with_path(tree, 'foo')
+      self.assertEmpty(found_values)
 
     with self.subTest('Test with single value in state'):
       key = 'count'
@@ -305,7 +307,7 @@ class StateUtilsTest(absltest.TestCase):
       self.assertLen(found_values, 2)
 
       # With filtering only the float entry is returned
-      filtering = lambda path, value: isinstance(value, float)
+      filtering = lambda _, value: isinstance(value, float)
       found_values = _state_utils.tree_get_all_with_path(
           state, 'learning_rate', filtering=filtering
       )
@@ -314,6 +316,33 @@ class StateUtilsTest(absltest.TestCase):
           (jtu.DictKey(key='hparams'), jtu.DictKey(key='learning_rate')),
           1.0,
       )]
+      self.assertEqual(found_values, expected_result)
+
+    with self.subTest('Test to get a subtree (here hyperparams_states)'):
+      opt = _inject.inject_hyperparams(alias.sgd)(learning_rate=lambda x: x)
+      filtering = lambda _, value: isinstance(value, tuple)
+      state = opt.init(params)
+      found_values = _state_utils.tree_get_all_with_path(
+          state, 'learning_rate', filtering=filtering
+      )
+      expected_result = [(
+          (
+              jtu.GetAttrKey(name='hyperparams_states'),
+              jtu.DictKey(key='learning_rate'),
+          ),
+          _inject.WrappedScheduleState(
+              count=jnp.array(0, dtype=jnp.dtype('int32'))
+          ),
+      )]
+      self.assertEqual(found_values, expected_result)
+
+    with self.subTest('Test with nested tree containing a key'):
+      tree = dict(a=dict(a=1.0))
+      found_values = _state_utils.tree_get_all_with_path(tree, 'a')
+      expected_result = [
+          ((jtu.DictKey(key='a'),), {'a': 1.0}),
+          ((jtu.DictKey(key='a'), jtu.DictKey(key='a')), 1.0),
+      ]
       self.assertEqual(found_values, expected_result)
 
   def test_tree_get(self):
@@ -346,10 +375,13 @@ class StateUtilsTest(absltest.TestCase):
           learning_rate=lambda x: 1 / (x + 1)
       )
       state = opt.init(params)
+      filtering = lambda _, value: isinstance(value, jnp.ndarray)
 
       @jax.jit
       def get_learning_rate(state):
-        return _state_utils.tree_get(state, 'learning_rate')
+        return _state_utils.tree_get(
+            state, 'learning_rate', filtering=filtering
+        )
 
       for i in range(4):
         # we simply update state, we don't care about updates.
@@ -373,9 +405,9 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test with flat tree'):
       tree = ()
-      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.)
       tree = jnp.array([1.0, 2.0, 3.0])
-      self.assertRaises(ValueError, _state_utils.tree_get, tree, 'foo')
+      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.)
 
     with self.subTest('Test modifying an injected hyperparam'):
       opt = _inject.inject_hyperparams(alias.adam)(learning_rate=1.0)
@@ -424,22 +456,30 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test with optional filtering'):
       state = dict(hparams=dict(learning_rate=1.0), learning_rate='foo')
-      filtering = lambda path, value: isinstance(value, float)
+      filtering = lambda _, value: isinstance(value, float)
       new_state = _state_utils.tree_set(state, filtering, learning_rate=0.5)
       found_values = _state_utils.tree_get_all_with_path(
           new_state, 'learning_rate'
       )
       expected_result = [
-          (
-              (
-                  jtu.DictKey(key='hparams'),
-                  jtu.DictKey(key='learning_rate'),
-              ),
-              0.5,
-          ),
           ((jtu.DictKey(key='learning_rate'),), 'foo'),
+          ((jtu.DictKey(key='hparams'), jtu.DictKey(key='learning_rate')), 0.5),
       ]
       self.assertEqual(found_values, expected_result)
+
+    with self.subTest('Test with nested trees and filtering'):
+      tree = dict(a=dict(a=1.0), b=dict(a=1))
+      filtering = lambda _, value: isinstance(value, float)
+      new_tree = _state_utils.tree_set(tree, filtering, a=2.0)
+      expected_result = dict(a=dict(a=2.0), b=dict(a=1))
+      self.assertEqual(new_tree, expected_result)
+
+    with self.subTest('Test setting a subtree'):
+      tree = dict(a=dict(a=1.0), b=dict(a=1))
+      filtering = lambda _, value: isinstance(value, dict)
+      new_tree = _state_utils.tree_set(tree, filtering, a=dict(c=0.))
+      expected_result = dict(a=dict(c=0.0), b=dict(a=1))
+      self.assertEqual(new_tree, expected_result)
 
 
 def _fake_params():
