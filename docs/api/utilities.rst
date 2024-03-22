@@ -95,6 +95,7 @@ Tree
 .. currentmodule:: optax.tree_utils
 
 .. autosummary::
+    NamedTupleKey
     tree_add
     tree_add_scalar_mul
     tree_div
@@ -111,6 +112,10 @@ Tree
     tree_sum
     tree_vdot
     tree_zeros_like
+
+NamedTupleKey
+~~~~~~~~~~~~~
+.. autoclass:: NamedTupleKey
 
 Tree add
 ~~~~~~~~

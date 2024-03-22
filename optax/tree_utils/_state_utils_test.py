@@ -257,7 +257,10 @@ class StateUtilsTest(absltest.TestCase):
       opt = transform.scale_by_adam()
       state = opt.init(params)
       found_values = _state_utils.tree_get_all_with_path(state, key)
-      expected_result = [((jtu.GetAttrKey(name='count'),), jnp.array(0.0))]
+      expected_result = [(
+          (_state_utils.NamedTupleKey('ScaleByAdamState', 'count'),),
+          jnp.array(0.0),
+      )]
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with no value in state'):
@@ -282,7 +285,9 @@ class StateUtilsTest(absltest.TestCase):
           (
               (
                   jtu.SequenceKey(idx=0),
-                  jtu.GetAttrKey(name='hyperparams'),
+                  _state_utils.NamedTupleKey(
+                      'InjectStatefulHyperparamsState', 'hyperparams'
+                  ),
                   jtu.DictKey(key='learning_rate'),
               ),
               jnp.array(1.0),
@@ -291,7 +296,9 @@ class StateUtilsTest(absltest.TestCase):
               (
                   jtu.SequenceKey(idx=1),
                   jtu.SequenceKey(idx=1),
-                  jtu.GetAttrKey(name='hyperparams'),
+                  _state_utils.NamedTupleKey(
+                      'InjectStatefulHyperparamsState', 'hyperparams'
+                  ),
                   jtu.DictKey(key='learning_rate'),
               ),
               jnp.array(1e-4),
@@ -327,7 +334,9 @@ class StateUtilsTest(absltest.TestCase):
       )
       expected_result = [(
           (
-              jtu.GetAttrKey(name='hyperparams_states'),
+              _state_utils.NamedTupleKey(
+                  'InjectStatefulHyperparamsState', 'hyperparams_states'
+              ),
               jtu.DictKey(key='learning_rate'),
           ),
           _inject.WrappedScheduleState(
@@ -400,14 +409,42 @@ class StateUtilsTest(absltest.TestCase):
       lr = _state_utils.tree_get(state, 'learning_rate', filtering=filtering)
       self.assertEqual(lr, 1.0)
 
+    with self.subTest('Test filtering for specific state'):
+      opt = combine.chain(
+          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+      )
+      state = opt.init(params)
+
+      filtering = (
+          lambda path, _: isinstance(path[-1], _state_utils.NamedTupleKey)
+          and path[-1].tuple_name == 'ScaleByAdamState'
+      )
+
+      count = _state_utils.tree_get(state, 'count', filtering=filtering)
+      self.assertEqual(count, jnp.asarray(0, dtype=jnp.dtype('int32')))
+
+    with self.subTest('Test extracting a state'):
+      opt = combine.chain(
+          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+      )
+      state = opt.init(params)
+      noise_state = _state_utils.tree_get(state, 'AddNoiseState')
+      expected_result = (
+          transform.AddNoiseState(
+              count=jnp.asarray(0),
+              rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
+          )
+      )
+      chex.assert_trees_all_equal(noise_state, expected_result)
+
   def test_tree_set(self):
     params = jnp.array([1.0, 2.0, 3.0])
 
     with self.subTest('Test with flat tree'):
       tree = ()
-      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.)
+      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.0)
       tree = jnp.array([1.0, 2.0, 3.0])
-      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.)
+      self.assertRaises(KeyError, _state_utils.tree_set, tree, foo=1.0)
 
     with self.subTest('Test modifying an injected hyperparam'):
       opt = _inject.inject_hyperparams(alias.adam)(learning_rate=1.0)
@@ -477,9 +514,59 @@ class StateUtilsTest(absltest.TestCase):
     with self.subTest('Test setting a subtree'):
       tree = dict(a=dict(a=1.0), b=dict(a=1))
       filtering = lambda _, value: isinstance(value, dict)
-      new_tree = _state_utils.tree_set(tree, filtering, a=dict(c=0.))
+      new_tree = _state_utils.tree_set(tree, filtering, a=dict(c=0.0))
       expected_result = dict(a=dict(c=0.0), b=dict(a=1))
       self.assertEqual(new_tree, expected_result)
+
+    with self.subTest('Test setting a specific state'):
+      opt = combine.chain(
+          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+      )
+      state = opt.init(params)
+
+      filtering = (
+          lambda path, _: isinstance(path[-1], _state_utils.NamedTupleKey)
+          and path[-1].tuple_name == 'ScaleByAdamState'
+      )
+
+      new_state = _state_utils.tree_set(state, filtering, count=jnp.array(42))
+      expected_result = (
+          transform.AddNoiseState(
+              count=jnp.array(0),
+              rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
+          ),
+          transform.ScaleByAdamState(
+              count=jnp.array(42),
+              mu=jnp.array([0.0, 0.0, 0.0]),
+              nu=jnp.array([0.0, 0.0, 0.0]),
+          ),
+      )
+      chex.assert_trees_all_equal(new_state, expected_result)
+
+    with self.subTest('Test setting a state'):
+      opt = combine.chain(
+          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+      )
+      state = opt.init(params)
+      new_noise_state = (
+          transform.AddNoiseState(
+              count=jnp.array(42),
+              rng_key=jnp.array([4, 8], dtype=jnp.dtype('uint32')),
+          )
+      )
+      new_state = _state_utils.tree_set(state, AddNoiseState=new_noise_state)
+      expected_result = (
+          transform.AddNoiseState(
+              count=jnp.array(42),
+              rng_key=jnp.array([4, 8], dtype=jnp.dtype('uint32')),
+          ),
+          transform.ScaleByAdamState(
+              count=jnp.array(0),
+              mu=jnp.array([0.0, 0.0, 0.0]),
+              nu=jnp.array([0.0, 0.0, 0.0]),
+          ),
+      )
+      chex.assert_trees_all_equal(new_state, expected_result)
 
 
 def _fake_params():
