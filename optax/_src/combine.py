@@ -147,7 +147,7 @@ def multi_transform(
     import jax.numpy as jnp
 
     def map_nested_fn(fn):
-      '''Recursively apply `fn` to the key-value pairs of a nested dict'''
+      '''Recursively apply `fn` to the key-value pairs of a nested dict.'''
       def map_fn(nested_dict):
         return {k: (map_fn(v) if isinstance(v, dict) else fn(k, v))
                 for k, v in nested_dict.items()}
