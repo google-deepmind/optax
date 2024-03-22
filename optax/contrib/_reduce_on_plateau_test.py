@@ -17,9 +17,9 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
-from jax import config
+import jax
 import jax.numpy as jnp
-from optax import contrib
+from optax.contrib import _reduce_on_plateau
 
 
 class ReduceLROnPlateauTest(parameterized.TestCase):
@@ -29,7 +29,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     super().setUp()
     self.patience = 5
     self.cooldown = 5
-    self.transform = contrib.reduce_on_plateau(
+    self.transform = _reduce_on_plateau.reduce_on_plateau(
         factor=0.1,
         patience=self.patience,
         rtol=1e-4,
@@ -40,7 +40,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
   def tearDown(self):
     super().tearDown()
-    config.update('jax_enable_x64', False)
+    jax.config.update('jax_enable_x64', False)
 
   @parameterized.parameters(False, True)
   def test_learning_rate_reduced_after_cooldown_period_is_over(
@@ -49,11 +49,12 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     """Test that learning rate is reduced after cooldown."""
 
     # Enable float64 if requested
-    config.update('jax_enable_x64', enable_x64)
+    jax.config.update('jax_enable_x64', enable_x64)
 
     # Initialize the state
     state = self.transform.init(self.updates['params'])
 
+    updates = self.updates
     # Wait until patience runs out
     for _ in range(self.patience + 1):
       updates, state = self.transform.update(
@@ -83,10 +84,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     """Test that plateau_count resets after a new best_value is found."""
 
     # Enable float64 if requested
-    config.update('jax_enable_x64', enable_x64)
+    jax.config.update('jax_enable_x64', enable_x64)
 
     # State with positive plateau_count
-    state = contrib.ReduceLROnPlateauState(
+    state = _reduce_on_plateau.ReduceLROnPlateauState(
         best_value=jnp.array(1.0, dtype=jnp.float32),
         plateau_count=jnp.array(3, dtype=jnp.int32),
         lr=jnp.array(0.1, dtype=jnp.float32),
@@ -109,10 +110,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     """Test that learning rate is not reduced during cooldown."""
 
     # Enable float64 if requested
-    config.update('jax_enable_x64', enable_x64)
+    jax.config.update('jax_enable_x64', enable_x64)
 
     # State with positive cooldown_counter
-    state = contrib.ReduceLROnPlateauState(
+    state = _reduce_on_plateau.ReduceLROnPlateauState(
         best_value=jnp.array(1.0, dtype=jnp.float32),
         plateau_count=jnp.array(0, dtype=jnp.int32),
         lr=jnp.array(0.1, dtype=jnp.float32),

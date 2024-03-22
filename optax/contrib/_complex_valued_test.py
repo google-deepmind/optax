@@ -24,7 +24,7 @@ import numpy as np
 
 from optax._src import transform
 from optax._src import update
-from optax.contrib import complex_valued
+from optax.contrib import _complex_valued
 
 
 def _loss_fun_complex_to_real(z):
@@ -36,7 +36,7 @@ def _loss_fun_real_to_real(params):
   return _loss_fun_complex_to_real(x + y * 1j)
 
 
-class ComplexValuedTest(parameterized.TestCase):
+class ComplexValuedTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters([
@@ -59,7 +59,7 @@ class ComplexValuedTest(parameterized.TestCase):
     z = x + y * 1j
 
     optimizer = scaler_constr()
-    optimizer_complex = complex_valued.split_real_and_imaginary(optimizer)
+    optimizer_complex = _complex_valued.split_real_and_imaginary(optimizer)
     opt_state = self.variant(optimizer.init)((x, y))
     opt_state_complex = self.variant(optimizer_complex.init)(z)
 
