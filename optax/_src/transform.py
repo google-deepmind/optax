@@ -44,7 +44,7 @@ class TraceState(NamedTuple):
 
 
 def trace(
-    decay: float,
+    decay: Union[float, jax.Array],
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
@@ -140,7 +140,7 @@ class EmaState(NamedTuple):
 
 
 def ema(
-    decay: float,
+    decay: Union[float, jax.Array],
     debias: bool = True,
     accumulator_dtype: Optional[Any] = None
 ) -> base.GradientTransformation:
@@ -186,8 +186,8 @@ class ScaleByRssState(NamedTuple):
 
 
 def scale_by_rss(
-    initial_accumulator_value: float = 0.1,
-    eps: float = 1e-7
+    initial_accumulator_value: Union[float, jax.Array] = 0.1,
+    eps: Union[float, jax.Array] = 1e-7
 ) -> base.GradientTransformation:
   """Rescale updates by the root of the sum of all squared gradients to date.
 
@@ -227,9 +227,9 @@ class ScaleByRmsState(NamedTuple):
 
 
 def scale_by_rms(
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.
+    decay: Union[float, jax.Array] = 0.9,
+    eps: Union[float, jax.Array] = 1e-8,
+    initial_scale: Union[float, jax.Array] = 0.
 ) -> base.GradientTransformation:
   r"""Rescale updates by the root of the exp. moving avg of the square.
 
@@ -272,9 +272,9 @@ class ScaleByRStdDevState(NamedTuple):
 
 
 def scale_by_stddev(
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.
+    decay: Union[float, jax.Array] = 0.9,
+    eps: Union[float, jax.Array] = 1e-8,
+    initial_scale: Union[float, jax.Array] = 0.
 ) -> base.GradientTransformation:
   """Rescale updates by the root of the centered exp. moving average of squares.
 
@@ -316,10 +316,10 @@ class ScaleByAdamState(NamedTuple):
 
 
 def scale_by_adam(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-8,
+    eps_root: Union[float, jax.Array] = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
     nesterov: bool = False
@@ -395,10 +395,10 @@ class ScaleByAmsgradState(NamedTuple):
 
 
 def scale_by_amsgrad(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-8,
+    eps_root: Union[float, jax.Array] = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
@@ -447,9 +447,9 @@ def scale_by_amsgrad(
 
 
 def scale_by_adamax(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-8
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adamax algorithm.
 
@@ -490,8 +490,8 @@ class ScaleByLionState(NamedTuple):
 
 
 def scale_by_lion(
-    b1: float = 0.9,
-    b2: float = 0.99,
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.99,
     mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
@@ -532,7 +532,7 @@ ScaleState = base.EmptyState
 
 
 def scale(
-    step_size: float
+    step_size: Union[float, jax.Array]
 ) -> base.GradientTransformation:
   """Scale updates by some fixed scalar `step_size`.
 
@@ -556,7 +556,7 @@ def scale(
 
 
 def scale_by_param_block_norm(
-    min_scale: float = 1e-3
+    min_scale: Union[float, jax.Array] = 1e-3
 ) -> base.GradientTransformation:
   """Scale updates for each param block by the norm of that block's parameters.
 
@@ -582,7 +582,7 @@ def scale_by_param_block_norm(
 
 
 def scale_by_param_block_rms(
-    min_scale: float = 1e-3
+    min_scale: Union[float, jax.Array] = 1e-3
 ) -> base.GradientTransformation:
   """Scale updates by rms of the gradient for each param vector or matrix.
 
@@ -662,10 +662,10 @@ class ScaleByBeliefState(NamedTuple):
 
 
 def scale_by_belief(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-16,
+    eps_root: Union[float, jax.Array] = 1e-16
 ) -> base.GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
 
@@ -707,11 +707,11 @@ def scale_by_belief(
 
 
 def scale_by_yogi(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-3,
-    eps_root: float = 0.0,
-    initial_accumulator_value: float = 1e-6
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-3,
+    eps_root: Union[float, jax.Array] = 0.0,
+    initial_accumulator_value: Union[float, jax.Array] = 1e-6
 ) -> base.GradientTransformation:
   """Rescale updates according to the Yogi algorithm.
 
@@ -757,11 +757,11 @@ def scale_by_yogi(
 
 
 def scale_by_radam(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    threshold: float = 5.0
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.999,
+    eps: Union[float, jax.Array] = 1e-8,
+    eps_root: Union[float, jax.Array] = 0.0,
+    threshold: Union[float, jax.Array] = 5.0
 ) -> base.GradientTransformation:
   """Rescale updates according to the Rectified Adam algorithm.
 
@@ -987,9 +987,9 @@ class ScaleByTrustRatioState(NamedTuple):
 
 
 def scale_by_trust_ratio(
-    min_norm: float = 0.0,
-    trust_coefficient: float = 1.,
-    eps: float = 0.,
+    min_norm: Union[float, jax.Array] = 0.0,
+    trust_coefficient: Union[float, jax.Array] = 1.,
+    eps: Union[float, jax.Array] = 0.,
 ) -> base.GradientTransformation:
   """Scale updates by `trust ratio`.
 
@@ -1041,8 +1041,8 @@ class AddNoiseState(NamedTuple):
 
 
 def add_noise(
-    eta: float,
-    gamma: float,
+    eta: Union[float, jax.Array],
+    gamma: Union[float, jax.Array],
     seed: int
 ) -> base.GradientTransformation:
   """Add gradient noise.
@@ -1164,9 +1164,9 @@ class ScaleBySM3State(NamedTuple):
 
 
 def scale_by_sm3(
-    b1: float = 0.9,
-    b2: float = 1.0,
-    eps: float = 1e-8
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 1.0,
+    eps: Union[float, jax.Array] = 1e-8
 ) -> base.GradientTransformation:
   """Scale updates by `sm3`.
 
@@ -1240,11 +1240,11 @@ class ScaleByNovogradState(NamedTuple):
 
 
 def scale_by_novograd(
-    b1: float = 0.9,
-    b2: float = 0.25,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: Union[float, jax.Array] = 0.9,
+    b2: Union[float, jax.Array] = 0.25,
+    eps: Union[float, jax.Array] = 1e-8,
+    eps_root: Union[float, jax.Array] = 0.0,
+    weight_decay: Union[float, jax.Array] = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
@@ -1312,8 +1312,8 @@ def scale_by_novograd(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-def scale_by_optimistic_gradient(alpha: float = 1.0,
-                                 beta: float = 1.0
+def scale_by_optimistic_gradient(alpha: Union[float, jax.Array] = 1.0,
+                                 beta: Union[float, jax.Array] = 1.0
                                 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
