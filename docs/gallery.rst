@@ -150,6 +150,23 @@
       <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
     </div>
 
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Character-level Transformer on Tiny Shakespeare.">
+
+.. only:: html
+
+  .. image:: /images/examples/tiny_shakespeare.png
+     :alt: Character-level Transformer on Tiny Shakespeare
+
+  :doc:`_collections/examples/nanolm`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Character-level Transformer on Tiny Shakespeare.</div>
+    </div>
+
 .. raw:: html
 
     </div>

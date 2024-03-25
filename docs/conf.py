@@ -227,6 +227,7 @@ nb_execution_mode = 'force'
 nb_execution_allow_errors = False
 nb_execution_excludepatterns = [
     # slow examples
+    'nanolm.ipynb',
     'cifar10_resnet.ipynb',
     'adversarial_training.ipynb',
     'reduce_on_plateau.ipynb',
@@ -296,6 +297,7 @@ def linkcode_resolve(domain, info):
 
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
+    'flax': ('https://flax.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']
