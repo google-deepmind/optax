@@ -301,6 +301,24 @@ class ExponentialTest(chex.TestCase):
 class CosineDecayTest(chex.TestCase):
 
   @chex.all_variants
+  def test_init_value_end_value(self):
+    """Check cosine schedule decay for the entire training schedule."""
+    initial_value = 1.5
+    end_value = 0.2
+    num_steps = 10
+    schedule_fn = self.variant(
+        _schedule.cosine_decay_schedule(initial_value, num_steps, end_value))
+    # Test that generated values equal the expected schedule values.
+    generated_vals = []
+    for count in range(num_steps + 1):
+      # Compute next value.
+      generated_vals.append(schedule_fn(count))
+
+    # Test that the first and last values are correct.
+    self.assertAlmostEqual(generated_vals[0], initial_value)
+    self.assertAlmostEqual(generated_vals[-1], end_value)
+
+  @chex.all_variants
   def test_decay_count_smaller_count(self):
     """Check cosine schedule decay for the entire training schedule."""
     initial_value = 0.1
@@ -345,23 +363,28 @@ class CosineDecayTest(chex.TestCase):
   def test_decay_count_greater_count_with_end_value(self):
     """Check cosine schedule decay for a part of the training schedule."""
     # Get schedule function.
-    initial_value = 0.1
+    initial_value = 0.2
+    end_value = 0.1
+    num_steps = 5
     schedule_fn = self.variant(
-        _schedule.cosine_decay_schedule(initial_value, 5, 0.1))
+        _schedule.cosine_decay_schedule(initial_value, num_steps, end_value))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
-    for count in range(12):
+    for count in range(2 * num_steps):
       # Compute next value.
       generated_vals.append(schedule_fn(count))
 
     # Test output.
-    expected_multipliers = np.array(
-        0.5 + 0.5 * np.cos(
-            np.pi * np.array(
-                [0.0, 0.2, 0.4, 0.6, 0.8, 1., 1., 1., 1., 1., 1., 1.])))
-    expected_multipliers = 0.9 * expected_multipliers + 0.1
+    cos_values = 0.5 * (1 + np.cos(np.pi * np.linspace(0, 1, num_steps + 1)))
+    expected_values = (
+        (initial_value - end_value) * cos_values + end_value
+    )
+    # padd with [end_value] at the end.
+    expected_values = np.concatenate(
+        (expected_values, [end_value] * (num_steps - 1))
+    )
     np.testing.assert_allclose(
-        initial_value * expected_multipliers,
+        expected_values,
         np.array(generated_vals), atol=1e-3)
 
   def test_cosine_alpha_exception(self):
