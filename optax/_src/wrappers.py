@@ -57,7 +57,7 @@ def flatten(
     updates_flat, treedef = jax.tree_util.tree_flatten(updates)
     offsets = []
     for update in updates_flat:
-      size = np.prod(update.shape)
+      size = np.size(update)
       if offsets:
         offsets.append(size + offsets[-1])
       else:
@@ -278,7 +278,7 @@ def skip_large_updates(updates: base.Updates,
 class MultiSteps:
   """An optimizer wrapper to accumulate gradients over multiple steps.
 
-  This wrapper collects together the updates passed to its `update` function
+  This wrapper collects together the updates passed to its ``update`` function
   over consecutive steps until a given number of scheduled steps is reached.
   In each of these intermediate steps, the returned value from the optimizer is
   a tree of zeros of the same shape of the updates passed as input.
@@ -305,15 +305,15 @@ class MultiSteps:
 
     Args:
       opt: the wrapped optimizer.
-      every_k_schedule: an int or f a function.
+      every_k_schedule: an int or a function.
 
         * As a function, it returns how many mini-steps should be accumulated
           in a single gradient step. Its only argument is the current
           gradient step count. By varying the returned value, users can vary the
           overall training batch size.
-        * If an `int`, this is the constant number of mini-steps per gradient
+        * If an ``int``, this is the constant number of mini-steps per gradient
           update.
-      use_grad_mean: if `True` (the default), gradients accumulated over
+      use_grad_mean: if ``True`` (the default), gradients accumulated over
         multiple mini-steps are averaged. Otherwise, they are summed.
       should_skip_update_fn: if provided, this function is used to decide when
         to accept or reject the updates from a mini-step. When a mini-step is
@@ -405,7 +405,7 @@ class MultiSteps:
           * numerics.safe_int32_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jax.tree_util.tree_map(
-              lambda st, nst: (1 - emit) * st + emit * nst,
+              lambda st, nst: jnp.where(emit, nst, st),
               state.inner_opt_state,
               new_inner_state,
           ),

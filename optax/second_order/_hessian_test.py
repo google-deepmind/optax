@@ -14,14 +14,12 @@
 # ==============================================================================
 """Tests for `hessian.py`."""
 
-import collections
 import functools
-import itertools
 
 from absl.testing import absltest
 
 import chex
-import haiku as hk
+from flax import linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -42,36 +40,40 @@ class HessianTest(chex.TestCase):
     self.data = np.random.rand(NUM_SAMPLES, NUM_FEATURES)
     self.labels = np.random.randint(NUM_CLASSES, size=NUM_SAMPLES)
 
-    def net_fn(z):
-      mlp = hk.Sequential(
-          [hk.Linear(10), jax.nn.relu, hk.Linear(NUM_CLASSES)], name='mlp')
-      return jax.nn.log_softmax(mlp(z))
+    class MLP(nn.Module):
+      """A simple multilayer perceptron model for image classification."""
 
-    net = hk.without_apply_rng(hk.transform(net_fn))
-    self.parameters = net.init(jax.random.PRNGKey(0), self.data)
+      @nn.compact
+      def __call__(self, x):
+        # Flattens images in the batch.
+        x = x.reshape((x.shape[0], -1))
+        x = nn.Dense(features=5)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=NUM_CLASSES)(x)
+        return x
+
+    net = MLP()
+    self.parameters = net.init({'params': jax.random.PRNGKey(0)}, self.data)[
+        'params'
+    ]
 
     def loss(params, inputs, targets):
-      log_probs = net.apply(params, inputs)
-      return -jnp.mean(hk.one_hot(targets, NUM_CLASSES) * log_probs)
+      log_probs = net.apply({'params': params}, inputs)
+      return -jnp.mean(jax.nn.one_hot(targets, NUM_CLASSES) * log_probs)
 
     self.loss_fn = loss
 
     def jax_hessian_diag(loss_fun, params, inputs, targets):
       """This is the 'ground-truth' obtained via the JAX library."""
-      hess = jax.hessian(loss_fun)(params, inputs, targets)
+      flat_params, unravel_fn = jax.flatten_util.ravel_pytree(params)
 
-      # Extracts the diagonal components.
-      hess_diag = collections.defaultdict(dict)
-      for k0, k1 in itertools.product(params.keys(), ['w', 'b']):
-        params_shape = params[k0][k1].shape
-        n_params = np.prod(params_shape)
-        hess_diag[k0][k1] = jnp.diag(hess[k0][k1][k0][k1].reshape(
-            n_params, n_params)).reshape(params_shape)
-      for k, v in hess_diag.items():
-        hess_diag[k] = v
-      return jax.flatten_util.ravel_pytree(hess_diag)[0]
+      def flattened_loss(flat_params):
+        return loss_fun(unravel_fn(flat_params), inputs, targets)
 
-    self.hessian = jax_hessian_diag(
+      flat_hessian = jax.hessian(flattened_loss)(flat_params)
+      return jnp.diag(flat_hessian)
+
+    self.hessian_diag = jax_hessian_diag(
         self.loss_fn, self.parameters, self.data, self.labels)
 
   @chex.all_variants
@@ -79,7 +81,7 @@ class HessianTest(chex.TestCase):
     hessian_diag_fn = self.variant(
         functools.partial(_hessian.hessian_diag, self.loss_fn))
     actual = hessian_diag_fn(self.parameters, self.data, self.labels)
-    np.testing.assert_array_almost_equal(self.hessian, actual, 5)
+    np.testing.assert_array_almost_equal(self.hessian_diag, actual, 5)
 
 
 if __name__ == '__main__':

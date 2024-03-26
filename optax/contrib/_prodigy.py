@@ -44,7 +44,7 @@ class ProdigyState(NamedTuple):
 
 
 def prodigy(
-    learning_rate: base.ScalarOrSchedule = 0.1,
+    learning_rate: base.ScalarOrSchedule = 1.0,
     betas: tuple[float, float] = (0.9, 0.999),
     beta3: Optional[float] = None,
     eps: float = 1e-8,
@@ -60,8 +60,10 @@ def prodigy(
   places higher weights on more recent gradients.
   This method works best when combined with a learning rate schedule that
   treats 1.0 as the base (usually max) value.
+
   References:
-    [Mishchenko & Defazio, 2023](https://arxiv.org/abs/2306.06101)
+    [Mishchenko & Defazio, 2023](https://arxiv.org/abs/2306.06101.pdf)
+
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
       is a linear_schedule with init_value=1.0 and end_value=0, combined with a

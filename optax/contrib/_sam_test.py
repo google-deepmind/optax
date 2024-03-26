@@ -21,13 +21,12 @@ from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
-import numpy as np
-from optax import contrib
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import update
+from optax.contrib import _sam
 from optax.tree_utils import _state_utils
 
 
@@ -130,39 +129,6 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
 
 class SAMTest(chex.TestCase):
 
-  def setUp(self):
-    super().setUp()
-    rng = np.random.RandomState(0)
-
-    self.tree_a = (rng.randn(20, 10), rng.randn(20))
-    self.tree_b = (rng.randn(20, 10), rng.randn(20))
-
-    self.tree_a_dict = (1.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
-    self.tree_b_dict = (1.0, {'k1': 2.0, 'k2': (3.0, 4.0)}, 5.0)
-
-    self.array_a = rng.randn(20)
-    self.array_b = rng.randn(20)
-
-    self.grads = {'x': np.array(2.0), 'y': np.array(-2.0)}
-    self.initial_params = {'x': np.array(3.0), 'y': np.array(-3.0)}
-
-  def loop(self, optimizer, num_steps, params):
-    """Performs a given number of optimizer steps."""
-    init_fn, update_fn = optimizer
-    # Use the chex variant to check various function versions (jit, pmap, etc).
-    step = self.variant(update_fn)
-    opt_state = self.variant(init_fn)(params)
-
-    # A no-op change, to verify that tree map works.
-    opt_state = _state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
-
-    for _ in range(num_steps):
-      updates, opt_state = step(self.grads, opt_state, params)
-      print(updates)
-      params = update.apply_updates(params, updates)
-
-    return params, opt_state
-
   @parameterized.product(
       _OPTIMIZERS_UNDER_TEST,
       sync_period=(2,),
@@ -172,9 +138,9 @@ class SAMTest(chex.TestCase):
   def test_optimization(self, opt_name, opt_kwargs, sync_period, target, dtype):
     opt = alias.sgd(0.003)
     adv_opt = combine.chain(
-        contrib.normalize(), getattr(alias, opt_name)(**opt_kwargs)
+        _sam.normalize(), getattr(alias, opt_name)(**opt_kwargs)
     )
-    opt = contrib.sam(opt, adv_opt, sync_period=sync_period)
+    opt = _sam.sam(opt, adv_opt, sync_period=sync_period)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -205,9 +171,9 @@ class SAMTest(chex.TestCase):
   ):
     base_opt = alias.sgd(0.003)
     adv_opt = combine.chain(
-        contrib.normalize(), getattr(alias, opt_name)(**opt_kwargs)
+        _sam.normalize(), getattr(alias, opt_name)(**opt_kwargs)
     )
-    opt = contrib.sam(
+    opt = _sam.sam(
         base_opt, adv_opt, sync_period=sync_period, opaque_mode=True
     )
     initial_params, final_params, get_updates = target(dtype)

@@ -144,7 +144,7 @@ class PolyLossTest(parameterized.TestCase):
   def test_scalar(self, eps, expected):
     np.testing.assert_allclose(
         self.variant(_classification.poly_loss_cross_entropy)(
-            self.logits, self.labels, eps
+            self.logits, self.labels, epsilon=eps
         ),
         expected,
         atol=1e-4,
@@ -163,7 +163,7 @@ class PolyLossTest(parameterized.TestCase):
   def test_batched(self, eps, expected):
     np.testing.assert_allclose(
         self.variant(_classification.poly_loss_cross_entropy)(
-            self.batched_logits, self.batched_labels, eps
+            self.batched_logits, self.batched_labels, epsilon=eps
         ),
         expected,
         atol=1e-4,

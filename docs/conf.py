@@ -142,8 +142,16 @@ extensions = [
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.collections'
+    'sphinxcontrib.collections',
+    'sphinx_contributors'
 ]
+
+# so we don't have to do the canonical imports on every doctest
+doctest_global_setup = '''
+import optax
+import jax
+import jax.numpy as jnp
+'''
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -204,14 +212,26 @@ html_favicon = 'images/favicon.svg'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+
+html_static_path = ['_static']
+html_css_files = [
+    'css/custom.css',
+]
 
 # -- Options for myst -------------------------------------------------------
+myst_enable_extensions = [
+    'amsmath',
+    'dollarmath',
+]
 nb_execution_mode = 'force'
 nb_execution_allow_errors = False
 nb_execution_excludepatterns = [
     # slow examples
-    '_collections/examples/cifar10_resnet.ipynb'
+    'nanolm.ipynb',
+    'cifar10_resnet.ipynb',
+    'adversarial_training.ipynb',
+    'reduce_on_plateau.ipynb',
+    'differentially_private_sgd.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
@@ -277,6 +297,7 @@ def linkcode_resolve(domain, info):
 
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
+    'flax': ('https://flax.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']

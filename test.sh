@@ -17,8 +17,11 @@
 set -xeuo pipefail
 
 # Install deps in a virtual env.
-readonly VENV_DIR=/tmp/optax-env
-rm -rf "${VENV_DIR}"
+rm -rf _testing
+rm -rf .pytype
+mkdir -p _testing
+readonly VENV_DIR="$(mktemp -d `pwd`/_testing/optax-env.XXXXXXXX)"
+# in the unlikely case in which there was something in that directory
 python3 -m venv "${VENV_DIR}"
 source "${VENV_DIR}/bin/activate"
 python --version
@@ -65,18 +68,23 @@ pip install optax*.whl
 
 # Check types with pytype.
 pip install pytype
-pytype `find optax/_src/ examples optax/contrib -name '*.py' | xargs` -k -d import-error
+pytype `find optax/_src examples optax/contrib -name '*.py' | xargs` -k -d import-error
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
-mkdir _testing && cd _testing
+cd _testing
 python -m pytest -n auto --pyargs optax
 cd ..
 
 # Build Sphinx docs.
 pip install -e ".[docs]"
 cd docs && make html
+# run doctests
+make doctest
 cd ..
+
+# cleanup
+rm -rf _testing
 
 set +u
 deactivate

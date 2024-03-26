@@ -21,10 +21,10 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax.contrib import privacy
+from optax.contrib import _privacy
 
 
-class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
+class DifferentiallyPrivateAggregateTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -41,7 +41,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
   @chex.all_variants
   def test_no_privacy(self):
     """l2_norm_clip=MAX_FLOAT32 and noise_multiplier=0 should recover SGD."""
-    dp_agg = privacy.differentially_private_aggregate(
+    dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=jnp.finfo(jnp.float32).max,
         noise_multiplier=0.,
         seed=0)
@@ -56,7 +56,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
   @chex.all_variants
   @parameterized.parameters(0.5, 10.0, 20.0, 40.0, 80.0)
   def test_clipping_norm(self, l2_norm_clip):
-    dp_agg = privacy.differentially_private_aggregate(
+    dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=0.,
         seed=42)
@@ -82,7 +82,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
   @parameterized.parameters((3.0, 2.0), (1.0, 5.0), (100.0, 4.0), (1.0, 90.0))
   def test_noise_multiplier(self, l2_norm_clip, noise_multiplier):
     """Standard dev. of noise should be l2_norm_clip * noise_multiplier."""
-    dp_agg = privacy.differentially_private_aggregate(
+    dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=noise_multiplier,
         seed=1337)
@@ -98,7 +98,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
   def test_aggregated_updates_as_input_fails(self):
     """Expect per-example gradients as input to this transform."""
-    dp_agg = privacy.differentially_private_aggregate(
+    dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=0.1, noise_multiplier=1.1, seed=2021)
     state = dp_agg.init(self.params)
     mean_grads = jax.tree_util.tree_map(lambda g: g.mean(0), self.per_eg_grads)

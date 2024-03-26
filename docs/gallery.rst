@@ -1,28 +1,20 @@
 
 .. _gallery:
 
-Example gallery
-===============
+🖼️ Example gallery
+==================
+
+.. toctree::
+   :glob:
+   :hidden:
+   :maxdepth: 1
+
+   _collections/examples/README.md
+   _collections/examples/contrib/README.md
 
 .. raw:: html
 
     <div class="sphx-glr-thumbnails">
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Quickstart with Optax.">
-
-.. only:: html
-
-  .. image:: /images/favicon.svg
-     :alt: quick_start
-
-  :doc:`_collections/examples/quick_start`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Quickstart with Optax.</div>
-    </div>
 
 .. raw:: html
 
@@ -89,22 +81,6 @@ Example gallery
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">ResNet on CIFAR10 with Flax and Optax.</div>
-    </div>
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Train the parameters of a Haiku module.">
-
-.. only:: html
-
-  .. image:: /images/favicon.svg
-    :alt:
-
-  :doc:`_collections/examples/haiku_example`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Train the parameters of a Haiku module.</div>
     </div>
 
 
@@ -174,6 +150,23 @@ Example gallery
       <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
     </div>
 
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Character-level Transformer on Tiny Shakespeare.">
+
+.. only:: html
+
+  .. image:: /images/examples/tiny_shakespeare.png
+     :alt: Character-level Transformer on Tiny Shakespeare
+
+  :doc:`_collections/examples/nanolm`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Character-level Transformer on Tiny Shakespeare.</div>
+    </div>
+
 .. raw:: html
 
     </div>
@@ -184,7 +177,7 @@ Example gallery
 Contrib Examples
 ----------------
 
-Examples that make use of the :ref:`contrib` module.
+Examples that make use of the :doc:`api/contrib` module.
 
 
 .. raw:: html

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX Schedules.
+"""Optax Schedules.
 
 Schedules may be used to anneal the value of a hyper-parameter over time; for
 instance, they may be used to anneal the learning rate used to update an agent's
@@ -39,7 +39,8 @@ def constant_schedule(
     value: value to be held constant throughout.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
   return lambda count: value
 
@@ -58,15 +59,16 @@ def polynomial_schedule(
     end_value: end value of the scalar to be annealed.
     power: the power of the polynomial used to transition from init to end.
     transition_steps: number of steps over which annealing takes place.
-      The scalar starts changing at `transition_begin` steps and completes
-      the transition by `transition_begin + transition_steps` steps.
-      If `transition_steps <= 0`, then the entire annealing process is disabled
-      and the value is held fixed at `init_value`.
+      The scalar starts changing at ``transition_begin`` steps and completes
+      the transition by ``transition_begin + transition_steps`` steps.
+      If ``transition_steps <= 0``, then the entire annealing process is
+      disabled and the value is held fixed at ``init_value``.
     transition_begin: must be positive. After how many steps to start annealing
-      (before this many steps the scalar value is held fixed at `init_value`).
+      (before this many steps the scalar value is held fixed at ``init_value``).
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
   if transition_steps <= 0:
     logging.info(
@@ -87,13 +89,52 @@ def polynomial_schedule(
   return schedule
 
 
-# Alias polynomial schedule to linear schedule for convenience.
 def linear_schedule(
     init_value: chex.Scalar,
     end_value: chex.Scalar,
     transition_steps: int,
     transition_begin: int = 0
 ) -> base.Schedule:
+  r"""Schedule with linear transition from ``init_value`` to ``end_value``.
+
+  More precisely, the learning rate at iteration :math:`t` is given by:
+
+  .. math::
+    \begin{cases}
+      I, & \text{if } t < B \\
+      I + \frac{t - B}{T} (E - I), & \text{if } B \leq t < B + T \\
+      E, & \text{if } t \geq B + T
+    \end{cases}
+
+  where :math:`I` is the initial value, :math:`E` is the end value,
+  :math:`B` is the transition begin, and :math:`T` is the transition steps.
+
+  This schedule is equivalent to :func:`optax.polynomial_schedule` with
+  ``power=1``.
+
+  Examples:
+    >>> schedule_fn = optax.linear_schedule(
+    ...    init_value=1.0, end_value=0.01, transition_steps=100)
+    >>> schedule_fn(0)  # learning rate on the first iteration
+    Array(1., dtype=float32, weak_type=True)
+    >>> schedule_fn(100)  # learning rate on the last iteration
+    Array(0.01, dtype=float32, weak_type=True)
+
+  Args:
+    init_value: initial value for the scalar to be annealed.
+    end_value: end value of the scalar to be annealed.
+    transition_steps: number of steps over which annealing takes place. The
+      scalar starts changing at ``transition_begin`` steps and completes the
+      transition by ``transition_begin + transition_steps`` steps. If
+      ``transition_steps <= 0``, then the entire annealing process is disabled
+      and the value is held fixed at ``init_value``.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at ``init_value``).
+
+  Returns:
+    schedule
+      A function that maps step counts to values.
+  """
   return polynomial_schedule(
       init_value=init_value, end_value=end_value, power=1,
       transition_steps=transition_steps, transition_begin=transition_begin)
@@ -106,13 +147,14 @@ def piecewise_constant_schedule(
   """Returns a function which implements a piecewise constant schedule.
 
   Args:
-    init_value: An initial value `init_v`.
-    boundaries_and_scales: A map from boundaries `b_i` to non-negative scaling
-      factors `f_i`. For any step count `s`, the schedule returns `init_v`
-      scaled by the product of all factors `f_i` such that `b_i` < `s`.
+    init_value: An initial value ``init_v``.
+    boundaries_and_scales: A map from boundaries ``b_i`` to non-negative scaling
+      factors ``f_i``. For any step count `s`, the schedule returns ``init_v``
+      scaled by the product of all factors ``f_i`` such that ``b_i < s``.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
   if boundaries_and_scales is not None:
     all_positive = all(scale >= 0. for scale in boundaries_and_scales.values())
@@ -142,15 +184,15 @@ def exponential_decay(
   """Constructs a schedule with either continuous or discrete exponential decay.
 
   This function applies an exponential decay function to a provided initial
-  value. When `count >= transition_begin` the function returns the decayed value
-  as follows:
+  value. When ``count >= transition_begin`` the function returns the decayed
+  value as:
 
-  ```
-  decayed_value = init_value * decay_rate ^ ((count - transition_begin)
-                                              / transition_steps)
-  ```
+  .. code-block::
 
-  If the argument `staircase` is `True`, then `count / transition_steps` is
+    rate_factor = ((count - transition_begin) / transition_steps)
+    decayed_value = init_value * (decay_rate ** rate_factor)
+
+  If the argument ``staircase`` is ``True`` then ``count / transition_steps`` is
   an integer division and the decayed value follows a staircase function.
 
   Args:
@@ -159,13 +201,14 @@ def exponential_decay(
     decay_rate: must not be zero. The decay rate.
     transition_begin: must be positive. After how many steps to start annealing
       (before this many steps the scalar value is held fixed at `init_value`).
-    staircase: if `True`, decay the values at discrete intervals.
+    staircase: if ``True``, decay the values at discrete intervals.
     end_value: the value at which the exponential decay stops. When
-      `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
-      an upper bound. Has no effect when `decay_rate` = 0.
+      ``decay_rate < 1``, ``end_value`` is treated as a lower bound, otherwise
+      as an upper bound. Has no effect when ``decay_rate = 0``.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
 
   if transition_steps <= 0:
@@ -210,30 +253,46 @@ def cosine_decay_schedule(
     alpha: float = 0.0,
     exponent: float = 1.0,
 ) -> base.Schedule:
-  """Returns a function which implements cosine learning rate decay.
+  r"""Returns a function which implements cosine learning rate decay.
 
-  The schedule does not restart when ``decay_steps`` has been reached. Instead,
-  the learning rate remains constant afterwards. For a cosine schedule with
-  restarts, :func:`optax.schedules.join_schedules` can be used to join several
-  cosine decay schedules.
+  This schedule smoothly decreases the learning rate over a specified number of
+  steps (``decay_steps``). The decay follows a cosine function, with an optional
+  exponent to modify the decay curve. A minimum value (``alpha``) ensures the
+  learning rate does not drop entirely to zero.
 
-  For more details see: https://arxiv.org/abs/1608.03983.
+  More precisely, the learning rate at iteration :math:`t` is given by:
+
+  .. math::
+
+     \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
+
+  where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
+  the ``exponent`` and :math:`I` is the initial value (``init_value``).
+
+  References:
+    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
+    <https://arxiv.org/abs/1608.03983>`_, 2017
 
   Args:
-    init_value: An initial value `init_v`.
+    init_value: An initial value for the learning rate.
     decay_steps: Positive integer - the number of steps for which to apply
       the decay for.
-    alpha: Float. The minimum value of the multiplier used to adjust the
-      learning rate.
-    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
-      the current timestep and T is the `decay_steps`. The exponent modifies
-      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
+    alpha: The minimum value of the multiplier used to adjust the
+      learning rate. Defaults to 0.0.
+    exponent:  The default decay is ``0.5 * (1 + cos(pi * t/T))``, where 
+      ``t`` is the current timestep and ``T`` is the ``decay_steps``. The
+      exponent modifies this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``.
+      Defaults to 1.0.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
   if not decay_steps > 0:
-    raise ValueError('The cosine_decay_schedule requires positive decay_steps!')
+    raise ValueError(
+        'The cosine_decay_schedule requires positive decay_steps, got'
+        f' {decay_steps=}.'
+    )
 
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
@@ -262,14 +321,15 @@ def piecewise_interpolate_schedule(
   Args:
     interpolate_type: 'linear' or 'cosine', specifying the interpolation
       strategy.
-    init_value: An initial value `init_v`.
-    boundaries_and_scales: A map from boundaries `b_i` to non-negative scaling
-      factors `f_i`. At boundary step `b_i`, the schedule returns `init_v`
-      scaled by the product of all factors `f_j` such that `b_j` <= `b_i`. The
-      values in between each boundary will be interpolated as per `type`.
+    init_value: An initial value ``init_v``.
+    boundaries_and_scales: A map from boundaries ``b_i`` to non-negative scaling
+      factors ``f_i``. At boundary step ``b_i``, the schedule returns ``init_v``
+      scaled by the product of all factors ``f_j`` such that ``b_j <= b_i``.
+      The values in between each boundary will be interpolated as per ``type``.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values.
   """
   if interpolate_type == 'linear':
     interpolate_fn = _linear_interpolate
@@ -310,7 +370,11 @@ def linear_onecycle_schedule(
   """Returns a function which implements the onecycle learning rate schedule.
 
   This function uses a linear annealing strategy.
-  For more details see: https://arxiv.org/abs/1708.07120
+
+  References:
+    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
+    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
+
 
   Args:
     transition_steps: Number of steps over which annealing takes place.
@@ -319,14 +383,15 @@ def linear_onecycle_schedule(
     pct_start: The percentage of the cycle (in number of steps) spent
       increasing the learning rate.
     pct_final: The percentage of the cycle (in number of steps) spent
-      increasing to peak_value then decreasing back to init_value.
-    div_factor: Determines the initial value via init_value =
-      peak_value / div_factor
-    final_div_factor: Determines the final value via final_value =
-      init_value / final_div_factor
+      increasing to ``peak_value`` then decreasing back to ``init_value``.
+    div_factor: Determines the initial value via ``init_value =
+      peak_value / div_factor``.
+    final_div_factor: Determines the final value via ``final_value =
+      init_value / final_div_factor``.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values
   """
   if transition_steps <= 0:
     raise ValueError(
@@ -350,22 +415,32 @@ def cosine_onecycle_schedule(
 ) -> base.Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
-  This function uses a cosine annealing strategy.
-  For more details see: https://arxiv.org/abs/1708.07120
+  This learning rate increases the learning rate and then decreases it in a
+  cosine-like manner. The number of steps over which the learning rate increases
+  is determined by the ``pct_start`` argument. The maximum value of the learning
+  rate is determined by the ``peak_value`` argument, the initial value of the 
+  learning rate is determined through the formula ``init_value = peak_value /
+  div_factor``, and the final value is determined by the ``final_div_factor``
+  argument.
+
+  References:
+    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
+    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
 
   Args:
     transition_steps: Number of steps over which annealing takes place.
-    peak_value: Maximum value attained by schedule at pct_start percent
-      of the cycle (in number of steps).
-    pct_start: The percentage of the cycle (in number of steps) spent
-      increasing the learning rate.
-    div_factor: Determines the initial value via init_value =
-      peak_value / div_factor
-    final_div_factor: Determines the final value via final_value =
-      init_value / final_div_factor
+    peak_value: Maximum value attained by schedule at pct_start percent of the
+      cycle (in number of steps).
+    pct_start: The percentage of the cycle (in number of steps) spent increasing
+      the learning rate.
+    div_factor: Determines the initial value via ``init_value = peak_value /
+      div_factor``.
+    final_div_factor: Determines the final value via ``final_value = init_value
+      / final_div_factor``.
 
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values
   """
   if transition_steps <= 0:
     raise ValueError(
@@ -387,7 +462,7 @@ def warmup_cosine_decay_schedule(
     end_value: float = 0.0,
     exponent: float = 1.0,
 ) -> base.Schedule:
-  """Linear warmup followed by cosine decay.
+  r"""Linear warmup followed by cosine decay.
 
   Args:
     init_value: Initial value for the scalar to be annealed.
@@ -395,24 +470,32 @@ def warmup_cosine_decay_schedule(
     warmup_steps: Positive integer, the length of the linear warmup.
     decay_steps: Positive integer, the total length of the schedule. Note that
       this includes the warmup time, so the number of steps during which cosine
-      annealing is applied is `decay_steps - warmup_steps`.
+      annealing is applied is ``decay_steps - warmup_steps``.
     end_value: End value of the scalar to be annealed.
-    exponent: Float. The default decay is 0.5 * (1 + cos(pi * t/T)), where t is
-      the current timestep and T is the `decay_steps`. The exponent modifies
-      this to be (0.5 * (1 + cos(pi * t/T))) ** exponent. Defaults to 1.0.
+    exponent: Float. The default decay is ``0.5 * (1 + cos(pi t/T))``,
+      where ``t`` is the current timestep and ``T`` is ``decay_steps``.
+      The exponent modifies this to be ``(0.5 * (1 + cos(pi * t/T)))
+      ** exponent``.
+      Defaults to 1.0.
+
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values
   """
+  alpha = 0. if peak_value == 0. else end_value / peak_value
   schedules = [
       linear_schedule(
           init_value=init_value,
           end_value=peak_value,
-          transition_steps=warmup_steps),
+          transition_steps=warmup_steps,
+      ),
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=end_value/peak_value,
-          exponent=exponent)]
+          alpha=alpha,
+          exponent=exponent,
+      ),
+  ]
   return _join.join_schedules(schedules, [warmup_steps])
 
 
@@ -432,17 +515,19 @@ def warmup_exponential_decay_schedule(
     init_value: Initial value for the scalar to be annealed.
     peak_value: Peak value for scalar to be annealed at end of warmup.
     warmup_steps: Positive integer, the length of the linear warmup.
-    transition_steps: must be positive. See `exponential_decay` for more
-      details.
+    transition_steps: must be positive. See :func:`optax.exponential_decay`
+      for more details.
     decay_rate: must not be zero. The decay rate.
     transition_begin: must be positive. After how many steps to start annealing
-      (before this many steps the scalar value is held fixed at `peak_value`).
-    staircase: if `True`, decay the values at discrete intervals.
+      (before this many steps the scalar value is held fixed at ``peak_value``).
+    staircase: if ``True``, decay the values at discrete intervals.
     end_value: the value at which the exponential decay stops. When
-      `decay_rate` < 1, `end_value` is treated as a lower bound, otherwise as
-      an upper bound. Has no effect when `decay_rate` = 0.
+      ``decay_rate < 1``, ``end_value`` is treated as a lower bound, otherwise
+      as an upper bound. Has no effect when ``decay_rate = 0``.
+
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values
   """
   schedules = [
       linear_schedule(
@@ -461,18 +546,23 @@ def warmup_exponential_decay_schedule(
 
 def sgdr_schedule(cosine_kwargs: Iterable[dict[str, chex.Numeric]]
                   ) -> base.Schedule:
-  """SGD with warm restarts, from Loschilov & Hutter (arXiv:1608.03983).
+  """SGD with warm restarts.
 
   This learning rate schedule applies multiple joined cosine decay cycles.
-  For more details see: https://arxiv.org/abs/1608.03983
+
+  References:
+    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
+    <https://arxiv.org/abs/1608.03983>`_, 2017
 
   Args:
     cosine_kwargs: An Iterable of dicts, where each element specifies the
-      arguments to pass to each cosine decay cycle. The `decay_steps` kwarg
+      arguments to pass to each cosine decay cycle. The ``decay_steps`` kwarg
       will specify how long each cycle lasts for, and therefore when to
       transition to the next cycle.
+
   Returns:
-    schedule: A function that maps step counts to values.
+    schedule
+      A function that maps step counts to values
   """
   boundaries = []
   schedules = []

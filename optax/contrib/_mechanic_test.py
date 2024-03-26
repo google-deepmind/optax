@@ -26,7 +26,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import numerics
 from optax._src import update
-from optax.contrib import mechanic
+from optax.contrib import _mechanic
 from optax.tree_utils import _state_utils
 
 
@@ -114,17 +114,6 @@ class MechanicTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    rng = np.random.RandomState(0)
-
-    self.tree_a = (rng.randn(20, 10), rng.randn(20))
-    self.tree_b = (rng.randn(20, 10), rng.randn(20))
-
-    self.tree_a_dict = (1.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
-    self.tree_b_dict = (1.0, {'k1': 2.0, 'k2': (3.0, 4.0)}, 5.0)
-
-    self.array_a = rng.randn(20)
-    self.array_b = rng.randn(20)
-
     self.grads = {'x': np.array(2.), 'y': np.array(-2.)}
     self.initial_params = {'x': np.array(3.), 'y': np.array(-3.)}
 
@@ -151,7 +140,7 @@ class MechanicTest(chex.TestCase):
     num_betas = 6
 
     inner_optimizer = _test_optimizer(-0.1)
-    optimizer = mechanic.mechanize(
+    optimizer = _mechanic.mechanize(
         inner_optimizer,
         weight_decay=1e-2,
         eps=1e-10,
@@ -180,7 +169,7 @@ class MechanicTest(chex.TestCase):
   def test_optimization(self, opt_name, opt_kwargs, target, dtype):
 
     opt = getattr(alias, opt_name)(**opt_kwargs)
-    opt = mechanic.mechanize(opt, weight_decay=0.0)
+    opt = _mechanic.mechanize(opt, weight_decay=0.0)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit

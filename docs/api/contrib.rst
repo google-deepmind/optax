@@ -1,6 +1,9 @@
 🔧 Contrib
 ===============
 
+Experimental features and algorithms that don't meet the
+:ref:`inclusion_criteria`.
+
 .. currentmodule:: optax.contrib
 
 .. autosummary::
@@ -8,6 +11,9 @@
     COCOBState
     dadapt_adamw
     DAdaptAdamWState
+    differentially_private_aggregate
+    DifferentiallyPrivateAggregateState
+    dpsgd
     mechanize
     MechanicState
     prodigy
@@ -34,6 +40,22 @@ D-adaptation
 .. autofunction:: dadapt_adamw
 .. autoclass:: DAdaptAdamWState
     :members:
+
+Privacy-Sensitive Optax Methods
+-------------------------------
+
+.. autosummary::
+    DifferentiallyPrivateAggregateState
+    differentially_private_aggregate
+
+
+Differentially Private Aggregate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: differentially_private_aggregate
+.. autoclass:: DifferentiallyPrivateAggregateState
+   :members:
+.. autofunction:: dpsgd
+
 
 Mechanize
 ~~~~~~~~~

@@ -21,13 +21,13 @@ Tatiana Tommasi.
 from typing import NamedTuple
 
 import jax.numpy as jnp
-from jax.tree_util import tree_map
-
+import jax.tree_util as jtu
 from optax._src import base
 
 
 class COCOBState(NamedTuple):
   """State for COntinuous COin Betting."""
+
   init_particles: base.Updates
   cumulative_gradients: base.Updates
   scale: base.Updates
@@ -35,17 +35,15 @@ class COCOBState(NamedTuple):
   reward: base.Updates
 
 
-def cocob(
-    alpha: float = 100, eps: float = 1e-8
-) -> base.GradientTransformation:
+def cocob(alpha: float = 100, eps: float = 1e-8) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
 
-  Algorithm for stochastic subgradient descent. Uses a gambling algorithm to 
-  find the minimizer of a non-smooth objective function by accessing its 
+  Algorithm for stochastic subgradient descent. Uses a gambling algorithm to
+  find the minimizer of a non-smooth objective function by accessing its
   subgradients. All we need is a good gambling strategy. See Algorithm 2 of:
 
   References:
-    [Orabona & Tommasi, 2017](https://proceedings.neurips.cc/paper/2017/file/7c82fab8c8f89124e2ce92984e04fb40-Paper.pdf) #pylint:disable=line-too-long
+    [Orabona & Tommasi, 2017](https://arxiv.org/pdf/1705.07795.pdf) 
 
   Args:
     alpha: fraction to bet parameter of the COCOB optimizer
@@ -56,30 +54,55 @@ def cocob(
   """
 
   def init_fn(params):
-    init_adapt = tree_map(lambda p: jnp.zeros(p.shape), params)
-    init_scale = tree_map(lambda p: eps * jnp.ones(p.shape), params)
-    return COCOBState(init_particles=params, cumulative_gradients=init_adapt,
-                      scale=init_scale, subgradients=init_adapt,
-                      reward=init_adapt)
+    init_adapt = jtu.tree_map(lambda p: jnp.zeros(p.shape), params)
+    init_scale = jtu.tree_map(lambda p: eps * jnp.ones(p.shape), params)
+    return COCOBState(
+        init_particles=params,
+        cumulative_gradients=init_adapt,
+        scale=init_scale,
+        subgradients=init_adapt,
+        reward=init_adapt,
+    )
 
   def update_fn(updates, state, params):
     init_particles, cumulative_grads, scale, subgradients, reward = state
 
-    scale = tree_map(lambda L, c: jnp.maximum(L, jnp.abs(c)), scale, updates)
-    subgradients = tree_map(lambda G, c: G + jnp.abs(c), subgradients, updates)
-    reward = tree_map(
+    scale = jtu.tree_map(
+        lambda L, c: jnp.maximum(L, jnp.abs(c)), scale, updates
+    )
+    subgradients = jtu.tree_map(
+        lambda G, c: G + jnp.abs(c), subgradients, updates
+    )
+    reward = jtu.tree_map(
         lambda R, c, p, p0: jnp.maximum(R - c * (p - p0), 0),
-        reward, updates, params, init_particles)
-    cumulative_grads = tree_map(lambda C, c: C - c, cumulative_grads, updates)
+        reward,
+        updates,
+        params,
+        init_particles,
+    )
+    cumulative_grads = jtu.tree_map(
+        lambda C, c: C - c, cumulative_grads, updates
+    )
 
-    new_updates = tree_map(lambda p, p0, C, L, G, R: (
-        -p + (p0 + C / (L * jnp.maximum(G + L, alpha * L)) * (L + R))),
-                           params, init_particles, cumulative_grads, scale,
-                           subgradients, reward)
+    new_updates = jtu.tree_map(
+        lambda p, p0, C, L, G, R: (
+            -p + (p0 + C / (L * jnp.maximum(G + L, alpha * L)) * (L + R))
+        ),
+        params,
+        init_particles,
+        cumulative_grads,
+        scale,
+        subgradients,
+        reward,
+    )
 
-    new_state = COCOBState(init_particles=init_particles,
-                           cumulative_gradients=cumulative_grads, scale=scale,
-                           subgradients=subgradients, reward=reward)
+    new_state = COCOBState(
+        init_particles=init_particles,
+        cumulative_gradients=cumulative_grads,
+        scale=scale,
+        subgradients=subgradients,
+        reward=reward,
+    )
     return new_updates, new_state
 
   return base.GradientTransformation(init_fn, update_fn)

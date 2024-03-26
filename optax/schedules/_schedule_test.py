@@ -418,6 +418,24 @@ class WarmupCosineDecayTest(chex.TestCase):
         rtol=1e-6, atol=1e-8
     )
 
+  @chex.all_variants
+  def test_zero_peak_value(self):
+    """Check that we get correct results when running with zero peak value."""
+    schedule_fn = self.variant(
+        _schedule.warmup_cosine_decay_schedule(
+            init_value=0.2,
+            peak_value=0,
+            end_value=-3.0,
+            warmup_steps=50,
+            decay_steps=100,
+            exponent=2,
+        )
+    )
+    output = schedule_fn(np.array([0, 10, 50, 75, 100]))
+    np.testing.assert_allclose(
+        output, np.array([0.2, 0.16, 0.0, 0.0, 0.0]), rtol=1e-6, atol=1e-8
+    )
+
 
 class SGDRTest(chex.TestCase):
 

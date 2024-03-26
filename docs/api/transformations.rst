@@ -1,13 +1,14 @@
-Optax Transformations
+Transformations
 =====================
 
 .. currentmodule:: optax
 
 .. autosummary::
     adaptive_grad_clip
+    AdaptiveGradClipState
     add_decayed_weights
-    add_noise
     AddDecayedWeightsState
+    add_noise
     AddNoiseState
     apply_every
     ApplyEvery
@@ -15,13 +16,12 @@ Optax Transformations
     centralize
     clip
     clip_by_block_rms
+    ClipState
     clip_by_global_norm
     ClipByGlobalNormState
-    ClipState
     ema
     EmaState
     EmptyState
-    FactoredState
     global_norm
     GradientTransformation
     GradientTransformationExtraArgs
@@ -33,40 +33,49 @@ Optax Transformations
     per_example_global_norm_clip
     per_example_layer_norm_clip
     scale
+    ScaleState
+    scale_by_adadelta
+    ScaleByAdaDeltaState
     scale_by_adam
     scale_by_adamax
+    ScaleByAdamState
     scale_by_amsgrad
+    ScaleByAmsgradState
+    scale_by_backtracking_linesearch
+    ScaleByBacktrackingLinesearchState
     scale_by_belief
+    ScaleByBeliefState
     scale_by_factored_rms
+    FactoredState
+    scale_by_learning_rate
     scale_by_lion
+    ScaleByLionState
     scale_by_novograd
+    ScaleByNovogradState
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
+    scale_by_polyak
     scale_by_radam
     scale_by_rms
-    scale_by_rss
-    scale_by_schedule
-    scale_by_sm3
-    scale_by_stddev
-    scale_by_trust_ratio
-    scale_by_yogi
-    ScaleByAdamState
-    ScaleByAmsgradState
-    ScaleByLionState
-    ScaleByNovogradState
     ScaleByRmsState
+    scale_by_rprop
+    ScaleByRpropState
+    scale_by_rss
     ScaleByRssState
-    ScaleByRStdDevState
+    scale_by_schedule
     ScaleByScheduleState
-    ScaleByTrustRatioState
+    scale_by_sm3
     ScaleBySM3State
-    ScaleState
+    scale_by_stddev
+    ScaleByRStdDevState
+    scale_by_trust_ratio
+    ScaleByTrustRatioState
+    scale_by_yogi
+    set_to_zero
     stateless
     stateless_with_tree_map
-    set_to_zero
     trace
-    tree_map_params
     TraceState
     TransformInitFn
     TransformUpdateFn
@@ -74,15 +83,18 @@ Optax Transformations
     update_moment
     update_moment_per_elem_norm
     Updates
+    with_extra_args_support
     zero_nans
     ZeroNansState
-    with_extra_args_support
 
 
-Optax types
-~~~~~~~~~~~~~~
+Types
+~~~~~
 
 .. autoclass:: GradientTransformation
+    :members:
+
+.. autoclass:: GradientTransformationExtraArgs
     :members:
 
 .. autoclass:: TransformInitFn
@@ -101,8 +113,8 @@ Optax types
     :members:
 
 
-Optax transformations and states
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Transformations and states
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: adaptive_grad_clip
 .. autoclass:: AdaptiveGradClipState
@@ -119,6 +131,8 @@ Optax transformations and states
 .. autofunction:: apply_every
 .. autoclass:: ApplyEvery
     :members:
+
+.. autofunction:: bias_correction
 
 .. autofunction:: centralize
 
@@ -153,6 +167,10 @@ Optax transformations and states
 .. autoclass:: ScaleState
     :members:
 
+.. autofunction:: scale_by_adadelta
+.. autoclass:: ScaleByAdaDeltaState
+    :members:
+
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
 .. autoclass:: ScaleByAdamState
@@ -162,6 +180,9 @@ Optax transformations and states
 .. autoclass:: ScaleByAmsgradState
     :members:
 
+.. autofunction:: scale_by_backtracking_linesearch
+.. autoclass:: ScaleByBacktrackingLinesearchState
+
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState
     :members:
@@ -169,6 +190,8 @@ Optax transformations and states
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
     :members:
+
+.. autofunction:: scale_by_learning_rate
 
 .. autofunction:: scale_by_lion
 .. autoclass:: ScaleByLionState
@@ -178,14 +201,22 @@ Optax transformations and states
 .. autoclass:: ScaleByNovogradState
     :members:
 
+.. autofunction:: scale_by_optimistic_gradient
+
 .. autofunction:: scale_by_param_block_norm
 
 .. autofunction:: scale_by_param_block_rms
 
 .. autofunction:: scale_by_radam
 
+.. autofunction:: scale_by_polyak
+
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState
+    :members:
+
+.. autofunction:: scale_by_rprop
+.. autoclass:: ScaleByRpropState
     :members:
 
 .. autofunction:: scale_by_rss
@@ -218,6 +249,12 @@ Optax transformations and states
 .. autofunction:: trace
 .. autoclass:: TraceState
     :members:
+
+.. autofunction:: update_infinity_moment
+.. autofunction:: update_moment
+.. autofunction:: update_moment_per_elem_norm
+
+.. autofunction:: with_extra_args_support
 
 .. autofunction:: zero_nans
 .. autoclass:: ZeroNansState

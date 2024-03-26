@@ -1,10 +1,11 @@
-Common Optimizers
-===================
+Optimizers
+==========
 
 .. currentmodule:: optax
 
 .. autosummary::
     adabelief
+    adadelta
     adafactor
     adagrad
     adam
@@ -16,10 +17,12 @@ Common Optimizers
     lamb
     lars
     lion
+    nadam
+    nadamw
     noisy_sgd
     novograd
     optimistic_gradient_descent
-    dpsgd
+    polyak_sgd
     radam
     rmsprop
     sgd
@@ -30,6 +33,10 @@ Common Optimizers
 AdaBelief
 ~~~~~~~~~
 .. autofunction:: adabelief
+
+AdaDelta
+~~~~~~~~~
+.. autofunction:: adadelta
 
 AdaGrad
 ~~~~~~~
@@ -75,29 +82,29 @@ Lion
 ~~~~
 .. autofunction:: lion
 
-SM3
-~~~
-.. autofunction:: sm3
+Nadam
+~~~~~
+.. autofunction:: nadam
 
+NadamW
+~~~~~~
+.. autofunction:: nadamw
 
 Noisy SGD
 ~~~~~~~~~
 .. autofunction:: noisy_sgd
 
-
 Novograd
 ~~~~~~~~
 .. autofunction:: novograd
-
 
 Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
 
-
-Differentially Private SGD
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: dpsgd
+Polyak step-size SGD
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: polyak_sgd
 
 RAdam
 ~~~~~
@@ -107,9 +114,17 @@ RMSProp
 ~~~~~~~
 .. autofunction:: rmsprop
 
+RProp
+~~~~~
+.. autofunction:: rprop
+
 SGD
 ~~~
 .. autofunction:: sgd
+
+SM3
+~~~
+.. autofunction:: sm3
 
 Yogi
 ~~~~

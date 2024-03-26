@@ -17,7 +17,10 @@
 from optax._src.base import Schedule
 from optax._src.base import StatefulSchedule
 from optax.schedules._inject import inject_hyperparams
+from optax.schedules._inject import inject_stateful_hyperparams
 from optax.schedules._inject import InjectHyperparamsState
+from optax.schedules._inject import InjectStatefulHyperparamsState
+from optax.schedules._inject import WrappedSchedule
 from optax.schedules._join import join_schedules
 from optax.schedules._schedule import constant_schedule
 from optax.schedules._schedule import cosine_decay_schedule
@@ -31,6 +34,3 @@ from optax.schedules._schedule import polynomial_schedule
 from optax.schedules._schedule import sgdr_schedule
 from optax.schedules._schedule import warmup_cosine_decay_schedule
 from optax.schedules._schedule import warmup_exponential_decay_schedule
-from optax.schedules._stateful import inject_stateful_hyperparams
-from optax.schedules._stateful import InjectStatefulHyperparamsState
-from optax.schedules._stateful import WrappedSchedule

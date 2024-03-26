@@ -25,6 +25,7 @@ from optax.losses._classification import sigmoid_binary_cross_entropy
 from optax.losses._classification import sigmoid_focal_loss
 from optax.losses._classification import softmax_cross_entropy
 from optax.losses._classification import softmax_cross_entropy_with_integer_labels
+from optax.losses._fenchel_young import make_fenchel_young_loss
 from optax.losses._ranking import ranking_softmax_loss
 from optax.losses._regression import cosine_distance
 from optax.losses._regression import cosine_similarity

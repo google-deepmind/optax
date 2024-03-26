@@ -42,9 +42,11 @@ class TransformTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters([
+      ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
       ('lion', transform.scale_by_lion),
+      ('polyak', transform.scale_by_polyak),
       ('rmsprop', transform.scale_by_rms),
       ('stddev', transform.scale_by_stddev),
       ('trust_ratio', transform.scale_by_trust_ratio),
@@ -62,7 +64,13 @@ class TransformTest(parameterized.TestCase):
     state = init_fn(params)
     chex.assert_tree_all_finite(state)
 
-    updates, state = transform_fn(self.per_step_updates, state, params)
+    if scaler_constr.__name__ == 'scale_by_polyak':
+      extra_args = {'value': jnp.array(0.0)}
+    else:
+      extra_args = {}
+    updates, state = transform_fn(
+        self.per_step_updates, state, params, **extra_args
+    )
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree_util.tree_map(
         lambda *args: chex.assert_equal_shape(args), params, updates)
@@ -287,10 +295,31 @@ class TransformTest(parameterized.TestCase):
 
     g = jax.grad(f)(initial_params)
     og_true = 2 * g['x'] - getattr(og_state, 'trace')['x']
-    og, og_state = og.update(g, og_state)
+    og, _ = og.update(g, og_state)
 
     # Compare transformation output with manually computed optimistic gradient.
     chex.assert_trees_all_close(og_true, og['x'])
+
+  def test_scale_by_polyak_l1_norm(self, tol=1e-10):
+    """Polyak step-size on L1 norm."""
+    # for this objective, the Polyak step-size has an exact model and should
+    # converge to the minimizer in one step
+    objective = lambda x: jnp.abs(x).sum()
+
+    init_params = jnp.array([1.0, -1.0])
+    polyak = transform.scale_by_polyak()
+    polyak_state = polyak.init(init_params)
+    # check that polyak state raises an error if it called without a value
+    with self.assertRaises(TypeError):
+      polyak.update(self.per_step_updates, polyak_state, init_params)
+
+    value, grad = jax.value_and_grad(objective)(init_params)
+    updates, _ = polyak.update(
+        grad, polyak_state, init_params, value=value
+    )
+    # check that objective at (init_params - updates) is smaller than tol
+    print(grad, value, updates)
+    self.assertLess(objective(init_params - updates), tol)
 
   @chex.all_variants
   def test_bias_correction_bf16(self):

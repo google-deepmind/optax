@@ -17,24 +17,34 @@
 
 import functools
 import operator
-from typing import Any
+from typing import Any, Callable, Union
 
 import chex
 import jax
 from jax import tree_util as jtu
 import jax.numpy as jnp
+from optax._src import base
 
 
-def tree_add(tree_x: Any, tree_y: Any) -> Any:
-  r"""Add two pytrees.
+Shape = base.Shape
+
+
+def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
+  r"""Add two (or more) pytrees.
 
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+    *other_trees: optional other trees to add
+
   Returns:
-    the sum of the two pytrees.
+    the sum of the two (or more) pytrees.
+
+  .. versionchanged:: 0.2.1
+    Added optional ``*other_trees`` argument.
   """
-  return jtu.tree_map(operator.add, tree_x, tree_y)
+  trees = [tree_x, tree_y, *other_trees]
+  return jtu.tree_map(lambda *leaves: sum(leaves), *trees)
 
 
 def tree_sub(tree_x: Any, tree_y: Any) -> Any:
@@ -43,6 +53,7 @@ def tree_sub(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the difference of the two pytrees.
   """
@@ -55,6 +66,7 @@ def tree_mul(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the product of the two pytrees.
   """
@@ -67,13 +79,14 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   Args:
     tree_x: first pytree.
     tree_y: second pytree.
+
   Returns:
     the quotient of the two pytrees.
   """
   return jtu.tree_map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(scalar: float, tree: Any) -> Any:
+def tree_scalar_mul(scalar: Union[float, jax.Array], tree: Any) -> Any:
   r"""Multiply a tree by a scalar.
 
   In infix notation, the function performs ``out = scalar * tree``.
@@ -81,13 +94,16 @@ def tree_scalar_mul(scalar: float, tree: Any) -> Any:
   Args:
     scalar: scalar value.
     tree: pytree.
+
   Returns:
     a pytree with the same structure as ``tree``.
   """
   return jtu.tree_map(lambda x: scalar * x, tree)
 
 
-def tree_add_scalar_mul(tree_x: Any, scalar: float, tree_y: Any) -> Any:
+def tree_add_scalar_mul(
+    tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
+) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
 
   In infix notation, the function performs ``out = tree_x + scalar * tree_y``.
@@ -96,6 +112,7 @@ def tree_add_scalar_mul(tree_x: Any, scalar: float, tree_y: Any) -> Any:
     tree_x: first pytree.
     scalar: scalar value.
     tree_y: second pytree.
+
   Returns:
     a pytree with the same structure as ``tree_x`` and ``tree_y``.
   """
@@ -115,14 +132,15 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   Args:
     tree_x: first pytree to use.
     tree_y: second pytree to use.
+
   Returns:
     inner product between ``tree_x`` and ``tree_y``, a scalar value.
 
   >>> optax.tree_utils.tree_vdot(
-  >>>   {a: jnp.array([1, 2]), b: jnp.array([1, 2])},
-  >>>   {a: jnp.array([-1, -1]), b: jnp.array([1, 1])},
-  >>> )
-  0.0
+  ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
+  ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
+  ... )
+  Array(0, dtype=int32)
 
   Implementation detail: we upcast the values to the highest precision to avoid
   numerical issues.
@@ -136,6 +154,7 @@ def tree_sum(tree: Any) -> chex.Numeric:
 
   Args:
     tree: pytree.
+
   Returns:
     a scalar value.
   """
@@ -153,6 +172,7 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
   Args:
     tree: pytree.
     squared: whether the norm should be returned squared or not.
+
   Returns:
     a scalar value.
   """
@@ -169,6 +189,7 @@ def tree_zeros_like(tree: Any) -> Any:
 
   Args:
     tree: pytree.
+
   Returns:
     an all-zeros tree with the same structure as ``tree``.
   """
@@ -180,7 +201,53 @@ def tree_ones_like(tree: Any) -> Any:
 
   Args:
     tree: pytree.
+
   Returns:
     an all-ones tree with the same structure as ``tree``.
   """
   return jtu.tree_map(jnp.ones_like, tree)
+
+
+def _tree_rng_keys_split(
+    rng_key: chex.PRNGKey, target_tree: chex.ArrayTree
+) -> chex.ArrayTree:
+  """Split keys to match structure of target tree.
+
+  Args:
+    rng_key: the key to split.
+    target_tree: the tree whose structure to match.
+
+  Returns:
+    a tree of rng keys.
+  """
+  tree_def = jtu.tree_structure(target_tree)
+  keys = jax.random.split(rng_key, tree_def.num_leaves)
+  return jtu.tree_unflatten(tree_def, keys)
+
+
+def tree_random_like(
+    rng_key: chex.PRNGKey,
+    target_tree: chex.ArrayTree,
+    sampler: Callable[
+        [chex.PRNGKey, Shape], chex.Array
+    ] = jax.random.normal,
+) -> chex.ArrayTree:
+  """Create tree with normal random entries of the same shape as target tree.
+
+  Args:
+    rng_key: key for the random number generator.
+    target_tree: the tree whose structure to match. Leaves must be arrays.
+    sampler: the noise sampling function
+
+  Returns:
+    a random tree with the same structure as ``target_tree``, whose leaves have
+    distribution ``sampler``.
+
+  .. versionadded:: 0.2.1
+  """
+  keys_tree = _tree_rng_keys_split(rng_key, target_tree)
+  return jtu.tree_map(
+      lambda l, k: sampler(k, l.shape),
+      target_tree,
+      keys_tree,
+  )
