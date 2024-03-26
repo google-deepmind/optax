@@ -266,11 +266,11 @@ def cosine_decay_schedule(
 
   .. math::
 
-     \frac{I (1 - E)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + E\,,
+     \frac{(I - E)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + E\,,
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
   the ``exponent``, :math:`I` is the initial value (``init_value``) and
-  :math:`E` is the end value,.
+  :math:`E` is the end value (``end_value``).
 
   References:
     Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
@@ -286,8 +286,8 @@ def cosine_decay_schedule(
       ``t`` is the current timestep and ``T`` is the ``decay_steps``. The
       exponent modifies this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``.
       Defaults to 1.0.
-    alpha: The minimum value of the multiplier used to adjust the
-      learning rate. Defaults to 0.0.
+    alpha: Deprecated, use end_value instead. The minimum value of the
+      multiplier used to adjust the learning rate. Defaults to 0.0.
 
   Returns:
     schedule
@@ -316,8 +316,7 @@ def cosine_decay_schedule(
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
-    decayed = (1 - end_value) * cosine_decay ** exponent + end_value
-    return init_value * decayed
+    return (init_value - end_value) * cosine_decay ** exponent + end_value
 
   return schedule
 
@@ -501,7 +500,6 @@ def warmup_cosine_decay_schedule(
     schedule
       A function that maps step counts to values
   """
-  alpha = 0. if peak_value == 0. else end_value / peak_value
   schedules = [
       linear_schedule(
           init_value=init_value,
@@ -511,7 +509,7 @@ def warmup_cosine_decay_schedule(
       cosine_decay_schedule(
           init_value=peak_value,
           decay_steps=decay_steps - warmup_steps,
-          alpha=alpha,
+          end_value=end_value,
           exponent=exponent,
       ),
   ]
