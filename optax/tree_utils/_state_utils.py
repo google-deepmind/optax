@@ -39,7 +39,7 @@ class _ParamsPlaceholder:
 class NamedTupleKey:
   """KeyType for a NamedTuple in a tree.
 
-  When using a function ``filtering(path: _KeyPath, value: Any)-> bool: ...``
+  When using a function ``filtering(path: KeyPath, value: Any) -> bool: ...``
   in a tree in :func:`optax.tree_utils.tree_get_all_with_path`,
   :func:`optax.tree_utils.tree_get`, or :func:`optax.tree_utils.tree_set`, can
   filter the path to check if of the KeyEntry is a NamedTupleKey and then check
@@ -56,6 +56,8 @@ class NamedTupleKey:
   Attributes:
     tuple_name (str): name of the tuple containing the key.
     name (str): name of the key.
+
+  .. versionadded:: 0.2.2
   """
   tuple_name: str
   name: str
@@ -224,15 +226,23 @@ def tree_get_all_with_path(
     tree: tree to search in.
     key: keyword or field to search in tree for.
     filtering: optional callable to further filter values in tree that match the
-      key. ``filtering`` takes as arguments both the path to the value and the
+      key. ``filtering(path: Key_Path, value: Any) -> bool: ...``
+      takes as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the
       value that match the given key.
 
   Returns:
     values_with_path
       list of tuples where each tuple is of the form
       (``path_to_value``, ``value``). Here ``value`` is one entry of the tree
-      that corresponds to the ``key``, and ``path_to_value`` is a path returned
-      by :func:`jax.tree_util.tree_flatten_with_path`.
+      that corresponds to the ``key``, and ``path_to_value`` is a tuple of
+      `KeyEntry` that is a tuple of :class:`jax.tree_util.DictKey`,
+      :class:`jax.tree_util.FlattenedIndexKey`,
+      :class:`jax.tree_util.GetAttrKey`,
+      :class:`jax.tree_util.SequenceKey`, or
+      :class:`optax.tree_utils.NamedTupleKey`.
+
+  .. versionadded:: 0.2.2
   """
   # pylint: enable=line-too-long
   found_values_with_path = _tree_get_all_with_path(tree, key)
@@ -264,7 +274,7 @@ def tree_get(
   Generally, you may first get all pairs ``(path_to_value, value)`` for a given
   ``key`` using :func:`optax.tree_utils.tree_get_all_with_path`. You may then 
   define a filtering operation
-  ``filtering(path: _Key_Path, value: Any)->bool: ...`` that enables you to
+  ``filtering(path: Key_Path, value: Any) -> bool: ...`` that enables you to
   select the specific values you wanted to fetch by looking at the type of the
   value, or looking at the path to that value.
   Note that contrarily to the paths returned by
@@ -275,7 +285,7 @@ def tree_get(
   considered is in the attribute ``key`` of a named tuple called
   ``MyNamedTuple`` the last element of the path will be a
   :class:`optax.tree_utils.NamedTupleKey` containing both ``name=key`` and
-  ``tuple_name=='MyNamedTuple'``. That way you may distinguish between identical
+  ``tuple_name='MyNamedTuple'``. That way you may distinguish between identical
   values in different named tuples (arising for example when chaining
   transformations in optax). See the last example below.
 
@@ -344,8 +354,10 @@ def tree_get(
     key: keyword or field to search in ``tree`` for.
     default: default value to return if ``key`` is not found in ``tree``.
     filtering: optional callable to further filter values in ``tree`` that match
-      the ``key``. ``filtering`` takes as arguments both the path to the value
-      and the value that match the given ``key``.
+      the ``key``. ``filtering(path: Key_Path, value: Any) -> bool: ...``
+      takes as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the
+      value that match the given key.
 
   Returns:
     value
@@ -354,6 +366,8 @@ def tree_get(
 
   Raises:
     KeyError: If multiple values of ``key`` are found in ``tree``.
+
+  .. versionadded:: 0.2.2
   """
   # pylint: enable=line-too-long
   found_values_with_path = tree_get_all_with_path(
@@ -422,13 +436,16 @@ def tree_set(
       InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'learning_rate': Array(0.1, dtype=float32, weak_type=True)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState()))
 
   .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`,
-    :func:`optax.tree_utils.tree_set`
+    :func:`optax.tree_utils.tree_get`
 
   Args:
     tree: pytree whose values are to be replaced.
     filtering: optional callable to further filter values in ``tree`` that match
-      the keys to replace. ``filtering`` takes as arugments both the path to the
-      value and the value that match one of the given keys.
+      the keys to replace.
+      ``filtering(path: Key_Path, value: Any) -> bool: ...``
+      takes as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the
+      value that match a given key.
     **kwargs: dictionary of keys with values to replace in ``tree``.
 
   Returns:
@@ -440,6 +457,8 @@ def tree_set(
   Raises:
     KeyError: If no values of some key in ``**kwargs`` are found in ``tree``
       or none of the values satisfy the filtering operation.
+
+  .. versionadded:: 0.2.2
   """
   # pylint: enable=line-too-long
 
@@ -525,9 +544,13 @@ def _tree_get_all_with_path(
   Returns:
     values_with_path
       list of tuples where each tuple is of the form
-      (``path_to_value``, ``value``). Here ``value`` is one entry of the state
-      that corresponds to the ``key``, and ``path_to_value`` is a path returned
-      by :func:`jax.tree_util.tree_flatten_with_path`.
+      (``path_to_value``, ``value``). Here ``value`` is one entry of the tree
+      that corresponds to the ``key``, and ``path_to_value`` is a tuple of
+      `KeyEntry` that is a tuple of :class:`jax.tree_util.DictKey`,
+      :class:`jax.tree_util.FlattenedIndexKey`,
+      :class:`jax.tree_util.GetAttrKey`,
+      :class:`jax.tree_util.SequenceKey`, or
+      :class:`optax.tree_utils.NamedTupleKey`.
   """
 
   # Get subtrees containing a field with the given key
