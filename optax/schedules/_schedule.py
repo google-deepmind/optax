@@ -20,7 +20,6 @@ parameters or the exploration factor used to select actions.
 """
 
 from typing import Union, Optional, Iterable
-import warnings
 
 from absl import logging
 import chex
@@ -251,26 +250,24 @@ def exponential_decay(
 def cosine_decay_schedule(
     init_value: float,
     decay_steps: int,
-    end_value: float = 0.0,
+    alpha: float = 0.0,
     exponent: float = 1.0,
-    alpha: Optional[float] = None,
 ) -> base.Schedule:
   r"""Returns a function which implements cosine learning rate decay.
 
   This schedule smoothly decreases the learning rate over a specified number of
   steps (``decay_steps``). The decay follows a cosine function, with an optional
-  exponent to modify the decay curve. A minimum value (``end_value``) ensures
-  the learning rate does not drop entirely to zero.
+  exponent to modify the decay curve. A minimum value (``alpha``) ensures the
+  learning rate does not drop entirely to zero.
 
   More precisely, the learning rate at iteration :math:`t` is given by:
 
   .. math::
 
-     \frac{I (1 - E)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + E\,,
+     \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
-  the ``exponent``, :math:`I` is the initial value (``init_value``) and
-  :math:`E` is the end value,.
+  the ``exponent`` and :math:`I` is the initial value (``init_value``).
 
   References:
     Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
@@ -280,43 +277,27 @@ def cosine_decay_schedule(
     init_value: An initial value for the learning rate.
     decay_steps: Positive integer - the number of steps for which to apply
       the decay for.
-    end_value: The minimum value of the multiplier used to adjust the
+    alpha: The minimum value of the multiplier used to adjust the
       learning rate. Defaults to 0.0.
     exponent:  The default decay is ``0.5 * (1 + cos(pi * t/T))``, where 
       ``t`` is the current timestep and ``T`` is the ``decay_steps``. The
       exponent modifies this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``.
       Defaults to 1.0.
-    alpha: The minimum value of the multiplier used to adjust the
-      learning rate. Defaults to 0.0.
 
   Returns:
     schedule
       A function that maps step counts to values.
-
-  .. versionchanged:: 0.2.2
-    Argument ``alpha`` is deprecated, use ``end_value`` instead.
-
   """
   if not decay_steps > 0:
     raise ValueError(
         'The cosine_decay_schedule requires positive decay_steps, got'
         f' {decay_steps=}.'
     )
-  if alpha is not None:
-    warnings.warn(
-        'The alpha keyword is deprecated. Please use end_value instead.',
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    if end_value != 0:
-      # raise an error if both end_value and alpha are set
-      raise ValueError("Can't set both end_value and alpha")
-    end_value = alpha
 
   def schedule(count):
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
-    decayed = (1 - end_value) * cosine_decay ** exponent + end_value
+    decayed = (1 - alpha) * cosine_decay ** exponent + alpha
     return init_value * decayed
 
   return schedule

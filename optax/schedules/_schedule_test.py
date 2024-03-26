@@ -14,8 +14,6 @@
 # ==============================================================================
 """Tests for `schedule.py`."""
 
-import warnings
-
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -342,7 +340,7 @@ class CosineDecayTest(chex.TestCase):
         np.array(generated_vals), atol=1e-3)
 
   @chex.all_variants
-  def test_decay_count_greater_count_with_end_value(self):
+  def test_decay_count_greater_count_with_alpha(self):
     """Check cosine schedule decay for a part of the training schedule."""
     # Get schedule function.
     initial_value = 0.1
@@ -364,28 +362,6 @@ class CosineDecayTest(chex.TestCase):
         initial_value * expected_multipliers,
         np.array(generated_vals), atol=1e-3)
 
-  def test_cosine_alpha_exception(self):
-    """Test it raise a ValueError when given both `alpha` and `end_value`."""
-
-    with self.assertRaisesRegex(
-        ValueError, "Can't set both end_value and alpha"
-    ):
-      _schedule.cosine_decay_schedule(
-          init_value=0.1, decay_steps=100, end_value=0.1, alpha=0.5
-      )
-
-  def test_cosine_alpha_warning(self):
-    """Test cosine_decay_schedule raises a warning when `alpha` is given."""
-    with warnings.catch_warnings(record=True) as w:
-      # Cause the warning to be issued when the function executes
-      _schedule.cosine_decay_schedule(
-          init_value=0.1, decay_steps=100, alpha=0.1,
-      )
-
-      # Verify that the warning was raised
-      self.assertLen(w, 1)
-      self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
-
   @chex.all_variants
   def test_with_exponent(self):
     """Check cosine schedule decay with exponent on."""
@@ -393,7 +369,7 @@ class CosineDecayTest(chex.TestCase):
         _schedule.cosine_decay_schedule(
             init_value=0.1,
             decay_steps=100,
-            end_value=0.0,
+            alpha=0.0,
             exponent=2))
     output = schedule_fn(np.array([0, 10, 50, 75, 100]))
     np.testing.assert_allclose(
