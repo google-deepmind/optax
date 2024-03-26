@@ -35,6 +35,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
         rtol=1e-4,
         atol=0.0,
         cooldown=self.cooldown,
+        accumulation_size=1
     )
     self.updates = {'params': jnp.array(1.0)}  # dummy updates
 
@@ -62,22 +63,22 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
       )
 
     # Check that learning rate is reduced
-    lr, best_value, plateau_count, cooldown_counter = state
-    chex.assert_trees_all_close(lr, 0.1)
+    scale, best_value, plateau_count, cooldown_count, *_ = state
+    chex.assert_trees_all_close(scale, 0.1)
     chex.assert_trees_all_close(best_value, 1.0)
     chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_counter, self.cooldown)
+    chex.assert_trees_all_close(cooldown_count, self.cooldown)
     chex.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
 
     # One more step
     _, state = self.transform.update(updates=updates, state=state, value=1.0)
 
-    # Check that cooldown_counter is decremented
-    lr, best_value, plateau_count, cooldown_counter = state
-    chex.assert_trees_all_close(lr, 0.1)
+    # Check that cooldown_count is decremented
+    scale, best_value, plateau_count, cooldown_count, *_ = state
+    chex.assert_trees_all_close(scale, 0.1)
     chex.assert_trees_all_close(best_value, 1.0)
     chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_counter, self.cooldown - 1)
+    chex.assert_trees_all_close(cooldown_count, self.cooldown - 1)
 
   @parameterized.parameters(False, True)
   def test_learning_rate_is_not_reduced(self, enable_x64):
@@ -90,8 +91,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     state = _reduce_on_plateau.ReduceLROnPlateauState(
         best_value=jnp.array(1.0, dtype=jnp.float32),
         plateau_count=jnp.array(3, dtype=jnp.int32),
-        lr=jnp.array(0.1, dtype=jnp.float32),
-        cooldown_counter=jnp.array(0, dtype=jnp.int32),
+        scale=jnp.array(0.1, dtype=jnp.float32),
+        cooldown_count=jnp.array(0, dtype=jnp.int32),
+        count=jnp.array(0, dtype=jnp.int32),
+        avg_value=jnp.array(0.0, dtype=jnp.float32),
     )
 
     # Update with better value
@@ -100,9 +103,9 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     )
 
     # Check that plateau_count resets
-    lr, best_value, plateau_count, _ = new_state
+    scale, best_value, plateau_count, *_ = new_state
     chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(lr, 0.1)
+    chex.assert_trees_all_close(scale, 0.1)
     chex.assert_trees_all_close(best_value, 0.1)
 
   @parameterized.parameters(False, True)
@@ -112,12 +115,14 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     # Enable float64 if requested
     jax.config.update('jax_enable_x64', enable_x64)
 
-    # State with positive cooldown_counter
+    # State with positive cooldown_count
     state = _reduce_on_plateau.ReduceLROnPlateauState(
         best_value=jnp.array(1.0, dtype=jnp.float32),
         plateau_count=jnp.array(0, dtype=jnp.int32),
-        lr=jnp.array(0.1, dtype=jnp.float32),
-        cooldown_counter=jnp.array(3, dtype=jnp.int32),
+        scale=jnp.array(0.1, dtype=jnp.float32),
+        cooldown_count=jnp.array(3, dtype=jnp.int32),
+        count=jnp.array(0, dtype=jnp.int32),
+        avg_value=jnp.array(0.0, dtype=jnp.float32),
     )
 
     # Update with worse value
@@ -127,11 +132,11 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that learning rate is not reduced and
     # plateau_count is not incremented
-    lr, best_value, plateau_count, cooldown_counter = new_state
-    chex.assert_trees_all_close(lr, 0.1)
+    scale, best_value, plateau_count, cooldown_count, *_ = new_state
+    chex.assert_trees_all_close(scale, 0.1)
     chex.assert_trees_all_close(best_value, 1.0)
     chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_counter, 2)
+    chex.assert_trees_all_close(cooldown_count, 2)
 
 
 if __name__ == '__main__':
