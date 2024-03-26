@@ -82,6 +82,33 @@ class MomoTest(chex.TestCase):
 
     chex.assert_trees_all_close(params, final_params, rtol=1e-1, atol=1e-1)
 
+class MomoAdamTest(chex.TestCase):
+  """Tests for Momo-Adam optimizer."""
+
+  @parameterized.product(
+      opt_name=('momo_adam',),
+      target=(_setup_parabola, _setup_rosenbrock),
+      dtype=(jnp.float32,),
+  )
+  def test_optimization(self, opt_name, target, dtype):
+    opt = getattr(contrib, opt_name)()
+    initial_params, final_params, get_updates = target(dtype)
+    @jax.jit
+    def step(params, state):
+      loss, updates = get_updates(params)
+      updates, state = opt.update(updates, state, params, loss)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+    # A no-op change, to verify that tree map works.
+    state = _state_utils.tree_map_params(opt, lambda v: v, state)
+
+    for _ in range(1500):
+      params, state = step(params, state)
+
+    chex.assert_trees_all_close(params, final_params, rtol=1e-1, atol=1e-1)
 
 if __name__ == '__main__':
   absltest.main()
