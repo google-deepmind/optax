@@ -27,16 +27,30 @@ def chain(
 ) -> base.GradientTransformationExtraArgs:
   """Applies a list of chainable update transformations.
 
-  Given a sequence of chainable transforms, `chain` returns an `init_fn`
-  that constructs a `state` by concatenating the states of the individual
-  transforms, and returns an `update_fn` which chains the update transformations
-  feeding the appropriate state to each.
+  This function creates a new :func:`optax.GradientTransformation` that applies
+  a sequence of gradient transformations in order. The ``init`` function of the
+  new transformation constructs the optimizer state by concatenating the states
+  of the individual transforms, while the ``update`` function applies the
+  updates in the given order.
+
+  Examples:
+
+    A transform that scales by -0.1 the adam update:
+
+      >>> import optax
+      >>> transform1 = optax.scale_by_adam()
+      >>> transform2 = optax.scale(-0.1)
+      >>> chained_transform = optax.chain(transform1, transform2)
+      >>> params = {'a': 1.0}
+      >>> state = chained_transform.init(params)
+      >>> updates = {'a': -0.5}
+      >>> updates, new_state = chained_transform.update(updates, state, params)
 
   Args:
     *args: a sequence of chainable (init_fn, update_fn) tuples.
 
   Returns:
-    A ``GradientTransformationExtraArgs``, created by chaining the input
+    A :func:`GradientTransformationExtraArgs`, created by chaining the input
     transformations. Note that independent of the argument types, the resulting
     transformation always supports extra args. Any extra arguments passed to the
     returned transformation will be passed only to those transformations in the
