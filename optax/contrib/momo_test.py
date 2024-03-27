@@ -91,7 +91,7 @@ class MomoAdamTest(chex.TestCase):
       dtype=(jnp.float32,),
   )
   def test_optimization(self, opt_name, target, dtype):
-    opt = getattr(contrib, opt_name)()
+    opt = getattr(contrib, opt_name)(learning_rate=0.1)
     initial_params, final_params, get_updates = target(dtype)
     @jax.jit
     def step(params, state):

@@ -39,7 +39,7 @@ def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
     beta: float = 0.9,
     lb: float = 0.0,
-    weight_decay: float = 0.
+    weight_decay: float = 0.0
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
@@ -134,11 +134,11 @@ class MomoAdamState(NamedTuple):
 
 
 def momo_adam(
-    learning_rate: base.ScalarOrSchedule = 1.0,
+    learning_rate: base.ScalarOrSchedule = 1e-2,
     betas: tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-8,
     lb: float = 0.0,
-    weight_decay: float = 0.
+    weight_decay: float = 0.0
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
@@ -175,7 +175,7 @@ def momo_adam(
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     barf = 0
     gamma = 0
-    count = 0
+    count = jnp.zeros([], jnp.int32)
     return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, count)
 
   def update_fn(

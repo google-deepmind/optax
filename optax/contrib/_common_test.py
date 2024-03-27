@@ -34,6 +34,8 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='cocob', opt_kwargs=dict(alpha=100.0, eps=1e-8)),
     dict(opt_name='dadapt_adamw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='momo', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='momo_adam', opt_kwargs=dict(learning_rate=1e-1)),
 )
 
 
@@ -42,7 +44,7 @@ def _setup_parabola(dtype):
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
 
-  @jax.grad
+  @jax.value_and_grad
   def get_updates(params):
     return jnp.sum(numerics.abs_sq(params - final_params))
 
@@ -57,7 +59,7 @@ def _setup_rosenbrock(dtype):
   initial_params = jnp.array([0.0, 0.0], dtype=dtype)
   final_params = jnp.array([a, a**2], dtype=dtype)
 
-  @jax.grad
+  @jax.value_and_grad
   def get_updates(params):
     return numerics.abs_sq(a - params[0]) + b * numerics.abs_sq(
         params[1] - params[0] ** 2
@@ -79,8 +81,12 @@ class ContribTest(chex.TestCase):
 
     @jax.jit
     def step(params, state):
-      updates = get_updates(params)
-      updates, state = opt.update(updates, state, params)
+      loss, updates = get_updates(params)
+      if opt_name in ['momo', 'momo_adam']:
+        update_kwargs = {'loss': loss}
+      else:
+        update_kwargs = {}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
       params = update.apply_updates(params, updates)
       return params, state
 
@@ -107,12 +113,20 @@ class ContribTest(chex.TestCase):
     params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
+    if opt_name in ['momo', 'momo_adam']:
+      update_kwargs = {'loss': jnp.array(0.)}
+    else:
+      update_kwargs = {}
+
     state = self.variant(opt.init)(params)
-    updates, new_state = self.variant(opt.update)(grads, state, params)
+    updates, new_state = self.variant(opt.update)(
+      grads, state, params, **update_kwargs
+    )
 
     state_inject = self.variant(opt_inject.init)(params)
     updates_inject, new_state_inject = self.variant(opt_inject.update)(
-        grads, state_inject, params)
+        grads, state_inject, params, **update_kwargs
+    )
 
     with self.subTest('Equality of updates.'):
       chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
