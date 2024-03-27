@@ -89,6 +89,10 @@ def power_iteration(
   Returns:
     A pair (eigenvalue, eigenvector), where eigenvalue is the dominant
     eigenvalue of ``matrix`` and eigenvector is its associated eigenvector.
+
+  .. versionchanged:: 0.2.2
+    ``matrix`` can be a callable. Reversed the order of the return parameters,
+    from (eigenvector, eigenvalue) to (eigenvalue, eigenvector).
   """
   if callable(matrix):
     mvp = matrix
