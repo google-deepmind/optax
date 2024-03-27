@@ -20,6 +20,7 @@ from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp
+from _regression import cosine_similarity
 
 
 def sigmoid_binary_cross_entropy(
@@ -552,14 +553,15 @@ def sigmoid_focal_loss(
 
   return loss
 
-def NTXent(
+def ntxent(
     embeddings: chex.Array,
-    labels: chex.Array, 
+    labels: chex.Array,
     temperature: float = 0.07
-):
+) -> chex.Array:
   """
   Implementation of normalized temperature scaled cross entropy loss (NT-Xent).
-  Implementation was adapted from https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
+  Implementation adapted from
+  kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
   for jax. 
 
   References:
@@ -567,20 +569,21 @@ def NTXent(
 
   Args:
     emeddings: batch of embeddings, with shape [batch, feature_length]
-    labels: labels for groups that are positive pairs. e.g. if you have a batch
-    of 4 embeddings and the first two and last two were positive pairs your `labels`
-    should look like [0, 0, 1, 1]. Shape [batch]
-    temperature: temperature scaling parameter.  
+    labels: labels for groups that are positive pairs. e.g. if you have
+    a batch of 4 embeddings and the first two and last two were positive
+    pairs your `labels` should look like [0, 0, 1, 1]. Shape [batch]
+    temperature: temperature scaling parameter.
 
   Returns:
-    A scalar loss value of NT-Xent values averaged over all positive pairs
+    A scalar loss value of NT-Xent values averaged over all positive
+    pairs
   """
-  from _regression import cosine_similarity
-
   chex.assert_type([embeddings], float)
   if labels.shape[0] != embeddings.shape[0]:
-    raise ValueError("label dimension should match batch dimension in embeddings")
-  
+    raise ValueError(
+      'label dimension should match batch dimension in embeddings'
+    )
+
   eps = 1e-300
 
   # cosine similarity matrix
@@ -591,17 +594,19 @@ def NTXent(
   labels2 = jnp.expand_dims(labels, axis=0)
   matches = jnp.int32(labels1 == labels2)
   diffs = matches ^ 1
-  matches = jnp.bool_(matches - jnp.eye(matches.shape[0])) # taking away self cos similarity
+  matches = jnp.bool_(matches - jnp.eye(matches.shape[0])) # no self cos
   a1, p = jnp.where(matches)
   a2, n = jnp.where(diffs)
 
-  if len(a1) > 0 and len(a2) > 0: # Making sure there is at least 1 negative pair
+  if len(a1) > 0 and len(a2) > 0: # Making sure there is 1 negative pair
     # getting positive and negative pairs
     pos_pair = xcs[a1, p] / temperature
     neg_pair = xcs[a2, n] / temperature
     pos_pair = jnp.expand_dims(pos_pair, axis=1)
     neg_pair = jnp.expand_dims(neg_pair, axis=0)
-    n_per_p = jnp.int32(jnp.expand_dims(a2, axis=0) == jnp.expand_dims(a1, axis=1))
+    n_per_p = jnp.int32(
+      jnp.expand_dims(a2, axis=0) == jnp.expand_dims(a1, axis=1)
+    )
     neg_pair = neg_pair * n_per_p
     neg_pair = neg_pair.at[n_per_p == 0].set(-jnp.inf)
 
