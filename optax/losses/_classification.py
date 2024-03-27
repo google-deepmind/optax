@@ -526,3 +526,70 @@ def sigmoid_focal_loss(
                       loss)
 
   return loss
+
+def NTXent(
+    embeddings: chex.Array,
+    labels: chex.Array, 
+    temperature: float = 0.07
+):
+  """
+  Implementation of normalized temperature scaled cross entropy loss (NT-Xent).
+  Implementation was adapted from https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
+  for jax. 
+
+  References:
+    T. Chen, et al. 2020. http://arxiv.org/abs/2002.05709
+
+  Args:
+    emeddings: batch of embeddings, with shape [batch, feature_length]
+    labels: labels for groups that are positive pairs. e.g. if you have a batch
+    of 4 embeddings and the first two and last two were positive pairs your `labels`
+    should look like [0, 0, 1, 1]. Shape [batch]
+    temperature: temperature scaling parameter.  
+
+  Returns:
+    A scalar loss value of NT-Xent values averaged over all positive pairs
+  """
+  from _regression import cosine_similarity
+
+  chex.assert_type([embeddings], float)
+  if labels.shape[0] != embeddings.shape[0]:
+    raise ValueError("label dimension should match batch dimension in embeddings")
+  
+  eps = 1e-300
+
+  # cosine similarity matrix
+  xcs = cosine_similarity(embeddings[None, :, :], embeddings[:, None, :])
+
+  # finding positive and negative pairs
+  labels1 = jnp.expand_dims(labels, axis=1)
+  labels2 = jnp.expand_dims(labels, axis=0)
+  matches = jnp.int32(labels1 == labels2)
+  diffs = matches ^ 1
+  matches = jnp.bool_(matches - jnp.eye(matches.shape[0])) # taking away self cos similarity
+  a1, p = jnp.where(matches)
+  a2, n = jnp.where(diffs)
+
+  if len(a1) > 0 and len(a2) > 0: # Making sure there is at least 1 negative pair
+    # getting positive and negative pairs
+    pos_pair = xcs[a1, p] / temperature
+    neg_pair = xcs[a2, n] / temperature
+    pos_pair = jnp.expand_dims(pos_pair, axis=1)
+    neg_pair = jnp.expand_dims(neg_pair, axis=0)
+    n_per_p = jnp.int32(jnp.expand_dims(a2, axis=0) == jnp.expand_dims(a1, axis=1))
+    neg_pair = neg_pair * n_per_p
+    neg_pair = neg_pair.at[n_per_p == 0].set(-jnp.inf)
+
+    # calculating loss
+    max_val = jax.lax.stop_gradient(jnp.max(
+        jnp.stack([pos_pair, jnp.max(neg_pair, axis=1, keepdims=True)]),
+        axis=0
+    ))
+    numerator = jnp.exp(pos_pair - max_val).squeeze()
+    denominator = jnp.sum(jnp.exp(neg_pair - max_val), axis=1) + numerator
+    log_exp = -jnp.log((numerator / denominator) + eps)
+
+    return jnp.mean(log_exp)
+
+  else:
+    return jnp.array(0.)
