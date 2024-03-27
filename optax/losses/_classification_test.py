@@ -259,6 +259,47 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
     )
 
 
+class PerceptronTest(parameterized.TestCase):
+
+  def test_binary(self):
+    label = jnp.array(1)
+    signed_label = jnp.array(2.0 * label - 1.0)
+    score = jnp.array(10.)
+    def reference_impl(label, logit) -> float:
+      return jax.nn.relu(- logit * (2.0 * label - 1.0))
+    expected = reference_impl(label, score)
+    result = _classification.perceptron_loss(score, signed_label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_binary(self):
+    labels = jnp.array([1, 0])
+    signed_labels = jnp.array(2.0 * labels - 1.0)
+    scores = jnp.array([10., 20.])
+    def reference_impl(label, logit) -> float:
+      return jax.nn.relu(- logit * (2.0 * label - 1.0))
+    expected = jax.vmap(reference_impl)(labels, scores)
+    result = _classification.perceptron_loss(scores, signed_labels)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_multi_class(self):
+    label = jnp.array(1)
+    scores = jnp.array([10., 3.])
+    def reference_impl(label, scores):
+      return jnp.max(scores) - scores[label]
+    expected = reference_impl(label, scores)
+    result = _classification.multiclass_perceptron_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_multi_class(self):
+    label = jnp.array([1, 0])
+    scores = jnp.array([[10., 3.], [11., -2.]])
+    def reference_impl(label, scores):
+      return jnp.max(scores) - scores[label]
+    expected = jax.vmap(reference_impl)(label, scores)
+    result = _classification.multiclass_perceptron_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+
 class KLDivergenceTest(parameterized.TestCase):
 
   def setUp(self):
