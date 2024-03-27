@@ -78,7 +78,7 @@ def hinge_loss(
     targets: Target values. Target values should be strictly in the set {-1, 1}.
 
   Returns:
-    Binary Hinge Loss.
+    loss value.
   """
   return jnp.maximum(0, 1 - predictor_outputs * targets)
 
@@ -99,6 +99,7 @@ def perceptron_loss(
   Returns:
     loss value.
   """
+  chex.assert_equal_shape([predictor_outputs, targets])
   return jnp.maximum(0, - predictor_outputs * targets)
 
 
@@ -170,6 +171,30 @@ def softmax_cross_entropy_with_integer_labels(
     replacement='softmax_cross_entropy_with_integer_labels')
 def multiclass_logistic_loss(logits, labels):
   return softmax_cross_entropy_with_integer_labels(logits, labels)
+
+
+def multiclass_perceptron_loss(
+    scores: chex.Array,
+    label: chex.Array,
+) -> chex.Array:
+  """Binary perceptron loss.
+
+  References:
+    Michael Collins. Discriminative training methods for Hidden Markov Models:
+    Theory and experiments with perceptron algorithms. EMNLP 2002
+
+  Args:
+    scores: score produced by the model.
+    label: ground-truth integer label.
+
+  Returns:
+    loss value.
+
+  .. versionadded:: 0.2.2
+  """
+  one_hot_label = jax.nn.one_hot(label, scores.shape[-1])
+  dot_last_dim = jnp.vectorize(jnp.dot, signature='(n),(n)->()')
+  return jnp.max(scores, axis=-1) - dot_last_dim(scores, one_hot_label)
 
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
