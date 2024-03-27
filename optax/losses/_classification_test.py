@@ -606,6 +606,30 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     assert all(ce_loss[self.ts == 0] > 0)
     assert all(focal_loss[self.ts == 0] == 0)
 
+class NxtentTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = jnp.array([
+      [-1.9540, 1.0780],
+      [ 0.2380, -0.5703],
+      [ 1.8745, -0.0195],
+      [-0.6719, -1.9210],
+      [ 0.3599, -0.2308],
+      [ 1.7059, -0.5902],
+      [-0.6974, -0.0866],
+      [-0.5216,  0.9865]
+    ])
+    self.ts = jnp.array([0,0,1,1,2,2,3,3])
+    # Calculated expected output
+    self.exp = jnp.array(2.0350)
+
+  @chex.all_variants
+  def test_batched(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(_classification.ntxent)(self.ys, self.ts),
+        self.exp, atol=1e-4)
 
 if __name__ == '__main__':
   absltest.main()
