@@ -20,7 +20,7 @@ from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp
-from _regression import cosine_similarity
+from optax.losses._regression import cosine_similarity
 
 
 def sigmoid_binary_cross_entropy(
