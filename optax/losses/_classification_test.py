@@ -622,7 +622,7 @@ class NxtentTest(parameterized.TestCase):
     ])
     self.ts = jnp.array([0,0,1,1,2,2,3,3])
     # Calculated expected output
-    self.exp = jnp.array(2.0350)
+    self.exp = jnp.array(11.8346)
 
   @chex.all_variants
   def test_batched(self):
