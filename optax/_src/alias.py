@@ -535,7 +535,8 @@ def adamw(
   AdamW uses weight decay to regularize learning towards small weights, as
   this leads to better generalization. In SGD you can also use L2 regularization
   to implement this as an additive loss term, however L2 regularization
-  does not behave as intended for adaptive gradient algorithms such as Adam.
+  does not behave as intended for adaptive gradient algorithms such as Adam,
+  see [Loshchilov et al, 2019].
 
   Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
   :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
@@ -561,7 +562,7 @@ def adamw(
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
       u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t 
-      + \bar{\varepsilon}} + \varepsilon} \right) + \lambda \theta_{t-1} \right)\\
+      + \bar{\varepsilon}} + \varepsilon} \right) + \lambda \theta_{t} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
 
