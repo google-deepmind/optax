@@ -22,6 +22,8 @@ from optax.contrib._dadapt_adamw import dadapt_adamw
 from optax.contrib._dadapt_adamw import DAdaptAdamWState
 from optax.contrib._mechanic import MechanicState
 from optax.contrib._mechanic import mechanize
+from optax.contrib.momo import momo, momo_adam
+from optax.contrib.momo import MomoState, MomoAdamState
 from optax.contrib._privacy import differentially_private_aggregate
 from optax.contrib._privacy import DifferentiallyPrivateAggregateState
 from optax.contrib._privacy import dpsgd
