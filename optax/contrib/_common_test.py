@@ -81,9 +81,9 @@ class ContribTest(chex.TestCase):
 
     @jax.jit
     def step(params, state):
-      loss, updates = get_updates(params)
+      value, updates = get_updates(params)
       if opt_name in ['momo', 'momo_adam']:
-        update_kwargs = {'loss': loss}
+        update_kwargs = {'value': value}
       else:
         update_kwargs = {}
       updates, state = opt.update(updates, state, params, **update_kwargs)
@@ -114,7 +114,7 @@ class ContribTest(chex.TestCase):
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
     if opt_name in ['momo', 'momo_adam']:
-      update_kwargs = {'loss': jnp.array(0.)}
+      update_kwargs = {'value': jnp.array(0.)}
     else:
       update_kwargs = {}
 

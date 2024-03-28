@@ -67,8 +67,8 @@ class MomoTest(chex.TestCase):
     initial_params, final_params, get_updates = target(dtype)
     @jax.jit
     def step(params, state):
-      loss, updates = get_updates(params)
-      updates, state = opt.update(updates, state, params, loss)
+      value, updates = get_updates(params)
+      updates, state = opt.update(updates, state, params, value)
       params = update.apply_updates(params, updates)
       return params, state
 
@@ -95,8 +95,8 @@ class MomoAdamTest(chex.TestCase):
     initial_params, final_params, get_updates = target(dtype)
     @jax.jit
     def step(params, state):
-      loss, updates = get_updates(params)
-      updates, state = opt.update(updates, state, params, loss)
+      value, updates = get_updates(params)
+      updates, state = opt.update(updates, state, params, value)
       params = update.apply_updates(params, updates)
       return params, state
 

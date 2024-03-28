@@ -54,8 +54,8 @@ def momo(
 
   where the adaptive term is computed on the fly. 
 
-  Note that in `update_fn` you need to pass the latest (batch) loss to
-    the argument `loss`.
+  Note that in `update_fn` you need to pass the latest (batch) loss value to
+    the argument `value`.
 
   References:
     [Schaipp et al., 2023](https://arxiv.org/abs/2305.07583)
@@ -80,16 +80,16 @@ def momo(
       updates: base.Updates,
       state: MomoState,
       params: Optional[base.Params],
-      loss: Optional[Array] = None) -> tuple[base.Updates, MomoState]:
+      value: Optional[Array] = None) -> tuple[base.Updates, MomoState]:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    if loss is None:
+    if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
                        Use `jax.value_and_grad` for this.""")
     count = state.count
     # initialize at first gradient, and loss
     bt = cond(count == 0, lambda: 0., lambda: beta)
-    barf = bt*state.barf + (1-bt)*loss
+    barf = bt*state.barf + (1-bt)*value
     exp_avg = tu.tree_map(
       lambda ea, g: bt*ea + (1-bt)*g,
       state.exp_avg,
@@ -153,8 +153,8 @@ def momo_adam(
 
   where the adaptive term is computed on the fly. 
 
-  Note that in `update_fn` you need to pass the latest (batch) loss to
-    the argument `loss`.
+  Note that in `update_fn` you need to pass the latest (batch) loss value to
+    the argument `value`.
 
   References:
     [Schaipp et al., 2023](https://arxiv.org/abs/2305.07583)
@@ -182,15 +182,15 @@ def momo_adam(
       updates: base.Updates,
       state: MomoAdamState,
       params: Optional[base.Params],
-      loss: Optional[Array]) -> tuple[base.Updates, MomoAdamState]:
+      value: Optional[Array]) -> tuple[base.Updates, MomoAdamState]:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    if loss is None:
+    if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
                        Use `jax.value_and_grad` for this.""")
     count = state.count
     beta1, beta2 = betas
-    barf = beta1*state.barf + (1-beta1)*loss
+    barf = beta1*state.barf + (1-beta1)*value
     exp_avg = tu.tree_map(
       lambda ea, g: beta1 * ea + (1-beta1) * g,
       state.exp_avg,
