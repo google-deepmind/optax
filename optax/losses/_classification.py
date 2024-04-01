@@ -600,8 +600,8 @@ def ntxent(
   matches = jnp.bool_(matches - jnp.eye(matches.shape[0])) # no self cos
 
   # replace 0 with -inf
-  xcs_diffs = jnp.where(diffs is True, xcs, -jnp.inf)
-  xcs_matches = jnp.where(matches is True, xcs, -jnp.inf)
+  xcs_diffs = jnp.where(diffs == 1, xcs, -jnp.inf)
+  xcs_matches = jnp.where(matches == 1, xcs, -jnp.inf)
 
   # calc loss
   numer = jnp.exp(xcs_matches)
