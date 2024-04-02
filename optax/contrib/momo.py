@@ -23,7 +23,7 @@ import chex
 import jax.numpy as jnp
 import jax.tree_util as tu
 from jax import Array
-from jax.lax import cond
+from jax import lax
 from optax import tree_utils
 from optax._src import base
 from optax._src import utils
@@ -74,7 +74,7 @@ def momo(
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     barf = 0.
-    gamma = 0
+    gamma = 0.
     count = jnp.zeros([], jnp.int32)
     return MomoState(exp_avg, barf, gamma, count)
 
@@ -90,7 +90,7 @@ def momo(
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
     # initialize at first gradient, and loss
-    bt = cond(count == 0, lambda: 0., lambda: beta)
+    bt = lax.cond(count == 0, lambda: 0., lambda: beta)
     barf = bt*state.barf + (1-bt)*value
     exp_avg = tu.tree_map(
       lambda ea, g: bt*ea + (1-bt)*g,
@@ -101,13 +101,12 @@ def momo(
     exp_avg_norm = tree_utils.tree_l2_norm(exp_avg,squared=True)
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    t1 = jnp.maximum((1+alpha*weight_decay)*(
-                            barf - lb - gamma
-                            )  + iprod , 0)/(exp_avg_norm)
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-lb-gamma) + iprod, 0
+                     )/(exp_avg_norm)
     # if denom is zero, take no step
-    t1 = cond(exp_avg_norm <= jnp.finfo(float).eps,
-              lambda: 0.,
-              lambda: t1
+    t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
+                  lambda: 0.,
+                  lambda: t1
         )
     tau = jnp.minimum(alpha, t1)
     p_update = tu.tree_map(
@@ -137,7 +136,8 @@ class MomoAdamState(NamedTuple):
 
 def momo_adam(
     learning_rate: base.ScalarOrSchedule = 1e-2,
-    betas: tuple[float, float] = (0.9, 0.999),
+    b1: float = 0.9,
+    b2: float = 0.999,
     eps: float = 1e-8,
     lb: float = 0.0,
     weight_decay: float = 0.0
@@ -164,7 +164,8 @@ def momo_adam(
   Args:
     learning_rate: User-specified learning rate. Recommended to be chosen
       rather large, by default 1.0.
-    betas: Adam momentum coefficients (for EMA).
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
     eps: eps for the underlying Adam Optimizer.
     lb: Lower bound of the loss. Zero should be a good choice for many tasks.
     weight_decay: Weight-decay parameter. Momo-Adam performs weight decay in
@@ -177,8 +178,8 @@ def momo_adam(
   def init_fn(params: base.Params) -> MomoAdamState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    barf = 0
-    gamma = 0
+    barf = 0.
+    gamma = 0.
     count = jnp.zeros([], jnp.int32)
     return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, count)
 
@@ -193,19 +194,18 @@ def momo_adam(
       raise ValueError("""You need to pass the latest loss value to Momo.
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
-    beta1, beta2 = betas
-    barf = beta1*state.barf + (1-beta1)*value
+    barf = b1*state.barf + (1-b1)*value
     exp_avg = tu.tree_map(
-      lambda ea, g: beta1 * ea + (1-beta1) * g,
+      lambda ea, g: b1 * ea + (1-b1) * g,
       state.exp_avg,
       updates
     )
     exp_avg_sq = tu.tree_map(
-        lambda eas, g: beta2 * eas + (1-beta2) * g * g,
+        lambda eas, g: b2 * eas + (1-b2) * g * g,
         state.exp_avg_sq,
         updates,
     )
-    bc2 = 1-beta2**(count+1)
+    bc2 = 1-b2**(count+1)
     precond = tu.tree_map(
       lambda eas: eps + jnp.sqrt(eas/bc2),
       exp_avg_sq
@@ -216,17 +216,16 @@ def momo_adam(
       precond
     )
     exp_avg_norm = tree_utils.tree_vdot(exp_avg,exp_avg_weighted)
-    gamma = beta1*state.gamma + (1-beta1)*tree_utils.tree_vdot(updates, params)
+    gamma = b1*state.gamma + (1-b1)*tree_utils.tree_vdot(updates, params)
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    bc1 = 1-beta1**(count+1)
-    t1 = jnp.maximum((1+alpha*weight_decay)*(
-                            barf - bc1*lb - gamma
-                            )  + iprod , 0)/(exp_avg_norm)
+    bc1 = 1-b1**(count+1)
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-bc1*lb-gamma)  + iprod, 0
+                     )/(exp_avg_norm)
     # if denom is zero, take no step
-    t1 = cond(exp_avg_norm <= jnp.finfo(float).eps,
-              lambda: 0.,
-              lambda: t1
+    t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
+                  lambda: 0.,
+                  lambda: t1
         )
     tau = jnp.minimum(alpha/bc1, t1)
     p_update = tu.tree_map(
