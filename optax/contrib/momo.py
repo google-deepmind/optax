@@ -33,7 +33,7 @@ class MomoState(NamedTuple):
   exp_avg: base.Updates
   barf: float
   gamma: float
-  count: chex.Array
+  count: chex.Array  # shape=(), dtype=jnp.int32.
 
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
@@ -69,10 +69,11 @@ def momo(
 
   Returns:
     A ``GradientTransformation`` object.
+  .. versionadded:: 0.2.3
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    barf = 0
+    barf = 0.
     gamma = 0
     count = jnp.zeros([], jnp.int32)
     return MomoState(exp_avg, barf, gamma, count)
@@ -171,6 +172,7 @@ def momo_adam(
 
   Returns:
     A ``GradientTransformation`` object.
+    .. versionadded:: 0.2.3
   """
   def init_fn(params: base.Params) -> MomoAdamState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
