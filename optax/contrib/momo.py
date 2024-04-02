@@ -33,7 +33,7 @@ class MomoState(NamedTuple):
   exp_avg: base.Updates
   barf: float
   gamma: float
-  count: chex.Array
+  count: chex.Array  # shape=(), dtype=jnp.int32.
 
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
