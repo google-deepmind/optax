@@ -72,7 +72,7 @@ def momo(
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    barf = 0
+    barf = 0.
     gamma = 0
     count = jnp.zeros([], jnp.int32)
     return MomoState(exp_avg, barf, gamma, count)
