@@ -31,9 +31,9 @@ from optax._src import utils
 class MomoState(NamedTuple):
   """State of the `GradientTransformation` returned by `momo`."""
   exp_avg: base.Updates
-  barf: float
-  gamma: float
-  lb: float
+  barf: chex.Array  # shape=(), dtype=jnp.float32.
+  gamma: chex.Array  # shape=(), dtype=jnp.float32.
+  lb: chex.Array  # shape=(), dtype=jnp.float32.
   count: chex.Array  # shape=(), dtype=jnp.int32.
 
 def momo(
@@ -78,10 +78,11 @@ def momo(
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    barf = 0.
-    gamma = 0.
+    barf = jnp.zeros([], jnp.float32)
+    gamma = jnp.zeros([], jnp.float32)
+    init_lb = jnp.array(lb, jnp.float32)
     count = jnp.zeros([], jnp.int32)
-    return MomoState(exp_avg, barf, gamma, lb, count)
+    return MomoState(exp_avg, barf, gamma, init_lb, count)
 
   def update_fn(
       updates: base.Updates,
@@ -116,8 +117,8 @@ def momo(
                          lambda: state.lb
                 )
     else:
-      this_lb = lb
-    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-this_lb-gamma) + iprod, 0
+      this_lb = state.lb
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-this_lb-gamma) + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
@@ -134,7 +135,7 @@ def momo(
     if adapt_lb:
       new_lb = jnp.maximum((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm, lb)
     else:
-      new_lb = lb
+      new_lb = state.lb
     new_state = MomoState(
       exp_avg=exp_avg,
       barf=barf,
@@ -150,10 +151,10 @@ class MomoAdamState(NamedTuple):
   """State of the ``GradientTransformation`` returned by ``momo_adam``."""
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
-  barf: float
-  gamma: float
-  lb: float
-  count: float
+  barf: chex.Array  # shape=(), dtype=jnp.float32.
+  gamma: chex.Array  # shape=(), dtype=jnp.float32.
+  lb: chex.Array  # shape=(), dtype=jnp.float32.
+  count: chex.Array  # shape=(), dtype=jnp.int32.
 
 
 def momo_adam(
@@ -204,10 +205,11 @@ def momo_adam(
   def init_fn(params: base.Params) -> MomoAdamState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    barf = 0.
-    gamma = 0.
+    barf = jnp.zeros([], jnp.float32)
+    gamma = jnp.zeros([], jnp.float32)
+    init_lb = jnp.array(lb, jnp.float32)
     count = jnp.zeros([], jnp.int32)
-    return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, lb, count)
+    return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, init_lb, count)
 
   def update_fn(
       updates: base.Updates,
@@ -256,8 +258,8 @@ def momo_adam(
                          lambda: state.lb
                 )
     else:
-      this_lb = lb
-    t1 = jnp.maximum((1+alpha*weight_decay)*(barf-bc1*this_lb-gamma) + iprod, 0
+      this_lb = state.lb
+    t1 = jnp.maximum((1+alpha*weight_decay)*(barf-bc1*this_lb-gamma) + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
@@ -277,7 +279,7 @@ def momo_adam(
       new_lb = ((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm)/bc1
       new_lb = jnp.maximum(new_lb, lb)
     else:
-      new_lb = lb
+      new_lb = state.lb
     new_state = MomoAdamState(
       exp_avg=exp_avg,
       exp_avg_sq=exp_avg_sq,
