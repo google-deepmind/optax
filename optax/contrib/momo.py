@@ -33,13 +33,15 @@ class MomoState(NamedTuple):
   exp_avg: base.Updates
   barf: chex.Array  # shape=(), dtype=jnp.float32.
   gamma: chex.Array  # shape=(), dtype=jnp.float32.
+  lb: chex.Array  # shape=(), dtype=jnp.float32.
   count: chex.Array  # shape=(), dtype=jnp.int32.
 
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
     beta: float = 0.9,
     lb: float = 0.0,
-    weight_decay: float = 0.0
+    weight_decay: float = 0.0,
+    adapt_lb: bool = False
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
@@ -66,7 +68,10 @@ def momo(
     beta: Momentum coefficient (for EMA).
     lb: Lower bound of the loss. Zero should be a good choice for many tasks.
     weight_decay: Weight-decay parameter.
-
+    adapt_lb: If no good guess for the lower bound is available,
+      set this to true, in order to estimate the lower bound on the fly
+      (see the paper for details).
+      
   Returns:
     A ``GradientTransformation`` object.
   .. versionadded:: 0.2.3
@@ -75,8 +80,9 @@ def momo(
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
+    init_lb = jnp.array(lb, jnp.float32)
     count = jnp.zeros([], jnp.int32)
-    return MomoState(exp_avg, barf, gamma, count)
+    return MomoState(exp_avg, barf, gamma, init_lb, count)
 
   def update_fn(
       updates: base.Updates,
@@ -101,7 +107,18 @@ def momo(
     exp_avg_norm = tree_utils.tree_l2_norm(exp_avg,squared=True)
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-lb-gamma) + iprod, 0.
+    # Reset lower bound
+    if adapt_lb:
+      cap = (1+alpha*weight_decay) * (barf-gamma) + iprod
+      this_lb = lax.cond(cap < (1+alpha*weight_decay)*state.lb,
+                         lambda: jnp.maximum(cap/(2*(1+alpha*weight_decay)),
+                                             lb
+                                            ),
+                         lambda: state.lb
+                )
+    else:
+      this_lb = state.lb
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-this_lb-gamma) + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
@@ -115,10 +132,15 @@ def momo(
       - tau*ea,
       exp_avg, params
     )
+    if adapt_lb:
+      new_lb = jnp.maximum((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm, lb)
+    else:
+      new_lb = state.lb
     new_state = MomoState(
       exp_avg=exp_avg,
       barf=barf,
       gamma=gamma,
+      lb=new_lb,
       count=utils.safe_int32_increment(count)
     )
     return p_update, new_state
@@ -131,6 +153,7 @@ class MomoAdamState(NamedTuple):
   exp_avg_sq: base.Updates
   barf: chex.Array  # shape=(), dtype=jnp.float32.
   gamma: chex.Array  # shape=(), dtype=jnp.float32.
+  lb: chex.Array  # shape=(), dtype=jnp.float32.
   count: chex.Array  # shape=(), dtype=jnp.int32.
 
 
@@ -140,7 +163,8 @@ def momo_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     lb: float = 0.0,
-    weight_decay: float = 0.0
+    weight_decay: float = 0.0,
+    adapt_lb: bool = False
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
@@ -170,6 +194,9 @@ def momo_adam(
     lb: Lower bound of the loss. Zero should be a good choice for many tasks.
     weight_decay: Weight-decay parameter. Momo-Adam performs weight decay in
     similar fashion to AdamW.
+    adapt_lb: If no good guess for the lower bound is available,
+      set this to true, in order to estimate the lower bound on the fly
+      (see the paper for details).
 
   Returns:
     A ``GradientTransformation`` object.
@@ -180,8 +207,9 @@ def momo_adam(
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
+    init_lb = jnp.array(lb, jnp.float32)
     count = jnp.zeros([], jnp.int32)
-    return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, count)
+    return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, init_lb, count)
 
   def update_fn(
       updates: base.Updates,
@@ -220,7 +248,18 @@ def momo_adam(
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
     bc1 = 1-b1**(count+1)
-    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-bc1*lb-gamma)  + iprod, 0.
+    # Reset lower bound
+    if adapt_lb:
+      cap = (1+alpha*weight_decay) * (barf-gamma) + iprod
+      this_lb = lax.cond(cap < (1+alpha*weight_decay)*bc1*state.lb,
+                         lambda: jnp.maximum(cap/(2*bc1*(1+alpha*weight_decay)),
+                                             lb
+                                            ),
+                         lambda: state.lb
+                )
+    else:
+      this_lb = state.lb
+    t1 = jnp.maximum((1+alpha*weight_decay)*(barf-bc1*this_lb-gamma) + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
@@ -236,11 +275,17 @@ def momo_adam(
       precond,
       params
     )
+    if adapt_lb:
+      new_lb = ((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm)/bc1
+      new_lb = jnp.maximum(new_lb, lb)
+    else:
+      new_lb = state.lb
     new_state = MomoAdamState(
       exp_avg=exp_avg,
       exp_avg_sq=exp_avg_sq,
       barf=barf,
       gamma=gamma,
+      lb=new_lb,
       count=utils.safe_int32_increment(count)
     )
     return p_update, new_state
