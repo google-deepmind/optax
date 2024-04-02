@@ -43,22 +43,23 @@ def momo(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
-  MoMo typically needs less tuning for value of `learning_rate`,
+  MoMo typically needs less tuning for value of ``learning_rate``,
   by exploting the fact that a lower bound of the loss (or the optimal value) is
   known. For most tasks, zero is a lower bound and an accurate estimate of the
   final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The 
   effective step size is
-    `min(learning_rate, <adaptive term>)`
+    ``min(learning_rate, <adaptive term>)``
 
   where the adaptive term is computed on the fly. 
 
-  Note that in `update_fn` you need to pass the latest (batch) loss value to
+  Note that in ``update_fn`` you need to pass the latest (batch) loss value to
     the argument `value`.
 
   References:
-    [Schaipp et al., 2023](https://arxiv.org/abs/2305.07583)
+    Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
+    <https://arxiv.org/abs/2305.07583>`_, 2023
   Args:
     learning_rate: User-specified learning rate. Recommended to be chosen
       rather large, by default 1.0.
@@ -67,7 +68,7 @@ def momo(
     weight_decay: Weight-decay parameter.
 
   Returns:
-    A `GradientTransformation` object.
+    A ``GradientTransformation`` object.
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
@@ -85,7 +86,7 @@ def momo(
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
-                       Use `jax.value_and_grad` for this.""")
+                       Use ``jax.value_and_grad`` for this.""")
     count = state.count
     # initialize at first gradient, and loss
     bt = cond(count == 0, lambda: 0., lambda: beta)
@@ -125,7 +126,7 @@ def momo(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 class MomoAdamState(NamedTuple):
-  """State of the `GradientTransformation` returned by `momo_adam`."""
+  """State of the ``GradientTransformation`` returned by ``momo_adam``."""
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
   barf: float
@@ -142,22 +143,23 @@ def momo_adam(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
-  MoMo-Adam typically needs less tuning for value of `learning_rate`,
+  MoMo-Adam typically needs less tuning for value of ``learning_rate``,
   by exploting the fact that a lower bound of the loss (or the optimal value) is
   known. For most tasks, zero is a lower bound and an accurate estimate of the
   final loss.
 
   MoMo performs Adam(W) with a Polyak-type learning rate. The 
   effective step size is
-    `min(learning_rate, <adaptive term>)`
+    ``min(learning_rate, <adaptive term>)``
 
   where the adaptive term is computed on the fly. 
 
-  Note that in `update_fn` you need to pass the latest (batch) loss value to
+  Note that in ``update_fn`` you need to pass the latest (batch) loss value to
     the argument `value`.
 
   References:
-    [Schaipp et al., 2023](https://arxiv.org/abs/2305.07583)
+    Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
+    <https://arxiv.org/abs/2305.07583>`_, 2023
   Args:
     learning_rate: User-specified learning rate. Recommended to be chosen
       rather large, by default 1.0.
@@ -168,7 +170,7 @@ def momo_adam(
     similar fashion to AdamW.
 
   Returns:
-    A `GradientTransformation` object.
+    A ``GradientTransformation`` object.
   """
   def init_fn(params: base.Params) -> MomoAdamState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
@@ -187,7 +189,7 @@ def momo_adam(
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
-                       Use `jax.value_and_grad` for this.""")
+                       Use ``jax.value_and_grad`` for this.""")
     count = state.count
     beta1, beta2 = betas
     barf = beta1*state.barf + (1-beta1)*value
