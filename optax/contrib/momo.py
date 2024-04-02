@@ -68,6 +68,7 @@ def momo(
 
   Returns:
     A `GradientTransformation` object.
+  .. versionadded:: 0.2.3
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
