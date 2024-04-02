@@ -31,8 +31,8 @@ from optax._src import utils
 class MomoState(NamedTuple):
   """State of the `GradientTransformation` returned by `momo`."""
   exp_avg: base.Updates
-  barf: float
-  gamma: float
+  barf: chex.Array  # shape=(), dtype=jnp.float32.
+  gamma: chex.Array  # shape=(), dtype=jnp.float32.
   count: chex.Array  # shape=(), dtype=jnp.int32.
 
 def momo(
@@ -73,8 +73,8 @@ def momo(
   """
   def init_fn(params: base.Params) -> MomoState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    barf = 0.
-    gamma = 0.
+    barf = jnp.zeros([], jnp.float32)
+    gamma = jnp.zeros([], jnp.float32)
     count = jnp.zeros([], jnp.int32)
     return MomoState(exp_avg, barf, gamma, count)
 
@@ -101,7 +101,7 @@ def momo(
     exp_avg_norm = tree_utils.tree_l2_norm(exp_avg,squared=True)
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-lb-gamma) + iprod, 0
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-lb-gamma) + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,
@@ -129,9 +129,9 @@ class MomoAdamState(NamedTuple):
   """State of the ``GradientTransformation`` returned by ``momo_adam``."""
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
-  barf: float
-  gamma: float
-  count: float
+  barf: chex.Array  # shape=(), dtype=jnp.float32.
+  gamma: chex.Array  # shape=(), dtype=jnp.float32.
+  count: chex.Array  # shape=(), dtype=jnp.int32.
 
 
 def momo_adam(
@@ -178,8 +178,8 @@ def momo_adam(
   def init_fn(params: base.Params) -> MomoAdamState:
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    barf = 0.
-    gamma = 0.
+    barf = jnp.zeros([], jnp.float32)
+    gamma = jnp.zeros([], jnp.float32)
     count = jnp.zeros([], jnp.int32)
     return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, count)
 
@@ -220,7 +220,7 @@ def momo_adam(
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
     bc1 = 1-b1**(count+1)
-    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-bc1*lb-gamma)  + iprod, 0
+    t1 = jnp.maximum((1+alpha*weight_decay) * (barf-bc1*lb-gamma)  + iprod, 0.
                      )/(exp_avg_norm)
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps,

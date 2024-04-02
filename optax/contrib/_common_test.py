@@ -114,7 +114,7 @@ class ContribTest(chex.TestCase):
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
     if opt_name in ['momo', 'momo_adam']:
-      update_kwargs = {'value': jnp.array(0.)}
+      update_kwargs = {'value': jnp.array(1.)}
     else:
       update_kwargs = {}
 
