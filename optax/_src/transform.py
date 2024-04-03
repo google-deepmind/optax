@@ -1477,44 +1477,46 @@ def scale_by_gauss_newton(
     del params
     return GaussNewtonState(count=jnp.zeros([], jnp.int32))
 
+  def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
+    def ridge_matvec(v: Any) -> Any:
+      return tree_utils.tree_add_scalar_mul(matvec(v), ridge, v)
+    return ridge_matvec
+
+  def _gain_ratio(value, value_new, updates, grad, mu):
+    gain_ratio_denom = 0.5 * tree_utils.tree_vdot(updates,
+      tree_utils.tree_sub(tree_utils.tree_scalar_mul(mu, updates), grad))
+    return (value - value_new) /  gain_ratio_denom
+
+  def _gain_ratio_test_true(updates, mu, nu, rho):
+    del nu
+    mu = mu * jnp.maximum(1/3, 1-(2*rho-1)**3)
+    nu = 2
+    return updates, mu, nu
+
+  def _gain_ratio_test_false(updates, mu, nu, rho):
+    del rho
+    updates = tree_utils.tree_zeros_like(updates)
+    mu = mu * nu
+    nu = 2 * nu
+    return updates, mu, nu
+
   def update_fn(grad, state, params, *, value_fn, gnvp_fn):
-    def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
-      def ridge_matvec(v: Any) -> Any:
-        return tree_utils.tree_add_scalar_mul(matvec(v), ridge, v)
-      return ridge_matvec
-
-    def _gain_ratio(value, value_new, updates, grad, mu):
-      gain_ratio_denom = 0.5 * tree_utils.tree_vdot(updates,
-        tree_utils.tree_sub(tree_utils.tree_scalar_mul(mu, updates), grad))
-      return (value - value_new) /  gain_ratio_denom
-
-    def _gain_ratio_test_true(updates, mu, nu, rho):
-      del nu
-      mu = mu * jnp.maximum(1/3, 1-(2*rho-1)**3)
-      nu = 2
-      return updates, mu, nu
-
-    def _gain_ratio_test_false(updates, mu, nu, rho):
-      del rho
-      updates = tree_utils.tree_zeros_like(updates)
-      mu = mu * nu
-      nu = 2 * nu
-      return updates, mu, nu
-
     mu = state.mu
     nu = state.nu
-
     value = value_fn(params)
+
+    # Solve linear system
     if damping_factor > 0:
       gnvp_fn = _make_ridge_gnvp(gnvp_fn, ridge=mu)
-
     updates = jax.scipy.sparse.linalg.cg(gnvp_fn, tree_utils.tree_scalar_mul(-1, grad))[0]
 
+    # Check improvement with gain_ratio test
     if damping_factor > 0:
       value_new = value_fn(tree_utils.tree_add(params, updates))
       rho = _gain_ratio(value, value_new, updates, grad, mu)
-      updates, mu, nu = jax.lax.cond(rho > 0, _gain_ratio_test_true, _gain_ratio_test_false, 
-                                            updates, mu, nu, rho)
+      updates, mu, nu = jax.lax.cond(rho > 0, _gain_ratio_test_true,
+                                    _gain_ratio_test_false,
+                                    updates, mu, nu, rho)
 
     count_inc = utils.safe_int32_increment(state.count)
     return updates, GaussNewtonState(count=count_inc, mu=mu, nu=nu)
