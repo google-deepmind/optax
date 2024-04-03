@@ -128,7 +128,8 @@ def softmax_cross_entropy(
     distributions, with shape `[...]`.
   """
   chex.assert_type([logits], float)
-  return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
+  log_probs = jax.nn.log_softmax(logits, axis=-1)
+  return -jnp.where(labels == 0, 0, labels * log_probs).sum(axis=-1)
 
 
 def softmax_cross_entropy_with_integer_labels(
