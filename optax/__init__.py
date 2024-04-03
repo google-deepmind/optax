@@ -47,6 +47,7 @@ from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
+from optax._src.alias import gauss_newton
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
 from optax._src.base import GradientTransformationExtraArgs
@@ -145,6 +146,7 @@ from optax._src.transform import TraceState
 from optax._src.transform import update_infinity_moment
 from optax._src.transform import update_moment
 from optax._src.transform import update_moment_per_elem_norm
+from optax._src.transform import scale_by_gauss_newton
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -263,6 +265,7 @@ __all__ = (
     "FactoredState",
     "flatten",
     "fromage",
+    "gauss_newton",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",
@@ -326,6 +329,7 @@ __all__ = (
     "scale_by_belief",
     "scale_by_lion",
     "scale_by_factored_rms",
+    "scale_by_gauss_newton",
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",

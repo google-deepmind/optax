@@ -1844,3 +1844,10 @@ def polyak_sgd(
           max_learning_rate=max_learning_rate, f_min=f_min, eps=eps
       ),
   )
+
+
+def gauss_newton(
+    damping_factor: float = 0.,
+) -> base.GradientTransformationExtraArgs:
+  return transform.scale_by_gauss_newton(
+          damping_factor=damping_factor)
