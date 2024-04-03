@@ -27,8 +27,6 @@ from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
 
-from optax.second_order._oracles import make_gnvp_fn
-
 # pylint:disable=no-value-for-parameter
 
 _abs_sq = numerics.abs_sq
