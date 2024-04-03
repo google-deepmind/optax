@@ -20,6 +20,7 @@ Losses
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
     squared_error
+    ntxent
 
 
 Convex Kullback Leibler divergence
@@ -76,6 +77,10 @@ Soft-max cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
+
+Normalized temerature scaled cross-entropy (NT-Xent) loss
+~~~~~~~~~~~~~~~~
+.. autofunction:: ntxent
 
 
 
