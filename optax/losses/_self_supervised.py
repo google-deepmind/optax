@@ -24,21 +24,20 @@ def ntxent(
     labels: chex.Array,
     temperature: float = 0.07
 ) -> chex.Array:
-  """
-  Implementation of normalized temperature scaled cross entropy loss 
-  (NT-Xent).
+  """Normalized temperature scaled cross entropy loss (NT-Xent).
 
   References:
-    T. Chen, et al. 2020. http://arxiv.org/abs/2002.05709
+    T. Chen et al `A Simple Framework for Contrastive Learning of Visual 
+    Representations <http://arxiv.org/abs/2002.05709>`_, 2020
     kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
 
   Args:
     emeddings: batch of embeddings, with shape [batch, feature_length]
     labels: labels for groups that are positive pairs. e.g. if you have
-    a batch of 4 embeddings and the first two and last two were positive
-    pairs your `labels` should look like [0, 0, 1, 1]. labels SHOULD NOT
-    be all the same (e.g. [0, 0, 0, 0]) you will get a NaN result.Shape
-    [batch]
+      a batch of 4 embeddings and the first two and last two were positive
+      pairs your `labels` should look like [0, 0, 1, 1]. labels SHOULD NOT
+      be all the same (e.g. [0, 0, 0, 0]) you will get a NaN result. 
+      Shape [batch]
     temperature: temperature scaling parameter.
 
   Returns:

@@ -20,7 +20,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 
-from optax.losses import _contrastive
+from optax.losses import _self_supervised
 
 
 class NtxentTest(parameterized.TestCase):
@@ -41,5 +41,5 @@ class NtxentTest(parameterized.TestCase):
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_contrastive.ntxent)(self.ys, self.ts),
+        self.variant(_self_supervised.ntxent)(self.ys, self.ts),
         self.exp, atol=1e-4)
