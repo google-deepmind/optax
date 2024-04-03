@@ -78,7 +78,7 @@ Soft-max cross-entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
 
-Normalized temerature scaled cross-entropy (NT-Xent) loss
+Normalized temperature scaled cross-entropy (NT-Xent) loss
 ~~~~~~~~~~~~~~~~
 .. autofunction:: ntxent
 
