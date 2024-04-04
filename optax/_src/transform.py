@@ -1465,6 +1465,7 @@ def scale_by_polyak(
 
 
 class GaussNewtonState(NamedTuple):
+  """State for scale_by_gauss_newton."""
   count: chex.Array
   mu: float = 1e-3 # damping parameter
   nu: float = 2 # increase factor
@@ -1472,7 +1473,18 @@ class GaussNewtonState(NamedTuple):
 def scale_by_gauss_newton(
     damping_factor: float = 0,
 ) -> base.GradientTransformationExtraArgs:
+  """Return the Gauss-Newton updates.
+    
+    Apply the Gauss-Newton/Levenberg-Marquardt method to a compositional 
+    problem. If the damping_factor is 0 apply Gauss-Newton, 
+    else apply Levenberg-Marquardt with damping parameter updates based on 
+    the gain ratio test.
 
+    Args:
+      damping_factor: initial value for the damping parameter (mu).
+    Returns:
+      The Gauss-Newton update.
+    """
   def init_fn(params):
     del params
     return GaussNewtonState(count=jnp.zeros([], jnp.int32))
@@ -1501,6 +1513,19 @@ def scale_by_gauss_newton(
     return updates, mu, nu
 
   def update_fn(grad, state, params, *, value_fn, gnvp_fn):
+    """Return the Gauss-Newton updates.
+
+    Args:
+      grad: the gradient of the loss function.
+      state: the state of the transformation.
+      params: the parameters of the model.
+      value_fn: a function that returns the value of the loss.
+      gnvp_fn: a function that computes v -> vT J^T H J v.
+      **extra_args: additional keyword arguments. They are ignored by this
+        transformation.
+    Returns:
+      The Gauss-Newton update.
+    """
     mu = state.mu
     nu = state.nu
     value = value_fn(params)
