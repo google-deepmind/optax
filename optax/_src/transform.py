@@ -1487,7 +1487,7 @@ def scale_by_gauss_newton(
     """
   def init_fn(params):
     del params
-    return GaussNewtonState(count=jnp.zeros([], jnp.int32))
+    return GaussNewtonState(count=jnp.zeros([], jnp.int32), mu=damping_factor)
 
   def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
     def ridge_matvec(v: Any) -> Any:
