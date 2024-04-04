@@ -22,8 +22,8 @@ from optax.losses._regression import cosine_similarity
 def ntxent(
     embeddings: chex.Array,
     labels: chex.Array,
-    temperature: chex.Numeric = 0.07
-) -> chex.Numeric:
+    temperature: float = 0.07
+) -> chex.Array:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
   References:
