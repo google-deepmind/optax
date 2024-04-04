@@ -39,9 +39,9 @@ class MomoState(NamedTuple):
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
     beta: float = 0.9,
-    lb: float = 0.0,
+    lower_bound: float = 0.0,
     weight_decay: float = 0.0,
-    adapt_lb: bool = False
+    adapt_lower_bound: bool = False
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
@@ -66,9 +66,10 @@ def momo(
     learning_rate: User-specified learning rate. Recommended to be chosen
       rather large, by default 1.0.
     beta: Momentum coefficient (for EMA).
-    lb: Lower bound of the loss. Zero should be a good choice for many tasks.
+    lower_bound: Lower bound of the loss. Zero should be a good choice for
+      many tasks.
     weight_decay: Weight-decay parameter.
-    adapt_lb: If no good guess for the lower bound is available,
+    adapt_lower_bound: If no good guess for the lower bound is available,
       set this to true, in order to estimate the lower bound on the fly
       (see the paper for details).
       
@@ -80,7 +81,7 @@ def momo(
     exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
-    init_lb = jnp.array(lb, jnp.float32)
+    init_lb = jnp.array(lower_bound, jnp.float32)
     count = jnp.zeros([], jnp.int32)
     return MomoState(exp_avg, barf, gamma, init_lb, count)
 
@@ -108,11 +109,11 @@ def momo(
     iprod = tree_utils.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
     # Reset lower bound
-    if adapt_lb:
+    if adapt_lower_bound:
       cap = (1+alpha*weight_decay) * (barf-gamma) + iprod
       this_lb = lax.cond(cap < (1+alpha*weight_decay)*state.lb,
                          lambda: jnp.maximum(cap/(2*(1+alpha*weight_decay)),
-                                             lb
+                                             lower_bound
                                             ),
                          lambda: state.lb
                 )
@@ -132,8 +133,10 @@ def momo(
       - tau*ea,
       exp_avg, params
     )
-    if adapt_lb:
-      new_lb = jnp.maximum((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm, lb)
+    if adapt_lower_bound:
+      new_lb = jnp.maximum((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm,
+                            lower_bound
+                          )
     else:
       new_lb = state.lb
     new_state = MomoState(
@@ -162,9 +165,9 @@ def momo_adam(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-    lb: float = 0.0,
+    lower_bound: float = 0.0,
     weight_decay: float = 0.0,
-    adapt_lb: bool = False
+    adapt_lower_bound: bool = False
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
@@ -191,10 +194,11 @@ def momo_adam(
     b1: Exponential decay rate to track the first moment of past gradients.
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: eps for the underlying Adam Optimizer.
-    lb: Lower bound of the loss. Zero should be a good choice for many tasks.
+    lower_bound: Lower bound of the loss. Zero should be a good choice for 
+      many tasks.
     weight_decay: Weight-decay parameter. Momo-Adam performs weight decay in
-    similar fashion to AdamW.
-    adapt_lb: If no good guess for the lower bound is available,
+      similar fashion to AdamW.
+    adapt_lower_bound: If no good guess for the lower bound is available,
       set this to true, in order to estimate the lower bound on the fly
       (see the paper for details).
 
@@ -207,7 +211,7 @@ def momo_adam(
     exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
-    init_lb = jnp.array(lb, jnp.float32)
+    init_lb = jnp.array(lower_bound, jnp.float32)
     count = jnp.zeros([], jnp.int32)
     return MomoAdamState(exp_avg, exp_avg_sq, barf, gamma, init_lb, count)
 
@@ -249,11 +253,11 @@ def momo_adam(
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
     bc1 = 1-b1**(count+1)
     # Reset lower bound
-    if adapt_lb:
+    if adapt_lower_bound:
       cap = (1+alpha*weight_decay) * (barf-gamma) + iprod
       this_lb = lax.cond(cap < (1+alpha*weight_decay)*bc1*state.lb,
                          lambda: jnp.maximum(cap/(2*bc1*(1+alpha*weight_decay)),
-                                             lb
+                                             lower_bound
                                             ),
                          lambda: state.lb
                 )
@@ -275,9 +279,9 @@ def momo_adam(
       precond,
       params
     )
-    if adapt_lb:
+    if adapt_lower_bound:
       new_lb = ((barf+iprod-gamma) - (1/2)*tau*exp_avg_norm)/bc1
-      new_lb = jnp.maximum(new_lb, lb)
+      new_lb = jnp.maximum(new_lb, lower_bound)
     else:
       new_lb = state.lb
     new_state = MomoAdamState(
