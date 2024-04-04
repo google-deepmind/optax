@@ -204,25 +204,49 @@ class PolyLossTest(parameterized.TestCase):
     )
 
 
-class HingeLossTest(parameterized.TestCase):
+class HingeTest(parameterized.TestCase):
 
-  def setUp(self):
-    super().setUp()
-    self.ys = np.array([
-        -0.97740268, -1.01812625, -0.81675726, -0.73605974, 2.08235648,
-        1.84101354, -1.0581002
-    ])
-    self.ts = np.array([-1, -1, -1, -1, 1, 1, -1])
-    # Computed expected outputs.
-    self.correct_result = np.array(
-        [0.02259731, 0., 0.18324274, 0.26394027, 0., 0., 0.])
+  def test_binary(self):
+    label = jnp.array(1)
+    signed_label = jnp.array(2.0 * label - 1.0)
+    score = jnp.array(10.)
+    def reference_impl(label, logit):
+      return jax.nn.relu(1 - logit * (2.0 * label - 1.0))
+    expected = reference_impl(label, score)
+    result = _classification.hinge_loss(score, signed_label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
 
-  @chex.all_variants
-  def test_batched(self):
-    np.testing.assert_allclose(
-        self.variant(_classification.hinge_loss)(self.ys, self.ts),
-        self.correct_result,
-        atol=1e-4)
+  def test_batched_binary(self):
+    labels = jnp.array([1, 0])
+    signed_labels = jnp.array(2.0 * labels - 1.0)
+    scores = jnp.array([10., 20.])
+    def reference_impl(label, logit):
+      return jax.nn.relu(1 - logit * (2.0 * label - 1.0))
+    expected = jax.vmap(reference_impl)(labels, scores)
+    # no need to vmap the optax loss. leading dimensions automatically handled.
+    result = _classification.hinge_loss(scores, signed_labels)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_multi_class(self):
+    label = jnp.array(1)
+    scores = jnp.array([10., 3.])
+    def reference_impl(label, scores):
+      one_hot_label = jax.nn.one_hot(label, scores.shape[-1])
+      return jnp.max(scores + 1.0 - one_hot_label) - scores[label]
+    expected = reference_impl(label, scores)
+    result = _classification.multiclass_hinge_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_multi_class(self):
+    label = jnp.array([1, 0])
+    scores = jnp.array([[10., 3.], [11., -2.]])
+    def reference_impl(label, scores):
+      one_hot_label = jax.nn.one_hot(label, scores.shape[-1])
+      return jnp.max(scores + 1.0 - one_hot_label) - scores[label]
+    expected = jax.vmap(reference_impl)(label, scores)
+    # no need to vmap the optax loss. leading dimensions automatically handled.
+    result = _classification.multiclass_hinge_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
 
 
 class ConvexKLDivergenceTest(parameterized.TestCase):
@@ -257,6 +281,49 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
         self.exp,
         atol=1e-4,
     )
+
+
+class PerceptronTest(parameterized.TestCase):
+
+  def test_binary(self):
+    label = jnp.array(1)
+    signed_label = jnp.array(2.0 * label - 1.0)
+    score = jnp.array(10.)
+    def reference_impl(label, logit) -> float:
+      return jax.nn.relu(- logit * (2.0 * label - 1.0))
+    expected = reference_impl(label, score)
+    result = _classification.perceptron_loss(score, signed_label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_binary(self):
+    labels = jnp.array([1, 0])
+    signed_labels = jnp.array(2.0 * labels - 1.0)
+    scores = jnp.array([10., 20.])
+    def reference_impl(label, logit) -> float:
+      return jax.nn.relu(- logit * (2.0 * label - 1.0))
+    expected = jax.vmap(reference_impl)(labels, scores)
+    # no need to vmap the optax loss. leading dimensions automatically handled.
+    result = _classification.perceptron_loss(scores, signed_labels)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_multi_class(self):
+    label = jnp.array(1)
+    scores = jnp.array([10., 3.])
+    def reference_impl(label, scores):
+      return jnp.max(scores) - scores[label]
+    expected = reference_impl(label, scores)
+    result = _classification.multiclass_perceptron_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_multi_class(self):
+    label = jnp.array([1, 0])
+    scores = jnp.array([[10., 3.], [11., -2.]])
+    def reference_impl(label, scores):
+      return jnp.max(scores) - scores[label]
+    expected = jax.vmap(reference_impl)(label, scores)
+    # no need to vmap the optax loss. leading dimensions automatically handled.
+    result = _classification.multiclass_perceptron_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
 
 
 class KLDivergenceTest(parameterized.TestCase):
