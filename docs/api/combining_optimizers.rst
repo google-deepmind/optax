@@ -6,6 +6,7 @@ Combining Optimizers
 .. autosummary::
     chain
     multi_transform
+    MultiTransformState
 
 Chain
 ~~~~~
@@ -15,4 +16,3 @@ Multi-transform
 ~~~~~~~~~~~~~~~
 .. autofunction:: multi_transform
 .. autoclass::  MultiTransformState
-   :members:

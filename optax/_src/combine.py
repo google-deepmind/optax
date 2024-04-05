@@ -142,6 +142,7 @@ def named_chain(
 
 
 class MultiTransformState(NamedTuple):
+  """State of the `GradientTransformation` returned by `multi_transform`."""
   inner_states: Mapping[Hashable, base.OptState]
 
 
