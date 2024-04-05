@@ -70,7 +70,7 @@ for instructions on installing JAX.
 Support
 -------
 
-If you encounter issues with this software, please let us know by filing an issue on our `issue tracker <https://github.com/google-deepmind/optax/issues>`_. We are also happy to receive bug fixes and other contributions. For more information of how to contribute, please see the `development guide <development>`_.
+If you encounter issues with this software, please let us know by filing an issue on our `issue tracker <https://github.com/google-deepmind/optax/issues>`_. We are also happy to receive bug fixes and other contributions. For more information of how to contribute, please see the :doc:`development guide <development>`.
 
 
 License
