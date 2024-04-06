@@ -18,6 +18,7 @@ import functools
 from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
+import jax.scipy as jsp
 
 from optax._src import base
 from optax._src import clipping
@@ -1847,7 +1848,29 @@ def polyak_sgd(
 
 
 def gauss_newton(
-    damping_factor: float = 0.,
+    use_lm: bool = False,
+    is_compositional: bool = False,
+    init_damping_parameter: float = 1e-3,
+    linear_solver: Callable = jsp.sparse.linalg.cg,
 ) -> base.GradientTransformationExtraArgs:
+  """The Gauss-Newton optimizer.
+
+  Apply the Gauss-Newton/Levenberg-Marquardt method to a compositional 
+  problem. If use_lm is false apply Gauss-Newton, 
+  else apply Levenberg-Marquardt with damping parameter updates based on 
+  the gain ratio test.
+
+  Args:
+    use_lm: false for GN, true for LM.
+    is_compositional: if true solve a compositional problem (needs outer_hvp),
+      else solve a classical least squares.
+    init_damping_parameter: initial value for the damping parameter (mu).
+    linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
+  Returns:
+    The Gauss-Newton update.
+  """
   return transform.scale_by_gauss_newton(
-          damping_factor=damping_factor)
+    use_lm=use_lm, is_compositional=is_compositional,
+    init_damping_parameter=init_damping_parameter,
+    linear_solver=linear_solver,
+  )
