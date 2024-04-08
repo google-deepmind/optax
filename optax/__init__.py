@@ -99,7 +99,6 @@ from optax._src.transform import AddDecayedWeightsState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
-from optax._src.transform import bias_correction
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
@@ -142,9 +141,6 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
-from optax._src.transform import update_infinity_moment
-from optax._src.transform import update_moment
-from optax._src.transform import update_moment_per_elem_norm
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -171,6 +167,10 @@ from optax._src.wrappers import skip_not_finite
 
 # TODO(mtthss): remove tree_utils aliases after updates.
 tree_map_params = tree_utils.tree_map_params
+bias_correction = tree_utils.tree_bias_correction
+update_infinity_moment = tree_utils.tree_update_infinity_moment
+update_moment = tree_utils.tree_update_moment
+update_moment_per_elem_norm = tree_utils.tree_update_moment_per_elem_norm
 
 # TODO(mtthss): remove schedules alises from flat namespaces after user updates.
 constant_schedule = schedules.constant_schedule
