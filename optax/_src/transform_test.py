@@ -150,40 +150,6 @@ class TransformTest(parameterized.TestCase):
         atol=1e-2)
 
   @chex.all_variants
-  def test_update_infinity_moment(self):
-    values = jnp.array([5.0, 7.0])
-    decay = 0.9
-    d = decay
-
-    transform_fn = self.variant(transform.update_infinity_moment)
-
-    # identity if updating with itself (and positive decay)
-    np.testing.assert_allclose(
-        transform_fn(values, values, decay=d, eps=0.),
-        values,
-        atol=1e-4
-    )
-    # return (decayed) max when updating with zeros
-    np.testing.assert_allclose(
-        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.),
-        d * values,
-        atol=1e-4
-    )
-    # infinity norm takes absolute values
-    np.testing.assert_allclose(
-        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.),
-        values,
-        atol=1e-4
-    )
-    # return at least `eps`
-    np.testing.assert_allclose(
-        transform_fn(jnp.zeros_like(values), jnp.zeros_like(values),
-                     decay=d, eps=1e-2),
-        jnp.ones_like(values) * 1e-2,
-        atol=1e-4
-    )
-
-  @chex.all_variants
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
@@ -320,16 +286,6 @@ class TransformTest(parameterized.TestCase):
     # check that objective at (init_params - updates) is smaller than tol
     print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
-
-  @chex.all_variants
-  def test_bias_correction_bf16(self):
-    bias_correction_fn = self.variant(transform.bias_correction)
-    m = jnp.logspace(-10, 10, num=21, dtype=jnp.bfloat16)  # 1e-10 ... 1e10
-    for decay in (0.9, 0.99, 0.999, 0.9995):
-      for count in (1, 10, 100, 1000):
-        chex.assert_tree_all_finite(
-            bias_correction_fn(m, decay, count),
-            custom_message=f'failed with decay={decay}, count={count}')
 
 
 if __name__ == '__main__':

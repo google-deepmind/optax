@@ -1409,12 +1409,12 @@ def sgd(
   .. math::
 
     \begin{align*}
-      m_t & \leftarrow \begin{cases}
-        g_t + \mu m_t & \mathrm{if \ \texttt{nesterov=False}}\\
-        g_t + \mu (g_t + \mu m_{t-1}) & \mathrm{if \ \texttt{nesterov=True}}
-      \end{cases} \\
-      u_t & \leftarrow - \alpha_t m_t \\
-      S_t & = m_t,
+      m_t &\leftarrow g_t + \mu m_{t-1} \\
+      u_t &\leftarrow \begin{cases}
+        -\alpha_t m_t & \text{ if } \texttt{nesterov = False} \\
+        -\alpha_t (g_t + \mu m_t) & \text{ if } \texttt{nesterov = True}
+        \end{cases} \\
+      S_t &\leftarrow m_t,
     \end{align*}
 
   where :math:`\mu` is the ``momentum`` parameter and :math:`S_t` is the state

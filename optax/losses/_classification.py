@@ -103,6 +103,37 @@ def perceptron_loss(
   return jnp.maximum(0, - predictor_outputs * targets)
 
 
+def sparsemax_loss(
+    logits: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Binary sparsemax loss.
+
+  This loss is zero if and only if `jax.nn.sparse_sigmoid(logits) == labels`.
+
+  References:
+    Learning with Fenchel-Young Losses. Mathieu Blondel, André F. T. Martins,
+    Vlad Niculae. JMLR 2020. (Sec. 4.4)
+
+  Args:
+    logits: score produced by the model (float).
+    labels: ground-truth integer label (0 or 1).
+
+  Returns:
+    loss value
+
+  .. versionadded:: 0.2.3
+  """
+  return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
+
+
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='sparsemax_loss')
+def binary_sparsemax_loss(logits, labels):
+  return sparsemax_loss(logits, labels)
+
+
 def softmax_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
@@ -128,7 +159,8 @@ def softmax_cross_entropy(
     distributions, with shape `[...]`.
   """
   chex.assert_type([logits], float)
-  return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
+  log_probs = jax.nn.log_softmax(logits, axis=-1)
+  return -jnp.where(labels == 0, 0, labels * log_probs).sum(axis=-1)
 
 
 def softmax_cross_entropy_with_integer_labels(
@@ -182,15 +214,15 @@ def multiclass_hinge_loss(
 ) -> chex.Array:
   """Multiclass hinge loss.
 
+  References:
+    https://en.wikipedia.org/wiki/Hinge_loss
+
   Args:
     scores: scores produced by the model (floats).
     labels: ground-truth integer label.
 
   Returns:
     loss value
-
-  References:
-    https://en.wikipedia.org/wiki/Hinge_loss
 
   .. versionadded:: 0.2.3
   """

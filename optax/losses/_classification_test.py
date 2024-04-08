@@ -29,10 +29,37 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
-    self.ts = np.array([[0., 1., 0.], [1., 0., 0.]], dtype=np.float32)
+    self.ys = np.array(
+        [
+            [10.0, 1.0, -2.0],
+            [1.0, 4.0, 0.2],
+            [-np.inf, 0.0, 0.0],
+            [-np.inf, 0.0, 0.0],
+            [-np.inf, 0.0, -np.inf],
+        ],
+        dtype=np.float32,
+    )
+    self.ts = np.array(
+        [
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.4, 0.3, 0.3],
+            [0.0, 1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
     # taken expected outputs from rlax.
-    self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
+    self.exp = np.array(
+        [
+            9.00013,
+            3.0696733,
+            0.693147,
+            np.inf,
+            0.0,
+        ],
+        dtype=np.float32,
+    )
 
   @chex.all_variants
   def test_scalar(self):
@@ -246,6 +273,43 @@ class HingeTest(parameterized.TestCase):
     expected = jax.vmap(reference_impl)(label, scores)
     # no need to vmap the optax loss. leading dimensions automatically handled.
     result = _classification.multiclass_hinge_loss(scores, label)
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+
+class SparsemaxTest(parameterized.TestCase):
+
+  def test_binary(self):
+    label = 1
+    score = 10.
+    def reference_impl(label, logit):
+      scores = -(2*label-1)*logit
+      if scores <= -1.0:
+        return 0.0
+      elif scores >= 1.0:
+        return scores
+      else:
+        return (scores + 1.0) ** 2 / 4
+    expected = reference_impl(label, score)
+    result = _classification.sparsemax_loss(
+        jnp.asarray(score), jnp.asarray(label))
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_batched_binary(self):
+    labels = jnp.array([1, 0])
+    scores = jnp.array([10., 20.])
+    def reference_impl(label, logit):
+      scores = -(2*label-1)*logit
+      if scores <= -1.0:
+        return 0.0
+      elif scores >= 1.0:
+        return scores
+      else:
+        return (scores + 1.0) ** 2 / 4
+    expected = jnp.asarray([
+        reference_impl(labels[0], scores[0]),
+        reference_impl(labels[1], scores[1])])
+    # in the optax loss the leading dimensions are automatically handled.
+    result = _classification.sparsemax_loss(scores, labels)
     np.testing.assert_allclose(result, expected, atol=1e-4)
 
 
