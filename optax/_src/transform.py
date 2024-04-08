@@ -1467,110 +1467,87 @@ def scale_by_polyak(
 class GaussNewtonState(NamedTuple):
   """State for scale_by_gauss_newton."""
   count: chex.Array
-  mu: float = 1e-3 # damping parameter
-  nu: float = 2 # increase factor
 
 def scale_by_gauss_newton(
-    use_lm: bool = False,
     is_compositional: bool = False,
-    init_damping_parameter: float = 1e-3,
+    use_normal: bool = True,
     linear_solver: Callable = jax.scipy.sparse.linalg.cg,
 ) -> base.GradientTransformationExtraArgs:
   """Return the Gauss-Newton updates.
     
-    Apply the Gauss-Newton/Levenberg-Marquardt method to a compositional 
-    problem. If use_lm is false apply Gauss-Newton, 
-    else apply Levenberg-Marquardt with damping parameter updates based on 
-    the gain ratio test.
+    Apply the Gauss-Newton method to a nonlinear least square problem or
+    to a more general compositional problem. 
 
     Args:
-      use_lm: false for GN, true for LM.
-      is_compositional: if true solve a compositional problem (needs outer_hvp),
-        else solve a classical least squares.
-      init_damping_parameter: initial value for the damping parameter (mu).
-      linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
+      is_compositional: whether to solve a classical nonlinear least squares 
+        problem (where update_fn requires only inner_jvp) or a compositional 
+        problem (where update_fn additionally requires outer_grad and outer_hvp).
+      use_normal: if true solve the normal equations.
+      linear_solver: function that given a linear operator A and a pytree b solves
+        Ax=b.
     Returns:
       The Gauss-Newton update.
     """
   def init_fn(params):
     del params
-    return GaussNewtonState(count=jnp.zeros([], jnp.int32),
-                            mu=init_damping_parameter)
+    return GaussNewtonState(count=jnp.zeros([], jnp.int32))
 
   def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
     def ridge_matvec(v: Any) -> Any:
       return tree_utils.tree_add_scalar_mul(matvec(v), ridge, v)
     return ridge_matvec
 
-  def _build_gnvp(params, mu, inner_jvp, outer_hvp, is_compositional):
+  def _build_gnvp(residuals, params, inner_jvp, outer_grad, outer_hvp, 
+                  mu, is_compositional, use_normal):
     inner_vjp_ = jax.linear_transpose(inner_jvp, params)
     inner_vjp = lambda x: inner_vjp_(x)[0]
-    if is_compositional:
-      gnvp_fn = lambda x: inner_vjp(outer_hvp(inner_jvp(x)))
+    if use_normal:
+      if is_compositional:
+        gnvp_fn = lambda x: inner_vjp(outer_hvp(inner_jvp(x)))
+        grad = inner_vjp(outer_grad)
+      else:
+        gnvp_fn = lambda x: inner_vjp(inner_jvp(x))
+        grad = inner_vjp(residuals)
+      gnvp_fn = _make_ridge_gnvp(gnvp_fn, ridge=mu)
     else:
-      gnvp_fn = lambda x: inner_vjp(inner_jvp(x))
-    gnvp_fn = _make_ridge_gnvp(gnvp_fn, ridge=mu)
-    return gnvp_fn
+      if is_compositional:
+        gnvp_fn = lambda x: outer_hvp(inner_jvp(x))
+        grad = outer_grad
+      else:
+        gnvp_fn = inner_jvp
+        grad = residuals
+    return gnvp_fn, grad
 
-  def _gain_ratio(value, value_new, updates, grad, mu):
-    gain_ratio_denom = 0.5 * tree_utils.tree_vdot(updates,
-      tree_utils.tree_sub(tree_utils.tree_scalar_mul(mu, updates), grad))
-    return (value - value_new) /  gain_ratio_denom
-
-  def _gain_ratio_test_true(updates, mu, nu, rho):
-    del nu
-    mu = mu * jnp.maximum(1/3, 1-(2*rho-1)**3)
-    nu = 2
-    return updates, mu, nu
-
-  def _gain_ratio_test_false(updates, mu, nu, rho):
-    del rho
-    updates = tree_utils.tree_zeros_like(updates)
-    mu = mu * nu
-    nu = 2 * nu
-    return updates, mu, nu
-
-  def _apply_gain_ratio_test(value, value_new, updates, grad, mu, nu):
-    rho = _gain_ratio(value, value_new, updates, grad, mu)
-    updates, mu, nu = jax.lax.cond(rho > 0,
-                                  _gain_ratio_test_true,
-                                  _gain_ratio_test_false,
-                                  updates, mu, nu, rho)
-    return updates, mu, nu
-
-  def update_fn(grad, state, params, *, value_fn, inner_jvp, outer_hvp=None):
+  def update_fn(residuals, state, params, *, inner_jvp, mu=0.,
+                outer_grad=None, outer_hvp=None):
     """Return the Gauss-Newton updates.
 
     Args:
-      grad: the gradient of the loss function.
+      residuals: the value of the residuals (inner function) computed
+       at the current params.
       state: the state of the transformation.
       params: the parameters of the model.
-      value_fn: a function that returns the value of the loss.
-      inner_jvp: a function that computes v -> J v, with J jacobian of the inner
-        function.
-      outer_hvp: a function that computes v -> H v, with H hessian of the outer
-        function. 
+      inner_jvp: a function that computes v -> J v (where J is the jacobian
+        of the inner function).
+      mu: the damping parameter.
+      outer_grad: the gradient of the outer function computed at residuals.
+      outer_hvp: a function that computes v -> H v (where H is the hessian
+        of the outer function in compositional problems).
       **extra_args: additional keyword arguments. They are ignored by this
         transformation.
     Returns:
       The Gauss-Newton update.
     """
-    mu = state.mu
-    nu = state.nu
-    value = value_fn(params)
 
-    # build gnvp
-    gnvp_fn = _build_gnvp(params, mu, inner_jvp, outer_hvp, is_compositional)
+    # build gnvp and gradient
+    matvec, b = _build_gnvp(residuals, params, inner_jvp,
+                       outer_grad, outer_hvp, mu,
+                       is_compositional, use_normal)
 
     # solve linear system
-    updates = linear_solver(gnvp_fn, tree_utils.tree_scalar_mul(-1, grad))[0]
-
-    # check improvement with gain_ratio test
-    if use_lm:
-      value_new = value_fn(tree_utils.tree_add(params, updates))
-      updates, mu, nu = _apply_gain_ratio_test(value, value_new, updates, grad, mu, nu)
+    updates = linear_solver(matvec, tree_utils.tree_scalar_mul(-1, b))[0]
 
     count_inc = utils.safe_int32_increment(state.count)
-    return updates, GaussNewtonState(count=count_inc, mu=mu, nu=nu)
+    return updates, GaussNewtonState(count=count_inc)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

@@ -1848,29 +1848,25 @@ def polyak_sgd(
 
 
 def gauss_newton(
-    use_lm: bool = False,
     is_compositional: bool = False,
-    init_damping_parameter: float = 1e-3,
+    use_normal: bool = True,
     linear_solver: Callable = jsp.sparse.linalg.cg,
 ) -> base.GradientTransformationExtraArgs:
   """The Gauss-Newton optimizer.
 
-  Apply the Gauss-Newton/Levenberg-Marquardt method to a compositional 
-  problem. If use_lm is false apply Gauss-Newton, 
-  else apply Levenberg-Marquardt with damping parameter updates based on 
-  the gain ratio test.
+  Apply the Gauss-Newton method to a compositional 
+  problem. 
 
   Args:
-    use_lm: false for GN, true for LM.
     is_compositional: if true solve a compositional problem (needs outer_hvp),
       else solve a classical least squares.
-    init_damping_parameter: initial value for the damping parameter (mu).
+    use_normal: if true solve the normal equations.
     linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
   Returns:
     The Gauss-Newton update.
   """
   return transform.scale_by_gauss_newton(
-    use_lm=use_lm, is_compositional=is_compositional,
-    init_damping_parameter=init_damping_parameter,
+    is_compositional=is_compositional,
+    use_normal=use_normal,
     linear_solver=linear_solver,
   )
