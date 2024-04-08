@@ -153,6 +153,10 @@ from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
+from optax._src.wrappers import conditionally_mask
+from optax._src.wrappers import conditionally_transform
+from optax._src.wrappers import ConditionallyMaskState
+from optax._src.wrappers import ConditionallyTransformState
 from optax._src.wrappers import flatten
 from optax._src.wrappers import masked
 from optax._src.wrappers import MaskedNode
@@ -245,6 +249,10 @@ __all__ = (
     "clip",
     "ClipByGlobalNormState",
     "ClipState",
+    "conditionally_mask",
+    "ConditionallyMaskState",
+    "conditionally_transform",
+    "ConditionallyTransformState",
     "constant_schedule",
     "ctc_loss",
     "ctc_loss_with_forward_probs",

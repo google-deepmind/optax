@@ -14,6 +14,7 @@
 # ==============================================================================
 """Transformation wrappers."""
 
+import functools
 from typing import Any, Callable, NamedTuple, Optional, Protocol, Union
 
 import chex
@@ -516,14 +517,14 @@ def masked(
   def maybe_mask_values(pytree_dict, base_pytree, mask_tree):
     base_structure = jax.tree_util.tree_structure(base_pytree)
 
-    def maybe_mask(pytree):
+    def _maybe_mask(pytree):
       if mask_compatible_extra_args and (
           jax.tree_util.tree_structure(pytree) == base_structure):
         return mask_pytree(pytree, mask_tree)
       else:
         return pytree
 
-    return {k: maybe_mask(v) for k, v in pytree_dict.items()}
+    return {k: _maybe_mask(v) for k, v in pytree_dict.items()}
 
   def init_fn(params):
     # This is a workaround to make tree_map_params work with masking.
@@ -562,38 +563,67 @@ def masked(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-class MaybeUpdateState(NamedTuple):
+class ConditionFn(Protocol):
+  """Condition function for conditional transformations."""
+
+  def __call__(
+      self,
+      step: Array,
+      **extra_args: Any,
+  ) -> Array:
+    """Update function with optional extra arguments.
+
+    Args:
+      step: a counter (array of shape [] and dtype ``int32``)
+      **extra_args: Additional keyword arguments passed to this condition fn.
+
+    Returns:
+      a boolean array of shape [] and dtype ``bool`` indicating whether the
+      inner transformation should be called.
+    """
+
+
+class ConditionallyTransformState(NamedTuple):
   """Maintains inner transform state and adds a step counter."""
   inner_state: Any
   step: Array
 
 
-def maybe_update(
+def conditionally_transform(
     inner: base.GradientTransformation,
-    should_update_fn: Callable[[Array], Array]
+    should_transform_fn: ConditionFn,
+    forward_extra_args: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Calls the inner update function only at certain steps.
 
-  Creates a transformation wrapper which counts the number of times the `update`
-  function has been called. This counter is passed to the `should_update_fn` to
-  decide when to call the inner update function.
+  Creates a transformation wrapper that conditionally applies the inner gradient
+  transformation, and if the condition is not met, just passes the updates and
+  inner state through unchanged. The behaviour is controlled by a user specified
+  function ``should_transform_fn`` that is called by ``conditionally_transform``
+  passing as input a counter of the number of times that the ``update`` function
+  has been previously called, the user specified function must returns a boolean
+  controlling whether the inner transformation should be called.
 
-  When not calling the inner update function, the `updates` and the inner state
-  are left untouched and just passed through. The step counter is increased
-  regardless.
+  WARNING: if instead you want to set the ``updates`` to zero when the condition
+  is not met, you can use the ``conditionally_mask`` wrapper.
 
   Args:
     inner: the inner transformation.
-    should_update_fn: this function takes in a step counter (array of shape []
-      and dtype int32), and returns a boolean array of shape [].
+    should_transform_fn: function takes in a ``step`` counter (array of shape []
+      and dtype ``int32``), and returns a boolean array of shape []. If
+      ``forward_extra_args`` is set to True, any extra arguments are also
+      forwarded to the ``should_transform_fn`.
+    forward_extra_args: forward extra args to ``should_transform_fn``.
 
   Returns:
     A new ``GradientTransformationExtraArgs``.
+
+  .. versionadded:: 0.2.3
   """
   inner = base.with_extra_args_support(inner)
 
   def init_fn(params):
-    return MaybeUpdateState(
+    return ConditionallyTransformState(
         inner_state=inner.init(params), step=jnp.zeros([], dtype=jnp.int32))
 
   def update_fn(updates, state, params=None, **extra_args):
@@ -604,9 +634,91 @@ def maybe_update(
     def reject_update(_):
       return updates, state.inner_state
 
+    condition_kwargs = extra_args if forward_extra_args else {}
     updates, new_inner_state = lax.cond(
-        should_update_fn(state.step), do_update, reject_update, operand=None)
-    return updates, MaybeUpdateState(new_inner_state,
-                                     numerics.safe_int32_increment(state.step))
+        should_transform_fn(state.step, **condition_kwargs),
+        do_update, reject_update, operand=None)
+    return updates, ConditionallyTransformState(
+        new_inner_state, numerics.safe_int32_increment(state.step))
+
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='maybe_transform')
+def maybe_update(
+    inner: base.GradientTransformation,
+    should_update_fn: Callable[[Array], Array]
+) -> base.GradientTransformationExtraArgs:
+  return conditionally_transform(
+      inner=inner, should_transform_fn=should_update_fn)
+
+
+# TODO(mtthss): delete with deprecated ``maybe_update``.
+MaybeUpdateState = ConditionallyTransformState
+
+
+class ConditionallyMaskState(NamedTuple):
+  step: chex.Array
+  inner_state: base.OptState
+
+
+def conditionally_mask(
+    inner: base.GradientTransformation,
+    should_transform_fn: ConditionFn,
+    forward_extra_args: bool = False,
+) -> base.GradientTransformationExtraArgs:
+  """Calls the inner update function only at certain steps.
+
+  Creates a transformation wrapper that conditionally applies the inner gradient
+  transformation, and if the condition is not met, the updates are set to 0,
+  while the inner state is passed through unchanged. The behaviour is controlled
+  by a user specified function ``should_transform_fn`` that is called
+  by ``conditionally_transform`` passing as input a counter of the number of
+  times that the ``update`` function has been previously called, the user
+  specified function must returns a boolean controlling whether the inner
+  transformation should be called.
+
+  WARNING: if instead you want to leave ``updates`` unchanged when the condition
+  is not met, you can use the ``conditionally_transform`` wrapper.
+
+  Args:
+    inner: the inner transformation.
+    should_transform_fn: function takes in a step counter (array of shape []
+      and dtype ``int32``), and returns a boolean array of shape []. If
+      ``forward_extra_args`` is set to True, any extra arguments are also
+      forwarded to the ``should_transform_fn`.
+    forward_extra_args: forward extra args to ``should_transform_fn``.
+
+  Returns:
+    A new ``GradientTransformationExtraArgs``.
+
+  .. versionadded:: 0.2.3
+  """
+  inner = base.with_extra_args_support(inner)
+
+  def init_fn(params):
+    return ConditionallyMaskState(
+        step=jnp.zeros([], jnp.int32), inner_state=inner.init(params)
+    )
+
+  def update_fn(updates, state, params=None, **extra_args):
+
+    def do_update(_):
+      return inner.update(updates, state.inner_state, params, **extra_args)
+
+    def reject_update(_):
+      return jax.tree_util.tree_map(jnp.zeros_like, updates), state.inner_state
+
+    condition_kwargs = extra_args if forward_extra_args else {}
+    updates, new_inner_state = lax.cond(
+        should_transform_fn(state.step, **condition_kwargs),
+        do_update, reject_update, operand=None)
+
+    return updates, ConditionallyMaskState(
+        step=numerics.safe_int32_increment(state.step),
+        inner_state=new_inner_state,
+    )
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

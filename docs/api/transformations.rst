@@ -13,6 +13,10 @@ Transformations
     apply_every
     ApplyEvery
     bias_correction
+    conditionally_mask
+    conditionally_transform
+    ConditionallyMaskState
+    ConditionallyTransformState
     centralize
     clip
     clip_by_block_rms
@@ -135,6 +139,14 @@ Transformations and states
 .. autofunction:: bias_correction
 
 .. autofunction:: centralize
+
+.. autofunction:: conditionally_mask
+.. autoclass:: ConditionallyMaskState
+    :members:
+
+.. autofunction:: conditionally_transform
+.. autoclass:: ConditionallyTransformState
+    :members:
 
 .. autofunction:: clip
 .. autofunction:: clip_by_block_rms
