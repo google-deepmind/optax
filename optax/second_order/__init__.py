@@ -17,7 +17,3 @@
 from optax.second_order._fisher import fisher_diag
 from optax.second_order._hessian import hessian_diag
 from optax.second_order._hessian import hvp
-
-from optax.second_order._oracles import hvp_call
-from optax.second_order._oracles import make_gnvp_fn
-from optax.second_order._oracles import make_hvp_fn
