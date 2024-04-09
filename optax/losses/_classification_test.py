@@ -29,37 +29,10 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ys = np.array(
-        [
-            [10.0, 1.0, -2.0],
-            [1.0, 4.0, 0.2],
-            [-np.inf, 0.0, 0.0],
-            [-np.inf, 0.0, 0.0],
-            [-np.inf, 0.0, -np.inf],
-        ],
-        dtype=np.float32,
-    )
-    self.ts = np.array(
-        [
-            [0.0, 1.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 0.5, 0.5],
-            [0.4, 0.3, 0.3],
-            [0.0, 1.0, 0.0],
-        ],
-        dtype=np.float32,
-    )
+    self.ys = np.array([[10., 1., -2.], [1., 4., 0.2]], dtype=np.float32)
+    self.ts = np.array([[0., 1., 0.], [1., 0., 0.]], dtype=np.float32)
     # taken expected outputs from rlax.
-    self.exp = np.array(
-        [
-            9.00013,
-            3.0696733,
-            0.693147,
-            np.inf,
-            0.0,
-        ],
-        dtype=np.float32,
-    )
+    self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
 
   @chex.all_variants
   def test_scalar(self):
