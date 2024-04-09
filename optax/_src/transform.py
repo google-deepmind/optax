@@ -1414,22 +1414,21 @@ class GaussNewtonState(NamedTuple):
   count: chex.Array
 
 def scale_by_gauss_newton(
-    is_compositional: bool = False,
-    use_normal: bool = True,
     linear_solver: Callable = jax.scipy.sparse.linalg.cg,
+    is_compositional: bool = False,
+    use_normal_eqs: bool = True,
 ) -> base.GradientTransformationExtraArgs:
   """Return the Gauss-Newton updates.
     
     Apply the Gauss-Newton method to a nonlinear least square problem or
-    to a more general compositional problem. 
+    to a more general compositional problem.
 
     Args:
+      linear_solver: solver that given a function matvec that computes 
+        matvec(x) = Ax and a pytree b solves Ax=b.
       is_compositional: whether to solve a classical nonlinear least squares 
-        problem (where update_fn requires only inner_jvp) or a compositional 
-        problem (where update_fn additionally requires outer_grad and outer_hvp).
-      use_normal: if true solve the normal equations.
-      linear_solver: function that given a linear operator A and a pytree b solves
-        Ax=b.
+        problem or a compositional problem.
+      use_normal_eqs: if true solve the normal equations.
     Returns:
       The Gauss-Newton update.
     """
@@ -1439,14 +1438,19 @@ def scale_by_gauss_newton(
 
   def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
     def ridge_matvec(v: Any) -> Any:
-      return tree_utils.tree_add_scalar_mul(matvec(v), ridge, v)
+      return otu.tree_add_scalar_mul(matvec(v), ridge, v)
     return ridge_matvec
 
-  def _build_gnvp(residuals, params, inner_jvp, outer_grad, outer_hvp, 
-                  mu, is_compositional, use_normal):
+  def _extend_gnvp(matvec: Callable, grad, ridge: float = 0.0):
+    def extended_matvec(v: Any) -> Any:
+      return [matvec(v), otu.tree_scalar_mul(jnp.sqrt(ridge), v)]
+    extended_grad = [grad, otu.tree_zeros_like(grad)]
+    return extended_matvec, extended_grad
+
+  def _build_gnvp(residuals, params, inner_jvp, outer_grad, outer_hvp, mu):
     inner_vjp_ = jax.linear_transpose(inner_jvp, params)
     inner_vjp = lambda x: inner_vjp_(x)[0]
-    if use_normal:
+    if use_normal_eqs:
       if is_compositional:
         gnvp_fn = lambda x: inner_vjp(outer_hvp(inner_jvp(x)))
         grad = inner_vjp(outer_grad)
@@ -1461,6 +1465,7 @@ def scale_by_gauss_newton(
       else:
         gnvp_fn = inner_jvp
         grad = residuals
+      gnvp_fn, grad = _extend_gnvp(gnvp_fn, grad, ridge=mu)
     return gnvp_fn, grad
 
   def update_fn(residuals, state, params, *, inner_jvp, mu=0.,
@@ -1472,11 +1477,11 @@ def scale_by_gauss_newton(
        at the current params.
       state: the state of the transformation.
       params: the parameters of the model.
-      inner_jvp: a function that computes v -> J v (where J is the jacobian
+      inner_jvp: a function that computes v -> J v (where J is the Jacobian
         of the inner function).
       mu: the damping parameter.
       outer_grad: the gradient of the outer function computed at residuals.
-      outer_hvp: a function that computes v -> H v (where H is the hessian
+      outer_hvp: a function that computes v -> H v (where H is the Hessian
         of the outer function in compositional problems).
       **extra_args: additional keyword arguments. They are ignored by this
         transformation.
@@ -1486,11 +1491,10 @@ def scale_by_gauss_newton(
 
     # build gnvp and gradient
     matvec, b = _build_gnvp(residuals, params, inner_jvp,
-                       outer_grad, outer_hvp, mu,
-                       is_compositional, use_normal)
+                       outer_grad, outer_hvp, mu)
 
     # solve linear system
-    updates = linear_solver(matvec, tree_utils.tree_scalar_mul(-1, b))[0]
+    updates = linear_solver(matvec, otu.tree_scalar_mul(-1, b))[0]
 
     count_inc = utils.safe_int32_increment(state.count)
     return updates, GaussNewtonState(count=count_inc)
