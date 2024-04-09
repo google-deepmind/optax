@@ -48,6 +48,7 @@ from optax._src.alias import sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.alias import gauss_newton
+from optax._src.alias import levenberg_marquardt
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
 from optax._src.base import GradientTransformationExtraArgs
@@ -112,6 +113,7 @@ from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
 from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
+from optax._src.transform import scale_by_madsen_trust_region
 from optax._src.transform import scale_by_novograd
 from optax._src.transform import scale_by_optimistic_gradient
 from optax._src.transform import scale_by_param_block_norm
@@ -273,6 +275,7 @@ __all__ = (
     "flatten",
     "fromage",
     "gauss_newton",
+    "levenberg_marquardt",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",
@@ -336,7 +339,7 @@ __all__ = (
     "scale_by_belief",
     "scale_by_lion",
     "scale_by_factored_rms",
-    "scale_by_gauss_newton",
+    "scale_by_madsen_trust_region",
     "scale_by_novograd",
     "scale_by_param_block_norm",
     "scale_by_param_block_rms",
