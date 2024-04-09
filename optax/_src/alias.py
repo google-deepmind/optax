@@ -1588,8 +1588,8 @@ def adamax(
   :math:`p \rightarrow \infty`, we obtain a simple and stable update rule.
 
   Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
-  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
-  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
+  :math:`\varepsilon` represent the arguments
+  ``b1``, ``b2`` and ``eps`` respectively. The learning rate is
   indexed by :math:`t` since the learning rate may also be provided by a
   schedule function.
 
