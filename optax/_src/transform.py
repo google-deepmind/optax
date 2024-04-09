@@ -1529,7 +1529,7 @@ def scale_by_madsen_trust_region(
         gn_optimizer_state=gn_optimizer.init(params),
         accepted=False,
         iter_num=jnp.zeros([], jnp.int32),
-        value = jnp.array(jnp.inf),
+        value=jnp.array(jnp.inf),
     )
 
   def _gain_ratio(value, value_new, updates, grad, mu):
@@ -1596,7 +1596,7 @@ def scale_by_madsen_trust_region(
       # apply gain ratio test
       rho = _gain_ratio(value, value_new, updates, grad, damping_parameter)
       updates_new, accepted, damping_parameter, increase_factor = jax.lax.cond(
-                                                      rho>0,
+                                                      rho > 0,
                                                       _gain_ratio_test_true,
                                                       _gain_ratio_test_false,
                                                       updates_new,
