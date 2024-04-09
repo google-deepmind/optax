@@ -1421,28 +1421,30 @@ def scale_by_gauss_newton(
 ) -> base.GradientTransformationExtraArgs:
   """Return the Gauss-Newton updates.
     
-    Apply the Gauss-Newton method to a nonlinear least square problem or
-    to a more general compositional problem.
+    Apply the Gauss-Newton method to a nonlinear least square problem or to a
+    more general compositional problem.
 
     Args:
       linear_solver: solver that given a function matvec that computes 
         matvec(x) = Ax and a pytree b solves Ax=b.
-      is_compositional: whether to solve a classical nonlinear least squares 
+      is_compositional: whether to solve a classical nonlinear least squares
         problem or a compositional problem.
       use_normal_eqs: if true solve the normal equations.
     Returns:
       The Gauss-Newton update.
-    """
+  """
   def init_fn(params):
     del params
     return GaussNewtonState(count=jnp.zeros([], jnp.int32))
 
   def _make_ridge_gnvp(matvec: Callable, ridge: float = 0.0):
+    """Returns the operator equivalent to the sum of matvec and ridge*I."""
     def ridge_matvec(v: Any) -> Any:
       return otu.tree_add_scalar_mul(matvec(v), ridge, v)
     return ridge_matvec
 
   def _extend_gnvp(matvec: Callable, grad, ridge: float = 0.0):
+    """Returns the operator equivalent to stack(matvec, sqrt(ridge)*I)."""
     def extended_matvec(v: Any) -> Any:
       return [matvec(v), otu.tree_scalar_mul(jnp.sqrt(ridge), v)]
     extended_grad = [grad, otu.tree_zeros_like(grad)]
@@ -1450,6 +1452,7 @@ def scale_by_gauss_newton(
 
   def _build_gnvp(residuals, params, inner_jvp,
                   outer_grad, outer_hvp, damping_parameter):
+    """Builds the matrix and the vector needed for the linear system."""
     inner_vjp_ = jax.linear_transpose(inner_jvp, params)
     inner_vjp = lambda x: inner_vjp_(x)[0]
     if use_normal_eqs:
@@ -1475,16 +1478,15 @@ def scale_by_gauss_newton(
     """Return the Gauss-Newton updates.
 
     Args:
-      residuals: the value of the residuals (inner function) computed
-       at the current params.
+      residuals: the value of the residuals (inner function) computed at params.
       state: the state of the transformation.
       params: the parameters of the model.
-      inner_jvp: a function that computes v -> J v (where J is the Jacobian
-        of the inner function).
+      inner_jvp: a function that computes v -> J v (where J is the Jacobian of 
+        the inner function).
       mu: the damping parameter.
       outer_grad: the gradient of the outer function computed at residuals.
-      outer_hvp: a function that computes v -> H v (where H is the Hessian
-        of the outer function in compositional problems).
+      outer_hvp: a function that computes v -> H v (where H is the Hessian of 
+        the outer function in compositional problems).
       **extra_args: additional keyword arguments. They are ignored by this
         transformation.
     Returns:
@@ -1493,7 +1495,7 @@ def scale_by_gauss_newton(
 
     # build gnvp and gradient
     matvec, b = _build_gnvp(residuals, params, inner_jvp,
-                       outer_grad, outer_hvp, damping_parameter)
+                                    outer_grad, outer_hvp, damping_parameter)
 
     # solve linear system
     updates = linear_solver(matvec, otu.tree_scalar_mul(-1, b))[0]
@@ -1505,8 +1507,7 @@ def scale_by_gauss_newton(
 
 
 class ScaleByMadsenTrustRegionState(NamedTuple):
-  """State during the inner loop of a backtracking line-search."""
-
+  """State for scale_by_madsen_trust_region"""
   damping_parameter: float
   increase_factor: float
   gn_optimizer_state: base.OptState
@@ -1520,7 +1521,20 @@ def scale_by_madsen_trust_region(
     increase_factor: float = 2.0,
     max_steps: int = 30,
 ) -> base.GradientTransformationExtraArgs:
+  """Return the Gauss-Newton updates that satify the gain ratio test.
+    
+    Modify the damping parameter of the GaussNewton optimizer based on the 
+    algorithm 6.18 provided by K. Madsen & H. B. Nielsen in the book 
+    “Introduction to Optimization and Data Fitting”.
 
+    Args:
+      gn_optimizer: instance of scale_by_gauss_newton GradientTransformation.
+      init_damping_parameter: initial value for the damping parameter.
+      increase_factor: initial value for the increase factor.
+      max_steps: maximum number of iterations before stopping the search loop.
+    Returns:
+      The Gauss-Newton update.
+  """
   def init_fn(params: base.Params) -> ScaleByMadsenTrustRegionState:
     return ScaleByMadsenTrustRegionState(
         damping_parameter=init_damping_parameter,
@@ -1559,13 +1573,14 @@ def scale_by_madsen_trust_region(
   ) -> tuple[base.Updates, ScaleByMadsenTrustRegionState]:
     """Compute updates that satisfy the gain ratio test."""
 
-    # Fetch arguments to be fed to value_fn from the extra_args
+    # fetch arguments to be fed to residuals_fn from the extra_args
     (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
         (residuals_fn,), extra_args
     )
     del remaining_kwargs
     residuals_fn_ = functools.partial(residuals_fn, **fn_kwargs)
 
+    # compute value and grad for the current params
     residuals, inner_jvp = jax.linearize(residuals_fn_, params)
     value_fn = lambda x: 0.5*jnp.sum(residuals_fn_(x)**2)
     value, grad = jax.value_and_grad(value_fn)(params)
@@ -1604,24 +1619,25 @@ def scale_by_madsen_trust_region(
 
       iter_num_inc = utils.safe_int32_increment(iter_num)
       search_state = ScaleByMadsenTrustRegionState(
-          damping_parameter=damping_parameter,
-          increase_factor=increase_factor,
-          gn_optimizer_state=opt_state,
-          accepted=accepted,
-          iter_num=iter_num_inc,
-          value=value,
-      )
+                                          damping_parameter=damping_parameter,
+                                          increase_factor=increase_factor,
+                                          gn_optimizer_state=opt_state,
+                                          accepted=accepted,
+                                          iter_num=iter_num_inc,
+                                          value=value,
+                                      )
       return updates_new, search_state
 
     search_state = ScaleByMadsenTrustRegionState(
-          damping_parameter=search_state.damping_parameter,
-          increase_factor=search_state.increase_factor,
-          gn_optimizer_state=search_state.gn_optimizer_state,
-          accepted=False,
-          iter_num=jnp.zeros([], jnp.int32),
-          value=value,
-      )
+                            damping_parameter=search_state.damping_parameter,
+                            increase_factor=search_state.increase_factor,
+                            gn_optimizer_state=search_state.gn_optimizer_state,
+                            accepted=False,
+                            iter_num=jnp.zeros([], jnp.int32),
+                            value=value,
+                        )
 
+    # start search for damping parameter
     updates, search_state = jax.lax.while_loop(cond_fn, body_fn,
                               (otu.tree_zeros_like(params), search_state))
     return updates, search_state

@@ -1860,7 +1860,7 @@ def gauss_newton(
   Args:
     is_compositional: if true solve a compositional problem (needs outer_hvp),
       else solve a classical least squares.
-    use_normal: if true solve the normal equations.
+    use_normal_eqs: if true solve the normal equations.
     linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
   Returns:
     The Gauss-Newton update.
@@ -1868,7 +1868,7 @@ def gauss_newton(
   return transform.scale_by_gauss_newton(
     linear_solver=linear_solver,
     is_compositional=is_compositional,
-    use_normal_eqs=use_normal_eqs, 
+    use_normal_eqs=use_normal_eqs,
     )
 
 
@@ -1880,16 +1880,20 @@ def levenberg_marquardt(
     increase_factor: float = 2.0,
     max_steps: int = 30,
 ) -> base.GradientTransformationExtraArgs:
-  """The Gauss-Newton optimizer.
+  """The Levenberg-Marquardt optimizer.
 
-  Apply the Gauss-Newton method to a compositional 
-  problem. 
+  Apply the gain ratio trust-region search to the regularized Gauss-Newton step.
+  See algorithm 6.18 in “Introduction to Optimization and Data Fitting” by 
+  K. Madsen & H. B. Nielsen. 
 
   Args:
     is_compositional: if true solve a compositional problem (needs outer_hvp),
       else solve a classical least squares.
-    use_normal: if true solve the normal equations.
+    use_normal_eqs: if true solve the normal equations.
     linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
+    init_damping_parameter: initial value of the damping parameter.
+    increase_factor: initial value of the increasing factor.
+    max_steps: maximum number of steps before stopping the search loop.
   Returns:
     The Gauss-Newton update.
   """
