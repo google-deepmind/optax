@@ -1443,13 +1443,6 @@ def scale_by_gauss_newton(
       return otu.tree_add_scalar_mul(matvec(v), ridge, v)
     return ridge_matvec
 
-  def _extend_gnvp(matvec: Callable, grad, ridge: float = 0.0):
-    """Returns the operator equivalent to stack(matvec, sqrt(ridge)*I)."""
-    def extended_matvec(v: Any) -> Any:
-      return [matvec(v), otu.tree_scalar_mul(jnp.sqrt(ridge), v)]
-    extended_grad = [grad, otu.tree_zeros_like(grad)]
-    return extended_matvec, extended_grad
-
   def _build_gnvp(residuals, params, inner_jvp,
                   outer_grad, outer_hvp, damping_parameter):
     """Builds the matrix and the vector needed for the linear system."""
@@ -1464,13 +1457,7 @@ def scale_by_gauss_newton(
         grad = inner_vjp(residuals)
       gnvp_fn = _make_ridge_gnvp(gnvp_fn, ridge=damping_parameter)
     else:
-      if is_compositional:
-        gnvp_fn = lambda x: outer_hvp(inner_jvp(x))
-        grad = outer_grad
-      else:
-        gnvp_fn = inner_jvp
-        grad = residuals
-      gnvp_fn, grad = _extend_gnvp(gnvp_fn, grad, ridge=damping_parameter)
+      raise ValueError('Normal equations are still work in progress.')
     return gnvp_fn, grad
 
   def update_fn(residuals, state, params, *, inner_jvp, damping_parameter=0.,
