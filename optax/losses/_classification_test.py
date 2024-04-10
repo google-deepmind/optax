@@ -34,9 +34,6 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         [
             [10.0, 1.0, -2.0],
             [1.0, 4.0, 0.2],
-            [-np.inf, 0.0, 0.0],
-            [-np.inf, 0.0, 0.0],
-            [-np.inf, 0.0, -np.inf],
         ],
         dtype=np.float32,
     )
@@ -44,9 +41,6 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         [
             [0.0, 1.0, 0.0],
             [1.0, 0.0, 0.0],
-            [0.0, 0.5, 0.5],
-            [0.4, 0.3, 0.3],
-            [0.0, 1.0, 0.0],
         ],
         dtype=np.float32,
     )
@@ -54,9 +48,6 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         [
             9.00013,
             3.0696733,
-            0.693147,
-            np.inf,
-            0.0,
         ],
         dtype=np.float32,
     )
@@ -89,18 +80,81 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         order=1,
     )
 
+
+class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array(
+        [
+            [10.0, 1.0, -2.0],
+            [1.0, 4.0, 0.2],
+            [-np.inf, 0.0, 0.0],
+            [-np.inf, 0.0, 0.0],
+            [-np.inf, 0.0, -np.inf],
+        ],
+        dtype=np.float32,
+    )
+    self.ts = np.array(
+        [
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.4, 0.3, 0.3],
+            [0.0, 1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    self.exp = np.array(
+        [
+            9.00013,
+            3.0696733,
+            0.693147,
+            np.inf,
+            0.0,
+        ],
+        dtype=np.float32,
+    )
+
+  @chex.all_variants
+  def test_scalar(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(_classification.safe_softmax_cross_entropy)(
+            self.ys[0], self.ts[0]
+        ),
+        self.exp[0],
+        atol=1e-4,
+    )
+
+  @chex.all_variants
+  def test_batched(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        self.variant(_classification.safe_softmax_cross_entropy)(
+            self.ys, self.ts
+        ),
+        self.exp,
+        atol=1e-4,
+    )
+
+  def test_gradient(self):
+    """Tests gradient ok."""
+    jaxtest.check_grads(
+        _classification.safe_softmax_cross_entropy,
+        (self.ys[:2], self.ts[:2]),
+        order=1,
+    )
+
   def test_against_plain_implementation(self):
     """Tests against plain implementation which does not handle -inf."""
 
-    def _softmax_cross_entropy(logits, labels):
-      return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
-
-    plain_val_and_grad = jax.value_and_grad(_softmax_cross_entropy)(
-        self.ys[0], self.ts[0]
-    )
-    val_and_grad = jax.value_and_grad(_classification.softmax_cross_entropy)(
-        self.ys[0], self.ts[0]
-    )
+    plain_val_and_grad = jax.value_and_grad(
+        _classification.softmax_cross_entropy
+    )(self.ys[0], self.ts[0])
+    val_and_grad = jax.value_and_grad(
+        _classification.safe_softmax_cross_entropy
+    )(self.ys[0], self.ts[0])
     chex.assert_trees_all_close(plain_val_and_grad, val_and_grad, atol=1e-4)
 
 
