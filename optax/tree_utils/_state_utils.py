@@ -149,13 +149,13 @@ def tree_map_params(
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
-      return jax.tree_map(f, value, *rest, is_leaf=is_leaf)
+      return jax.tree_util.tree_map(f, value, *rest, is_leaf=is_leaf)
     elif transform_non_params is not None:
       return transform_non_params(value)
     else:
       return value
 
-  return jax.tree_map(
+  return jax.tree_util.tree_map(
       map_params,
       state_with_placeholders,
       state,

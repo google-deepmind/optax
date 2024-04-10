@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
   "absl-py>=0.7.1",
   "chex>=0.1.86",
-  "jax>=0.1.55",
+  "jax>=0.4.26",
   "jaxlib>=0.1.37",
   "numpy>=1.18.0",
 ]

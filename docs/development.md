@@ -26,7 +26,7 @@ Documentation is key, and we're particularly happy to accept documentation impro
 Our documentation is written in [Sphinx](https://www.sphinx-doc.org/en/master/). You can
 build the documentation locally as follows:
 
-1. **Install Requirements**: `pip install .[docs]`
+1. **Install Requirements**: `pip install -e ".[docs]"`
 2. **Build the Docs**: From the `docs` folder, run:
    * `make html` (builds everything)
    * `make html-noplot` (faster, skips running examples)

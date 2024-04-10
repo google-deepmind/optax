@@ -715,8 +715,8 @@ class MaskedTest(chex.TestCase):
     chex.assert_trees_all_equal(tree.map_structure(np.array, state), state)
 
 
-class MaybeUpdateTest(chex.TestCase):
-  """Tests for the maybe_update wrapper."""
+class ConditionallyTransformTest(chex.TestCase):
+  """Tests for the conditionally_transform wrapper."""
 
   NUM_STEPS = 3
 
@@ -726,12 +726,12 @@ class MaybeUpdateTest(chex.TestCase):
     grads = jnp.ones([])
 
     def should_update(step):
-      return step < MaybeUpdateTest.NUM_STEPS
+      return step < ConditionallyTransformTest.NUM_STEPS
 
-    opt = wrappers.maybe_update(transform.scale(2.), should_update)
+    opt = wrappers.conditionally_transform(transform.scale(2.), should_update)
     state = opt.init(params)
     update_fn = self.variant(opt.update)
-    for _ in range(MaybeUpdateTest.NUM_STEPS):
+    for _ in range(ConditionallyTransformTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.)
     # Further updates stop calling the inner optimiser.
@@ -746,12 +746,12 @@ class MaybeUpdateTest(chex.TestCase):
     grads = jnp.ones([])
 
     def should_update(step):
-      return step < MaybeUpdateTest.NUM_STEPS
+      return step < ConditionallyTransformTest.NUM_STEPS
 
-    opt = wrappers.maybe_update(constrain.zero_nans(), should_update)
+    opt = wrappers.conditionally_transform(constrain.zero_nans(), should_update)
     state = opt.init(params)
     update_fn = self.variant(opt.update)
-    for _ in range(MaybeUpdateTest.NUM_STEPS - 1):
+    for _ in range(ConditionallyTransformTest.NUM_STEPS - 1):
       updates, state = update_fn(grads_with_nan, state)
       self.assertEqual(updates, 0.)
       self.assertEqual(state.inner_state.found_nan, True)
@@ -765,6 +765,79 @@ class MaybeUpdateTest(chex.TestCase):
       self.assertTrue(jnp.isnan(updates))
       # Inner state is not be updated.
       self.assertEqual(state.inner_state.found_nan, False)
+
+
+class ConditionallyMaskTest(chex.TestCase):
+  """Tests for the conditionally_mask wrapper."""
+
+  NUM_STEPS = 3
+  MIN_LOSS = 0.1
+
+  @chex.all_variants
+  def test_stateless_inner(self):
+    params = jnp.zeros([])
+    grads = jnp.ones([])
+
+    def should_update(step):
+      return step < ConditionallyMaskTest.NUM_STEPS
+
+    opt = wrappers.conditionally_mask(transform.scale(2.), should_update)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    for _ in range(ConditionallyMaskTest.NUM_STEPS):
+      updates, state = update_fn(grads, state)
+      self.assertEqual(updates, 2.)
+    # Further updates stop calling the inner optimiser.
+    for _ in range(5):
+      updates, state = update_fn(grads, state)
+      self.assertEqual(updates, 0.)
+
+  @chex.all_variants
+  def test_statefull_inner(self):
+    params = jnp.zeros([])
+    grads_with_nan = jnp.array(float('nan'))
+    grads = jnp.ones([])
+
+    def should_update(step):
+      return step < ConditionallyMaskTest.NUM_STEPS
+
+    opt = wrappers.conditionally_mask(constrain.zero_nans(), should_update)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    for _ in range(ConditionallyMaskTest.NUM_STEPS - 1):
+      updates, state = update_fn(grads_with_nan, state)
+      self.assertEqual(updates, 0.)
+      self.assertEqual(state.inner_state.found_nan, True)
+    updates, state = update_fn(grads, state)
+    self.assertEqual(updates, 1.)
+    self.assertEqual(state.inner_state.found_nan, False)
+    # Further updates stop calling the inner optimiser.
+    for _ in range(5):
+      updates, state = update_fn(grads_with_nan, state)
+      self.assertEqual(updates, 0.)
+      # Inner state is not be updated.
+      self.assertEqual(state.inner_state.found_nan, False)
+
+  @chex.all_variants
+  def test_stateless_inner_with_extra_args(self):
+    params = jnp.zeros([])
+    grads = jnp.ones([])
+
+    def should_update(step, loss, **extra_args):
+      del step, extra_args
+      return loss > ConditionallyMaskTest.MIN_LOSS
+
+    opt = wrappers.conditionally_mask(
+        transform.scale(2.), should_update, forward_extra_args=True)
+    state = opt.init(params)
+    update_fn = self.variant(opt.update)
+    for _ in range(ConditionallyMaskTest.NUM_STEPS):
+      updates, state = update_fn(grads, state, loss=0.2)
+      self.assertEqual(updates, 2.)
+    # Further updates stop calling the inner optimiser.
+    for _ in range(5):
+      updates, state = update_fn(grads, state, loss=0.)
+      self.assertEqual(updates, 0.)
 
 
 if __name__ == '__main__':
