@@ -34,6 +34,7 @@ Available projections
     projection_box
     projection_hypercube
     projection_non_negative
+    projection_simplex
 
 Projection onto a box
 ~~~~~~~~~~~~~~~~~~~~~
@@ -46,3 +47,7 @@ Projection onto a hypercube
 Projection onto the non-negative orthant
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_non_negative
+
+Projection onto a simplex
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_simplex
