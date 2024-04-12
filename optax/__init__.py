@@ -213,7 +213,6 @@ squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-differentially_private_aggregate = contrib.differentially_private_aggregate
 DifferentiallyPrivateAggregateState = (
     contrib.DifferentiallyPrivateAggregateState
 )
@@ -261,7 +260,6 @@ __all__ = (
     "cosine_distance",
     "cosine_onecycle_schedule",
     "cosine_similarity",
-    "differentially_private_aggregate",
     "DifferentiallyPrivateAggregateState",
     "dpsgd",
     "ema",
