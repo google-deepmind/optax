@@ -66,7 +66,7 @@ def ntxent(
   # replace 0 with -inf
   xcs_diffs = jnp.where(diffs == 1, xcs, -jnp.inf)
   xcs_matches = jnp.where(matches == 1, xcs, -jnp.inf)
-  
+
   # shifting for numeric stability
   comb = jnp.concatenate((xcs_diffs, xcs_matches), axis=-1)
   xcs_max = jnp.max(comb, axis=1, keepdims=True)
@@ -80,5 +80,5 @@ def ntxent(
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
   loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
-  
+
   return loss
