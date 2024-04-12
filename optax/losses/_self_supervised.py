@@ -15,6 +15,7 @@
 """Self supervised losses."""
 
 import chex
+from jax import lax
 import jax.numpy as jnp
 from optax.losses._regression import cosine_similarity
 
@@ -22,8 +23,8 @@ from optax.losses._regression import cosine_similarity
 def ntxent(
     embeddings: chex.Array,
     labels: chex.Array,
-    temperature: float = 0.07
-) -> chex.Array:
+    temperature: chex.Numeric = 0.07
+) -> chex.Numeric:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
   References:
@@ -50,8 +51,6 @@ def ntxent(
       'label dimension should match batch dimension in embeddings'
     )
 
-  eps = 1e-300
-
   # cosine similarity matrix
   xcs = cosine_similarity(
   embeddings[None, :, :], embeddings[:, None, :]
@@ -60,21 +59,26 @@ def ntxent(
   # finding positive and negative pairs
   labels1 = jnp.expand_dims(labels, axis=1)
   labels2 = jnp.expand_dims(labels, axis=0)
-  matches = jnp.int32(labels1 == labels2)
+  matches = labels1 == labels2
   diffs = matches ^ 1
   matches = jnp.bool_(matches - jnp.eye(matches.shape[0])) # no self cos
 
   # replace 0 with -inf
   xcs_diffs = jnp.where(diffs == 1, xcs, -jnp.inf)
   xcs_matches = jnp.where(matches == 1, xcs, -jnp.inf)
+  
+  # shifting for numeric stability
+  comb = jnp.concatenate((xcs_diffs, xcs_matches), axis=-1)
+  xcs_max = jnp.max(comb, axis=1, keepdims=True)
+  xcs_shift_diffs = xcs_diffs - lax.stop_gradient(xcs_max)
+  xcs_shift_matches = xcs_matches - lax.stop_gradient(xcs_max)
 
   # calc loss
-  numer = jnp.exp(xcs_matches)
-  denom = jnp.sum(jnp.exp(xcs_diffs), axis=0)
-  denom = jnp.expand_dims(denom, axis=1)
-  denom += numer
-  softm = numer / denom
-  softm = jnp.where(matches == 1, softm + eps, 1.0)
-  log_exp = -jnp.log(softm).sum() / matches.sum()
-
-  return log_exp
+  numer = xcs_shift_matches
+  numer_exp = jnp.exp(xcs_shift_matches)
+  denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
+  denom += numer_exp
+  log_softm = numer - jnp.log(denom)
+  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
+  
+  return loss
