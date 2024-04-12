@@ -33,13 +33,19 @@ class NtxentTest(parameterized.TestCase):
     [ 1.8745, -0.0195],
     [-0.6719, -1.9210],
     ])
-    self.ts = jnp.array([0,0,1,1])
+    self.ts_1 = jnp.array([0,0,1,1])
+    self.ts_2 = jnp.array([0,0,0,1])
     # Calculated expected output
-    self.exp = jnp.array(14.01032)
+    self.exp_1 = jnp.array(14.01032)
+    self.exp_2 = jnp.array(8.968544)
 
   @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_self_supervised.ntxent)(self.ys, self.ts),
-        self.exp, atol=1e-4)
+        self.variant(_self_supervised.ntxent)(self.ys, self.ts_1),
+        self.exp_1, atol=1e-4)
+
+    np.testing.assert_allclose(
+        self.variant(_self_supervised.ntxent)(self.ys, self.ts_2),
+        self.exp_2, atol=1e-4)
