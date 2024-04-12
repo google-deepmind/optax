@@ -126,18 +126,20 @@ def _vdot_safe(a, b):
 def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   r"""Compute the inner product between two pytrees.
 
+  Examples:
+
+    >>> optax.tree_utils.tree_vdot(
+    ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
+    ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
+    ... )
+    Array(0, dtype=int32)
+
   Args:
     tree_x: first pytree to use.
     tree_y: second pytree to use.
 
   Returns:
     inner product between ``tree_x`` and ``tree_y``, a scalar value.
-
-  >>> optax.tree_utils.tree_vdot(
-  ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
-  ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
-  ... )
-  Array(0, dtype=int32)
 
   Implementation detail: we upcast the values to the highest precision to avoid
   numerical issues.
@@ -230,6 +232,26 @@ def tree_full_like(
   """
   return jtu.tree_map(
       lambda x: jnp.full_like(x, fill_value, dtype=dtype), tree)
+
+
+def tree_clip(
+    tree: Any,
+    min_value: Optional[jax.typing.ArrayLike],
+    max_value: Optional[jax.typing.ArrayLike],
+) -> Any:
+  """Creates an identical tree where all tensors are clipped to `[min, max]`.
+
+  Args:
+    tree: pytree.
+    min_value: min value to clip all tensors to.
+    max_value: max value to clip all tensors to.
+
+  Returns:
+    an tree with the same structure as ``tree``.
+
+  .. versionadded:: 0.2.3
+  """
+  return jtu.tree_map(lambda g: jnp.clip(g, min_value, max_value), tree)
 
 
 def tree_update_moment(updates, moments, decay, order):

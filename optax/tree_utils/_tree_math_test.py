@@ -157,6 +157,18 @@ class TreeUtilsTest(absltest.TestCase):
     got = tu.tree_add(*trees)
     chex.assert_trees_all_close(expected, got)
 
+  def test_tree_clip(self):
+    """Clip the tree to range [min_value, max_value]."""
+    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=0, max_value=0.5)
+    chex.assert_trees_all_close(expected, got)
+    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=None, max_value=0.5)
+    chex.assert_trees_all_close(expected, got)
+    expected = tu.tree_scalar_mul(2., self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=2., max_value=None)
+    chex.assert_trees_all_close(expected, got)
+
   def test_update_infinity_moment(self):
     values = jnp.array([5.0, 7.0])
     decay = 0.9
