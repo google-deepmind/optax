@@ -1,4 +1,4 @@
-# Copyright 2021 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Utilities to cast pytrees to specific dtypes."""
 
-"""The projections sub-package."""
+from typing import Optional
 
-from optax.projections._projections import projection_box
-from optax.projections._projections import projection_hypercube
-from optax.projections._projections import projection_non_negative
-from optax.projections._projections import projection_simplex
+import chex
+from jax import tree_util as jtu
+
+
+def tree_cast(
+    tree: chex.ArrayTree,
+    dtype: Optional[chex.ArrayDType]
+) -> chex.ArrayTree:
+  """Cast tree to given dtype, skip if None."""
+  if dtype is not None:
+    return jtu.tree_map(lambda t: t.astype(dtype), tree)
+  else:
+    return tree

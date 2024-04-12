@@ -54,9 +54,9 @@ wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
 echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
-pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax examples -name '*.py' | grep -v 'test.py' | xargs` -d E1102 || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find optax examples -name '*_test.py' | xargs` -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
 # Cleanup.
 rm .pylintrc
 

@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-"""Tests for optax.tree_utils."""
+"""Tests for optax.tree_utils._tree_math."""
 
 from absl.testing import absltest
 import chex
@@ -21,6 +20,7 @@ import jax
 from jax import tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
+
 from optax import tree_utils as tu
 
 
@@ -157,45 +157,59 @@ class TreeUtilsTest(absltest.TestCase):
     got = tu.tree_add(*trees)
     chex.assert_trees_all_close(expected, got)
 
-  def test_random_like_tree(self, eps=1e-6):
-    """Test for `tree_random_like`.
+  def test_tree_clip(self):
+    """Clip the tree to range [min_value, max_value]."""
+    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=0, max_value=0.5)
+    chex.assert_trees_all_close(expected, got)
+    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=None, max_value=0.5)
+    chex.assert_trees_all_close(expected, got)
+    expected = tu.tree_scalar_mul(2., self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=2., max_value=None)
+    chex.assert_trees_all_close(expected, got)
 
-    Args:
-      eps: amount of noise.
+  def test_update_infinity_moment(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
 
-    Tests that `tree_random_like` generates a tree of the proper structure,
-    that it can be added to a target tree with a small multiplicative factor
-    without errors, and that the resulting addition is close to the original.
-    """
-    rand_tree_a = tu.tree_random_like(self.rng_jax, self.tree_a)
-    rand_tree_b = tu.tree_random_like(self.rng_jax, self.tree_b)
-    rand_tree_a_dict = tu.tree_random_like(self.rng_jax, self.tree_a_dict_jax)
-    rand_tree_b_dict = tu.tree_random_like(self.rng_jax, self.tree_b_dict_jax)
-    rand_array_a = tu.tree_random_like(self.rng_jax, self.array_a)
-    rand_array_b = tu.tree_random_like(self.rng_jax, self.array_b)
-    sum_tree_a = tu.tree_add_scalar_mul(self.tree_a, eps, rand_tree_a)
-    sum_tree_b = tu.tree_add_scalar_mul(self.tree_b, eps, rand_tree_b)
-    sum_tree_a_dict = tu.tree_add_scalar_mul(self.tree_a_dict,
-                                             eps,
-                                             rand_tree_a_dict)
-    sum_tree_b_dict = tu.tree_add_scalar_mul(self.tree_b_dict,
-                                             eps,
-                                             rand_tree_b_dict)
-    sum_array_a = tu.tree_add_scalar_mul(self.array_a, eps, rand_array_a)
-    sum_array_b = tu.tree_add_scalar_mul(self.array_b, eps, rand_array_b)
-    tree_sums = [sum_tree_a,
-                 sum_tree_b,
-                 sum_tree_a_dict,
-                 sum_tree_b_dict,
-                 sum_array_a,
-                 sum_array_b]
-    trees = [self.tree_a,
-             self.tree_b,
-             self.tree_a_dict,
-             self.tree_b_dict,
-             self.array_a,
-             self.array_b]
-    chex.assert_trees_all_close(trees, tree_sums, atol=1e-5)
+    transform_fn = tu.tree_update_infinity_moment
+
+    # identity if updating with itself (and positive decay)
+    np.testing.assert_allclose(
+        transform_fn(values, values, decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return (decayed) max when updating with zeros
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.),
+        d * values,
+        atol=1e-4
+    )
+    # infinity norm takes absolute values
+    np.testing.assert_allclose(
+        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.),
+        values,
+        atol=1e-4
+    )
+    # return at least `eps`
+    np.testing.assert_allclose(
+        transform_fn(jnp.zeros_like(values), jnp.zeros_like(values),
+                     decay=d, eps=1e-2),
+        jnp.ones_like(values) * 1e-2,
+        atol=1e-4
+    )
+
+  def test_bias_correction_bf16(self):
+    m = jnp.logspace(-10, 10, num=21, dtype=jnp.bfloat16)  # 1e-10 ... 1e10
+    for decay in (0.9, 0.99, 0.999, 0.9995):
+      for count in (1, 10, 100, 1000):
+        chex.assert_tree_all_finite(
+            tu.tree_bias_correction(m, decay, count),
+            custom_message=f'failed with decay={decay}, count={count}')
+
 
 if __name__ == '__main__':
   absltest.main()

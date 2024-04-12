@@ -14,6 +14,7 @@ Losses
     kl_divergence
     l2_loss
     log_cosh
+    safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
     smooth_labels
@@ -75,6 +76,7 @@ Smoothing labels
 
 Soft-max cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: safe_softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
 

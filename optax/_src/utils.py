@@ -23,10 +23,11 @@ import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
+
+from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
-from optax.tree_utils import _state_utils
 
 
 def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
@@ -43,14 +44,14 @@ def canonicalize_dtype(
   return dtype
 
 
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='optax.tree_utils.tree_cast')
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree,
+    dtype: Optional[chex.ArrayDType]
 ) -> chex.ArrayTree:
-  """Cast tree to given dtype, skip if None."""
-  if dtype is not None:
-    return jax.tree_util.tree_map(lambda t: t.astype(dtype), tree)
-  else:
-    return tree
+  return otu.tree_cast(tree, dtype)
 
 
 def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
@@ -284,8 +285,8 @@ def value_and_grad_from_state(
       state: base.OptState,
       **fn_kwargs: dict[str, Any],
   ):
-    value = _state_utils.tree_get(state, 'value')
-    grad = _state_utils.tree_get(state, 'grad')
+    value = otu.tree_get(state, 'value')
+    grad = otu.tree_get(state, 'grad')
     if (value is None) or (grad is None):
       raise ValueError(
           'Value or gradient not found in the state. '
