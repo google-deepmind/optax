@@ -212,13 +212,6 @@ softmax_cross_entropy_with_integer_labels = (
 squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
-# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-differentially_private_aggregate = contrib.differentially_private_aggregate
-DifferentiallyPrivateAggregateState = (
-    contrib.DifferentiallyPrivateAggregateState
-)
-dpsgd = contrib.dpsgd
-
 __version__ = "0.2.3.dev"
 
 __all__ = (
@@ -254,6 +247,7 @@ __all__ = (
     "conditionally_transform",
     "ConditionallyTransformState",
     "constant_schedule",
+    "contrib",
     "ctc_loss",
     "ctc_loss_with_forward_probs",
     "convex_kl_divergence",
@@ -261,9 +255,6 @@ __all__ = (
     "cosine_distance",
     "cosine_onecycle_schedule",
     "cosine_similarity",
-    "differentially_private_aggregate",
-    "DifferentiallyPrivateAggregateState",
-    "dpsgd",
     "ema",
     "EmaState",
     "EmptyState",
