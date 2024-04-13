@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2024 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ def ntxent(
   Returns:
     A scalar loss value of NT-Xent values averaged over all positive
     pairs
+
+  .. versionadded:: 0.2.3
   """
   chex.assert_type([embeddings], float)
   if labels.shape[0] != embeddings.shape[0]:
