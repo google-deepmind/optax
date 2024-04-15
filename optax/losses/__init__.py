@@ -14,6 +14,8 @@
 # ==============================================================================
 """The losses sub-package."""
 
+# pylint:disable=g-importing-member
+
 from optax.losses._classification import convex_kl_divergence
 from optax.losses._classification import ctc_loss
 from optax.losses._classification import ctc_loss_with_forward_probs
@@ -34,4 +36,5 @@ from optax.losses._regression import huber_loss
 from optax.losses._regression import l2_loss
 from optax.losses._regression import log_cosh
 from optax.losses._regression import squared_error
+from optax.losses._self_supervised import ntxent
 from optax.losses._smoothing import smooth_labels

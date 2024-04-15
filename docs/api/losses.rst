@@ -14,6 +14,7 @@ Losses
     kl_divergence
     l2_loss
     log_cosh
+    ntxent
     safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
@@ -60,6 +61,10 @@ L2 Squared loss
 Log hyperbolic cosine loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: log_cosh
+
+Normalized temperature scaled cross-entropy (NT-Xent) loss
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: ntxent
 
 Sigmoid binary cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

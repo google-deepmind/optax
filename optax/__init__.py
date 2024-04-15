@@ -203,6 +203,7 @@ huber_loss = losses.huber_loss
 kl_divergence = losses.kl_divergence
 l2_loss = losses.l2_loss
 log_cosh = losses.log_cosh
+ntxent = losses.ntxent
 sigmoid_binary_cross_entropy = losses.sigmoid_binary_cross_entropy
 smooth_labels = losses.smooth_labels
 softmax_cross_entropy = losses.softmax_cross_entropy
@@ -309,6 +310,7 @@ __all__ = (
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",
+    "ntxent",
     "OptState",
     "Params",
     "periodic_update",
