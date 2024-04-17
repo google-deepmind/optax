@@ -20,14 +20,16 @@ import operator
 from typing import Any, Callable, Optional, Sequence, Union
 
 import chex
+from etils import epy
 import jax
 import jax.numpy as jnp
-import jax.scipy.stats.norm as multivariate_normal
-
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
+
+with epy.lazy_imports():
+  import jax.scipy.stats.norm as multivariate_normal  # pylint: disable=g-import-not-at-top
 
 
 def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
