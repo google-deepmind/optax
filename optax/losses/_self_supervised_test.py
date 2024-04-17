@@ -15,13 +15,16 @@
 """Tests for optax.losses._self_supervised."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
+
 import chex
 import jax.numpy as jnp
 import numpy as np
+
 from optax.losses import _self_supervised
 
 
-class NtxentTest(chex.TestCase):
+class NtxentTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
