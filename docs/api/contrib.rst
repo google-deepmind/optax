@@ -58,4 +58,3 @@ Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
-    :members:
