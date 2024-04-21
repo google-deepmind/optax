@@ -29,6 +29,8 @@ jobs:
         run: bash test.sh
         shell: bash
   markdown-link-check:
+    name: "Check links in markdown files"
+    runs-on: "ubuntu-latest"
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
