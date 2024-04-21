@@ -77,7 +77,7 @@ updates, opt_state = optimizer.update(grads, opt_state)
 params = optax.apply_updates(params, updates)
 ```
 
-You can continue the quick start in [the Optax 101 notebook.](https://github.com/google-deepmind/optax/blob/main/docs/optax-101.ipynb)
+You can continue the quick start in [the Optax 🚀 Getting started notebook.](https://github.com/google-deepmind/optax/blob/main/docs/getting_started.ipynb)
 
 ## Development
 
