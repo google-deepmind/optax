@@ -183,6 +183,19 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
     return jnp.sqrt(sqnorm)
 
 
+def tree_l1_norm(tree: Any) -> chex.Numeric:
+  """Compute the l1 norm of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  abs_tree = jtu.tree_map(jnp.abs, tree)
+  return tree_sum(abs_tree)
+
+
 def tree_zeros_like(
     tree: Any,
     dtype: Optional[jax.typing.DTypeLike] = None,

@@ -15,8 +15,11 @@
 """Tests for optax.tree_utils._tree_math."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
+
 import chex
 import jax
+from jax import flatten_util
 from jax import tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
@@ -24,7 +27,7 @@ import numpy as np
 from optax import tree_utils as tu
 
 
-class TreeUtilsTest(absltest.TestCase):
+class TreeUtilsTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -43,6 +46,15 @@ class TreeUtilsTest(absltest.TestCase):
 
     self.tree_a_dict_jax = jtu.tree_map(jnp.array, self.tree_a_dict)
     self.tree_b_dict_jax = jtu.tree_map(jnp.array, self.tree_b_dict)
+
+    self.data = dict(
+        tree_a=self.tree_a,
+        tree_b=self.tree_b,
+        tree_a_dict=self.tree_a_dict,
+        tree_b_dict=self.tree_b_dict,
+        array_a=self.array_a,
+        array_b=self.array_b,
+    )
 
   def test_tree_add(self):
     expected = self.array_a + self.array_b
@@ -131,6 +143,16 @@ class TreeUtilsTest(absltest.TestCase):
                         jnp.vdot(self.tree_a[1], self.tree_a[1]).real)
     got = tu.tree_l2_norm(self.tree_a)
     np.testing.assert_allclose(expected, got)
+
+  @parameterized.parameters(
+      'tree_a', 'tree_a_dict', 'tree_b', 'array_a', 'array_b', 'tree_b_dict'
+  )
+  def test_tree_l1_norm(self, key):
+    tree = self.data[key]
+    values, _ = flatten_util.ravel_pytree(tree)
+    expected = jnp.sum(jnp.abs(values))
+    got = tu.tree_l1_norm(tree)
+    np.testing.assert_allclose(expected, got, atol=1e-4)
 
   def test_tree_zeros_like(self):
     expected = jnp.zeros_like(self.array_a)
