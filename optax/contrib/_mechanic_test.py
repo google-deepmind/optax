@@ -85,7 +85,7 @@ def _setup_rosenbrock(dtype):
   return initial_params, final_params, get_updates
 
 
-class TestOptimizerState(NamedTuple):
+class OptimizerTestState(NamedTuple):
   """Inner optimizer state for the Mechanic tests."""
   aggregate_grads: base.Params
 
@@ -97,7 +97,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   # resetting behaviour of lookahead can be tested.
   def init_fn(params):
     aggregate_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
-    return TestOptimizerState(aggregate_grads)
+    return OptimizerTestState(aggregate_grads)
 
   def update_fn(updates, state, params):
     # The test optimizer does not use the parameters, but we check that they
@@ -105,7 +105,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     chex.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree_util.tree_map(lambda u: step_size * u, updates)
-    return updates, TestOptimizerState(aggregate_grads)
+    return updates, OptimizerTestState(aggregate_grads)
 
   return base.GradientTransformation(init_fn, update_fn)
 

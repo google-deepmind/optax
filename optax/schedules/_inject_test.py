@@ -176,7 +176,7 @@ class InjectHyperparamsTest(chex.TestCase):
     params = [jnp.ones((1, 2), dtype=param_dtype),
               jnp.ones(2, dtype=param_dtype),
               jnp.ones((1, 1, 1), dtype=param_dtype)]
-    grads = jax.tree_map(lambda x: x.astype(grad_dtype), params)
+    grads = jax.tree_util.tree_map(lambda x: x.astype(grad_dtype), params)
     state = self.variant(optim.init)(params)
     # Check that the hyperparams are overridden
     self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
@@ -229,7 +229,7 @@ class StatefulTest(chex.TestCase):
     params = grads
 
     my_stateful_schedule = ExampleStatefulSchedule()
-    tx = _inject.inject_stateful_hyperparams(
+    tx = _inject.inject_hyperparams(
         transform.scale)(step_size=my_stateful_schedule)
     state = self.variant(tx.init)(params)
 

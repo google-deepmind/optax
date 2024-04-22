@@ -40,6 +40,7 @@ class InjectHyperparamsState(NamedTuple):
   .. deprecated:: 0.1.9
     Use :class:`InjectStatefulHyperparamsState` instead.
   """
+
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: dict[str, chex.Numeric]
   inner_state: base.OptState
@@ -47,6 +48,7 @@ class InjectHyperparamsState(NamedTuple):
 
 class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
+
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
   hyperparams: dict[str, chex.Numeric]
   hyperparams_states: dict[str, base.ScheduleState]
@@ -97,10 +99,10 @@ def inject_hyperparams(
   Args:
     inner_factory: a function that returns the inner
       ``optax.GradientTransformation`` with dynamic hyperparameters.
-    static_args: a string or iterable of strings specifying which
-      callable parameters are not schedules. inject_hyperparams treats all
-      callables as schedules by default, so if a hyperparameter is a
-      non-schedule callable, you must specify that using this argument.
+    static_args: a string or iterable of strings specifying which callable
+      parameters are not schedules. inject_hyperparams treats all callables as
+      schedules by default, so if a hyperparameter is a non-schedule callable,
+      you must specify that using this argument.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
@@ -113,15 +115,17 @@ def inject_hyperparams(
     New parameter ``hyperparam_dtype``, the returned callable outputs a
     ``GradientTransformationExtraArgs`` instead of a ``GradientTransformation``.
   """
-  static_args = ({static_args} if isinstance(static_args, str) else
-                 set(static_args))
+  static_args = (
+      {static_args} if isinstance(static_args, str) else set(static_args)
+  )
   inner_signature = inspect.signature(inner_factory)
 
   if not static_args.issubset(inner_signature.parameters):
     raise ValueError(
-        '`static_args` must specify a subset of `inner_factory`\'s parameters. '
+        "`static_args` must specify a subset of `inner_factory`'s parameters. "
         f'Given `static_args`: {static_args}. `inner_factory` parameters: '
-        f'{set(inner_signature.parameters.keys())}')
+        f'{set(inner_signature.parameters.keys())}'
+    )
 
   @functools.wraps(inner_factory)
   def wrapped_transform(
@@ -146,17 +150,16 @@ def inject_hyperparams(
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
       if hyperparam_dtype is None:
-        dtype = getattr(next(iter(
-            jax.tree_util.tree_leaves(params)), None), 'dtype', None)
+        dtype = getattr(
+            next(iter(jax.tree_util.tree_leaves(params)), None), 'dtype', None
+        )
       else:
         dtype = hyperparam_dtype
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
-          for k, v in numeric_hps.items()}
-      hparams_states = {
-          k: f.init()
-          for k, f in sched_hps.items()
+          for k, v in numeric_hps.items()
       }
+      hparams_states = {k: f.init() for k, f in sched_hps.items()}
       hparams.update({
           k: _convert_floats(f(hparams_states[k]), dtype)
           for k, f in sched_hps.items()
@@ -165,19 +168,23 @@ def inject_hyperparams(
           count=count,
           hyperparams=hparams,
           hyperparams_states=hparams_states,
-          inner_state=inner_factory(**other_hps, **hparams).init(params))
+          inner_state=inner_factory(**other_hps, **hparams).init(params),
+      )
 
     def update_fn(updates, state, params=None, **extra_args):
       if hyperparam_dtype is None:
-        dtype = getattr(next(iter(
-            jax.tree_util.tree_leaves(updates)), None), 'dtype', None)
+        dtype = getattr(
+            next(iter(jax.tree_util.tree_leaves(updates)), None), 'dtype', None
+        )
       else:
         dtype = hyperparam_dtype
-      hparams = {k: _convert_floats(v, dtype)
-                 for k, v in state.hyperparams.items()}
+      hparams = {
+          k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
+      }
       hparams.update({
           k: _convert_floats(
-              f(state.hyperparams_states[k], **extra_args), dtype)
+              f(state.hyperparams_states[k], **extra_args), dtype
+          )
           for k, f in sched_hps.items()
       })
       hyperparams_states = {
@@ -186,14 +193,15 @@ def inject_hyperparams(
       }
 
       updates, inner_state = base.with_extra_args_support(
-          inner_factory(**other_hps, **hparams)).update(
-              updates, state.inner_state, params, **extra_args)
+          inner_factory(**other_hps, **hparams)
+      ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
           count=numerics.safe_int32_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,
-          inner_state=inner_state)
+          inner_state=inner_state,
+      )
 
     return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -215,10 +223,10 @@ def inject_stateful_hyperparams(
   Args:
     inner_factory: a function that returns the inner
       ``optax.GradientTransformation`` with dynamic hyperparameters.
-    static_args: a string or iterable of strings specifying which
-      callable parameters are not schedules. inject_hyperparams treats all
-      callables as schedules by default, so if a hyperparameter is a
-      non-schedule callable, you must specify that using this argument.
+    static_args: a string or iterable of strings specifying which callable
+      parameters are not schedules. inject_hyperparams treats all callables as
+      schedules by default, so if a hyperparameter is a non-schedule callable,
+      you must specify that using this argument.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
@@ -232,7 +240,8 @@ def inject_stateful_hyperparams(
   """
   # raise deprecationwarning
   warnings.warn(
-      'inject_stateful_hyperparams, use inject_hyperparams instead',
+      'inject_stateful_hyperparams is deprecated, use inject_hyperparams'
+      ' instead',
       DeprecationWarning,
   )
   return inject_hyperparams(inner_factory, static_args, hyperparam_dtype)
@@ -240,6 +249,7 @@ def inject_stateful_hyperparams(
 
 class WrappedScheduleState(NamedTuple):
   """The state for a wrapped schedule."""
+
   count: chex.Numeric
 
 
