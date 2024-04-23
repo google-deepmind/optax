@@ -35,7 +35,11 @@ class COCOBState(NamedTuple):
   reward: base.Updates
 
 
-def cocob(alpha: float = 100, eps: float = 1e-8) -> base.GradientTransformation:
+def cocob(
+    alpha: float = 100,
+    eps: float = 1e-8,
+    weight_decay: float = 0
+) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
 
   Algorithm for stochastic subgradient descent. Uses a gambling algorithm to
@@ -48,6 +52,7 @@ def cocob(alpha: float = 100, eps: float = 1e-8) -> base.GradientTransformation:
   Args:
     alpha: fraction to bet parameter of the COCOB optimizer
     eps: jitter term to avoid dividing by 0
+    weight_decay: L2 penalty
 
   Returns:
     A `GradientTransformation` object.
@@ -66,6 +71,10 @@ def cocob(alpha: float = 100, eps: float = 1e-8) -> base.GradientTransformation:
 
   def update_fn(updates, state, params):
     init_particles, cumulative_grads, scale, subgradients, reward = state
+
+    updates = jtu.tree_map(
+        lambda c, p: c + weight_decay * p, updates, params,
+    )
 
     scale = jtu.tree_map(
         lambda L, c: jnp.maximum(L, jnp.abs(c)), scale, updates
