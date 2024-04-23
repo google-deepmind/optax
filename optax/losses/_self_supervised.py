@@ -55,7 +55,7 @@ def ntxent(
   xcs = (
       _regression.cosine_similarity(
           embeddings[None, :, :], embeddings[:, None, :],
-          eps=1e-12
+          epsilon=1e-12
       )
       / temperature
   )
