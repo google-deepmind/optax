@@ -36,8 +36,8 @@ class COCOBState(NamedTuple):
 
 
 def cocob(
-    alpha: float = 100, 
-    eps: float = 1e-8, 
+    alpha: float = 100,
+    eps: float = 1e-8,
     weight_decay: float = 0
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
