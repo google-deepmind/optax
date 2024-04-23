@@ -32,7 +32,7 @@ from optax.tree_utils import _state_utils
 # Testing contributions coded as GradientTransformations
 _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='cocob', opt_kwargs=dict(alpha=100.0, eps=1e-8)),
-    dict(opt_name='cocob', opt_kwargs=dict(alpha=100.0, eps=1e-8, weight_decay=1e-2)),
+    dict(opt_name='cocob', opt_kwargs=dict(weight_decay=1e-2)),
     dict(opt_name='dadapt_adamw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='momo', opt_kwargs=dict(learning_rate=1e-1)),
