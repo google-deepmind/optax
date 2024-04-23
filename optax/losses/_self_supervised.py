@@ -54,13 +54,11 @@ def ntxent(
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :], embeddings[:, None, :]
+          embeddings[None, :, :], embeddings[:, None, :],
+          eps=1e-12
       )
       / temperature
   )
-
-  # if 0 vector or all same label
-  xcs = jnp.where(jnp.isnan(xcs), 0.0, xcs)
 
   # finding positive and negative pairs
   labels1 = jnp.expand_dims(labels, axis=1)
