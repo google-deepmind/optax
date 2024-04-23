@@ -72,10 +72,9 @@ def cocob(
   def update_fn(updates, state, params):
     init_particles, cumulative_grads, scale, subgradients, reward = state
 
-    if weight_decay != 0:
-      updates = jtu.tree_map(
-          lambda c, p: c + weight_decay * p, updates, params,
-      )
+    updates = jtu.tree_map(
+        lambda c, p: c + weight_decay * p, updates, params,
+    )
 
     scale = jtu.tree_map(
         lambda L, c: jnp.maximum(L, jnp.abs(c)), scale, updates
