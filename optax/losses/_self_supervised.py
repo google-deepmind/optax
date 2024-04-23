@@ -34,8 +34,7 @@ def ntxent(
     embeddings: batch of embeddings, with shape [batch, feature_length]
     labels: labels for groups that are positive pairs. e.g. if you have a batch
       of 4 embeddings and the first two and last two were positive pairs your
-      `labels` should look like [0, 0, 1, 1]. labels SHOULD NOT be all the same
-      (e.g. [0, 0, 0, 0]) you will get a NaN result. Shape [batch]
+      `labels` should look like [0, 0, 1, 1]. Shape [batch]
     temperature: temperature scaling parameter.
 
   Returns:
@@ -59,6 +58,9 @@ def ntxent(
       )
       / temperature
   )
+
+  # if 0 vector or all same label
+  xcs = jnp.where(jnp.isnan(xcs), 0.0, xcs)
 
   # finding positive and negative pairs
   labels1 = jnp.expand_dims(labels, axis=1)
