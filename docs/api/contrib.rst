@@ -16,6 +16,10 @@ Experimental features and algorithms that don't meet the
     dpsgd
     mechanize
     MechanicState
+    momo
+    MomoState
+    momo_adam
+    MomoAdamState
     prodigy
     ProdigyState
     sam
@@ -62,6 +66,13 @@ Mechanize
 .. autofunction:: mechanize
 .. autoclass:: MechanicState
     :members:
+
+Momo
+~~~~
+.. autofunction:: momo
+.. autoclass:: MomoState
+.. autofunction:: momo_adam
+.. autoclass:: MomoAdamState
 
 Prodigy
 ~~~~~~~
