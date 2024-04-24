@@ -708,7 +708,9 @@ def scale_by_radam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    threshold: float = 5.0
+    threshold: float = 5.0,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Rectified Adam algorithm.
 
@@ -722,6 +724,7 @@ def scale_by_radam(
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
     threshold: Threshold for variance tractability.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
     A `GradientTransformation` object.
@@ -749,7 +752,14 @@ def scale_by_radam(
     count_inc = numerics.safe_int32_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
-    mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
+    if nesterov:
+      mu_hat = jtu.tree_map(
+          lambda m, g: b1 * m + (1 - b1) * g,
+          otu.tree_bias_correction(
+              mu, b1, numerics.safe_int32_increment(count_inc)),
+          otu.tree_bias_correction(updates, b1, count_inc))
+    else:
+      mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.lax.cond(
         ro >= threshold, _radam_update, lambda _: mu_hat,
