@@ -57,11 +57,11 @@ def momo(
   final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The
-  effective step size is `min(learning_rate, <adaptive term>)`, where the adaptive
+  effective step size is ``min(learning_rate, <adaptive term>)``, where the adaptive
   term is computed on the fly.
 
   Note that one needs to pass the latest (batch) loss value to the update function
-  using the keyword argument `value`.
+  using the keyword argument ``value``.
 
   Examples:
     >>> from optax import contrib
