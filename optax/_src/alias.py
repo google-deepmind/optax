@@ -1241,7 +1241,9 @@ def radam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    threshold: float = 5.0
+    threshold: float = 5.0,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """The Rectified Adam optimizer.
 
@@ -1285,13 +1287,20 @@ def radam(
       in RMSProp), to avoid dividing by zero when rescaling. This is needed for
       instance when computing (meta-)gradients through Adam.
     threshold: Threshold for variance tractability.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
     The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_radam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, threshold=threshold),
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          threshold=threshold,
+          nesterov=nesterov,
+      ),
       transform.scale_by_learning_rate(learning_rate),
   )
 
