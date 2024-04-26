@@ -13,6 +13,10 @@ Experimental features and algorithms that don't meet the
     DAdaptAdamWState
     differentially_private_aggregate
     DifferentiallyPrivateAggregateState
+    dog
+    DoGState
+    dowg
+    DoWGState
     dpsgd
     mechanize
     MechanicState
@@ -60,6 +64,12 @@ Differentially Private Aggregate
    :members:
 .. autofunction:: dpsgd
 
+Distance over Gradients
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dog
+.. autoclass:: DoGState
+.. autofunction:: dowg
+.. autoclass:: DoWGState
 
 Mechanize
 ~~~~~~~~~
