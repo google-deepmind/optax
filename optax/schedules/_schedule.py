@@ -454,6 +454,29 @@ def cosine_onecycle_schedule(
        int(transition_steps): 1. / (div_factor * final_div_factor)})
 
 
+def warmup_constant_schedule(
+    init_value: float,
+    peak_value: float,
+    warmup_steps: int,
+) -> base.Schedule:
+  r"""Linear warmup followed by constant schedule i.e no decay.
+
+  Args:
+    init_value: Initial value for the scalar to be annealed.
+    peak_value: Peak value for scalar to be annealed at end of warmup.
+    warmup_steps: Positive integer, the length of the linear warmup.
+
+  Returns:
+    schedule
+      A function that maps step counts to values
+  """
+  return linear_schedule(
+      init_value=init_value,
+      end_value=peak_value,
+      transition_steps=warmup_steps,
+  )
+
+
 def warmup_cosine_decay_schedule(
     init_value: float,
     peak_value: float,

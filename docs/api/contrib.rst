@@ -28,6 +28,9 @@ Experimental features and algorithms that don't meet the
     ProdigyState
     sam
     SAMState
+    schedule_free
+    schedule_free_eval_params
+    ScheduleFreeState
     split_real_and_imaginary
     SplitRealAndImaginaryState
 
@@ -88,6 +91,13 @@ Prodigy
 ~~~~~~~
 .. autofunction:: prodigy
 .. autoclass:: ProdigyState
+    :members:
+
+Schedule-Free
+~~~~~~~~~
+.. autofunction:: schedule_free
+.. autofunction:: schedule_free_eval_params
+.. autoclass:: ScheduleFreeState
     :members:
 
 Sharpness aware minimization
