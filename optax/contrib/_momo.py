@@ -253,7 +253,8 @@ def momo_adam(
 
   Returns:
     A ``GradientTransformation`` object.
-    .. versionadded:: 0.2.3
+
+  .. versionadded:: 0.2.3
   """
 
   def init_fn(params: base.Params) -> MomoAdamState:
