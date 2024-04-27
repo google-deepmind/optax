@@ -1,7 +1,7 @@
 Losses
 ======
 
-.. currentmodule:: optax.losses
+.. currentmodule:: optax
 
 .. autosummary::
     convex_kl_divergence
@@ -54,7 +54,7 @@ Kullback-Leibler divergence
 .. autofunction:: kl_divergence
 
 L2 Squared loss
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
 .. autofunction:: squared_error
 .. autofunction:: l2_loss
 
