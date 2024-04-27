@@ -50,19 +50,20 @@ def scale_by_dog(
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
 
-  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t` 
-  according to:
+  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t`
+  according to the update rule:
 
   .. math::
-    \begin{aligned}
-      eta_t & 
-      = \frac{max_{i\le t}{\|x_i-x_0\|}}{\sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
-      x_{t+1} & = x_{t} - eta_t * g_t,
-    \end{aligned}
+
+    \begin{align*}
+      \eta_t &=\frac{max_{i\le t}{\|x_i-x_0\|}}{
+        \sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
+      x_{t+1} & = x_{t} - \eta_t\, g_t,
+    \end{align*}
 
   References:
     Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
-    Size Schedule<https://arxiv.org/abs/2302.12022>`_, 2023.
+    Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
 
   Args:
     reps_rel: value to use to compute the  initial distance 
@@ -84,6 +85,8 @@ def scale_by_dog(
   Returns:
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
+  
+  .. versionadded:: 0.2.3
   """
 
   def init_fn(params: base.Params) -> DoGState:
@@ -141,13 +144,15 @@ def dog(
   r"""Distance over Gradients optimizer.
 
   DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t` 
-  according to:
+  according to the update rule:
+
   .. math::
-    \begin{aligned}
-      eta_t & 
-      = \frac{max_{i\le t}{\|x_i-x_0\|}}{\sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
-      x_{t+1} & = x_{t} - eta_t * g_t,
-    \end{aligned}
+
+    \begin{align*}
+      \eta_t &= \frac{\max_{i\le t}{\|x_i-x_0\|}}{
+        \sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
+      x_{t+1} & = x_{t} - \eta_t\, g_t,
+    \end{align*}
 
   Examples:
     >>> from optax import contrib
@@ -171,7 +176,7 @@ def dog(
 
   References:
     Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
-    Size Schedule<https://arxiv.org/abs/2302.12022>`_, 2023.
+    Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
 
   Args:
     learning_rate: optional learning rate (potentially varying according to 
@@ -201,6 +206,8 @@ def dog(
   Returns:
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
+
+  .. versionaddedd:: 0.2.3
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
@@ -227,7 +234,7 @@ def scale_by_dowg(
 
   References:
     Khaled et al., `DoWG Unleashed: An Efficient Universal Parameter-Free
-    Gradient Descent Method<https://arxiv.org/pdf/2305.16284>`_, 2023.
+    Gradient Descent Method <https://arxiv.org/pdf/2305.16284>`_, 2023.
 
   Args:
     init_estim_sq_dist: initial guess of the squared distance to solution.
@@ -304,7 +311,7 @@ def dowg(
 
   References:
     Khaled et al., `DoWG Unleashed: An Efficient Universal Parameter-Free
-    Gradient Descent Method<https://arxiv.org/pdf/2305.16284>`_, 2023.
+    Gradient Descent Method <https://arxiv.org/pdf/2305.16284>`_, 2023.
 
   Args:
     learning_rate: optional learning rate (potentially varying according to some

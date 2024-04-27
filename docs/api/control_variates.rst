@@ -17,5 +17,5 @@ Control variates Jacobians
 .. autofunction:: control_variates_jacobians
 
 Moving average baseline
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: moving_avg_baseline
