@@ -32,5 +32,6 @@ from optax.schedules._schedule import piecewise_constant_schedule
 from optax.schedules._schedule import piecewise_interpolate_schedule
 from optax.schedules._schedule import polynomial_schedule
 from optax.schedules._schedule import sgdr_schedule
+from optax.schedules._schedule import warmup_constant_schedule
 from optax.schedules._schedule import warmup_cosine_decay_schedule
 from optax.schedules._schedule import warmup_exponential_decay_schedule

@@ -14,12 +14,19 @@
 # ==============================================================================
 """Contributed optimizers in Optax."""
 
+# pylint: disable=g-importing-member
+
 from optax.contrib._cocob import cocob
 from optax.contrib._cocob import COCOBState
+from optax.contrib._cocob import scale_by_cocob
 from optax.contrib._complex_valued import split_real_and_imaginary
 from optax.contrib._complex_valued import SplitRealAndImaginaryState
 from optax.contrib._dadapt_adamw import dadapt_adamw
 from optax.contrib._dadapt_adamw import DAdaptAdamWState
+from optax.contrib._dog import dog
+from optax.contrib._dog import DoGState
+from optax.contrib._dog import dowg
+from optax.contrib._dog import DoWGState
 from optax.contrib._mechanic import MechanicState
 from optax.contrib._mechanic import mechanize
 from optax.contrib._momo import momo
@@ -37,3 +44,8 @@ from optax.contrib._sam import normalize
 from optax.contrib._sam import NormalizeState
 from optax.contrib._sam import sam
 from optax.contrib._sam import SAMState
+from optax.contrib._schedule_free import schedule_free
+from optax.contrib._schedule_free import schedule_free_eval_params
+from optax.contrib._schedule_free import ScheduleFreeState
+from optax.contrib._sophia import sophia
+from optax.contrib._sophia import SophiaState

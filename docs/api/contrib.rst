@@ -13,15 +13,29 @@ Experimental features and algorithms that don't meet the
     DAdaptAdamWState
     differentially_private_aggregate
     DifferentiallyPrivateAggregateState
+    dog
+    DoGState
+    dowg
+    DoWGState
     dpsgd
     mechanize
     MechanicState
+    momo
+    MomoState
+    momo_adam
+    MomoAdamState
     prodigy
     ProdigyState
     sam
     SAMState
+    schedule_free
+    schedule_free_eval_params
+    ScheduleFreeState
     split_real_and_imaginary
     SplitRealAndImaginaryState
+    sophia
+    scale_by_sophia
+    SophiaState
 
 Complex-valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,6 +70,12 @@ Differentially Private Aggregate
    :members:
 .. autofunction:: dpsgd
 
+Distance over Gradients
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dog
+.. autoclass:: DoGState
+.. autofunction:: dowg
+.. autoclass:: DoWGState
 
 Mechanize
 ~~~~~~~~~
@@ -63,14 +83,35 @@ Mechanize
 .. autoclass:: MechanicState
     :members:
 
+Momo
+~~~~
+.. autofunction:: momo
+.. autoclass:: MomoState
+.. autofunction:: momo_adam
+.. autoclass:: MomoAdamState
+
 Prodigy
 ~~~~~~~
 .. autofunction:: prodigy
 .. autoclass:: ProdigyState
     :members:
 
+Schedule-Free
+~~~~~~~~~
+.. autofunction:: schedule_free
+.. autofunction:: schedule_free_eval_params
+.. autoclass:: ScheduleFreeState
+    :members:
+
 Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
+    :members:
+
+Sophia
+~~~~~~
+.. autofunction:: sophia
+.. autofunction:: scale_by_sophia
+.. autoclass:: SophiaState
     :members:
