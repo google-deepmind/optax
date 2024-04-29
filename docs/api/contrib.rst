@@ -33,6 +33,9 @@ Experimental features and algorithms that don't meet the
     ScheduleFreeState
     split_real_and_imaginary
     SplitRealAndImaginaryState
+    sophia
+    scale_by_sophia
+    SophiaState
 
 Complex-valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -104,4 +107,11 @@ Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
+    :members:
+
+Sophia
+~~~~~~
+.. autofunction:: sophia
+.. autofunction:: scale_by_sophia
+.. autoclass:: SophiaState
     :members:
