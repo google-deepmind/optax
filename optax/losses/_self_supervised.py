@@ -25,6 +25,35 @@ def ntxent(
 ) -> chex.Numeric:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
+  Examples:
+    >>> import jax
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>>
+    >>> key = jax.random.key(42)
+    >>> key1, key2, key3 = jax.random.split(key, 3)
+    >>> x = jax.random.normal(key1, shape=(4,2))
+    >>> labels = jnp.array([0, 0, 1, 1])
+    >>> print("input:", x, "\nlabels:", labels)
+    input: [[-0.9155995   1.5534698 ]
+    [ 0.2623586  -1.5908985 ]
+    [-0.15977189  0.480501  ]
+    [ 0.58389133  0.10497775]]
+    labels: [0 0 1 1]
+    >>>
+    >>> w = jax.random.normal(key2, shape=(2,1)) # params
+    >>> b = jax.random.normal(key3, shape=(1,)) # params
+    >>> out = x @ w + b # model
+    >>> print("Embeddings:", out)
+    Embeddings: [[-1.0076267]
+    [-1.2960069]
+    [-1.1829865]
+    [-1.3485558]]
+    >>>
+    >>> loss = optax.ntxent(out, labels)
+    >>> print("loss:", loss)
+    loss: 1.0986123
+
   References:
     T. Chen et al `A Simple Framework for Contrastive Learning of Visual
     Representations <http://arxiv.org/abs/2002.05709>`_, 2020
