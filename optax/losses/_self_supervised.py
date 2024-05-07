@@ -35,26 +35,25 @@ def ntxent(
     >>> x = jax.random.normal(key1, shape=(4,2))
     >>> labels = jnp.array([0, 0, 1, 1])
     >>>
-    >>> print("input:", jnp.around(x, 2))
-    input: [[-1.22  0.42]
-    [ 0.64  0.68]
-    [ 1.75 -0.01]
-    [ 0.37  0.44]]
-    >>> print("labels:", labels)
+    >>> print("input:", x)
+    input: [[-0.9155995   1.5534698 ]
+     [ 0.2623586  -1.5908985 ]
+     [-0.15977189  0.480501  ]
+     [ 0.58389133  0.10497775]]
     labels: [0 0 1 1]
     >>>
     >>> w = jax.random.normal(key2, shape=(2,1)) # params
     >>> b = jax.random.normal(key3, shape=(1,)) # params
     >>> out = x @ w + b # model
     >>>
-    >>> print("Embeddings:", jnp.around(out, 2))
-    Embeddings: [[1.39     ]
-    [1.5799999]
-    [0.34     ]
-    [1.23     ]]
+    >>> print("Embeddings:", 2)
+    Embeddings: [[-1.0076267]
+     [-1.2960069]
+     [-1.1829865]
+     [-1.3485558]]
     >>> loss = optax.ntxent(out, labels)
-    >>> print("loss:", jnp.round(loss, 2))
-    loss: 1.1
+    >>> print("loss:", loss)
+    loss: 1.0986123
 
   References:
     T. Chen et al `A Simple Framework for Contrastive Learning of Visual
