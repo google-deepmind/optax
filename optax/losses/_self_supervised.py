@@ -30,7 +30,7 @@ def ntxent(
     >>> import optax
     >>> import jax.numpy as jnp
     >>>
-    >>> key = jax.random.key(12345)
+    >>> key = jax.random.key(42)
     >>> key1, key2, key3 = jax.random.split(key, 3)
     >>> x = jax.random.normal(key1, shape=(4,2))
     >>> labels = jnp.array([0, 0, 1, 1])
