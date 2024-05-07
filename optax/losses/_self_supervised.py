@@ -40,13 +40,14 @@ def ntxent(
      [ 0.2623586  -1.5908985 ]
      [-0.15977189  0.480501  ]
      [ 0.58389133  0.10497775]]
+    >>> print("labels:", labels)
     labels: [0 0 1 1]
     >>>
     >>> w = jax.random.normal(key2, shape=(2,1)) # params
     >>> b = jax.random.normal(key3, shape=(1,)) # params
     >>> out = x @ w + b # model
     >>>
-    >>> print("Embeddings:", 2)
+    >>> print("Embeddings:", out)
     Embeddings: [[-1.0076267]
      [-1.2960069]
      [-1.1829865]
