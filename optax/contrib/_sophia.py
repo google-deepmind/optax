@@ -73,8 +73,8 @@ def scale_by_sophia(
   def init_fn(params: base.Params):
     return SophiaState(
         step=jnp.array(0, dtype=jnp.int64),
-        gradient_avg=jax.tree_map(jnp.zeros_like, params),
-        hessian=jax.tree_map(jnp.zeros_like, params),
+        gradient_avg=jax.tree.map(jnp.zeros_like, params),
+        hessian=jax.tree.map(jnp.zeros_like, params),
     )
 
   def update_fn(
@@ -85,7 +85,7 @@ def scale_by_sophia(
     del params
 
     # Update exponential average of gradients.
-    gradient_avg = jax.tree_map(
+    gradient_avg = jax.tree.map(
         lambda ga, gr: ga * b1 + gr * (1 - b1),
         state.gradient_avg,
         updates,
@@ -94,7 +94,7 @@ def scale_by_sophia(
     # Update Hessian diagonal estimate, potentially every nth step.
     hessian = jax.lax.cond(
         state.step % update_hessian_every == 0,
-        lambda: jax.tree_map(
+        lambda: jax.tree.map(
             lambda he, gr: he * b2 + gr**2 * (1 - b2),
             state.hessian,
             updates,
@@ -102,7 +102,7 @@ def scale_by_sophia(
         lambda: state.hessian,
     )
 
-    updates = jax.tree_map(
+    updates = jax.tree.map(
         lambda grad_av, he: jnp.clip(
             grad_av / (rho * batch_size * he + 1e-15), -1, 1
         ),
