@@ -18,6 +18,8 @@ set -xeuo pipefail
 
 # Install deps in a virtual env.
 rm -rf _testing
+rm -rf dist/
+rm -rf *.whl
 rm -rf .pytype
 mkdir -p _testing
 readonly VENV_DIR="$(mktemp -d `pwd`/_testing/optax-env.XXXXXXXX)"
