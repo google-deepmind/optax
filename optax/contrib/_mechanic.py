@@ -83,7 +83,8 @@ def mechanize(
   optimizer (except for normalized gradient optimizer like LARS or LAMB).
 
   References:
-    [Cutkosky et al, 2023](https://arxiv.org/pdf/2306.00144.pdf)
+    Cutkosky et al, `Mechanic: A Learning Rate Tuner
+    <https://arxiv.org/pdf/2306.00144.pdf>`_ 2023
 
   Args:
     base_optimizer: Base optimizer to compute updates from.
