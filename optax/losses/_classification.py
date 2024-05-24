@@ -290,10 +290,10 @@ def multiclass_hinge_loss(
 
   Args:
     scores: scores produced by the model (floats).
-    labels: ground-truth integer label.
+    labels: ground-truth integer labels.
 
   Returns:
-    loss value
+    loss values
 
   .. versionadded:: 0.2.3
   """
@@ -306,18 +306,18 @@ def multiclass_perceptron_loss(
     scores: chex.Array,
     labels: chex.Array,
 ) -> chex.Array:
-  """Binary perceptron loss.
+  """Multiclass perceptron loss.
 
   References:
     Michael Collins. Discriminative training methods for Hidden Markov Models:
     Theory and experiments with perceptron algorithms. EMNLP 2002
 
   Args:
-    scores: score produced by the model.
-    labels: ground-truth integer label.
+    scores: scores produced by the model.
+    labels: ground-truth integer labels.
 
   Returns:
-    loss value.
+    loss values.
 
   .. versionadded:: 0.2.2
   """
