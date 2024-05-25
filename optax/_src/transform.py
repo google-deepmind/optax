@@ -762,7 +762,7 @@ def scale_by_radam(
       mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree_util.tree_map(
-    lambda t, f: jnp.where(ro >= threshold, t, f), 
+    lambda t, f: jnp.where(ro >= threshold, t, f),
         _radam_update((ro, mu_hat, nu_hat)), mu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
