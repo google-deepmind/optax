@@ -761,9 +761,9 @@ def scale_by_radam(
     else:
       mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
-    updates = jax.lax.cond(
-        ro >= threshold, _radam_update, lambda _: mu_hat,
-        (ro, mu_hat, nu_hat))
+    updates = jax.tree_util.tree_map(
+    lambda t, f: jnp.where(ro >= threshold, t, f), 
+        _radam_update((ro, mu_hat, nu_hat)), mu_hat)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
