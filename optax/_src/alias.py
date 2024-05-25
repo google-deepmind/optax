@@ -18,6 +18,7 @@ import functools
 from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
+import jax.scipy as jsp
 
 from optax._src import base
 from optax._src import clipping
@@ -1883,3 +1884,68 @@ def polyak_sgd(
           max_learning_rate=max_learning_rate, f_min=f_min, eps=eps
       ),
   )
+
+
+def gauss_newton(
+    linear_solver: Callable = jsp.sparse.linalg.cg,
+    is_compositional: bool = False,
+    use_normal_eqs: bool = True,
+) -> base.GradientTransformationExtraArgs:
+  """The Gauss-Newton optimizer.
+
+  Apply the Gauss-Newton method to a compositional 
+  problem. 
+
+  Args:
+    is_compositional: if true solve a compositional problem (needs outer_hvp),
+      else solve a classical least squares.
+    use_normal_eqs: if true solve the normal equations.
+    linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
+  Returns:
+    The Gauss-Newton update.
+  """
+  return transform.scale_by_gauss_newton(
+    linear_solver=linear_solver,
+    is_compositional=is_compositional,
+    use_normal_eqs=use_normal_eqs,
+    )
+
+
+def levenberg_marquardt(
+    is_compositional: bool = False,
+    use_normal_eqs: bool = True,
+    linear_solver: Callable = jsp.sparse.linalg.cg,
+    init_damping_parameter: float = 1e-3,
+    increase_factor: float = 2.0,
+    max_steps: int = 30,
+) -> base.GradientTransformationExtraArgs:
+  """The Levenberg-Marquardt optimizer.
+
+  Apply the gain ratio trust-region search to the regularized Gauss-Newton step.
+  See algorithm 6.18 in “Introduction to Optimization and Data Fitting” by 
+  K. Madsen & H. B. Nielsen. 
+
+  Args:
+    is_compositional: if true solve a compositional problem (needs outer_hvp),
+      else solve a classical least squares.
+    use_normal_eqs: if true solve the normal equations.
+    linear_solver: instance of linear solver (e.g. jsp.sparse.linalg.cg).
+    init_damping_parameter: initial value of the damping parameter.
+    increase_factor: initial value of the increasing factor.
+    max_steps: maximum number of steps before stopping the search loop.
+  Returns:
+    The Gauss-Newton update.
+  """
+
+  opt = transform.scale_by_gauss_newton(
+    linear_solver=linear_solver,
+    is_compositional=is_compositional,
+    use_normal_eqs=use_normal_eqs,
+    )
+
+  return transform.scale_by_madsen_trust_region(
+    gn_optimizer=opt,
+    init_damping_parameter=init_damping_parameter,
+    increase_factor=increase_factor,
+    max_steps=max_steps
+    )
