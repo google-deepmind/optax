@@ -789,11 +789,14 @@ def scale_by_rprop(
   convergence and avoid oscillations.
 
   References:
-    PyTorch implementation:
-      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
-    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
-    Igel and Hüsken, 2003:
-      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+    Riedmiller and Braun. `A direct adaptive method for faster backpropagation 
+    learning: the RPROP algorithm 
+    <https://ieeexplore.ieee.org/document/298623>`_, 1993
+
+    Igel and Hüsken.  `Empirical evaluation of the improved Rprop learning 
+    algorithms
+    <https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007>`_,
+    2003
 
   Args:
     learning_rate: The initial step size.
@@ -825,7 +828,7 @@ def scale_by_rprop(
             step_size,
             jnp.clip(
                 step_size * jnp.where(s > 0, eta_plus, eta_minus),
-                a_min=min_step_size, a_max=max_step_size
+                min=min_step_size, max=max_step_size
             )
         ),
         sign, state.step_sizes

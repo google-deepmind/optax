@@ -180,11 +180,13 @@ def per_example_layer_norm_clip(
 
   Let C = `global_l2_norm_clip value`. Then per-layer clipping is done as
   follows:
-  (1) If `uniform` is `True`, each of the K layers has an individual clip
-      norm of C / sqrt(K).
-  (2) If `uniform` is `False`, each of the K layers has an individual clip
-      norm of C * sqrt(D_i / D) where D_i is the number of parameters in
-      layer i, and D is the total number of parameters in the model.
+
+  * If `uniform` is `True`, each of the K layers has an individual clip
+    norm of C / sqrt(K).
+
+  * If `uniform` is `False`, each of the K layers has an individual clip
+    norm of C * sqrt(D_i / D) where D_i is the number of parameters in
+    layer i, and D is the total number of parameters in the model.
 
   Returns:
     A tuple containing sum of the clipped per-example grads and the number of

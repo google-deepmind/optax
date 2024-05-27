@@ -210,6 +210,7 @@ log_cosh = losses.log_cosh
 ntxent = losses.ntxent
 sigmoid_binary_cross_entropy = losses.sigmoid_binary_cross_entropy
 smooth_labels = losses.smooth_labels
+safe_softmax_cross_entropy = losses.safe_softmax_cross_entropy
 softmax_cross_entropy = losses.softmax_cross_entropy
 softmax_cross_entropy_with_integer_labels = (
     losses.softmax_cross_entropy_with_integer_labels

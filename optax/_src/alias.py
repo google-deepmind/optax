@@ -1774,11 +1774,14 @@ def rprop(
     Objective function: 1.38E+01
 
   References:
-    PyTorch implementation:
-      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
-    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
-    Igel and Hüsken, 2003:
-      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+    Riedmiller and Braun. `A direct adaptive method for faster backpropagation 
+    learning: the RPROP algorithm 
+    <https://ieeexplore.ieee.org/document/298623>`_, 1993
+
+    Igel and Hüsken.  `Empirical evaluation of the improved Rprop learning 
+    algorithms
+    <https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007>`_,
+    2003
 
   Args:
     learning_rate: The initial step size.

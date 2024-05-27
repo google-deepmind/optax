@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2024 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ def scale_by_dog(
   Returns:
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
-  
+
   .. versionadded:: 0.2.3
   """
 
@@ -207,7 +207,7 @@ def dog(
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
 
-  .. versionaddedd:: 0.2.3
+  .. versionadded:: 0.2.3
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
@@ -245,6 +245,8 @@ def scale_by_dowg(
   Returns:
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
+
+  .. versionadded:: 0.2.3
   """
 
   def init_fn(params: base.Params) -> DoWGState:
@@ -330,6 +332,8 @@ def dowg(
   Returns:
     The corresponding :class:`optax.GradientTransformation` with associated
     init and update functions.
+
+  .. versionadded:: 0.2.3
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
