@@ -91,7 +91,7 @@ def reduce_on_plateau(
     raise ValueError(
         f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
     )
-  
+
   if end_scale is not None:
     clip_fn = jnp.maximum if factor < 1.0 else jnp.minimum
 
