@@ -31,6 +31,7 @@ from optax.tree_utils import _state_utils
 
 # Testing contributions coded as GradientTransformations
 _OPTIMIZERS_UNDER_TEST = (
+    dict(opt_name='acprop', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='cocob', opt_kwargs=dict(alpha=100.0, eps=1e-8)),
     dict(opt_name='cocob', opt_kwargs=dict(weight_decay=1e-2)),
     dict(opt_name='sophia', opt_kwargs=dict(learning_rate=1e-3, batch_size=1)),
@@ -99,8 +100,10 @@ class ContribTest(chex.TestCase):
     # A no-op change, to verify that tree map works.
     state = _state_utils.tree_map_params(opt, lambda v: v, state)
 
-    for _ in range(20_000):
-      params, state = step(params, state)
+    def f(params_state, _):
+      return step(*params_state), None
+
+    (params, state), _ = jax.lax.scan(f, (params, state), length=30_000)
 
     chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 

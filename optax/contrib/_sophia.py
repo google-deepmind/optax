@@ -49,7 +49,7 @@ def scale_by_sophia(
   weight decay and learning rate scaling.
 
   References:
-    Liu et al, 2023: https://arxiv.org/abs/2305.14342
+    [Liu et al, 2023](https://arxiv.org/abs/2305.14342)
 
   Args:
     b1: Exponential averaging decay constant for gradients. Must be in the range

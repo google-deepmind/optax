@@ -47,7 +47,7 @@ def scale_by_cocob(
   subgradients. All we need is a good gambling strategy. See Algorithm 2 of:
 
   References:
-    [Orabona & Tommasi, 2017](https://arxiv.org/pdf/1705.07795.pdf)
+    [Orabona & Tommasi, 2017](https://arxiv.org/abs/1705.07795)
 
   Args:
     alpha: fraction to bet parameter of the COCOB optimizer

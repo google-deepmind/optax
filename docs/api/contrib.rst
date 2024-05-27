@@ -7,6 +7,8 @@ Experimental features and algorithms that don't meet the
 .. currentmodule:: optax.contrib
 
 .. autosummary::
+    acprop
+    scale_by_acprop
     cocob
     COCOBState
     dadapt_adamw
@@ -36,6 +38,11 @@ Experimental features and algorithms that don't meet the
     sophia
     scale_by_sophia
     SophiaState
+
+Asynchronous-centering-Prop
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: acprop
+.. autofunction:: scale_by_acprop
 
 Complex-valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
