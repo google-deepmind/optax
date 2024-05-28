@@ -19,7 +19,7 @@ number of epochs, the learning rate is reduced by a factor of 'reduce_factor'.
 Optionally, a cooldown period can be specified during which the learning rate
 will not be reduced.
 """
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import chex
 import jax
@@ -46,7 +46,7 @@ def reduce_on_plateau(
     atol: float = 0.0,
     cooldown: int = 0,
     accumulation_size: int = 1,
-    end_scale: Optional[float] = None,
+    min_scale: float = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
@@ -67,9 +67,7 @@ def reduce_on_plateau(
       of reduce on plateau. If the value fed to the optimizer is a test value,
       simply take 1 (default). If the value fed to the optimizer is the loss on
       a the current minibatch, consider using a larger accumulation size.
-    end_scale: the scale at which the learning rate decay stops. When
-      ``factor < 1.0``, ``end_scale`` is treated as a lower bound, otherwise
-      as an upper bound. Has no effect when ``factor == 0.0``.
+    min_scale: Scale at which the learning rate decay stops.
 
   Returns:
     A GradientTransformationExtraArgs object.
@@ -77,6 +75,11 @@ def reduce_on_plateau(
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
+  if factor <= 0.0 or factor >= 1.0:
+    raise ValueError(
+      f"Factor must be in the range (0, 1), got factor = {factor}."
+    )
+
   if rtol < 0.0 or atol < 0.0:
     raise ValueError(
         "Both rtol and atol must be non-negative, got "
@@ -91,9 +94,6 @@ def reduce_on_plateau(
     raise ValueError(
         f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
     )
-
-  if end_scale is not None:
-    clip_fn = jnp.maximum if factor < 1.0 else jnp.minimum
 
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
@@ -131,17 +131,17 @@ def reduce_on_plateau(
       new_plateau_count = jnp.where(
           curr_plateau_count == patience, 0, curr_plateau_count
       )
-      new_scale = jnp.where(
-          curr_plateau_count == patience,
-          state.scale * factor,
-          state.scale,
+      new_scale = jnp.maximum(
+        jnp.where(
+            curr_plateau_count == patience,
+            state.scale * factor,
+            state.scale,
+        ),
+        min_scale,
       )
       new_cooldown_count = jnp.where(
           curr_plateau_count == patience, cooldown, 0
       ).astype(jnp.int32)
-
-      if end_scale is not None:
-        new_scale = clip_fn(new_scale, end_scale)
 
       return new_plateau_count, new_scale, new_cooldown_count
 

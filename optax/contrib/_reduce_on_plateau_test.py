@@ -36,7 +36,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
         atol=0.0,
         cooldown=self.cooldown,
         accumulation_size=1,
-        end_scale=0.01,
+        min_scale=0.01,
     )
     self.updates = {'params': jnp.array(1.0)}  # dummy updates
 
@@ -142,12 +142,12 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
   def test_learning_rate_not_reduced_after_end_scale_is_reached(
       self, enable_x64
   ):
-    """Test that learning rate is not reduced if end_scale has been reached."""
+    """Test that learning rate is not reduced if min_scale has been reached."""
 
     # Enable float64 if requested
     jax.config.update('jax_enable_x64', enable_x64)
 
-    # State with scale == end_scale
+    # State with scale == min_scale
     state = _reduce_on_plateau.ReduceLROnPlateauState(
         best_value=jnp.array(1.0, dtype=jnp.float32),
         plateau_count=jnp.array(0, dtype=jnp.int32),
