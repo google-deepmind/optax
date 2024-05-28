@@ -81,7 +81,6 @@ Prodigy
 ~~~~~~~
 .. autofunction:: prodigy
 .. autoclass:: ProdigyState
-    :members:
 
 Schedule-Free
 ~~~~~~~~~~~~~
@@ -93,9 +92,3 @@ Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
-
-Sophia
-~~~~~~
-.. autofunction:: sophia
-.. autofunction:: scale_by_sophia
-.. autoclass:: SophiaState

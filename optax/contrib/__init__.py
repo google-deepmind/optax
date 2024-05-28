@@ -47,5 +47,3 @@ from optax.contrib._sam import SAMState
 from optax.contrib._schedule_free import schedule_free
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import ScheduleFreeState
-from optax.contrib._sophia import sophia
-from optax.contrib._sophia import SophiaState
