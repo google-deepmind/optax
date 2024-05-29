@@ -23,6 +23,8 @@ import jax
 import jax.numpy as jnp
 import jax.test_util as jaxtest
 import numpy as np
+
+from optax import projections
 from optax.losses import _classification
 
 
@@ -446,6 +448,29 @@ class SparsemaxTest(parameterized.TestCase):
     # in the optax loss the leading dimensions are automatically handled.
     result = _classification.sparsemax_loss(scores, labels)
     np.testing.assert_allclose(result, expected, atol=1e-4)
+
+  def test_multi_class_zero_loss(self):
+    # Check that putting large scores on the correct class gives a zero loss.
+    labels = jnp.array([1, 0, 2])
+    scores = jnp.array([[0.0, 1e5, 0.0],
+                        [1e5, 0.0, 0.0],
+                        [0.0, 0.0, 1e5]])
+    losses = _classification.multiclass_sparsemax_loss(scores, labels)
+    np.testing.assert_allclose(losses, np.array([0.0, 0.0, 0.0]), atol=1e-4)
+
+  def test_multi_class_gradient(self):
+    # Check that the gradient is correct.
+    def loss_mean(scores, labels):
+      return jnp.mean(_classification.multiclass_sparsemax_loss(scores, labels))
+
+    labels = jnp.array([1, 0, 2])
+    scores = jnp.array([[0.0, 1e5, 0.0],
+                        [1e5, 0.0, 0.0],
+                        [0.0, 0.0, 1e5]])
+    grad = jax.grad(loss_mean)(scores, labels)
+    projection_vmap = jax.vmap(projections.projection_simplex)
+    grad_expected = projection_vmap(scores) - jax.nn.one_hot(labels, 3)
+    np.testing.assert_allclose(grad, grad_expected, atol=1e-4)
 
 
 class ConvexKLDivergenceTest(parameterized.TestCase):
