@@ -71,7 +71,7 @@ def scale_by_sophia_h(
 
   Then it can be passed to sophia's update function:
 
-  `updates, state = sophia.update(updates, state, params=params, obj_fn=sophia_obj_fn)`
+  `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
   Notes:
     - TODO filter non-differentiable inputs to jvp
@@ -236,7 +236,7 @@ def sophia_h(
 
   Then it can be passed to sophia's update function:
 
-  `updates, state = sophia.update(updates, state, params=params, obj_fn=sophia_obj_fn)`
+  `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
   Notes:
     - TODO filter non-differentiable inputs to jvp
