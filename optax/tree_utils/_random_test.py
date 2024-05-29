@@ -35,8 +35,22 @@ class RandomTest(absltest.TestCase):
     self.tree_a = (rng.randn(20, 10) + 1j * rng.randn(20, 10), rng.randn(20))
     self.tree_b = (rng.randn(20, 10), rng.randn(20))
 
-    self.tree_a_dict = (1.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
-    self.tree_b_dict = (1.0, {'k1': 2.0, 'k2': (3.0, 4.0)}, 5.0)
+    self.tree_a_dict = jtu.tree_map(
+        jnp.asarray,
+        (
+            1.0,
+            {'k1': 1.0, 'k2': (1.0, 1.0)},
+            1.0
+        )
+    )
+    self.tree_b_dict = jtu.tree_map(
+        jnp.asarray,
+        (
+            1.0,
+            {'k1': 2.0, 'k2': (3.0, 4.0)},
+            5.0
+        )
+    )
 
     self.array_a = rng.randn(20) + 1j * rng.randn(20)
     self.array_b = rng.randn(20)

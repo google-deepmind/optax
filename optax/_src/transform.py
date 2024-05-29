@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import NamedTuple, Optional
 
 import chex
 import jax
@@ -26,110 +26,16 @@ from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
-from optax._src import wrappers
+from optax.transforms import _accumulation
+from optax.transforms import _adding
+
 
 abs_sq = numerics.abs_sq
-
-
-def _init_empty_state(params: base.Params) -> base.EmptyState:
-  """Init function for an empty state."""
-  del params
-  return base.EmptyState()
-
-
-class TraceState(NamedTuple):
-  """Holds an aggregation of past updates."""
-  trace: base.Params
-
-
-def trace(
-    decay: float,
-    nesterov: bool = False,
-    accumulator_dtype: Optional[Any] = None,
-) -> base.GradientTransformation:
-  """Compute a trace of past updates.
-
-  Note: `trace` and `ema` have very similar but distinct updates;
-  `trace = decay * trace + t`, while `ema = decay * ema + (1-decay) * t`.
-  Both are frequently found in the optimization literature.
-
-  Args:
-    decay: Decay rate for the trace of past updates.
-    nesterov: Whether to use Nesterov momentum.
-    accumulator_dtype: Optional `dtype` to be used for the accumulator; if
-      `None` then the `dtype` is inferred from `params` and `updates`.
-
-  Returns:
-    A `GradientTransformation` object.
-  """
-
-  accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
-
-  def init_fn(params):
-    return TraceState(
-        trace=otu.tree_zeros_like(params, dtype=accumulator_dtype))
-
-  def update_fn(updates, state, params=None):
-    del params
-    f = lambda g, t: g + decay * t
-    new_trace = jtu.tree_map(f, updates, state.trace)
-    updates = jtu.tree_map(f, updates, new_trace) if nesterov else new_trace
-    new_trace = otu.tree_cast(new_trace, accumulator_dtype)
-    return updates, TraceState(trace=new_trace)
-
-  return base.GradientTransformation(init_fn, update_fn)
 
 
 def _reject_complex(params):
   if any(jnp.iscomplexobj(x) for x in jtu.tree_leaves(params)):
     raise ValueError('This transformation does not support complex parameters.')
-
-
-class EmaState(NamedTuple):
-  """Holds an exponential moving average of past updates."""
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  ema: base.Params
-
-
-def ema(
-    decay: float,
-    debias: bool = True,
-    accumulator_dtype: Optional[Any] = None
-) -> base.GradientTransformation:
-  """Compute an exponential moving average of past updates.
-
-  Note: `trace` and `ema` have very similar but distinct updates;
-  `ema = decay * ema + (1-decay) * t`, while `trace = decay * trace + t`.
-  Both are frequently found in the optimization literature.
-
-  Args:
-    decay: Decay rate for the exponential moving average.
-    debias: Whether to debias the transformed gradient.
-    accumulator_dtype: Optional `dtype` to used for the accumulator; if `None`
-      then the `dtype` is inferred from `params` and `updates`.
-
-  Returns:
-    A `GradientTransformation` object.
-  """
-
-  accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
-
-  def init_fn(params):
-    return EmaState(
-        count=jnp.zeros([], jnp.int32),
-        ema=otu.tree_zeros_like(params, dtype=accumulator_dtype))
-
-  def update_fn(updates, state, params=None):
-    del params
-    updates = new_ema = otu.tree_update_moment(
-        updates, state.ema, decay, order=1)
-    count_inc = utils.safe_int32_increment(state.count)
-    if debias:
-      updates = otu.tree_bias_correction(new_ema, decay, count_inc)
-    state_ema = otu.tree_cast(new_ema, accumulator_dtype)
-    return updates, EmaState(count=count_inc, ema=state_ema)
-
-  return base.GradientTransformation(init_fn, update_fn)
 
 
 class ScaleByRssState(NamedTuple):
@@ -476,9 +382,6 @@ def scale_by_lion(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-ScaleState = base.EmptyState
-
-
 def scale(
     step_size: float
 ) -> base.GradientTransformation:
@@ -491,16 +394,12 @@ def scale(
     A `GradientTransformation` object.
   """
 
-  def init_fn(params):
-    del params
-    return ScaleState()
-
   def update_fn(updates, state, params=None):
     del params
     updates = jtu.tree_map(lambda g: step_size * g, updates)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
 def scale_by_param_block_norm(
@@ -526,7 +425,7 @@ def scale_by_param_block_norm(
         updates, params)
     return updates, state
 
-  return base.GradientTransformation(_init_empty_state, update_fn)
+  return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
 def scale_by_param_block_rms(
@@ -552,7 +451,7 @@ def scale_by_param_block_rms(
         updates, params)
     return updates, state
 
-  return base.GradientTransformation(_init_empty_state, update_fn)
+  return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
 class ScaleByAdaDeltaState(NamedTuple):
@@ -845,45 +744,6 @@ def scale_by_rprop(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-AddDecayedWeightsState = base.EmptyState
-
-
-def add_decayed_weights(
-    weight_decay: Union[float, jax.Array] = 0.0,
-    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None
-) -> base.GradientTransformation:
-  """Add parameter scaled by `weight_decay`.
-
-  Args:
-    weight_decay: A scalar weight decay rate.
-    mask: A tree with same structure as (or a prefix of) the params PyTree,
-      or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the transformation to, and `False` for those you want to skip.
-
-  Returns:
-    A `GradientTransformation` object.
-  """
-
-  def init_fn(params):
-    del params
-    return AddDecayedWeightsState()
-
-  def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(base.NO_PARAMS_MSG)
-    updates = jtu.tree_map(
-        lambda g, p: g + weight_decay * p, updates, params)
-    return updates, state
-
-  # If mask is not `None`, apply mask to the gradient transformation.
-  # E.g. it is common to skip weight decay on bias units and batch stats.
-  if mask is not None:
-    return wrappers.masked(
-        base.GradientTransformation(init_fn, update_fn), mask)
-  return base.GradientTransformation(init_fn, update_fn)
-
-
 class ScaleByScheduleState(NamedTuple):
   """Maintains count for scale scheduling."""
   count: chex.Array  # shape=(), dtype=jnp.int32
@@ -941,10 +801,6 @@ def scale_by_schedule(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByTrustRatioState(NamedTuple):
-  """The scale and decay trust ratio transformation is stateless."""
-
-
 def scale_by_trust_ratio(
     min_norm: float = 0.0,
     trust_coefficient: float = 1.,
@@ -963,10 +819,6 @@ def scale_by_trust_ratio(
   Returns:
     A `GradientTransformation` object.
   """
-
-  def init_fn(params):
-    del params
-    return ScaleByTrustRatioState()
 
   def update_fn(updates, state, params):
     if params is None:
@@ -990,57 +842,7 @@ def scale_by_trust_ratio(
     updates = jtu.tree_map(_scale_update, updates, params)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
-
-
-class AddNoiseState(NamedTuple):
-  """State for adding gradient noise. Contains a count for annealing."""
-  count: chex.Array
-  rng_key: chex.PRNGKey
-
-
-def add_noise(
-    eta: float,
-    gamma: float,
-    seed: int
-) -> base.GradientTransformation:
-  """Add gradient noise.
-
-  References:
-    [Neelakantan et al, 2014](https://arxiv.org/abs/1511.06807)
-
-  Args:
-    eta: Base variance of the gaussian noise added to the gradient.
-    gamma: Decay exponent for annealing of the variance.
-    seed: Seed for random number generation.
-
-  Returns:
-    A `GradientTransformation` object.
-  """
-
-  def init_fn(params):
-    del params
-    return AddNoiseState(
-        count=jnp.zeros([], jnp.int32),
-        rng_key=jax.random.PRNGKey(seed))
-
-  def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
-    del params
-    num_vars = len(jtu.tree_leaves(updates))
-    treedef = jtu.tree_structure(updates)
-    count_inc = numerics.safe_int32_increment(state.count)
-    variance = eta / count_inc**gamma
-    standard_deviation = jnp.sqrt(variance)
-    all_keys = jax.random.split(state.rng_key, num=num_vars + 1)
-    noise = jtu.tree_map(
-        lambda g, k: jax.random.normal(k, shape=g.shape, dtype=g.dtype),
-        updates, jtu.tree_unflatten(treedef, all_keys[1:]))
-    updates = jtu.tree_map(
-        lambda g, n: g + standard_deviation.astype(g.dtype) * n,
-        updates, noise)
-    return updates, AddNoiseState(count=count_inc, rng_key=all_keys[0])
-
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
 class ApplyEvery(NamedTuple):
@@ -1419,7 +1221,7 @@ def scale_by_polyak(
     updates = otu.tree_scalar_mul(step, updates)
     return updates, state
 
-  return base.GradientTransformationExtraArgs(_init_empty_state, update_fn)
+  return base.GradientTransformationExtraArgs(base.init_empty_state, update_fn)
 
 
 ### Legacy symbols to be removed. ###
@@ -1433,3 +1235,14 @@ def cast_tree(
     dtype: Optional[chex.ArrayDType]
 ) -> chex.ArrayTree:
   return otu.tree_cast(tree, dtype)
+
+trace = _accumulation.trace
+TraceState = _accumulation.TraceState
+ema = _accumulation.ema
+EmaState = _accumulation.EmaState
+add_noise = _adding.add_noise
+AddNoiseState = _adding.AddNoiseState
+add_decayed_weights = _adding.add_decayed_weights
+AddDecayedWeightsState = base.EmptyState
+ScaleState = base.EmptyState
+ScaleByTrustRatioState = base.EmptyState

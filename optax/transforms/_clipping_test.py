@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `clipping.py`."""
+"""Tests for optax.transforms._clipping."""
 
 from absl.testing import absltest
-
 import chex
 import jax
 import jax.numpy as jnp
 
-from optax._src import clipping
 from optax._src import linear_algebra
+from optax.transforms import _clipping
+
 
 STEPS = 50
 LR = 1e-2
@@ -37,11 +37,11 @@ class ClippingTest(absltest.TestCase):
   def test_clip(self):
     updates = self.per_step_updates
     # For a sufficiently high delta the update should not be changed.
-    clipper = clipping.clip(1e6)
+    clipper = _clipping.clip(1e6)
     clipped_updates, _ = clipper.update(updates, None)
     chex.assert_trees_all_close(clipped_updates, clipped_updates)
     # Clipping at delta=1 should make all updates exactly 1.
-    clipper = clipping.clip(1.)
+    clipper = _clipping.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
     chex.assert_trees_all_close(
         clipped_updates, jax.tree_util.tree_map(jnp.ones_like, updates))
@@ -50,7 +50,7 @@ class ClippingTest(absltest.TestCase):
     rmf_fn = lambda t: jnp.sqrt(jnp.mean(t**2))
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
-      clipper = clipping.clip_by_block_rms(1. / i)
+      clipper = _clipping.clip_by_block_rms(1. / i)
       # Check that the clipper actually works and block rms is <= threshold
       updates, _ = clipper.update(updates, None)
       self.assertAlmostEqual(rmf_fn(updates[0]), 1. / i)
@@ -62,7 +62,7 @@ class ClippingTest(absltest.TestCase):
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
-      clipper = clipping.clip_by_global_norm(1. / i)
+      clipper = _clipping.clip_by_global_norm(1. / i)
       # Check that the clipper actually works and global norm is <= max_norm
       updates, _ = clipper.update(updates, None)
       self.assertAlmostEqual(
@@ -76,12 +76,12 @@ class ClippingTest(absltest.TestCase):
     params = self.init_params
     for i in range(1, STEPS + 1):
       clip_r = 1. / i
-      clipper = clipping.adaptive_grad_clip(clip_r)
+      clipper = _clipping.adaptive_grad_clip(clip_r)
 
       # Check that the clipper actually works and upd_norm is < c * param_norm.
       updates, _ = clipper.update(updates, None, params)
       u_norm, p_norm = jax.tree_util.tree_map(
-          clipping.unitwise_norm, (updates, params))
+          _clipping.unitwise_norm, (updates, params))
       cmp = jax.tree_util.tree_map(
           lambda u, p, c=clip_r: u - c * p < 1e-6, u_norm, p_norm)
       for leaf in jax.tree_util.tree_leaves(cmp):
@@ -101,7 +101,7 @@ class ClippingTest(absltest.TestCase):
     ]
 
     with self.subTest(name='Uniform Variant'):
-      sum_clipped_grads, num_clipped = clipping.per_example_layer_norm_clip(
+      sum_clipped_grads, num_clipped = _clipping.per_example_layer_norm_clip(
           grads_flat, global_l2_norm_clip=jnp.sqrt(2), uniform=True
       )
 
@@ -119,7 +119,7 @@ class ClippingTest(absltest.TestCase):
       self.assertEqual(num_clipped[1], 4)
 
     with self.subTest(name='Scaled Variant'):
-      sum_clipped_grads, num_clipped = clipping.per_example_layer_norm_clip(
+      sum_clipped_grads, num_clipped = _clipping.per_example_layer_norm_clip(
           grads_flat, global_l2_norm_clip=jnp.sqrt(19), uniform=False
       )
 
