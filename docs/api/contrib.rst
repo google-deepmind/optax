@@ -32,11 +32,10 @@ Experimental features and algorithms that don't meet the
     schedule_free
     schedule_free_eval_params
     ScheduleFreeState
+    sophia_h
+    SophiaHState
     split_real_and_imaginary
     SplitRealAndImaginaryState
-    sophia
-    scale_by_sophia
-    SophiaState
 
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,3 +97,8 @@ Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
+
+Sophia-H
+~~~~~~~~
+.. autofunction:: sophia_h
+.. autoclass:: SophiaHState
