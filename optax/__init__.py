@@ -23,6 +23,7 @@ from optax import monte_carlo
 from optax import projections
 from optax import schedules
 from optax import second_order
+from optax import transforms
 from optax import tree_utils
 from optax._src.alias import adabelief
 from optax._src.alias import adadelta
