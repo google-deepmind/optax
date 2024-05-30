@@ -156,9 +156,7 @@ def scale_by_sophia_h(
               print_win_rate_every_n_steps > 0,
               count_inc % print_win_rate_every_n_steps == 0,
           ),
-          lambda: jax.debug.print(
-              "Sophia optimizer win rate: {}", win_rate
-          ),
+          lambda: jax.debug.print("Sophia optimizer win rate: {}", win_rate),
           lambda: None,
       )
 
@@ -166,9 +164,7 @@ def scale_by_sophia_h(
           lambda u: jnp.clip(u, -clip_threshold, clip_threshold), updates
       )
 
-    key, nu = update_hessian(
-        state.key, state.count, state.nu, params, obj_fn
-    )
+    key, nu = update_hessian(state.key, state.count, state.nu, params, obj_fn)
 
     mu = otu.tree_cast(mu, mu_dtype)
     state = SophiaHState(count=count_inc, mu=mu, nu=nu, key=key)
@@ -198,10 +194,10 @@ def scale_by_sophia_h(
       return key, nu
 
     return jax.lax.cond(
-      jnp.equal(count % update_interval, 0),
-      _do_update,
-      _dont_update,
-      key
+        jnp.equal(count % update_interval, 0),
+        _do_update,
+        _dont_update,
+        key
     )
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
@@ -277,20 +273,20 @@ def sophia_h(
     optax.GradientTransformationExtraArgs
   """
   tx = [
-    scale_by_sophia_h(
-        b1=b1,
-        b2=b2,
-        eps=eps,
-        gamma=gamma,
-        clip_threshold=clip_threshold,
-        update_interval=update_interval,
-        mu_dtype=mu_dtype,
-        pmap_axis_name=pmap_axis_name,
-        seed=seed,
-        print_win_rate_every_n_steps=print_win_rate_every_n_steps,
-    ),
-    transform.add_decayed_weights(weight_decay, mask=mask),
-    transform.scale_by_learning_rate(learning_rate),
+      scale_by_sophia_h(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          gamma=gamma,
+          clip_threshold=clip_threshold,
+          update_interval=update_interval,
+          mu_dtype=mu_dtype,
+          pmap_axis_name=pmap_axis_name,
+          seed=seed,
+          print_win_rate_every_n_steps=print_win_rate_every_n_steps,
+      ),
+      transform.add_decayed_weights(weight_decay, mask=mask),
+      transform.scale_by_learning_rate(learning_rate),
   ]
   return chain(*tx)
 
@@ -298,18 +294,16 @@ def sophia_h(
 def _tree_rademacher_like(key, tree):
   leaves, structure = jax.tree.flatten(tree)
   keys = jax.random.split(key, len(leaves))
-  g = jax.tree.map(
+  r = jax.tree.map(
       lambda key, x: jax.random.rademacher(key, x.shape, dtype=jnp.float32),
       list(keys),
       leaves,
   )
-  g = jax.tree.unflatten(structure, g)
-  return g
+  r = jax.tree.unflatten(structure, r)
+  return r
 
 
 def _stochastic_hessian_diagonal(key, obj_fn, model):
-  gaussians = _tree_rademacher_like(key, model)
-  product = jax.jvp(jax.grad(obj_fn), (model,), (gaussians,))[1]
-  return jax.tree.map(
-      lambda grad, gaussian: grad * gaussian, product, gaussians
-  )
+  random_signs = _tree_rademacher_like(key, model)
+  product = jax.jvp(jax.grad(obj_fn), (model,), (random_signs,))[1]
+  return jax.tree.map(lambda grad, r: grad * r, product, random_signs)
