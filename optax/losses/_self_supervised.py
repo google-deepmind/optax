@@ -18,6 +18,7 @@ import chex
 from jax import lax
 import jax.numpy as jnp
 from optax.losses import _regression
+import numpy as np
 
 
 def ntxent(
@@ -86,7 +87,7 @@ def ntxent(
   xcs = (
       _regression.cosine_similarity(
           embeddings[None, :, :], embeddings[:, None, :],
-          epsilon=1e-12
+          epsilon=np.finfo(embeddings.dtype).eps
       )
       / temperature
   )
