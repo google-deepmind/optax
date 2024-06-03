@@ -59,7 +59,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     # Wait until patience runs out
     for _ in range(self.patience + 1):
       updates, state = self.transform.update(
-          updates=self.updates, state=state, value=1.0
+          updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
       )
 
     # Check that learning rate is reduced
@@ -71,7 +71,9 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     chex.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
 
     # One more step
-    _, state = self.transform.update(updates=updates, state=state, value=1.0)
+    _, state = self.transform.update(
+        updates=updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
 
     # Check that cooldown_count is decremented
     scale, best_value, plateau_count, cooldown_count, *_ = state
@@ -99,7 +101,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Update with better value
     _, new_state = self.transform.update(
-        updates=self.updates, state=state, value=0.1
+        updates=self.updates, state=state, value=jnp.asarray(0.1, float)
     )
 
     # Check that plateau_count resets
@@ -127,7 +129,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Update with worse value
     _, new_state = self.transform.update(
-        updates=self.updates, state=state, value=2.0
+        updates=self.updates, state=state, value=jnp.asarray(2.0, dtype=float)
     )
 
     # Check that learning rate is not reduced and

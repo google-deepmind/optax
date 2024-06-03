@@ -170,7 +170,9 @@ def reduce_on_plateau(
 
     count = state.count
     new_count = numerics.safe_int32_increment(count)
-    new_avg_value = (count * state.avg_value + value) / new_count
+    new_avg_value = (
+        count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
+    ) / new_count
     new_state = state._replace(avg_value=new_avg_value, count=new_count)
 
     new_state = jax.lax.cond(
