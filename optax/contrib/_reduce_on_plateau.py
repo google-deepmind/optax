@@ -46,6 +46,7 @@ def reduce_on_plateau(
     atol: float = 0.0,
     cooldown: int = 0,
     accumulation_size: int = 1,
+    min_scale: float = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
@@ -62,10 +63,11 @@ def reduce_on_plateau(
     atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
       after scale has been reduced.
-    accumulation_size: Number of valeus to aggregate before applying the logic
+    accumulation_size: Number of values to aggregate before applying the logic
       of reduce on plateau. If the value fed to the optimizer is a test value,
       simply take 1 (default). If the value fed to the optimizer is the loss on
       a the current minibatch, consider using a larger accumulation size.
+    min_scale: Scale at which the learning rate decay stops.
 
   Returns:
     A GradientTransformationExtraArgs object.
@@ -73,6 +75,11 @@ def reduce_on_plateau(
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
+  if factor <= 0.0 or factor >= 1.0:
+    raise ValueError(
+        f"Factor must be in the range (0, 1), got factor = {factor}."
+    )
+
   if rtol < 0.0 or atol < 0.0:
     raise ValueError(
         "Both rtol and atol must be non-negative, got "
@@ -124,14 +131,18 @@ def reduce_on_plateau(
       new_plateau_count = jnp.where(
           curr_plateau_count == patience, 0, curr_plateau_count
       )
-      new_scale = jnp.where(
-          curr_plateau_count == patience,
-          state.scale * factor,
-          state.scale,
+      new_scale = jnp.maximum(
+          jnp.where(
+              curr_plateau_count == patience,
+              state.scale * factor,
+              state.scale,
+          ),
+          min_scale,
       )
       new_cooldown_count = jnp.where(
           curr_plateau_count == patience, cooldown, 0
       ).astype(jnp.int32)
+
       return new_plateau_count, new_scale, new_cooldown_count
 
     new_plateau_count, new_scale, new_cooldown_count = jax.lax.cond(
