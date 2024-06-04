@@ -40,7 +40,7 @@ class SophiaHState(NamedTuple):
   """State for Sophia-H and similar."""
 
   count: jax.Array  # shape=(), dtype=jnp.int32
-  mu: Optional[base.Updates]  # momentum
+  mu: base.Updates  # momentum
   nu: base.Updates  # EMA of hessian
   key: PRNGKey
 
@@ -114,10 +114,8 @@ def scale_by_sophia_h(
   mu_dtype = canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = jax.tree_util.tree_map(
-        lambda t: jnp.zeros_like(t, dtype=mu_dtype), params
-    )
-    nu = jax.tree_util.tree_map(jnp.zeros_like, params)
+    mu = jax.tree.map(lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
+    nu = jax.tree.map(jnp.zeros_like, params)
     key = seed
     if pmap_axis_name and jax.local_device_count() > 1:
       key = jax.random.split(key, jax.local_device_count())
