@@ -51,6 +51,8 @@ Transformations
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_lbfgs
+    ScaleByLBFGSState
     scale_by_learning_rate
     scale_by_lion
     ScaleByLionState
@@ -178,6 +180,9 @@ Transformations and states
 
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
+
+.. autofunction:: scale_by_lbfgs
+.. autoclass:: ScaleByLBFGSState
 
 .. autofunction:: scale_by_learning_rate
 

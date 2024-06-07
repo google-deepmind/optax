@@ -46,7 +46,9 @@ documentation = "https://optax.readthedocs.io/"
 [project.optional-dependencies]
 test = [
     "dm-tree>=0.1.7",
-    "flax>=0.5.3"
+    "flax>=0.5.3",
+    "scipy>=1.7.1",
+    "scikit-learn"
 ]
 
 examples = [
