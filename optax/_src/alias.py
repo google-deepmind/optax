@@ -65,7 +65,7 @@ def adabelief(
 
     \begin{align*}
       m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
-      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2 
+      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2
       + \bar{\varepsilon} \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{s}_t &\leftarrow s_t / {(1-\beta_2^t)} \\
@@ -196,7 +196,7 @@ def adafactor(
   Adafactor is an adaptive learning rate optimizer that focuses on fast
   training of large scale neural networks. It saves memory by using a factored
   estimate of the second order moments used to scale gradients.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -217,7 +217,7 @@ def adafactor(
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.36E+01
-    
+
   References:
     Shazeer and Stern, 2018: https://arxiv.org/abs/1804.04235
 
@@ -291,7 +291,7 @@ def adagrad(
     Adagrad's main limit is the monotonic accumulation of squared
     gradients in the denominator: since all terms are >0, the sum keeps growing
     during training and the learning rate eventually becomes vanishingly small.
-    
+
   Examples:
     >>> import optax
     >>> import jax
@@ -543,7 +543,7 @@ def adamw(
   :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
   ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
   indexed by :math:`t` since the learning rate may also be provided by a
-  schedule function. Let :math:`\lambda` be the weight decay and 
+  schedule function. Let :math:`\lambda` be the weight decay and
   :math:`\theta_t` the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
@@ -551,8 +551,8 @@ def adamw(
   first and second moments. In practice these values are stored as pytrees
   containing all zeros, with the same shape as the model updates.
   At step :math:`t`, the ``update`` function of this optimizer takes as
-  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t` 
-  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and 
+  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t`
+  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and
   new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
 
   .. math::
@@ -562,7 +562,7 @@ def adamw(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t 
+      u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t
       + \bar{\varepsilon}} + \varepsilon} \right) + \lambda \theta_{t} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
@@ -575,7 +575,7 @@ def adamw(
   .. math::
       \hat{m}_t \leftarrow
         \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -598,7 +598,7 @@ def adamw(
     Objective function: 1.38E+01
 
   References:
-    Loshchilov et al, `Decoupled Weight Decay 
+    Loshchilov et al, `Decoupled Weight Decay
     Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
 
     Dozat, `Incorporating Nesterov Momentum into Adam
@@ -666,7 +666,7 @@ nadamw.__doc__ = (
 
       \hat{m}_t \leftarrow
         \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
-        
+
   Examples:
     >>> import optax
     >>> import jax
@@ -689,7 +689,7 @@ nadamw.__doc__ = (
     Objective function: 1.38E+01
 
   References:
-    Loshchilov et al, `Decoupled Weight Decay 
+    Loshchilov et al, `Decoupled Weight Decay
     Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
 
     Dozat, `Incorporating Nesterov Momentum into Adam
@@ -745,7 +745,7 @@ def lion(
   AdamW. A suitable learning rate for Lion is typically 3-10x smaller than that
   for AdamW, the weight decay for Lion should be in turn 3-10x larger than that
   for AdamW to maintain a similar strength (lr * wd).
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -766,7 +766,7 @@ def lion(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Chen et al, 2023: https://arxiv.org/abs/2302.06675
 
@@ -810,7 +810,7 @@ def amsgrad(
 
   The original Adam can fail to converge to the optimal solution in some cases.
   AMSGrad guarantees convergence by using a long-term memory of past gradients.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -831,7 +831,7 @@ def amsgrad(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Reddi et al, 2018: https://openreview.net/forum?id=ryQu7f-RZ
 
@@ -869,7 +869,7 @@ def fromage(
   trust (a distance function on deep neural networks). Fromage is similar to the
   LARS optimizer and can work on a range of standard neural network benchmarks,
   such as natural language Transformers and generative adversarial networks.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -890,7 +890,7 @@ def fromage(
     Objective function: 1.37E+01
     Objective function: 1.37E+01
     Objective function: 1.36E+01
-    
+
   References:
     Bernstein et al, 2020: https://arxiv.org/abs/2002.03432
 
@@ -926,7 +926,7 @@ def lars(
 
   LARS is a layer-wise adaptive optimizer introduced to help scale SGD to
   larger batch sizes. LARS later inspired the LAMB optimizer.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -998,7 +998,7 @@ def lamb(
   including those that use attention-based models (such as Transformers) and
   ResNet-50. The optimizer is able to work with small and large batch sizes.
   LAMB was inspired by the LARS learning algorithm.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1019,7 +1019,7 @@ def lamb(
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.36E+01
-    
+
   References:
     You et al, 2019: https://arxiv.org/abs/1904.00962
 
@@ -1099,7 +1099,7 @@ def noisy_sgd(
     Objective function: 1.35E+01
     Objective function: 1.33E+01
     Objective function: 1.32E+01
-    
+
   References:
     Neelakantan et al, 2014: https://arxiv.org/abs/1511.06807
 
@@ -1137,7 +1137,7 @@ def novograd(
   outperforms other methods for ResNet-50 for all batches up to 32K.
   In addition, NovoGrad requires half the memory compared to Adam.
   It was introduced together with Jasper ASR model.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1158,7 +1158,7 @@ def novograd(
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.37E+01
-    
+
   References:
     Ginsburg et al, 2019: https://arxiv.org/abs/1905.11286
     Li et al, 2019: https://arxiv.org/abs/1904.03288
@@ -1196,7 +1196,7 @@ def optimistic_gradient_descent(
   which require multiple gradient calls to compute the next update. It has
   strong formal guarantees for last-iterate convergence in min-max games, for
   which standard gradient descent can oscillate or even diverge.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1252,7 +1252,7 @@ def radam(
   stages of training, due to the limited number of training samples used to
   estimate the optimizer's statistics. Rectified Adam addresses this issue
   by analytically reducing the large variance.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1329,7 +1329,7 @@ def rmsprop(
     performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
     whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
-    
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1488,7 +1488,7 @@ def sm3(
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1542,7 +1542,7 @@ def yogi(
   addressing the issues of convergence and generalization in exponential moving
   average-based adaptive methods (such as Adam and RMSprop). Yogi is a
   modification of Adam and uses the same parameters.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1592,8 +1592,8 @@ def adamax(
     eps: float = 1e-8,
 ) -> base.GradientTransformation:
   r"""A variant of the Adam optimizer that uses the infinity norm.
-  
-  AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing 
+
+  AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing
   Adam's :math:`L^2` norm to an :math:`L^p` norm and taking the limit as
   :math:`p \rightarrow \infty`, we obtain a simple and stable update rule.
 
@@ -1622,7 +1622,7 @@ def adamax(
       u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / v_t \\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1643,7 +1643,7 @@ def adamax(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Kingma et al, 2014: https://arxiv.org/abs/1412.6980
 
@@ -1684,7 +1684,7 @@ def adamaxw(
   WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
   for the bias parameters. You can use `optax.masked` to make your own AdamaxW
   variant where `additive_weight_decay` is applied only to a subset of `params`.
-  
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1705,7 +1705,7 @@ def adamaxw(
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
-    
+
   References:
     Loshchilov et al, 2019: https://arxiv.org/abs/1711.05101
 
@@ -1775,11 +1775,11 @@ def rprop(
     Objective function: 1.38E+01
 
   References:
-    Riedmiller and Braun. `A direct adaptive method for faster backpropagation 
-    learning: the RPROP algorithm 
+    Riedmiller and Braun. `A direct adaptive method for faster backpropagation
+    learning: the RPROP algorithm
     <https://ieeexplore.ieee.org/document/298623>`_, 1993
 
-    Igel and Hüsken.  `Empirical evaluation of the improved Rprop learning 
+    Igel and Hüsken.  `Empirical evaluation of the improved Rprop learning
     algorithms
     <https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007>`_,
     2003
@@ -1904,7 +1904,7 @@ def lbfgs(
   L-BFGS is a quasi-Newton method that multiplies the update (gradient)
   with an approximation of the inverse Hessian. This algorithm doesn't need
   access to the Hessian, as this approximation is constructed from the gradient
-  evaluations seen during optimization. L-BFGS is a limited-memory variant of 
+  evaluations seen during optimization. L-BFGS is a limited-memory variant of
   the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm. The BFGS algorithm
   requires storing a matrix of size :math:`p \times p` with :math:`p` the
   dimension of the parameters.
@@ -1931,13 +1931,13 @@ def lbfgs(
           1 & \mbox{otherwise}
         \end{cases},
     \end{align*}
-  for
-  :math:`u_k` the gradients/updates at iteration :math:`k`,
-  :math:`w_k` the parameters at iteration :math:`k`.
+
+  for :math:`u_k` the gradients/updates at iteration :math:`k`, :math:`w_k` the
+  parameters at iteration :math:`k`.
 
   The formula for updating :math:`P_k` is obtained by computing the optimal
   preconditioning matrix subject to some secant condition, see references
-  for more details. Computing :math:`P_k u_k` can be done by a sequence of 
+  for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
   a memory bufffer.
 
@@ -1993,7 +1993,7 @@ def lbfgs(
 
   Args:
     learning_rate: optional global scaling factor, either fixed or evolving
-      along iterations with a scheduler, see 
+      along iterations with a scheduler, see
       :func:`optax.scale_by_learning_rate`. By default the learning rate is
       handled by a linesearch.
     memory_size: number of past updates to keep in memory to approximate the
