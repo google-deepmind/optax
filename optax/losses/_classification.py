@@ -21,6 +21,8 @@ import chex
 import jax
 import jax.numpy as jnp
 
+from optax import projections
+
 
 def sigmoid_binary_cross_entropy(
     logits,
@@ -290,10 +292,10 @@ def multiclass_hinge_loss(
 
   Args:
     scores: scores produced by the model (floats).
-    labels: ground-truth integer label.
+    labels: ground-truth integer labels.
 
   Returns:
-    loss value
+    loss values
 
   .. versionadded:: 0.2.3
   """
@@ -306,18 +308,18 @@ def multiclass_perceptron_loss(
     scores: chex.Array,
     labels: chex.Array,
 ) -> chex.Array:
-  """Binary perceptron loss.
+  """Multiclass perceptron loss.
 
   References:
     Michael Collins. Discriminative training methods for Hidden Markov Models:
     Theory and experiments with perceptron algorithms. EMNLP 2002
 
   Args:
-    scores: score produced by the model.
-    labels: ground-truth integer label.
+    scores: scores produced by the model.
+    labels: ground-truth integer labels.
 
   Returns:
-    loss value.
+    loss values.
 
   .. versionadded:: 0.2.2
   """
@@ -679,3 +681,36 @@ def sigmoid_focal_loss(
                       loss)
 
   return loss
+
+
+def _multiclass_sparsemax_loss(
+    scores: chex.Array, label: chex.Array
+) -> chex.Array:
+  scores = jnp.asarray(scores)
+  proba = projections.projection_simplex(scores)
+  # Fenchel conjugate of the Gini negentropy, defined by:
+  # cumulant = jnp.dot(proba, scores) + 0.5 * jnp.dot(proba, (1 - proba)).
+  scores = (scores - scores[label]).at[label].set(0.0)
+  return (jnp.dot(proba, jnp.where(proba, scores, 0.0))
+          + 0.5 * (1.0 - jnp.dot(proba, proba)))
+
+
+def multiclass_sparsemax_loss(
+    scores: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Multiclass sparsemax loss.
+
+  Args:
+    scores: scores produced by the model.
+    labels: ground-truth integer labels.
+
+  Returns:
+    loss values
+
+  References:
+    From Softmax to Sparsemax: A Sparse Model of Attention and Multi-Label
+    Classification. André F. T. Martins, Ramón Fernandez Astudillo.
+    ICML 2016.
+  """
+  return jax.vmap(_multiclass_sparsemax_loss)(scores, labels)

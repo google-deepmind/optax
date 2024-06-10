@@ -16,6 +16,8 @@
 
 # pylint: disable=g-importing-member
 
+from optax.contrib._acprop import acprop
+from optax.contrib._acprop import scale_by_acprop
 from optax.contrib._cocob import cocob
 from optax.contrib._cocob import COCOBState
 from optax.contrib._cocob import scale_by_cocob
@@ -47,5 +49,3 @@ from optax.contrib._sam import SAMState
 from optax.contrib._schedule_free import schedule_free
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import ScheduleFreeState
-from optax.contrib._sophia import sophia
-from optax.contrib._sophia import SophiaState

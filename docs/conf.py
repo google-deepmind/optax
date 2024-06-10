@@ -30,18 +30,6 @@ import inspect
 import os
 import sys
 
-# The following typenames are re-written for public-facing type annotations.
-TYPE_REWRITES = [
-    ('~optax._src.base.GradientTransformation', 'optax.GradientTransformation'),
-    ('~optax._src.base.Params', 'optax.Params'),
-    ('~optax._src.base.Updates', 'optax.Updates'),
-    ('~optax._src.base.OptState', 'optax.OptState'),
-    ('base.GradientTransformation', 'optax.GradientTransformation'),
-    ('base.Params', 'optax.Params'),
-    ('base.Updates', 'optax.Updates'),
-    ('base.OptState', 'optax.OptState'),
-]
-
 
 def _add_annotations_import(path):
   """Appends a future annotations import to the file at the given path."""
@@ -70,45 +58,8 @@ def _recursive_add_annotations_import():
         _add_annotations_import(os.path.abspath(os.path.join(path, file)))
 
 
-def _monkey_patch_doc_strings():
-  """Rewrite function signatures to match the public API.
-
-  This is a bit of a dirty hack, but it helps ensure that the public-facing
-  docs have the correct type names and crosslinks.
-
-  Since all optax code lives in a `_src` directory, and since all function
-  annotations use types within that private directory, the public facing
-  annotations are given relative to private paths.
-
-  This means that the normal documentation generation process does not give
-  the correct import paths, and the paths it does give cannot cross link to
-  other parts of the documentation.
-
-  Do we really need to use the _src structure for optax?
-
-  Note, class members are not fixed by this patch, only function
-    parameters. We should find a way to genearlize this solution.
-  """
-  import sphinx_autodoc_typehints
-  original_process_docstring = sphinx_autodoc_typehints.process_docstring
-
-  def new_process_docstring(app, what, name, obj, options, lines):
-    result = original_process_docstring(app, what, name, obj, options, lines)
-
-    for i in range(len(lines)):
-      l = lines[i]
-      for before, after in TYPE_REWRITES:
-        l = l.replace(before, after)
-      lines[i] = l
-
-    return result
-
-  sphinx_autodoc_typehints.process_docstring = new_process_docstring
-
-
 if 'READTHEDOCS' in os.environ:
   _recursive_add_annotations_import()
-  _monkey_patch_doc_strings()
 
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
@@ -138,7 +89,6 @@ extensions = [
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
     'sphinxcontrib.katex',
-    'sphinx_autodoc_typehints',
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
@@ -162,6 +112,23 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # -- Options for autodoc -----------------------------------------------------
+
+# The following typenames are re-written for public-facing type annotations.
+autodoc_type_aliases = {
+    '~optax._src.base.GradientTransformation': 'optax.GradientTransformation',
+    '~optax._src.base.Params': 'Params',
+    '~optax._src.base.Updates': 'Updates',
+    '~optax._src.base.OptState': 'OptState',
+    '~optax._src.base.PyTree': 'optax.PyTree',
+    'base.GradientTransformation': 'optax.GradientTransformation',
+    'base.Params': 'optax.Params',
+    'base.Updates': 'optax.Updates',
+    'base.OptState': 'optax.OptState',
+    'base.PyTree': 'optax.PyTree',
+    'chex.ArrayTree': 'chex.ArrayTree',
+    'chex.Array': 'chex.Array',
+    'chex.Numeric': 'chex.Numeric'
+}
 
 autodoc_default_options = {
     'member-order': 'bysource',
@@ -225,6 +192,7 @@ myst_enable_extensions = [
 ]
 nb_execution_mode = 'force'
 nb_execution_allow_errors = False
+nb_render_image_options = {}
 nb_execution_excludepatterns = [
     # slow examples
     'nanolm.ipynb',
@@ -298,6 +266,7 @@ def linkcode_resolve(domain, info):
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
     'flax': ('https://flax.readthedocs.io/en/latest/', None),
+    'chex': ('https://chex.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']

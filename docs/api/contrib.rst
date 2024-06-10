@@ -7,6 +7,7 @@ Experimental features and algorithms that don't meet the
 .. currentmodule:: optax.contrib
 
 .. autosummary::
+    acprop
     cocob
     COCOBState
     dadapt_adamw
@@ -37,37 +38,30 @@ Experimental features and algorithms that don't meet the
     scale_by_sophia
     SophiaState
 
+Asynchronous-centering-Prop
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: acprop
+.. autofunction:: scale_by_acprop
+
 Complex-valued Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: split_real_and_imaginary
 .. autoclass:: SplitRealAndImaginaryState
-    :members:
 
 Continuous coin betting
 ~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: cocob
 .. autoclass:: COCOBState
-    :members:
 
 D-adaptation
 ~~~~~~~~~~~~
 .. autofunction:: dadapt_adamw
 .. autoclass:: DAdaptAdamWState
-    :members:
-
-Privacy-Sensitive Optax Methods
--------------------------------
-
-.. autosummary::
-    DifferentiallyPrivateAggregateState
-    differentially_private_aggregate
-
 
 Differentially Private Aggregate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: differentially_private_aggregate
 .. autoclass:: DifferentiallyPrivateAggregateState
-   :members:
 .. autofunction:: dpsgd
 
 Distance over Gradients
@@ -81,7 +75,6 @@ Mechanize
 ~~~~~~~~~
 .. autofunction:: mechanize
 .. autoclass:: MechanicState
-    :members:
 
 Momo
 ~~~~
@@ -94,24 +87,14 @@ Prodigy
 ~~~~~~~
 .. autofunction:: prodigy
 .. autoclass:: ProdigyState
-    :members:
 
 Schedule-Free
-~~~~~~~~~
+~~~~~~~~~~~~~
 .. autofunction:: schedule_free
 .. autofunction:: schedule_free_eval_params
 .. autoclass:: ScheduleFreeState
-    :members:
 
 Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
-    :members:
-
-Sophia
-~~~~~~
-.. autofunction:: sophia
-.. autofunction:: scale_by_sophia
-.. autoclass:: SophiaState
-    :members:

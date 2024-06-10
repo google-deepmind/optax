@@ -83,7 +83,10 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   return jtu.tree_map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(scalar: Union[float, jax.Array], tree: Any) -> Any:
+def tree_scalar_mul(
+    scalar: Union[float, jax.Array],
+    tree: Any,
+) -> Any:
   r"""Multiply a tree by a scalar.
 
   In infix notation, the function performs ``out = scalar * tree``.
@@ -113,7 +116,11 @@ def tree_add_scalar_mul(
   Returns:
     a pytree with the same structure as ``tree_x`` and ``tree_y``.
   """
-  return jtu.tree_map(lambda x, y: x + scalar * y, tree_x, tree_y)
+  scalar = jnp.asarray(scalar)
+  return jtu.tree_map(
+      lambda x, y: x + scalar.astype(x.dtype) * y,
+      tree_x,
+      tree_y)
 
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)

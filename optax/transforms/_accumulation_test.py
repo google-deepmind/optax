@@ -31,6 +31,48 @@ from optax.transforms import _constraining
 
 class AccumulationTest(chex.TestCase):
 
+  @chex.all_variants
+  def test_ema(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
+    ema = _accumulation.ema(decay=decay, debias=False)
+    state = ema.init(values[0])  # init to zeroes
+
+    transform_fn = self.variant(ema.update)
+    mean, state = transform_fn(values[0], state)
+    np.testing.assert_allclose(mean, (1-d) * values[0], atol=1e-4)
+
+    mean, _ = transform_fn(values[1], state)
+    np.testing.assert_allclose(
+        mean,
+        (1 - d) * (values[1] + d * values[0]), atol=1e-2)
+
+  @chex.all_variants
+  def test_ema_debias(self):
+    values = jnp.array([5.0, 7.0])
+    decay = 0.9
+    d = decay
+
+    ema = _accumulation.ema(decay=decay)
+    state = ema.init(values[0])
+
+    transform_fn = self.variant(ema.update)
+    mean, state = transform_fn(values[0], state)
+    np.testing.assert_allclose(mean, values[0], atol=1e-4)
+
+    mean, state = transform_fn(values[1], state)
+    np.testing.assert_allclose(
+        mean,
+        ((1 - d) * values[1] + d * (1 - d) * values[0]) / (1 - d**2),
+        atol=1e-2)
+    # The state must not be debiased.
+    np.testing.assert_allclose(
+        state.ema,
+        (1 - d) * values[1] + d * (1 - d) * values[0],
+        atol=1e-2)
+
   def test_skip_not_finite(self):
     step = jnp.zeros([], dtype=jnp.int32)
 

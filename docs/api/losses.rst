@@ -14,13 +14,18 @@ Losses
     kl_divergence
     l2_loss
     log_cosh
+    multiclass_hinge_loss
+    multiclass_perceptron_loss
+    multiclass_sparsemax_loss
     ntxent
+    perceptron_loss
     safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
+    sparsemax_loss
     squared_error
 
 
@@ -44,6 +49,7 @@ Connectionist temporal classification loss
 Hinge loss
 ~~~~~~~~~~
 .. autofunction:: hinge_loss
+.. autofunction:: multiclass_hinge_loss
 
 Huber loss
 ~~~~~~~~~~
@@ -66,6 +72,11 @@ Normalized temperature scaled cross-entropy (NT-Xent) loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: ntxent
 
+Perceptron
+~~~~~~~~~~~
+.. autofunction:: perceptron_loss
+.. autofunction:: multiclass_perceptron_loss
+
 Sigmoid binary cross-entropy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sigmoid_binary_cross_entropy
@@ -83,6 +94,11 @@ Soft-max cross-entropy
 .. autofunction:: safe_softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
+
+Sparsemax
+~~~~~~~~~
+.. autofunction:: sparsemax_loss
+.. autofunction:: multiclass_sparsemax_loss
 
 
 

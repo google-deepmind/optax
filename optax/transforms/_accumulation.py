@@ -204,12 +204,12 @@ def skip_large_updates(
 class MultiStepsState(NamedTuple):
   """State of the `GradientTransformation` returned by `MultiSteps`.
 
-  Fields:
+  Attributes:
     mini_step: current mini-step counter. At an update, this either increases by
       1 or is reset to 0.
     gradient_step: gradient step counter. This only increases after enough
       mini-steps have been accumulated.
-    inner_opt_state: the state of the wrapped otpimiser.
+    inner_opt_state: the state of the wrapped optimiser.
     acc_grads: accumulated gradients over multiple mini-steps.
     skip_state: an arbitrarily py tree. This is only relevant when passing
       a `should_skip_update_fn` to `MultiSteps`.

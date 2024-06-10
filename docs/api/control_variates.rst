@@ -9,11 +9,11 @@ Control Variates
     moving_avg_baseline
 
 Control delta method
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: control_delta_method
 
 Control variates Jacobians
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: control_variates_jacobians
 
 Moving average baseline

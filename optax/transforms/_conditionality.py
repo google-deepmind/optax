@@ -75,7 +75,7 @@ def conditionally_transform(
     should_transform_fn: function takes in a ``step`` counter (array of shape []
       and dtype ``int32``), and returns a boolean array of shape []. If
       ``forward_extra_args`` is set to True, any extra arguments are also
-      forwarded to the ``should_transform_fn`.
+      forwarded to the ``should_transform_fn``.
     forward_extra_args: forward extra args to ``should_transform_fn``.
 
   Returns:
@@ -136,7 +136,7 @@ def conditionally_mask(
     should_transform_fn: function takes in a step counter (array of shape []
       and dtype ``int32``), and returns a boolean array of shape []. If
       ``forward_extra_args`` is set to True, any extra arguments are also
-      forwarded to the ``should_transform_fn`.
+      forwarded to the ``should_transform_fn``.
     forward_extra_args: forward extra args to ``should_transform_fn``.
 
   Returns:
@@ -175,7 +175,7 @@ def conditionally_mask(
 class ApplyIfFiniteState(NamedTuple):
   """State of the `GradientTransformation` returned by `apply_if_finite`.
 
-  Fields:
+  Attributes:
     notfinite_count: Number of consecutive gradient updates containing an Inf or
       a NaN. This number is reset to 0 whenever a gradient update without an Inf
       or a NaN is done.
@@ -183,7 +183,8 @@ class ApplyIfFiniteState(NamedTuple):
       NaN.
     total_notfinite: Total number of gradient updates containing an Inf or
       a NaN since this optimizer was initialised. This number is never reset.
-    inner_state: The state of the inner `GradientTransformation`.
+      inner_state: The state of the inner `GradientTransformation`.
+
   """
   notfinite_count: Any
   last_finite: Any
