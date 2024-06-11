@@ -34,9 +34,6 @@ Experimental features and algorithms that don't meet the
     ScheduleFreeState
     split_real_and_imaginary
     SplitRealAndImaginaryState
-    sophia
-    scale_by_sophia
-    SophiaState
 
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

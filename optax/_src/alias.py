@@ -1902,9 +1902,9 @@ def lbfgs(
   r"""L-BFGS optimizer.
 
   L-BFGS is a quasi-Newton method that multiplies the update (gradient)
-  with an approximation of the inverse Hessian. This algorithm doesn't need
+  with an approximation of the inverse Hessian. This algorithm does not need
   access to the Hessian, as this approximation is constructed from the gradient
-  evaluations seen during optimization. L-BFGS is a limited-memory variant of 
+  evaluations seen during optimization. L-BFGS is a limited-memory variant of
   the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm. The BFGS algorithm
   requires storing a matrix of size :math:`p \times p` with :math:`p` the
   dimension of the parameters.
@@ -1914,10 +1914,10 @@ def lbfgs(
   denoted :math:`P_k = P_{k, k}`, where
 
   .. math::
+
     \begin{align*}
-      P_{k, j+1} & = V_j^\top P_{k, j} V_j
-        + \rho_j \delta w_j \delta w_j^\top
-        \quad \mbox{for} \ j \in \{k-m, \ldots, k-1\}\\
+      P_{k, j+1} & = V_j^\top P_{k, j} V_j + \rho_j \delta w_j \delta w_j^\top
+      \quad \text{for} \ j \in \{k-m, \ldots, k-1\}\\
       P_{k, k-m} & = \gamma_k I \\
       V_k & = I - \rho_k \delta u_k \delta w_k^\top \\
       \rho_k & = 1/(\delta u_k^\top \delta w_k) \\
@@ -1927,10 +1927,11 @@ def lbfgs(
         \begin{cases}
           (\delta w_{k-1}^\top \delta u_{k-1}) /
           (\delta u_{k-1}^\top \delta u_{k-1})
-          & \mbox{if} \ \texttt{scale\_init\_hess} \\
-          1 & \mbox{otherwise}
+          & \text{if} \ \texttt{scale\_init\_hess} \\
+          1 & \text{otherwise}
         \end{cases},
     \end{align*}
+
   for
   :math:`u_k` the gradients/updates at iteration :math:`k`,
   :math:`w_k` the parameters at iteration :math:`k`.
@@ -1984,7 +1985,7 @@ def lbfgs(
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
-    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>_`
+    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`_
     , 1999
 
     Liu et al., `On the limited memory BFGS method for large scale optimization

@@ -153,20 +153,22 @@ def per_example_layer_norm_clip(
       the gradient for one layer; the function expects these to have a batch
       dimension on the 0th axis.
     global_l2_norm_clip: overall L2 clip norm to use.
-    uniform: If `True`, per-layer clip norm is global_l2_norm_clip/sqrt(L),
-      where L is the number of layers. Otherwise, per-layer clip norm is
-      global_l2_norm_clip * sqrt(f), where f is the fraction of total model
-      parameters that are in this layer.
+    uniform: If `True`, per-layer clip norm is ``global_l2_norm_clip/sqrt(L)``,
+      where ``L`` is the number of layers. Otherwise, per-layer clip norm is
+      ``global_l2_norm_clip * sqrt(f)``, where ``f`` is the fraction of total
+      model parameters that are in this layer.
     eps: Small positive value to add to norms to avoid possible division by
       zero.
 
-  Let C = `global_l2_norm_clip value`. Then per-layer clipping is done as
+  Let ``C = global_l2_norm_clip value``. Then per-layer clipping is done as
   follows:
-  (1) If `uniform` is `True`, each of the K layers has an individual clip
-      norm of C / sqrt(K).
-  (2) If `uniform` is `False`, each of the K layers has an individual clip
-      norm of C * sqrt(D_i / D) where D_i is the number of parameters in
-      layer i, and D is the total number of parameters in the model.
+
+  1. If ``uniform`` is ``True``, each of the ``K`` layers has an individual clip
+  norm of ``C / sqrt(K)``.
+
+  2. If ``uniform`` is ``False``, each of the ``K`` layers has an individual
+  clip norm of ``C * sqrt(D_i / D)`` where ``D_i`` is the number of parameters
+  in layer ``i``, and ``D`` is the total number of parameters in the model.
 
   Returns:
     A tuple containing sum of the clipped per-example grads and the number of
