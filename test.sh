@@ -80,6 +80,16 @@ cd ..
 
 # Build Sphinx docs.
 pip install -q -e ".[docs]"
+# NOTE(vroulet) We have dependencies issues:
+# tensorflow > 2.13.1 requires ml-dtypes <= 0.3.2
+# but jax requires ml-dtypes >= 0.4.0
+# So the environment is solved with tensorflow == 2.13.1 which requires
+# typing_extensions < 4.6, which in turn prevents the import of TypeAliasType in
+# IPython. We solve it here by simply upgrading typing_extensions to avoid that
+# bug (which issues conflict warnings but runs fine).
+# A long term solution is probably to fully remove tensorflow from our
+# dependencies.
+pip install --upgrade -v typing_extensions
 cd docs && make html
 # run doctests
 make doctest
