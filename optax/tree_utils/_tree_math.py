@@ -277,13 +277,25 @@ def tree_clip(
 def tree_update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order`-th moment."""
   return jtu.tree_map(
-      lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
+      lambda g, t: (
+          (1 - decay) * (g**order) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def tree_update_infinity_moment(updates, moments, decay, eps):
   """Compute the exponential moving average of the infinity norm."""
   return jtu.tree_map(
-      lambda g, t: jnp.maximum(jnp.abs(g) + eps, decay * t), updates, moments)
+      lambda g, t: (
+          jnp.maximum(jnp.abs(g) + eps, decay * t) if g is not None else g
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def tree_update_moment_per_elem_norm(updates, moments, decay, order):
@@ -300,7 +312,13 @@ def tree_update_moment_per_elem_norm(updates, moments, decay, order):
       return numerics.abs_sq(g) ** half_order
 
   return jtu.tree_map(
-      lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
+      lambda g, t: (
+          (1 - decay) * orderth_norm(g) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 @functools.partial(jax.jit, inline=True)
