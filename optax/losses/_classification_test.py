@@ -82,6 +82,15 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         order=1,
     )
 
+  def test_mask(self):
+    size = 10
+    logits = np.random.normal(size=size)
+    labels = np.random.dirichlet(np.ones(size))
+    mask = np.random.randint(2, size=size, dtype=bool)
+    outs_1 = _classification.softmax_cross_entropy(logits[mask], labels[mask])
+    outs_2 = _classification.softmax_cross_entropy(logits, labels, where=mask)
+    np.testing.assert_allclose(outs_1, outs_2)
+
 
 class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
 
