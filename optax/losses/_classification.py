@@ -235,7 +235,8 @@ def softmax_cross_entropy(
   .. seealso:: :func:`optax.safe_softmax_cross_entropy`
   """
   chex.assert_type([logits], float)
-  return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
+  log_probs = jax.nn.log_softmax(logits, axis, where)
+  return -(labels * log_probs).sum(axis, where=where)
 
 
 def softmax_cross_entropy_with_integer_labels(
