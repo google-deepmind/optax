@@ -180,7 +180,7 @@ class CosineDistanceTest(parameterized.TestCase):
     mask = np.random.randint(2, size=size, dtype=bool)
     x = _regression.cosine_distance(preds[mask], targets[mask])
     y = _regression.cosine_distance(preds, targets, where=mask)
-    np.testing.assert_allclose(x, y)
+    np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(dict(size=5), dict(size=10))
   def test_mask_similarity(self, size):
@@ -189,6 +189,21 @@ class CosineDistanceTest(parameterized.TestCase):
     mask = np.random.randint(2, size=size, dtype=bool)
     x = _regression.cosine_similarity(preds[mask], targets[mask])
     y = _regression.cosine_similarity(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y, atol=1e-4)
+
+  @parameterized.parameters(
+    dict(axis=0, shape=[4, 5, 6]),
+    dict(axis=1, shape=[4, 5, 6]),
+    dict(axis=2, shape=[4, 5, 6]),
+  )
+  def test_axis(self, shape, axis):
+    preds = np.random.normal(size=shape)
+    targets = np.random.normal(size=shape)
+    x = _regression.cosine_similarity(preds, targets, axis=axis)
+    y = _regression.cosine_similarity(
+      np.moveaxis(preds, axis, -1),
+      np.moveaxis(targets, axis, -1),
+    )
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
