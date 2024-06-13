@@ -362,6 +362,15 @@ class PolyLossTest(parameterized.TestCase):
         atol=1e-4,
     )
 
+  @parameterized.parameters(dict(size=5), dict(size=10))
+  def test_mask(self, size):
+    logits = np.random.normal(size=size)
+    labels = np.random.dirichlet(np.ones(size))
+    mask = np.random.randint(2, size=size, dtype=bool)
+    outs_1 = _classification.poly_loss_cross_entropy(logits[mask], labels[mask])
+    outs_2 = _classification.poly_loss_cross_entropy(logits, labels, where=mask)
+    np.testing.assert_allclose(outs_1, outs_2)
+
 
 class HingeTest(parameterized.TestCase):
 
