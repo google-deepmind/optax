@@ -59,6 +59,7 @@ Huber loss
 Kullback-Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: kl_divergence
+.. autofunction:: kl_divergence_with_log_targets
 
 L2 Squared loss
 ~~~~~~~~~~~~~~~
