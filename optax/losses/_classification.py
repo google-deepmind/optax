@@ -379,7 +379,7 @@ def poly_loss_cross_entropy(
     distributions, with shape `[...]`.
   """
   chex.assert_type([logits, labels], float)
-  p = jax.nn.softmax(logits, axis=axis, where=where, initial=-jnp.inf)
+  p = jax.nn.softmax(logits, axis=axis, where=where)
   one_minus_pt = jnp.sum(labels * (1 - p), axis=axis, where=where)
   cross_entropy = softmax_cross_entropy(
     logits=logits, labels=labels, axis=axis, where=where)
