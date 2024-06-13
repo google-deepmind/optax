@@ -20,8 +20,6 @@ from typing import Optional
 import chex
 import jax.numpy as jnp
 
-from optax._src import numerics
-
 
 def squared_error(
     predictions: chex.Array,
