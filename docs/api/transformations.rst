@@ -78,6 +78,8 @@ Transformations
     scale_by_trust_ratio
     ScaleByTrustRatioState
     scale_by_yogi
+    scale_by_zoom_linesearch
+    ScaleByZoomLinesearchState
     set_to_zero
     stateless
     stateless_with_tree_map
@@ -92,6 +94,7 @@ Transformations
     with_extra_args_support
     zero_nans
     ZeroNansState
+    ZoomLinesearchInfo
 
 
 Types
@@ -225,6 +228,9 @@ Transformations and states
 
 .. autofunction:: scale_by_yogi
 
+.. autofunction:: scale_by_zoom_linesearch
+.. autoclass:: ScaleByZoomLinesearchState
+
 .. autofunction:: set_to_zero
 
 .. autofunction:: stateless
@@ -241,3 +247,5 @@ Transformations and states
 
 .. autofunction:: zero_nans
 .. autoclass:: ZeroNansState
+
+.. autoclass:: ZoomLinesearchInfo

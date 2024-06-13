@@ -91,7 +91,10 @@ from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
 from optax._src.linesearch import scale_by_backtracking_linesearch
+from optax._src.linesearch import scale_by_zoom_linesearch
 from optax._src.linesearch import ScaleByBacktrackingLinesearchState
+from optax._src.linesearch import ScaleByZoomLinesearchState
+from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
@@ -407,6 +410,7 @@ __all__ = (
     "scale_by_stddev",
     "scale_by_trust_ratio",
     "scale_by_yogi",
+    "scale_by_zoom_linesearch",
     "scale_gradient",
     "scale",
     "ScaleByAdaDeltaState",
@@ -424,6 +428,7 @@ __all__ = (
     "ScaleByScheduleState",
     "ScaleBySM3State",
     "ScaleByTrustRatioState",
+    "ScaleByZoomLinesearchState",
     "ScaleState",
     "Schedule",
     "set_to_zero",
@@ -451,6 +456,7 @@ __all__ = (
     "yogi",
     "zero_nans",
     "ZeroNansState",
+    "ZoomLinesearchInfo",
 )
 
 #  _________________________________________

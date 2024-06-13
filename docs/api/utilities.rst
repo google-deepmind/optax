@@ -112,6 +112,7 @@ Tree
     tree_sub
     tree_sum
     tree_vdot
+    tree_where
     tree_zeros_like
 
 NamedTupleKey
@@ -181,6 +182,10 @@ Tree sum
 Tree inner product
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_vdot
+
+Tree where
+~~~~~~~~~~
+.. autofunction:: tree_where
 
 Tree zeros like
 ~~~~~~~~~~~~~~~

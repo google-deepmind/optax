@@ -14,6 +14,7 @@
 # ==============================================================================
 """The tree_utils sub-package."""
 
+# pylint: disable=g-importing-member
 from optax.tree_utils._casting import tree_cast
 from optax.tree_utils._random import tree_random_like
 from optax.tree_utils._state_utils import NamedTupleKey
@@ -38,4 +39,5 @@ from optax.tree_utils._tree_math import tree_update_infinity_moment
 from optax.tree_utils._tree_math import tree_update_moment
 from optax.tree_utils._tree_math import tree_update_moment_per_elem_norm
 from optax.tree_utils._tree_math import tree_vdot
+from optax.tree_utils._tree_math import tree_where
 from optax.tree_utils._tree_math import tree_zeros_like
