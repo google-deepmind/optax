@@ -16,6 +16,7 @@ Optimizers
     fromage
     lamb
     lars
+    lbfgs
     lion
     nadam
     nadamw
@@ -77,6 +78,10 @@ Lamb
 Lars
 ~~~~
 .. autofunction:: lars
+
+LBFGS
+~~~~~
+.. autofunction:: lbfgs
 
 Lion
 ~~~~

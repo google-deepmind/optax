@@ -14,12 +14,16 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
+# pylint: disable=wrong-import-position
+# pylint: disable=g-importing-member
+
 from optax import contrib
 from optax import losses
 from optax import monte_carlo
 from optax import projections
 from optax import schedules
 from optax import second_order
+from optax import transforms
 from optax import tree_utils
 from optax._src.alias import adabelief
 from optax._src.alias import adadelta
@@ -33,6 +37,7 @@ from optax._src.alias import amsgrad
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import lbfgs
 from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
 from optax._src.alias import nadam
@@ -99,7 +104,6 @@ from optax._src.transform import AddDecayedWeightsState
 from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
-from optax._src.transform import bias_correction
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
@@ -110,6 +114,7 @@ from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_lbfgs
 from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
@@ -130,6 +135,7 @@ from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByLBFGSState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
@@ -142,9 +148,6 @@ from optax._src.transform import ScaleByTrustRatioState
 from optax._src.transform import ScaleState
 from optax._src.transform import trace
 from optax._src.transform import TraceState
-from optax._src.transform import update_infinity_moment
-from optax._src.transform import update_moment
-from optax._src.transform import update_moment_per_elem_norm
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
@@ -153,6 +156,10 @@ from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
 from optax._src.wrappers import apply_if_finite
 from optax._src.wrappers import ApplyIfFiniteState
+from optax._src.wrappers import conditionally_mask
+from optax._src.wrappers import conditionally_transform
+from optax._src.wrappers import ConditionallyMaskState
+from optax._src.wrappers import ConditionallyTransformState
 from optax._src.wrappers import flatten
 from optax._src.wrappers import masked
 from optax._src.wrappers import MaskedNode
@@ -165,8 +172,13 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
+
 # TODO(mtthss): remove tree_utils aliases after updates.
 tree_map_params = tree_utils.tree_map_params
+bias_correction = tree_utils.tree_bias_correction
+update_infinity_moment = tree_utils.tree_update_infinity_moment
+update_moment = tree_utils.tree_update_moment
+update_moment_per_elem_norm = tree_utils.tree_update_moment_per_elem_norm
 
 # TODO(mtthss): remove schedules alises from flat namespaces after user updates.
 constant_schedule = schedules.constant_schedule
@@ -199,8 +211,10 @@ huber_loss = losses.huber_loss
 kl_divergence = losses.kl_divergence
 l2_loss = losses.l2_loss
 log_cosh = losses.log_cosh
+ntxent = losses.ntxent
 sigmoid_binary_cross_entropy = losses.sigmoid_binary_cross_entropy
 smooth_labels = losses.smooth_labels
+safe_softmax_cross_entropy = losses.safe_softmax_cross_entropy
 softmax_cross_entropy = losses.softmax_cross_entropy
 softmax_cross_entropy_with_integer_labels = (
     losses.softmax_cross_entropy_with_integer_labels
@@ -208,12 +222,59 @@ softmax_cross_entropy_with_integer_labels = (
 squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
+# pylint: disable=g-import-not-at-top
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-differentially_private_aggregate = contrib.differentially_private_aggregate
-DifferentiallyPrivateAggregateState = (
-    contrib.DifferentiallyPrivateAggregateState
-)
-dpsgd = contrib.dpsgd
+# Deprecated modules
+from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
+from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import dpsgd as _deprecated_dpsgd
+
+_deprecations = {
+    # Added Apr 2024
+    "differentially_private_aggregate": (
+        (
+            "optax.differentially_private_aggregate is deprecated: use"
+            " optax.contrib.differentially_private_aggregate (optax v0.1.8 or"
+            " newer)."
+        ),
+        _deprecated_differentially_private_aggregate,
+    ),
+    "DifferentiallyPrivateAggregateState": (
+        (
+            "optax.DifferentiallyPrivateAggregateState is deprecated: use"
+            " optax.contrib.DifferentiallyPrivateAggregateState (optax v0.1.8"
+            " or newer)."
+        ),
+        _deprecated_DifferentiallyPrivateAggregateState,
+    ),
+    "dpsgd": (
+        (
+            "optax.dpsgd is deprecated: use optax.contrib.dpsgd (optax v0.1.8"
+            " or newer)."
+        ),
+        _deprecated_dpsgd,
+    ),
+}
+# pylint: disable=g-bad-import-order
+import typing as _typing
+
+if _typing.TYPE_CHECKING:
+  # pylint: disable=reimported
+  from optax.contrib import differentially_private_aggregate
+  from optax.contrib import DifferentiallyPrivateAggregateState
+  from optax.contrib import dpsgd
+  # pylint: enable=reimported
+
+else:
+  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
+
+  __getattr__ = _deprecation_getattr(__name__, _deprecations)
+  del _deprecation_getattr
+del _typing
+# pylint: enable=g-bad-import-order
+# pylint: enable=g-import-not-at-top
+# pylint: enable=g-importing-member
+
 
 __version__ = "0.2.3.dev"
 
@@ -245,6 +306,10 @@ __all__ = (
     "clip",
     "ClipByGlobalNormState",
     "ClipState",
+    "conditionally_mask",
+    "ConditionallyMaskState",
+    "conditionally_transform",
+    "ConditionallyTransformState",
     "constant_schedule",
     "ctc_loss",
     "ctc_loss_with_forward_probs",
@@ -278,6 +343,7 @@ __all__ = (
     "l2_loss",
     "lamb",
     "lars",
+    "lbfgs",
     "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
@@ -301,6 +367,7 @@ __all__ = (
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",
+    "ntxent",
     "OptState",
     "Params",
     "periodic_update",
@@ -324,6 +391,7 @@ __all__ = (
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
+    "scale_by_lbfgs",
     "scale_by_lion",
     "scale_by_factored_rms",
     "scale_by_novograd",
@@ -346,6 +414,7 @@ __all__ = (
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",
+    "ScaleByLBFGSState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",

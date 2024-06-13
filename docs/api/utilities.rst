@@ -101,6 +101,7 @@ Tree
     tree_div
     tree_get
     tree_get_all_with_path
+    tree_l1_norm
     tree_l2_norm
     tree_map_params
     tree_mul
@@ -136,6 +137,10 @@ Fetch single value that match a given key
 Fetch all values that match a given key
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_get_all_with_path
+
+Tree l1 norm
+~~~~~~~~~~~~
+.. autofunction:: tree_l1_norm
 
 Tree l2 norm
 ~~~~~~~~~~~~

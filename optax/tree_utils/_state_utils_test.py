@@ -199,7 +199,7 @@ class StateUtilsTest(absltest.TestCase):
     state = cast(_inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
-    params_plus_one = jax.tree_map(lambda v: v + 1, params)
+    params_plus_one = jtu.tree_map(lambda v: v + 1, params)
     mu = getattr(state.inner_state[0], 'mu')
     chex.assert_trees_all_close(mu, params_plus_one)
 

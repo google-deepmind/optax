@@ -128,7 +128,7 @@ def tree_map_params(
       that will be passed to f.
     transform_non_params: An optional function that will be called on all
       non-parameter fields within the optimizer state.
-    is_leaf: Passed through to `jax.tree_map`. This makes it possible to ignore
+    is_leaf: Passed through to `jax.tree.map`. This makes it possible to ignore
       parts of the parameter tree e.g. when the gradient transformations modify
       the shape of the original pytree, such as for ``optax.masked``.
 
@@ -149,13 +149,13 @@ def tree_map_params(
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
-      return jax.tree_map(f, value, *rest, is_leaf=is_leaf)
+      return jax.tree_util.tree_map(f, value, *rest, is_leaf=is_leaf)
     elif transform_non_params is not None:
       return transform_non_params(value)
     else:
       return value
 
-  return jax.tree_map(
+  return jax.tree_util.tree_map(
       map_params,
       state_with_placeholders,
       state,

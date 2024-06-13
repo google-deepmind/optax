@@ -51,6 +51,7 @@ from typing import Callable, Optional
 import chex
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from optax._src import base
 from optax._src import update
 from optax._src import utils
@@ -74,7 +75,7 @@ def normalize() -> base.GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     g_norm = utils.global_norm(updates)
-    updates = jax.tree_map(lambda g: g / g_norm, updates)
+    updates = jtu.tree_map(lambda g: g / g_norm, updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -190,7 +191,7 @@ def sam(
     )
 
   def pick_one(cond, if_true, if_false):
-    return jax.tree_map(
+    return jtu.tree_map(
         lambda if_t, if_f: cond * if_t + (1 - cond) * if_f,
         if_true,
         if_false
@@ -207,12 +208,12 @@ def sam(
     adv_updates, adv_state = adv_optimizer.update(
         updates, state.adv_state, params
     )
-    adv_updates = jax.tree_map(lambda x: -x, adv_updates)
+    adv_updates = jtu.tree_map(lambda x: -x, adv_updates)
 
     opt_updates, opt_state = optimizer.update(
         updates, state.opt_state, state.cache
     )
-    opt_updates = jax.tree_map(
+    opt_updates = jtu.tree_map(
         lambda c, p, u: c - p + u, state.cache, params, opt_updates)
 
     cache = pick_one(first_step, params, state.cache)
@@ -246,7 +247,7 @@ def sam(
     for i in range(sync_period - 1):
       adv_updates, adv_state = adv_optimizer.update(
           adv_updates, adv_state, adv_params)
-      adv_updates = jax.tree_map(lambda x: -x, adv_updates)
+      adv_updates = jtu.tree_map(lambda x: -x, adv_updates)
 
       adv_params = update.apply_updates(adv_params, adv_updates)
       adv_updates = grad_fn(adv_params, i)

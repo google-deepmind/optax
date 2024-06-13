@@ -211,25 +211,6 @@ class HelpersTest(chex.TestCase):
     ):
       utils.set_diags(a, new_diags)
 
-  @parameterized.parameters([
-      (jnp.float32, [1.3, 2.001, 3.6], [-3.3], [1.3, 2.001, 3.6], [-3.3]),
-      (jnp.float32, [1.3, 2.001, 3.6], [-3], [1.3, 2.001, 3.6], [-3.0]),
-      (jnp.int32, [1.3, 2.001, 3.6], [-3.3], [1, 2, 3], [-3]),
-      (jnp.int32, [1.3, 2.001, 3.6], [-3], [1, 2, 3], [-3]),
-      (None, [1.123, 2.33], [0.0], [1.123, 2.33], [0.0]),
-      (None, [1, 2, 3], [0.0], [1, 2, 3], [0.0]),
-  ])
-  def test_cast_tree(self, dtype, b, c, new_b, new_c):
-    def _build_tree(val1, val2):
-      dict_tree = {'a': {'b': jnp.array(val1)}, 'c': jnp.array(val2)}
-      return jax.tree_util.tree_map(lambda x: x, dict_tree)
-
-    tree = _build_tree(b, c)
-    tree = utils.cast_tree(tree, dtype=dtype)
-    jax.tree_util.tree_map(
-        np.testing.assert_array_equal, tree, _build_tree(new_b, new_c)
-    )
-
   @parameterized.named_parameters([
       ('1d-single', 1),
       ('1d', 10),

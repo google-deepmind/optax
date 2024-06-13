@@ -28,3 +28,15 @@ jobs:
       - name: Run CI tests
         run: bash test.sh
         shell: bash
+  markdown-link-check:
+    name: "Check links in markdown files"
+    runs-on: "ubuntu-latest"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: yes
+        use-verbose-mode: yes

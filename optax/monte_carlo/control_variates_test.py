@@ -464,14 +464,16 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
   @chex.all_variants
   @parameterized.named_parameters(
       chex.params_product([
-          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians,
-           10**6),
-          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians, 10**5),
-          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians,
-           10**5),
+          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians),
+          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians),
       ], [
-          ('control_delta_method', control_variates.control_delta_method),
-          ('moving_avg_baseline', control_variates.moving_avg_baseline),
+          (
+              'control_delta_method',
+              10**5,
+              control_variates.control_delta_method
+          ),
+          ('moving_avg_baseline', 10**6, control_variates.moving_avg_baseline),
       ],
                           named=True))
   def testWeightedLinearFunction(self, effective_mean, effective_log_scale,

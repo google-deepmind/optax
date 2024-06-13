@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Utilities to perform maths on pytrees."""
 
 import functools
 import operator
-from typing import Any, Callable, Union
+from typing import Any, Optional, Union
 
 import chex
 import jax
 from jax import tree_util as jtu
 import jax.numpy as jnp
-from optax._src import base
 
-
-Shape = base.Shape
+from optax._src import numerics
 
 
 def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
@@ -86,7 +83,10 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   return jtu.tree_map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(scalar: Union[float, jax.Array], tree: Any) -> Any:
+def tree_scalar_mul(
+    scalar: Union[float, jax.Array],
+    tree: Any,
+) -> Any:
   r"""Multiply a tree by a scalar.
 
   In infix notation, the function performs ``out = scalar * tree``.
@@ -116,7 +116,11 @@ def tree_add_scalar_mul(
   Returns:
     a pytree with the same structure as ``tree_x`` and ``tree_y``.
   """
-  return jtu.tree_map(lambda x, y: x + scalar * y, tree_x, tree_y)
+  scalar = jnp.asarray(scalar)
+  return jtu.tree_map(
+      lambda x, y: x + scalar.astype(x.dtype) * y,
+      tree_x,
+      tree_y)
 
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
@@ -129,18 +133,20 @@ def _vdot_safe(a, b):
 def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   r"""Compute the inner product between two pytrees.
 
+  Examples:
+
+    >>> optax.tree_utils.tree_vdot(
+    ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
+    ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
+    ... )
+    Array(0, dtype=int32)
+
   Args:
     tree_x: first pytree to use.
     tree_y: second pytree to use.
 
   Returns:
     inner product between ``tree_x`` and ``tree_y``, a scalar value.
-
-  >>> optax.tree_utils.tree_vdot(
-  ...   {'a': jnp.array([1, 2]), 'b': jnp.array([1, 2])},
-  ...   {'a': jnp.array([-1, -1]), 'b': jnp.array([1, 1])},
-  ... )
-  Array(0, dtype=int32)
 
   Implementation detail: we upcast the values to the highest precision to avoid
   numerical issues.
@@ -184,70 +190,147 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
     return jnp.sqrt(sqnorm)
 
 
-def tree_zeros_like(tree: Any) -> Any:
+def tree_l1_norm(tree: Any) -> chex.Numeric:
+  """Compute the l1 norm of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  abs_tree = jtu.tree_map(jnp.abs, tree)
+  return tree_sum(abs_tree)
+
+
+def tree_zeros_like(
+    tree: Any,
+    dtype: Optional[jax.typing.DTypeLike] = None,
+) -> Any:
   """Creates an all-zeros tree with the same structure.
 
   Args:
     tree: pytree.
+    dtype: optional dtype to use for the tree of zeros.
 
   Returns:
     an all-zeros tree with the same structure as ``tree``.
   """
-  return jtu.tree_map(jnp.zeros_like, tree)
+  return jtu.tree_map(lambda x: jnp.zeros_like(x, dtype=dtype), tree)
 
 
-def tree_ones_like(tree: Any) -> Any:
+def tree_ones_like(
+    tree: Any,
+    dtype: Optional[jax.typing.DTypeLike] = None,
+) -> Any:
   """Creates an all-ones tree with the same structure.
 
   Args:
     tree: pytree.
+    dtype: optional dtype to use for the tree of ones.
 
   Returns:
     an all-ones tree with the same structure as ``tree``.
   """
-  return jtu.tree_map(jnp.ones_like, tree)
+  return jtu.tree_map(lambda x: jnp.ones_like(x, dtype=dtype), tree)
 
 
-def _tree_rng_keys_split(
-    rng_key: chex.PRNGKey, target_tree: chex.ArrayTree
-) -> chex.ArrayTree:
-  """Split keys to match structure of target tree.
-
+def tree_full_like(
+    tree: Any,
+    fill_value: jax.typing.ArrayLike,
+    dtype: Optional[jax.typing.DTypeLike] = None,
+) -> Any:
+  """Creates an identical tree where all tensors are filled with ``fill_value``.
+  
   Args:
-    rng_key: the key to split.
-    target_tree: the tree whose structure to match.
+    tree: pytree.
+    fill_value: the fill value for all tensors in the tree.
+    dtype: optional dtype to use for the tensors in the tree.
 
   Returns:
-    a tree of rng keys.
+    an tree with the same structure as ``tree``.
   """
-  tree_def = jtu.tree_structure(target_tree)
-  keys = jax.random.split(rng_key, tree_def.num_leaves)
-  return jtu.tree_unflatten(tree_def, keys)
-
-
-def tree_random_like(
-    rng_key: chex.PRNGKey,
-    target_tree: chex.ArrayTree,
-    sampler: Callable[
-        [chex.PRNGKey, Shape], chex.Array
-    ] = jax.random.normal,
-) -> chex.ArrayTree:
-  """Create tree with normal random entries of the same shape as target tree.
-
-  Args:
-    rng_key: key for the random number generator.
-    target_tree: the tree whose structure to match. Leaves must be arrays.
-    sampler: the noise sampling function
-
-  Returns:
-    a random tree with the same structure as ``target_tree``, whose leaves have
-    distribution ``sampler``.
-
-  .. versionadded:: 0.2.1
-  """
-  keys_tree = _tree_rng_keys_split(rng_key, target_tree)
   return jtu.tree_map(
-      lambda l, k: sampler(k, l.shape),
-      target_tree,
-      keys_tree,
+      lambda x: jnp.full_like(x, fill_value, dtype=dtype), tree)
+
+
+def tree_clip(
+    tree: Any,
+    min_value: Optional[jax.typing.ArrayLike],
+    max_value: Optional[jax.typing.ArrayLike],
+) -> Any:
+  """Creates an identical tree where all tensors are clipped to `[min, max]`.
+
+  Args:
+    tree: pytree.
+    min_value: min value to clip all tensors to.
+    max_value: max value to clip all tensors to.
+
+  Returns:
+    an tree with the same structure as ``tree``.
+
+  .. versionadded:: 0.2.3
+  """
+  return jtu.tree_map(lambda g: jnp.clip(g, min_value, max_value), tree)
+
+
+def tree_update_moment(updates, moments, decay, order):
+  """Compute the exponential moving average of the `order`-th moment."""
+  return jtu.tree_map(
+      lambda g, t: (
+          (1 - decay) * (g**order) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
   )
+
+
+def tree_update_infinity_moment(updates, moments, decay, eps):
+  """Compute the exponential moving average of the infinity norm."""
+  return jtu.tree_map(
+      lambda g, t: (
+          jnp.maximum(jnp.abs(g) + eps, decay * t) if g is not None else g
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
+
+
+def tree_update_moment_per_elem_norm(updates, moments, decay, order):
+  """Compute the EMA of the `order`-th moment of the element-wise norm."""
+
+  def orderth_norm(g):
+    if jnp.isrealobj(g):
+      return g ** order
+    else:
+      half_order = order / 2
+      # JAX generates different HLO for int and float `order`
+      if half_order.is_integer():
+        half_order = int(half_order)
+      return numerics.abs_sq(g) ** half_order
+
+  return jtu.tree_map(
+      lambda g, t: (
+          (1 - decay) * orderth_norm(g) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
+
+
+@functools.partial(jax.jit, inline=True)
+def tree_bias_correction(moment, decay, count):
+  """Performs bias correction. It becomes a no-op as count goes to infinity."""
+  # The conversion to the data type of the moment ensures that bfloat16 remains
+  # bfloat16 in the optimizer state. This conversion has to be done after
+  # `bias_correction_` is calculated as calculating `decay**count` in low
+  # precision can result in it being rounded to 1 and subsequently a
+  # "division by zero" error.
+  bias_correction_ = 1 - decay**count
+
+  # Perform division in the original precision.
+  return jax.tree_util.tree_map(
+      lambda t: t / bias_correction_.astype(t.dtype), moment)

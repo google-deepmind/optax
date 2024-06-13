@@ -212,6 +212,12 @@ class EmptyState(NamedTuple):
   """An empty state for the simplest stateless transformations."""
 
 
+def init_empty_state(params: Params) -> EmptyState:
+  """Init function for a :class:`GradientTransformation` with empty state."""
+  del params
+  return EmptyState()
+
+
 def identity() -> GradientTransformation:
   """Stateless identity transformation that leaves input gradients untouched.
 
@@ -225,14 +231,11 @@ def identity() -> GradientTransformation:
     A `GradientTransformation` object.
   """
 
-  def init_fn(_):
-    return EmptyState()
-
   def update_fn(updates, state, params=None):
     del params
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def set_to_zero() -> GradientTransformation:
@@ -255,15 +258,11 @@ def set_to_zero() -> GradientTransformation:
     A `GradientTransformation` object.
   """
 
-  def init_fn(params):
-    del params
-    return EmptyState()
-
   def update_fn(updates, state, params=None):
     del params  # Unused by the zero transform.
     return jax.tree_util.tree_map(jnp.zeros_like, updates), state
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def stateless(
@@ -282,14 +281,11 @@ def stateless(
     An `optax.GradientTransformation`.
   """
 
-  def init_fn(_):
-    return EmptyState()
-
   def update_fn(updates, state, params=None):
     del state
     return f(updates, params), EmptyState()
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def stateless_with_tree_map(
@@ -310,9 +306,6 @@ def stateless_with_tree_map(
     An `optax.GradientTransformation`.
   """
 
-  def init_fn(_):
-    return EmptyState()
-
   def update_fn(updates, state, params=None):
     del state
     if params is not None:
@@ -321,7 +314,7 @@ def stateless_with_tree_map(
       f_ = lambda u: f(u, None)
       return jax.tree_util.tree_map(f_, updates), EmptyState()
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def with_extra_args_support(

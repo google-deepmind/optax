@@ -18,3 +18,4 @@
 from optax.projections._projections import projection_box
 from optax.projections._projections import projection_hypercube
 from optax.projections._projections import projection_non_negative
+from optax.projections._projections import projection_simplex
