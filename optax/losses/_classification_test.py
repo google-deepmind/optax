@@ -82,8 +82,8 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         order=1,
     )
 
-  def test_mask(self):
-    size = 10
+  @parameterized.parameters(dict(size=5), dict(size=10))
+  def test_mask(self, size):
     logits = np.random.normal(size=size)
     labels = np.random.dirichlet(np.ones(size))
     mask = np.random.randint(2, size=size, dtype=bool)
