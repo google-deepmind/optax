@@ -19,6 +19,7 @@ Losses
     multiclass_sparsemax_loss
     ntxent
     perceptron_loss
+    poly_loss_cross_entropy
     safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
