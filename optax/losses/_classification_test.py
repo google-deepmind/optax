@@ -84,12 +84,12 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
   @parameterized.parameters(dict(size=5), dict(size=10))
   def test_mask(self, size):
-    logits = np.random.normal(size=size)
-    labels = np.random.dirichlet(np.ones(size))
+    preds = np.random.normal(size=size)
+    targets = np.random.dirichlet(np.ones(size))
     mask = np.random.randint(2, size=size, dtype=bool)
-    outs_1 = _classification.softmax_cross_entropy(logits[mask], labels[mask])
-    outs_2 = _classification.softmax_cross_entropy(logits, labels, where=mask)
-    np.testing.assert_allclose(outs_1, outs_2)
+    x = _classification.softmax_cross_entropy(preds[mask], targets[mask])
+    y = _classification.softmax_cross_entropy(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y)
 
 
 class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
@@ -364,12 +364,12 @@ class PolyLossTest(parameterized.TestCase):
 
   @parameterized.parameters(dict(size=5), dict(size=10))
   def test_mask(self, size):
-    logits = np.random.normal(size=size)
-    labels = np.random.dirichlet(np.ones(size))
+    preds = np.random.normal(size=size)
+    targets = np.random.dirichlet(np.ones(size))
     mask = np.random.randint(2, size=size, dtype=bool)
-    outs_1 = _classification.poly_loss_cross_entropy(logits[mask], labels[mask])
-    outs_2 = _classification.poly_loss_cross_entropy(logits, labels, where=mask)
-    np.testing.assert_allclose(outs_1, outs_2)
+    x = _classification.poly_loss_cross_entropy(preds[mask], targets[mask])
+    y = _classification.poly_loss_cross_entropy(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y)
 
 
 class HingeTest(parameterized.TestCase):
@@ -526,6 +526,15 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
         atol=1e-4,
     )
 
+  @parameterized.parameters(dict(size=5), dict(size=10))
+  def test_mask(self, size):
+    preds = np.random.normal(size=size)
+    targets = np.random.dirichlet(np.ones(size))
+    mask = np.random.randint(2, size=size, dtype=bool)
+    x = _classification.convex_kl_divergence(preds[mask], targets[mask])
+    y = _classification.convex_kl_divergence(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y)
+
 
 class PerceptronTest(parameterized.TestCase):
 
@@ -608,6 +617,15 @@ class KLDivergenceTest(parameterized.TestCase):
         atol=1e-4,
     )
 
+  @parameterized.parameters(dict(size=5), dict(size=10))
+  def test_mask(self, size):
+    preds = np.random.normal(size=size)
+    targets = np.random.dirichlet(np.ones(size))
+    mask = np.random.randint(2, size=size, dtype=bool)
+    x = _classification.kl_divergence(preds[mask], targets[mask])
+    y = _classification.kl_divergence(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y)
+
 
 class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
 
@@ -643,6 +661,15 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
         self.exp,
         atol=1e-4,
     )
+
+  @parameterized.parameters(dict(size=5), dict(size=10))
+  def test_mask(self, size):
+    preds = np.random.normal(size=size)
+    targets = np.log(np.random.dirichlet(np.ones(size)))
+    mask = np.random.randint(2, size=size, dtype=bool)
+    x = _classification.kl_divergence_with_log_targets(preds[mask], targets[mask])
+    y = _classification.kl_divergence_with_log_targets(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y)
 
 
 def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
