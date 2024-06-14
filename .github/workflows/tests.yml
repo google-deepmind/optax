@@ -10,13 +10,18 @@ on:
 
 jobs:
   build-and-test:
-    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }} jax=${{ matrix.jax-version }}"
     runs-on: "${{ matrix.os }}"
 
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
         os: [ubuntu-latest]
+        jax-version: [newest]
+        include:
+          - python-version: "3.9"
+            os: "ubuntu-latest"
+            jax-version: "0.4.27"  # Keep this in sync with version in pyproject.toml
 
     steps:
       - uses: "actions/checkout@v2"
@@ -26,7 +31,7 @@ jobs:
             cache: "pip"
             cache-dependency-path: 'pyproject.toml'
       - name: Run CI tests
-        run: bash test.sh
+        run: JAX_VERSION="${{ matrix.jax-version }}" bash test.sh
         shell: bash
   markdown-link-check:
     name: "Check links in markdown files"
