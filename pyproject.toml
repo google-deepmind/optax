@@ -32,8 +32,8 @@ classifiers = [
 dependencies = [
   "absl-py>=0.7.1",
   "chex>=0.1.86",
-  "jax>=0.4.26",
-  "jaxlib>=0.1.37",
+  "jax>=0.4.27",  # Keep this in sync with version in .github/workflows/tests.yml
+  "jaxlib>=0.4.27",
   "numpy>=1.18.0",
   "etils[epy]",
 ]

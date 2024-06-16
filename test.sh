@@ -41,6 +41,15 @@ pip install -q -e ".[test, examples]"
 pip install -q -e ".[dp-accounting]"
 pip install -q "dp-accounting>=0.1.1" --no-deps
 
+# Install the requested JAX version
+if [ "$JAX_VERSION" = "" ]; then
+  : # use version installed in requirements above
+elif [ "$JAX_VERSION" = "newest" ]; then
+  pip install -U jax jaxlib
+else
+  pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
+fi
+
 # Ensure optax was not installed by one of the dependencies above,
 # since if it is, the tests below will be run against that version instead of
 # the branch build.
