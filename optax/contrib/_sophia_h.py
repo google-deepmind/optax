@@ -23,6 +23,7 @@ This contribution is heavily based on the implementation of Sophia by levanter
 (https://github.com/stanford-crfm/levanter) with some changes.
 """
 from typing import Any, NamedTuple, Optional, Union, Callable
+from functools import partial
 
 import jax
 from jax import numpy as jnp
@@ -37,11 +38,11 @@ from optax import tree_utils as otu
 
 
 class SophiaHState(NamedTuple):
-  """State for Sophia-H and similar."""
+  """State for Sophia-H."""
 
   count: jax.Array  # shape=(), dtype=jnp.int32
   mu: base.Updates  # momentum
-  nu: base.Updates  # EMA of hessian
+  nu: base.Updates  # EMA of hessian diagonal
   key: PRNGKey
 
 
@@ -54,7 +55,7 @@ def scale_by_sophia_h(
     update_interval: int = 10,
     mu_dtype: Optional[Any] = None,
     pmap_axis_name: Optional[str] = None,
-    seed: PRNGKey = PRNGKey(0),
+    seed: int = 0,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
@@ -74,7 +75,6 @@ def scale_by_sophia_h(
   `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
   Notes:
-    - TODO filter non-differentiable inputs to jvp
     - Paper uses gaussians for hutchinson's estimator but we use rademacher, see
       https://www.ethanepperly.com/index.php/2024/01/28/dont-use-gaussians-in-stochastic-trace-estimation/
       and https://x.com/dlwh/status/1785068009016672566
@@ -102,7 +102,7 @@ def scale_by_sophia_h(
     pmap_axis_name: Provide pmap axis name if using pmap to perform separate
         monte carlo samples on each device for hutchinson's estimator for
         (almost) free.
-    seed: PRNGKey.
+    seed: int.
     print_win_rate_every_n_steps: Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
@@ -116,7 +116,7 @@ def scale_by_sophia_h(
   def init_fn(params):
     mu = jax.tree.map(lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree.map(jnp.zeros_like, params)
-    key = seed
+    key = jax.random.PRNGKey(seed)
     if pmap_axis_name and jax.local_device_count() > 1:
       key = jax.random.split(key, jax.local_device_count())
     return SophiaHState(
@@ -176,15 +176,15 @@ def scale_by_sophia_h(
         key = jax.lax.dynamic_index_in_dim(key, idx, keepdims=False)
 
       key, subkey = jax.random.split(key)
-      hess = _stochastic_hessian_diagonal(subkey, obj_fn, params)
+      hessian_diag = _stochastic_hessian_diagonal(subkey, obj_fn, params)
 
       if pmap_axis_name is not None and jax.local_device_count() > 1:
         # mean hessians across devices and gather keys
-        hess = jax.lax.pmean(hess, axis_name=pmap_axis_name)
+        hessian_diag = jax.lax.pmean(hessian_diag, axis_name=pmap_axis_name)
         key = jax.lax.all_gather(key, axis_name=pmap_axis_name)
 
       # ema of hessian diagonal
-      new_nu = otu.tree_update_moment(hess, nu, b2, 1)
+      new_nu = otu.tree_update_moment(hessian_diag, nu, b2, 1)
 
       return key, new_nu
 
@@ -213,7 +213,7 @@ def sophia_h(
     update_interval: int = 10,
     mu_dtype: Optional[Any] = None,
     pmap_axis_name: Optional[str] = None,
-    seed: PRNGKey = PRNGKey(0),
+    seed: int = 0,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
@@ -233,7 +233,6 @@ def sophia_h(
   `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
   Notes:
-    - TODO filter non-differentiable inputs to jvp
     - Paper uses gaussians for hutchinson's estimator but we use rademacher, see
       https://www.ethanepperly.com/index.php/2024/01/28/dont-use-gaussians-in-stochastic-trace-estimation/
       and https://x.com/dlwh/status/1785068009016672566
@@ -261,7 +260,7 @@ def sophia_h(
     pmap_axis_name: Provide pmap axis name if using pmap to perform separate
         monte carlo samples on each device for hutchinson's estimator for
         (almost) free.
-    seed: PRNGKey.
+    seed: int.
     print_win_rate_every_n_steps: Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
@@ -289,19 +288,9 @@ def sophia_h(
   return chain(*tx)
 
 
-def _tree_rademacher_like(key, tree):
-  leaves, structure = jax.tree.flatten(tree)
-  keys = jax.random.split(key, len(leaves))
-  r = jax.tree.map(
-      lambda key, x: jax.random.rademacher(key, x.shape, dtype=jnp.float32),
-      list(keys),
-      leaves,
-  )
-  r = jax.tree.unflatten(structure, r)
-  return r
-
-
 def _stochastic_hessian_diagonal(key, obj_fn, model):
-  random_signs = _tree_rademacher_like(key, model)
+  random_signs = otu.tree_random_like(
+      key, model, partial(jax.random.rademacher, dtype=jnp.float32)
+  )
   product = jax.jvp(jax.grad(obj_fn), (model,), (random_signs,))[1]
   return jax.tree.map(lambda grad, r: grad * r, product, random_signs)
