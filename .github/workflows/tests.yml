@@ -21,7 +21,7 @@ jobs:
         include:
           - python-version: "3.9"
             os: "ubuntu-latest"
-            jax-version: "0.4.27"  # Keep this in sync with version in pyproject.toml
+            jax-version: "0.4.27"  # Keep version in sync with pyproject.toml and copy.bara.sky!
 
     steps:
       - uses: "actions/checkout@v2"
