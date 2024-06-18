@@ -489,7 +489,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # @absltest.skipIf(jax.devices()[0] == 'tpu', reason = ...))
     # because jax arrays cannot be manipulated from the top level of the python
     # program
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
       # For this f and p, starting at a point on axis 0, the strong Wolfe
@@ -523,7 +523,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # @absltest.skipIf(jax.devices()[0] == 'tpu', reason = ...))
     # because jax arrays cannot be manipulated from the top level of the python
     # program
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
       def fn(x):
@@ -558,7 +558,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # @absltest.skipIf(jax.devices()[0] == 'tpu', reason = ...))
     # because jax arrays cannot be manipulated from the top level of the python
     # program
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
       def fn(x):
@@ -608,7 +608,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # @absltest.skipIf(jax.devices()[0] == 'tpu', reason = ...))
     # because jax arrays cannot be manipulated from the top level of the python
     # program
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
       def fun_flat(x):
@@ -631,7 +631,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # @absltest.skipIf(jax.devices()[0] == 'tpu', reason = ...))
     # because jax arrays cannot be manipulated from the top level of the python
     # program
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
       def fun_inf(x):
