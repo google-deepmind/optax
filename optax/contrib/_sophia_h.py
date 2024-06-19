@@ -55,7 +55,7 @@ def scale_by_sophia_h(
     update_interval: int = 10,
     mu_dtype: Optional[Any] = None,
     pmap_axis_name: Optional[str] = None,
-    seed: int = 0,
+    seed: Optional[PRNGKey] = None,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
@@ -89,24 +89,23 @@ def scale_by_sophia_h(
     `Levanter <https://www.github.com/stanford-crfm/levanter>`_
 
   Args:
-    b1: Exponential decay rate for the first moment estimates.
-    b2: Exponential decay rate for the hessian diagonal estimates. Keep in mind
-        effective `b2` is `1 - (1 - b2) / update_interval`, e.g. default `b2`
-        of 0.99 is effectively 0.999 because default `update_interval` is every
-        10.
-    eps: Small constant to avoid division by zero.
-    gamma: Normalizing constant for the hessian diagonal.
-    clip_threshold: Threshold for clipping updates.
-    update_interval: Interval for updating the hessian diagonal.
+    b1: float, Exponential decay rate for the first moment estimates.
+    b2: float, Exponential decay rate for the hessian diagonal estimates. Keep
+        in mind effective `b2` is `1 - (1 - b2) / update_interval`, e.g. default
+        `b2` of 0.99 is effectively 0.999 because default `update_interval` is
+        every 10.
+    eps: float, Small constant to avoid division by zero.
+    gamma: float, Normalizing constant for the hessian diagonal.
+    clip_threshold: Optional[float], Threshold for clipping updates.
+    update_interval: int, Interval for updating the hessian diagonal.
     mu_dtype: dtype of the first moment estimates.
-    pmap_axis_name: Provide pmap axis name if using pmap to perform separate
-        monte carlo samples on each device for hutchinson's estimator for
-        (almost) free.
-    seed: int.
-    print_win_rate_every_n_steps: Print sophia win rate every n steps for
+    pmap_axis_name: Optional[str], Provide pmap axis name if using pmap to
+        mean hessian diagonal across devices after hutchinson's approximation.
+    seed: Optional[PRNGKey]
+    print_win_rate_every_n_steps: int, Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
-        `gamma`.
+        `gamma`. 0 to turn off.
 
   Returns:
     optax.GradientTransformationExtraArgs
@@ -116,9 +115,7 @@ def scale_by_sophia_h(
   def init_fn(params):
     mu = jax.tree.map(lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
     nu = jax.tree.map(jnp.zeros_like, params)
-    key = jax.random.PRNGKey(seed)
-    if pmap_axis_name and jax.local_device_count() > 1:
-      key = jax.random.split(key, jax.local_device_count())
+    key = seed if seed else jax.random.PRNGKey(0)
     return SophiaHState(
         count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, key=key
     )
@@ -170,18 +167,12 @@ def scale_by_sophia_h(
 
   def update_hessian(key, count, nu, params, obj_fn):
     def _do_update(key):
-      if pmap_axis_name is not None and jax.local_device_count() > 1:
-        # get current replica's key
-        idx = jax.lax.axis_index(pmap_axis_name)
-        key = jax.lax.dynamic_index_in_dim(key, idx, keepdims=False)
-
       key, subkey = jax.random.split(key)
       hessian_diag = _stochastic_hessian_diagonal(subkey, obj_fn, params)
 
       if pmap_axis_name is not None and jax.local_device_count() > 1:
-        # mean hessians across devices and gather keys
-        hessian_diag = jax.lax.pmean(hessian_diag, axis_name=pmap_axis_name)
-        key = jax.lax.all_gather(key, axis_name=pmap_axis_name)
+        # mean hessian diagonal across devices
+        hessian_diag = jax.lax.pmean(hessian_diag, pmap_axis_name)
 
       # ema of hessian diagonal
       new_nu = otu.tree_update_moment(hessian_diag, nu, b2, 1)
@@ -213,7 +204,7 @@ def sophia_h(
     update_interval: int = 10,
     mu_dtype: Optional[Any] = None,
     pmap_axis_name: Optional[str] = None,
-    seed: int = 0,
+    seed: Optional[PRNGKey] = None,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
@@ -247,24 +238,23 @@ def sophia_h(
     `Levanter <https://www.github.com/stanford-crfm/levanter>`_
 
   Args:
-    b1: Exponential decay rate for the first moment estimates.
-    b2: Exponential decay rate for the hessian diagonal estimates. Keep in mind
-        effective `b2` is `1 - (1 - b2) / update_interval`, e.g. default `b2`
-        of 0.99 is effectively 0.999 because default `update_interval` is every
-        10.
-    eps: Small constant to avoid division by zero.
-    gamma: Normalizing constant for the hessian diagonal.
-    clip_threshold: Threshold for clipping updates.
-    update_interval: Interval for updating the hessian diagonal.
+    b1: float, Exponential decay rate for the first moment estimates.
+    b2: float, Exponential decay rate for the hessian diagonal estimates. Keep
+        in mind effective `b2` is `1 - (1 - b2) / update_interval`, e.g. default
+        `b2` of 0.99 is effectively 0.999 because default `update_interval` is
+        every 10.
+    eps: float, Small constant to avoid division by zero.
+    gamma: float, Normalizing constant for the hessian diagonal.
+    clip_threshold: Optional[float], Threshold for clipping updates.
+    update_interval: int, Interval for updating the hessian diagonal.
     mu_dtype: dtype of the first moment estimates.
-    pmap_axis_name: Provide pmap axis name if using pmap to perform separate
-        monte carlo samples on each device for hutchinson's estimator for
-        (almost) free.
-    seed: int.
-    print_win_rate_every_n_steps: Print sophia win rate every n steps for
+    pmap_axis_name: Optional[str], Provide pmap axis name if using pmap to
+        mean hessian diagonal across devices after hutchinson's approximation.
+    seed: Optional[PRNGKey]
+    print_win_rate_every_n_steps: int, Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
-        `gamma`.
+        `gamma`. 0 to turn off.
 
   Returns:
     optax.GradientTransformationExtraArgs
