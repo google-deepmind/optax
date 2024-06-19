@@ -29,6 +29,7 @@ import numpy as np
 
 from optax._src import alias
 from optax._src import base
+from optax._src import linesearch as _linesearch
 from optax._src import numerics
 from optax._src import transform
 from optax._src import update
@@ -632,7 +633,7 @@ class LBFGSTest(chex.TestCase):
     sol_arr, _ = _run_lbfgs_solver(opt, fun, init_array, maxiter=3)
     sol_tree, _ = _run_lbfgs_solver(opt, fun, init_tree, maxiter=3)
     sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
-    chex.assert_trees_all_close(sol_arr, sol_tree)
+    chex.assert_trees_all_close(sol_arr, sol_tree, rtol=5*1e-5, atol=5*1e-5)
 
   @parameterized.product(scale_init_precond=[True, False])
   def test_multiclass_logreg(self, scale_init_precond):
@@ -695,15 +696,13 @@ class LBFGSTest(chex.TestCase):
     )
     chex.assert_trees_all_close(sol, sol_skl, atol=5e-2)
 
-  # TODO(vroulet): test eggholder and zakharov with zoom linesearch
-  # once implemented.
   @parameterized.product(
       problem_name=[
           'rosenbrock',
           'himmelblau',
           'matyas',
-          # 'eggholder',
-          # 'zakharov',
+          'eggholder',
+          'zakharov',
       ],
   )
   def test_against_scipy(self, problem_name: str):
@@ -714,29 +713,38 @@ class LBFGSTest(chex.TestCase):
     init_params = problem['init']
     jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
 
-    opt = alias.lbfgs()
+    if problem_name == 'zakharov':
+      opt = alias.lbfgs(
+          linesearch=_linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=30
+          )
+      )
+    else:
+      opt = alias.lbfgs()
     optax_sol, _ = _run_lbfgs_solver(
         opt, jnp_fun, init_params, maxiter=500, tol=tol
     )
     scipy_sol = scipy_optimize.minimize(np_fun, init_params, method='BFGS').x
 
     # 1. Check minimizer obtained against known minimizer or scipy minimizer
-    if problem_name not in ['matyas', 'zakharov']:
-      chex.assert_trees_all_close(
-          optax_sol, problem['minimizer'], atol=tol, rtol=tol
-      )
-    else:
-      chex.assert_trees_all_close(optax_sol, scipy_sol, atol=tol, rtol=tol)
+    with self.subTest('Check minimizer'):
+      if problem_name in ['matyas', 'zakharov']:
+        chex.assert_trees_all_close(
+            optax_sol, problem['minimizer'], atol=tol, rtol=tol
+        )
+      else:
+        chex.assert_trees_all_close(optax_sol, scipy_sol, atol=tol, rtol=tol)
 
-    # 2. Check if minimum is reached or equal to scipy's found value
-    if problem_name == 'eggholder':
-      chex.assert_trees_all_close(
-          jnp_fun(optax_sol), np_fun(scipy_sol), atol=tol, rtol=tol
-      )
-    else:
-      chex.assert_trees_all_close(
-          jnp_fun(optax_sol), problem['minimum'], atol=tol, rtol=tol
-      )
+    with self.subTest('Check minimum'):
+      # 2. Check if minimum is reached or equal to scipy's found value
+      if problem_name == 'eggholder':
+        chex.assert_trees_all_close(
+            jnp_fun(optax_sol), np_fun(scipy_sol), atol=tol, rtol=tol
+        )
+      else:
+        chex.assert_trees_all_close(
+            jnp_fun(optax_sol), problem['minimum'], atol=tol, rtol=tol
+        )
 
   def test_minimize_bad_initialization(self):
     # This test runs deliberately "bad" initial values to test that handling

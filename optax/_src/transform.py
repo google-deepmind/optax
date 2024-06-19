@@ -1327,7 +1327,7 @@ def _precondition_by_lbfgs(
 
 def scale_by_lbfgs(
     memory_size: int = 10,
-    scale_init_precond: bool = False,
+    scale_init_precond: bool = True,
 ) -> base.GradientTransformation:
   r"""Scales updates by L-BFGS.
 

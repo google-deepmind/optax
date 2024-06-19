@@ -1895,9 +1895,7 @@ def lbfgs(
     scale_init_precond: bool = True,
     linesearch: Optional[
         base.GradientTransformationExtraArgs
-    ] = _linesearch.scale_by_backtracking_linesearch(
-        max_backtracking_steps=30, store_grad=True
-    ),
+    ] = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=15),
 ) -> base.GradientTransformationExtraArgs:
   r"""L-BFGS optimizer.
 
@@ -1967,9 +1965,9 @@ def lbfgs(
     ...   )
     ...   params = optax.apply_updates(params, updates)
     ...   print('Objective function: ', f(params))
-    Objective function:  5.040001
-    Objective function:  7.460699e-14
-    Objective function:  1.0602291e-27
+    Objective function:  0.0
+    Objective function:  0.0
+    Objective function:  0.0
     Objective function:  0.0
     Objective function:  0.0
 
@@ -1979,7 +1977,7 @@ def lbfgs(
 
   .. warning::
     This optimizer works best with a linesearch (current default is a
-    backtracking linesearch). See example above for best use in a non-stochastic
+    zoom linesearch). See example above for best use in a non-stochastic
     setting, where we can recycle gradients computed by the linesearch using
     :func:`optax.value_and_grad_from_state`.
 
@@ -2002,7 +2000,7 @@ def lbfgs(
     scale_init_precond: whether to use a scaled identity as the initial
       preconditioner, see formula above.
     linesearch: an instance of :class:`optax.GradientTransformationExtraArgs`
-      such as :func:`optax.scale_by_backtracking_linesearch` that computes a
+      such as :func:`optax.scale_by_zoom_linesearch` that computes a
       learning rate, a.k.a. stepsize, to satisfy some criterion such as a
       sufficient decrease of the objective by additional calls to the objective.
 

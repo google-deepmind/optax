@@ -375,36 +375,6 @@ def scale_by_backtracking_linesearch(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-# Flags to print errors, used for debugging, tested
-WARNING_PREAMBLE = "WARNING: jaxopt.ZoomLineSearch: "
-FLAG_NAN_INF_VALUES = (
-    WARNING_PREAMBLE + "NaN or Inf values encountered in function values."
-)
-FLAG_INTERVAL_NOT_FOUND = (
-    WARNING_PREAMBLE
-    + "No interval satisfying curvature condition."
-    "Consider increasing maximal possible stepsize of the linesearch."
-)
-FLAG_INTERVAL_TOO_SMALL = (
-    WARNING_PREAMBLE
-    + "Length of searched interval has been reduced below threshold."
-)
-FLAG_CURVATURE_COND_NOT_SATSIFIED = (
-    WARNING_PREAMBLE
-    + "Returning stepsize with sufficient decrease "
-    "but curvature condition not satisfied."
-)
-FLAG_NO_STEPSIZE_FOUND = (
-    WARNING_PREAMBLE
-    + "Linesearch failed, no stepsize satisfying sufficient decrease found."
-)
-FLAG_NOT_A_DESCENT_DIRECTION = (
-    WARNING_PREAMBLE
-    + "The linesearch failed because the provided direction "
-    "is not a descent direction. "
-)
-
-
 def _cond_print(condition, message, **kwargs):
   """Prints message if condition is true."""
   jax.lax.cond(
@@ -1239,7 +1209,7 @@ class ZoomLinesearchInfo(NamedTuple):
   A positive value in the sufficient curvature error is more problematic as it
   means that the algorithm may not be guaranteed to produce monotonically
   decreasing values.
-  Consider using `verbose=True` in :func:`scale_by_zoom_linesearch` for
+  Consider using ``verbose=True`` in :func:`scale_by_zoom_linesearch` for
   additional failure diagnostics if the linesearch fails.
 
   Attributes:
@@ -1259,7 +1229,6 @@ class ZoomLinesearchInfo(NamedTuple):
 class ScaleByZoomLinesearchState(NamedTuple):
   """State for scale_by_zoom_linesearch.
 
-  Attributes:
   Attributes:
     learning_rate: learning rate computed at the end of a round of line-search,
       used to scale the update.
@@ -1306,16 +1275,16 @@ def scale_by_zoom_linesearch(
 
   where
 
-    - :math:`f` is the function to minimize,
-    - :math:`w` are the current parameters,
-    - :math:`\eta` is the learning rate to find,
-    - :math:`u` is the update direction,
-    - :math:`c_1` is a coefficient (``slope_rtol``) measuring the relative
-      decrease of the function in terms of the slope (scalar product between
-      the gradient and the updates),
-    - :math:`c_2` is a coefficient (``curv_rtol``) measuring the relative 
-      decrease of curvature.
-    - :math:`\epsilon` is an absolute tolerance (``tol``).
+  - :math:`f` is the function to minimize,
+  - :math:`w` are the current parameters,
+  - :math:`\eta` is the learning rate to find,
+  - :math:`u` is the update direction,
+  - :math:`c_1` is a coefficient (``slope_rtol``) measuring the relative
+    decrease of the function in terms of the slope (scalar product between
+    the gradient and the updates),
+  - :math:`c_2` is a coefficient (``curv_rtol``) measuring the relative
+    decrease of curvature.
+  - :math:`\epsilon` is an absolute tolerance (``tol``).
 
   To deal with very flat functions, this linesearch switches from the sufficient
   decrease criterion presented above to an approximate sufficient decrease
@@ -1552,3 +1521,33 @@ def scale_by_zoom_linesearch(
     )
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+# Flags to print errors, used for debugging, tested
+WARNING_PREAMBLE = "WARNING: jaxopt.ZoomLineSearch: "
+FLAG_NAN_INF_VALUES = (
+    WARNING_PREAMBLE + "NaN or Inf values encountered in function values."
+)
+FLAG_INTERVAL_NOT_FOUND = (
+    WARNING_PREAMBLE
+    + "No interval satisfying curvature condition."
+    "Consider increasing maximal possible stepsize of the linesearch."
+)
+FLAG_INTERVAL_TOO_SMALL = (
+    WARNING_PREAMBLE
+    + "Length of searched interval has been reduced below threshold."
+)
+FLAG_CURVATURE_COND_NOT_SATSIFIED = (
+    WARNING_PREAMBLE
+    + "Returning stepsize with sufficient decrease "
+    "but curvature condition not satisfied."
+)
+FLAG_NO_STEPSIZE_FOUND = (
+    WARNING_PREAMBLE
+    + "Linesearch failed, no stepsize satisfying sufficient decrease found."
+)
+FLAG_NOT_A_DESCENT_DIRECTION = (
+    WARNING_PREAMBLE
+    + "The linesearch failed because the provided direction "
+    "is not a descent direction. "
+)
