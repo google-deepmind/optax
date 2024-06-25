@@ -1419,6 +1419,43 @@ def scale_by_polyak(
   return base.GradientTransformationExtraArgs(_init_empty_state, update_fn)
 
 
+class NormalizeByUpdateNormState(NamedTuple):
+  """State for normalize_by_update_norm."""
+  scale_factor: float
+  eps: float
+
+
+def normalize_by_update_norm(
+    scale_factor: float = 1.0, eps: float = 1e-6
+) -> base.GradientTransformation:
+  """
+  Scale by the inverse of the gradient norm.
+
+  Args:
+    scale_factor: (float) scaling factor
+    eps: (float) jitter term to avoid dividing by 0
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    del params
+    return NormalizeByUpdateNormState(scale_factor, eps)
+
+  def update_fn(
+        updates: base.Updates,
+        state: base.EmptyState,
+        params: Optional[base.Params] = None,
+  ) -> tuple[base.Updates, base.EmptyState]:
+    del params
+    g_norm = (utils.global_norm(updates) + eps) / scale_factor
+    updates = jtu.tree_map(lambda g: g / g_norm, updates)
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 ### Legacy symbols to be removed. ###
 
 
