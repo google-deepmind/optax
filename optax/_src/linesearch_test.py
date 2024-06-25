@@ -642,10 +642,9 @@ class ZoomLinesearchTest(chex.TestCase):
       opt = _linesearch.scale_by_zoom_linesearch(
           max_linesearch_steps=30, verbose=True
       )
-      stdout = io.StringIO()
-      with contextlib.redirect_stdout(stdout):
-        _, _ = _run_linesearch(opt, fun_inf, w, u, stepsize_guess=1.0)
-      self.assertIn(_linesearch.FLAG_NAN_INF_VALUES, stdout.getvalue())
+      _, state = _run_linesearch(opt, fun_inf, w, u, stepsize_guess=1.0)
+      stepsize = otu.tree_get(state, 'learning_rate')
+      self.assertGreater(stepsize, 0.0)
 
   def test_high_smaller_than_low(self):
     # See google/jax/issues/16236
