@@ -27,6 +27,7 @@ Optimizers
     radam
     rmsprop
     sgd
+    sign_sgd
     sm3
     yogi
 
@@ -126,6 +127,10 @@ RProp
 SGD
 ~~~
 .. autofunction:: sgd
+
+SignSGD
+~~~~~~~
+.. autofunction:: sign_sgd
 
 SM3
 ~~~
