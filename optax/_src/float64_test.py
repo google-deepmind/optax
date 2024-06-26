@@ -55,6 +55,7 @@ ALL_MODULES = [
     ('noisy_sgd', alias.noisy_sgd, dict(learning_rate=0.1)),
     ('rmsprop', alias.rmsprop, dict(learning_rate=0.1)),
     ('sgd', alias.sgd, dict(learning_rate=0.1)),
+    ('sign_sgd', alias.sgd, dict(learning_rate=0.1)),
 ]
 
 
