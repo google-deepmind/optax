@@ -71,6 +71,7 @@ Transformations
     ScaleByRssState
     scale_by_schedule
     ScaleByScheduleState
+    scale_by_sign
     scale_by_sm3
     ScaleBySM3State
     scale_by_stddev
@@ -216,6 +217,8 @@ Transformations and states
 
 .. autofunction:: scale_by_schedule
 .. autoclass:: ScaleByScheduleState
+
+.. autofunction:: scale_by_sign
 
 .. autofunction:: scale_by_sm3
 .. autoclass:: ScaleBySM3State
