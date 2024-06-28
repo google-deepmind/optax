@@ -32,6 +32,8 @@ Transformations
     identity
     keep_params_nonnegative
     NonNegativeParamsState
+    normalize_by_update_norm
+    NormalizeByUpdateNormState
     OptState
     Params
     per_example_global_norm_clip
