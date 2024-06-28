@@ -174,6 +174,10 @@ Transformations and states
 .. autoclass:: NonNegativeParamsState
     :members:
 
+.. autofunction:: normalize_by_update_norm
+.. autoclass:: NormalizeByUpdateNormState
+    :members:
+
 .. autofunction:: per_example_global_norm_clip
 .. autofunction:: per_example_layer_norm_clip
 
