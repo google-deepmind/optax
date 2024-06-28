@@ -41,7 +41,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='momo', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='momo_adam', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='sophia_h', opt_kwargs=dict(learning_rate=1e-2)),
+    dict(opt_name='sophia', opt_kwargs=dict(learning_rate=1e-2)),
 )
 
 
@@ -92,7 +92,7 @@ class ContribTest(chex.TestCase):
       value, updates = get_updates(params)
       if opt_name in ['momo', 'momo_adam']:
         update_kwargs = {'value': value}
-      elif opt_name == 'sophia_h':
+      elif opt_name == 'sophia':
         update_kwargs = {'obj_fn': loss_fn}
       else:
         update_kwargs = {}
@@ -130,7 +130,7 @@ class ContribTest(chex.TestCase):
     opt_inject_update = opt_inject.update
     if opt_name in ['momo', 'momo_adam']:
       update_kwargs = {'value': jnp.array(1.0)}
-    elif opt_name == 'sophia_h':
+    elif opt_name == 'sophia':
       temp_update_kwargs = {
           'obj_fn': lambda ps: sum(jnp.sum(p) for p in jax.tree.leaves(ps))
       }

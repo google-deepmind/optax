@@ -32,8 +32,8 @@ Experimental features and algorithms that don't meet the
     schedule_free
     schedule_free_eval_params
     ScheduleFreeState
-    sophia_h
-    SophiaHState
+    sophia
+    SophiaState
     split_real_and_imaginary
     SplitRealAndImaginaryState
 
@@ -98,7 +98,7 @@ Sharpness aware minimization
 .. autofunction:: sam
 .. autoclass:: SAMState
 
-Sophia-H
+Sophia
 ~~~~~~~~
-.. autofunction:: sophia_h
-.. autoclass:: SophiaHState
+.. autofunction:: sophia
+.. autoclass:: SophiaState

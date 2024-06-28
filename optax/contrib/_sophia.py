@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Sophia-H optimizer.
+"""Sophia optimizer.
 
-A contributed implementation of the Sophia-H optimizer from "Sophia: A Scalable
+A contributed implementation of the Sophia optimizer from "Sophia: A Scalable
 Stochastic Second-order Optimizer for Language Model Pre-training"
 (https://arxiv.org/abs/2305.14342) by Hong Liu, Zhiyuan Li, David Hall,
 Percy Liang, and Tengyu Ma.
@@ -37,50 +37,102 @@ from optax._src.combine import chain
 from optax import tree_utils as otu
 
 
-class SophiaHState(NamedTuple):
-  """State for Sophia-H."""
+class HutchinsonState(NamedTuple):
+    key: PRNGKey
+
+
+def hutchinson_estimator_diag_hessian(
+    random_seed: Optional[PRNGKey] = None
+):
+  """Returns a GradientTransformation that computes the diagonal of the Hessian.
+
+  The Hessian diagonal is estimated using Hutchinson's estimator, which is
+  unbiased but has high variance.
+
+  Args:
+    random_seed: Optional[PRNGKey], key used to generate random vectors.
+
+  Returns:
+    GradientTransformationExtraArgs
+  """
+
+  def init_fn(params):
+    del params
+    key = random_seed if random_seed is not None else jax.random.PRNGKey(0)
+    return HutchinsonState(key=key)
+
+  def update_fn(updates, state, params=None, obj_fn=None):
+    if params is None:
+      raise ValueError("params must be provided to hutchinson update function.")
+    if obj_fn is None:
+      raise ValueError("obj_fn must be provided to hutchinson update function.")
+    del updates
+    key, subkey = jax.random.split(state.key)
+    random_signs = otu.tree_random_like(
+        subkey, params, partial(jax.random.rademacher, dtype=jnp.float32)
+    )
+    hvp = jax.jvp(jax.grad(obj_fn), (params,), (random_signs,))[1]
+    product = jax.tree.map(lambda h, r: h * r, hvp, random_signs)
+    return product, HutchinsonState(key=key)
+
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+
+class SophiaState(NamedTuple):
+  """State for Sophia Optimizer."""
 
   count: jax.Array  # shape=(), dtype=jnp.int32
   mu: base.Updates  # momentum
   nu: base.Updates  # EMA of hessian diagonal
-  key: PRNGKey
+  hessian_fn_state: Any
 
 
-def scale_by_sophia_h(
+def scale_by_sophia(
     b1: float = 0.965,
     b2: float = 0.99,
     eps: float = 1e-8,
     gamma: float = 0.01,
     clip_threshold: Optional[float] = 1.0,
     update_interval: int = 10,
+    hessian_diagonal_fn: Union[
+        base.GradientTransformation,
+        base.GradientTransformationExtraArgs,
+    ] = hutchinson_estimator_diag_hessian(),
     mu_dtype: Optional[Any] = None,
-    pmap_axis_name: Optional[str] = None,
-    seed: Optional[PRNGKey] = None,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
-  """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
+  """Sophia optimizer.
 
-  The loss function must be passed into sophia's update function to calculate
-  the hessian diagonal. It must accept `params` as its only argument and return
-  only a scalar (the loss).
+  A separate GradientTransformation is required through the argument
+  `hessian_diagonal_fn` to compute the diagonal of the Hessian. Any extra
+  arguments required by the hessian_diagonal_fn's update function can be
+  passed through sophia's update function as trailing keyword arguments
+  (**kwargs). The default hessian_diagonal_fn is Hutchinson's estimator
+  and needs the objective function as an extra argument, `obj_fn`.
+  obj_fn must accept `params` as its only argument and return only a
+  scalar (the loss).
 
-  For example, considering loss function `loss_fn(params, batch) -> loss, aux`
-  that takes multiple arguments and returns multiple outputs, we must modify it
-  to `loss_fn(params) -> loss` like below:
+  For example, assuming your experiment's loss function is
+  `loss_fn(params, batch) -> loss, aux` that takes multiple arguments and
+  returns multiple outputs, we must modify it to `loss_fn(params) -> loss`:
 
-  `sophia_obj_fn = lambda params: loss_fn(params, batch)[0]`
+  `obj_fn = lambda params: loss_fn(params, batch)[0]`
 
-  Then it can be passed to sophia's update function:
+  where `batch` is the current step's batch.
+
+  Then it can be passed to sophia's update function (which will pass it to the
+  hessian_diagonal_fn's update function):
 
   `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
-  Notes:
-    - Paper uses gaussians for hutchinson's estimator but we use rademacher, see
-      https://www.ethanepperly.com/index.php/2024/01/28/dont-use-gaussians-in-stochastic-trace-estimation/
-      and https://x.com/dlwh/status/1785068009016672566
-    - If using `jax.pmap`, providing the pmap axis name will perform separate
-      monte carlo samples on each device for hutchinson's estimator for (almost)
-      free, theoretically increasing hessian estimation accuracy.
+  Optionally, you can write your own GradientTransformation to compute the
+  hessian diagonal. Use this file's hutchinson_estimator_diag_hessian function
+  as an example. If you are using more than one device, be sure the hessian
+  diagonal function properly averages the hessian diagonal across devices.
+  The default hessian_diagonal_fn does not do this, and would cause params to
+  diverge from each other across devices if using pmap for example.
+
 
   References:
     Liu et al., `Sophia: A Scalable Stochastic Second-order Optimizer for
@@ -98,10 +150,11 @@ def scale_by_sophia_h(
     gamma: float, Normalizing constant for the hessian diagonal.
     clip_threshold: Optional[float], Threshold for clipping updates.
     update_interval: int, Interval for updating the hessian diagonal.
+    hessian_diagonal_fn: GradientTransformation, GradientTransformation that
+        computes the diagonal of the Hessian. Default is Hutchinson's estimator
+        (sophia-h). If using more than one device, be sure this function
+        properly averages the hessian diagonal across devices.
     mu_dtype: dtype of the first moment estimates.
-    pmap_axis_name: Optional[str], Provide pmap axis name if using pmap to
-        mean hessian diagonal across devices after hutchinson's approximation.
-    seed: Optional[PRNGKey]
     print_win_rate_every_n_steps: int, Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
@@ -113,25 +166,23 @@ def scale_by_sophia_h(
   mu_dtype = canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = jax.tree.map(lambda t: jnp.zeros_like(t, dtype=mu_dtype), params)
-    nu = jax.tree.map(jnp.zeros_like, params)
-    key = seed if seed else jax.random.PRNGKey(0)
-    return SophiaHState(
-        count=jnp.zeros([], jnp.int32), mu=mu, nu=nu, key=key
+    return SophiaState(
+        count=jnp.zeros([], jnp.int32),
+        mu=otu.tree_zeros_like(params, dtype=mu_dtype),
+        nu=otu.tree_zeros_like(params),
+        hessian_fn_state=hessian_diagonal_fn.init(params),
     )
 
   def update_fn(
-      updates, state: SophiaHState, params=None, obj_fn=None
+      updates, state: SophiaState, params=None, **hess_fn_kwargs
   ):
     if params is None:
       raise ValueError("params must be provided to sophia's update function.")
-    if obj_fn is None:
-      raise ValueError(
-          "obj_fn must be provided to sophia's update function. "
-          "See optimizer docstring for more information."
-      )
     count_inc = safe_int32_increment(state.count)
 
+    grads = updates
+
+    # Sophia update
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     updates = jax.tree.map(
@@ -159,40 +210,40 @@ def scale_by_sophia_h(
           lambda u: jnp.clip(u, -clip_threshold, clip_threshold), updates
       )
 
-    key, nu = update_hessian(state.key, state.count, state.nu, params, obj_fn)
-
-    mu = otu.tree_cast(mu, mu_dtype)
-    state = SophiaHState(count=count_inc, mu=mu, nu=nu, key=key)
-    return updates, state
-
-  def update_hessian(key, count, nu, params, obj_fn):
-    def _do_update(key):
-      key, subkey = jax.random.split(key)
-      hessian_diag = _stochastic_hessian_diagonal(subkey, obj_fn, params)
-
-      if pmap_axis_name is not None and jax.local_device_count() > 1:
-        # mean hessian diagonal across devices
-        hessian_diag = jax.lax.pmean(hessian_diag, pmap_axis_name)
+    # Hessian diagonal update
+    def update_hessian_diag(hess_fn_state, nu):
+      hessian_diag, hess_fn_state = hessian_diagonal_fn.update(
+          grads, hess_fn_state, params=params, **hess_fn_kwargs
+      )
 
       # ema of hessian diagonal
-      new_nu = otu.tree_update_moment(hessian_diag, nu, b2, 1)
+      nu = otu.tree_update_moment(hessian_diag, nu, b2, 1)
 
-      return key, new_nu
+      return hess_fn_state, nu
 
-    def _dont_update(key):
-      return key, nu
-
-    return jax.lax.cond(
-        jnp.equal(count % update_interval, 0),
-        _do_update,
-        _dont_update,
-        key
+    hessian_fn_state, nu = jax.lax.cond(
+        jnp.equal(state.count % update_interval, 0),
+        update_hessian_diag,
+        lambda h, n: (h, n),
+        state.hessian_fn_state,
+        state.nu,
     )
+
+    # Cast momentum back to mu_dtype
+    mu = otu.tree_cast(mu, mu_dtype)
+
+    state = SophiaState(
+        count=count_inc,
+        mu=mu,
+        nu=nu,
+        hessian_fn_state=hessian_fn_state,
+    )
+    return updates, state
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-def sophia_h(
+def sophia(
     learning_rate: base.ScalarOrSchedule,
     b1: float = 0.965,
     b2: float = 0.99,
@@ -202,34 +253,44 @@ def sophia_h(
     gamma: float = 0.01,
     clip_threshold: Optional[float] = 1.0,
     update_interval: int = 10,
+    hessian_diagonal_fn: Union[
+        base.GradientTransformation,
+        base.GradientTransformationExtraArgs,
+    ] = hutchinson_estimator_diag_hessian(),
     mu_dtype: Optional[Any] = None,
-    pmap_axis_name: Optional[str] = None,
-    seed: Optional[PRNGKey] = None,
     print_win_rate_every_n_steps: int = 0,
 ) -> base.GradientTransformationExtraArgs:
-  """Sophia optimizer with hutchinson's estimator for the hessian diagonal.
+  """Sophia optimizer.
 
-  The loss function must be passed into sophia's update function to calculate
-  the hessian diagonal. It must accept `params` as its only argument and return
-  only a scalar (the loss).
+  A separate GradientTransformation is required through the argument
+  `hessian_diagonal_fn` to compute the diagonal of the Hessian. Any extra
+  arguments required by the hessian_diagonal_fn's update function can be
+  passed through sophia's update function as trailing keyword arguments
+  (**kwargs). The default hessian_diagonal_fn is Hutchinson's estimator
+  and needs the objective function as an extra argument, `obj_fn`.
+  obj_fn must accept `params` as its only argument and return only a
+  scalar (the loss).
 
-  For example, considering loss function `loss_fn(params, batch) -> loss, aux`
-  that takes multiple arguments and returns multiple outputs, we must modify it
-  to `loss_fn(params) -> loss` like below:
+  For example, assuming your experiment's loss function is
+  `loss_fn(params, batch) -> loss, aux` that takes multiple arguments and
+  returns multiple outputs, we must modify it to `loss_fn(params) -> loss`:
 
-  `sophia_obj_fn = lambda params: loss_fn(params, batch)[0]`
+  `obj_fn = lambda params: loss_fn(params, batch)[0]`
 
-  Then it can be passed to sophia's update function:
+  where `batch` is the current step's batch.
+
+  Then it can be passed to sophia's update function (which will pass it to the
+  hessian_diagonal_fn's update function):
 
   `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
-  Notes:
-    - Paper uses gaussians for hutchinson's estimator but we use rademacher, see
-      https://www.ethanepperly.com/index.php/2024/01/28/dont-use-gaussians-in-stochastic-trace-estimation/
-      and https://x.com/dlwh/status/1785068009016672566
-    - If using `jax.pmap`, providing the pmap axis name will perform separate
-      monte carlo samples on each device for hutchinson's estimator for (almost)
-      free, theoretically increasing hessian estimation accuracy.
+  Optionally, you can write your own GradientTransformation to compute the
+  hessian diagonal. Use this file's hutchinson_estimator_diag_hessian function
+  as an example. If you are using more than one device, be sure the hessian
+  diagonal function properly averages the hessian diagonal across devices.
+  The default hessian_diagonal_fn does not do this, and would cause params to
+  diverge from each other across devices if using pmap for example.
+
 
   References:
     Liu et al., `Sophia: A Scalable Stochastic Second-order Optimizer for
@@ -247,10 +308,11 @@ def sophia_h(
     gamma: float, Normalizing constant for the hessian diagonal.
     clip_threshold: Optional[float], Threshold for clipping updates.
     update_interval: int, Interval for updating the hessian diagonal.
+    hessian_diagonal_fn: GradientTransformation, GradientTransformation that
+        computes the diagonal of the Hessian. Default is Hutchinson's estimator
+        (sophia-h). If using more than one device, be sure this function
+        properly averages the hessian diagonal across devices.
     mu_dtype: dtype of the first moment estimates.
-    pmap_axis_name: Optional[str], Provide pmap axis name if using pmap to
-        mean hessian diagonal across devices after hutchinson's approximation.
-    seed: Optional[PRNGKey]
     print_win_rate_every_n_steps: int, Print sophia win rate every n steps for
         diagnostic purposes. Authors state this value should stay between
         0.1 and 0.5 during training. If win rate is too low, try increasing
@@ -260,27 +322,18 @@ def sophia_h(
     optax.GradientTransformationExtraArgs
   """
   tx = [
-      scale_by_sophia_h(
+      scale_by_sophia(
           b1=b1,
           b2=b2,
           eps=eps,
           gamma=gamma,
           clip_threshold=clip_threshold,
           update_interval=update_interval,
+          hessian_diagonal_fn=hessian_diagonal_fn,
           mu_dtype=mu_dtype,
-          pmap_axis_name=pmap_axis_name,
-          seed=seed,
           print_win_rate_every_n_steps=print_win_rate_every_n_steps,
       ),
       transform.add_decayed_weights(weight_decay, mask=mask),
       transform.scale_by_learning_rate(learning_rate),
   ]
   return chain(*tx)
-
-
-def _stochastic_hessian_diagonal(key, obj_fn, model):
-  random_signs = otu.tree_random_like(
-      key, model, partial(jax.random.rademacher, dtype=jnp.float32)
-  )
-  product = jax.jvp(jax.grad(obj_fn), (model,), (random_signs,))[1]
-  return jax.tree.map(lambda grad, r: grad * r, product, random_signs)
