@@ -1432,7 +1432,7 @@ def normalize_by_update_norm(
   Scale by the inverse of the gradient norm.
 
   Args:
-    scale_factor: (float) scaling factor
+    scale_factor: factor by which the update will be multiplied (defaults to 1).
     eps: (float) jitter term to avoid dividing by 0
 
   Returns:
