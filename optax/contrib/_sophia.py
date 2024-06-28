@@ -38,7 +38,7 @@ from optax import tree_utils as otu
 
 
 class HutchinsonState(NamedTuple):
-    key: PRNGKey
+  key: PRNGKey
 
 
 def hutchinson_estimator_diag_hessian(
