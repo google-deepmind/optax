@@ -97,6 +97,9 @@ def schedule_free(
   optimizer. As of Apr, 2024, schedule_free is tested with SGD and Adam.
 
   References:
+    Defazio et al, `The Road Less Scheduled
+    <https://arxiv.org/abs/2405.15682>`_, 2024
+
     Defazio et al, `Schedule-Free Learning - A New Way to Train
     <https://github.com/facebookresearch/schedule_free/tree/main>`_, 2024
 
