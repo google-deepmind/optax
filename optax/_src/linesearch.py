@@ -707,6 +707,8 @@ def zoom_linesearch(
         [state.stepsize, state.value, state.grad],
     )
     if verbose:
+      too_small_int = jnp.abs(state.low - state.high) <= interval_threshold
+      _cond_print(too_small_int, FLAG_INTERVAL_TOO_SMALL)
       jax.lax.cond(
           state.safe_stepsize > 0.0,
           lambda *_: jax.debug.print(
@@ -757,11 +759,6 @@ def zoom_linesearch(
     _, new_value_step, new_grad_step, new_slope_step = _value_and_slope_on_line(
         value_and_grad_fn, params, new_stepsize, updates, fn_kwargs
     )
-    if verbose:
-      _cond_print(
-          jnp.isnan(new_value_step) | jnp.isinf(new_value_step),
-          FLAG_NAN_INF_VALUES,
-      )
 
     decrease_error = _decrease_error(
         new_stepsize, new_value_step, new_slope_step, value_init, slope_init
@@ -905,12 +902,11 @@ def zoom_linesearch(
     cubic_chk = 0.2 * delta
     quad_chk = 0.1 * delta
 
-    # Rather large values of threshold compared to machine precision
-    # such that we avoid wasting iterations to satisfy curvature criterion
-    # (a stepsize reducing values is taken if it exists when threshold is met)
+    # We use rather large values of interval threshold compared to machine
+    # precision such that we avoid wasting iterations to satisfy curvature
+    # criterion (a stepsize reducing values is taken if it exists when threshold
+    # is met)
     too_small_int = delta <= interval_threshold
-    if verbose:
-      _cond_print(too_small_int, FLAG_INTERVAL_TOO_SMALL)
 
     # Find new point by interpolation
     middle_cubic = _cubicmin(
@@ -938,11 +934,6 @@ def zoom_linesearch(
             value_and_grad_fn, params, middle, updates, fn_kwargs
         )
     )
-    if verbose:
-      _cond_print(
-          jnp.isnan(value_middle) | jnp.isinf(value_middle),
-          FLAG_NAN_INF_VALUES,
-      )
 
     decrease_error = _decrease_error(
         middle, value_middle, slope_middle, value_init, slope_init
@@ -1078,7 +1069,7 @@ def zoom_linesearch(
         WARNING_PREAMBLE
         + "Consider augmenting the maximal number of linesearch iterations.",
     )
-    eps = jnp.finfo(stepsize).eps
+    eps = jnp.finfo(jnp.float32).eps
     below_eps = stepsize < eps
     _cond_print(
         below_eps & is_descent_dir,
@@ -1524,10 +1515,7 @@ def scale_by_zoom_linesearch(
 
 
 # Flags to print errors, used for debugging, tested
-WARNING_PREAMBLE = "WARNING: jaxopt.ZoomLineSearch: "
-FLAG_NAN_INF_VALUES = (
-    WARNING_PREAMBLE + "NaN or Inf values encountered in function values."
-)
+WARNING_PREAMBLE = "WARNING: optax.zoom_linesearch: "
 FLAG_INTERVAL_NOT_FOUND = (
     WARNING_PREAMBLE
     + "No interval satisfying curvature condition."

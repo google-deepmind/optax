@@ -171,7 +171,21 @@
 
     </div>
 
+.. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="LBFGS and linesearch.">
+
+.. only:: html
+
+  .. image:: /images/favicon.svg
+    :alt:
+
+  :doc:`_collections/examples/lbfgs`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Using LBFGS and linesearch.</div>
+    </div>
 
 
 Contrib Examples
