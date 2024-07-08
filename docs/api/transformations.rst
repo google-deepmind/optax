@@ -32,6 +32,8 @@ Transformations
     identity
     keep_params_nonnegative
     NonNegativeParamsState
+    normalize_by_update_norm
+    NormalizeByUpdateNormState
     OptState
     Params
     per_example_global_norm_clip
@@ -170,6 +172,10 @@ Transformations and states
 
 .. autofunction:: keep_params_nonnegative
 .. autoclass:: NonNegativeParamsState
+    :members:
+
+.. autofunction:: normalize_by_update_norm
+.. autoclass:: NormalizeByUpdateNormState
     :members:
 
 .. autofunction:: per_example_global_norm_clip

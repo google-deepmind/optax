@@ -105,6 +105,8 @@ from optax._src.transform import ApplyEvery
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
+from optax._src.transform import normalize_by_update_norm
+from optax._src.transform import NormalizeByUpdateNormState
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
