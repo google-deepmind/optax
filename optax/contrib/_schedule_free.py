@@ -19,7 +19,11 @@ from typing import NamedTuple, Optional
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import alias
 from optax._src import base
+from optax._src import combine
+from optax.schedules import _schedule
+from optax.transforms import _adding
 
 
 class ScheduleFreeState(NamedTuple):
@@ -109,7 +113,7 @@ def schedule_free(
     b1: beta_1 parameter in the y update.
     weight_lr_power: we downweight the weight of averaging using this. This is
       especially helpful in early iterations during warmup.
-    state_dtype: dtype for z sequence.
+    state_dtype: dtype for z sequence in the schedule free method.
 
   Returns:
     A `GradientTransformationExtraArgs` with init and update functions.
@@ -188,3 +192,157 @@ def schedule_free(
     return updates, next_state
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+def schedule_free_sgd(
+    learning_rate: float = 1.0,
+    *,
+    warmup_steps: int = 0,
+    b1: float = 0.9,
+    weight_decay: float = 0.0,
+    weight_lr_power: float = 2.0,
+    state_dtype=jnp.float32,
+) -> base.GradientTransformationExtraArgs:
+  """Schedule-Free wrapper for SGD.
+
+  Shortcut example for using schedule_free with SGD, which is a common use case.
+  Note that this is just an example, and other use cases are possible, e.g.
+  using a weight decay mask. Note also that the EMA parameter of the
+  schedule free method (b1) must be strictly positive.
+
+  Args:
+    learning_rate: SGD learning rate.
+    warmup_steps: positive integer, the length of the linear warmup.
+    b1: beta_1 parameter in the y update.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    weight_lr_power: we downweight the weight of averaging using this. This is
+      especially helpful in early iterations during warmup.
+    state_dtype: dtype for z sequence in the schedule free method.
+
+  Returns:
+    A `GradientTransformationExtraArgs` with init and update functions.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.contrib.schedule_free_sgd()
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  eval_params = schedule_free_eval_params(opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(eval_params)))
+    Objective function: 1.40E+01
+    Objective function: 1.75E-14
+    Objective function: 9.96E-01
+    Objective function: 8.06E-01
+    Objective function: 2.41E-01
+  """
+  if learning_rate == 0:
+    raise ValueError('Learning_rate must be non-zero.')
+  if warmup_steps > 0:
+    learning_rate = _schedule.warmup_constant_schedule(
+        init_value=0,
+        peak_value=learning_rate,
+        warmup_steps=warmup_steps,
+    )
+  optimizer = alias.sgd(learning_rate)
+  if weight_decay > 0:
+    optimizer = combine.chain(
+        _adding.add_decayed_weights(weight_decay), optimizer)
+  return schedule_free(
+      optimizer,
+      learning_rate=learning_rate,
+      b1=b1,
+      weight_lr_power=weight_lr_power,
+      state_dtype=state_dtype,
+  )
+
+
+def schedule_free_adamw(
+    learning_rate: float = 0.0025,
+    *,
+    warmup_steps: int = 0,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    weight_decay: float = 0.0,
+    weight_lr_power: float = 2.0,
+    state_dtype=jnp.float32,
+) -> base.GradientTransformationExtraArgs:
+  """Schedule-Free wrapper for AdamW.
+
+  Shortcut example for using schedule_free with AdamW, which is a common use
+  case. Note that this is just an example, and other usecases are possible, e.g.
+  using a weight decay mask, nesterov, etc. Note also that the EMA parameter of
+  the schedule free method (b1) must be strictly positive.
+
+  Args:
+    learning_rate: AdamW learning rate.
+    warmup_steps: positive integer, the length of the linear warmup.
+    b1: beta_1 parameter in the y update.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    weight_decay: Strength of the weight decay regularization.
+    weight_lr_power: we downweight the weight of averaging using this. This is
+      especially helpful in early iterations during warmup.
+    state_dtype: dtype for z sequence in the schedule free method.
+
+  Returns:
+    A `GradientTransformationExtraArgs` with init and update functions.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.contrib.schedule_free_adamw(1.0)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  eval_params = schedule_free_eval_params(opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(eval_params)))
+    Objective function: 5.00E+00
+    Objective function: 3.05E+00
+    Objective function: 1.73E+00
+    Objective function: 8.94E-01
+    Objective function: 4.13E-01
+  """
+  if learning_rate == 0:
+    raise ValueError('Learning_rate must be non-zero.')
+  if warmup_steps > 0:
+    learning_rate = _schedule.warmup_constant_schedule(
+        init_value=0,
+        peak_value=learning_rate,
+        warmup_steps=warmup_steps,
+    )
+  optimizer = alias.adamw(
+      learning_rate,
+      b1=0.,
+      b2=b2,
+      eps=eps,
+      weight_decay=weight_decay,
+  )
+  return schedule_free(
+      optimizer,
+      learning_rate=learning_rate,
+      b1=b1,
+      weight_lr_power=weight_lr_power,
+      state_dtype=state_dtype,
+  )
