@@ -167,9 +167,6 @@
       <div class="sphx-glr-thumbnail-title">Character-level Transformer on Tiny Shakespeare.</div>
     </div>
 
-.. raw:: html
-
-    </div>
 
 .. raw:: html
 
