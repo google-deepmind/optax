@@ -121,6 +121,9 @@ def schedule_free(
   base_optimizer = base.with_extra_args_support(base_optimizer)
 
   def init_fn(params: base.Params) -> ScheduleFreeState:
+    if b1 == 0:
+      raise ValueError(
+          'The current implementation of schedule_free requires b1 > 0.')
     z = jax.tree_util.tree_map(lambda t: t.astype(state_dtype), params)
     return ScheduleFreeState(
         b1=jnp.array([b1], dtype=jnp.float32),
