@@ -29,7 +29,7 @@
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Gradient Accumulation</div>
+      <div class="sphx-glr-thumbnail-title">Gradient Accumulation.</div>
     </div>
 
 
@@ -90,7 +90,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/flax_optax.png
     :alt:
 
   :doc:`_collections/examples/flax_example`
@@ -107,7 +107,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/lookahead.png
     :alt:
 
   :doc:`_collections/examples/lookahead_mnist`
@@ -124,7 +124,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/mnist.png
     :alt:
 
   :doc:`_collections/examples/mlp_mnist`
@@ -174,7 +174,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/lbfgs.png
     :alt:
 
   :doc:`_collections/examples/lbfgs`
@@ -182,6 +182,10 @@
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Using LBFGS and linesearch.</div>
+    </div>
+
+.. raw:: html
+
     </div>
 
 
