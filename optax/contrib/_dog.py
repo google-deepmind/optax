@@ -167,7 +167,8 @@ def dog(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
-    ...  updates, opt_state = solver.update(grad, opt_state, params, value=value)
+    ...  updates, opt_state = solver.update(
+    ...    grad, opt_state, params, value=value)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: ', f(params))
     Objective function:  13.999964
