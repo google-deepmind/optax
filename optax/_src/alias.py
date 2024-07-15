@@ -282,10 +282,31 @@ def adagrad(
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7
 ) -> base.GradientTransformation:
-  """The Adagrad optimizer.
+  r"""The Adagrad optimizer.
 
-  Adagrad is an algorithm for gradient based optimization that anneals the
-  learning rate for each parameter during the course of training.
+  AdaGrad’s concept is to modify the learning rate for every parameter in a model 
+  depending on the parameter’s previous gradients.
+
+  .. math::
+
+    w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
+
+    where:
+    - \( w_t^{(i)} \) is the parameter \( i \) at time step \( t \),
+    - \( \eta \) is the learning rate,
+    - \( g_t^{(i)} \) is the gradient of parameter \( i \) at time step \( t \),
+    - \( \epsilon \) is a small constant to ensure numerical stability.
+    
+    When there is no regularization term, the update simplifies to:
+    
+  .. math::
+    
+        w_{t+1} = w_{t} - \eta \cdot \text{diag}(G)^{-\frac{1}{2}} \cdot g_t
+    
+    where \( \text{diag}(G)^{-\frac{1}{2}} \) is a diagonal matrix with elements \( \frac{1}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2}} \).
+    
+    This formulation ensures that each parameter update is scaled according to the accumulated sum of squared gradients, 
+    effectively adapting the learning rate to each parameter's specific gradient behavior over time.
 
   .. warning::
     Adagrad's main limit is the monotonic accumulation of squared
