@@ -284,8 +284,9 @@ def adagrad(
 ) -> base.GradientTransformation:
   r"""The Adagrad optimizer.
 
-  AdaGrad’s concept is to modify the learning rate for every parameter in a model 
-  depending on the parameter’s previous gradients.
+  AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts the learning rate individually for 
+  each feature based on its gradient history. It assigns higher learning rates to infrequent features, ensuring 
+  updates prioritize less frequent but potentially more informative parameters in the optimization process.
 
   .. math::
 
