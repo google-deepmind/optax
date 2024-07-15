@@ -284,13 +284,17 @@ def adagrad(
 ) -> base.GradientTransformation:
   r"""The Adagrad optimizer.
 
-  AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts the learning rate individually for 
-  each feature based on its gradient history. It assigns higher learning rates to infrequent features, ensuring 
-  updates prioritize less frequent but potentially more informative parameters in the optimization process.
-The updated parameters adopt the form:
+  AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts 
+  the learning rate individually for each feature based on its gradient history.
+  It assigns higher learning rates to infrequent features, ensuring updates 
+  prioritize less frequent but potentially more informative parameters in the 
+  optimization process.
+  
+  The updated parameters adopt the form:
   .. math::
 
-    w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
+    w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}
+                 {\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
 
     where:
     - \( w_t^{(i)} \) is the parameter \( i \) at time step \( t \),
@@ -304,10 +308,12 @@ The updated parameters adopt the form:
     
         w_{t+1} = w_{t} - \eta \cdot \text{diag}(G)^{-\frac{1}{2}} \cdot g_t
     
-    where \( \text{diag}(G)^{-\frac{1}{2}} \) is a diagonal matrix with elements \( \frac{1}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2}} \).
+    where \( \text{diag}(G)^{-\frac{1}{2}} \) is a diagonal matrix with elements
+    \( \frac{1}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2}} \).
     
-    This formulation ensures that each parameter update is scaled according to the accumulated sum of squared gradients, 
-    effectively adapting the learning rate to each parameter's specific gradient behavior over time.
+    This formulation ensures that each parameter update is scaled according to 
+    the accumulated sum of squared gradients, effectively adapting the learning 
+    rate to each parameter's specific gradient behavior over time.
 
   .. warning::
     Adagrad's main limit is the monotonic accumulation of squared
