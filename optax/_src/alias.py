@@ -1506,12 +1506,15 @@ def sm3(
     & \text{for } t = 1, \ldots, T \text{ do} \\
     & \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
     & \quad \text{for } r = 1, \ldots, k \text{ do} \\
-    & \quad \quad \mu_t(r) \leftarrow \mu_{t-1}(r) + \max_{j \in S_r} g_t^2(j) \\
+    & \quad \quad \mu_t(r) \leftarrow \mu_{t-1}(r) \\
+    & \quad \quad \quad \quad + \max_{j \in S_r} g_t^2(j) \\
     & \quad \text{for } i = 1, \ldots, d \text{ do} \\
     & \quad \quad \nu_t(i) \leftarrow \min_{r:S_r \ni i} \mu_t(r) \\
-    & \quad \quad w_{t+1}(i) \leftarrow w_t(i) - \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
+    & \quad \quad w_{t+1}(i) \leftarrow w_t(i) \\
+    & \quad \quad \quad \quad - \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
     & \quad \quad \text{with the convention that } 0/0 = 0
     \end{align*}
+
 
 
   SM3-II Algorithm
@@ -1532,13 +1535,15 @@ def sm3(
     & \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
     & \quad \text{initialize } \mu'_t(r) = 0 \text{ for all } r \in [k] \\
     & \quad \text{for } i = 1, \ldots, d \text{ do} \\
-    & \quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i} \mu'_{t-1}(r) + g_t^2(i) \\
+    & \quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i} \mu'_{t-1}(r) \\
+    & \quad \quad \quad \quad + g_t^2(i) \\
     & \quad \quad \text{update } w_{t+1}(i) \leftarrow w_t(i) \\
-    & \quad \quad \quad - \eta \frac{g_t(i)}{\sqrt{\nu'_t(i)}} \\
+    & \quad \quad \quad \quad - \eta \frac{g_t(i)}{\sqrt{\nu'_t(i)}} \\
     & \quad \quad \text{with the convention that } 0/0 = 0 \\
     & \quad \text{for all } r : S_r \ni i \text{ do} \\
     & \quad \quad \mu'_t(r) \leftarrow \max\{\mu'_t(r), \nu'_t(i)\}
     \end{align*}
+
 
   Examples:
     >>> import optax
