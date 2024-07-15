@@ -1478,7 +1478,7 @@ def sm3(
     learning_rate: float,
     momentum: float = 0.9
 ) -> base.GradientTransformation:
-  """The SM3 optimizer.
+  r"""The SM3 optimizer.
 
   SM3 (Square-root of Minima of Sums of Maxima of Squared-gradients Method) is a
   memory-efficient adaptive optimizer designed to decrease memory overhead when
@@ -1488,7 +1488,54 @@ def sm3(
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
-  
+
+  The algorithm initializes with a learning rate :math:`\eta`, maintains cumulative 
+  squared gradients :math:`\mu_t(r)` for each weight component :math:`r`, and updates 
+  :math:`w_t` using received gradients :math:`g_t`, adjusting each component based on 
+  the minimum accumulated gradient :math:`\nu_t(i)`. It employs a convention where 
+  division by zero yields zero, optimizing convergence by adapting to varying gradients 
+  across different parts of the weight vector.
+
+  SM3-I Algorithm
+
+  .. math::
+   \begin{align*}
+   &\text{parameters: learning rate } \eta \\
+   &\text{initialize } w_1 = 0; \forall r \in [k]: \mu_0(r) = 0 \\
+   &\text{for } t = 1, \ldots, T \text{ do} \\
+   &\quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
+   &\quad \text{for } r = 1, \ldots, k \text{ do} \\
+   &\quad \quad \text{set } \mu_t(r) \leftarrow \mu_{t-1}(r) + \max_{j \in S_r} g_t^2(j) \\
+   &\quad \text{for } i = 1, \ldots, d \text{ do} \\
+   &\quad \quad \text{set } \nu_t(i) \leftarrow \min_{r:S_r \ni i} \mu_t(r) \\
+   &\quad \quad \text{update } w_{t+1}(i) \leftarrow w_t(i) - \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
+   &\quad \quad \text{with the convention that } 0/0 = 0
+   \end{align*}
+
+  SM3-II Algorithm
+
+  The algorithm initializes with parameters such as the learning rate :math:`\eta` and 
+  weight :math:`w_1`. It iteratively updates weights using received gradients 
+  :math:`g_t`, adjusting each component with minimum accumulated values :math:`\nu'_t(i)`
+  and ensuring stability with a defined division convention. It maintains cumulative maximums
+  :math:`\mu'_t(r)` for subsets :math:`S_r` influenced by indices :math:`i`, optimizing 
+  convergence by dynamically adapting to gradients across the weight vector.
+
+  .. math::
+   \begin{align*}
+   &\text{parameters: learning rate } \eta \\
+   &\text{initialize } w_1 = 0; \forall r \in [k]: \mu'_0(r) = 0 \\
+   &\text{for } t = 1, \ldots, T \text{ do} \\
+   &\quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
+   &\quad \text{initialize } \mu'_t(r) = 0 \text{ for all } r \in [k] \\
+   &\quad \text{for } i = 1, \ldots, d \text{ do} \\
+   &\quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i} \mu'_{t-1}(r) + g_t^2(i) \\
+   &\quad \quad \text{update } w_{t+1}(i) \leftarrow w_t(i) - \eta \frac{g_t(i)}{\sqrt{\nu'_t(i)}} \\
+   &\quad \quad \text{with the convention that } 0/0 = 0 \\
+   &\quad \text{for all } r : S_r \ni i \text{ do} \\
+   &\quad \quad \mu'_t(r) \leftarrow \max\{\mu'_t(r), \nu'_t(i)\}
+   \end{align*}
+
   Examples:
     >>> import optax
     >>> import jax
