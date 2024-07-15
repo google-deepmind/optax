@@ -155,6 +155,7 @@ def dog(
     \end{align*}
 
   Examples:
+    >>> import optax
     >>> from optax import contrib
     >>> import jax
     >>> import jax.numpy as jnp
@@ -166,13 +167,15 @@ def dog(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
+    ...  updates, opt_state = solver.update(
+    ...    grad, opt_state, params, value=value)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: ', f(params))
-    Objective function:  2.2483316e-11
-    Objective function:  2.2483375e-11
-    Objective function:  2.2483435e-11
-    Objective function:  2.2483494e-11
-    Objective function:  2.2483555e-11
+    Objective function:  13.999964
+    Objective function:  13.999941
+    Objective function:  13.999905
+    Objective function:  13.999857
+    Objective function:  13.999794
 
   References:
     Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
