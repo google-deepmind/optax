@@ -305,10 +305,11 @@ def adagrad(
     
   .. math::
        
-        w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} \cdot g_t
+    w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} \cdot g_t
     
-    where \(\text{diag} (G) = (G_{ii})_{i=1}^p\) is the vector of diagonal entries of
-    \(G \in \mathbb{R}^p\) and \(I\) is the identity matrix in \(\mathbb{R}^p\).
+    where \(\text{diag} (G) = (G_{ii})_{i=1}^p\) is the vector of diagonal 
+    entries of \(G \in \mathbb{R}^p\) and \(I\) is the identity matrix 
+    in \(\mathbb{R}^p\).
 
   .. warning::
     Adagrad's main limit is the monotonic accumulation of squared
