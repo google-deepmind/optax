@@ -301,16 +301,14 @@ def adagrad(
     
     When there is no regularization term, the update simplifies to:
     
+    Defining \(G = \sum_{t=1}^\tau g_t g_t^\top\), the update can be written as 
+    
   .. math::
+       
+        w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} \cdot g_t
     
-        w_{t+1} = w_{t} - \eta \cdot \text{diag}(G)^{-\frac{1}{2}} \cdot g_t
-    
-    where \( \text{diag}(G)^{-\frac{1}{2}} \) is a diagonal matrix with elements
-    \( \frac{1}{\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2}} \).
-    
-    This formulation ensures that each parameter update is scaled according to 
-    the accumulated sum of squared gradients, effectively adapting the learning 
-    rate to each parameter's specific gradient behavior over time.
+    where \(\text{diag} (G) = (G_{ii})_{i=1}^p\) is the vector of diagonal entries of
+    \(G \in \mathbb{R}^p\) and \(I\) is the identity matrix in \(\mathbb{R}^p\).
 
   .. warning::
     Adagrad's main limit is the monotonic accumulation of squared
