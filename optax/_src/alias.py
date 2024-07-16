@@ -286,9 +286,6 @@ def adagrad(
 
   AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts 
   the learning rate individually for each feature based on its gradient history.
-  It assigns higher learning rates to infrequent features, ensuring updates 
-  prioritize less frequent but potentially more informative parameters in the 
-  optimization process.
   
   The updated parameters adopt the form:
   .. math::
