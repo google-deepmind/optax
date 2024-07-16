@@ -49,13 +49,7 @@ Linear Algebra Operators
 
 .. autosummary::
     matrix_inverse_pth_root
-    multi_normal
     power_iteration
-
-
-Multi normal
-~~~~~~~~~~~~
-.. autofunction:: multi_normal
 
 Matrix inverse pth root
 ~~~~~~~~~~~~~~~~~~~~~~~~
