@@ -1517,13 +1517,13 @@ def sm3(
 
   SM3-II Algorithm
 
-  The algorithm initializes with parameters such as the learning rate 
-  :math:`\eta` and weight :math:`w_1`. It iteratively updates weights using 
-  received gradients :math:`g_t`, adjusting each component with minimum 
-  accumulated values :math:`\nu'_t(i)` and ensuring stability with a defined 
-  division convention. It maintains cumulative maximums :math:`\mu'_t(r)` 
-  for subsets :math:`S_r` influenced by indices :math:`i`, optimizing 
-  convergence by dynamically adapting to gradients across the weight vector.
+  The SM3-II optimizer initializes with parameters like the learning rate 
+  :math:\eta and weight :math:w_1. It updates weights iteratively using 
+  gradients :math:g_t, adjusting each component with minimum accumulated 
+  values :math:\nu'_t(i) and maintaining cumulative maximums :math:\mu'_t(r) 
+  for subsets :math:S_r. SM3-II starts with an initial state 
+  :math:S_0 := (m_0, s_0) set to zero, storing estimates for first and second 
+  moments as pytrees matching model updates' shape
 
   .. math::
     \begin{align*}
@@ -1541,7 +1541,6 @@ def sm3(
     & \quad \text{for all } r : S_r \ni i \text{ do} \\
     & \quad \quad \mu'_t(r) \leftarrow \max\{\mu'_t(r), \nu'_t(i)\}
     \end{align*}
-
 
   Examples:
     >>> import optax
