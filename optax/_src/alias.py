@@ -1489,13 +1489,13 @@ def sm3(
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
 
-  The algorithm initializes with a learning rate :math:`\eta`, maintains 
-  cumulative squared gradients :math:`\mu_t(r)` for each weight component 
-  :math:`r`, and updates :math:`w_t` using received gradients :math:`g_t`, 
-  adjusting each component based on the minimum accumulated gradient 
-  :math:`\nu_t(i)`. It employs a convention where division by zero yields zero, 
-  optimizing convergence by adapting to varying gradients across different 
-  parts of the weight vector.
+  The init function of this optimizer initializes an internal state 
+  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for the 
+  cumulative squared gradients and the weights. These values are stored as pytrees 
+  containing all zeros, with the same shape as the model updates. At step :math:`t`, 
+  the update function of this optimizer takes as arguments the incoming gradients 
+  :math:`g_t` and optimizer state :math:`S_t` and computes updates :math:`u_t` and 
+  new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have:
 
   SM3-I Algorithm
 
@@ -1514,8 +1514,6 @@ def sm3(
     & \quad \quad \quad \quad - \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
     & \quad \quad \text{with the convention that } 0/0 = 0
     \end{align*}
-
-
 
   SM3-II Algorithm
 
