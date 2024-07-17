@@ -299,8 +299,6 @@ def adagrad(
     - \( g_t^{(i)} \) is the gradient of parameter \( i \) at time step \( t \),
     - \( \epsilon \) is a small constant to ensure numerical stability.
     
-    When there is no regularization term, the update simplifies to:
-    
     Defining \(G = \sum_{t=1}^\tau g_t g_t^\top\), the update can be written as 
     
   .. math::
