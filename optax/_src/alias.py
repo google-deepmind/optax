@@ -289,10 +289,10 @@ def adagrad(
   
   The updated parameters adopt the form:
   
-  .. math::
-
-    w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}
-                 {\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
+      .. math::
+    
+        w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}
+                     {\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
 
   where:
     - :math:`w_t^{(i)}` is the parameter :math:`i` at time step :math:`t`,
