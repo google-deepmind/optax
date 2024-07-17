@@ -1490,12 +1490,13 @@ def sm3(
   guarantees in stochastic convex optimization settings.
 
   The init function of this optimizer initializes an internal state 
-  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for the 
-  cumulative squared gradients and the weights. These values are stored as pytrees 
-  containing all zeros, with the same shape as the model updates. At step :math:`t`, 
-  the update function of this optimizer takes as arguments the incoming gradients 
-  :math:`g_t` and optimizer state :math:`S_t` and computes updates :math:`u_t` and 
-  new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have:
+  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for 
+  the cumulative squared gradients and the weights. These values are stored as 
+  pytrees containing all zeros, with the same shape as the model updates. At 
+  step :math:`t`, the update function of this optimizer takes as arguments 
+  the incoming gradients :math:`g_t` and optimizer state :math:`S_t` and 
+  computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for 
+  :math:`t > 0`, we have:
 
   SM3-I Algorithm
 
