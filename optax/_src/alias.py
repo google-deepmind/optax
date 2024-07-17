@@ -297,14 +297,17 @@ def adagrad(
   where:
     - :math:`w_t^{(i)}` is the parameter :math:`i` at time step :math:`t`,
     - :math:`\eta` is the learning rate,
-    - :math:`g_t^{(i)}` is the gradient of parameter :math:`i` at time step :math:`t`,
+    - :math:`g_t^{(i)}` is the gradient of parameter :math:`i` at time step 
+      :math:`t`,
     - :math:`\epsilon` is a small constant to ensure numerical stability.
     
-  Defining :math:`G = \sum_{t=1}^\tau g_t g_t^\top`, the update can be written as 
+  Defining :math:`G = \sum_{t=1}^\tau g_t g_t^\top`, the update can be 
+  written as 
     
       .. math::
        
-          w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} \cdot g_t
+          w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} 
+          \cdot g_t
     
   where :math:`\text{diag} (G) = (G_{ii})_{i=1}^p` is the vector of diagonal 
   entries of :math:`G \in \mathbb{R}^p` and :math:`I` is the identity matrix 
