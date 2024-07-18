@@ -36,6 +36,13 @@ class MaskedNode(NamedTuple):
   """
 
 
+def _mask_callable(
+    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
+):
+  callable_leaves = jtu.tree_leaves(jtu.tree_map(callable, mask))
+  return (len(callable_leaves) > 0) and all(callable_leaves)  # pylint:disable=g-explicit-length-test
+
+
 def masked(
     inner: base.GradientTransformation,
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]],
@@ -115,12 +122,12 @@ def masked(
     if isinstance(params, _state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
       return MaskedState(inner_state=inner.init(params))
 
-    mask_tree = mask(params) if callable(mask) else mask
+    mask_tree = mask(params) if _mask_callable(mask) else mask
     masked_params = mask_pytree(params, mask_tree)
     return MaskedState(inner_state=inner.init(masked_params))
 
   def update_fn(updates, state, params=None, **extra_args):
-    mask_tree = mask(updates) if callable(mask) else mask
+    mask_tree = mask(updates) if _mask_callable(mask) else mask
     masked_extra_args = maybe_mask_values(extra_args, updates, mask_tree)
     masked_updates = mask_pytree(updates, mask_tree)
     masked_params = None if params is None else mask_pytree(params, mask_tree)

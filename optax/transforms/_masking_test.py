@@ -15,14 +15,16 @@
 """Tests for optax.transforms._masking."""
 
 import copy
+import dataclasses
 from typing import cast
 
 from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 import numpy as np
 
 from optax._src import alias
@@ -343,6 +345,42 @@ class MaskedTest(chex.TestCase):
     }
     chex.assert_trees_all_equal_structs(trace, expected_trace)
 
+  def test_mask_compatible_callable_pytree(self):
+    """Test if mask is compatible with callable pytrees a la equinox."""
+    # https://github.com/google-deepmind/optax/issues/913
+
+    # Define a dataclass with a callable
+    @dataclasses.dataclass
+    class _MaskCompatibleModule():
+      w: jax.Array
+
+      def __call__(self, x):
+        return self.w.dot(x)
+
+    # Make it a pytree by registring it as a pytree node
+    jtu.register_pytree_node(
+        _MaskCompatibleModule,
+        lambda m: ((m.w,), None),
+        lambda _, c: _MaskCompatibleModule(*c)
+    )
+    module = _MaskCompatibleModule(jnp.array([1., 2., 3.]))
+
+    with self.subTest('test _mask_callable utility'):
+      # The module is then callable (like the Module class in equinox)
+      self.assertTrue(callable(module))
+      # But it won't be treated as a callable by the masking logic
+      self.assertFalse(_masking._mask_callable(module))
+
+    with self.subTest('test masked transform on callable pytree'):
+      mask = _MaskCompatibleModule(False)
+      opt = _masking.masked(
+          _build_sgd(),
+          mask
+      )
+      state = opt.init(module)
+      updates = module
+      new_updates, _ = opt.update(updates, state)
+      chex.assert_trees_all_equal(updates, new_updates)
 
 if __name__ == '__main__':
   absltest.main()
