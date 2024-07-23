@@ -149,7 +149,12 @@ def schedule_free(
 
     weight = max_lr**weight_lr_power
     next_total_weight = state.weight_sum + weight
-    ck = weight / next_total_weight
+    # We add this to avoid NaNs in the case of a small learning rate.
+    ck = jnp.where(
+        jnp.logical_or(jnp.isnan(weight), jnp.isnan(next_total_weight)),
+        jnp.full(weight.shape, jnp.nan),
+        jnp.nan_to_num(weight / next_total_weight, nan=0.0, posinf=jnp.inf),
+    )
 
     base_updates, next_base_optimizer_state = base_optimizer.update(
         grads,
@@ -251,8 +256,6 @@ def schedule_free_sgd(
     Objective function: 8.06E-01
     Objective function: 2.41E-01
   """
-  if learning_rate == 0:
-    raise ValueError('Learning_rate must be non-zero.')
   if warmup_steps > 0:
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
@@ -327,8 +330,6 @@ def schedule_free_adamw(
     Objective function: 8.94E-01
     Objective function: 4.13E-01
   """
-  if learning_rate == 0:
-    raise ValueError('Learning_rate must be non-zero.')
   if warmup_steps > 0:
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,

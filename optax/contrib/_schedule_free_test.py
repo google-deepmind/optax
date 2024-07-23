@@ -32,9 +32,9 @@ _WARM_LR = schedule.warmup_constant_schedule(0.0, 1e-2, 5_000)
 
 # TODO(harshm): try other optimizers with schedule_free.
 _OPTIMIZERS_UNDER_TEST = (
-    dict(opt_name='sgd', opt_kwargs=dict(learning_rate=_WARM_LR, momentum=0.0)),
-    dict(opt_name='adam', opt_kwargs=dict(learning_rate=_WARM_LR, b1=0.0)),
-    dict(opt_name='adamw', opt_kwargs=dict(learning_rate=_WARM_LR, b1=0.0)),
+    dict(opt_name='sgd', opt_kwargs=dict(momentum=0.0)),
+    dict(opt_name='adam', opt_kwargs=dict(b1=0.0)),
+    dict(opt_name='adamw', opt_kwargs=dict(b1=0.0)),
 )
 
 
@@ -81,11 +81,8 @@ class ScheduleFreeTest(chex.TestCase):
   )
   def test_optimization(self, opt_name, opt_kwargs, target, dtype):
 
-    opt = getattr(alias, opt_name)(**opt_kwargs)
-    opt = _schedule_free.schedule_free(
-        opt,
-        learning_rate=_WARM_LR,
-    )
+    opt = getattr(alias, opt_name)(learning_rate=_WARM_LR, **opt_kwargs)
+    opt = _schedule_free.schedule_free(opt, learning_rate=_WARM_LR)
     initial_params, final_params, get_updates = target(dtype)
 
     @jax.jit
@@ -103,8 +100,35 @@ class ScheduleFreeTest(chex.TestCase):
     for _ in range(25000):
       params, state = step(params, state)
 
-    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+    chex.assert_trees_all_close(
+        _schedule_free.schedule_free_eval_params(state, params),
+        final_params,
+        rtol=3e-2,
+        atol=3e-2,
+    )
 
+  @parameterized.parameters(*_OPTIMIZERS_UNDER_TEST)
+  def test_learning_rate_zero(self, opt_name, opt_kwargs):
+    opt = getattr(alias, opt_name)(learning_rate=0.0, **opt_kwargs)
+    opt = _schedule_free.schedule_free(opt, learning_rate=0.0)
+    initial_params, _, get_updates = _setup_parabola(jnp.float32)
+
+    @jax.jit
+    def step(params, state):
+      updates = get_updates(params)
+      updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+    for _ in range(25000):
+      params, state = step(params, state)
+
+    chex.assert_trees_all_close(
+        _schedule_free.schedule_free_eval_params(state, params),
+        initial_params,
+    )
 
 if __name__ == '__main__':
   absltest.main()
