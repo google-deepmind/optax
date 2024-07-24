@@ -199,7 +199,8 @@ nb_execution_excludepatterns = [
     'cifar10_resnet.ipynb',
     'adversarial_training.ipynb',
     'reduce_on_plateau.ipynb',
-    'differentially_private_sgd.ipynb'
+    'differentially_private_sgd.ipynb',
+    'schedule_free.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
