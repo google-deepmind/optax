@@ -19,7 +19,6 @@ docs/modules/generated
 .mypy_cache/
 .pytype/
 .ipynb_checkpoints
-.pylintrc
 
 # Editors
 .idea

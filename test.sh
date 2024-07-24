@@ -60,8 +60,6 @@ flake8 `find optax examples -name '*.py' | xargs` --count --select=E9,F63,F7,F82
 
 # Lint with pylint.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
-# Download Google OSS config.
-wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
 echo "disable=unnecessary-lambda-assignment,no-value-for-parameter,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
