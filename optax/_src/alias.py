@@ -1337,9 +1337,11 @@ def rmsprop(
     decay: float = 0.9,
     eps: float = 1e-8,
     initial_scale: float = 0.,
+    eps_in_sqrt: bool = True,
     centered: bool = False,
     momentum: Optional[float] = None,
-    nesterov: bool = False
+    nesterov: bool = False,
+    bias_correction: bool = False,
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
   r"""A flexible RMSProp optimizer.
@@ -1350,12 +1352,16 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
-  ..warning::
-    PyTorch and optax's RMSprop implementations differ and could impact
-    performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
-    whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
+  .. warning::
+    Default behavior of optax's RMSprop (``eps_in_sqrt=True``) differs from
+    Pytorch's implementation and could impact performance.
+    If ``eps_in_sqrt=True``, in the denominator, optax uses
+    :math:`\sqrt{v + \epsilon}` in the denominator whereas PyTorch uses
+    :math:`\sqrt{v} + \epsilon`.
+    Using ``eps_in_sqrt=False`` in optax will match PyTorch's behavior.
+    See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
-    
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1378,8 +1384,14 @@ def rmsprop(
     Objective function: 1.36E+01
 
   References:
-    Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
-    Graves, 2013: https://arxiv.org/abs/1308.0850
+    Hinton, `Overview of mini-batch gradient descent`
+    <www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>`_, 2012
+
+    Graves, `Generating Sequences With Recurrent Neural Networks
+    <https://arxiv.org/pdf/1308.0850v5>`_, 2014
+
+    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam`
+    <https://arxiv.org/pdf/2002.04839>`_, 2021
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -1389,11 +1401,15 @@ def rmsprop(
     initial_scale: Initial value of accumulators tracking the magnitude of
       previous updates. PyTorch uses `0`, TF1 uses `1`. When reproducing results
       from a paper, verify the value used by the authors.
+    eps_in_sqrt: Whether to add ``eps`` in the square root of the
+      denominator or outside the square root.
     centered: Whether the second moment or the variance of the past gradients is
       used to rescale the latest gradients.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
+    bias_correction: Whether to apply bias correction to the estimates of the
+      second moments (and first moment if ``centered=True``).
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -1402,17 +1418,33 @@ def rmsprop(
   if centered:
     return combine.chain(
         transform.scale_by_stddev(
-            decay=decay, eps=eps, initial_scale=initial_scale),
+            decay=decay,
+            eps=eps,
+            initial_scale=initial_scale,
+            eps_in_sqrt=eps_in_sqrt,
+            bias_correction=bias_correction,
+        ),
         transform.scale_by_learning_rate(learning_rate),
-        (transform.trace(decay=momentum, nesterov=nesterov)
-         if momentum is not None else base.identity())
+        (
+            transform.trace(decay=momentum, nesterov=nesterov)
+            if momentum is not None
+            else base.identity()
+        ),
     )
   return combine.chain(
       transform.scale_by_rms(
-          decay=decay, eps=eps, initial_scale=initial_scale),
+          decay=decay,
+          eps=eps,
+          initial_scale=initial_scale,
+          eps_in_sqrt=eps_in_sqrt,
+          bias_correction=bias_correction,
+      ),
       transform.scale_by_learning_rate(learning_rate),
-      (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else base.identity())
+      (
+          transform.trace(decay=momentum, nesterov=nesterov)
+          if momentum is not None
+          else base.identity()
+      ),
   )
 
 
@@ -1707,10 +1739,11 @@ def adamaxw(
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
 
-  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
-  for the bias parameters. You can use `optax.masked` to make your own AdamaxW
-  variant where `additive_weight_decay` is applied only to a subset of `params`.
-  
+  .. warning:: Sometimes you may want to skip weight decay for BatchNorm scale
+  or for the bias parameters. You can use `optax.masked` to make your own
+  AdamaxW variant where `additive_weight_decay` is applied only to a subset of
+  `params`.
+
   Examples:
     >>> import optax
     >>> import jax

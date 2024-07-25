@@ -79,28 +79,53 @@ def scale_by_rss(
 
 class ScaleByRmsState(NamedTuple):
   """State for exponential root mean-squared (RMS)-normalized updates."""
+  # Kept for backward compatibility, even though ScaleByRmsWithCountState
+  # encompasses this state.
+  nu: base.Updates
+
+
+class ScaleByRmsWithCountState(NamedTuple):
+  """State for exponential root mean-squared (RMS)-normalized updates."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
   nu: base.Updates
 
 
 def scale_by_rms(
     decay: float = 0.9,
     eps: float = 1e-8,
-    initial_scale: float = 0.
+    initial_scale: float = 0.0,
+    eps_in_sqrt: bool = True,
+    bias_correction: bool = False,
 ) -> base.GradientTransformation:
   r"""Rescale updates by the root of the exp. moving avg of the square.
 
-  WARNING: PyTorch and optax's RMSprop implementations differ and could impact
-    performance. In the denominator, optax uses $\sqrt{v + \epsilon}$ whereas
-    PyTorch uses $\sqrt{v} + \epsilon$. See
+  .. warning::
+    Default behavior of optax's RMSprop (``eps_in_sqrt=True``) differs from
+    Pytorch's implementation and could impact performance.
+    If ``eps_in_sqrt=True``, in the denominator, optax uses
+    :math:`\sqrt{v + \epsilon}` in the denominator whereas PyTorch uses
+    :math:`\sqrt{v} + \epsilon`.
+    Using ``eps_in_sqrt=False`` in optax will match PyTorch's behavior.
+    See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
 
+  .. note::
+    Using `scale_by_rms(decay=b2, eps_in_sqrt=False, bias_correction=True)`
+    will match the behavior of `scale_by_adam(b1=0, b2=b2)`, while sparing the
+    memory cost of storing the first moment.
+
   References:
-    [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
+    Hinton, `Overview of mini-batch gradient descent`
+    <www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>`_, 2012
 
   Args:
     decay: Decay rate for the exponentially weighted average of squared grads.
     eps: Term added to the denominator to improve numerical stability.
     initial_scale: Initial value for second moment.
+    eps_in_sqrt: Whether to add ``eps`` in the square root of the
+      denominator or outside the square root.
+    bias_correction: Whether to apply bias correction to the exponentially
+      weighted average of squared grads.
 
   Returns:
     A `GradientTransformation` object.
@@ -108,20 +133,47 @@ def scale_by_rms(
 
   def init_fn(params):
     nu = otu.tree_full_like(params, initial_scale)  # second moment
-    return ScaleByRmsState(nu=nu)
+    if bias_correction:
+      return ScaleByRmsWithCountState(
+          count=jnp.zeros([], jnp.int32), nu=nu
+      )
+    else:
+      return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, decay, 2)
-    updates = jtu.tree_map(
-        lambda g, n: g * jax.lax.rsqrt(n + eps), updates, nu)
-    return updates, ScaleByRmsState(nu=nu)
+    if bias_correction:
+      count_inc = numerics.safe_int32_increment(state.count)
+      nu_hat = otu.tree_bias_correction(nu, decay, count_inc)
+    else:
+      count_inc = jnp.asarray(0)
+      nu_hat = nu
+    if eps_in_sqrt:
+      scaling = jtu.tree_map(lambda n: jax.lax.rsqrt(n + eps), nu_hat)
+    else:
+      scaling = jtu.tree_map(lambda n: 1/(jnp.sqrt(n) + eps), nu_hat)
+    updates = jtu.tree_map(lambda s, g: s * g, scaling, updates)
+    if bias_correction:
+      new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
+    else:
+      new_state = ScaleByRmsState(nu=nu)
+    return updates, new_state
 
   return base.GradientTransformation(init_fn, update_fn)
 
 
 class ScaleByRStdDevState(NamedTuple):
   """State for centered exponential moving average of squares of updates."""
+  # Kept for backward compatibility, even though ScaleByRStdDevWithCountState
+  # encompasses this state.
+  mu: base.Updates
+  nu: base.Updates
+
+
+class ScaleByRStdDevWithCountState(NamedTuple):
+  """State for centered exponential moving average of squares of updates."""
+  count: chex.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -129,17 +181,27 @@ class ScaleByRStdDevState(NamedTuple):
 def scale_by_stddev(
     decay: float = 0.9,
     eps: float = 1e-8,
-    initial_scale: float = 0.
+    initial_scale: float = 0.,
+    eps_in_sqrt: bool = True,
+    bias_correction: bool = False,
 ) -> base.GradientTransformation:
   """Rescale updates by the root of the centered exp. moving average of squares.
 
   References:
-    [Hinton](www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
+    Hinton, `Overview of mini-batch gradient descent`
+    <www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>`_, 2012
+
+    Graves, `Generating Sequences With Recurrent Neural Networks
+    <https://arxiv.org/pdf/1308.0850v5>`_, 2014
 
   Args:
     decay: Decay rate for the exponentially weighted average of squared grads.
     eps: Term added to the denominator to improve numerical stability.
     initial_scale: Initial value for second moment.
+    eps_in_sqrt: Whether to add ``eps`` in the square root of the
+      denominator or outside the square root.
+    bias_correction: Whether to apply bias correction to the first and
+      second moment.
 
   Returns:
     A `GradientTransformation` object.
@@ -148,16 +210,48 @@ def scale_by_stddev(
   def init_fn(params):
     mu = otu.tree_zeros_like(params)  # First moment
     nu = otu.tree_full_like(params, initial_scale)  # second moment
-    return ScaleByRStdDevState(mu=mu, nu=nu)
+    if bias_correction:
+      return ScaleByRStdDevWithCountState(
+          count=jnp.zeros([], jnp.int32), mu=mu, nu=nu
+      )
+    else:
+      return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
     mu = otu.tree_update_moment(updates, state.mu, decay, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, decay, 2)
+    if bias_correction:
+      count_inc = numerics.safe_int32_increment(state.count)
+      mu_hat = otu.tree_bias_correction(mu, decay, count_inc)
+      nu_hat = otu.tree_bias_correction(nu, decay, count_inc)
+    else:
+      count_inc = jnp.asarray(0)
+      mu_hat = mu
+      nu_hat = nu
+
+    if eps_in_sqrt:
+      scaling = jtu.tree_map(
+          lambda m, n: jax.lax.rsqrt(n - abs_sq(m) + eps),
+          mu_hat,
+          nu_hat,
+      )
+    else:
+      scaling = jtu.tree_map(
+          lambda m, n: 1/(jnp.sqrt(n - abs_sq(m)) + eps),
+          mu_hat,
+          nu_hat,
+      )
     updates = jtu.tree_map(
-        lambda g, m, n: g * jax.lax.rsqrt(n - abs_sq(m) + eps),
-        updates, mu, nu)
-    return updates, ScaleByRStdDevState(mu=mu, nu=nu)
+        lambda s, g: s * g, scaling, updates
+    )
+    if bias_correction:
+      new_state = ScaleByRStdDevWithCountState(
+          count=count_inc, mu=mu, nu=nu
+      )
+    else:
+      new_state = ScaleByRStdDevState(mu=mu, nu=nu)
+    return updates, new_state
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -178,7 +272,7 @@ def scale_by_adam(
     *,
     nesterov: bool = False
 ) -> base.GradientTransformation:
-  """Rescale updates according to the Adam algorithm.
+  r"""Rescale updates according to the Adam algorithm.
 
   References:
     Kingma et al, `Adam: A Method for Stochastic Optimization
@@ -186,12 +280,6 @@ def scale_by_adam(
 
     Dozat, `Incorporating Nesterov Momentum into Adam
     <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_ 2016
-
-  .. warning::
-    PyTorch and optax's adam follow Algorithm 1 of the Kingma
-    and Ba's Adam paper, if reproducing old results note that TensorFlow
-    used instead the formulation just before Section 2.1 of the paper.
-    See https://github.com/deepmind/optax/issues/571 for more detail.
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.

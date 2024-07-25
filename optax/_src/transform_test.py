@@ -27,6 +27,7 @@ from optax._src import alias
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
+import optax.tree_utils as otu
 
 STEPS = 50
 LR = 1e-2
@@ -186,6 +187,30 @@ class TransformTest(parameterized.TestCase):
     print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
 
+  def test_rms_match_adam(self):
+    """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
+    fun = lambda x: otu.tree_l2_norm(x, squared=True)
+
+    rms = transform.scale_by_rms(
+        decay=0.999, eps_in_sqrt=False, bias_correction=True
+    )
+    rms_params = self.init_params
+    rms_state = rms.init(self.init_params)
+
+    adam = transform.scale_by_adam(b1=0)
+    adam_params = self.init_params
+    adam_state = adam.init(self.init_params)
+
+    for _ in range(5):
+      rms_grads = jax.grad(fun)(rms_params)
+      rms_updates, rms_state = rms.update(rms_grads, rms_state)
+      rms_params = update.apply_updates(rms_params, rms_updates)
+
+      adam_grads = jax.grad(fun)(adam_params)
+      adam_updates, adam_state = adam.update(adam_grads, adam_state)
+      adam_params = update.apply_updates(adam_params, adam_updates)
+
+    chex.assert_trees_all_close(adam_params, rms_params)
 
 if __name__ == '__main__':
   absltest.main()
