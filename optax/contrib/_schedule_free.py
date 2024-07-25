@@ -22,6 +22,7 @@ import jax.numpy as jnp
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import transform
 from optax.schedules import _schedule
 from optax.transforms import _adding
 
@@ -336,12 +337,13 @@ def schedule_free_adamw(
         peak_value=learning_rate,
         warmup_steps=warmup_steps,
     )
-  optimizer = alias.adamw(
-      learning_rate,
-      b1=0.,
-      b2=b2,
-      eps=eps,
-      weight_decay=weight_decay,
+  # The following is the same as adamw, but with the momentum term removed.
+  optimizer = combine.chain(
+      transform.scale_by_rms(
+          decay=b2, eps=eps, eps_in_sqrt=False, bias_correction=True
+      ),
+      _adding.add_decayed_weights(weight_decay),
+      transform.scale_by_learning_rate(learning_rate)
   )
   return schedule_free(
       optimizer,

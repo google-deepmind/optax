@@ -130,5 +130,39 @@ class ScheduleFreeTest(chex.TestCase):
         initial_params,
     )
 
+  def test_schedule_free_adamw(self):
+    def step(params, state, opt):
+      updates = get_updates(params)
+      updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    initial_params, _, get_updates = _setup_parabola(jnp.float32)
+
+    def run(opt):
+      params = initial_params
+      state = opt.init(params)
+
+      for _ in range(5):
+        params, state = step(params, state, opt)
+      return params
+
+    # Test with shortcut implementation
+    opt_shortcut = _schedule_free.schedule_free_adamw(
+        learning_rate=1.0,
+        b1=0.9,
+        weight_decay=1-4,
+    )
+    params_shortcut = run(opt_shortcut)
+
+    # Test with wrapper implementation
+    opt_wrapper = _schedule_free.schedule_free(
+        alias.adamw(learning_rate=1.0, b1=0.0, weight_decay=1-4),
+        learning_rate=1.0,
+        b1=0.9,
+    )
+    params_wrapper = run(opt_wrapper)
+    chex.assert_trees_all_close(params_shortcut, params_wrapper)
+
 if __name__ == '__main__':
   absltest.main()
