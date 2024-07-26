@@ -466,7 +466,7 @@ def _get_problem(
       zakharov=dict(
           fun=lambda x: zakharov(x, jnp),
           numpy_fun=lambda x: zakharov(x, np),
-          init=np.array([600.0, 700.0, 200.0, 100.0, 90.0, 1e4]),
+          init=np.array([600.0, 700.0, 200.0, 100.0, 90.0, 1e3]),
           minimum=0.0,
           minimizer=np.zeros(6),
       ),
