@@ -51,3 +51,5 @@ from optax.contrib._schedule_free import schedule_free_adamw
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import schedule_free_sgd
 from optax.contrib._schedule_free import ScheduleFreeState
+from optax.contrib._sophia import sophia
+from optax.contrib._sophia import SophiaState
