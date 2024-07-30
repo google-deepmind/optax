@@ -163,7 +163,7 @@ class GradientTransformation(NamedTuple):
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer
-  schedules or  momemtum values) are passed through optax gradient
+  schedules or  momentum values) are passed through optax gradient
   transformations by using the optimizer _state_ pytree. Each time a gradient
   transformation is applied, a new state is computed and returned, ready to be
   passed to the next call to the gradient transformation.
@@ -172,7 +172,7 @@ class GradientTransformation(NamedTuple):
   to change the behaviour of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
   optimizer state in order to control the behaviour of an optax gradient
-  transformation, see the meta-learning example in the optax documentation.
+  transformation see the [meta-learning example](https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html) in the optax documentation.
 
   Attributes:
     init: A pure function which, when called with an example instance of the
