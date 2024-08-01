@@ -150,6 +150,7 @@ class TransformUpdateExtraArgsFn(Protocol):
 
 
 class GradientTransformation(NamedTuple):
+  # pylint: disable=line-too-long
   """A pair of pure functions implementing a gradient transformation.
 
   Optax optimizers are all implemented as _gradient transformations_.
@@ -172,7 +173,7 @@ class GradientTransformation(NamedTuple):
   to change the behaviour of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
   optimizer state in order to control the behaviour of an optax gradient
-  transformation see the [meta-learning example](https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html) in the optax documentation.
+  transformation see the `meta-learning example <https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html>`_ in the optax documentation.
 
   Attributes:
     init: A pure function which, when called with an example instance of the
@@ -184,6 +185,7 @@ class GradientTransformation(NamedTuple):
       function), and optionally the current params. The update function then
       returns the computed gradient updates, and a new optimizer state.
   """
+  # pylint: disable=line-too-long
   init: TransformInitFn
   update: TransformUpdateFn
 
