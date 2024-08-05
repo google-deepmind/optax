@@ -377,6 +377,17 @@ class CosineDecayTest(chex.TestCase):
         np.array([0.1, 0.09516553580760956, 0.025, 0.0021446612663567066, 0.0]),
         rtol=1e-6, atol=1e-8)
 
+  @chex.all_variants
+  def test_with_giant_int_steps(self):
+    """Check cosine schedule decay with decay_steps not fitting into int32."""
+    schedule_fn = self.variant(
+        _schedule.cosine_decay_schedule(
+            init_value=1000., decay_steps=int(1e10), alpha=0.0, exponent=1
+        )
+    )
+    output = schedule_fn(int(1e9))
+    np.testing.assert_allclose(output, 975.52826)
+
 
 class WarmupCosineDecayTest(chex.TestCase):
 

@@ -23,6 +23,7 @@ from typing import Union, Optional, Iterable
 
 from absl import logging
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -295,6 +296,12 @@ def cosine_decay_schedule(
     )
 
   def schedule(count):
+    # Avoid int -> int32 overflow in jitted code.
+    nonlocal decay_steps
+    decay_steps, count = jax.tree.map(
+        lambda x: float(x) if isinstance(x, int) else x, (decay_steps, count)
+    )
+
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
     decayed = (1 - alpha) * cosine_decay ** exponent + alpha
