@@ -150,9 +150,10 @@ class TransformUpdateExtraArgsFn(Protocol):
 
 
 class GradientTransformation(NamedTuple):
+  # pylint: disable=line-too-long
   """A pair of pure functions implementing a gradient transformation.
 
-  Optax optimizers are all implemented as _gradient transformations_.
+  Optax optimizers are all implemented as *gradient transformations*.
   A gradient transformation is defined to be a pair of pure functions, which
   are combined together in a `NamedTuple` so that they can be referred to by
   name.
@@ -163,8 +164,8 @@ class GradientTransformation(NamedTuple):
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer
-  scheduels, or  momemtum values) are passed through optax gradient
-  transformations by using the optimizer _state_ pytree. Each time a gradient
+  schedules or  momentum values) are passed through optax gradient
+  transformations by using the optimizer *state* pytree. Each time a gradient
   transformation is applied, a new state is computed and returned, ready to be
   passed to the next call to the gradient transformation.
 
@@ -172,7 +173,7 @@ class GradientTransformation(NamedTuple):
   to change the behaviour of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
   optimizer state in order to control the behaviour of an optax gradient
-  transformation, see the meta-learning example in the optax documentation.
+  transformation see the `meta-learning example <https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html>`_ in the optax documentation.
 
   Attributes:
     init: A pure function which, when called with an example instance of the
@@ -184,6 +185,7 @@ class GradientTransformation(NamedTuple):
       function), and optionally the current params. The update function then
       returns the computed gradient updates, and a new optimizer state.
   """
+  # pylint: disable=line-too-long
   init: TransformInitFn
   update: TransformUpdateFn
 
