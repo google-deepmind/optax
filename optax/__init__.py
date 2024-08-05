@@ -50,6 +50,7 @@ from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import rprop
 from optax._src.alias import sgd
+from optax._src.alias import sign_sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
@@ -131,6 +132,7 @@ from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rprop
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
+from optax._src.transform import scale_by_sign
 from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
@@ -407,6 +409,7 @@ __all__ = (
     "scale_by_rprop",
     "scale_by_rss",
     "scale_by_schedule",
+    "scale_by_sign",
     "scale_by_sm3",
     "scale_by_stddev",
     "scale_by_trust_ratio",
@@ -437,6 +440,7 @@ __all__ = (
     "sgdr_schedule",
     "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
+    "sign_sgd",
     "skip_large_updates",
     "skip_not_finite",
     "sm3",
