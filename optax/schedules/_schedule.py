@@ -264,8 +264,10 @@ def cosine_decay_schedule(
   More precisely, the learning rate at iteration :math:`t` is given by:
 
   .. math::
-
-     \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
+    \begin{cases}
+      \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\, & \text{if } t \leq T \\
+      I \alpha, & \text{if } t > T 
+    \end{cases}
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
   the ``exponent`` and :math:`I` is the initial value (``init_value``).
