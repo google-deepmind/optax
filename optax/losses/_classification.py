@@ -227,12 +227,17 @@ def softmax_cross_entropy(
     labels: Valid probability distributions (non-negative, sum to 1), e.g a
       one hot encoding specifying the correct class for each input;
       must have a shape broadcastable to `[..., num_classes]`.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     cross entropy between each prediction and the corresponding target
     distributions, with shape `[...]`.
 
   .. seealso:: :func:`optax.safe_softmax_cross_entropy`
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits], float)
   log_probs = jax.nn.log_softmax(logits, axis, where)
@@ -259,10 +264,15 @@ def softmax_cross_entropy_with_integer_labels(
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
     labels: Integers specifying the correct class for each input, with shape
       `[...]`.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Cross entropy between each prediction and the corresponding target
     distributions, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
@@ -373,10 +383,15 @@ def poly_loss_cross_entropy(
       - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
       - It is also recommended to adjust this value based on the task, e.g. by
         using grid search.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Poly loss between each prediction and the corresponding target
     distributions, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits, labels], float)
   p = jax.nn.softmax(logits, axis=axis, where=where)
@@ -405,10 +420,15 @@ def kl_divergence(
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([log_predictions, targets], float)
   loss = targets * (
@@ -432,10 +452,15 @@ def kl_divergence_with_log_targets(
       [..., dim]. Expected to be in the log-space to avoid underflow.
     log_targets: Probabilities of target distribution with shape [..., dim].
       Expected to be in the log-space.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([log_predictions, log_targets], float)
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
@@ -462,10 +487,15 @@ def convex_kl_divergence(
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   x = kl_divergence(log_predictions, targets, axis=axis, where=where)
   y = jnp.sum(jnp.exp(log_predictions) - targets, axis=axis, where=where)

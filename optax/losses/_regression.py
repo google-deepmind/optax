@@ -156,9 +156,14 @@ def cosine_similarity(
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     cosine similarity measures, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([predictions, targets], float)
   a = predictions
@@ -198,9 +203,14 @@ def cosine_distance(
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     cosine distances, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
