@@ -31,10 +31,12 @@ classifiers = [
 ]
 dependencies = [
   "absl-py>=0.7.1",
-  "chex>=0.1.7",
-  "jax>=0.1.55",
-  "jaxlib>=0.1.37",
+  "chex>=0.1.86",
+  # Keep jax, jaxlib versions in sync with .github/workflows/tests.yml
+  "jax>=0.4.27",
+  "jaxlib>=0.4.27",
   "numpy>=1.18.0",
+  "etils[epy]",
 ]
 
 [project.urls]
@@ -45,13 +47,16 @@ documentation = "https://optax.readthedocs.io/"
 [project.optional-dependencies]
 test = [
     "dm-tree>=0.1.7",
-    "flax>=0.5.3"
+    "flax>=0.5.3",
+    "scipy>=1.7.1",
+    "scikit-learn"
 ]
 
 examples = [
   "tensorflow-datasets>=4.2.0",
   "tensorflow>=2.4.0",
   "dp_accounting>=0.4",
+  "ipywidgets",
   "flax",
 ]
 

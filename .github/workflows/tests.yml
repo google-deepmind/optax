@@ -10,13 +10,18 @@ on:
 
 jobs:
   build-and-test:
-    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }} jax=${{ matrix.jax-version }}"
     runs-on: "${{ matrix.os }}"
 
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         os: [ubuntu-latest]
+        jax-version: [newest]
+        include:
+          - python-version: "3.9"
+            os: "ubuntu-latest"
+            jax-version: "0.4.27"  # Keep version in sync with pyproject.toml and copy.bara.sky!
 
     steps:
       - uses: "actions/checkout@v2"
@@ -26,5 +31,17 @@ jobs:
             cache: "pip"
             cache-dependency-path: 'pyproject.toml'
       - name: Run CI tests
-        run: bash test.sh
+        run: JAX_VERSION="${{ matrix.jax-version }}" bash test.sh
         shell: bash
+  markdown-link-check:
+    name: "Check links in markdown files"
+    runs-on: "ubuntu-latest"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: yes
+        use-verbose-mode: yes

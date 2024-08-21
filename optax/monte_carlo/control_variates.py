@@ -14,7 +14,7 @@
 # ==============================================================================
 r"""Implementation of control variates.
 
- We are interested in computing the gradient using control variates:
+  We are interested in computing the gradient using control variates:
   \nabla_{\theta} E_{p(x; \theta)} f(x)
     = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta) + E_{p(x; \theta)}]
     = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta)]
@@ -39,12 +39,12 @@ r"""Implementation of control variates.
     * control_variate(function)
         This returns a tuple of three functions:
            * The first element of the tuple is a function which returns the
-                control variate value for a set of samples. It takes in as
-                arguments the parameters used to construct the distribution,
-                the distributional samples, and the state of the control variate
-                (if any). The return value of this function will have shape
-                 `num_samples`, where `num_samples` is the number of samples
-                 provided as input.
+              control variate value for a set of samples. It takes in as
+              arguments the parameters used to construct the distribution,
+              the distributional samples, and the state of the control variate
+              (if any). The return value of this function will have shape
+              `num_samples`, where `num_samples` is the number of samples
+              provided as input.
            * The second is a function returns the expected value of the control
               variate. The input arguments of this function are the parameters
               of the distribution and the state of the control variate.
@@ -157,8 +157,8 @@ def moving_avg_baseline(
     zero_debias: Whether or not to use zero debiasing for the moving average.
     use_decay_early_training_heuristic: Whether or not to use a heuristic which
       overrides the decay value early in training based on
-        min(decay, (1.0 + i) / (10.0 + i)). This stabilises training and was
-        adapted from the Tensorflow codebase.
+      min(decay, (1.0 + i) / (10.0 + i)). This stabilises training and was
+      adapted from the Tensorflow codebase.
 
   Returns:
     A tuple of three functions, to compute the control variate, the
@@ -225,14 +225,14 @@ def control_variates_jacobians(
   r"""Obtain jacobians using control variates.
 
   We will compute each term individually. The first term will use stochastic
-    gradient estimation. The second term will be computes using Monte
-    Carlo estimation and automatic differentiation to compute
-    \nabla_{\theta} h(x; \theta). The the third term will be computed using
-    automatic differentiation, as we restrict ourselves to control variates
-    which compute this expectation in closed form.
+  gradient estimation. The second term will be computes using Monte
+  Carlo estimation and automatic differentiation to compute
+  \nabla_{\theta} h(x; \theta). The the third term will be computed using
+  automatic differentiation, as we restrict ourselves to control variates
+  which compute this expectation in closed form.
 
   This function updates the state of the control variate (once), before
-    computing the control variate coefficients.
+  computing the control variate coefficients.
 
   Args:
     function: Function f(x) for which to estimate grads_{params} E_dist f(x).
@@ -262,13 +262,14 @@ def control_variates_jacobians(
 
   Returns:
     A tuple of size two:
-        * A tuple of size `params`, each element is `num_samples x param.shape`
-            jacobian vector containing the estimates of the gradients obtained
-            for each sample.
-          The mean of this vector is the gradient wrt to parameters that can be
-          used for learning. The entire jacobian vector can be used to assess
-          estimator variance.
-        * The updated CV state.
+
+    * A tuple of size `params`, each element is `num_samples x param.shape`
+      jacobian vector containing the estimates of the gradients obtained
+      for each sample.
+      The mean of this vector is the gradient wrt to parameters that can be
+      used for learning. The entire jacobian vector can be used to assess
+      estimator variance.
+    * The updated CV state.
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate

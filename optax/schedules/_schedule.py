@@ -23,6 +23,7 @@ from typing import Union, Optional, Iterable
 
 from absl import logging
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -263,8 +264,11 @@ def cosine_decay_schedule(
   More precisely, the learning rate at iteration :math:`t` is given by:
 
   .. math::
-
-     \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\,,
+    \begin{cases}
+      \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\, 
+      & \text{if } t \leq T \\
+      I \alpha, & \text{if } t > T 
+    \end{cases}
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
   the ``exponent`` and :math:`I` is the initial value (``init_value``).
@@ -295,6 +299,12 @@ def cosine_decay_schedule(
     )
 
   def schedule(count):
+    # Avoid int -> int32 overflow in jitted code.
+    nonlocal decay_steps
+    decay_steps, count = jax.tree.map(
+        lambda x: float(x) if isinstance(x, int) else x, (decay_steps, count)
+    )
+
     count = jnp.minimum(count, decay_steps)
     cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
     decayed = (1 - alpha) * cosine_decay ** exponent + alpha
@@ -452,6 +462,29 @@ def cosine_onecycle_schedule(
       peak_value / div_factor,
       {int(pct_start * transition_steps): div_factor,
        int(transition_steps): 1. / (div_factor * final_div_factor)})
+
+
+def warmup_constant_schedule(
+    init_value: float,
+    peak_value: float,
+    warmup_steps: int,
+) -> base.Schedule:
+  r"""Linear warmup followed by constant schedule i.e no decay.
+
+  Args:
+    init_value: Initial value for the scalar to be annealed.
+    peak_value: Peak value for scalar to be annealed at end of warmup.
+    warmup_steps: Positive integer, the length of the linear warmup.
+
+  Returns:
+    schedule
+      A function that maps step counts to values
+  """
+  return linear_schedule(
+      init_value=init_value,
+      end_value=peak_value,
+      transition_steps=warmup_steps,
+  )
 
 
 def warmup_cosine_decay_schedule(

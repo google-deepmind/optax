@@ -31,10 +31,12 @@ from optax._src import numerics
 class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
-  lr: chex.Array  # shape=(), dtype=jnp.float32
-  best_loss: chex.Array  # shape=(), dtype=jnp.float32
+  scale: chex.Array  # shape=(), dtype=jnp.float32
+  best_value: chex.Array  # shape=(), dtype=jnp.float32
   plateau_count: chex.Array  # shape=(), dtype=jnp.int32
-  cooldown_counter: chex.Array  # shape=(), dtype=jnp.int32
+  cooldown_count: chex.Array  # shape=(), dtype=jnp.int32
+  count: chex.Array  # shape=(), dtype=jnp.int32
+  avg_value: chex.Array  # shape=(), dtype=jnp.float32
 
 
 def reduce_on_plateau(
@@ -43,6 +45,8 @@ def reduce_on_plateau(
     rtol: float = 1e-4,
     atol: float = 0.0,
     cooldown: int = 0,
+    accumulation_size: int = 1,
+    min_scale: float = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
@@ -51,13 +55,19 @@ def reduce_on_plateau(
   a ``patience`` number of epochs, the learning rate is reduced.
 
   Args:
-    factor: Factor by which to reduce the learning rate. new_lr = lr * factor.
+    factor: Factor by which to reduce the learning rate. 
+      new_scale = scale * factor.
     patience: Number of iterations with no improvement after which learning rate
       will be reduced.
     rtol: Relative tolerance for measuring new optimum.
     atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
-      after lr has been reduced.
+      after scale has been reduced.
+    accumulation_size: Number of values to aggregate before applying the logic
+      of reduce on plateau. If the value fed to the optimizer is a test value,
+      simply take 1 (default). If the value fed to the optimizer is the loss on
+      a the current minibatch, consider using a larger accumulation size.
+    min_scale: Scale at which the learning rate decay stops.
 
   Returns:
     A GradientTransformationExtraArgs object.
@@ -65,6 +75,11 @@ def reduce_on_plateau(
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
+  if factor <= 0.0 or factor >= 1.0:
+    raise ValueError(
+        f"Factor must be in the range (0, 1), got factor = {factor}."
+    )
+
   if rtol < 0.0 or atol < 0.0:
     raise ValueError(
         "Both rtol and atol must be non-negative, got "
@@ -83,26 +98,23 @@ def reduce_on_plateau(
   def init_fn(params) -> ReduceLROnPlateauState:
     del params
     return ReduceLROnPlateauState(
-        best_loss=jnp.asarray(float("inf"), dtype=jnp.float32),
+        best_value=jnp.asarray(float("inf"), dtype=jnp.float32),
         plateau_count=jnp.asarray(0, jnp.int32),
-        lr=jnp.asarray(1.0, dtype=jnp.float32),
-        cooldown_counter=jnp.asarray(0, jnp.int32),
+        scale=jnp.asarray(1.0, dtype=jnp.float32),
+        cooldown_count=jnp.asarray(0, jnp.int32),
+        count=jnp.asarray(0, jnp.int32),
+        avg_value=jnp.asarray(0.0, jnp.float32),
     )
 
-  def update_fn(
-      updates: base.Updates,
-      state: ReduceLROnPlateauState,
-      params=None,
-      *,
-      loss,
-      **extra_args,
-  ) -> tuple[base.Params, ReduceLROnPlateauState]:
-    del params, extra_args
-
+  def _update_scale(state):
     # Update plateau count and check if plateaued
-    has_improved = jnp.where(loss < (1 - rtol) * state.best_loss - atol, 1, 0)
-    new_best_loss = jnp.where(has_improved, loss, state.best_loss)
-
+    avg_value = state.avg_value
+    has_improved = jnp.where(
+        avg_value < (1 - rtol) * state.best_value - atol, 1, 0
+    )
+    new_best_value = jnp.where(
+        has_improved, avg_value, state.best_value
+    )
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_int32_increment(state.plateau_count)
     )
@@ -110,37 +122,65 @@ def reduce_on_plateau(
     # We're in cooldown, so reduce the counter and ignore any bad epochs
     def in_cooldown():
       new_plateau_count = jnp.asarray(0, jnp.int32)
-      new_lr = state.lr
-      new_cooldown_counter = state.cooldown_counter - 1
-      return new_plateau_count, new_lr, new_cooldown_counter
+      new_scale = state.scale
+      new_cooldown_count = state.cooldown_count - 1
+      return new_plateau_count, new_scale, new_cooldown_count
 
-    # We're not in cooldown, so update the plateau count and lr as usual
+    # We're not in cooldown, so update the plateau count and scale as usual
     def not_in_cooldown():
       new_plateau_count = jnp.where(
           curr_plateau_count == patience, 0, curr_plateau_count
       )
-      new_lr = jnp.where(
-          curr_plateau_count == patience,
-          state.lr * factor,
-          state.lr,
+      new_scale = jnp.maximum(
+          jnp.where(
+              curr_plateau_count == patience,
+              state.scale * factor,
+              state.scale,
+          ),
+          min_scale,
       )
-      new_cooldown_counter = jnp.where(
+      new_cooldown_count = jnp.where(
           curr_plateau_count == patience, cooldown, 0
       ).astype(jnp.int32)
-      return new_plateau_count, new_lr, new_cooldown_counter
 
-    new_plateau_count, new_lr, new_cooldown_counter = jax.lax.cond(
-        state.cooldown_counter > 0, in_cooldown, not_in_cooldown
+      return new_plateau_count, new_scale, new_cooldown_count
+
+    new_plateau_count, new_scale, new_cooldown_count = jax.lax.cond(
+        state.cooldown_count > 0, in_cooldown, not_in_cooldown
     )
-
-    updates = jax.tree_util.tree_map(lambda g: new_lr * g, updates)
-
     new_state = ReduceLROnPlateauState(
         plateau_count=new_plateau_count,
-        best_loss=new_best_loss,
-        lr=new_lr,
-        cooldown_counter=new_cooldown_counter,
+        best_value=new_best_value,
+        scale=new_scale,
+        cooldown_count=new_cooldown_count,
+        count=jnp.asarray(0, dtype=jnp.int32),
+        avg_value=jnp.asarray(0.0, dtype=jnp.float32),
     )
+    return new_state
+
+  def update_fn(
+      updates: base.Updates,
+      state: ReduceLROnPlateauState,
+      params=None,
+      *,
+      value: float,
+      **extra_args,
+  ) -> tuple[base.Params, ReduceLROnPlateauState]:
+    del params, extra_args
+
+    count = state.count
+    new_count = numerics.safe_int32_increment(count)
+    new_avg_value = (
+        count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
+    ) / new_count
+    new_state = state._replace(avg_value=new_avg_value, count=new_count)
+
+    new_state = jax.lax.cond(
+        new_count == accumulation_size, _update_scale, lambda x: x, new_state
+    )
+
+    updates = jax.tree_util.tree_map(lambda g: new_state.scale * g, updates)
+
     return updates, new_state
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

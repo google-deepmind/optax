@@ -14,6 +14,7 @@
 # ==============================================================================
 """Regression losses."""
 
+import functools
 from typing import Optional
 
 import chex
@@ -76,6 +77,7 @@ def l2_loss(
   return 0.5 * squared_error(predictions, targets)
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def huber_loss(
     predictions: chex.Array,
     targets: Optional[chex.Array] = None,
@@ -135,6 +137,7 @@ def log_cosh(
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,
@@ -170,6 +173,7 @@ def cosine_similarity(
   return jnp.sum(unit_targets * unit_predictions, axis=-1)
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_distance(
     predictions: chex.Array,
     targets: chex.Array,
@@ -193,4 +197,4 @@ def cosine_distance(
   """
   chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
-  return 1. - cosine_similarity(predictions, targets, epsilon)
+  return 1. - cosine_similarity(predictions, targets, epsilon=epsilon)

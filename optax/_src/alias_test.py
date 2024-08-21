@@ -14,18 +14,37 @@
 # ==============================================================================
 """Tests for `alias.py`."""
 
+from typing import Any, Callable, Union
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
 import chex
 import jax
+from jax import flatten_util
 import jax.numpy as jnp
+import jax.random as jrd
+import jax.tree_util as jtu
+import numpy as np
 
 from optax._src import alias
+from optax._src import base
+from optax._src import linesearch as _linesearch
 from optax._src import numerics
+from optax._src import transform
 from optax._src import update
+from optax.losses import _classification
 from optax.schedules import _inject
-from optax.tree_utils import _state_utils
+import optax.tree_utils as otu
+
+import scipy.optimize as scipy_optimize
+from sklearn import datasets
+from sklearn import linear_model
+
+
+##############
+# COMMON TESTS
+##############
 
 
 _OPTIMIZERS_UNDER_TEST = (
@@ -138,7 +157,7 @@ class AliasTest(chex.TestCase):
     params = initial_params
     state = opt.init(params)
     # A no-op change, to verify that tree map works.
-    state = _state_utils.tree_map_params(opt, lambda v: v, state)
+    state = otu.tree_map_params(opt, lambda v: v, state)
 
     for _ in range(10000):
       params, state = step(params, state)
@@ -201,6 +220,563 @@ class AliasTest(chex.TestCase):
     tx = alias.adamw(0.1, mu_dtype=dtype)
     adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
     self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
+
+
+##########################
+# ALGORITHM SPECIFIC TESTS
+##########################
+
+
+#######
+# LBFGS
+
+
+def _run_lbfgs_solver(
+    opt: base.GradientTransformationExtraArgs,
+    fun: Callable[[chex.ArrayTree], jnp.ndarray],
+    init_params: chex.ArrayTree,
+    maxiter: int = 500,
+    tol: float = 1e-3,
+) -> tuple[chex.ArrayTree, base.OptState]:
+  """Run LBFGS solver by iterative calls to grad transform and apply_updates."""
+  value_and_grad_fun = jax.value_and_grad(fun)
+  def stopping_criterion(carry):
+    _, _, count, grad = carry
+    return (otu.tree_l2_norm(grad) >= tol) & (count < maxiter)
+
+  def step(carry):
+    params, state, count, _ = carry
+    value, grad = value_and_grad_fun(params)
+    updates, state = opt.update(
+        grad, state, params, value=value, grad=grad, value_fn=fun
+    )
+    params = update.apply_updates(params, updates)
+    return params, state, count+1, grad
+
+  init_state = opt.init(init_params)
+  init_grad = jax.grad(fun)(init_params)
+  final_params, final_state, *_ = jax.lax.while_loop(
+      stopping_criterion, step, (init_params, init_state, 0, init_grad)
+  )
+
+  return final_params, final_state
+
+
+def _materialize_approx_inv_hessian(
+    diff_params_memory: jnp.ndarray,
+    diff_updates_memory: jnp.ndarray,
+    weights_memory: jnp.ndarray,
+    memory_idx: int,
+) -> jnp.ndarray:
+  """Computes approximate inverse hessian in lbfgs as product of matrices."""
+  # Equation (7.19) in "Numerical Optimization" by Nocedal and Wright, 1999
+  # Notations differ from reference above with the following correspondences
+  # dws -> s, dus -> y, rhos -> rhos, V -> V, P -> H
+
+  # Shorten names for better readability in terms of math, see
+  # :func:`optax.scale_by_lbfgs` for mathematical formulas.
+  dws, dus, rhos = diff_params_memory, diff_updates_memory, weights_memory
+  k = memory_idx
+  # m below is the memory size
+  m, d = diff_params_memory.shape
+
+  dws = jnp.roll(dws, -k, axis=0)
+  dus = jnp.roll(dus, -k, axis=0)
+  rhos = jnp.roll(rhos, -k, axis=0)
+
+  id_mat = jnp.eye(d, d)
+  # pylint: disable=invalid-name
+  P = id_mat
+  safe_dot = lambda x, y: jnp.dot(x, y, precision=jax.lax.Precision.HIGHEST)
+  for j in range(m):
+    V = id_mat - rhos[j] * jnp.outer(dus[j], dws[j])
+    P = safe_dot(V.T, safe_dot(P, V)) + rhos[j] * jnp.outer(dws[j], dws[j])
+  # pylint: enable=invalid-name
+  precond_mat = P
+  return precond_mat
+
+
+def _plain_preconditioning(
+    diff_params_memory: Union[list[jnp.ndarray], jnp.ndarray],
+    diff_updates_memory: Union[list[jnp.ndarray], jnp.ndarray],
+    updates: jnp.ndarray,
+    identity_scale: float = 1.0,
+) -> jnp.ndarray:
+  """Plain implementation of lbfgs preconditioning."""
+  # Algorithm 7.4 in "Numerical Optimization" by Nocedal and Wright, 1999
+  # Notations differ from reference above with the following correspondences
+  # dws -> s, dus -> y, rhos -> rhos, precond_factor -> V, precond_mat -> H,
+  # identity_scale -> gamma
+
+  # 1. Operates on list of vectors rather than stacked trees.
+  # 2. Computes weights (rhos) of the rank one matrices directly rather than
+  # accessing these weights from past memory.
+  # 3. Uses plain for loops rather than scan.
+
+  # Shorten names for better readability in terms of math, see
+  # :func:`optax.scale_by_lbfgs` for mathematical formulas.
+  dws, dus = diff_params_memory, diff_updates_memory
+  # m below is the memory size
+  m = len(dws)
+
+  if m == 0:
+    return updates
+
+  dws = jnp.array(dws)
+  dus = jnp.array(dus)
+
+  rhos = jnp.zeros(m)
+  alphas = jnp.zeros(m)
+
+  # Compute right product.
+  def right_product(j, tup):
+    rhos, alphas, u = tup
+    i = m - j - 1
+    # rhos[i] = 1. / jnp.sum(dws[i] * dus[i])
+    rhos = rhos.at[i].set(1.0 / jnp.sum(dws[i] * dus[i]))
+    # alphas[i] = rhos[i] * jnp.sum(dws[i] * r)
+    alphas = alphas.at[i].set(rhos[i] * jnp.sum(dws[i] * u))
+    u = u - alphas[i] * dus[i]
+    return rhos, alphas, u
+
+  # for i in reversed(range(m)):
+  rhos, alphas, pu = jax.lax.fori_loop(
+      0, m, right_product, (rhos, alphas, updates)
+  )
+
+  pu = pu * identity_scale
+
+  # Compute left product.
+  def left_product(i, u):
+    beta = rhos[i] * jnp.sum(dus[i] * u)
+    return u + dws[i] * (alphas[i] - beta)
+
+  # for i in range(m):
+  pu = jax.lax.fori_loop(0, m, left_product, pu)
+
+  return pu
+
+
+def _plain_lbfgs(
+    fun: Callable[[jnp.ndarray], jnp.ndarray],
+    init_params: jnp.ndarray,
+    stepsize: float = 1e-3,
+    maxiter: int = 500,
+    tol: float = 1e-3,
+    memory_size: int = 10,
+    scale_init_precond: bool = True,
+) -> jnp.ndarray:
+  """Plain implementation of LBFGS."""
+  # Algorithm 7.5 in "Numerical Optimization" by Nocedal and Wright, 1999
+  # Notations differ from reference above with the following correspondences
+  # dws -> s, dus -> y, identity_scale -> gamma
+  value_and_grad_fun = jax.value_and_grad(fun)
+
+  w = init_params
+  _, g = value_and_grad_fun(init_params)
+  dws = []
+  dus = []
+
+  for it in range(maxiter):
+    if scale_init_precond and it > 0:
+      identity_scale = jnp.vdot(dus[-1], dws[-1])
+      identity_scale /= jnp.sum(dus[-1] ** 2)
+    else:
+      identity_scale = 1.0
+
+    direction = -_plain_preconditioning(dws, dus, g, identity_scale)
+    w_old, g_old = w, g
+    w = w + stepsize * direction
+    _, g = value_and_grad_fun(w)
+
+    dws.append(w - w_old)
+    dus.append(g - g_old)
+
+    if len(dws) > memory_size:
+      dws = dws[1:]  # Pop left.
+      dus = dus[1:]
+
+    grad_norm = jnp.sqrt(jnp.sum(g ** 2))
+
+    if grad_norm <= tol:
+      break
+
+  return w
+
+
+def _get_problem(
+    name: str,
+) -> dict[str, Any]:
+  """Get test function in given numpy (xnp) framework."""
+
+  def rosenbrock(x, xnp):
+    return xnp.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1.0 - x[:-1]) ** 2)
+
+  def himmelblau(p):
+    x, y = p
+    return (x**2 + y - 11.0) ** 2 + (x + y**2 - 7.0) ** 2
+
+  def matyas(p):
+    x, y = p
+    return 0.26 * (x**2 + y**2) - 0.48 * x * y
+
+  def eggholder(p, xnp):
+    x, y = p
+    return -(y + 47) * xnp.sin(
+        xnp.sqrt(xnp.abs(x / 2.0 + y + 47.0))
+    ) - x * xnp.sin(xnp.sqrt(xnp.abs(x - (y + 47.0))))
+
+  def zakharov(x, xnp):
+    ii = xnp.arange(1, len(x) + 1, step=1, dtype=x.dtype)
+    sum1 = (x**2).sum()
+    sum2 = (0.5 * ii * x).sum()
+    answer = sum1 + sum2**2 + sum2**4
+    return answer
+
+  problems = dict(
+      rosenbrock=dict(
+          fun=lambda x: rosenbrock(x, jnp),
+          numpy_fun=lambda x: rosenbrock(x, np),
+          init=np.zeros(2),
+          minimum=0.0,
+          minimizer=np.ones(2),
+      ),
+      himmelblau=dict(
+          fun=himmelblau,
+          numpy_fun=himmelblau,
+          init=np.ones(2),
+          minimum=0.0,
+          # himmelblau has actually multiple minimizers, we simply consider one.
+          minimizer=np.array([3.0, 2.0]),
+      ),
+      matyas=dict(
+          fun=matyas,
+          numpy_fun=matyas,
+          init=np.ones(2) * 6.0,
+          minimum=0.0,
+          minimizer=np.zeros(2),
+      ),
+      eggholder=dict(
+          fun=lambda x: eggholder(x, jnp),
+          numpy_fun=lambda x: eggholder(x, np),
+          init=np.ones(2) * 6.0,
+          minimum=-959.6407,
+          minimizer=np.array([512.0, 404.22319]),
+      ),
+      zakharov=dict(
+          fun=lambda x: zakharov(x, jnp),
+          numpy_fun=lambda x: zakharov(x, np),
+          init=np.array([600.0, 700.0, 200.0, 100.0, 90.0, 1e3]),
+          minimum=0.0,
+          minimizer=np.zeros(6),
+      ),
+  )
+  return problems[name]
+
+
+class LBFGSTest(chex.TestCase):
+
+  def test_plain_preconditioning(self):
+    key = jrd.PRNGKey(0)
+    key_ws, key_us, key_vec = jrd.split(key, 3)
+    m = 4
+    d = 3
+    dws = jrd.normal(key_ws, (m, d))
+    dus = jrd.normal(key_us, (m, d))
+    rhos = 1.0 / jnp.sum(dws * dus, axis=1)
+    vec = jrd.normal(key_vec, (d,))
+    plain_precond_vec = _plain_preconditioning(dws, dus, vec)
+    precond_mat = _materialize_approx_inv_hessian(dws, dus, rhos, memory_idx=0)
+    expected_precond_vec = precond_mat.dot(
+        vec, precision=jax.lax.Precision.HIGHEST
+    )
+    chex.assert_trees_all_close(plain_precond_vec, expected_precond_vec)
+
+  @parameterized.product(idx=[0, 1, 2, 3])
+  def test_preconditioning_by_lbfgs_on_vectors(self, idx: int):
+    key = jrd.PRNGKey(0)
+    key_ws, key_us, key_vec = jrd.split(key, 3)
+    m = 4
+    d = 3
+    dws = jrd.normal(key_ws, (m, d))
+    dus = jrd.normal(key_us, (m, d))
+    rhos = 1.0 / jnp.sum(dws * dus, axis=1)
+    vec = jrd.normal(key_vec, (d,))
+
+    # Test for all possible indexes
+    precond_mat = _materialize_approx_inv_hessian(
+        dws, dus, rhos, memory_idx=idx
+    )
+    expected_precond_vec = precond_mat.dot(
+        vec, precision=jax.lax.Precision.HIGHEST
+    )
+
+    lbfgs_precond_vec = transform._precondition_by_lbfgs(
+        vec, dws, dus, rhos, identity_scale=1.0, memory_idx=idx
+    )
+
+    chex.assert_trees_all_close(
+        lbfgs_precond_vec, expected_precond_vec, atol=1e-5, rtol=1e-5
+    )
+
+  @parameterized.product(idx=[0, 1, 2, 3])
+  def test_preconditioning_by_lbfgs_on_trees(self, idx: int):
+    key = jrd.PRNGKey(0)
+    key_ws, key_us, key_vec = jrd.split(key, 3)
+    m = 4
+    shapes = ((3, 2), (5,))
+
+    dws = tuple(
+        jrd.normal(k, (m, *s))
+        for k, s in zip(jrd.split(key_ws, len(shapes)), shapes)
+    )
+    dus = tuple(
+        jrd.normal(k, (m, *s))
+        for k, s in zip(jrd.split(key_us, len(shapes)), shapes)
+    )
+    vec = tuple(
+        jrd.normal(k, s)
+        for k, s in zip(jrd.split(key_vec, len(shapes)), shapes)
+    )
+
+    flat_dws = [
+        flatten_util.ravel_pytree(jtu.tree_map(lambda dw: dw[i], dws))[0]  # pylint: disable=cell-var-from-loop
+        for i in range(m)
+    ]
+    flat_dus = [
+        flatten_util.ravel_pytree(jtu.tree_map(lambda du: du[i], dus))[0]  # pylint: disable=cell-var-from-loop
+        for i in range(m)
+    ]
+    flat_dws, flat_dus = jnp.stack(flat_dws), jnp.stack(flat_dus)
+    flat_vec = flatten_util.ravel_pytree(vec)[0]
+
+    inv_rhos = [jnp.dot(flat_dws[i], flat_dus[i]) for i in range(m)]
+    rhos = 1.0 / jnp.array(inv_rhos)
+
+    lbfgs_precond_vec = transform._precondition_by_lbfgs(
+        vec,
+        dws,
+        dus,
+        rhos,
+        identity_scale=1.0,
+        memory_idx=idx,
+    )
+    flat_lbfgs_precond_vec = flatten_util.ravel_pytree(lbfgs_precond_vec)[0]
+
+    flat_precond_mat = _materialize_approx_inv_hessian(
+        flat_dws, flat_dus, rhos, idx
+    )
+    expected_flat_precond_vec = jnp.dot(
+        flat_precond_mat, flat_vec, precision=jax.lax.Precision.HIGHEST
+    )
+
+    chex.assert_trees_all_close(
+        flat_lbfgs_precond_vec, expected_flat_precond_vec, atol=1e-3, rtol=1e-3
+    )
+
+  @parameterized.product(
+      problem_name=[
+          'rosenbrock',
+          'himmelblau',
+          'matyas',
+          'eggholder',
+          'zakharov',
+      ],
+      scale_init_precond=[True, False],
+  )
+  def test_against_plain_implementation(
+      self, problem_name: str, scale_init_precond: bool
+  ):
+    problem = _get_problem(problem_name)
+    fun, init_params = problem['fun'], problem['init']
+    learning_rate = 1e-3
+    memory_size = 5
+    maxiter = 15
+    tol = 1e-3
+    opt = alias.lbfgs(
+        learning_rate=learning_rate,
+        memory_size=memory_size,
+        scale_init_precond=scale_init_precond,
+        linesearch=None,
+    )
+    lbfgs_sol, _ = _run_lbfgs_solver(
+        opt, fun, init_params, maxiter=maxiter, tol=tol
+    )
+    expected_lbfgs_sol = _plain_lbfgs(
+        fun,
+        init_params,
+        stepsize=learning_rate,
+        maxiter=maxiter,
+        tol=tol,
+        memory_size=memory_size,
+        scale_init_precond=scale_init_precond,
+    )
+    chex.assert_trees_all_close(
+        lbfgs_sol, expected_lbfgs_sol, atol=1e-5, rtol=1e-5
+    )
+
+  def test_handling_pytrees(self):
+    def fun_(x):
+      return jnp.sum(
+          100.0 * (x[..., 1:] - x[..., :-1] ** 2.0) ** 2.0
+          + (1 - x[..., :-1]) ** 2.0
+      )
+
+    def fun(x):
+      return otu.tree_sum(jtu.tree_map(fun_, x))
+
+    key = jrd.PRNGKey(0)
+    init_array = jrd.normal(key, (2, 4))
+    init_tree = (init_array[0], init_array[1])
+
+    opt = alias.lbfgs()
+    sol_arr, _ = _run_lbfgs_solver(opt, fun, init_array, maxiter=3)
+    sol_tree, _ = _run_lbfgs_solver(opt, fun, init_tree, maxiter=3)
+    sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
+    chex.assert_trees_all_close(sol_arr, sol_tree, rtol=5*1e-5, atol=5*1e-5)
+
+  @parameterized.product(scale_init_precond=[True, False])
+  def test_multiclass_logreg(self, scale_init_precond):
+    data = datasets.make_classification(
+        n_samples=10, n_features=5, n_classes=3, n_informative=3, random_state=0
+    )
+    def fun(params):
+      inputs, labels = data
+      weights, bias = params
+      logits = jnp.dot(inputs, weights) + bias
+      losses = _classification.softmax_cross_entropy_with_integer_labels(
+          logits, labels
+      )
+      return jnp.mean(losses)
+
+    weights_init = jnp.zeros((data[0].shape[1], 3))
+    biases_init = jnp.zeros(3)
+    init_params = (weights_init, biases_init)
+
+    opt = alias.lbfgs(scale_init_precond=scale_init_precond)
+    sol, _ = _run_lbfgs_solver(opt, fun, init_params, tol=1e-3)
+
+    # Check optimality conditions.
+    self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
+
+  @parameterized.product(scale_init_precond=[True, False])
+  def test_binary_logreg(self, scale_init_precond):
+    inputs, labels = datasets.make_classification(
+        n_samples=10, n_features=5, n_classes=2, n_informative=3, random_state=0
+    )
+    data = (inputs, labels)
+
+    def fun(weights):
+      inputs, labels = data
+      logits = jnp.dot(inputs, weights)
+      losses = jtu.tree_map(
+          lambda z, y: jax.nn.softplus(jnp.where(y, -z, z)), logits, labels
+      )
+      return jnp.mean(losses)
+
+    init_params = jnp.zeros(inputs.shape[1])
+    opt = alias.lbfgs(scale_init_precond=scale_init_precond)
+    sol, _ = _run_lbfgs_solver(opt, fun, init_params, tol=1e-6)
+
+    # Check optimality conditions.
+    self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
+
+    # Compare against sklearn.
+    logreg = linear_model.LogisticRegression(
+        fit_intercept=False,
+        C=1.0 / (1e-6 * inputs.shape[0]),
+        tol=1e-5,
+        solver='liblinear',
+        penalty='l2',
+        random_state=0,
+    )
+    logreg = logreg.fit(inputs, labels)
+    sol_skl = (
+        logreg.coef_.ravel() if logreg.coef_.shape[0] == 1 else logreg.coef_.T
+    )
+    chex.assert_trees_all_close(sol, sol_skl, atol=5e-2)
+
+  @parameterized.product(
+      problem_name=[
+          'rosenbrock',
+          'himmelblau',
+          'matyas',
+          'eggholder',
+          'zakharov',
+      ],
+  )
+  def test_against_scipy(self, problem_name: str):
+    # Taken from previous jaxopt tests
+
+    tol = 1e-5
+    problem = _get_problem(problem_name)
+    init_params = problem['init']
+    jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
+
+    if problem_name == 'zakharov':
+      opt = alias.lbfgs(
+          linesearch=_linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=30
+          )
+      )
+    else:
+      opt = alias.lbfgs()
+    optax_sol, _ = _run_lbfgs_solver(
+        opt, jnp_fun, init_params, maxiter=500, tol=tol
+    )
+    scipy_sol = scipy_optimize.minimize(np_fun, init_params, method='BFGS').x
+
+    # 1. Check minimizer obtained against known minimizer or scipy minimizer
+    with self.subTest('Check minimizer'):
+      if problem_name in ['matyas', 'zakharov']:
+        chex.assert_trees_all_close(
+            optax_sol, problem['minimizer'], atol=tol, rtol=tol
+        )
+      else:
+        chex.assert_trees_all_close(optax_sol, scipy_sol, atol=tol, rtol=tol)
+
+    with self.subTest('Check minimum'):
+      # 2. Check if minimum is reached or equal to scipy's found value
+      if problem_name == 'eggholder':
+        chex.assert_trees_all_close(
+            jnp_fun(optax_sol), np_fun(scipy_sol), atol=tol, rtol=tol
+        )
+      else:
+        chex.assert_trees_all_close(
+            jnp_fun(optax_sol), problem['minimum'], atol=tol, rtol=tol
+        )
+
+  def test_minimize_bad_initialization(self):
+    # This test runs deliberately "bad" initial values to test that handling
+    # of failed line search, etc. is the same across implementations
+    tol = 1e-5
+    problem = _get_problem('himmelblau')
+    init_params = np.array([92, 0.001])
+    jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
+    minimum = problem['minimum']
+    opt = alias.lbfgs()
+    optax_sol, _ = _run_lbfgs_solver(opt, jnp_fun, init_params, tol=tol)
+    scipy_sol = scipy_optimize.minimize(
+        fun=np_fun,
+        jac=jax.grad(np_fun),
+        method='BFGS',
+        x0=init_params,
+    ).x
+    chex.assert_trees_all_close(
+        np_fun(scipy_sol), jnp_fun(optax_sol), atol=tol, rtol=tol
+    )
+    chex.assert_trees_all_close(jnp_fun(optax_sol), minimum, atol=tol, rtol=tol)
+
+  def test_steep_objective(self):
+    # See jax related issue https://github.com/google/jax/issues/4594
+    tol = 1e-5
+    n = 2
+    mat = jnp.eye(n) * 1e4
+    def fun(x):
+      return jnp.mean((mat @ x) ** 2)
+    opt = alias.lbfgs()
+    sol, _ = _run_lbfgs_solver(opt, fun, init_params=jnp.ones(n), tol=tol)
+    chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
 
 
 if __name__ == '__main__':

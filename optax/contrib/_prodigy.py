@@ -51,6 +51,7 @@ def prodigy(
     estim_lr0: float = 1e-6,
     estim_lr_coef: float = 1.0,
     weight_decay: float = 0.0,
+    safeguard_warmup: bool = False,
 ) -> base.GradientTransformation:
   """Learning rate free AdamW with Prodigy.
 
@@ -75,6 +76,8 @@ def prodigy(
     estim_lr_coef: LR estimates are multiplied by this parameter.
     weight_decay: AdamW style weight-decay. To use Regular Adam decay, chain
       with add_decayed_weights.
+    safeguard_warmup: Remove lr from the denominator of D estimate to avoid
+      issues during warm-up stage. Off by default.
 
   Returns:
     A `GradientTransformation` object.
@@ -127,9 +130,14 @@ def prodigy(
         state.exp_avg_sq,
         dg,
     )
-    grad_sum = tu.tree_map(
-        lambda sk, dgk: beta3 * sk + dlr * dgk / estim_lr0, grad_sum, dg
-    )
+    if safeguard_warmup:
+      grad_sum = tu.tree_map(
+          lambda sk, dgk: beta3 * sk + estim_lr * dgk / estim_lr0, grad_sum, dg
+      )
+    else:
+      grad_sum = tu.tree_map(
+          lambda sk, dgk: beta3 * sk + dlr * dgk / estim_lr0, grad_sum, dg
+      )
     numerator_weighted = beta3 * numerator_weighted
     numerator_weighted += (estim_lr / estim_lr0) * dlr * numerator_acum
     denominator = tree_utils.tree_sum(tu.tree_map(jnp.abs, grad_sum))

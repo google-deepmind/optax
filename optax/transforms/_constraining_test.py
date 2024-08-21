@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax._src.constrain."""
+"""Tests for optax.transforms._constraining."""
 
 from absl.testing import absltest
-
 import chex
 import jax.numpy as jnp
 
 from optax._src import combine
-from optax._src import constrain
 from optax._src import transform
 from optax._src import update
+from optax.transforms import _accumulation
+from optax.transforms import _constraining
+
 
 STEPS = 50
 LR = 1e-2
@@ -41,7 +42,8 @@ class ConstraintsTest(chex.TestCase):
 
     # vanilla sgd
     opt = combine.chain(
-        transform.trace(decay=0, nesterov=False), transform.scale(-LR))
+        _accumulation.trace(decay=0, nesterov=False),
+        transform.scale(-LR))
     opt_state = opt.init(params)
 
     updates, _ = opt.update(grads, opt_state, params)
@@ -53,8 +55,9 @@ class ConstraintsTest(chex.TestCase):
 
     # sgd with keeping parameters non-negative
     opt = combine.chain(
-        transform.trace(decay=0, nesterov=False), transform.scale(-LR),
-        constrain.keep_params_nonnegative())
+        _accumulation.trace(decay=0, nesterov=False),
+        transform.scale(-LR),
+        _constraining.keep_params_nonnegative())
     opt_state = opt.init(params)
 
     updates, _ = opt.update(grads, opt_state, params)
@@ -68,13 +71,13 @@ class ConstraintsTest(chex.TestCase):
   def test_zero_nans(self):
     params = (jnp.zeros([3]), jnp.zeros([3]), jnp.zeros([3]))
 
-    opt = constrain.zero_nans()
+    opt = _constraining.zero_nans()
     opt_state = self.variant(opt.init)(params)
     update_fn = self.variant(opt.update)
 
     chex.assert_trees_all_close(
         opt_state,
-        constrain.ZeroNansState((jnp.array(False),) * 3))
+        _constraining.ZeroNansState((jnp.array(False),) * 3))
 
     # Check an upate with nans
     grads_with_nans = (jnp.ones([3]),
@@ -83,7 +86,7 @@ class ConstraintsTest(chex.TestCase):
     updates, opt_state = update_fn(grads_with_nans, opt_state)
     chex.assert_trees_all_close(
         opt_state,
-        constrain.ZeroNansState(
+        _constraining.ZeroNansState(
             (jnp.array(False), jnp.array(True), jnp.array(True))))
     chex.assert_trees_all_close(
         updates,
@@ -97,7 +100,7 @@ class ConstraintsTest(chex.TestCase):
     updates, opt_state = update_fn(grads_with_nans_infs, opt_state)
     chex.assert_trees_all_close(
         opt_state,
-        constrain.ZeroNansState(
+        _constraining.ZeroNansState(
             (jnp.array(False), jnp.array(True), jnp.array(False))))
     chex.assert_trees_all_close(updates, (jnp.ones([3]), jnp.array(
         [1., 0., 0.]), jnp.array([float('inf'), 1., 1.])))
@@ -107,7 +110,7 @@ class ConstraintsTest(chex.TestCase):
     updates, opt_state = update_fn(grads, opt_state)
     chex.assert_trees_all_close(
         opt_state,
-        constrain.ZeroNansState(
+        _constraining.ZeroNansState(
             (jnp.array(False), jnp.array(False), jnp.array(False))))
     chex.assert_trees_all_close(updates, grads)
 

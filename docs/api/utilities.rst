@@ -15,7 +15,7 @@ Scale gradient
 .. autofunction:: scale_gradient
 
 Value and grad from state
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: value_and_grad_from_state
 
 
@@ -49,13 +49,7 @@ Linear Algebra Operators
 
 .. autosummary::
     matrix_inverse_pth_root
-    multi_normal
     power_iteration
-
-
-Multi normal
-~~~~~~~~~~~~
-.. autofunction:: multi_normal
 
 Matrix inverse pth root
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,19 +89,29 @@ Tree
 .. currentmodule:: optax.tree_utils
 
 .. autosummary::
+    NamedTupleKey
     tree_add
     tree_add_scalar_mul
     tree_div
-    tree_vdot
+    tree_get
+    tree_get_all_with_path
+    tree_l1_norm
     tree_l2_norm
     tree_map_params
     tree_mul
     tree_ones_like
     tree_random_like
     tree_scalar_mul
+    tree_set
     tree_sub
     tree_sum
+    tree_vdot
+    tree_where
     tree_zeros_like
+
+NamedTupleKey
+~~~~~~~~~~~~~
+.. autoclass:: NamedTupleKey
 
 Tree add
 ~~~~~~~~
@@ -121,9 +125,17 @@ Tree divide
 ~~~~~~~~~~~
 .. autofunction:: tree_div
 
-Tree inner product
-~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_vdot
+Fetch single value that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get
+
+Fetch all values that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get_all_with_path
+
+Tree l1 norm
+~~~~~~~~~~~~
+.. autofunction:: tree_l1_norm
 
 Tree l2 norm
 ~~~~~~~~~~~~
@@ -149,6 +161,10 @@ Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_scalar_mul
 
+Set values in a tree
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_set
+
 Tree subtract
 ~~~~~~~~~~~~~
 .. autofunction:: tree_sub
@@ -156,6 +172,14 @@ Tree subtract
 Tree sum
 ~~~~~~~~
 .. autofunction:: tree_sum
+
+Tree inner product
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_vdot
+
+Tree where
+~~~~~~~~~~
+.. autofunction:: tree_where
 
 Tree zeros like
 ~~~~~~~~~~~~~~~

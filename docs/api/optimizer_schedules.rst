@@ -23,7 +23,6 @@ Optimizer Schedules
 
 
 .. autoclass:: Schedule
-   :members:
 
 Constant schedule
 ~~~~~~~~~~~~~~~~~
@@ -46,7 +45,6 @@ Inject hyperparameters
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: inject_hyperparams
 .. autoclass:: InjectHyperparamsState
-   :members:
 
 Linear schedules
 ~~~~~~~~~~~~~~~~

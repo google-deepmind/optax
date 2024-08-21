@@ -29,7 +29,7 @@ import numpy as np
 
 
 def abs_sq(x: chex.Array) -> chex.Array:
-  """Returns the squared norm of a (maybe complex) array.
+  """Returns the squared absolute value of a (maybe complex) array.
 
   For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
   or `x**2`.
@@ -38,7 +38,7 @@ def abs_sq(x: chex.Array) -> chex.Array:
     x: a (maybe complex) array.
 
   Returns:
-    The squared norm of `x`.
+    The squared absolute value of `x`.
   """
   if not isinstance(x, (np.ndarray, jnp.ndarray)):
     raise ValueError(f"`abs_sq` accepts only NDarrays, got: {x}.")

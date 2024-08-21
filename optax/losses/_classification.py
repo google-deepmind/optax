@@ -14,11 +14,14 @@
 # ==============================================================================
 """Classification losses."""
 
+import functools
 from typing import Optional
 
 import chex
 import jax
 import jax.numpy as jnp
+
+from optax import projections
 
 
 def sigmoid_binary_cross_entropy(
@@ -59,6 +62,13 @@ def sigmoid_binary_cross_entropy(
   return -labels * log_p - (1. - labels) * log_not_p
 
 
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='sigmoid_binary_cross_entropy')
+def binary_logistic_loss(logits, labels):
+  return sigmoid_binary_cross_entropy(logits, labels)
+
+
 def hinge_loss(
     predictor_outputs: chex.Array,
     targets: chex.Array
@@ -70,9 +80,130 @@ def hinge_loss(
     targets: Target values. Target values should be strictly in the set {-1, 1}.
 
   Returns:
-    Binary Hinge Loss.
+    loss value.
   """
   return jnp.maximum(0, 1 - predictor_outputs * targets)
+
+
+def perceptron_loss(
+    predictor_outputs: chex.Numeric,
+    targets: chex.Numeric
+) -> chex.Numeric:
+  """Binary perceptron loss.
+
+  References:
+    https://en.wikipedia.org/wiki/Perceptron
+
+  Args:
+    predictor_outputs: score produced by the model (float).
+    targets: Target values. Target values should be strictly in the set {-1, 1}.
+
+  Returns:
+    loss value.
+  """
+  chex.assert_equal_shape([predictor_outputs, targets])
+  return jnp.maximum(0, - predictor_outputs * targets)
+
+
+def sparsemax_loss(
+    logits: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Binary sparsemax loss.
+
+  This loss is zero if and only if `jax.nn.sparse_sigmoid(logits) == labels`.
+
+  References:
+    Learning with Fenchel-Young Losses. Mathieu Blondel, André F. T. Martins,
+    Vlad Niculae. JMLR 2020. (Sec. 4.4)
+
+  Args:
+    logits: score produced by the model (float).
+    labels: ground-truth integer label (0 or 1).
+
+  Returns:
+    loss value
+
+  .. versionadded:: 0.2.3
+  """
+  return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
+
+
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='sparsemax_loss')
+def binary_sparsemax_loss(logits, labels):
+  return sparsemax_loss(logits, labels)
+
+
+@jax.custom_jvp
+def weighted_logsoftmax(x: chex.Array, weights: chex.Array) -> chex.Array:
+  r"""Weighted logsoftmax.
+
+  Computes
+  .. math::
+    (w_i \log(\exp x_i /(\sum_i \exp x_i )) )_{i=1}^n
+
+  for :math:`x` the input ``x``, :math:`w` the ``weights``.
+  For :math:`w_i = 0`, :math:`x_i=-\infty`, this implementation ensures that the
+  output is 0 and not nan at the ith entry following the convention that
+  :math:`0 \log 0 = 0`.
+
+  Args:
+    x: input array.
+    weights: weights.
+
+  Returns:
+    logsoftmax of x multiplied elementwise by weights
+  """
+  logsoftmax_x = jax.nn.log_softmax(x, axis=-1)
+  return jnp.where(
+      weights != 0.0, weights * logsoftmax_x, jnp.zeros_like(logsoftmax_x)
+  )
+
+
+def _weighted_logsoftmax_jvp(primals, tangents):
+  """Custom JVP of weighted logsoftmax."""
+  (x, weights) = primals
+  (x_dot, weights_dot) = tangents
+  logsoftmax_x = jax.nn.log_softmax(x, axis=-1)
+  result = jnp.where(
+      weights != 0.0, weights * logsoftmax_x, jnp.zeros_like(logsoftmax_x)
+  )
+  out_tangents = (
+      weights * x_dot
+      - weights
+      * jnp.sum(x_dot * jax.nn.softmax(x, axis=-1), axis=-1, keepdims=True)
+      + weights_dot * logsoftmax_x
+  )
+  return result, out_tangents
+
+
+weighted_logsoftmax.defjvp(_weighted_logsoftmax_jvp)
+
+
+def safe_softmax_cross_entropy(
+    logits: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Computes the softmax cross entropy between sets of logits and labels.
+
+  Contrarily to :func:`optax.softmax_cross_entropy` this function handles
+  ``labels*logsoftmax(logits)`` as ``0`` when ``logits=-inf`` and ``labels=0``,
+  following the convention that ``0 log 0 = 0``.
+
+  Args:
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g a
+      one hot encoding specifying the correct class for each input;
+      must have a shape broadcastable to `[..., num_classes]`.
+
+  Returns:
+    cross entropy between each prediction and the corresponding target
+    distributions, with shape `[...]`.
+  """
+  chex.assert_type([logits], float)
+  return -jnp.sum(weighted_logsoftmax(logits, labels), axis=-1)
 
 
 def softmax_cross_entropy(
@@ -98,6 +229,8 @@ def softmax_cross_entropy(
   Returns:
     cross entropy between each prediction and the corresponding target
     distributions, with shape `[...]`.
+
+  .. seealso:: :func:`optax.safe_softmax_cross_entropy`
   """
   chex.assert_type([logits], float)
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
@@ -138,8 +271,67 @@ def softmax_cross_entropy_with_integer_labels(
   return log_normalizers - label_logits
 
 
+@functools.partial(
+    chex.warn_deprecated_function,
+    replacement='softmax_cross_entropy_with_integer_labels')
+def multiclass_logistic_loss(logits, labels):
+  return softmax_cross_entropy_with_integer_labels(logits, labels)
+
+
+_dot_last_dim = jnp.vectorize(jnp.dot, signature='(n),(n)->()')
+
+
+def multiclass_hinge_loss(
+    scores: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Multiclass hinge loss.
+
+  References:
+    https://en.wikipedia.org/wiki/Hinge_loss
+
+  Args:
+    scores: scores produced by the model (floats).
+    labels: ground-truth integer labels.
+
+  Returns:
+    loss values
+
+  .. versionadded:: 0.2.3
+  """
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
+  return (jnp.max(scores + 1.0 - one_hot_labels, axis=-1) -
+          _dot_last_dim(scores, one_hot_labels))
+
+
+def multiclass_perceptron_loss(
+    scores: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Multiclass perceptron loss.
+
+  References:
+    Michael Collins. Discriminative training methods for Hidden Markov Models:
+    Theory and experiments with perceptron algorithms. EMNLP 2002
+
+  Args:
+    scores: scores produced by the model.
+    labels: ground-truth integer labels.
+
+  Returns:
+    loss values.
+
+  .. versionadded:: 0.2.2
+  """
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
+  return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
+
+
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def poly_loss_cross_entropy(
-    logits: chex.Array, labels: chex.Array, epsilon: float = 2.0
+    logits: chex.Array,
+    labels: chex.Array,
+    epsilon: float = 2.0
 ) -> chex.Array:
   r"""Computes PolyLoss between logits and labels.
 
@@ -236,7 +428,8 @@ def kl_divergence_with_log_targets(
 
 
 def convex_kl_divergence(
-    log_predictions: chex.Array, targets: chex.Array
+    log_predictions: chex.Array,
+    targets: chex.Array
 ) -> chex.Array:
   """Computes a convex version of the Kullback-Leibler divergence loss.
 
@@ -262,6 +455,7 @@ def convex_kl_divergence(
   )
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss_with_forward_probs(
     logits: chex.Array,
     logit_paddings: chex.Array,
@@ -392,6 +586,7 @@ def ctc_loss_with_forward_probs(
   return per_seq_loss, logalpha_phi, logalpha_emit
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss(
     logits: chex.Array,
     logit_paddings: chex.Array,
@@ -432,6 +627,7 @@ def ctc_loss(
   return per_seq_loss
 
 
+@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def sigmoid_focal_loss(
     logits: chex.Array,
     labels: chex.Array,
@@ -485,3 +681,36 @@ def sigmoid_focal_loss(
                       loss)
 
   return loss
+
+
+def _multiclass_sparsemax_loss(
+    scores: chex.Array, label: chex.Array
+) -> chex.Array:
+  scores = jnp.asarray(scores)
+  proba = projections.projection_simplex(scores)
+  # Fenchel conjugate of the Gini negentropy, defined by:
+  # cumulant = jnp.dot(proba, scores) + 0.5 * jnp.dot(proba, (1 - proba)).
+  scores = (scores - scores[label]).at[label].set(0.0)
+  return (jnp.dot(proba, jnp.where(proba, scores, 0.0))
+          + 0.5 * (1.0 - jnp.dot(proba, proba)))
+
+
+def multiclass_sparsemax_loss(
+    scores: chex.Array,
+    labels: chex.Array,
+) -> chex.Array:
+  """Multiclass sparsemax loss.
+
+  Args:
+    scores: scores produced by the model.
+    labels: ground-truth integer labels.
+
+  Returns:
+    loss values
+
+  References:
+    From Softmax to Sparsemax: A Sparse Model of Attention and Multi-Label
+    Classification. André F. T. Martins, Ramón Fernandez Astudillo.
+    ICML 2016.
+  """
+  return jax.vmap(_multiclass_sparsemax_loss)(scores, labels)

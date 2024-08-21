@@ -23,6 +23,7 @@ from optax._src import base
 from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
+from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import wrappers
 
@@ -36,15 +37,43 @@ def adabelief(
     b2: float = 0.999,
     eps: float = 1e-16,
     eps_root: float = 1e-16) -> base.GradientTransformation:
-  """The AdaBelief optimizer.
+  r"""The AdaBelief optimizer.
 
   AdaBelief is an adaptive learning rate optimizer that focuses on fast
   convergence, generalization, and stability. It adapts the step size depending
   on its "belief" in the gradient direction — the optimizer adaptively scales
   the step size by the difference between the predicted and observed gradients.
-  AdaBelief is a modified version of Adam and contains the same number of
-  parameters.
-  
+  AdaBelief is a modified version of :func:`optax.adam` and contains the same
+  number of parameters.
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
+  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
+  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, s_0) = (0, 0)`, representing initial estimates for the
+  first and second moments. In practice these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t` and optimizer state :math:`S_t`
+  and computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for
+  :math:`t > 0`, we have,
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2 
+      + \bar{\varepsilon} \\
+      \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
+      \hat{s}_t &\leftarrow s_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left(\sqrt{\hat{s}_t}
+      + \varepsilon \right) \\
+      S_t &\leftarrow (m_t, s_t).
+    \end{align*}
+
   Examples:
     >>> import optax
     >>> import jax
@@ -253,10 +282,36 @@ def adagrad(
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7
 ) -> base.GradientTransformation:
-  """The Adagrad optimizer.
+  r"""The Adagrad optimizer.
 
-  Adagrad is an algorithm for gradient based optimization that anneals the
-  learning rate for each parameter during the course of training.
+  AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts 
+  the learning rate individually for each feature based on its gradient history.
+  
+  The updated parameters adopt the form:
+  
+      .. math::
+    
+        w_{t+1}^{(i)} = w_{t}^{(i)} - \eta \frac{g_{t}^{(i)}}
+                     {\sqrt{\sum_{\tau=1}^{t} (g_{\tau}^{(i)})^2 + \epsilon}}
+
+  where:
+    - :math:`w_t^{(i)}` is the parameter :math:`i` at time step :math:`t`,
+    - :math:`\eta` is the learning rate,
+    - :math:`g_t^{(i)}` is the gradient of parameter :math:`i` at time step 
+      :math:`t`,
+    - :math:`\epsilon` is a small constant to ensure numerical stability.
+    
+  Defining :math:`G = \sum_{t=1}^\tau g_t g_t^\top`, the update can be 
+  written as 
+    
+      .. math::
+       
+          w_{t+1} = w_{t} - \eta \cdot \text{diag}(G + \epsilon I)^{-1/2} 
+          \cdot g_t
+    
+  where :math:`\text{diag} (G) = (G_{ii})_{i=1}^p` is the vector of diagonal 
+  entries of :math:`G \in \mathbb{R}^p` and :math:`I` is the identity matrix 
+  in :math:`\mathbb{R}^p`.
 
   .. warning::
     Adagrad's main limit is the monotonic accumulation of squared
@@ -322,7 +377,7 @@ def adam(
 
   Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
   :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
-  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectievly. The learning rate is
+  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
   indexed by :math:`t` since the learning rate may also be provided by a
   schedule function.
 
@@ -502,15 +557,50 @@ def adamw(
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
-  """Adam with weight decay regularization.
+  r"""Adam with weight decay regularization.
 
   AdamW uses weight decay to regularize learning towards small weights, as
   this leads to better generalization. In SGD you can also use L2 regularization
   to implement this as an additive loss term, however L2 regularization
-  does not behave as intended for adaptive gradient algorithms such as Adam.
+  does not behave as intended for adaptive gradient algorithms such as Adam,
+  see [Loshchilov et al, 2019].
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
+  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
+  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function. Let :math:`\lambda` be the weight decay and 
+  :math:`\theta_t` the parameter vector at time :math:`t`.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, v_0) = (0, 0)`, representing initial estimates for the
+  first and second moments. In practice these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t` 
+  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and 
+  new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
+      \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
+      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
+      u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t 
+      + \bar{\varepsilon}} + \varepsilon} \right) + \lambda \theta_{t} \right)\\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
 
   This implementation can incorporate a momentum a la Nesterov introduced by
   [Dozat 2016]. The resulting optimizer is then often referred as NAdamW.
+  With the keyword argument `nesterov=True`, the optimizer uses Nesterov
+  momentum, replacing the above :math:`\hat{m}_t` with
+
+  .. math::
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
   
   Examples:
     >>> import optax
@@ -1178,7 +1268,9 @@ def radam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    threshold: float = 5.0
+    threshold: float = 5.0,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """The Rectified Adam optimizer.
 
@@ -1222,13 +1314,20 @@ def radam(
       in RMSProp), to avoid dividing by zero when rescaling. This is needed for
       instance when computing (meta-)gradients through Adam.
     threshold: Threshold for variance tractability.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
     The corresponding `GradientTransformation`.
   """
   return combine.chain(
       transform.scale_by_radam(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, threshold=threshold),
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          threshold=threshold,
+          nesterov=nesterov,
+      ),
       transform.scale_by_learning_rate(learning_rate),
   )
 
@@ -1238,9 +1337,11 @@ def rmsprop(
     decay: float = 0.9,
     eps: float = 1e-8,
     initial_scale: float = 0.,
+    eps_in_sqrt: bool = True,
     centered: bool = False,
     momentum: Optional[float] = None,
-    nesterov: bool = False
+    nesterov: bool = False,
+    bias_correction: bool = False,
 ) -> base.GradientTransformation:
   # pylint: disable=line-too-long
   r"""A flexible RMSProp optimizer.
@@ -1251,12 +1352,16 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
-  ..warning::
-    PyTorch and optax's RMSprop implementations differ and could impact
-    performance. In the denominator, optax uses :math:`$\sqrt{v + \epsilon}$`
-    whereas PyTorch uses :math:`$\sqrt{v} + \epsilon$`. See
+  .. warning::
+    Default behavior of optax's RMSprop (``eps_in_sqrt=True``) differs from
+    Pytorch's implementation and could impact performance.
+    If ``eps_in_sqrt=True``, in the denominator, optax uses
+    :math:`\sqrt{v + \epsilon}` in the denominator whereas PyTorch uses
+    :math:`\sqrt{v} + \epsilon`.
+    Using ``eps_in_sqrt=False`` in optax will match PyTorch's behavior.
+    See
     https://github.com/google-deepmind/optax/issues/532 for more detail.
-    
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1279,8 +1384,14 @@ def rmsprop(
     Objective function: 1.36E+01
 
   References:
-    Tieleman and Hinton, 2012: http://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf
-    Graves, 2013: https://arxiv.org/abs/1308.0850
+    Hinton, `Overview of mini-batch gradient descent`
+    <www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>`_, 2012
+
+    Graves, `Generating Sequences With Recurrent Neural Networks
+    <https://arxiv.org/pdf/1308.0850v5>`_, 2014
+
+    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam`
+    <https://arxiv.org/pdf/2002.04839>`_, 2021
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -1290,11 +1401,15 @@ def rmsprop(
     initial_scale: Initial value of accumulators tracking the magnitude of
       previous updates. PyTorch uses `0`, TF1 uses `1`. When reproducing results
       from a paper, verify the value used by the authors.
+    eps_in_sqrt: Whether to add ``eps`` in the square root of the
+      denominator or outside the square root.
     centered: Whether the second moment or the variance of the past gradients is
       used to rescale the latest gradients.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
+    bias_correction: Whether to apply bias correction to the estimates of the
+      second moments (and first moment if ``centered=True``).
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -1303,17 +1418,33 @@ def rmsprop(
   if centered:
     return combine.chain(
         transform.scale_by_stddev(
-            decay=decay, eps=eps, initial_scale=initial_scale),
+            decay=decay,
+            eps=eps,
+            initial_scale=initial_scale,
+            eps_in_sqrt=eps_in_sqrt,
+            bias_correction=bias_correction,
+        ),
         transform.scale_by_learning_rate(learning_rate),
-        (transform.trace(decay=momentum, nesterov=nesterov)
-         if momentum is not None else base.identity())
+        (
+            transform.trace(decay=momentum, nesterov=nesterov)
+            if momentum is not None
+            else base.identity()
+        ),
     )
   return combine.chain(
       transform.scale_by_rms(
-          decay=decay, eps=eps, initial_scale=initial_scale),
+          decay=decay,
+          eps=eps,
+          initial_scale=initial_scale,
+          eps_in_sqrt=eps_in_sqrt,
+          bias_correction=bias_correction,
+      ),
       transform.scale_by_learning_rate(learning_rate),
-      (transform.trace(decay=momentum, nesterov=nesterov)
-       if momentum is not None else base.identity())
+      (
+          transform.trace(decay=momentum, nesterov=nesterov)
+          if momentum is not None
+          else base.identity()
+      ),
   )
 
 
@@ -1345,12 +1476,12 @@ def sgd(
   .. math::
 
     \begin{align*}
-      m_t & \leftarrow \begin{cases}
-        g_t + \mu m_t & \mathrm{if \ \texttt{nesterov=False}}\\
-        g_t + \mu (g_t + \mu m_{t-1}) & \mathrm{if \ \texttt{nesterov=True}}
-      \end{cases} \\
-      u_t & \leftarrow - \alpha_t m_t \\
-      S_t & = m_t,
+      m_t &\leftarrow g_t + \mu m_{t-1} \\
+      u_t &\leftarrow \begin{cases}
+        -\alpha_t m_t & \text{ if } \texttt{nesterov = False} \\
+        -\alpha_t (g_t + \mu m_t) & \text{ if } \texttt{nesterov = True}
+        \end{cases} \\
+      S_t &\leftarrow m_t,
     \end{align*}
 
   where :math:`\mu` is the ``momentum`` parameter and :math:`S_t` is the state
@@ -1405,7 +1536,7 @@ def sm3(
     learning_rate: float,
     momentum: float = 0.9
 ) -> base.GradientTransformation:
-  """The SM3 optimizer.
+  r"""The SM3 optimizer.
 
   SM3 (Square-root of Minima of Sums of Maxima of Squared-gradients Method) is a
   memory-efficient adaptive optimizer designed to decrease memory overhead when
@@ -1415,7 +1546,64 @@ def sm3(
   parameters; 2) adapts the learning rates in an adaptive and data-driven manner
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
-  
+
+  The init function of this optimizer initializes an internal state 
+  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for 
+  the cumulative squared gradients and the weights. These values are stored as 
+  pytrees containing all zeros, with the same shape as the model updates. At 
+  step :math:`t`, the update function of this optimizer takes as arguments 
+  the incoming gradients :math:`g_t` and optimizer state :math:`S_t` and 
+  computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for 
+  :math:`t > 0`, we have:
+
+  SM3-I Algorithm
+
+  .. math::
+   
+      \begin{array}{l}
+      \text{parameters: learning rate } \eta \\
+      \text{initialize } w_1 = 0; \forall r \in [k]: \mu_0(r) = 0 \\
+      \text{for } t = 1, \ldots, T \text{ do} \\
+      \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
+      \quad \text{for } r = 1, \ldots, k \text{ do} \\
+      \quad \quad \mu_t(r) \leftarrow \mu_{t-1}(r) + 
+      \max_{j \in S_r} g_t^2(j) \\
+      \quad \text{for } i = 1, \ldots, d \text{ do} \\
+      \quad \quad \nu_t(i) \leftarrow \min_{r:S_r \ni i} \mu_t(r) \\
+      \quad \quad w_{t+1}(i) \leftarrow w_t(i) - 
+      \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
+      \quad \quad \text{with the convention that } 0/0 = 0
+      \end{array}
+
+  SM3-II Algorithm
+
+  The SM3-II optimizer initializes with parameters like the learning rate 
+  :math:\eta and weight :math:w_1. It updates weights iteratively using 
+  gradients :math:g_t, adjusting each component with minimum accumulated 
+  values :math:\nu'_t(i) and maintaining cumulative maximums :math:\mu'_t(r) 
+  for subsets :math:S_r. SM3-II starts with an initial state 
+  :math:S_0 := (m_0, s_0) set to zero, storing estimates for first and second 
+  moments as pytrees matching model updates' shape
+
+  .. math::
+
+      \begin{array}{l}
+      \text{parameters: learning rate } \eta \\
+      \text{initialize } w_1 = 0; \forall r \in [k]: \mu'_0(r) = 0 \\
+      \text{for } t = 1, \ldots, T \text{ do} \\
+      \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
+      \quad \text{initialize } \mu'_t(r) = 0 \text{ for all } r \in [k] \\
+      \quad \text{for } i = 1, \ldots, d \text{ do} \\
+      \quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i} 
+      \mu'_{t-1}(r) + g_t^2(i) \\
+      \quad \quad w_{t+1}(i) \leftarrow w_t(i) - 
+      \eta \frac{g_t(i)}{\sqrt{\nu'_t(i)}} \\
+      \quad \quad \text{with the convention that } 0/0 = 0 \\
+      \quad \text{for all } r : S_r \ni i \text{ do} \\
+      \quad \quad \mu'_t(r) \leftarrow \max\{\mu'_t(r), \nu'_t(i)\}
+      \end{array}
+
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1518,7 +1706,37 @@ def adamax(
     b2: float = 0.999,
     eps: float = 1e-8,
 ) -> base.GradientTransformation:
-  """A variant of the Adam optimizer that uses the infinity norm.
+  r"""A variant of the Adam optimizer that uses the infinity norm.
+  
+  AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing 
+  Adam's :math:`L^2` norm to an :math:`L^p` norm and taking the limit as
+  :math:`p \rightarrow \infty`, we obtain a simple and stable update rule.
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
+  :math:`\varepsilon` represent the arguments
+  ``b1``, ``b2`` and ``eps`` respectively. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, v_0) = (0, 0)`, representing initial estimates for the
+  first and second moments. In practice these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t` and optimizer state :math:`S_t`
+  and computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for
+  :math:`t > 0`, we have,
+
+  .. math::
+
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+      v_t &\leftarrow \max(\left| g_t \right| + \varepsilon, \beta_2 \cdot
+      v_{t-1}) \\
+      \hat{m}_t &\leftarrow m_t / (1-\beta_1^t) \\
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / v_t \\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
   
   Examples:
     >>> import optax
@@ -1578,10 +1796,11 @@ def adamaxw(
   to implement this as an additive loss term, however L2 regularization
   does not behave as intended for adaptive gradient algorithms such as Adam.
 
-  WARNING: Sometimes you may want to skip weight decay for BatchNorm scale or
-  for the bias parameters. You can use `optax.masked` to make your own AdamaxW
-  variant where `additive_weight_decay` is applied only to a subset of `params`.
-  
+  .. warning:: Sometimes you may want to skip weight decay for BatchNorm scale
+  or for the bias parameters. You can use `optax.masked` to make your own
+  AdamaxW variant where `additive_weight_decay` is applied only to a subset of
+  `params`.
+
   Examples:
     >>> import optax
     >>> import jax
@@ -1672,11 +1891,14 @@ def rprop(
     Objective function: 1.38E+01
 
   References:
-    PyTorch implementation:
-      https://pytorch.org/docs/stable/generated/torch.optim.Rprop.html
-    Riedmiller and Braun, 1993: https://ieeexplore.ieee.org/document/298623
-    Igel and Hüsken, 2003:
-      https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007
+    Riedmiller and Braun. `A direct adaptive method for faster backpropagation 
+    learning: the RPROP algorithm 
+    <https://ieeexplore.ieee.org/document/298623>`_, 1993
+
+    Igel and Hüsken.  `Empirical evaluation of the improved Rprop learning 
+    algorithms
+    <https://www.sciencedirect.com/science/article/abs/pii/S0925231201007007>`_,
+    2003
 
   Args:
     learning_rate: The initial step size.
@@ -1771,11 +1993,146 @@ def polyak_sgd(
     eps: a value to add in the denominator of the update (defaults to 0).
 
   Returns:
-    A :class:`GradientTransformationExtraArgs`.
+    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
+    takes an additional keyword argument ``value`` containing the current
+    value of the objective function.
   """
   return combine.chain(
       sgd(learning_rate=scaling),
       transform.scale_by_polyak(
           max_learning_rate=max_learning_rate, f_min=f_min, eps=eps
       ),
+  )
+
+
+def lbfgs(
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
+    memory_size: int = 10,
+    scale_init_precond: bool = True,
+    linesearch: Optional[
+        base.GradientTransformationExtraArgs
+    ] = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=15),
+) -> base.GradientTransformationExtraArgs:
+  r"""L-BFGS optimizer.
+
+  L-BFGS is a quasi-Newton method that multiplies the update (gradient)
+  with an approximation of the inverse Hessian. This algorithm does not need
+  access to the Hessian, as this approximation is constructed from the gradient
+  evaluations seen during optimization. L-BFGS is a limited-memory variant of
+  the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm. The BFGS algorithm
+  requires storing a matrix of size :math:`p \times p` with :math:`p` the
+  dimension of the parameters.
+  The limited variant circuments this issue by computing the approximation of
+  the inverse using only :math:`m` (``memory_size``) past differences of
+  parameters/gradients. Namely, the approximation of the Hessian inverse is
+  denoted :math:`P_k = P_{k, k}`, where
+
+  .. math::
+
+    \begin{align*}
+      P_{k, j+1} & = V_j^\top P_{k, j} V_j + \rho_j \delta w_j \delta w_j^\top
+      \quad \text{for} \ j \in \{k-m, \ldots, k-1\}\\
+      P_{k, k-m} & = \gamma_k I \\
+      V_k & = I - \rho_k \delta u_k \delta w_k^\top \\
+      \rho_k & = 1/(\delta u_k^\top \delta w_k) \\
+      \delta w_k & = w_{k+1} - w_k \\
+      \delta u_k & = u_{k+1} - u_k \\
+      \gamma_k & =
+        \begin{cases}
+          (\delta w_{k-1}^\top \delta u_{k-1}) /
+          (\delta u_{k-1}^\top \delta u_{k-1})
+          & \text{if} \ \texttt{scale\_init\_hess} \\
+          1 & \text{otherwise}
+        \end{cases},
+    \end{align*}
+
+  for
+  :math:`u_k` the gradients/updates at iteration :math:`k`,
+  :math:`w_k` the parameters at iteration :math:`k`.
+
+  The formula for updating :math:`P_k` is obtained by computing the optimal
+  preconditioning matrix subject to some secant condition, see references
+  for more details. Computing :math:`P_k u_k` can be done by a sequence of 
+  vector operations using past differences of parameters and gradients stored in
+  a memory bufffer.
+
+  The present function just outputs the LBFGS direction :math:`P_k u_k`.
+  It can be chained with a linesearch ensuring sufficient decrease and low
+  curvature, such as a zoom linesearch. The linesearch computes a stepsize
+  :math:`\eta_k`, such that the updated parameters
+  (using :func:`optax.apply_updates`) take the form
+  :math:`w_{k+1} = w_k - \eta_k P_k u_k`.
+
+  Example:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)
+    >>> solver = optax.lbfgs()
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> value_and_grad = optax.value_and_grad_from_state(f)
+    >>> for _ in range(5):
+    ...   value, grad = value_and_grad(params, state=opt_state)
+    ...   updates, opt_state = solver.update(
+    ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+    ...   )
+    ...   params = optax.apply_updates(params, updates)
+    ...   print('Objective function: ', f(params))
+    Objective function:  0.0
+    Objective function:  0.0
+    Objective function:  0.0
+    Objective function:  0.0
+    Objective function:  0.0
+
+  .. warning::
+    This method is memory intensive optimizer, best used for small to medium
+    scale problems.
+
+  .. warning::
+    This optimizer works best with a linesearch (current default is a
+    zoom linesearch). See example above for best use in a non-stochastic
+    setting, where we can recycle gradients computed by the linesearch using
+    :func:`optax.value_and_grad_from_state`.
+
+  References:
+    Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
+    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`_
+    , 1999
+
+    Liu et al., `On the limited memory BFGS method for large scale optimization
+    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_
+    , 1989.
+
+  Args:
+    learning_rate: optional global scaling factor, either fixed or evolving
+      along iterations with a scheduler, see 
+      :func:`optax.scale_by_learning_rate`. By default the learning rate is
+      handled by a linesearch.
+    memory_size: number of past updates to keep in memory to approximate the
+      Hessian inverse.
+    scale_init_precond: whether to use a scaled identity as the initial
+      preconditioner, see formula above.
+    linesearch: an instance of :class:`optax.GradientTransformationExtraArgs`
+      such as :func:`optax.scale_by_zoom_linesearch` that computes a
+      learning rate, a.k.a. stepsize, to satisfy some criterion such as a
+      sufficient decrease of the objective by additional calls to the objective.
+
+  Returns:
+    A :class:`optax.GradientTransformationExtraArgs` object.
+  """
+  if learning_rate is None:
+    base_scaling = transform.scale(-1.0)
+  else:
+    base_scaling = transform.scale_by_learning_rate(learning_rate)
+  if linesearch is None:
+    linesearch = base.identity()
+  return combine.chain(
+      transform.scale_by_lbfgs(
+          memory_size=memory_size, scale_init_precond=scale_init_precond
+      ),
+      base_scaling,
+      linesearch,
   )

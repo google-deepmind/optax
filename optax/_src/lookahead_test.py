@@ -35,7 +35,7 @@ def _build_sgd():
   return alias.sgd(1.)
 
 
-class TestOptimizerState(NamedTuple):
+class OptimizerTestState(NamedTuple):
   """Fast optimizer state for the lookahead tests."""
   aggregate_grads: base.Params
   # Include a variable with non-zero initial value to check that it is reset
@@ -50,7 +50,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   # resetting behaviour of lookahead can be tested.
   def init_fn(params):
     aggregate_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
-    return TestOptimizerState(aggregate_grads, is_reset=True)
+    return OptimizerTestState(aggregate_grads, is_reset=True)
 
   def update_fn(updates, state, params):
     # The test optimizer does not use the parameters, but we check that they
@@ -58,7 +58,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     chex.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree_util.tree_map(lambda u: step_size * u, updates)
-    return updates, TestOptimizerState(aggregate_grads, is_reset=False)
+    return updates, OptimizerTestState(aggregate_grads, is_reset=False)
 
   return base.GradientTransformation(init_fn, update_fn)
 
