@@ -15,7 +15,7 @@
 """Regression losses."""
 
 import functools
-from typing import Optional
+from typing import Optional, Union
 
 import chex
 import jax.numpy as jnp
