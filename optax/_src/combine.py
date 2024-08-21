@@ -14,7 +14,6 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
-
 from optax.transforms import _combining
 
 chain = _combining.chain
