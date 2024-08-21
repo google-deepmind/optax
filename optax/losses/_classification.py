@@ -15,7 +15,7 @@
 """Classification losses."""
 
 import functools
-from typing import Optional
+from typing import Optional, Union
 
 import chex
 import jax
@@ -209,8 +209,8 @@ def safe_softmax_cross_entropy(
 def softmax_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes the softmax cross entropy between sets of logits and labels.
 
@@ -247,8 +247,8 @@ def softmax_cross_entropy(
 def softmax_cross_entropy_with_integer_labels(
     logits: chex.Array,
     labels: chex.Array,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes softmax cross entropy between sets of logits and integer labels.
 
@@ -349,8 +349,8 @@ def poly_loss_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
     epsilon: float = 2.0,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes PolyLoss between logits and labels.
 
@@ -404,8 +404,8 @@ def poly_loss_cross_entropy(
 def kl_divergence(
     log_predictions: chex.Array,
     targets: chex.Array,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -440,8 +440,8 @@ def kl_divergence(
 def kl_divergence_with_log_targets(
     log_predictions: chex.Array,
     log_targets: chex.Array,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -470,8 +470,8 @@ def kl_divergence_with_log_targets(
 def convex_kl_divergence(
     log_predictions: chex.Array,
     targets: chex.Array,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes a convex version of the Kullback-Leibler divergence loss.
 

@@ -140,8 +140,8 @@ def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,
     epsilon: float = 0.,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes the cosine similarity between targets and predictions.
 
@@ -188,8 +188,8 @@ def cosine_distance(
     predictions: chex.Array,
     targets: chex.Array,
     epsilon: float = 0.,
-    axis: int | tuple[int, ...] | None = -1,
-    where: chex.Array | None = None,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes the cosine distance between targets and predictions.
 
