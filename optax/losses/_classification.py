@@ -210,27 +210,57 @@ def softmax_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
 ) -> chex.Array:
-  """Computes the softmax cross entropy between sets of logits and labels.
+  r"""Computes the softmax cross entropy between sets of logits and labels.
 
-  Measures the probability error in discrete classification tasks in which
-  the classes are mutually exclusive (each entry is in exactly one class).
-  For example, each CIFAR-10 image is labeled with one and only one label:
-  an image can be a dog or a truck, but not both.
+  This loss function is commonly used for multi-class classification tasks. It
+  measures the dissimilarity between the predicted probability distribution
+  (obtained by applying the softmax function to the logits) and the true
+  probability distribution (represented by the one-hot encoded labels).
+  This loss is also known as categorical cross entropy.
+
+  Let :math:`x` denote the ``logits`` array of size ``[batch_size,
+  num_classes]`` and :math:`y` denote the ``labels`` array of size
+  ``[batch_size, num_classes]``. Then this function returns a vector
+  :math:`\sigma` of size ``[batch_size]`` defined as:
+
+  .. math::
+    \sigma_i =
+    \log\left(\frac{\sum_j y_{i j} \exp(x_{i j})}{\sum_j
+    \exp(x_{i j})}\right) \,.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> # example: batch_size = 2, num_classes = 3
+    >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
+    >>> labels = jnp.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    >>> optax.softmax_cross_entropy(logits, labels)
+    Array([0.2761297, 2.951799 ], dtype=float32)
 
   References:
-    [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
+    `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
+    Wikipedia
+
+    `Multinomial Logistic Regression
+    <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
 
   Args:
-    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
-    labels: Valid probability distributions (non-negative, sum to 1), e.g a
-      one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]`.
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
+    labels: One-hot encoded labels, with shape `[batch_size, num_classes]`. Each
+      row represents the true class distribution for a single example.
 
   Returns:
-    cross entropy between each prediction and the corresponding target
-    distributions, with shape `[...]`.
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
 
-  .. seealso:: :func:`optax.safe_softmax_cross_entropy`
+  .. seealso::
+    This function is similar to
+    :func:`optax.losses.softmax_cross_entropy_with_integer_labels`,
+    but accepts one-hot labels instead of integer labels.
+
+    :func:`optax.losses.safe_softmax_cross_entropy` provides an alternative
+    implementation that differs on how ``logits=-inf`` are handled.
   """
   chex.assert_type([logits], float)
   return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
@@ -240,24 +270,51 @@ def softmax_cross_entropy_with_integer_labels(
     logits: chex.Array,
     labels: chex.Array,
 ) -> chex.Array:
-  """Computes softmax cross entropy between sets of logits and integer labels.
+  r"""Computes softmax cross entropy between the logits and integer labels.
 
-  Measures the probability error in discrete classification tasks in which
-  the classes are mutually exclusive (each entry is in exactly one class).
-  For example, each CIFAR-10 image is labeled with one and only one label:
-  an image can be a dog or a truck, but not both.
+  This loss is useful for classification problems with integer labels that are
+  not one-hot encoded. This loss is also known as categorical cross entropy.
+
+  Let :math:`x` denote the ``logits`` array of size ``[batch_size,
+  num_classes]`` and :math:`y` denote the ``labels`` array of size
+  ``[batch_size]``. Then this function returns a vector
+  :math:`\sigma` of size ``[batch_size]`` defined as:
+
+  .. math::
+    \sigma_i =
+    \log\left(\frac{\exp(x_{i y_i})}{\sum_j
+    \exp(x_{i j})}\right)\,.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> # example: batch_size = 2, num_classes = 3
+    >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
+    >>> labels = jnp.array([0, 1])
+    >>> optax.softmax_cross_entropy_with_integer_labels(logits, labels)
+    Array([0.2761297, 2.951799 ], dtype=float32)
 
   References:
-    [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
+    `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
+    Wikipedia
+
+    `Multinomial Logistic Regression
+    <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
 
   Args:
-    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
     labels: Integers specifying the correct class for each input, with shape
-      `[...]`.
+      ``[batch_size]``. Class labels are assumed to be between 0 and
+      ``num_classes - 1`` inclusive.
 
   Returns:
-    Cross entropy between each prediction and the corresponding target
-    distributions, with shape `[...]`.
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
+
+  .. seealso:: This function is similar to
+    :func:`optax.losses.softmax_cross_entropy`, but accepts integer labels
+    instead of one-hot labels.
   """
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
