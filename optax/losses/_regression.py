@@ -15,12 +15,10 @@
 """Regression losses."""
 
 import functools
-from typing import Optional
+from typing import Optional, Union
 
 import chex
 import jax.numpy as jnp
-
-from optax._src import numerics
 
 
 def squared_error(
@@ -142,6 +140,8 @@ def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,
     epsilon: float = 0.,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes the cosine similarity between targets and predictions.
 
@@ -156,21 +156,31 @@ def cosine_similarity(
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     cosine similarity measures, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([predictions, targets], float)
-  # vectorize norm fn, to treat all dimensions except the last as batch dims.
-  batched_norm_fn = jnp.vectorize(
-      numerics.safe_norm, signature='(k)->()', excluded={1})
-  # normalise the last dimension of targets and predictions.
-  unit_targets = targets / jnp.expand_dims(
-      batched_norm_fn(targets, epsilon), axis=-1)
-  unit_predictions = predictions / jnp.expand_dims(
-      batched_norm_fn(predictions, epsilon), axis=-1)
-  # return cosine similarity.
-  return jnp.sum(unit_targets * unit_predictions, axis=-1)
+  a = predictions
+  b = targets
+
+  # dot = (a * b).sum(axis=axis, where=where)
+  # a_norm2 = jnp.square(a).sum(axis=axis, where=where)
+  # b_norm2 = jnp.square(b).sum(axis=axis, where=where)
+  # return dot / jnp.sqrt((a_norm2 * b_norm2))
+
+  a_norm2 = jnp.square(a).sum(axis=axis, where=where, keepdims=True)
+  b_norm2 = jnp.square(b).sum(axis=axis, where=where, keepdims=True)
+  a_norm = jnp.sqrt(a_norm2.clip(epsilon))
+  b_norm = jnp.sqrt(b_norm2.clip(epsilon))
+  a_unit = a / a_norm
+  b_unit = b / b_norm
+  return (a_unit * b_unit).sum(axis=axis, where=where)
 
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
@@ -178,6 +188,8 @@ def cosine_distance(
     predictions: chex.Array,
     targets: chex.Array,
     epsilon: float = 0.,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes the cosine distance between targets and predictions.
 
@@ -191,10 +203,17 @@ def cosine_distance(
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
     epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     cosine distances, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([predictions, targets], float)
   # cosine distance = 1 - cosine similarity.
-  return 1. - cosine_similarity(predictions, targets, epsilon=epsilon)
+  return 1.0 - cosine_similarity(
+      predictions, targets, epsilon=epsilon, axis=axis, where=where
+  )
