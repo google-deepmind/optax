@@ -36,7 +36,7 @@ def constant_schedule(
 ) -> base.Schedule:
   """Constructs a constant schedule.
 
-  Example:
+  Examples:
     >>> schedule_fn = optax.constant_schedule(5)
     >>> schedule_fn(0)
     5
