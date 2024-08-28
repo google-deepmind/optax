@@ -36,6 +36,13 @@ def constant_schedule(
 ) -> base.Schedule:
   """Constructs a constant schedule.
 
+  Example:
+    >>> schedule_fn = optax.constant_schedule(5)
+    >>> schedule_fn(0)
+    5
+    >>> schedule_fn(100)
+    5
+
   Args:
     value: value to be held constant throughout.
 
