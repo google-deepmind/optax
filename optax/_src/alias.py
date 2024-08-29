@@ -1164,9 +1164,9 @@ def sign_sgd(
 
     
   References:
-    Bernstein et al, `signSGD: Compressed Optimisation for Non-Convex Problems 
+    Bernstein et al., `signSGD: Compressed Optimisation for Non-Convex Problems 
     <https://arxiv.org/abs/1802.04434>`_, 2018
-
+Balles et al.`The Geometry of Sign Gradient Descent <https://arxiv.org/abs/2002.08056>`, 2020
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
