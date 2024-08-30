@@ -73,6 +73,7 @@ _OPTIMIZERS_UNDER_TEST = (
     ),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
+    dict(opt_name='sign_sgd', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1e-2)),
     dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
@@ -132,9 +133,16 @@ class AliasTest(chex.TestCase):
         'rprop',
         'adadelta',
         'polyak_sgd',
+        'sign_sgd',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
+      )
+
+    if opt_name in ('sign_sgd',) and target is _setup_rosenbrock:
+      raise absltest.SkipTest(
+          f'{opt_name} requires learning rate scheduling to solve the'
+          ' Rosenbrockfunction'
       )
 
     opt = getattr(alias, opt_name)(**opt_kwargs)
