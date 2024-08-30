@@ -62,6 +62,14 @@ def polynomial_schedule(
 ) -> base.Schedule:
   """Constructs a schedule with polynomial transition from init to end value.
 
+  Examples:
+    >>> schedule_fn = optax.polynomial_schedule(
+    ...    init_value=1.0, end_value=0.01, transition_steps=100, power=2)
+    >>> schedule_fn(0)  # learning rate on the first iteration
+    Array(1., dtype=float32, weak_type=True)
+    >>> schedule_fn(100)  # learning rate on the last iteration
+    Array(0.01, dtype=float32, weak_type=True)
+
   Args:
     init_value: initial value for the scalar to be annealed.
     end_value: end value of the scalar to be annealed.
