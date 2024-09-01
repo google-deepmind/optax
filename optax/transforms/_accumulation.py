@@ -334,7 +334,9 @@ class MultiSteps:
     # Note: we do not enclose variables to allow JAX to re-use memory buffers.
     def _do_update(updates, state, params):
       acc_grads = jtu.tree_map(
-          lambda upd, acc: self._acc_update(upd, acc, n_acc=state.mini_step),
+          lambda upd, acc: self._acc_update(
+              upd, acc, n_acc=state.mini_step
+          ).astype(acc.dtype),
           updates,
           state.acc_grads,
       )
@@ -350,7 +352,7 @@ class MultiSteps:
           * numerics.safe_int32_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jtu.tree_map(
-              lambda st, nst: jnp.where(emit, nst, st),
+              lambda st, nst: jnp.where(emit, nst, st).astype(st.dtype),
               state.inner_opt_state,
               new_inner_state,
           ),
@@ -361,7 +363,9 @@ class MultiSteps:
       )
 
       final_updates = jtu.tree_map(
-          lambda ga: emit * ga, final_updates
+          lambda ga, st: jnp.array(emit * ga, dtype=st.dtype),
+          final_updates,
+          state.acc_grads
       )
       return final_updates, new_state
 
