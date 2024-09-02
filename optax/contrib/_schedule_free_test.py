@@ -164,5 +164,16 @@ class ScheduleFreeTest(chex.TestCase):
     params_wrapper = run(opt_wrapper)
     chex.assert_trees_all_close(params_shortcut, params_wrapper)
 
+  @parameterized.parameters(*_OPTIMIZERS_UNDER_TEST)
+  def test_scalar_preservance(self, opt_name, opt_kwargs):
+    opt = getattr(alias, opt_name)(learning_rate=0.0, **opt_kwargs)
+    opt = _schedule_free.schedule_free(opt, learning_rate=0.0)
+
+    params = jnp.ones((), dtype=jnp.float32)
+    state = opt.init(params)
+    eval_params = _schedule_free.schedule_free_eval_params(state, params)
+    chex.assert_equal_shape([params, eval_params])
+    chex.assert_trees_all_equal_dtypes(params, eval_params)
+
 if __name__ == '__main__':
   absltest.main()
