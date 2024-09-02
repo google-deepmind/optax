@@ -127,7 +127,7 @@ def schedule_free(
           'The current implementation of schedule_free requires b1 > 0.')
     z = jax.tree_util.tree_map(lambda t: t.astype(state_dtype), params)
     return ScheduleFreeState(
-        b1=jnp.array([b1], dtype=jnp.float32),
+        b1=jnp.array(b1, dtype=jnp.float32),
         weight_sum=jnp.zeros([], dtype=jnp.float32),
         step_count=jnp.ones([], dtype=jnp.int32),
         max_lr=jnp.zeros([], dtype=jnp.float32),
@@ -190,7 +190,7 @@ def schedule_free(
     )
 
     next_state = ScheduleFreeState(
-        b1=jnp.array([b1], dtype=jnp.float32),
+        b1=jnp.array(b1, dtype=jnp.float32),
         weight_sum=next_total_weight,
         step_count=next_step_count,
         max_lr=max_lr,
