@@ -249,7 +249,7 @@ def schedule_free_sgd(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  eval_params = schedule_free_eval_params(opt_state, params)
+    ...  eval_params = optax.contrib.schedule_free_eval_params(opt_state, params)
     ...  print('Objective function: {:.2E}'.format(f(eval_params)))
     Objective function: 1.40E+01
     Objective function: 1.75E-14
@@ -323,7 +323,7 @@ def schedule_free_adamw(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  eval_params = schedule_free_eval_params(opt_state, params)
+    ...  eval_params = optax.contrib.schedule_free_eval_params(opt_state, params)
     ...  print('Objective function: {:.2E}'.format(f(eval_params)))
     Objective function: 5.00E+00
     Objective function: 3.05E+00
