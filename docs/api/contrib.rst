@@ -30,6 +30,8 @@ Experimental features and algorithms that don't meet the
     sam
     SAMState
     schedule_free
+    schedule_free_sgd
+    schedule_free_adamw
     schedule_free_eval_params
     ScheduleFreeState
     split_real_and_imaginary
@@ -88,6 +90,8 @@ Prodigy
 Schedule-Free
 ~~~~~~~~~~~~~
 .. autofunction:: schedule_free
+.. autofunction:: schedule_free_sgd
+.. autofunction:: schedule_free_adamw
 .. autofunction:: schedule_free_eval_params
 .. autoclass:: ScheduleFreeState
 
