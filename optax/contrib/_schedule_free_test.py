@@ -166,8 +166,10 @@ class ScheduleFreeTest(chex.TestCase):
 
   @parameterized.parameters(*_OPTIMIZERS_UNDER_TEST)
   def test_scalar_preservance(self, opt_name, opt_kwargs):
-    opt = getattr(alias, opt_name)(learning_rate=0.0, **opt_kwargs)
-    opt = _schedule_free.schedule_free(opt, learning_rate=0.0)
+    # Test whether the scalar arrays of shape () are preserved through
+    # _schedule_free.schedule_free_eval_params.
+    base_opt = getattr(alias, opt_name)(learning_rate=0.0, **opt_kwargs)
+    opt = _schedule_free.schedule_free(base_opt, learning_rate=0.0)
 
     params = jnp.ones((), dtype=jnp.float32)
     state = opt.init(params)
