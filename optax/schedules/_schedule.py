@@ -280,7 +280,7 @@ def cosine_decay_schedule(
 
   .. math::
     \begin{cases}
-      \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + \alpha\, 
+      \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + I \alpha\, 
       & \text{if } t \leq T \\
       I \alpha, & \text{if } t > T 
     \end{cases}
