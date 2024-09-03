@@ -70,9 +70,9 @@ def polynomial_schedule(
     >>> schedule_fn(100)  # learning rate on the last iteration
     Array(0.01, dtype=float32, weak_type=True)
 
-    The following example uses a non-zero `transition_begin`
-    to show how the learning rate is kept constant for the first
-    `transition_begin` iterations.
+    The following example uses a non-zero `transition_begin`. In this case
+    the learning rate is kept constant for the first `transition_begin`
+    iterations:
     >>> schedule_fn = optax.polynomial_schedule(
     ...    init_value=1.0,
     ...    end_value=0.01,
