@@ -81,7 +81,9 @@ def polynomial_schedule(
     ...    power=2,
     ... )
     >>> counts = [0, 5, 6, 104, 105, 110]
-    >>> print(*[f'count:{i} value:{schedule_fn(i):.4f}' for i in counts], sep='\n')
+    >>> print(
+    ...    *[f'count:{i} value:{schedule_fn(i):.4f}' for i in counts],
+    ...    sep='\n')
     count:0 value:1.0000
     count:5 value:1.0000
     count:6 value:0.9803
