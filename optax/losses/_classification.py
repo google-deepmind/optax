@@ -227,8 +227,8 @@ def softmax_cross_entropy(
 
   .. math::
     \sigma_i =
-    \log\left(\frac{\sum_j y_{i j} \exp(x_{i j})}{\sum_j
-    \exp(x_{i j})}\right) \,.
+    - \sum_j y_{i j} \log\left(\frac{\exp(x_{i j})}{\sum_k
+    \exp(x_{i k})}\right) \,.
 
   Examples:
     >>> import optax
