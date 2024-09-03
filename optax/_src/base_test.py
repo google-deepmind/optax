@@ -17,6 +17,7 @@
 from absl.testing import absltest
 
 import chex
+import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -45,6 +46,22 @@ class BaseTest(chex.TestCase):
       f(updates, opt_state, params=params)
 
     g(f)
+
+  def test_typing_with_flax_struct(self):
+    """Ensure that the type annotations work for dataclass objects from flax."""
+
+    @flax.struct.dataclass
+    class Net:
+      w: jnp.ndarray
+
+      def __call__(self, x):
+        return self.w.dot(x)
+
+    net = Net(w=jnp.array([1., 2., 3.]))
+    opt = base.identity()
+    state = opt.init(net)
+    updates = net
+    opt.update(updates, state)
 
   @chex.all_variants
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):

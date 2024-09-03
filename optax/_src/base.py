@@ -28,7 +28,11 @@ PyTree = Any
 Shape = Sequence[int]
 
 OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
-Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
+# NOTE(vroulet):
+# Parameters are arbitrary nests of `jnp.ndarrays`, that is `chex.ArrayTree`.
+# To enable compilation with e.g. flax.struct.dataclass objects we consider
+# `Params` to be any `PyTree`.
+Params = PyTree
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
