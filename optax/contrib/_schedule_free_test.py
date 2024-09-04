@@ -164,5 +164,20 @@ class ScheduleFreeTest(chex.TestCase):
     params_wrapper = run(opt_wrapper)
     chex.assert_trees_all_close(params_shortcut, params_wrapper)
 
+  @parameterized.parameters(*_OPTIMIZERS_UNDER_TEST)
+  def test_scalar_preservance(self, opt_name, opt_kwargs):
+    # Test whether the scalar arrays of shape () are preserved through
+    # _schedule_free.schedule_free_eval_params.
+    base_opt = getattr(alias, opt_name)(learning_rate=0.0, **opt_kwargs)
+    opt = _schedule_free.schedule_free(base_opt, learning_rate=0.0)
+
+    params = jnp.ones((), dtype=jnp.float32)
+    state = opt.init(params)
+    # NOTE(vroulet): disabling wrong-arg-types because the type checker thinks
+    # that the state is a generic NamedTuple rather than a ScheduleFreeState.
+    eval_params = _schedule_free.schedule_free_eval_params(state, params)  # pytype: disable=wrong-arg-types
+    chex.assert_equal_shape([params, eval_params])
+    chex.assert_trees_all_equal_dtypes(params, eval_params)
+
 if __name__ == '__main__':
   absltest.main()
