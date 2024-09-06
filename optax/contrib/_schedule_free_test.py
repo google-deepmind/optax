@@ -175,7 +175,9 @@ class ScheduleFreeTest(chex.TestCase):
     state = opt.init(params)
     # NOTE(vroulet): disabling wrong-arg-types because the type checker thinks
     # that the state is a generic NamedTuple rather than a ScheduleFreeState.
-    eval_params = _schedule_free.schedule_free_eval_params(state, params)  # pytype: disable=wrong-arg-types
+    # pytype: disable=wrong-arg-types
+    eval_params = _schedule_free.schedule_free_eval_params(state, params)
+    # pytype: enable=wrong-arg-types
     chex.assert_equal_shape([params, eval_params])
     chex.assert_trees_all_equal_dtypes(params, eval_params)
 
