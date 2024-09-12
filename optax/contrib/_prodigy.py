@@ -25,7 +25,7 @@ import jax.numpy as jnp
 import jax.tree_util as tu
 from optax import tree_utils
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
 
 
 class ProdigyState(NamedTuple):
@@ -157,7 +157,7 @@ def prodigy(
         params0,
         estim_lr,
         numerator_weighted,
-        utils.safe_int32_increment(count),
+        numerics.safe_increment(count),
     )
     return p_update, new_state
 

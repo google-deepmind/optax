@@ -144,7 +144,7 @@ def scale_by_rms(
     del params
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
-      count_inc = numerics.safe_int32_increment(state.count)
+      count_inc = numerics.safe_increment(state.count)
       nu_hat = otu.tree_bias_correction(nu, decay, count_inc)
     else:
       count_inc = jnp.asarray(0)
@@ -222,7 +222,7 @@ def scale_by_stddev(
     mu = otu.tree_update_moment(updates, state.mu, decay, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
-      count_inc = numerics.safe_int32_increment(state.count)
+      count_inc = numerics.safe_increment(state.count)
       mu_hat = otu.tree_bias_correction(mu, decay, count_inc)
       nu_hat = otu.tree_bias_correction(nu, decay, count_inc)
     else:
@@ -307,12 +307,12 @@ def scale_by_adam(
     del params
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2, 2)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     if nesterov:
       mu_hat = jtu.tree_map(
           lambda m, g: b1 * m + (1 - b1) * g,
           otu.tree_bias_correction(
-              mu, b1, numerics.safe_int32_increment(count_inc)),
+              mu, b1, numerics.safe_increment(count_inc)),
           otu.tree_bias_correction(updates, b1, count_inc))
     else:
       mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
@@ -375,7 +375,7 @@ def scale_by_amsgrad(
     del params
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2, 2)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     nu_max = jtu.tree_map(jnp.maximum, state.nu_max, nu_hat)
@@ -415,7 +415,7 @@ def scale_by_adamax(
 
   def update_fn(updates, state, params=None):
     del params
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     nu = otu.tree_update_infinity_moment(updates, state.nu, b2, eps)
     # Bias correction for mean. No bias correction needed for infinity moment.
@@ -464,7 +464,7 @@ def scale_by_lion(
         lambda g, m: jnp.sign((1. - b1) * g + b1 * m), updates, state.mu)
     mu = otu.tree_update_moment(updates, state.mu, b2, 1)
     mu = otu.tree_cast(mu, mu_dtype)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     return updates_new, ScaleByLionState(count=count_inc, mu=mu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -631,7 +631,7 @@ def scale_by_belief(
         lambda g, m: g-m, updates, state.mu)
     nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jtu.tree_map(lambda v: v + eps_root, nu)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
@@ -680,7 +680,7 @@ def scale_by_yogi(
     nu = jtu.tree_map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - abs_sq(g)) * abs_sq(g),
         updates, state.nu)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
@@ -736,14 +736,14 @@ def scale_by_radam(
     del params
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2, 2)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     b2t = b2**count_inc
     ro = ro_inf - 2 * count_inc * b2t / (1 - b2t)
     if nesterov:
       mu_hat = jtu.tree_map(
           lambda m, g: b1 * m + (1 - b1) * g,
           otu.tree_bias_correction(
-              mu, b1, numerics.safe_int32_increment(count_inc)),
+              mu, b1, numerics.safe_increment(count_inc)),
           otu.tree_bias_correction(updates, b1, count_inc))
     else:
       mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
@@ -902,7 +902,7 @@ def scale_by_schedule(
     updates = jtu.tree_map(
         lambda g: jnp.array(step_size, dtype=g.dtype) * g, updates)
     return updates, ScaleByScheduleState(
-        count=numerics.safe_int32_increment(state.count))
+        count=numerics.safe_increment(state.count))
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -987,7 +987,7 @@ def apply_every(
         lambda g, ga: acc * ga + g, updates, state.grad_acc)
     emit = c == (k - 1)
     updates = jtu.tree_map(lambda ga: emit * ga, grad_acc)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -1164,7 +1164,7 @@ def scale_by_novograd(
     return jtu.tree_map(lambda m, u: b1 * m + u, mu, updates)
 
   def update_fn(updates, state, params):
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
 
     nu = jax.lax.cond(
         count_inc == 1, init_nu, update_nu, updates, state.nu)
@@ -1585,7 +1585,7 @@ def scale_by_lbfgs(
         memory_idx,
     )
     return precond_updates, ScaleByLBFGSState(
-        count=numerics.safe_int32_increment(state.count),
+        count=numerics.safe_increment(state.count),
         params=params,
         updates=updates,
         diff_params_memory=diff_params_memory,

@@ -99,6 +99,7 @@ from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
+from optax._src.numerics import safe_increment
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -387,6 +388,7 @@ __all__ = (
     "radam",
     "rmsprop",
     "rprop",
+    "safe_increment",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",

@@ -24,7 +24,6 @@ import numpy as np
 
 from optax._src import base
 from optax._src import numerics
-from optax._src import utils
 
 # pylint:disable=no-value-for-parameter
 
@@ -194,6 +193,6 @@ def scale_by_factored_rms(
 
     # Unpack updates / stats and return.
     updates = jax.tree_util.tree_map(lambda o: o.update, output)
-    return updates, _to_state(utils.safe_int32_increment(state.count), output)
+    return updates, _to_state(numerics.safe_increment(state.count), output)
 
   return base.GradientTransformation(init_fn, update_fn)

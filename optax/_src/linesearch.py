@@ -830,7 +830,7 @@ def zoom_linesearch(
     failed = (iter_num + 1 >= max_linesearch_steps) & (~done)
 
     new_state = ZoomLinesearchState(
-        count=numerics.safe_int32_increment(iter_num),
+        count=numerics.safe_increment(iter_num),
         #
         params=params,
         updates=updates,
@@ -1002,7 +1002,7 @@ def zoom_linesearch(
     )
     failed = presumably_failed & ~done
     new_state = ZoomLinesearchState(
-        count=numerics.safe_int32_increment(iter_num),
+        count=numerics.safe_increment(iter_num),
         #
         params=params,
         updates=updates,

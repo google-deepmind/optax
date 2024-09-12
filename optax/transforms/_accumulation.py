@@ -109,7 +109,7 @@ def ema(
     del params
     updates = new_ema = otu.tree_update_moment(
         updates, state.ema, decay, order=1)
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     if debias:
       updates = otu.tree_bias_correction(new_ema, decay, count_inc)
     state_ema = otu.tree_cast(new_ema, accumulator_dtype)

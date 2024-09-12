@@ -23,13 +23,13 @@ Michael Eickenberg, Aaron Defazio and Robert M. Gower.
 from typing import NamedTuple, Optional
 
 import chex
-from jax import Array
+import jax
 from jax import lax
 import jax.numpy as jnp
 import jax.tree_util as tu
 from optax import tree_utils
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
 
 
 class MomoState(NamedTuple):
@@ -117,7 +117,7 @@ def momo(
       state: MomoState,
       params: Optional[base.Params],
       *,
-      value: Optional[Array] = None,
+      value: Optional[jax.Array] = None,
       **extra_args,
   ) -> tuple[base.Updates, MomoState]:
     del extra_args
@@ -172,7 +172,7 @@ def momo(
         barf=barf,
         gamma=gamma,
         lb=new_lb,
-        count=utils.safe_int32_increment(count),
+        count=numerics.safe_increment(count),
     )
     return p_update, new_state
 
@@ -271,7 +271,7 @@ def momo_adam(
       state: MomoAdamState,
       params: Optional[base.Params],
       *,
-      value: Optional[Array],
+      value: Optional[jax.Array],
       **extra_args,
   ) -> tuple[base.Updates, MomoAdamState]:
     del extra_args
@@ -336,7 +336,7 @@ def momo_adam(
         barf=barf,
         gamma=gamma,
         lb=new_lb,
-        count=utils.safe_int32_increment(count),
+        count=numerics.safe_increment(count),
     )
     return p_update, new_state
 

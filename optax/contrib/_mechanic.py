@@ -34,7 +34,7 @@ import jax.numpy as jnp
 
 from optax import tree_utils
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
 
 
 class MechanicState(NamedTuple):
@@ -130,7 +130,7 @@ def mechanize(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     new_neg_updates, base_optimizer_state = base_optimizer.update(
         updates, state.base_optimizer_state, params
     )

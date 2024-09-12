@@ -25,13 +25,13 @@ Numerical Stability
 .. currentmodule:: optax
 
 .. autosummary::
-    safe_int32_increment
+    safe_increment
     safe_norm
     safe_root_mean_squares
 
-Safe int32 increment
-~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: safe_int32_increment
+Safe increment
+~~~~~~~~~~~~~~
+.. autofunction:: safe_increment
 
 Safe norm
 ~~~~~~~~~
