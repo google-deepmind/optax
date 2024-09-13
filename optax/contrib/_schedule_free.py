@@ -145,6 +145,9 @@ def schedule_free(
       z = otu.tree_cast(params, dtype=state_dtype)
     else:
       z = params
+    # It's imporant to copy the params here so that z is a distinct array and
+    # we can donate both z and the params to JITted functions.
+    z = jax.tree_util.tree_map(lambda t: t.copy(), z)
     return ScheduleFreeState(
         b1=jnp.asarray(b1, dtype=params_dtype),
         weight_sum=jnp.zeros([], dtype=params_dtype),

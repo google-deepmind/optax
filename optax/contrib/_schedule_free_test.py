@@ -16,6 +16,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from functools import partial
 import chex
 import jax
 import jax.numpy as jnp
@@ -109,6 +110,22 @@ class ScheduleFreeTest(chex.TestCase):
     eval_params = _schedule_free.schedule_free_eval_params(state, params)
     chex.assert_equal_shape([params, eval_params])
     chex.assert_trees_all_equal_dtypes(params, eval_params)
+
+  def test_buffer_donation(self):
+    # Check that you can donate the params and optimizer state when doing a JIT
+    # update.
+    opt = _schedule_free.schedule_free_sgd()
+    initial_params, _, get_updates = _setup_parabola(jnp.float32)
+
+    @partial(jax.jit, donate_argnums=(0,1))
+    def step(params, state):
+      updates = get_updates(params)
+      updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    state = opt.init(initial_params)
+    _, _ = step(initial_params, state)
 
   @parameterized.product(
       params_dtype=('bfloat16', 'float32', 'complex64', None),
