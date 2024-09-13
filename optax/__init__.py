@@ -33,6 +33,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import ademamix
 from optax._src.alias import amsgrad
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -99,7 +100,6 @@ from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
-from optax._src.numerics import safe_increment
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -117,6 +117,7 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_ademamix
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
@@ -140,6 +141,7 @@ from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdemamixState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByLBFGSState
@@ -232,8 +234,12 @@ sigmoid_focal_loss = losses.sigmoid_focal_loss
 # pylint: disable=g-import-not-at-top
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
 # Deprecated modules
-from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
-from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import (
+    differentially_private_aggregate as _deprecated_differentially_private_aggregate,
+)
+from optax.contrib import (
+    DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState,
+)
 from optax.contrib import dpsgd as _deprecated_dpsgd
 
 _deprecations = {
@@ -266,17 +272,18 @@ _deprecations = {
 import typing as _typing
 
 if _typing.TYPE_CHECKING:
-  # pylint: disable=reimported
-  from optax.contrib import differentially_private_aggregate
-  from optax.contrib import DifferentiallyPrivateAggregateState
-  from optax.contrib import dpsgd
-  # pylint: enable=reimported
+    # pylint: disable=reimported
+    from optax.contrib import differentially_private_aggregate
+    from optax.contrib import DifferentiallyPrivateAggregateState
+    from optax.contrib import dpsgd
+
+    # pylint: enable=reimported
 
 else:
-  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
+    from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
 
-  __getattr__ = _deprecation_getattr(__name__, _deprecations)
-  del _deprecation_getattr
+    __getattr__ = _deprecation_getattr(__name__, _deprecations)
+    del _deprecation_getattr
 del _typing
 # pylint: enable=g-bad-import-order
 # pylint: enable=g-import-not-at-top
@@ -300,6 +307,7 @@ __all__ = (
     "add_noise",
     "AddDecayedWeightsState",
     "AddNoiseState",
+    "ademamix",
     "amsgrad",
     "apply_every",
     "apply_if_finite",
@@ -388,7 +396,6 @@ __all__ = (
     "radam",
     "rmsprop",
     "rprop",
-    "safe_increment",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
@@ -396,6 +403,7 @@ __all__ = (
     "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_ademamix",
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
@@ -421,6 +429,7 @@ __all__ = (
     "scale",
     "ScaleByAdaDeltaState",
     "ScaleByAdamState",
+    "ScaleByAdemamixState",
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",

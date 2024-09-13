@@ -12,6 +12,7 @@ Optimizers
     adamw
     adamax
     adamaxw
+    ademamix
     amsgrad
     fromage
     lamb
@@ -63,6 +64,10 @@ AdamaxW
 AdamW
 ~~~~~
 .. autofunction:: adamw
+
+Ademamix
+~~~~~
+.. autofunction:: ademamix
 
 AMSGrad
 ~~~~~~~
