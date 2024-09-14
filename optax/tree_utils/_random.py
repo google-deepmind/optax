@@ -14,13 +14,11 @@
 # ==============================================================================
 """Utilities to generate random pytrees."""
 
-from typing import Callable
+from typing import Callable, Optional
 
 import chex
 import jax
 from jax import tree_util as jtu
-
-from optax._src import base
 
 
 def _tree_rng_keys_split(
@@ -44,15 +42,24 @@ def tree_random_like(
     rng_key: chex.PRNGKey,
     target_tree: chex.ArrayTree,
     sampler: Callable[
-        [chex.PRNGKey, base.Shape], chex.Array
+        [chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array
     ] = jax.random.normal,
+    dtype: Optional[chex.ArrayDType] = None,
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.
+
+  .. warning::
+    The possible dtypes may be limited by the sampler, for example
+    ``jax.random.rademacher`` only supports integer dtypes and will raise an
+    error if the dtype of the target tree is not an integer or if the dtype
+    is not of integer type.
 
   Args:
     rng_key: the key for the random number generator.
     target_tree: the tree whose structure to match. Leaves must be arrays.
     sampler: the noise sampling function, by default ``jax.random.normal``.
+    dtype: the desired dtype for the random numbers, passed to ``sampler``. If
+      None, the dtype of the target tree is used if possible.
 
   Returns:
     a random tree with the same structure as ``target_tree``, whose leaves have
@@ -62,7 +69,7 @@ def tree_random_like(
   """
   keys_tree = _tree_rng_keys_split(rng_key, target_tree)
   return jtu.tree_map(
-      lambda l, k: sampler(k, l.shape),
+      lambda l, k: sampler(k, l.shape, dtype or l.dtype),
       target_tree,
       keys_tree,
   )
