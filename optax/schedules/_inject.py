@@ -197,7 +197,7 @@ def inject_hyperparams(
       ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
-          count=numerics.safe_int32_increment(state.count),
+          count=numerics.safe_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,
           inner_state=inner_state,
@@ -270,7 +270,7 @@ class WrappedSchedule:
       **extra_args,
   ) -> WrappedScheduleState:
     del extra_args
-    new_count = numerics.safe_int32_increment(state.count)
+    new_count = numerics.safe_increment(state.count)
     return WrappedScheduleState(count=new_count)
 
   def __call__(

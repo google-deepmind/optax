@@ -345,9 +345,9 @@ class MultiSteps:
 
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
-          mini_step=numerics.safe_int32_increment(state.mini_step) % k_steps,
+          mini_step=numerics.safe_increment(state.mini_step) % k_steps,
           gradient_step=emit
-          * numerics.safe_int32_increment(state.gradient_step)
+          * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jtu.tree_map(
               lambda st, nst: jnp.where(emit, nst, st),

@@ -111,6 +111,7 @@ def safe_increment(count: chex.Numeric) -> chex.Numeric:
   counter stays at ``max_val``.
 
   Examples:
+    >>> import jax.numpy as jnp
     >>> import optax
     >>> optax.safe_increment(jnp.asarray(1, dtype=jnp.int32))
     Array(2, dtype=int32)

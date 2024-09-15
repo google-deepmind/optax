@@ -102,7 +102,7 @@ def conditionally_transform(
         should_transform_fn(state.step, **condition_kwargs),
         do_update, reject_update, operand=None)
     return updates, ConditionallyTransformState(
-        new_inner_state, numerics.safe_int32_increment(state.step))
+        new_inner_state, numerics.safe_increment(state.step))
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -165,7 +165,7 @@ def conditionally_mask(
         do_update, reject_update, operand=None)
 
     return updates, ConditionallyMaskState(
-        step=numerics.safe_int32_increment(state.step),
+        step=numerics.safe_increment(state.step),
         inner_state=new_inner_state,
     )
 
@@ -230,7 +230,7 @@ def apply_if_finite(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
     notfinite_count = jnp.where(
         isfinite, jnp.zeros([], jnp.int32),
-        numerics.safe_int32_increment(state.notfinite_count))
+        numerics.safe_increment(state.notfinite_count))
 
     def do_update(_):
       return inner.update(updates, inner_state, params, **extra_args)
@@ -247,7 +247,7 @@ def apply_if_finite(
         last_finite=isfinite,
         total_notfinite=jnp.where(
             isfinite, state.total_notfinite,
-            numerics.safe_int32_increment(state.total_notfinite)),
+            numerics.safe_increment(state.total_notfinite)),
         inner_state=new_inner_state)
 
   return base.GradientTransformationExtraArgs(init=init, update=update)

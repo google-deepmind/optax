@@ -44,19 +44,21 @@ def _invalid_ord_axis_inputs(ord_axis_keepdims):
 class NumericsTest(chex.TestCase):
 
   @chex.all_variants
-  @parameterized.product(
-      str_dtype=[
-          "bfloat16",
-          "float16",
-          "float32",
-          "int8",
-          "int16",
-          "int32",
-      ]
-  )
-  def test_safe_increment(self, str_dtype):
+  @parameterized.parameters(*(
+      "bfloat16",
+      "float16",
+      "float32",
+      "float64",
+      "int8",
+      "int16",
+      "int32",
+      "int64",
+  ))
+  def test_safe_increment(self, dtype):
     """Tests that safe_increment works for all dtypes."""
-    dtype = jnp.dtype(str_dtype)
+    if dtype in ["float64", "int64"]:
+      jax.config.update("jax_enable_x64", True)
+    dtype = jnp.dtype(dtype)
     inc_fn = self.variant(numerics.safe_increment)
 
     with self.subTest("Increments correctly"):
@@ -75,6 +77,8 @@ class NumericsTest(chex.TestCase):
       base = jnp.asarray(max_val, dtype=dtype)
       incremented = inc_fn(base)
       np.testing.assert_array_equal(incremented, base)
+    if dtype in ["float64", "int64"]:
+      jax.config.update("jax_enable_x64", False)
 
   @parameterized.product(
       str_dtype=[

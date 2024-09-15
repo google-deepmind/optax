@@ -67,7 +67,7 @@ def scale_by_acprop(
     prediction_error = jtu.tree_map(lambda g, m: g - m, updates, state.mu)
     nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jtu.tree_map(lambda v: v + eps_root, nu)
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
 
     # On initial step, avoid division by zero and force nu_hat to be 1.
     initial = state.count == 0
