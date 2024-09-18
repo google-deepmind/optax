@@ -22,6 +22,7 @@ import chex
 import jax.numpy as jnp
 import jax.random as jrd
 import jax.tree_util as jtu
+import numpy as np
 from optax import tree_utils as otu
 
 # We consider samplers with varying input dtypes, we do not test all possible
@@ -47,6 +48,19 @@ def get_variable(type_var: str):
 
 
 class RandomTest(chex.TestCase):
+
+  def test_tree_split_key_like(self):
+    rng_key = jrd.PRNGKey(0)
+    tree = {'a': jnp.zeros(2), 'b': {'c': [jnp.ones(3), jnp.zeros([4, 5])]}}
+    keys_tree = otu.tree_split_key_like(rng_key, tree)
+
+    with self.subTest('Test structure matches'):
+      self.assertEqual(jtu.tree_structure(tree), jtu.tree_structure(keys_tree))
+
+    with self.subTest('Test random key split'):
+      fst = jnp.stack(jtu.tree_flatten(keys_tree)[0])
+      snd = jrd.split(rng_key, jtu.tree_structure(tree).num_leaves)
+      np.testing.assert_array_equal(fst, snd)
 
   @parameterized.product(
       _SAMPLER_DTYPES,

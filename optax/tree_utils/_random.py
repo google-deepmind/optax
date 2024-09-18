@@ -21,7 +21,7 @@ import jax
 from jax import tree_util as jtu
 
 
-def _tree_rng_keys_split(
+def tree_split_key_like(
     rng_key: chex.PRNGKey, target_tree: chex.ArrayTree
 ) -> chex.ArrayTree:
   """Split keys to match structure of target tree.
@@ -67,7 +67,7 @@ def tree_random_like(
 
   .. versionadded:: 0.2.1
   """
-  keys_tree = _tree_rng_keys_split(rng_key, target_tree)
+  keys_tree = tree_split_key_like(rng_key, target_tree)
   return jtu.tree_map(
       lambda l, k: sampler(k, l.shape, dtype or l.dtype),
       target_tree,
