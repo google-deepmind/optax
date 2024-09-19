@@ -18,6 +18,7 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax._src import linear_algebra
 from optax.transforms import _clipping
@@ -90,6 +91,32 @@ class ClippingTest(absltest.TestCase):
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None, params)
       chex.assert_trees_all_close(updates, updates_step)
+
+  def test_per_example_global_norm_clip(self):
+    grads = [  # 3 users, 2 components
+        jnp.array([
+            [0, -0.5],  # norm = sqrt(0^2 + 0.5^2 + 0^2)
+            [3, 4],  # norm = sqrt(3^2 + 4^2 + 5^2)
+            [5, 6],  # norm = sqrt(5^2 + 6^2 + 3^2)
+            [0, 0],  # norm = 0
+        ]),
+        jnp.array([[0], [5], [-3], [0]]),
+    ]
+    answer = [
+        jnp.array([0, -0.5])
+        + jnp.array([3, 4]) / jnp.sqrt(50)
+        + jnp.array([5, 6]) / jnp.sqrt(70),
+        jnp.array([0])
+        + jnp.array([5]) / jnp.sqrt(50)
+        + jnp.array([-3]) / jnp.sqrt(70),
+    ]
+    sum_clipped_grads, num_clipped = _clipping.per_example_global_norm_clip(
+        grads, l2_norm_clip=1.0
+    )
+
+    for actual, expected in zip(sum_clipped_grads, answer):
+      np.testing.assert_allclose(actual, expected, atol=1e-6)
+    self.assertEqual(num_clipped, 2)
 
   def test_per_example_layer_norm_clip(self):
     # Test data for a model with two layers and a batch size of 4. The
