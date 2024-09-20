@@ -19,9 +19,9 @@ from typing import Callable
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
+import jax
 import jax.numpy as jnp
 import jax.random as jrd
-import jax.tree_util as jtu
 from optax import tree_utils as otu
 
 # We consider samplers with varying input dtypes, we do not test all possible
@@ -43,7 +43,7 @@ def get_variable(type_var: str):
     return jnp.asarray([1.0 + 1j * 2.0, 3.0 + 4j * 5.0])
   if type_var == 'pytree':
     pytree = {'k1': 1.0, 'k2': (2.0, 3.0), 'k3': jnp.asarray([4.0, 5.0])}
-    return jtu.tree_map(jnp.asarray, pytree)
+    return jax.tree.map(jnp.asarray, pytree)
 
 
 class RandomTest(chex.TestCase):
@@ -70,13 +70,13 @@ class RandomTest(chex.TestCase):
         rng_key, target_tree, sampler=sampler, dtype=dtype
     )
 
-    flat_tree, tree_def = jtu.tree_flatten(target_tree)
+    flat_tree, tree_def = jax.tree.flatten(target_tree)
 
     with self.subTest('Test structure matches'):
-      self.assertEqual(tree_def, jtu.tree_structure(rand_tree))
+      self.assertEqual(tree_def, jax.tree.structure(rand_tree))
 
     with self.subTest('Test tree_random_like matches flat random like'):
-      flat_rand_tree, _ = jtu.tree_flatten(rand_tree)
+      flat_rand_tree, _ = jax.tree.flatten(rand_tree)
       keys = jrd.split(rng_key, tree_def.num_leaves)
       expected_flat_rand_tree = [
           sampler(key, x.shape, dtype or x.dtype)
@@ -86,7 +86,7 @@ class RandomTest(chex.TestCase):
 
     with self.subTest('Test dtype are as expected'):
       if dtype is not None:
-        for x in jtu.tree_leaves(rand_tree):
+        for x in jax.tree.leaves(rand_tree):
           self.assertEqual(x.dtype, dtype)
       else:
         chex.assert_trees_all_equal_dtypes(rand_tree, target_tree)

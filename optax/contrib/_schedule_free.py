@@ -40,7 +40,7 @@ class ScheduleFreeState(NamedTuple):
 
 def schedule_free_eval_params(state: ScheduleFreeState, params: base.Params):
   """Params for evaluation of :func:`optax.contrib.schedule_free`."""
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       lambda yi, zi: (yi - (1.0 - state.b1) * zi) / state.b1, params, state.z
   )
 
@@ -125,7 +125,7 @@ def schedule_free(
     if b1 == 0:
       raise ValueError(
           'The current implementation of schedule_free requires b1 > 0.')
-    z = jax.tree_util.tree_map(lambda t: t.astype(state_dtype), params)
+    z = jax.tree.map(lambda t: t.astype(state_dtype), params)
     return ScheduleFreeState(
         b1=jnp.array(b1, dtype=jnp.float32),
         weight_sum=jnp.zeros([], dtype=jnp.float32),
@@ -163,7 +163,7 @@ def schedule_free(
         params,
         **extra_args,
     )
-    z = jax.tree_util.tree_map(
+    z = jax.tree.map(
         lambda pi, ui: jnp.asarray(pi + ui).astype(jnp.asarray(pi).dtype),
         state.z,
         base_updates,
@@ -171,21 +171,21 @@ def schedule_free(
 
     # Important: recompute x to both save memory and maintain accurate x seq
     # especially if y is modified by another transform wrapped on top.
-    prev_x = jax.tree_util.tree_map(
+    prev_x = jax.tree.map(
         lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, state.z
     )
 
-    x = jax.tree_util.tree_map(
+    x = jax.tree.map(
         lambda xi, zi: (1.0 - ck) * xi + ck * zi,
         prev_x,
         z,
     )
-    new_params = jax.tree_util.tree_map(
+    new_params = jax.tree.map(
         lambda xi, zi: b1 * xi + (1.0 - b1) * zi,
         x,
         z,
     )
-    updates = jax.tree_util.tree_map(
+    updates = jax.tree.map(
         lambda npi, pi: npi - pi, new_params, params
     )
 

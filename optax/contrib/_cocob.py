@@ -20,8 +20,8 @@ Tatiana Tommasi.
 """
 from typing import Any, Callable, NamedTuple, Optional, Union
 
+import jax
 import jax.numpy as jnp
-import jax.tree_util as jtu
 from optax._src import base
 from optax._src import combine
 from optax._src import transform
@@ -58,8 +58,8 @@ def scale_by_cocob(
   """
 
   def init_fn(params):
-    init_adapt = jtu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    init_scale = jtu.tree_map(lambda p: eps * jnp.ones(p.shape), params)
+    init_adapt = jax.tree.map(lambda p: jnp.zeros(p.shape), params)
+    init_scale = jax.tree.map(lambda p: eps * jnp.ones(p.shape), params)
     return COCOBState(
         init_particles=params,
         cumulative_gradients=init_adapt,
@@ -71,24 +71,24 @@ def scale_by_cocob(
   def update_fn(updates, state, params):
     init_particles, cumulative_grads, scale, subgradients, reward = state
 
-    scale = jtu.tree_map(
+    scale = jax.tree.map(
         lambda L, c: jnp.maximum(L, jnp.abs(c)), scale, updates
     )
-    subgradients = jtu.tree_map(
+    subgradients = jax.tree.map(
         lambda G, c: G + jnp.abs(c), subgradients, updates
     )
-    reward = jtu.tree_map(
+    reward = jax.tree.map(
         lambda R, c, p, p0: jnp.maximum(R - c * (p - p0), 0),
         reward,
         updates,
         params,
         init_particles,
     )
-    cumulative_grads = jtu.tree_map(
+    cumulative_grads = jax.tree.map(
         lambda C, c: C - c, cumulative_grads, updates
     )
 
-    new_updates = jtu.tree_map(
+    new_updates = jax.tree.map(
         lambda p, p0, C, L, G, R: (
             -p + (p0 + C / (L * jnp.maximum(G + L, alpha * L)) * (L + R))
         ),

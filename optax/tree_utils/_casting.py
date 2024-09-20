@@ -17,7 +17,7 @@
 from typing import Optional
 
 import chex
-from jax import tree_util as jtu
+import jax
 
 
 def tree_cast(
@@ -26,6 +26,6 @@ def tree_cast(
 ) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None."""
   if dtype is not None:
-    return jtu.tree_map(lambda t: t.astype(dtype), tree)
+    return jax.tree.map(lambda t: t.astype(dtype), tree)
   else:
     return tree

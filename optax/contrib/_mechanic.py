@@ -148,7 +148,7 @@ def mechanize(
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi
 
-    updates = jax.tree_util.tree_map(
+    updates = jax.tree.map(
         add_weight_decay,
         updates,
         params,
@@ -156,13 +156,13 @@ def mechanize(
 
     # We use the memory efficient version of Mechanic where we re-compute
     # \Delta every iteration.
-    delta_prev = jax.tree_util.tree_map(
+    delta_prev = jax.tree.map(
         lambda xti, x0i: (x0i - xti) / (s_sum + eps), params, x0
     )
 
     # We actually want to add the updates, but since optax by default flips
     # signs when applying the learning rate, we substract instead.
-    delta = jax.tree_util.tree_map(
+    delta = jax.tree.map(
         lambda si, ui: si - ui, delta_prev, new_neg_updates
     )
 
@@ -183,10 +183,10 @@ def mechanize(
 
     # Once we have the scale factor s, we produce new params with it.
     new_x0 = x0
-    new_params = jax.tree_util.tree_map(
+    new_params = jax.tree.map(
         lambda x0, deltai: x0 - jnp.sum(s) * deltai, new_x0, delta
     )
-    new_neg_updates = jax.tree_util.tree_map(
+    new_neg_updates = jax.tree.map(
         lambda np, op: np - op, new_params, params
     )
 

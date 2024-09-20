@@ -73,8 +73,7 @@ class TransformTest(parameterized.TestCase):
         self.per_step_updates, state, params, **extra_args
     )
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_util.tree_map(
-        lambda *args: chex.assert_equal_shape(args), params, updates)
+    jax.tree.map(lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants
   def test_apply_every(self):
@@ -127,7 +126,7 @@ class TransformTest(parameterized.TestCase):
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-      manual_updates = jax.tree_util.tree_map(rescale, updates)
+      manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_trees_all_close(scaled_updates, manual_updates)
 

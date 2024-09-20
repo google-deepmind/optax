@@ -20,7 +20,7 @@ Asynchronous Update for Adaptive Gradient Methods" by Zhuang et al.
 """
 from typing import Any, Callable, Optional, Union
 
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -64,18 +64,18 @@ def scale_by_acprop(
   def update_fn(updates, state, params=None):
     del params
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
-    prediction_error = jtu.tree_map(lambda g, m: g - m, updates, state.mu)
+    prediction_error = jax.tree.map(lambda g, m: g - m, updates, state.mu)
     nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
-    nu = jtu.tree_map(lambda v: v + eps_root, nu)
+    nu = jax.tree.map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_increment(state.count)
 
     # On initial step, avoid division by zero and force nu_hat to be 1.
     initial = state.count == 0
     t = jnp.where(initial, count_inc, state.count)
     nu_hat = otu.tree_bias_correction(state.nu, b2, t)
-    nu_hat = jtu.tree_map(lambda x: jnp.where(initial, 1, x), nu_hat)
+    nu_hat = jax.tree.map(lambda x: jnp.where(initial, 1, x), nu_hat)
 
-    updates = jtu.tree_map(
+    updates = jax.tree.map(
         lambda m, v: m / (jnp.sqrt(v) + eps), updates, nu_hat
     )
     return updates, transform.ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)

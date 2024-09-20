@@ -48,7 +48,7 @@ class ComplexValuedTest(chex.TestCase):
     def do_update(loss_fun, optimizer, params, opt_state):
       loss, grads = jax.value_and_grad(loss_fun)(params)
       # Complex gradients need to be conjugated before being added to parameters
-      grads = jax.tree_util.tree_map(lambda x: x.conj(), grads)
+      grads = jax.tree.map(lambda x: x.conj(), grads)
       updates, opt_state = self.variant(optimizer.update)(
           grads, opt_state, params)
       params = update.apply_updates(params, updates)

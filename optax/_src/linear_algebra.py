@@ -34,7 +34,7 @@ def _normalize_tree(x):
 def global_norm(updates: base.PyTree) -> chex.Array:
   """Compute the global norm across a nested structure of tensors."""
   return jnp.sqrt(sum(
-      jnp.sum(numerics.abs_sq(x)) for x in jax.tree_util.tree_leaves(updates)))
+      jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates)))
 
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):

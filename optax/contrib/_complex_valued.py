@@ -103,16 +103,16 @@ def split_real_and_imaginary(
   """
 
   def init_fn(params):
-    params = jax.tree_util.tree_map(_complex_to_real_pair, params)
+    params = jax.tree.map(_complex_to_real_pair, params)
     inner_state = inner.init(params)
     return SplitRealAndImaginaryState(inner_state)
 
   def update_fn(updates, state, params=None):
     inner_state = state.inner_state
-    updates = jax.tree_util.tree_map(_complex_to_real_pair, updates)
-    params = jax.tree_util.tree_map(_complex_to_real_pair, params)
+    updates = jax.tree.map(_complex_to_real_pair, updates)
+    params = jax.tree.map(_complex_to_real_pair, params)
     updates, inner_state = inner.update(updates, inner_state, params)
-    updates = jax.tree_util.tree_map(
+    updates = jax.tree.map(
         _real_pair_to_complex,
         updates,
         is_leaf=lambda x: isinstance(x, SplitRealAndImaginaryArrays))

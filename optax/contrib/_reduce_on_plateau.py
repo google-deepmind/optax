@@ -179,7 +179,7 @@ def reduce_on_plateau(
         new_count == accumulation_size, _update_scale, lambda x: x, new_state
     )
 
-    updates = jax.tree_util.tree_map(lambda g: new_state.scale * g, updates)
+    updates = jax.tree.map(lambda g: new_state.scale * g, updates)
 
     return updates, new_state
 

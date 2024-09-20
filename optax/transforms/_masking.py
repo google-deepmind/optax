@@ -16,7 +16,7 @@
 
 from typing import Any, Callable, NamedTuple, Union
 
-from jax import tree_util as jtu
+import jax
 
 from optax._src import base
 from optax.tree_utils import _state_utils
@@ -31,7 +31,7 @@ class MaskedNode(NamedTuple):
   """A node used to mask out unspecified parts of a tree.
 
   This node is ignored when mapping functions across the tree e.g. using
-  `jtu.tree_map` since it is a container without children. It can
+  `jax.tree.map` since it is a container without children. It can
   therefore be used to mask out parts of a tree.
   """
 
@@ -39,7 +39,7 @@ class MaskedNode(NamedTuple):
 def _mask_callable(
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
 ):
-  callable_leaves = jtu.tree_leaves(jtu.tree_map(callable, mask))
+  callable_leaves = jax.tree.leaves(jax.tree.map(callable, mask))
   return (len(callable_leaves) > 0) and all(callable_leaves)  # pylint:disable=g-explicit-length-test
 
 
@@ -55,12 +55,12 @@ def masked(
   bias parameters. Since in many networks, these are the only 1D parameters,
   you may for instance create a mask function to mask them out as follows::
 
-    mask_fn = lambda p: jtu.tree_map(lambda x: x.ndim != 1, p)
+    mask_fn = lambda p: jax.tree.map(lambda x: x.ndim != 1, p)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask_fn)
 
   You may alternatively create the mask pytree upfront::
 
-    mask = jtu.tree_map(lambda x: x.ndim != 1, params)
+    mask = jax.tree.map(lambda x: x.ndim != 1, params)
     weight_decay = optax.masked(optax.add_decayed_weights(0.001), mask)
 
   For the ``inner`` transform, state will only be stored for the parameters that
@@ -87,7 +87,7 @@ def masked(
   inner = base.with_extra_args_support(inner)
 
   def mask_pytree(pytree, mask_tree):
-    return jtu.tree_map(
+    return jax.tree.map(
         lambda m, p: p if m else MaskedNode(), mask_tree, pytree
     )
 
@@ -95,11 +95,11 @@ def masked(
   # structure as params/updates, e.g. parameter tags. This function applies
   # the mask to those pytrees.
   def maybe_mask_values(pytree_dict, base_pytree, mask_tree):
-    base_structure = jtu.tree_structure(base_pytree)
+    base_structure = jax.tree.structure(base_pytree)
 
     def _maybe_mask(pytree):
       if mask_compatible_extra_args and (
-          jtu.tree_structure(pytree) == base_structure):
+          jax.tree.structure(pytree) == base_structure):
         return mask_pytree(pytree, mask_tree)
       else:
         return pytree
@@ -135,7 +135,7 @@ def masked(
     new_masked_updates, new_inner_state = inner.update(
         masked_updates, state.inner_state, masked_params, **masked_extra_args)
 
-    new_updates = jtu.tree_map(
+    new_updates = jax.tree.map(
         lambda m, new_u, old_u: new_u if m else old_u,
         mask_tree, new_masked_updates, updates)
     return new_updates, MaskedState(inner_state=new_inner_state)

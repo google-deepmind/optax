@@ -45,7 +45,7 @@ class ClippingTest(absltest.TestCase):
     clipper = _clipping.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
     chex.assert_trees_all_close(
-        clipped_updates, jax.tree_util.tree_map(jnp.ones_like, updates))
+        clipped_updates, jax.tree.map(jnp.ones_like, updates))
 
   def test_clip_by_block_rms(self):
     rmf_fn = lambda t: jnp.sqrt(jnp.mean(t**2))
@@ -81,11 +81,11 @@ class ClippingTest(absltest.TestCase):
 
       # Check that the clipper actually works and upd_norm is < c * param_norm.
       updates, _ = clipper.update(updates, None, params)
-      u_norm, p_norm = jax.tree_util.tree_map(
+      u_norm, p_norm = jax.tree.map(
           _clipping.unitwise_norm, (updates, params))
-      cmp = jax.tree_util.tree_map(
+      cmp = jax.tree.map(
           lambda u, p, c=clip_r: u - c * p < 1e-6, u_norm, p_norm)
-      for leaf in jax.tree_util.tree_leaves(cmp):
+      for leaf in jax.tree.leaves(cmp):
         self.assertTrue(leaf.all())
 
       # Check that continuously clipping won't cause numerical issues.

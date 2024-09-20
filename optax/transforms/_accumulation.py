@@ -17,8 +17,8 @@
 from typing import Any, Callable, NamedTuple, Optional, Protocol, Union
 
 import chex
+import jax
 from jax import lax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -63,8 +63,8 @@ def trace(
   def update_fn(updates, state, params=None):
     del params
     f = lambda g, t: g + decay * t
-    new_trace = jtu.tree_map(f, updates, state.trace)
-    updates = jtu.tree_map(f, updates, new_trace) if nesterov else new_trace
+    new_trace = jax.tree.map(f, updates, state.trace)
+    updates = jax.tree.map(f, updates, new_trace) if nesterov else new_trace
     new_trace = otu.tree_cast(new_trace, accumulator_dtype)
     return updates, TraceState(trace=new_trace)
 
@@ -165,7 +165,7 @@ def skip_not_finite(
   """
   del gradient_step, params
   all_is_finite = [jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-                   for p in jtu.tree_leaves(updates)]
+                   for p in jax.tree.leaves(updates)]
   num_not_finite = jnp.sum(jnp.array(all_is_finite))
   should_skip = num_not_finite > 0
   return should_skip, dict(should_skip=should_skip,
@@ -195,7 +195,7 @@ def skip_large_updates(
   """
   del gradient_step, params
   norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jtu.tree_leaves(updates)]))
+      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)]))
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, dict(should_skip=should_skip, norm_squared=norm_sq)
@@ -333,7 +333,7 @@ class MultiSteps:
 
     # Note: we do not enclose variables to allow JAX to re-use memory buffers.
     def _do_update(updates, state, params):
-      acc_grads = jtu.tree_map(
+      acc_grads = jax.tree.map(
           lambda upd, acc: self._acc_update(upd, acc, n_acc=state.mini_step),
           updates,
           state.acc_grads,
@@ -349,18 +349,18 @@ class MultiSteps:
           gradient_step=emit
           * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
-          inner_opt_state=jtu.tree_map(
+          inner_opt_state=jax.tree.map(
               lambda st, nst: jnp.where(emit, nst, st),
               state.inner_opt_state,
               new_inner_state,
           ),
-          acc_grads=jtu.tree_map(
+          acc_grads=jax.tree.map(
               lambda ga: (1 - emit) * ga, acc_grads
           ),
           skip_state=skip_state,
       )
 
-      final_updates = jtu.tree_map(
+      final_updates = jax.tree.map(
           lambda ga: emit * ga, final_updates
       )
       return final_updates, new_state

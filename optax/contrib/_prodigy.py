@@ -21,8 +21,8 @@ adapts the learning rate faster.
 """
 from typing import NamedTuple, Optional
 import chex
+import jax
 import jax.numpy as jnp
-import jax.tree_util as tu
 from optax import tree_utils
 from optax._src import base
 from optax._src import numerics
@@ -87,9 +87,9 @@ def prodigy(
     beta3 = beta2**0.5
 
   def init_fn(params: base.Params) -> ProdigyState:
-    exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    grad_sum = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    exp_avg = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    exp_avg_sq = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    grad_sum = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     params0 = params
     estim_lr = jnp.asarray(estim_lr0, jnp.float32)
     numerator_weighted = jnp.zeros((), jnp.float32)
@@ -119,31 +119,31 @@ def prodigy(
     numerator_weighted = state.numerator_weighted
     bc = ((1 - beta2 ** (count + 1)) ** 0.5) / (1 - beta1 ** (count + 1))
     dlr = estim_lr * sched * bc
-    dg = tu.tree_map(lambda g: estim_lr * g, updates)
-    param_diff = tu.tree_map(lambda p0, p: p0 - p, params0, params)
+    dg = jax.tree.map(lambda g: estim_lr * g, updates)
+    param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
     numerator_acum = tree_utils.tree_vdot(updates, param_diff)
-    exp_avg = tu.tree_map(
+    exp_avg = jax.tree.map(
         lambda ea, dgk: beta1 * ea + (1 - beta1) * dgk, state.exp_avg, dg
     )
-    exp_avg_sq = tu.tree_map(
+    exp_avg_sq = jax.tree.map(
         lambda eas, dgk: beta2 * eas + (1 - beta2) * dgk * dgk,
         state.exp_avg_sq,
         dg,
     )
     if safeguard_warmup:
-      grad_sum = tu.tree_map(
+      grad_sum = jax.tree.map(
           lambda sk, dgk: beta3 * sk + estim_lr * dgk / estim_lr0, grad_sum, dg
       )
     else:
-      grad_sum = tu.tree_map(
+      grad_sum = jax.tree.map(
           lambda sk, dgk: beta3 * sk + dlr * dgk / estim_lr0, grad_sum, dg
       )
     numerator_weighted = beta3 * numerator_weighted
     numerator_weighted += (estim_lr / estim_lr0) * dlr * numerator_acum
-    denominator = tree_utils.tree_sum(tu.tree_map(jnp.abs, grad_sum))
+    denominator = tree_utils.tree_sum(jax.tree.map(jnp.abs, grad_sum))
     lr_estimate = estim_lr_coef * numerator_weighted / denominator
     estim_lr = jnp.maximum(state.estim_lr, lr_estimate)
-    p_update = tu.tree_map(
+    p_update = jax.tree.map(
         lambda ea, eas, p: -weight_decay * dlr * p
         - dlr * ea / (jnp.sqrt(eas) + estim_lr * eps),
         exp_avg,

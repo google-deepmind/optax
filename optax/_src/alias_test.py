@@ -24,7 +24,6 @@ import jax
 from jax import flatten_util
 import jax.numpy as jnp
 import jax.random as jrd
-import jax.tree_util as jtu
 import numpy as np
 
 from optax._src import alias
@@ -153,7 +152,7 @@ class AliasTest(chex.TestCase):
       value, updates = jax.value_and_grad(objective)(params)
       # Complex gradients need to be conjugated before being added to parameters
       # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
-      updates = jax.tree_util.tree_map(lambda x: x.conj(), updates)
+      updates = jax.tree.map(lambda x: x.conj(), updates)
       if opt_name == 'polyak_sgd':
         update_kwargs = {'value': value}
       else:
@@ -548,11 +547,11 @@ class LBFGSTest(chex.TestCase):
     )
 
     flat_dws = [
-        flatten_util.ravel_pytree(jtu.tree_map(lambda dw: dw[i], dws))[0]  # pylint: disable=cell-var-from-loop
+        flatten_util.ravel_pytree(jax.tree.map(lambda dw: dw[i], dws))[0]  # pylint: disable=cell-var-from-loop
         for i in range(m)
     ]
     flat_dus = [
-        flatten_util.ravel_pytree(jtu.tree_map(lambda du: du[i], dus))[0]  # pylint: disable=cell-var-from-loop
+        flatten_util.ravel_pytree(jax.tree.map(lambda du: du[i], dus))[0]  # pylint: disable=cell-var-from-loop
         for i in range(m)
     ]
     flat_dws, flat_dus = jnp.stack(flat_dws), jnp.stack(flat_dus)
@@ -631,7 +630,7 @@ class LBFGSTest(chex.TestCase):
       )
 
     def fun(x):
-      return otu.tree_sum(jtu.tree_map(fun_, x))
+      return otu.tree_sum(jax.tree.map(fun_, x))
 
     key = jrd.PRNGKey(0)
     init_array = jrd.normal(key, (2, 4))
@@ -677,7 +676,7 @@ class LBFGSTest(chex.TestCase):
     def fun(weights):
       inputs, labels = data
       logits = jnp.dot(inputs, weights)
-      losses = jtu.tree_map(
+      losses = jax.tree.map(
           lambda z, y: jax.nn.softplus(jnp.where(y, -z, z)), logits, labels
       )
       return jnp.mean(losses)
