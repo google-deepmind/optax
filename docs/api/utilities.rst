@@ -101,6 +101,7 @@ Tree
     tree_mul
     tree_ones_like
     tree_random_like
+    tree_split_key_like
     tree_scalar_mul
     tree_set
     tree_sub
@@ -152,6 +153,10 @@ Tree multiply
 Tree ones like
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_ones_like
+
+Tree with random keys
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_split_key_like
 
 Tree with random values
 ~~~~~~~~~~~~~~~~~~~~~~~
