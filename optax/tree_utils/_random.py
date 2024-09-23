@@ -18,7 +18,6 @@ from typing import Callable, Optional
 
 import chex
 import jax
-from jax import tree_util as jtu
 
 
 def tree_split_key_like(
@@ -33,9 +32,9 @@ def tree_split_key_like(
   Returns:
     a tree of rng keys.
   """
-  tree_def = jtu.tree_structure(target_tree)
+  tree_def = jax.tree.structure(target_tree)
   keys = jax.random.split(rng_key, tree_def.num_leaves)
-  return jtu.tree_unflatten(tree_def, keys)
+  return jax.tree.unflatten(tree_def, keys)
 
 
 def tree_random_like(
@@ -68,8 +67,8 @@ def tree_random_like(
   .. versionadded:: 0.2.1
   """
   keys_tree = tree_split_key_like(rng_key, target_tree)
-  return jtu.tree_map(
-      lambda l, k: sampler(k, l.shape, dtype or l.dtype),
+  return jax.tree.map(
+      lambda leaf, key: sampler(key, leaf.shape, dtype or leaf.dtype),
       target_tree,
       keys_tree,
   )

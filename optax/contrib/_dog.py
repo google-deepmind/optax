@@ -27,7 +27,6 @@ from typing import Any, Callable, NamedTuple, Optional, Union
 import chex
 import jax
 import jax.numpy as jnp
-import jax.tree_util as jtu
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import combine
@@ -106,7 +105,7 @@ def scale_by_dog(
     curr_distance = jnp.where(
         state.first_step, reps_rel * (1 + curr_distance), curr_distance
     )
-    init_params = jtu.tree_map(
+    init_params = jax.tree.map(
         lambda p, ip: jnp.where(state.first_step, p, ip),
         params,
         state.init_params,

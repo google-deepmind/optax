@@ -17,7 +17,7 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -37,11 +37,11 @@ class CastingTest(parameterized.TestCase):
   def test_tree_cast(self, dtype, b, c, new_b, new_c):
     def _build_tree(val1, val2):
       dict_tree = {'a': {'b': jnp.array(val1)}, 'c': jnp.array(val2)}
-      return jtu.tree_map(lambda x: x, dict_tree)
+      return jax.tree.map(lambda x: x, dict_tree)
 
     tree = _build_tree(b, c)
     tree = otu.tree_cast(tree, dtype=dtype)
-    jtu.tree_map(
+    jax.tree.map(
         np.testing.assert_array_equal, tree, _build_tree(new_b, new_c)
     )
 

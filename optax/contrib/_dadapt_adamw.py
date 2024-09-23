@@ -20,8 +20,8 @@ Mishchenko (ICML 2023 Outstanding Paper award).
 """
 from typing import NamedTuple, Optional
 import chex
+import jax
 import jax.numpy as jnp
-import jax.tree_util as tu
 from optax import tree_utils
 from optax._src import base
 from optax._src import numerics
@@ -72,9 +72,9 @@ def dadapt_adamw(
   """
 
   def init_fn(params: base.Params) -> DAdaptAdamWState:
-    exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
-    grad_sum = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    exp_avg = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    exp_avg_sq = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    grad_sum = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     estim_lr = jnp.asarray(estim_lr0, jnp.float32)
     numerator_weighted = jnp.zeros([], jnp.float32)
     count = jnp.zeros([], jnp.int32)
@@ -97,28 +97,28 @@ def dadapt_adamw(
     numerator_weighted = state.numerator_weighted
     bc = ((1 - beta2 ** (count + 1)) ** 0.5) / (1 - beta1 ** (count + 1))
     dlr = state.estim_lr * sched * bc
-    s_weighted = tu.tree_map(
+    s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )
     numerator_acum = tree_utils.tree_vdot(updates, s_weighted)
-    exp_avg = tu.tree_map(
+    exp_avg = jax.tree.map(
         lambda ea, g: beta1 * ea + (1 - beta1) * dlr * g, state.exp_avg, updates
     )
-    exp_avg_sq = tu.tree_map(
+    exp_avg_sq = jax.tree.map(
         lambda eas, g: beta2 * eas + (1 - beta2) * g * g,
         state.exp_avg_sq,
         updates,
     )
-    grad_sum = tu.tree_map(
+    grad_sum = jax.tree.map(
         lambda sk, g: sb2 * sk + (1 - sb2) * dlr * g, grad_sum, updates
     )
-    grad_sum_l1 = tree_utils.tree_sum(tu.tree_map(jnp.abs, grad_sum))
+    grad_sum_l1 = tree_utils.tree_sum(jax.tree.map(jnp.abs, grad_sum))
     numerator_weighted = (
         sb2 * numerator_weighted + (1 - sb2) * dlr * numerator_acum
     )
     d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
     estim_lr = jnp.maximum(state.estim_lr, d_estimate)
-    p_update = tu.tree_map(
+    p_update = jax.tree.map(
         lambda ea, eas, p: -weight_decay * dlr * p - ea / (jnp.sqrt(eas) + eps),
         exp_avg,
         exp_avg_sq,

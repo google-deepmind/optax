@@ -21,7 +21,6 @@ import chex
 
 import jax
 from jax import flatten_util
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 
@@ -40,7 +39,7 @@ def projection_non_negative(pytree: Any) -> Any:
   Returns:
     projected pytree, with the same structure as ``pytree``.
   """
-  return jtu.tree_map(jax.nn.relu, pytree)
+  return jax.tree.map(jax.nn.relu, pytree)
 
 
 def _clip_safe(leaf, lower, upper):
@@ -66,7 +65,7 @@ def projection_box(pytree: Any, lower: Any, upper: Any) -> Any:
   Returns:
     projected pytree, with the same structure as ``pytree``.
   """
-  return jtu.tree_map(_clip_safe, pytree, lower, upper)
+  return jax.tree.map(_clip_safe, pytree, lower, upper)
 
 
 def projection_hypercube(pytree: Any, scale: Any = 1.0) -> Any:

@@ -20,7 +20,6 @@ https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 
 import chex
 import jax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -68,7 +67,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
           jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
       return u / clip_denom
 
-    updates = jtu.tree_map(_clip_fn, updates)
+    updates = jax.tree.map(_clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
@@ -94,14 +93,14 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analysed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
-    # updates = jtu.tree_map(lambda t: (t / g_norm) * max_norm, updates)
+    # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
     chex.assert_shape(trigger, ())  # A scalar.
 
     def clip_fn(t):
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
 
-    updates = jtu.tree_map(clip_fn, updates)
+    updates = jax.tree.map(clip_fn, updates)
     return updates, state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
@@ -292,12 +291,12 @@ def adaptive_grad_clip(clipping: float,
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    g_norm, p_norm = jtu.tree_map(unitwise_norm, (updates, params))
+    g_norm, p_norm = jax.tree.map(unitwise_norm, (updates, params))
     # Maximum allowable norm.
-    max_norm = jtu.tree_map(
+    max_norm = jax.tree.map(
         lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
-    updates = jtu.tree_map(unitwise_clip, g_norm, max_norm, updates)
+    updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)

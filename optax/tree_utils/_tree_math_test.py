@@ -20,7 +20,6 @@ from absl.testing import parameterized
 import chex
 import jax
 from jax import flatten_util
-from jax import tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
 
@@ -44,8 +43,8 @@ class TreeUtilsTest(parameterized.TestCase):
     self.array_a = rng.randn(20) + 1j * rng.randn(20)
     self.array_b = rng.randn(20)
 
-    self.tree_a_dict_jax = jtu.tree_map(jnp.array, self.tree_a_dict)
-    self.tree_b_dict_jax = jtu.tree_map(jnp.array, self.tree_b_dict)
+    self.tree_a_dict_jax = jax.tree.map(jnp.array, self.tree_a_dict)
+    self.tree_b_dict_jax = jax.tree.map(jnp.array, self.tree_b_dict)
 
     self.data = dict(
         tree_a=self.tree_a,

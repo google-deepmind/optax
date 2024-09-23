@@ -150,7 +150,7 @@ def _scale_gradient_fwd(
 def _scale_gradient_bwd(
     scale: float, g: chex.ArrayTree
 ) -> tuple[chex.ArrayTree, None]:
-  return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
+  return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)

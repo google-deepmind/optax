@@ -26,7 +26,6 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-import jax.tree_util as tu
 from optax import tree_utils
 from optax._src import base
 from optax._src import numerics
@@ -105,7 +104,7 @@ def momo(
   """
 
   def init_fn(params: base.Params) -> MomoState:
-    exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
+    exp_avg = jax.tree.map(lambda p: jnp.zeros(p.shape), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
     init_lb = jnp.array(lower_bound, jnp.float32)
@@ -130,7 +129,7 @@ def momo(
     # initialize at first gradient, and loss
     bt = lax.cond(count == 0, lambda: 0.0, lambda: beta)
     barf = bt * state.barf + (1 - bt) * value
-    exp_avg = tu.tree_map(
+    exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
     )
     gamma = bt * state.gamma + (1 - bt) * tree_utils.tree_vdot(updates, params)
@@ -155,7 +154,7 @@ def momo(
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps, lambda: 0.0, lambda: t1)
     tau = jnp.minimum(alpha, t1)
-    p_update = tu.tree_map(
+    p_update = jax.tree.map(
         lambda ea, p: -(alpha * weight_decay) / (1 + alpha * weight_decay) * p
         - tau * ea,
         exp_avg,
@@ -258,8 +257,8 @@ def momo_adam(
   """
 
   def init_fn(params: base.Params) -> MomoAdamState:
-    exp_avg = tu.tree_map(lambda p: jnp.zeros(p.shape), params)
-    exp_avg_sq = tu.tree_map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
+    exp_avg = jax.tree.map(lambda p: jnp.zeros(p.shape), params)
+    exp_avg_sq = jax.tree.map(lambda p: jnp.zeros(p.shape, jnp.float32), params)
     barf = jnp.zeros([], jnp.float32)
     gamma = jnp.zeros([], jnp.float32)
     init_lb = jnp.array(lower_bound, jnp.float32)
@@ -282,17 +281,19 @@ def momo_adam(
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
     barf = b1 * state.barf + (1 - b1) * value
-    exp_avg = tu.tree_map(
+    exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
     )
-    exp_avg_sq = tu.tree_map(
+    exp_avg_sq = jax.tree.map(
         lambda eas, g: b2 * eas + (1 - b2) * g * g,
         state.exp_avg_sq,
         updates,
     )
     bc2 = 1 - b2 ** (count + 1)
-    precond = tu.tree_map(lambda eas: eps + jnp.sqrt(eas / bc2), exp_avg_sq)
-    exp_avg_weighted = tu.tree_map(lambda ea, prec: ea / prec, exp_avg, precond)
+    precond = jax.tree.map(lambda eas: eps + jnp.sqrt(eas / bc2), exp_avg_sq)
+    exp_avg_weighted = jax.tree.map(
+        lambda ea, prec: ea / prec, exp_avg, precond
+    )
     exp_avg_norm = tree_utils.tree_vdot(exp_avg, exp_avg_weighted)
     gamma = b1 * state.gamma + (1 - b1) * tree_utils.tree_vdot(updates, params)
     iprod = tree_utils.tree_vdot(exp_avg, params)
@@ -316,7 +317,7 @@ def momo_adam(
     # if denom is zero, take no step
     t1 = lax.cond(exp_avg_norm <= jnp.finfo(float).eps, lambda: 0.0, lambda: t1)
     tau = jnp.minimum(alpha / bc1, t1)
-    p_update = tu.tree_map(
+    p_update = jax.tree.map(
         lambda ea, prec, p: -(alpha * weight_decay)
         / (1 + alpha * weight_decay)
         * p

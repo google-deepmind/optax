@@ -149,13 +149,13 @@ def tree_map_params(
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
-      return jax.tree_util.tree_map(f, value, *rest, is_leaf=is_leaf)
+      return jax.tree.map(f, value, *rest, is_leaf=is_leaf)
     elif transform_non_params is not None:
       return transform_non_params(value)
     else:
       return value
 
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       map_params,
       state_with_placeholders,
       state,
@@ -518,7 +518,7 @@ def tree_set(
 
   # Mimics jax.tree_util.tree_map_with_path(_replace, tree, is_leaf)
   # except that the paths we consider can contain NamedTupleKeys
-  _, treedef = jax.tree_util.tree_flatten(tree, is_leaf=has_any_key)
+  _, treedef = jax.tree.flatten(tree, is_leaf=has_any_key)
   tree_leaves_with_path = _tree_leaves_with_named_tuple_path(
       tree, is_leaf=has_any_key
   )

@@ -17,7 +17,7 @@
 from absl.testing import absltest
 
 import chex
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
 
 from optax.transforms import _adding
@@ -78,7 +78,7 @@ class AddingTest(chex.TestCase):
     state_unit = noise_unit.init(params)
 
     # Check the noise itself by adding it to zeros.
-    updates = jtu.tree_map(jnp.zeros_like, params)
+    updates = jax.tree.map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
       updates_i, state = self.variant(noise.update)(updates, state)
@@ -86,7 +86,7 @@ class AddingTest(chex.TestCase):
 
       scale = jnp.sqrt(eta / i**gamma)
 
-      updates_i_rescaled = jtu.tree_map(
+      updates_i_rescaled = jax.tree.map(
           lambda g, s=scale: g * s, updates_i_unit)
 
       chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)

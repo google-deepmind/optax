@@ -65,14 +65,14 @@ def differentially_private_aggregate(
 
   def update_fn(updates, state, params=None):
     del params
-    grads_flat, grads_treedef = jax.tree_util.tree_flatten(updates)
+    grads_flat, grads_treedef = jax.tree.flatten(updates)
     bsize = grads_flat[0].shape[0]
     clipped, _ = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [(g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
               for g, r in zip(clipped, rngs)]
-    return (jax.tree_util.tree_unflatten(grads_treedef, noised),
+    return (jax.tree.unflatten(grads_treedef, noised),
             DifferentiallyPrivateAggregateState(rng_key=new_key))
 
   return base.GradientTransformation(init_fn, update_fn)

@@ -28,7 +28,7 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   then returns the updated parameters to the caller. As an example, the update
   may be a gradient transformed by a sequence of`GradientTransformations`. This
   function is exposed for convenience, but it just adds updates and parameters;
-  you may also apply updates to parameters manually, using `tree_map`
+  you may also apply updates to parameters manually, using `jax.tree.map`
   (e.g. if you want to manipulate updates in custom ways before applying them).
 
   Args:
@@ -39,7 +39,7 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   Returns:
     Updated parameters, with same structure, shape and type as `params`.
   """
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       lambda p, u: jnp.asarray(p + u).astype(jnp.asarray(p).dtype),
       params, updates)
 
@@ -65,7 +65,7 @@ def incremental_update(
   Returns:
     an updated moving average `step_size*new+(1-step_size)*old` of the params.
   """
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       lambda new, old: step_size * new + (1.0 - step_size) * old,
       new_tensors, old_tensors)
 

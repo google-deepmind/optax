@@ -59,21 +59,21 @@ class ScaleGradientTest(parameterized.TestCase):
   def test_scale_gradient_pytree(self, scale):
     def fn(inputs):
       outputs = utils.scale_gradient(inputs, scale)
-      outputs = jax.tree_util.tree_map(lambda x: x**2, outputs)
-      return sum(jax.tree_util.tree_leaves(outputs))
+      outputs = jax.tree.map(lambda x: x**2, outputs)
+      return sum(jax.tree.leaves(outputs))
 
     inputs = dict(a=-1.0, b=dict(c=(2.0,), d=0.0))
 
     grad = jax.grad(fn)
     grads = grad(inputs)
-    jax.tree_util.tree_map(
+    jax.tree.map(
         lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads
     )
     self.assertEqual(
         fn(inputs),
         sum(
-            jax.tree_util.tree_leaves(
-                jax.tree_util.tree_map(lambda x: x**2, inputs)
+            jax.tree.leaves(
+                jax.tree.map(lambda x: x**2, inputs)
             )
         ),
     )

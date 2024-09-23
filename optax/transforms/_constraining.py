@@ -16,7 +16,7 @@
 
 from typing import Any, NamedTuple
 
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
 
 from optax._src import base
@@ -47,7 +47,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    updates = jtu.tree_map(
+    updates = jax.tree.map(
         lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
     return updates, state
 
@@ -79,14 +79,14 @@ def zero_nans() -> base.GradientTransformation:
 
   def init_fn(params):
     return ZeroNansState(
-        found_nan=jtu.tree_map(
+        found_nan=jax.tree.map(
             lambda p: jnp.array(False, dtype=jnp.bool_), params))
 
   def update_fn(updates, opt_state, params=None):
     del params, opt_state
     opt_state = ZeroNansState(
-        found_nan=jtu.tree_map(lambda p: jnp.any(jnp.isnan(p)), updates))
-    updates = jtu.tree_map(
+        found_nan=jax.tree.map(lambda p: jnp.any(jnp.isnan(p)), updates))
+    updates = jax.tree.map(
         lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
     return updates, opt_state
 

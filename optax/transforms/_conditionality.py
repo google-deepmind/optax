@@ -17,8 +17,8 @@
 from typing import Any, NamedTuple, Protocol
 
 import chex
+import jax
 from jax import lax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -225,7 +225,7 @@ def apply_if_finite(
 
   def update(updates, state, params=None, **extra_args):
     inner_state = state.inner_state
-    flat_updates = jtu.tree_flatten(updates)[0]
+    flat_updates = jax.tree.flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
     notfinite_count = jnp.where(

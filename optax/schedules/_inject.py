@@ -151,7 +151,7 @@ def inject_hyperparams(
       count = jnp.zeros([], jnp.int32)
       if hyperparam_dtype is None:
         dtype = getattr(
-            next(iter(jax.tree_util.tree_leaves(params)), None), 'dtype', None
+            next(iter(jax.tree.leaves(params)), None), 'dtype', None
         )
       else:
         dtype = hyperparam_dtype
@@ -174,7 +174,7 @@ def inject_hyperparams(
     def update_fn(updates, state, params=None, **extra_args):
       if hyperparam_dtype is None:
         dtype = getattr(
-            next(iter(jax.tree_util.tree_leaves(updates)), None), 'dtype', None
+            next(iter(jax.tree.leaves(updates)), None), 'dtype', None
         )
       else:
         dtype = hyperparam_dtype

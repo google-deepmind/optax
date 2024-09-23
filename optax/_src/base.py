@@ -262,7 +262,7 @@ def set_to_zero() -> GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params  # Unused by the zero transform.
-    return jax.tree_util.tree_map(jnp.zeros_like, updates), state
+    return jax.tree.map(jnp.zeros_like, updates), state
 
   return GradientTransformation(init_empty_state, update_fn)
 
@@ -297,7 +297,7 @@ def stateless_with_tree_map(
 
   This wrapper eliminates the boilerplate needed to create a transformation that
   does not require saved state between iterations, just like optax.stateless.
-  In addition, this function will apply the tree_map over update/params for you.
+  In addition, this function will apply the tree map over update/params for you.
 
   Args:
     f: Update function that takes in an update array (e.g. gradients) and
@@ -311,10 +311,10 @@ def stateless_with_tree_map(
   def update_fn(updates, state, params=None):
     del state
     if params is not None:
-      return jax.tree_util.tree_map(f, updates, params), EmptyState()
+      return jax.tree.map(f, updates, params), EmptyState()
     else:
       f_ = lambda u: f(u, None)
-      return jax.tree_util.tree_map(f_, updates), EmptyState()
+      return jax.tree.map(f_, updates), EmptyState()
 
   return GradientTransformation(init_empty_state, update_fn)
 
