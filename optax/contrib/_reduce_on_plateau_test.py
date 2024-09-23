@@ -57,6 +57,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     state = self.transform.init(self.updates['params'])
 
     # Wait until patience runs out
+    updates = self.updates
     for _ in range(self.patience + 1):
       updates, state = self.transform.update(
           updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
@@ -91,12 +92,12 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # State with positive plateau_count
     state = _reduce_on_plateau.ReduceLROnPlateauState(
-        best_value=jnp.array(1.0, dtype=jnp.float32),
+        best_value=jnp.array(1.0),
         plateau_count=jnp.array(3, dtype=jnp.int32),
-        scale=jnp.array(0.1, dtype=jnp.float32),
+        scale=jnp.array(0.1),
         cooldown_count=jnp.array(0, dtype=jnp.int32),
         count=jnp.array(0, dtype=jnp.int32),
-        avg_value=jnp.array(0.0, dtype=jnp.float32),
+        avg_value=jnp.array(0.0),
     )
 
     # Update with better value
@@ -119,12 +120,12 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # State with positive cooldown_count
     state = _reduce_on_plateau.ReduceLROnPlateauState(
-        best_value=jnp.array(1.0, dtype=jnp.float32),
+        best_value=jnp.array(1.0),
         plateau_count=jnp.array(0, dtype=jnp.int32),
-        scale=jnp.array(0.1, dtype=jnp.float32),
+        scale=jnp.array(0.1),
         cooldown_count=jnp.array(3, dtype=jnp.int32),
         count=jnp.array(0, dtype=jnp.int32),
-        avg_value=jnp.array(0.0, dtype=jnp.float32),
+        avg_value=jnp.array(0.0),
     )
 
     # Update with worse value
@@ -151,15 +152,16 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # State with scale == min_scale
     state = _reduce_on_plateau.ReduceLROnPlateauState(
-        best_value=jnp.array(1.0, dtype=jnp.float32),
+        best_value=jnp.array(1.0),
         plateau_count=jnp.array(0, dtype=jnp.int32),
-        scale=jnp.array(0.01, dtype=jnp.float32),
+        scale=jnp.array(0.01),
         cooldown_count=jnp.array(0, dtype=jnp.int32),
         count=jnp.array(0, dtype=jnp.int32),
-        avg_value=jnp.array(0.0, dtype=jnp.float32),
+        avg_value=jnp.array(0.0),
     )
 
     # Wait until patience runs out
+    updates = self.updates
     for _ in range(self.patience + 1):
       updates, state = self.transform.update(
           updates=self.updates, state=state, value=0.1,

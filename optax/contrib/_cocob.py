@@ -25,6 +25,7 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import combine
 from optax._src import transform
+import optax.tree_utils as otu
 
 
 class COCOBState(NamedTuple):
@@ -58,8 +59,9 @@ def scale_by_cocob(
   """
 
   def init_fn(params):
-    init_adapt = jax.tree.map(lambda p: jnp.zeros(p.shape), params)
-    init_scale = jax.tree.map(lambda p: eps * jnp.ones(p.shape), params)
+    init_adapt = otu.tree_zeros_like(params)
+    init_scale = otu.tree_ones_like(params)
+    init_scale = otu.tree_scalar_mul(eps, init_scale)
     return COCOBState(
         init_particles=params,
         cumulative_gradients=init_adapt,

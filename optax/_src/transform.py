@@ -293,11 +293,17 @@ def scale_by_adam(
 
   Returns:
     A `GradientTransformation` object.
+
+  Raises:
+    ValueError: If the selected ``mu_dtype`` induces a dtype promotion of the
+    dtypes of the parameters.
   """
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
+    if mu_dtype is not None:
+      otu.tree_assert_dtype_preserved(params, mu_dtype)
     mu = otu.tree_zeros_like(params, dtype=mu_dtype)  # First moment
     nu = otu.tree_zeros_like(params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
@@ -716,14 +722,15 @@ def scale_by_radam(
     A `GradientTransformation` object.
   """
 
-  ro_inf = 2./(1 - b2) - 1
-  def _radam_update(params):
-    ro = params[0]
-    mu_hat = params[1]
-    nu_hat = params[2]
-    r = jnp.sqrt((ro - 4)*(ro - 2)*ro_inf/((ro_inf - 4)*(ro_inf - 2)*ro))
+  ro_inf = 2./(1. - b2) - 1.
+
+  def _radam_update(ro, mu_hat, nu_hat):
+    r = jnp.sqrt((ro - 4.)*(ro - 2.)*ro_inf/((ro_inf - 4.)*(ro_inf - 2.)*ro))
     updates = jax.tree.map(
-        lambda m, v: r*m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+        lambda m, v: r.astype(m.dtype) * m / (jnp.sqrt(v + eps_root) + eps),
+        mu_hat,
+        nu_hat,
+    )
     return updates
 
   def init_fn(params):
@@ -749,7 +756,7 @@ def scale_by_radam(
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
         lambda t, f: jnp.where(ro >= threshold, t, f),
-        _radam_update((ro, mu_hat, nu_hat)),
+        _radam_update(ro, mu_hat, nu_hat),
         mu_hat,
     )
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -1050,7 +1057,7 @@ def scale_by_sm3(
   """
 
   def zeros_for_dim(p):
-    return [jnp.zeros([s]) for s in p.shape]
+    return [jnp.zeros([s], dtype=p.dtype) for s in p.shape]
 
   def init_fn(params):
     _reject_complex(params)
@@ -1136,8 +1143,8 @@ def scale_by_novograd(
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = otu.tree_zeros_like(params, dtype=mu_dtype)  # First moment
-    nu = jax.tree.map(lambda _: 0.0, params)  # Second moment
+    mu = otu.tree_zeros_like(params, dtype=mu_dtype)
+    nu = jax.tree.map(lambda p: jnp.asarray(0.0, dtype=p.dtype), params)
     return ScaleByNovogradState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def nu_addition(grads):
@@ -1147,8 +1154,7 @@ def scale_by_novograd(
     return grads / (jnp.sqrt(nu + eps_root) + eps) + weight_decay * params
 
   def init_nu(grads, nu):
-    del nu
-    return jax.tree.map(nu_addition, grads)
+    return jax.tree.map(lambda g, n: nu_addition(g).astype(n.dtype), grads, nu)
 
   def update_nu(grads, nu):
     updates = jax.tree.map(nu_addition, grads)

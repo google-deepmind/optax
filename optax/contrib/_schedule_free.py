@@ -22,9 +22,11 @@ import jax.numpy as jnp
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import numerics
 from optax._src import transform
 from optax.schedules import _schedule
 from optax.transforms import _adding
+import optax.tree_utils as otu
 
 
 class ScheduleFreeState(NamedTuple):
@@ -38,10 +40,18 @@ class ScheduleFreeState(NamedTuple):
   z: base.Params
 
 
-def schedule_free_eval_params(state: ScheduleFreeState, params: base.Params):
+def schedule_free_eval_params(state: base.OptState, params: base.Params):
   """Params for evaluation of :func:`optax.contrib.schedule_free`."""
+  # Using ScheduleFreeState as a type hint above results in pytype errors in
+  # tests.
+  b1 = getattr(state, 'b1')
+  z = getattr(state, 'z')
+  if b1 is None or z is None:
+    raise ValueError(
+        'schedule_free_eval_params requires a ScheduleFreeState as input.'
+    )
   return jax.tree.map(
-      lambda yi, zi: (yi - (1.0 - state.b1) * zi) / state.b1, params, state.z
+      lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, z
   )
 
 
@@ -50,7 +60,7 @@ def schedule_free(
     learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     weight_lr_power: float = 2.0,
-    state_dtype=jnp.float32,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""Turn base_optimizer schedule_free.
 
@@ -108,6 +118,10 @@ def schedule_free(
     Defazio et al, `Schedule-Free Learning - A New Way to Train
     <https://github.com/facebookresearch/schedule_free/tree/main>`_, 2024
 
+  .. warning::
+    The current implementation requires the parameter ``b1`` to be strictly
+    positive.
+
   Args:
     base_optimizer: Base optimizer to compute updates from.
     learning_rate: learning_rate schedule w/o decay but with warmup.
@@ -122,15 +136,20 @@ def schedule_free(
   base_optimizer = base.with_extra_args_support(base_optimizer)
 
   def init_fn(params: base.Params) -> ScheduleFreeState:
-    if b1 == 0:
-      raise ValueError(
-          'The current implementation of schedule_free requires b1 > 0.')
-    z = jax.tree.map(lambda t: t.astype(state_dtype), params)
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, 'lowest')
+    if state_dtype is not None:
+      otu.tree_assert_dtype_preserved(params, state_dtype)
+      z = otu.tree_cast(params, dtype=state_dtype)
+    else:
+      z = params
     return ScheduleFreeState(
-        b1=jnp.array(b1, dtype=jnp.float32),
-        weight_sum=jnp.zeros([], dtype=jnp.float32),
+        b1=jnp.asarray(b1, dtype=params_dtype),
+        weight_sum=jnp.zeros([], dtype=params_dtype),
         step_count=jnp.ones([], dtype=jnp.int32),
-        max_lr=jnp.zeros([], dtype=jnp.float32),
+        max_lr=jnp.zeros([], dtype=params_dtype),
         base_optimizer_state=base_optimizer.init(params),
         z=z,
     )
@@ -143,10 +162,12 @@ def schedule_free(
   ):
     lr = learning_rate
     if callable(learning_rate):
-      lr = learning_rate(state.step_count)
+      lr = jnp.asarray(
+          learning_rate(state.step_count), dtype=state.max_lr.dtype
+      )
     max_lr = jnp.maximum(state.max_lr, lr)
 
-    next_step_count = state.step_count + 1
+    next_step_count = numerics.safe_increment(state.step_count)
 
     weight = max_lr**weight_lr_power
     next_total_weight = state.weight_sum + weight
@@ -190,7 +211,7 @@ def schedule_free(
     )
 
     next_state = ScheduleFreeState(
-        b1=jnp.array(b1, dtype=jnp.float32),
+        b1=state.b1,
         weight_sum=next_total_weight,
         step_count=next_step_count,
         max_lr=max_lr,
@@ -205,12 +226,11 @@ def schedule_free(
 
 def schedule_free_sgd(
     learning_rate: float = 1.0,
-    *,
-    warmup_steps: int = 0,
+    warmup_steps: Optional[int] = None,
     b1: float = 0.9,
-    weight_decay: float = 0.0,
+    weight_decay: Optional[float] = None,
     weight_lr_power: float = 2.0,
-    state_dtype=jnp.float32,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for SGD.
 
@@ -258,14 +278,14 @@ def schedule_free_sgd(
     Objective function: 8.06E-01
     Objective function: 2.41E-01
   """
-  if warmup_steps > 0:
+  if warmup_steps is not None:
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,
         warmup_steps=warmup_steps,
     )
   optimizer = alias.sgd(learning_rate)
-  if weight_decay > 0:
+  if weight_decay is not None:
     optimizer = combine.chain(
         _adding.add_decayed_weights(weight_decay), optimizer)
   return schedule_free(
@@ -279,14 +299,13 @@ def schedule_free_sgd(
 
 def schedule_free_adamw(
     learning_rate: float = 0.0025,
-    *,
-    warmup_steps: int = 0,
+    warmup_steps: Optional[int] = None,
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
     weight_decay: float = 0.0,
     weight_lr_power: float = 2.0,
-    state_dtype=jnp.float32,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for AdamW.
 
@@ -333,7 +352,7 @@ def schedule_free_adamw(
     Objective function: 8.94E-01
     Objective function: 4.13E-01
   """
-  if warmup_steps > 0:
+  if warmup_steps is not None:
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,

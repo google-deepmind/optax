@@ -52,11 +52,17 @@ def trace(
 
   Returns:
     A `GradientTransformation` object.
+
+  Raises:
+    ValueError: If the selected ``accumulator_dtype`` induces a dtype promotion
+    of the dtypes of the parameters.
   """
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
   def init_fn(params):
+    if accumulator_dtype is not None:
+      otu.tree_assert_dtype_preserved(params, accumulator_dtype)
     return TraceState(
         trace=otu.tree_zeros_like(params, dtype=accumulator_dtype))
 

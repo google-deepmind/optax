@@ -126,23 +126,23 @@ def scale_by_factored_rms(
     """Initialise the optimiser's state."""
 
     def _init(param):
-      shape = param.shape
+      shape, dtype = param.shape, param.dtype
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
         vr_shape = np.delete(shape, d0)
         vc_shape = np.delete(shape, d1)
         return _UpdateResult(
-            update=jnp.zeros((1,)),
-            v_row=jnp.zeros(vr_shape),
-            v_col=jnp.zeros(vc_shape),
-            v=jnp.zeros((1,)))
+            update=jnp.zeros((1,), dtype=dtype),
+            v_row=jnp.zeros(vr_shape, dtype=dtype),
+            v_col=jnp.zeros(vc_shape, dtype=dtype),
+            v=jnp.zeros((1,), dtype=dtype))
       else:
         return _UpdateResult(
-            update=jnp.zeros((1,)),
-            v_row=jnp.zeros((1,)),
-            v_col=jnp.zeros((1,)),
-            v=jnp.zeros(param.shape))
+            update=jnp.zeros((1,), dtype=dtype),
+            v_row=jnp.zeros((1,), dtype=dtype),
+            v_col=jnp.zeros((1,), dtype=dtype),
+            v=jnp.zeros(param.shape, dtype=dtype))
 
     return _to_state(
         jnp.zeros([], jnp.int32), jax.tree.map(_init, params))
@@ -153,13 +153,13 @@ def scale_by_factored_rms(
       raise ValueError(base.NO_PARAMS_MSG)
 
     def _update(grad, v_row, v_col, v, param, step):
-      shape = param.shape
+      shape, dtype = param.shape, param.dtype
       decay_rate_t = decay_rate_fn(step - step_offset, decay_rate)
 
       # Scaled by factorized second moment statistics.
-      new_v_row = jnp.zeros((1,))
-      new_v_col = jnp.zeros((1,))
-      new_v = jnp.zeros((1,))
+      new_v_row = jnp.zeros((1,), dtype=dtype)
+      new_v_col = jnp.zeros((1,), dtype=dtype)
+      new_v = jnp.zeros((1,), dtype=dtype)
 
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
@@ -171,6 +171,8 @@ def scale_by_factored_rms(
         new_v_col = (
             decay_rate_t * v_col +
             (1. - decay_rate_t) * jnp.mean(grad_sqr, axis=d1))
+        new_v_row = new_v_row.astype(dtype)
+        new_v_col = new_v_col.astype(dtype)
         reduced_d1 = d1-1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -182,6 +184,7 @@ def scale_by_factored_rms(
       else:
         grad_sqr = numerics.abs_sq(grad) + epsilon
         new_v = decay_rate_t * v + (1. - decay_rate_t) * grad_sqr
+        new_v = new_v.astype(dtype)
         update = grad * (new_v)**-0.5
 
       return _UpdateResult(update, new_v_row, new_v_col, new_v)

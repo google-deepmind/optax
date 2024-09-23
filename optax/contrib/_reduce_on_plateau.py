@@ -26,17 +26,18 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
+import optax.tree_utils as otu
 
 
 class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
-  scale: chex.Array  # shape=(), dtype=jnp.float32
-  best_value: chex.Array  # shape=(), dtype=jnp.float32
+  scale: chex.Array
+  best_value: chex.Array
   plateau_count: chex.Array  # shape=(), dtype=jnp.int32
   cooldown_count: chex.Array  # shape=(), dtype=jnp.int32
   count: chex.Array  # shape=(), dtype=jnp.int32
-  avg_value: chex.Array  # shape=(), dtype=jnp.float32
+  avg_value: chex.Array
 
 
 def reduce_on_plateau(
@@ -96,14 +97,17 @@ def reduce_on_plateau(
     )
 
   def init_fn(params) -> ReduceLROnPlateauState:
-    del params
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, "lowest")
     return ReduceLROnPlateauState(
-        best_value=jnp.asarray(float("inf"), dtype=jnp.float32),
+        best_value=jnp.asarray(float("inf")),
         plateau_count=jnp.asarray(0, jnp.int32),
-        scale=jnp.asarray(1.0, dtype=jnp.float32),
+        scale=jnp.asarray(1.0, dtype=params_dtype),
         cooldown_count=jnp.asarray(0, jnp.int32),
         count=jnp.asarray(0, jnp.int32),
-        avg_value=jnp.asarray(0.0, jnp.float32),
+        avg_value=jnp.asarray(0.0),
     )
 
   def _update_scale(state):
@@ -116,7 +120,7 @@ def reduce_on_plateau(
         has_improved, avg_value, state.best_value
     )
     curr_plateau_count = jnp.where(
-        has_improved, 0, numerics.safe_int32_increment(state.plateau_count)
+        has_improved, 0, numerics.safe_increment(state.plateau_count)
     )
 
     # We're in cooldown, so reduce the counter and ignore any bad epochs
@@ -154,7 +158,7 @@ def reduce_on_plateau(
         scale=new_scale,
         cooldown_count=new_cooldown_count,
         count=jnp.asarray(0, dtype=jnp.int32),
-        avg_value=jnp.asarray(0.0, dtype=jnp.float32),
+        avg_value=jnp.asarray(0.0),
     )
     return new_state
 
@@ -169,7 +173,7 @@ def reduce_on_plateau(
     del params, extra_args
 
     count = state.count
-    new_count = numerics.safe_int32_increment(count)
+    new_count = numerics.safe_increment(count)
     new_avg_value = (
         count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
     ) / new_count

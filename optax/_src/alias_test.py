@@ -34,7 +34,9 @@ from optax._src import transform
 from optax._src import update
 from optax.losses import _classification
 from optax.schedules import _inject
+from optax.transforms import _accumulation
 import optax.tree_utils as otu
+
 
 import scipy.optimize as scipy_optimize
 from sklearn import datasets
@@ -163,13 +165,16 @@ class AliasTest(chex.TestCase):
 
     params = initial_params
     state = opt.init(params)
-    # A no-op change, to verify that tree map works.
-    state = otu.tree_map_params(opt, lambda v: v, state)
 
-    for _ in range(10000):
-      params, state = step(params, state)
+    with self.subTest('Test that tree_map_params works'):
+      # A no-op change, to verify that tree map works.
+      state = otu.tree_map_params(opt, lambda v: v, state)
 
-    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+    with self.subTest('Test that optimization works'):
+      for _ in range(10000):
+        params, state = step(params, state)
+
+      chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
   @chex.all_variants
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
@@ -210,24 +215,108 @@ class AliasTest(chex.TestCase):
       chex.assert_trees_all_close(
           new_state_inject.inner_state, new_state, rtol=1e-4)
 
-  @parameterized.named_parameters([
-      ('float32', 'float32'),
-      ('bfloat16', 'bfloat16'),
-      ('complex64', 'complex64'),
-      ('None', None),
-  ])
-  def test_explicit_dtype(self, dtype):
-    expected_dtype = jax.dtypes.canonicalize_dtype(dtype)  # None -> float32
-    tx = alias.sgd(0.1, momentum=0.9, accumulator_dtype=dtype)
-    trace_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, getattr(trace_state, 'trace').dtype)
-    tx = alias.adam(0.1, mu_dtype=dtype)
-    adam_state, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
-    tx = alias.adamw(0.1, mu_dtype=dtype)
-    adam_state, _, _ = tx.init(jnp.array([0.0, 0.0]))
-    self.assertEqual(expected_dtype, getattr(adam_state, 'mu').dtype)
+  @parameterized.product(
+      params_dtype=('bfloat16', 'float32', 'complex64', None),
+      state_dtype=('bfloat16', 'float32', 'complex64', None),
+      opt_name=('sgd_mom', 'adam', 'adamw'),
+  )
+  def test_explicit_dtype(self, params_dtype, state_dtype, opt_name):
+    if opt_name == 'sgd_mom':
+      opt = alias.sgd(0.1, momentum=0.9, accumulator_dtype=state_dtype)
+      attribute_name = 'trace'
+    elif opt_name in ['adam', 'adamw']:
+      opt = getattr(alias, opt_name)(0.1, mu_dtype=state_dtype)
+      attribute_name = 'mu'
+    else:
+      raise ValueError(f'Unsupported optimizer: {opt_name}')
 
+    params_dtype = jax.dtypes.canonicalize_dtype(params_dtype)
+    params = jnp.array([0.0, 0.0], dtype=params_dtype)
+    state_has_lower_dtype = (
+        jnp.promote_types(params_dtype, jnp.dtype(state_dtype))
+        == params_dtype
+    )
+    if state_dtype is None or state_has_lower_dtype:
+      state = opt.init(params)
+
+      with self.subTest('Test that attribute dtype is correct'):
+        if state_dtype is None:
+          expected_dtype = params_dtype
+        else:
+          expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
+        attribute = otu.tree_get(state, attribute_name)
+        self.assertEqual(expected_dtype, attribute.dtype)
+
+      with self.subTest(
+          'Verifies that the updates keep the same type as params'
+      ):
+        updates, _ = opt.update(jnp.ones_like(params), state, params)
+        self.assertEqual(updates.dtype, params.dtype)
+    else:
+      with self.subTest(
+          'Test that we forbid setting dtype s.t. updates dtype get promoted to'
+          ' the state dtype'
+      ):
+        with self.assertRaises(ValueError):
+          opt.init(params)
+
+  # Not testing with `without_device=True` because without_device set the
+  # variables to the host which appears to convert then the dtype, so we
+  # lose control of the dtype and the test fails.
+  @chex.variants(
+      with_jit=True, without_jit=True, with_device=True, with_pmap=True
+  )
+  @parameterized.product(
+      _OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
+  )
+  def test_preserve_dtype(self, opt_name, opt_kwargs, dtype):
+    """Test that the optimizers return updates of same dtype as params."""
+    # When debugging this test, note that operations like
+    # x = 0.5**jnp.asarray(1, dtype=jnp.int32)
+    # (appearing in e.g. optax.tree_utils.tree_bias_correction)
+    # are promoted (strictly) to float32 when jitted
+    # see https://github.com/google/jax/issues/23337
+    # This may end up letting updates have a dtype different from params.
+    # The solution is to fix the dtype of the result to the desired dtype
+    # (just as done in optax.tree_utils.tree_bias_correction).
+    dtype = jnp.dtype(dtype)
+    opt_factory = getattr(alias, opt_name)
+    opt = opt_factory(**opt_kwargs)
+    fun = lambda x: jnp.sum(x**2)
+
+    params = jnp.array([1.0, 2.0], dtype=dtype)
+    grads = jax.grad(fun)(params)
+    state = self.variant(opt.init)(params)
+    if opt_name == 'polyak_sgd':
+      update_kwargs = {'value': fun(params)}
+    else:
+      update_kwargs = {}
+    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    self.assertEqual(updates.dtype, params.dtype)
+
+  @chex.variants(
+      with_jit=True, without_jit=True, with_device=True, with_pmap=True
+  )
+  @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
+  def test_gradient_accumulation(self, opt_name, opt_kwargs, dtype):
+    """Test that the optimizers can safely be used with optax.MultiSteps."""
+    # Checks for issues like https://github.com/google-deepmind/optax/issues/377
+    dtype = jnp.dtype(dtype)
+    opt_factory = getattr(alias, opt_name)
+    base_opt = opt_factory(**opt_kwargs)
+    opt = _accumulation.MultiSteps(base_opt, every_k_schedule=4)
+
+    fun = lambda x: jnp.sum(x**2)
+
+    params = jnp.array([1.0, 2.0], dtype=dtype)
+    grads = jax.grad(fun)(params)
+    state = self.variant(opt.init)(params)
+    if opt_name == 'polyak_sgd':
+      update_kwargs = {'value': fun(params)}
+    else:
+      update_kwargs = {}
+    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 ##########################
 # ALGORITHM SPECIFIC TESTS

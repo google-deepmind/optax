@@ -32,9 +32,9 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax import tree_utils
 from optax._src import base
 from optax._src import numerics
+import optax.tree_utils as otu
 
 
 class MechanicState(NamedTuple):
@@ -108,10 +108,14 @@ def mechanize(
 
   def init_fn(params: base.Params) -> MechanicState:
     x0 = params
-    r = jnp.zeros([num_betas,], jnp.float32)
-    v = jnp.zeros([num_betas,], jnp.float32)
-    m = jnp.zeros([num_betas,], jnp.float32)
-    s = jnp.ones([num_betas,], jnp.float32) * s_init
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, 'lowest')
+    r = jnp.zeros([num_betas,], dtype=params_dtype)
+    v = jnp.zeros([num_betas,], dtype=params_dtype)
+    m = jnp.zeros([num_betas,], dtype=params_dtype)
+    s = jnp.ones([num_betas,], dtype=params_dtype) * s_init
     return MechanicState(
         base_optimizer_state=base_optimizer.init(params),
         count=jnp.zeros([], jnp.int32),
@@ -142,8 +146,8 @@ def mechanize(
     # Add weight decay to raw gradients, note that this is othogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
-    grad_norm = tree_utils.tree_l2_norm(updates)
-    param_norm = tree_utils.tree_l2_norm(params)
+    grad_norm = otu.tree_l2_norm(updates)
+    param_norm = otu.tree_l2_norm(params)
 
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi
@@ -167,12 +171,15 @@ def mechanize(
     )
 
     # Now we are ready to run the actual Mechanic algorithm.
-    h = tree_utils.tree_vdot(updates, delta_prev)
+    h = otu.tree_vdot(updates, delta_prev)
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
-    betas = jnp.array([1.0 - 0.1**betai for betai in range(1, num_betas + 1)])
+    betas = jnp.array(
+        [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
+        dtype=state.s.dtype,
+    )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)
     v = (betas**2) * state.v + h**2
