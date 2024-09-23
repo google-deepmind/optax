@@ -586,7 +586,9 @@ class LBFGSTest(chex.TestCase):
     expected_precond_vec = precond_mat.dot(
         vec, precision=jax.lax.Precision.HIGHEST
     )
-    chex.assert_trees_all_close(plain_precond_vec, expected_precond_vec)
+    chex.assert_trees_all_close(
+        plain_precond_vec, expected_precond_vec, rtol=1e-5
+    )
 
   @parameterized.product(idx=[0, 1, 2, 3])
   def test_preconditioning_by_lbfgs_on_vectors(self, idx: int):

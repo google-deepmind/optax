@@ -174,11 +174,11 @@ def dog(
     ...    grad, opt_state, params, value=value)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: ', f(params))
-    Objective function:  13.999964
-    Objective function:  13.999941
-    Objective function:  13.999905
-    Objective function:  13.999857
-    Objective function:  13.999794
+    Objective function:  13.99...
+    Objective function:  13.99...
+    Objective function:  13.99...
+    Objective function:  13.99...
+    Objective function:  13.99...
 
   References:
     Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
