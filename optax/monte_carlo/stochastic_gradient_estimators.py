@@ -29,7 +29,8 @@ S. Mohamed, M. Rosca, M. Figurnov, A Mnih.
 """
 
 import math
-from typing import Any, Callable, Sequence
+from collections.abc import Callable
+from typing import Any, Sequence
 
 import chex
 import jax

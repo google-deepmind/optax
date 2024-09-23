@@ -15,7 +15,8 @@
 """Linear algebra utilities used in optimisation."""
 
 import functools
-from typing import Callable, Optional, Union
+from collections.abc import Callable
+from typing import Optional, Union
 
 import chex
 import jax

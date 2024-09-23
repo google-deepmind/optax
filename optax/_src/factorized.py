@@ -15,7 +15,8 @@
 """Factorized optimizers."""
 
 import dataclasses
-from typing import NamedTuple, Optional, Callable
+from collections.abc import Callable
+from typing import NamedTuple, Optional
 
 import chex
 import jax

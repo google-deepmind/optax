@@ -17,7 +17,8 @@
 import functools
 import inspect
 import operator
-from typing import Any, Callable, Optional, Sequence, Union
+from collections.abc import Callable
+from typing import Any, Optional, Sequence, Union
 
 import chex
 from etils import epy

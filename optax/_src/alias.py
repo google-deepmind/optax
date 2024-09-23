@@ -15,7 +15,8 @@
 """Aliases for popular optimizers."""
 
 import functools
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 import jax.numpy as jnp
 

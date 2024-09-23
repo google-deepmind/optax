@@ -19,7 +19,8 @@ import functools
 import io
 import itertools
 import math
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized

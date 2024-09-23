@@ -16,7 +16,8 @@
 
 import inspect
 import types
-from typing import Any, Mapping, Sequence, Tuple
+from collections.abc import Mapping
+from typing import Any, Sequence, Tuple
 
 import optax
 from sphinx import application

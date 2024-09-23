@@ -16,7 +16,8 @@
 
 import functools
 import inspect
-from typing import Callable, Iterable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
 import chex

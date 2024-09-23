@@ -47,7 +47,8 @@ This is the simple drop-in SAM optimizer from the paper.
 """
 # pytype: skip-file
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp

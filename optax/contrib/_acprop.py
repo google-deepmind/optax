@@ -18,7 +18,8 @@ A contributed implementation of the method from "Momentum Centering and
 Asynchronous Update for Adaptive Gradient Methods" by Zhuang et al.
 (https://arxiv.org/abs/2110.05454).
 """
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 import jax
 import jax.numpy as jnp

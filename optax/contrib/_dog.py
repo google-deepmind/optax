@@ -22,7 +22,8 @@ References:
   Gradient Descent Method<https://arxiv.org/pdf/2305.16284>`_, 2023.
 """
 
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
 import chex
 import jax

@@ -17,7 +17,8 @@
 import dataclasses
 import functools
 import typing
-from typing import Any, Callable, Optional, Protocol, Tuple, Union, cast
+from collections.abc import Callable
+from typing import Any, Optional, Protocol, Tuple, Union, cast
 
 import jax
 from optax._src import base
