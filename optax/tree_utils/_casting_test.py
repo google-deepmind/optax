@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.tree_utils._casting."""
+"""Tests for tree utilities on data types."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax import tree_utils as otu
 
 
@@ -41,9 +39,109 @@ class CastingTest(parameterized.TestCase):
 
     tree = _build_tree(b, c)
     tree = otu.tree_cast(tree, dtype=dtype)
-    jax.tree.map(
-        np.testing.assert_array_equal, tree, _build_tree(new_b, new_c)
-    )
+    jax.tree.map(np.testing.assert_array_equal, tree, _build_tree(new_b, new_c))
+
+  def test_tree_dtype(self):
+    """Test fecthing data type of a tree."""
+
+    with self.subTest('Check that it returns the right dtype'):
+      tree = {
+          'a': {'b': jnp.array(1.0, dtype=jnp.float32)},
+          'c': jnp.array(2.0, dtype=jnp.float32),
+      }
+      dtype = otu.tree_dtype(tree)
+      self.assertEqual(dtype, jnp.float32)
+
+    with self.subTest('Check that it raises an error if dtypes differ'):
+      tree = {
+          'a': {'b': jnp.array(1.0, dtype=jnp.bfloat16)},
+          'c': jnp.array(2.0, dtype=jnp.float32),
+      }
+      self.assertRaises(ValueError, otu.tree_dtype, tree)
+
+    tree = {
+        'a': {'b': jnp.array(1.0, dtype=jnp.bfloat16)},
+        'c': jnp.array(2.0, dtype=jnp.float32),
+    }
+
+    with self.subTest('Check that it works with lowest common dtype'):
+      dtype = otu.tree_dtype(tree, 'lowest')
+      self.assertEqual(dtype, jnp.bfloat16)
+
+    with self.subTest('Check that it works with highest common dtype'):
+      dtype = otu.tree_dtype(tree, 'highest')
+      self.assertEqual(dtype, jnp.float32)
+
+    tree = {
+        'a': {'b': jnp.array(1.0, dtype=jnp.bfloat16)},
+        'c': jnp.array(2.0, dtype=jnp.float16),
+    }
+
+    with self.subTest('Check that it works when promoting mixed dtype'):
+      dtype = otu.tree_dtype(tree, 'promote')
+      self.assertEqual(dtype, jnp.float32)
+
+    with self.subTest(
+        'Check that it raises an error if no dtypes cannot be promoted to one'
+        ' another'
+    ):
+      self.assertRaises(ValueError, otu.tree_dtype, tree, 'lowest')
+      self.assertRaises(ValueError, otu.tree_dtype, tree, 'highest')
+
+  def test_tree_assert_dtype_preserved(self):
+    """Test asserting no promotion of dtypes in a tree for given dtype."""
+    tree = {
+        'a': {'b': jnp.array(1.0, dtype=jnp.bfloat16)},
+        'c': jnp.array(2.0, dtype=jnp.float32),
+    }
+
+    with self.subTest(
+        'Check that it raises an error if given dtype induces promotion of at'
+        ' least one element.'
+    ):
+      with self.assertRaises(ValueError):
+        otu.tree_assert_dtype_preserved(tree, jnp.float32)
+
+    with self.subTest(
+        'Check that it runs fine if no element gets promoted by given dtype.'
+    ):
+      otu.tree_assert_dtype_preserved(tree, jnp.bfloat16)
+
+    with self.subTest(
+        'Check that it naturally succeeds when considering lowest common dtype.'
+    ):
+      otu.tree_assert_dtype_preserved(tree, otu.tree_dtype(tree, 'lowest'))
+
+    with self.subTest(
+        'Check that it naturally fails when considering highest common dtype.'
+    ):
+      with self.assertRaises(ValueError):
+        otu.tree_assert_dtype_preserved(tree, otu.tree_dtype(tree, 'highest'))
+
+    with self.subTest('Check that it works with empty trees.'):
+      for tree in [(), {}, None]:
+        otu.tree_assert_dtype_preserved(tree, jnp.float32)
+
+  @parameterized.named_parameters(
+      dict(testcase_name='empty_dict', tree={}),
+      dict(testcase_name='empty_list', tree=[]),
+      dict(testcase_name='empty_tuple', tree=()),
+      dict(testcase_name='empty_none', tree=None),
+  )
+  def test_tree_dtype_utilities_with_empty_trees(self, tree):
+    """Test tree data type utilities on empty trees."""
+    default_dtype = jnp.asarray(1.0).dtype
+
+    with self.subTest('Check tree_dtype works with empty trees.'):
+      dtype = otu.tree_dtype(tree)
+      self.assertEqual(dtype, default_dtype)
+
+    with self.subTest(
+        'Check tree_assert_dtype_preserved succeeds with any dtype for'
+        ' empty trees.'
+    ):
+      # There is no array in the tree to check, so it should succeed.
+      otu.tree_assert_dtype_preserved(tree, jnp.complex64)
 
 
 if __name__ == '__main__':

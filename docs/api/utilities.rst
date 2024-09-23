@@ -92,7 +92,9 @@ Tree
     NamedTupleKey
     tree_add
     tree_add_scalar_mul
+    tree_cast
     tree_div
+    tree_dtype
     tree_get
     tree_get_all_with_path
     tree_l1_norm
@@ -121,6 +123,14 @@ Tree add
 Tree add and scalar multiply
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_add_scalar_mul
+
+Tree cast
+~~~~~~~~~
+.. autofunction:: tree_cast
+
+Tree data type
+~~~~~~~~~~~~~~
+.. autofunction:: tree_dtype
 
 Tree divide
 ~~~~~~~~~~~
@@ -154,8 +164,8 @@ Tree ones like
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_ones_like
 
-Tree with random keys
-~~~~~~~~~~~~~~~~~~~~~~~
+Split key according to structure of a tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_split_key_like
 
 Tree with random values
