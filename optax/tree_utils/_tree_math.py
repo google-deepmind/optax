@@ -151,7 +151,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   numerical issues.
   """
   vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
-  return jax.tree.reduce(operator.add, vdots)
+  return jax.tree.reduce(operator.add, vdots, initializer=0)
 
 
 def tree_sum(tree: Any) -> chex.Numeric:
@@ -164,7 +164,7 @@ def tree_sum(tree: Any) -> chex.Numeric:
     a scalar value.
   """
   sums = jax.tree.map(jnp.sum, tree)
-  return jax.tree.reduce(operator.add, sums)
+  return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
 def _square(leaf):

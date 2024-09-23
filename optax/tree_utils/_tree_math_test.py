@@ -231,6 +231,11 @@ class TreeUtilsTest(parameterized.TestCase):
             tu.tree_bias_correction(m, decay, count),
             custom_message=f'failed with decay={decay}, count={count}')
 
+  def test_empty_tree_reduce(self):
+    for tree in [{}, (), [], None, {'key': [None, [None]]}]:
+      self.assertEqual(tu.tree_sum(tree), 0)
+      self.assertEqual(tu.tree_vdot(tree, tree), 0)
+
 
 if __name__ == '__main__':
   absltest.main()
