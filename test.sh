@@ -42,7 +42,7 @@ pip install -q -e ".[dp-accounting]"
 pip install -q "dp-accounting>=0.1.1" --no-deps
 
 # Install the requested JAX version
-if [ "$JAX_VERSION" = "" ]; then
+if [ -z "${JAX_VERSION-}" ]; then
   : # use version installed in requirements above
 elif [ "$JAX_VERSION" = "newest" ]; then
   pip install -U jax jaxlib
