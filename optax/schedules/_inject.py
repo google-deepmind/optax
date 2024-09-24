@@ -14,9 +14,10 @@
 # ==============================================================================
 """Utilities to inject dynamically changing hyper-parameters."""
 
+from collections.abc import Callable
 import functools
 import inspect
-from typing import Callable, Iterable, NamedTuple, Optional, Union
+from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
 import chex

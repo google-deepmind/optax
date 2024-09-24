@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `linesearch.py`."""
+"""Tests for methods defined in `linesearch.py`."""
 
+from collections.abc import Callable
 import contextlib
 import functools
 import io
 import itertools
 import math
-from typing import Callable, Optional
+from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -375,7 +376,7 @@ class ZoomLinesearchTest(chex.TestCase):
     default_opt_args = dict(
         slope_rtol=1e-4,
         curv_rtol=0.9,
-        tol=0.,
+        tol=0.0,
     )
     opt_args = default_opt_args | opt_args
     slope_rtol, curv_rtol, tol = (
@@ -384,16 +385,16 @@ class ZoomLinesearchTest(chex.TestCase):
         opt_args['tol'],
     )
     with self.subTest('Check decrease conditions'):
-      sufficient_decrease_error = (
-          value_final - (value_init + slope_rtol * final_lr * slope_init + tol)
+      sufficient_decrease_error = value_final - (
+          value_init + slope_rtol * final_lr * slope_init + tol
       )
       self.assertTrue(
           (sufficient_decrease_error <= 0) or potentially_failed,
           f'Sufficent decrease error: {sufficient_decrease_error}',
       )
     with self.subTest('Check curvature conditions'):
-      small_curvature_error = (
-          jnp.abs(slope_final) - (curv_rtol * jnp.abs(slope_init) + tol)
+      small_curvature_error = jnp.abs(slope_final) - (
+          curv_rtol * jnp.abs(slope_init) + tol
       )
 
       self.assertTrue(
@@ -428,9 +429,14 @@ class ZoomLinesearchTest(chex.TestCase):
 
   @parameterized.product(
       problem_name=[
-          'polynomial', 'exponential', 'sinusoidal',
-          'rosenbrock', 'himmelblau', 'matyas', 'eggholder'
-          ],
+          'polynomial',
+          'exponential',
+          'sinusoidal',
+          'rosenbrock',
+          'himmelblau',
+          'matyas',
+          'eggholder',
+      ],
       seed=[0, 1],
   )
   def test_linesearch(self, problem_name: str, seed: int):
@@ -438,7 +444,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # Fixed tolerances, we check the behavior in standard conditions
     slope_rtol = 1e-4
     curv_rtol = 0.9
-    tol = 0.
+    tol = 0.0
 
     key = jrd.PRNGKey(seed)
     params_key, precond_key = jrd.split(key, 2)
@@ -450,14 +456,14 @@ class ZoomLinesearchTest(chex.TestCase):
 
     # Mimics a preconditioning by a diagonal matrix with non-negative entries
     # (non-negativity ensures that we keep a descent direction)
-    init_updates = -precond_vec*jax.grad(fn)(init_params)
+    init_updates = -precond_vec * jax.grad(fn)(init_params)
 
     opt_args = dict(
         max_linesearch_steps=30,
         slope_rtol=slope_rtol,
         curv_rtol=curv_rtol,
         tol=tol,
-        max_learning_rate=None
+        max_learning_rate=None,
     )
 
     opt = _linesearch.scale_by_zoom_linesearch(**opt_args)
@@ -526,6 +532,7 @@ class ZoomLinesearchTest(chex.TestCase):
     if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
+
       def fn(x):
         return jnp.dot(x, x)
 
@@ -561,6 +568,7 @@ class ZoomLinesearchTest(chex.TestCase):
     if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
+
       def fn(x):
         return jnp.dot(x, x)
 
@@ -611,6 +619,7 @@ class ZoomLinesearchTest(chex.TestCase):
     if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
+
       def fun_flat(x):
         return jnp.exp(-1 / x**2)
 
@@ -634,6 +643,7 @@ class ZoomLinesearchTest(chex.TestCase):
     if jax.default_backend() in ['tpu', 'gpu']:
       return
     else:
+
       def fun_inf(x):
         return jnp.log(x)
 
@@ -663,13 +673,12 @@ class ZoomLinesearchTest(chex.TestCase):
     u = -1.95 * w
 
     opt = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=20)
-    _, final_state = _run_linesearch(
-        opt, fn, w, u, stepsize_guess=1.0
-    )
+    _, final_state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
     decrease_error = otu.tree_get(final_state, 'decrease_error')
     curvature_error = otu.tree_get(final_state, 'curvature_error')
     success = (decrease_error <= 0.0) and (curvature_error <= 0.0)
     self.assertTrue(success)
+
 
 if __name__ == '__main__':
   absltest.main()

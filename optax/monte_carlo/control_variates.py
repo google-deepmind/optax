@@ -53,7 +53,8 @@ r"""Implementation of control variates.
 
   For examples, see `control_delta_method` and `moving_avg_baseline`.
 """
-from typing import Any, Callable, Sequence
+from collections.abc import Callable
+from typing import Any, Sequence
 
 import chex
 import jax

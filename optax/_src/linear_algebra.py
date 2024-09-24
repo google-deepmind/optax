@@ -14,8 +14,9 @@
 # ==============================================================================
 """Linear algebra utilities used in optimisation."""
 
+from collections.abc import Callable
 import functools
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import chex
 import jax
@@ -33,8 +34,9 @@ def _normalize_tree(x):
 
 def global_norm(updates: base.PyTree) -> chex.Array:
   """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(sum(
-      jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates)))
+  return jnp.sqrt(
+      sum(jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates))
+  )
 
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
@@ -69,12 +71,12 @@ def power_iteration(
   Args:
     matrix: a square matrix, either as an array or a callable implementing a
       matrix-vector product.
-    v0: initial vector approximating the dominiant eigenvector. If ``matrix``
-      is an array of size (n, n), v0 must be a vector of size (n,). If instead
+    v0: initial vector approximating the dominiant eigenvector. If ``matrix`` is
+      an array of size (n, n), v0 must be a vector of size (n,). If instead
       ``matrix`` is a callable, then v0 must be a tree with the same structure
       as the input of this callable. If this argument is None and ``matrix`` is
-      an array, then a random vector sampled from a uniform distribution in
-      [-1, 1] is used as initial vector.
+      an array, then a random vector sampled from a uniform distribution in [-1,
+      1] is used as initial vector.
     num_iters: Number of power iterations.
     error_tolerance: Iterative exit condition. The procedure stops when the
       relative error of the estimate of the dominant eigenvalue is below this
@@ -83,8 +85,8 @@ def power_iteration(
       lax.Precision.DEFAULT (better step time, but not precise); b)
       lax.Precision.HIGH (increased precision, slower); c) lax.Precision.HIGHEST
       (best possible precision, slowest).
-    key: random key for the initialization of ``v0`` when not given
-      explicitly. When this argument is None, `jax.random.PRNGKey(0)` is used.
+    key: random key for the initialization of ``v0`` when not given explicitly.
+      When this argument is None, `jax.random.PRNGKey(0)` is used.
 
   Returns:
     A pair (eigenvalue, eigenvector), where eigenvalue is the dominant
@@ -129,19 +131,21 @@ def power_iteration(
     return eigvec, z, eig, iter_num + 1
 
   init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))
-  _, unormalized_eigenvector, dominant_eigenvalue, _ = (
-      jax.lax.while_loop(cond_fun, _body_fun, init_vars)
+  _, unormalized_eigenvector, dominant_eigenvalue, _ = jax.lax.while_loop(
+      cond_fun, _body_fun, init_vars
   )
   normalized_eigenvector = _normalize_tree(unormalized_eigenvector)
   return dominant_eigenvalue, normalized_eigenvector
 
 
-def matrix_inverse_pth_root(matrix: chex.Array,
-                            p: int,
-                            num_iters: int = 100,
-                            ridge_epsilon: float = 1e-6,
-                            error_tolerance: float = 1e-6,
-                            precision: lax.Precision = lax.Precision.HIGHEST):
+def matrix_inverse_pth_root(
+    matrix: chex.Array,
+    p: int,
+    num_iters: int = 100,
+    ridge_epsilon: float = 1e-6,
+    error_tolerance: float = 1e-6,
+    precision: lax.Precision = lax.Precision.HIGHEST,
+):
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
 
   This function uses the Coupled newton iterations algorithm for
@@ -159,10 +163,10 @@ def matrix_inverse_pth_root(matrix: chex.Array,
     num_iters: Maximum number of iterations.
     ridge_epsilon: Ridge epsilon added to make the matrix positive definite.
     error_tolerance: Error indicator, useful for early termination.
-    precision: precision XLA related flag, the available options are:
-      a) lax.Precision.DEFAULT (better step time, but not precise);
-      b) lax.Precision.HIGH (increased precision, slower);
-      c) lax.Precision.HIGHEST (best possible precision, slowest).
+    precision: precision XLA related flag, the available options are: a)
+      lax.Precision.DEFAULT (better step time, but not precise); b)
+      lax.Precision.HIGH (increased precision, slower); c) lax.Precision.HIGHEST
+      (best possible precision, slowest).
 
   Returns:
     matrix^(-1/p)
@@ -174,8 +178,8 @@ def matrix_inverse_pth_root(matrix: chex.Array,
   alpha = jnp.asarray(-1.0 / p, jnp.float32)
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
   max_ev, _ = power_iteration(
-      matrix=matrix, num_iters=100,
-      error_tolerance=1e-6, precision=precision)
+      matrix=matrix, num_iters=100, error_tolerance=1e-6, precision=precision
+  )
   ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)
 
   def _unrolled_mat_pow_1(mat_m):
@@ -189,14 +193,12 @@ def matrix_inverse_pth_root(matrix: chex.Array,
   def _unrolled_mat_pow_4(mat_m):
     """Computes mat_m^4."""
     mat_pow_2 = _unrolled_mat_pow_2(mat_m)
-    return jnp.matmul(
-        mat_pow_2, mat_pow_2, precision=precision)
+    return jnp.matmul(mat_pow_2, mat_pow_2, precision=precision)
 
   def _unrolled_mat_pow_8(mat_m):
     """Computes mat_m^4."""
     mat_pow_4 = _unrolled_mat_pow_4(mat_m)
-    return jnp.matmul(
-        mat_pow_4, mat_pow_4, precision=precision)
+    return jnp.matmul(mat_pow_4, mat_pow_4, precision=precision)
 
   def mat_power(mat_m, p):
     """Computes mat_m^p, for p == 1, 2, 4 or 8.
@@ -211,18 +213,19 @@ def matrix_inverse_pth_root(matrix: chex.Array,
     # We unrolled the loop for performance reasons.
     exponent = jnp.round(jnp.log2(p))
     return lax.switch(
-        jnp.asarray(exponent, jnp.int32), [
+        jnp.asarray(exponent, jnp.int32),
+        [
             _unrolled_mat_pow_1,
             _unrolled_mat_pow_2,
             _unrolled_mat_pow_4,
             _unrolled_mat_pow_8,
-        ], (mat_m))
+        ],
+        (mat_m),
+    )
 
   def _iter_condition(state):
-    (i, unused_mat_m, unused_mat_h, unused_old_mat_h, error,
-     run_step) = state
-    error_above_threshold = jnp.logical_and(
-        error > error_tolerance, run_step)
+    (i, unused_mat_m, unused_mat_h, unused_old_mat_h, error, run_step) = state
+    error_above_threshold = jnp.logical_and(error > error_tolerance, run_step)
     return jnp.logical_and(i < num_iters, error_above_threshold)
 
   def _iter_body(state):
@@ -233,11 +236,17 @@ def matrix_inverse_pth_root(matrix: chex.Array,
     new_error = jnp.max(jnp.abs(new_mat_m - identity))
     # sometimes error increases after an iteration before decreasing and
     # converging. 1.2 factor is used to bound the maximal allowed increase.
-    return (i + 1, new_mat_m, new_mat_h, mat_h, new_error,
-            new_error < error * 1.2)
+    return (
+        i + 1,
+        new_mat_m,
+        new_mat_h,
+        mat_h,
+        new_error,
+        new_error < error * 1.2,
+    )
 
   if matrix_size == 1:
-    resultant_mat_h = (matrix + ridge_epsilon)**alpha
+    resultant_mat_h = (matrix + ridge_epsilon) ** alpha
     error = 0
   else:
     damped_matrix = matrix + ridge_epsilon * identity
@@ -247,9 +256,11 @@ def matrix_inverse_pth_root(matrix: chex.Array,
     new_error = jnp.max(jnp.abs(new_mat_m_0 - identity))
     new_mat_h_0 = identity * jnp.power(z, 1.0 / p)
     init_state = tuple(
-        [0, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True])
+        [0, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]
+    )
     _, mat_m, mat_h, old_mat_h, error, convergence = lax.while_loop(
-        _iter_condition, _iter_body, init_state)
+        _iter_condition, _iter_body, init_state
+    )
     error = jnp.max(jnp.abs(mat_m - identity))
     is_converged = jnp.asarray(convergence, old_mat_h.dtype)
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h

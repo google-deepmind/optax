@@ -14,7 +14,8 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
 
 import chex
 import jax

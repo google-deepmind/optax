@@ -14,8 +14,9 @@
 # ==============================================================================
 """Line-searches."""
 
+from collections.abc import Callable
 import functools
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 import chex
 import jax

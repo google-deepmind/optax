@@ -14,7 +14,8 @@
 # ==============================================================================
 """Wrappers that mask out part of the parameters when applying a transform."""
 
-from typing import Any, Callable, NamedTuple, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Union
 
 import jax
 

@@ -28,8 +28,9 @@ S. Mohamed, M. Rosca, M. Figurnov, A Mnih.
   Monte Carlo Gradient Estimation in Machine Learning. JMLR, 2020.
 """
 
+from collections.abc import Callable
 import math
-from typing import Any, Callable, Sequence
+from typing import Any, Sequence
 
 import chex
 import jax

@@ -14,10 +14,11 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+from collections.abc import Callable
 import functools
 import inspect
 import operator
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 import chex
 from etils import epy
@@ -27,6 +28,7 @@ from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
+
 
 with epy.lazy_imports():
   import jax.scipy.stats.norm as multivariate_normal  # pylint: disable=g-import-not-at-top,ungrouped-imports

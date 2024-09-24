@@ -18,7 +18,8 @@ COCOB is a contributed optimizer implemented from Algorithm 2 of "Training Deep
 Networks without Learning Rates Through Coin Betting" by Francesco Orabona and
 Tatiana Tommasi.
 """
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
 import jax
 import jax.numpy as jnp

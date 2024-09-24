@@ -14,7 +14,8 @@
 # ==============================================================================
 """Utilities to generate random pytrees."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import chex
 import jax

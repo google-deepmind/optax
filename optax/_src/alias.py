@@ -14,11 +14,11 @@
 # ==============================================================================
 """Aliases for popular optimizers."""
 
+from collections.abc import Callable
 import functools
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import jax.numpy as jnp
-
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine

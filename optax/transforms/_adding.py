@@ -14,7 +14,8 @@
 # ==============================================================================
 """Additive components in gradient transformations."""
 
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
 import chex
 import jax

@@ -14,7 +14,8 @@
 # ==============================================================================
 """Gradient transformations for accumulating gradients across updates."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Protocol, Union
 
 import chex
 import jax
