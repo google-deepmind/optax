@@ -485,8 +485,8 @@ class ZoomLinesearchTest(chex.TestCase):
     with self.subTest('Check against scipy'):
       stepsize = otu.tree_get(final_state, 'learning_rate')
       final_value = otu.tree_get(final_state, 'value')
-      chex.assert_trees_all_close(scipy_res[0], stepsize, atol=1e-5)
-      chex.assert_trees_all_close(scipy_res[3], final_value, atol=1e-5)
+      chex.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
+      chex.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
 
   def test_failure_descent_direction(self):
     """Check failure when updates are not a descent direction."""
