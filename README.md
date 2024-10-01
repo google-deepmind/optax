@@ -95,7 +95,7 @@ git clone https://github.com/google-deepmind/optax.git
 To run the tests, please execute the following script.
 
 ```sh
-sh ./test.sh
+sh test.sh
 ```
 
 ### Documentation
@@ -106,7 +106,7 @@ pip install -e ".[docs]"
 ```
 Then, execute the following.
 ```sh
-cd docs/
+cd docs
 make html
 ```
 
