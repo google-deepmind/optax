@@ -161,7 +161,7 @@ class GradientTransformation(NamedTuple):
 
   Note that an extended API is provided for users wishing to build optimizers
   that take additional arguments during the update step. For more details,
-  see ``GradientTransoformationExtraArgs``.
+  see :func:`optax.GradientTransoformationExtraArgs`.
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer
