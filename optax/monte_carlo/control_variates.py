@@ -70,6 +70,7 @@ UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
+@chex.warn_deprecated_function
 def control_delta_method(
     function: Callable[[chex.Array], float]) -> ControlVariate:
   """The control delta covariate method.
@@ -90,6 +91,9 @@ def control_delta_method(
     A tuple of three functions, to compute the control variate, the
     expected value of the control variate, and to update the control variate
     state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
 
   def delta(
@@ -141,6 +145,7 @@ def control_delta_method(
   return delta, expected_value_delta, update_state
 
 
+@chex.warn_deprecated_function
 def moving_avg_baseline(
     function: Callable[[chex.Array], float],
     decay: float = 0.99,
@@ -165,6 +170,9 @@ def moving_avg_baseline(
     A tuple of three functions, to compute the control variate, the
     expected value of the control variate, and to update the control variate
     state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   def moving_avg(
       params: base.Params,
@@ -209,6 +217,7 @@ def _map(cv, params, samples, state):
   return jax.vmap(lambda x: cv(params, x, state))(samples)
 
 
+@chex.warn_deprecated_function
 def control_variates_jacobians(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[
@@ -271,6 +280,9 @@ def control_variates_jacobians(
       used for learning. The entire jacobian vector can be used to assess
       estimator variance.
     * The updated CV state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate
@@ -339,6 +351,7 @@ def control_variates_jacobians(
   return jacobians, control_variate_state
 
 
+@chex.warn_deprecated_function
 def estimate_control_variate_coefficients(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[
@@ -389,6 +402,9 @@ def estimate_control_variate_coefficients(
   Returns:
     A list of control variate coefficients (each a scalar), for each parameter
     in `params`.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   # Resample to avoid biased gradients.
   cv_rng, _ = jax.random.split(rng)
