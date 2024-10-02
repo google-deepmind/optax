@@ -659,7 +659,9 @@ def adamw(
   Returns:
     The corresponding `GradientTransformation`.
 
-  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
+  .. seealso::
+    See the related functions :func:`optax.adam`, :func:`optax.nadamw`, as well
+    as the example :doc:`../_collections/examples/nanolm` for a use case.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -1310,7 +1312,9 @@ def optimistic_gradient_descent(
     Objective function: 1.30E+01
 
   References:
-    Mokhtari et al, 2019: https://arxiv.org/abs/1901.08511v2
+    Mokhtari et al, 2019: `A Unified Analysis of Extra-gradient and
+    Optimistic Gradient Methods for Saddle Point Problems: Proximal
+    Point Approach <https://arxiv.org/abs/1901.08511v2>`_, 2019
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -1320,6 +1324,9 @@ def optimistic_gradient_descent(
 
   Returns:
     A `GradientTransformation`.
+
+  .. seealso::
+    :doc:`../_collections/examples/ogda_example`
   """
   return combine.chain(
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
