@@ -312,7 +312,8 @@ def schedule_free_adamw(
   Shortcut example for using schedule_free with AdamW, which is a common use
   case. Note that this is just an example, and other usecases are possible, e.g.
   using a weight decay mask, nesterov, etc. Note also that the EMA parameter of
-  the schedule free method (b1) must be strictly positive.
+  the schedule free method (b1) must be strictly positive. Due to issue #1010, 
+  RMSprop is used here instead of AdamW to conserve memory.
 
   Args:
     learning_rate: AdamW learning rate.
