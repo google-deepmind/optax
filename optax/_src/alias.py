@@ -832,7 +832,7 @@ def amsgrad(
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
-  """The AMSGrad optimiser.
+  """The AMSGrad optimizer.
 
   The original Adam can fail to converge to the optimal solution in some cases.
   AMSGrad guarantees convergence by using a long-term memory of past gradients.
@@ -1192,7 +1192,7 @@ def sign_sgd(
 
 
   References:
-    Bernstein et al., `signSGD: Compressed Optimisation for Non-Convex Problems
+    Bernstein et al., `signSGD: Compressed optimization for Non-Convex Problems
     <https://arxiv.org/abs/1802.04434>`_, 2018
 
     Balles et al.`The Geometry of Sign Gradient Descent

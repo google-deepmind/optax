@@ -143,7 +143,7 @@ def mechanize(
     # weights instead of what they were initialized with.
     x0 = jax.lax.cond(state.count == 0, lambda: params, lambda: state.x0)
 
-    # Add weight decay to raw gradients, note that this is othogonal to any
+    # Add weight decay to raw gradients, note that this is orthogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
     grad_norm = otu.tree_l2_norm(updates)

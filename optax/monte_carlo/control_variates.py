@@ -73,7 +73,7 @@ ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 @chex.warn_deprecated_function
 def control_delta_method(
     function: Callable[[chex.Array], float]) -> ControlVariate:
-  """The control delta covariate method.
+  """The control delta covariant method.
 
   Control variate obtained by performing a second order Taylor expansion
     on the cost function f at the mean of the input distribution.
@@ -163,7 +163,7 @@ def moving_avg_baseline(
     zero_debias: Whether or not to use zero debiasing for the moving average.
     use_decay_early_training_heuristic: Whether or not to use a heuristic which
       overrides the decay value early in training based on
-      min(decay, (1.0 + i) / (10.0 + i)). This stabilises training and was
+      min(decay, (1.0 + i) / (10.0 + i)). This stabilizes training and was
       adapted from the Tensorflow codebase.
 
   Returns:
@@ -316,7 +316,7 @@ def control_variates_jacobians(
   cv_jacobians = grad_estimator(
       samples_fn, params, dist_builder, rng, num_samples)
 
-  # The gradients of the stochastic covariate with respect to the parameters.
+  # The gradients of the stochastic covariant with respect to the parameters.
   def param_fn(x):
     return jnp.mean(_map(
         stochastic_cv, x,

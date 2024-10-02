@@ -357,7 +357,7 @@ class MaskedTest(chex.TestCase):
       def __call__(self, x):
         return self.w.dot(x)
 
-    # Make it a pytree by registring it as a pytree node
+    # Make it a pytree by registering it as a pytree node
     jtu.register_pytree_node(
         _MaskCompatibleModule,
         lambda m: ((m.w,), None),

@@ -113,7 +113,7 @@ class ConditionalityTest(parameterized.TestCase):
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:
-    # * pmap is applied to the gradient computation and the optimisation;
+    # * pmap is applied to the gradient computation and the optimization;
     # * the NaNs are caused inside the function and do not come from the inputs.
     half = jnp.ones([1]) / 2.
     two = jnp.ones([1]) * 2.  # Causes a NaN in arctanh
@@ -174,7 +174,7 @@ class ConditionallyTransformTest(chex.TestCase):
     for _ in range(ConditionallyTransformTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 1.)
@@ -199,7 +199,7 @@ class ConditionallyTransformTest(chex.TestCase):
     updates, state = update_fn(grads, state)
     self.assertEqual(updates, 1.)
     self.assertEqual(state.inner_state.found_nan, False)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads_with_nan, state)
       # Warning: do not use assertEqual with a NaN as NaN == NaN returns False.
@@ -228,7 +228,7 @@ class ConditionallyMaskTest(chex.TestCase):
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 0.)
@@ -253,7 +253,7 @@ class ConditionallyMaskTest(chex.TestCase):
     updates, state = update_fn(grads, state)
     self.assertEqual(updates, 1.)
     self.assertEqual(state.inner_state.found_nan, False)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads_with_nan, state)
       self.assertEqual(updates, 0.)
@@ -276,7 +276,7 @@ class ConditionallyMaskTest(chex.TestCase):
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state, loss=0.2)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state, loss=0.)
       self.assertEqual(updates, 0.)

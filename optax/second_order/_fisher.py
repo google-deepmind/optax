@@ -14,7 +14,7 @@
 # ==============================================================================
 """Functions for computing diagonals of the fisher information matrix.
 
-Computing the Fisher matrix for neural networks is typically intractible due to
+Computing the Fisher matrix for neural networks is typically intractable due to
 the quadratic memory requirements. Solving for the diagonal can be done cheaply,
 with sub-quadratic memory requirements.
 """

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Linear algebra utilities used in optimisation."""
+"""Linear algebra utilities used in optimization."""
 
 from collections.abc import Callable
 import functools

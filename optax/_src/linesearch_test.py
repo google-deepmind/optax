@@ -555,7 +555,7 @@ class ZoomLinesearchTest(chex.TestCase):
       self.assertEqual(stepsize, 10.0)
       self.assertIn(_linesearch.FLAG_INTERVAL_NOT_FOUND, stdout.getvalue())
       self.assertIn(
-          _linesearch.FLAG_CURVATURE_COND_NOT_SATSIFIED, stdout.getvalue()
+          _linesearch.FLAG_CURVATURE_COND_NOT_SATISFIED, stdout.getvalue()
       )
 
   def test_failure_not_enough_iter(self):
@@ -664,7 +664,7 @@ class ZoomLinesearchTest(chex.TestCase):
     # Descent direction p chosen such that, with x+p
     # the first trial of the algorithm,
     # 1. u*f'(w) < 0 (valid descent direction)
-    # 2. w+u satisifies sufficient decrease
+    # 2. w+u satisfies sufficient decrease
     # 3. w+u does not satisfy small curvature
     # 4. f'(w+u) > 0
     # As a result, the first trial starts with high < low

@@ -25,7 +25,7 @@ def smooth_labels(
   """Apply label smoothing.
 
   Label smoothing is often used in combination with a cross-entropy loss.
-  Smoothed labels favour small logit gaps, and it has been shown that this can
+  Smoothed labels favor small logit gaps, and it has been shown that this can
   provide better model calibration by preventing overconfident predictions.
 
   References:

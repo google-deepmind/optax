@@ -548,7 +548,7 @@ def scale_by_param_block_rms(
 
 
 class ScaleByAdaDeltaState(NamedTuple):
-  """State for the rescaling by Adadelta algoritm."""
+  """State for the rescaling by Adadelta algorithm."""
 
   e_g: base.Updates
   e_x: base.Updates
@@ -778,7 +778,7 @@ def scale_by_rprop(
 ) -> base.GradientTransformation:
   """Scale with the Rprop optimizer.
 
-  Rprop, short for resillient backpropogation, is a first order variant of
+  Rprop, short for resillient backpropagation, is a first order variant of
   gradient descent. It responds only to the sign of the gradient by increasing
   or decreasing the step size selected per parameter exponentially to speed up
   convergence and avoid oscillations.

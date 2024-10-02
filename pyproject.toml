@@ -5,7 +5,7 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "optax"
 dynamic = ["version"]
-description = "A gradient processing and optimisation library in JAX."
+description = "A gradient processing and optimization library in JAX."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"

@@ -91,7 +91,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     del params
     g_norm = linear_algebra.global_norm(updates)
     # TODO(b/163995078): revert back to the following (faster) implementation
-    # once analysed how it affects backprop through update (e.g. meta-gradients)
+    # once analyzed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
     # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
@@ -169,7 +169,7 @@ def per_example_layer_norm_clip(
 ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
   """Applies gradient clipping per-example using per-layer norms.
 
-  If len(grads) == 1, this function is equivent to
+  If len(grads) == 1, this function is equivalent to
   optax.per_example_global_norm_clip.  If len(grads) > 1, each array in grads
   will be independently clipped to a value ``C_i`` documented below.
 

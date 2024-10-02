@@ -32,7 +32,7 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     self.params = {'key_a': (jnp.zeros((2, 3, 4)), jnp.zeros([])),
                    'key_b': jnp.zeros((6, 7))}
     # Example `i`'s grads are full of `i`s. Important to include 0 to ensure
-    # there are no divisons by 0 (e.g. in norm clipping)
+    # there are no divisions by 0 (e.g. in norm clipping)
     a = jnp.arange(self.batch_size)
     self.per_eg_grads = jax.tree.map(
         lambda p: jnp.moveaxis(a * jnp.ones(p.shape+(self.batch_size,)), -1, 0),
