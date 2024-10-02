@@ -66,21 +66,22 @@ Second Order Optimization
 .. currentmodule:: optax.second_order
 
 .. autosummary::
-    fisher_diag
-    hessian_diag
-    hvp
+    hvp_call
+    make_gnvp_fn
+    make_hvp_fn
 
-Fisher diagonal
-~~~~~~~~~~~~~~~
-.. autofunction:: fisher_diag
+Compute Hessian vector product (hvp) directly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction::  hvp_call
 
-Hessian diagonal
-~~~~~~~~~~~~~~~~
-.. autofunction:: hessian_diag
+Instantiate Gauss-Newton vector product (gnvp) function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: make_gnvp_fn
 
-Hessian vector product
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: hvp
+Instantiate Hessian vector product (hvp) function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: make_hvp_fn
+
 
 
 Tree
