@@ -50,9 +50,7 @@ def schedule_free_eval_params(state: base.OptState, params: base.Params):
     raise ValueError(
         'schedule_free_eval_params requires a ScheduleFreeState as input.'
     )
-  return jax.tree.map(
-      lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, z
-  )
+  return jax.tree.map(lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, z)
 
 
 def schedule_free(
@@ -145,6 +143,9 @@ def schedule_free(
       z = otu.tree_cast(params, dtype=state_dtype)
     else:
       z = params
+    # It's imporant to copy the params here so that z is a distinct array and
+    # we can donate both z and the params to JITted functions.
+    z = jax.tree_util.tree_map(lambda t: t.copy(), z)
     return ScheduleFreeState(
         b1=jnp.asarray(b1, dtype=params_dtype),
         weight_sum=jnp.zeros([], dtype=params_dtype),
@@ -206,9 +207,7 @@ def schedule_free(
         x,
         z,
     )
-    updates = jax.tree.map(
-        lambda npi, pi: npi - pi, new_params, params
-    )
+    updates = jax.tree.map(lambda npi, pi: npi - pi, new_params, params)
 
     next_state = ScheduleFreeState(
         b1=state.b1,
@@ -244,10 +243,10 @@ def schedule_free_sgd(
     warmup_steps: positive integer, the length of the linear warmup.
     b1: beta_1 parameter in the y update.
     weight_decay: Strength of the weight decay regularization. Note that this
-      weight decay is multiplied with the learning rate. This is consistent
-      with other frameworks such as PyTorch, but different from
-      (Loshchilov et al, 2019) where the weight decay is only multiplied with
-      the "schedule multiplier", but not the base learning rate.
+      weight decay is multiplied with the learning rate. This is consistent with
+      other frameworks such as PyTorch, but different from (Loshchilov et al,
+      2019) where the weight decay is only multiplied with the "schedule
+      multiplier", but not the base learning rate.
     weight_lr_power: we downweight the weight of averaging using this. This is
       especially helpful in early iterations during warmup.
     state_dtype: dtype for z sequence in the schedule free method.
@@ -287,7 +286,8 @@ def schedule_free_sgd(
   optimizer = alias.sgd(learning_rate)
   if weight_decay is not None:
     optimizer = combine.chain(
-        _adding.add_decayed_weights(weight_decay), optimizer)
+        _adding.add_decayed_weights(weight_decay), optimizer
+    )
   return schedule_free(
       optimizer,
       learning_rate=learning_rate,
@@ -319,8 +319,8 @@ def schedule_free_adamw(
     warmup_steps: positive integer, the length of the linear warmup.
     b1: beta_1 parameter in the y update.
     b2: Exponential decay rate to track the second moment of past gradients.
-    eps: A small constant applied to denominator outside of the square root
-      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps: A small constant applied to denominator outside of the square root (as
+      in the Adam paper) to avoid dividing by zero when rescaling.
     weight_decay: Strength of the weight decay regularization.
     weight_lr_power: we downweight the weight of averaging using this. This is
       especially helpful in early iterations during warmup.
@@ -364,7 +364,7 @@ def schedule_free_adamw(
           decay=b2, eps=eps, eps_in_sqrt=False, bias_correction=True
       ),
       _adding.add_decayed_weights(weight_decay),
-      transform.scale_by_learning_rate(learning_rate)
+      transform.scale_by_learning_rate(learning_rate),
   )
   return schedule_free(
       optimizer,
