@@ -312,8 +312,14 @@ def schedule_free_adamw(
   Shortcut example for using schedule_free with AdamW, which is a common use
   case. Note that this is just an example, and other usecases are possible, e.g.
   using a weight decay mask, nesterov, etc. Note also that the EMA parameter of
-  the schedule free method (b1) must be strictly positive. Due to issue #1010, 
-  RMSprop is used here instead of AdamW to conserve memory.
+  the schedule free method (b1) must be strictly positive.
+
+  .. note::
+    Note that :func:`optax.scale_by_adam` with ``b1=0`` stores in its state an
+    unused first moment always equal to zero. To avoid this waste of memory,
+    we replace
+    :func:`optax.scale_by_adam` with ``b1=0`` by the equivalent
+    :func:`optax.scale_by_rms` with ``eps_in_sqrt=False, bias_correction=True``.
 
   Args:
     learning_rate: AdamW learning rate.
