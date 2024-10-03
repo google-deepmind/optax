@@ -1183,6 +1183,11 @@ def scale_by_novograd(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByOptimisticGradientState(NamedTuple):
+  is_initial_step: chex.Array
+  previous_gradient: base.Updates
+
+
 def scale_by_optimistic_gradient(
     alpha: float = 1.0,
     beta: float = 1.0
@@ -1201,15 +1206,29 @@ def scale_by_optimistic_gradient(
   """
 
   def init_fn(params):
-    return TraceState(trace=otu.tree_zeros_like(params))
+    return ScaleByOptimisticGradientState(
+        is_initial_step=jnp.array(True),
+        previous_gradient=otu.tree_zeros_like(params),
+    )
 
   def update_fn(updates, state, params=None):
     del params
 
-    new_updates = jax.tree.map(
-        lambda grad_t, grad_tm1: (alpha + beta) * grad_t - beta * grad_tm1,
-        updates, state.trace)
-    return new_updates, TraceState(trace=updates)
+    def f(grad_t, grad_tm1):
+      # At the initial step, the previous gradient doesn't exist, so we use the
+      # current gradient instead.
+      # https://github.com/google-deepmind/optax/issues/1082
+      grad_tm1 = jnp.where(state.is_initial_step, grad_t, grad_tm1)
+      return (alpha + beta) * grad_t - beta * grad_tm1
+
+    new_updates = jax.tree.map(f, updates, state.previous_gradient)
+
+    new_state = ScaleByOptimisticGradientState(
+        is_initial_step=jnp.array(False),
+        previous_gradient=updates,
+    )
+
+    return new_updates, new_state
 
   return base.GradientTransformation(init_fn, update_fn)
 

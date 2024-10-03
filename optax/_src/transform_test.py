@@ -145,25 +145,22 @@ class TransformTest(parameterized.TestCase):
     chex.assert_trees_all_close(centralized_inputs, outputs)
 
   def test_scale_by_optimistic_gradient(self):
+    opt = transform.scale_by_optimistic_gradient()
 
-    def f(params: jnp.ndarray) -> jnp.ndarray:
-      return params['x'] ** 2
+    state = opt.init(10.0)
 
-    initial_params = {
-        'x': jnp.array(2.0)
-    }
+    grad_0 = 2.0
+    opt_grad_0, state = opt.update(grad_0, state)
+    chex.assert_trees_all_close(opt_grad_0, grad_0)
+    # initial step should yield 2 * grad_0 - grad_0 = grad_0
 
-    og = transform.scale_by_optimistic_gradient()
-    og_state = og.init(initial_params)
-    # Provide some arbitrary previous gradient.
-    getattr(og_state, 'trace')['x'] = 1.5
+    grad_1 = 3.0
+    opt_grad_1, state = opt.update(grad_1, state)
+    chex.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
 
-    g = jax.grad(f)(initial_params)
-    og_true = 2 * g['x'] - getattr(og_state, 'trace')['x']
-    og, _ = og.update(g, og_state)
-
-    # Compare transformation output with manually computed optimistic gradient.
-    chex.assert_trees_all_close(og_true, og['x'])
+    grad_2 = 4.0
+    opt_grad_2, state = opt.update(grad_2, state)
+    chex.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
