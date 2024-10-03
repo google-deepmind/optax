@@ -36,7 +36,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   """Inner optimizer for the Mechanic tests."""
 
   # Use SGD for simplicity but add non-trivial optimizer state so that the
-  # resetting behaviour of lookahead can be tested.
+  # resetting behavior of lookahead can be tested.
   def init_fn(params):
     aggregate_grads = jax.tree.map(jnp.zeros_like, params)
     return OptimizerTestState(aggregate_grads)

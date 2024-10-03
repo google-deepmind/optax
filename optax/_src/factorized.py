@@ -62,7 +62,7 @@ def _factored_dims(
 
 @dataclasses.dataclass
 class _UpdateResult:
-  """Opaque containter that is not traversed by jax.tree.map."""
+  """Opaque container that is not traversed by jax.tree.map."""
 
   update: chex.Array  # the update to apply to params
   v_row: chex.Array  # used for factored params.
@@ -97,20 +97,20 @@ def scale_by_factored_rms(
     [Shazeer et al, 2018](https://arxiv.org/abs/1804.04235)
 
   Args:
-      factored: boolean: whether to use factored second-moment estimates..
-      decay_rate: float: controls second-moment exponential decay schedule.
-      step_offset: for finetuning, one may set this to the starting step-number
-        of the fine tuning phase.
-      min_dim_size_to_factor: only factor accumulator if two array dimensions
-        are at least this size.
-      epsilon: Regularization constant for squared gradient.
-      decay_rate_fn: A function that accepts the current step, the decay rate
-        parameter and controls the schedule for the second momentum. Defaults to
-        the original adafactor's power decay schedule. One potential shortcoming
-        of the orignal schedule is the fact that second momentum converges to 1,
-        which effectively freezes the second momentum. To prevent this the user
-        can opt for a custom schedule that sets an upper bound for the second
-        momentum, like in [Zhai et al., 2021](https://arxiv.org/abs/2106.04560).
+    factored: boolean: whether to use factored second-moment estimates..
+    decay_rate: float: controls second-moment exponential decay schedule.
+    step_offset: for finetuning, one may set this to the starting step-number
+      of the fine tuning phase.
+    min_dim_size_to_factor: only factor accumulator if two array dimensions
+      are at least this size.
+    epsilon: Regularization constant for squared gradient.
+    decay_rate_fn: A function that accepts the current step, the decay rate
+      parameter and controls the schedule for the second momentum. Defaults to
+      the original adafactor's power decay schedule. One potential shortcoming
+      of the original schedule is the fact that second momentum converges to 1,
+      which effectively freezes the second momentum. To prevent this the user
+      can opt for a custom schedule that sets an upper bound for the second
+      momentum, like in [Zhai et al., 2021](https://arxiv.org/abs/2106.04560).
 
   Returns:
     the corresponding `GradientTransformation`.
@@ -126,7 +126,7 @@ def scale_by_factored_rms(
     )
 
   def init_fn(params):
-    """Initialise the optimiser's state."""
+    """Initialise the optimizer's state."""
 
     def _init(param):
       shape, dtype = param.shape, param.dtype

@@ -61,7 +61,7 @@ def conditionally_transform(
 
   Creates a transformation wrapper that conditionally applies the inner gradient
   transformation, and if the condition is not met, just passes the updates and
-  inner state through unchanged. The behaviour is controlled by a user specified
+  inner state through unchanged. The behavior is controlled by a user specified
   function ``should_transform_fn`` that is called by ``conditionally_transform``
   passing as input a counter of the number of times that the ``update`` function
   has been previously called, the user specified function must returns a boolean
@@ -121,7 +121,7 @@ def conditionally_mask(
 
   Creates a transformation wrapper that conditionally applies the inner gradient
   transformation, and if the condition is not met, the updates are set to 0,
-  while the inner state is passed through unchanged. The behaviour is controlled
+  while the inner state is passed through unchanged. The behavior is controlled
   by a user specified function ``should_transform_fn`` that is called
   by ``conditionally_transform`` passing as input a counter of the number of
   times that the ``update`` function has been previously called, the user

@@ -32,7 +32,7 @@ The SAM Optimizer here is written to wrap an inner adversarial optimizer which
 will do the individual steps, and then with a defined cadence, does the outer
 update steps.
 
-To use the SAM optimzier then, create an outer optimizer and an adversarial
+To use the SAM optimizer then, create an outer optimizer and an adversarial
 optimizer, here SGD with a normalized gradient and then wrap them both with SAM.
 
     ```
@@ -111,7 +111,7 @@ def sam(
 
   Performs steps with the inner adversarial optimizer and periodically
   updates an outer set of true parameters.  By default, resets
-  the state of the adversarial optimizer after syncronization.  For example::
+  the state of the adversarial optimizer after synchronization.  For example::
 
     >>> import optax
     >>> rho = 0.1

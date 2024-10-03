@@ -105,7 +105,7 @@ class ConstraintsTest(chex.TestCase):
     chex.assert_trees_all_close(updates, (jnp.ones([3]), jnp.array(
         [1., 0., 0.]), jnp.array([float('inf'), 1., 1.])))
 
-    # Check an upate with only good values
+    # Check an update with only good values
     grads = (jnp.ones([3]), jnp.ones([3]), jnp.ones([3]))
     updates, opt_state = update_fn(grads, opt_state)
     chex.assert_trees_all_close(

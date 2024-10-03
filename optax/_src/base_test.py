@@ -65,7 +65,7 @@ class BaseTest(chex.TestCase):
 class ExtraArgsTest(chex.TestCase):
 
   def test_isinstance(self):
-    """Locks in behaviour for comparing transformations."""
+    """Locks in behavior for comparing transformations."""
 
     def init_fn(params):
       del params

@@ -80,7 +80,7 @@ def periodic_update(
 
   A slow copy of a model's parameters, updated every K actual updates, can be
   used to implement forms of self-supervision (in supervised learning), or to
-  stabilise temporal difference learning updates (in reinforcement learning).
+  stabilize temporal difference learning updates (in reinforcement learning).
 
   References:
     [Grill et al., 2020](https://arxiv.org/abs/2006.07733)

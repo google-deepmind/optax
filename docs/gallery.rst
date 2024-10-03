@@ -218,7 +218,7 @@ Examples that make use of the :doc:`api/contrib` module.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learing rate scheduler.">
+      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learning rate scheduler.">
 
 .. only:: html
 
@@ -229,7 +229,7 @@ Examples that make use of the :doc:`api/contrib` module.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learing rate scheduler.</div>
+      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learning rate scheduler.</div>
     </div>
 
 

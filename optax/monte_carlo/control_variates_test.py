@@ -96,7 +96,7 @@ class DeltaControlVariateTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters([(1.0, 1.0)])
-  def testPolinomialFunction(self, effective_mean, effective_log_scale):
+  def testPolynomialFunction(self, effective_mean, effective_log_scale):
     data_dims = 10
     num_samples = 10**3
 
