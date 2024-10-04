@@ -48,6 +48,7 @@ from sklearn import linear_model
 _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
     dict(opt_name='adadelta', opt_kwargs=dict(learning_rate=0.1)),
+    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
@@ -131,6 +132,7 @@ class AliasTest(chex.TestCase):
         'lion',
         'rprop',
         'adadelta',
+        'adan',
         'polyak_sgd',
         'sign_sgd',
     ) and jnp.iscomplexobj(dtype):
