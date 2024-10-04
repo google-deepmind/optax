@@ -189,6 +189,27 @@
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Solving the linear assignment problem.">
+
+.. only:: html
+
+  .. image:: /images/examples/linear_assignment_problem.png
+    :alt:
+
+  :doc:`_collections/examples/linear_assignment_problem`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Solving the linear assignment problem.</div>
+    </div>
+
+.. raw:: html
+
+    </div>
+
+
 Contrib Examples
 ----------------
 
