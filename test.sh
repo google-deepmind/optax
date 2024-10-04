@@ -27,8 +27,8 @@ set -o nounset
 set -o pipefail
 
 # Install deps in a virtual env.
-python3 -m venv "${TEMP_DIR}/venv"
-source "${TEMP_DIR}/venv/bin/activate"
+python3 -m venv "${TEMP_DIR}/test_venv"
+source "${TEMP_DIR}/test_venv/bin/activate"
 
 # Install dependencies.
 python3 -m pip install --quiet --upgrade pip setuptools wheel
@@ -98,8 +98,7 @@ python3 -m pip install --quiet --editable ".[docs]"
 python3 -m pip install --upgrade --verbose typing_extensions
 cd docs
 make html
-# run doctests
-make doctest
+make doctest # run doctests
 cd ..
 
 echo "All tests passed. Congrats!"

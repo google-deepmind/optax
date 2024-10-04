@@ -45,6 +45,7 @@ from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
 from optax._src.alias import optimistic_gradient_descent
+from optax._src.alias import optimistic_adam
 from optax._src.alias import polyak_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
