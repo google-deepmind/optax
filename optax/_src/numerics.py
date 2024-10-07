@@ -130,12 +130,6 @@ def safe_increment(count: chex.Numeric) -> chex.Numeric:
   count_dtype = jnp.asarray(count).dtype
   if jnp.issubdtype(count_dtype, jnp.integer):
     max_value = jnp.iinfo(count_dtype).max
-    if jnp.issubdtype(count_dtype, jnp.unsignedinteger):
-      # The comparison count < max_value appears to convert its arguments into
-      # signed integers so we get overflow errors with unsigned integers.
-      raise ValueError(
-          f'Unsigned integers like {count_dtype} cannot be incremented safely.'
-      )
   elif jnp.issubdtype(count_dtype, jnp.floating):
     max_value = jnp.finfo(count_dtype).max
   else:
@@ -143,7 +137,8 @@ def safe_increment(count: chex.Numeric) -> chex.Numeric:
         f'Cannot safely increment count with dtype {count_dtype},'
         ' valid dtypes are subdtypes of "jnp.integer" or "jnp.floating".'
     )
-  one = jnp.array(1, dtype=count_dtype)
+  max_value = jnp.array(max_value, count_dtype)
+  one = jnp.array(1, count_dtype)
   return jnp.where(count < max_value, count + one, max_value)
 
 

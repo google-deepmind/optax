@@ -53,10 +53,14 @@ class NumericsTest(chex.TestCase):
       "int16",
       "int32",
       "int64",
+      "uint8",
+      "uint16",
+      "uint32",
+      "uint64",
   ))
   def test_safe_increment(self, dtype):
     """Tests that safe_increment works for all dtypes."""
-    if dtype in ["float64", "int64"]:
+    if dtype in ["float64", "int64", "uint64"]:
       jax.config.update("jax_enable_x64", True)
     dtype = jnp.dtype(dtype)
     inc_fn = self.variant(numerics.safe_increment)
@@ -77,14 +81,11 @@ class NumericsTest(chex.TestCase):
       base = jnp.asarray(max_val, dtype=dtype)
       incremented = inc_fn(base)
       np.testing.assert_array_equal(incremented, base)
-    if dtype in ["float64", "int64"]:
+    if dtype in ["float64", "int64", "uint64"]:
       jax.config.update("jax_enable_x64", False)
 
   @parameterized.product(
       str_dtype=[
-          "uint8",
-          "uint16",
-          "uint32",
           "bool",
           "complex64",
       ]
