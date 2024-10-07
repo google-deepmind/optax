@@ -48,7 +48,10 @@ def add_decayed_weights(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     updates = jax.tree.map(
-        lambda g, p: g + weight_decay * p, updates, params)
+        lambda g, p: None if g is None else g + weight_decay * p,
+        updates,
+        params,
+        is_leaf=lambda x: x is None)
     return updates, state
 
   # If mask is not `None`, apply mask to the gradient transformation.

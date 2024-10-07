@@ -132,7 +132,11 @@ class StatelessTest(chex.TestCase):
 
     @base.stateless
     def opt(g, p):
-      return jax.tree.map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+      return jax.tree.map(
+          lambda g_, p_: None if g_ is None else g_ + 0.1 * p_,
+          g,
+          p,
+          is_leaf=lambda x: x is None)
 
     state = opt.init(params)
     update_fn = self.variant(opt.update)
@@ -156,7 +160,11 @@ class StatelessTest(chex.TestCase):
 
   def test_init_returns_emptystate(self):
     def weight_decay(g, p):
-      return jax.tree.map(lambda g_, p_: g_ + 0.1 * p_, g, p)
+      return jax.tree.map(
+          lambda g_, p_: None if g_ is None else g_ + 0.1 * p_,
+            g,
+            p,
+            is_leaf=lambda x: x is None)
 
     opt = base.stateless(weight_decay)
     state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars

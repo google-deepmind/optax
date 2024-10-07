@@ -40,8 +40,11 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
     Updated parameters, with same structure, shape and type as `params`.
   """
   return jax.tree.map(
-      lambda p, u: jnp.asarray(p + u).astype(jnp.asarray(p).dtype),
-      params, updates)
+      lambda p, u: (
+        None if p is None
+        else jnp.asarray(p + u).astype(jnp.asarray(p).dtype)
+      ),
+      params, updates, is_leaf=lambda x: x is None)
 
 
 def incremental_update(
@@ -66,8 +69,11 @@ def incremental_update(
     an updated moving average `step_size*new+(1-step_size)*old` of the params.
   """
   return jax.tree.map(
-      lambda new, old: step_size * new + (1.0 - step_size) * old,
-      new_tensors, old_tensors)
+      lambda new, old: (
+        None if new is None
+        else step_size * new + (1.0 - step_size) * old
+      ),
+      new_tensors, old_tensors, is_leaf=lambda x: x is None)
 
 
 def periodic_update(
