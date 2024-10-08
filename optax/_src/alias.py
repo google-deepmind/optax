@@ -1305,11 +1305,11 @@ def optimistic_gradient_descent(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
     Objective function: 1.33E+01
     Objective function: 1.32E+01
-    Objective function: 1.30E+01
 
   References:
     Mokhtari et al, 2019: `A Unified Analysis of Extra-gradient and
