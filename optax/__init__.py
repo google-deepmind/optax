@@ -17,6 +17,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=g-importing-member
 
+from optax import assignment
 from optax import contrib
 from optax import losses
 from optax import monte_carlo
@@ -307,6 +308,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "assignment",
     "centralize",
     "chain",
     "clip_by_block_rms",
