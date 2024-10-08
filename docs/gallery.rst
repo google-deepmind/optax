@@ -184,6 +184,23 @@
       <div class="sphx-glr-thumbnail-title">Using LBFGS and linesearch.</div>
     </div>
 
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Differentiable functions with perturbations">
+
+.. only:: html
+
+  .. image:: /images/examples/perturbations.png
+    :alt:
+
+  :doc:`_collections/examples/perturbations`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Differentiable functions with perturbations.</div>
+    </div>    
+
 .. raw:: html
 
     </div>
