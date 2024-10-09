@@ -201,10 +201,6 @@
       <div class="sphx-glr-thumbnail-title">Differentiable functions with perturbations.</div>
     </div>    
 
-.. raw:: html
-
-    </div>
-
 
 .. raw:: html
 
@@ -221,6 +217,7 @@
 
       <div class="sphx-glr-thumbnail-title">Solving the linear assignment problem.</div>
     </div>
+
 
 .. raw:: html
 
