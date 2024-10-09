@@ -41,6 +41,8 @@ Transformations
     ScaleState
     scale_by_adadelta
     ScaleByAdaDeltaState
+    scale_by_adan
+    ScaleByAdanState
     scale_by_adam
     scale_by_adamax
     ScaleByAdamState
@@ -171,6 +173,9 @@ Transformations and states
 
 .. autofunction:: scale_by_adadelta
 .. autoclass:: ScaleByAdaDeltaState
+
+.. autofunction:: scale_by_adan
+.. autoclass:: ScaleByAdanState
 
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax

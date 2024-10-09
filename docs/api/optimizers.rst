@@ -6,6 +6,7 @@ Optimizers
 .. autosummary::
     adabelief
     adadelta
+    adan
     adafactor
     adagrad
     adam
@@ -39,6 +40,10 @@ AdaBelief
 AdaDelta
 ~~~~~~~~~
 .. autofunction:: adadelta
+
+Adan
+~~~~
+.. autofunction:: adan
 
 AdaGrad
 ~~~~~~~

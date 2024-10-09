@@ -101,6 +101,7 @@ _BASE_OPTIMIZERS = [
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=1.0, momentum=0.9)),
     dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1.0)),
+    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='radam', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1.0, b1=0.99)),

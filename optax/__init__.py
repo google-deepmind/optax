@@ -29,6 +29,7 @@ from optax import transforms
 from optax import tree_utils
 from optax._src.alias import adabelief
 from optax._src.alias import adadelta
+from optax._src.alias import adan
 from optax._src.alias import adafactor
 from optax._src.alias import adagrad
 from optax._src.alias import adam
@@ -117,6 +118,7 @@ from optax._src.transform import EmaState
 from optax._src.transform import normalize_by_update_norm
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
 from optax._src.transform import scale_by_amsgrad
@@ -141,6 +143,7 @@ from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdaDeltaState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByAdamState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
@@ -290,6 +293,7 @@ __version__ = "0.2.4.dev"
 __all__ = (
     "adabelief",
     "adadelta",
+    "adan",
     "adafactor",
     "adagrad",
     "adam",
@@ -397,6 +401,7 @@ __all__ = (
     "safe_root_mean_squares",
     "ScalarOrSchedule",
     "scale_by_adadelta",
+    "scale_by_adan",
     "scale_by_adam",
     "scale_by_adamax",
     "scale_by_amsgrad",
@@ -423,6 +428,7 @@ __all__ = (
     "scale_gradient",
     "scale",
     "ScaleByAdaDeltaState",
+    "ScaleByAdanState",
     "ScaleByAdamState",
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
