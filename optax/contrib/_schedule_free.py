@@ -139,7 +139,6 @@ def schedule_free(
     # parameters and updates.
     params_dtype = otu.tree_dtype(params, 'lowest')
     if state_dtype is not None:
-      otu.tree_assert_dtype_preserved(params, state_dtype)
       z = otu.tree_cast(params, dtype=state_dtype)
     else:
       z = params

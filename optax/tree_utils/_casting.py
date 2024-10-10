@@ -142,45 +142,6 @@ def tree_dtype(
     )
 
 
-def tree_assert_dtype_preserved(
-    tree: chex.ArrayTree,
-    dtype: chex.ArrayDType,
-) -> None:
-  """Checks whether some elements of tree may be promoted to dtype.
-
-  Some transformations like :func:`optax.scale_by_adam`, :func:`optax.trace`
-  allow the user to specify a dtype for some of the state's parameters (e.g. the
-  momentum term). This function checks that the specified dtype of the state's
-  parameters does not induce a dtype promotion of any of the parameters. That
-  way we can ensure that the dtype of the updates are consistent with the dtype
-  of the parameters.
-
-  Args:
-    tree: the tree to check.
-    dtype: the dtype to check against.
-
-  Raises:
-    ValueError: If any element of the tree is promoted to dtype.
-
-  .. versionadded:: 0.2.4
-  """
-
-  def _assert_dtype_preserved(path, x):
-    x_dtype = jnp.asarray(x).dtype
-    if jnp.promote_types(x_dtype, dtype) != x_dtype:
-      err_msg = (
-          f'{dtype=} induces dtype promotion for {path} with dtype {x_dtype}.'
-      )
-      return err_msg
-
-  err_msgs = jax.tree.leaves(
-      jax.tree_util.tree_map_with_path(_assert_dtype_preserved, tree)
-  )
-  err_msgs = [err_msg for err_msg in err_msgs if err_msg is not None]
-  if err_msgs:
-    raise ValueError('\n'.join(err_msgs))
-
-
 def _tree_assert_all_dtypes_equal(
     tree: chex.ArrayTree, dtype: chex.ArrayDType
 ) -> None:

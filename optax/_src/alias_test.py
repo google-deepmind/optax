@@ -234,32 +234,15 @@ class AliasTest(chex.TestCase):
 
     params_dtype = jax.dtypes.canonicalize_dtype(params_dtype)
     params = jnp.array([0.0, 0.0], dtype=params_dtype)
-    state_has_lower_dtype = (
-        jnp.promote_types(params_dtype, jnp.dtype(state_dtype)) == params_dtype
-    )
-    if state_dtype is None or state_has_lower_dtype:
-      state = opt.init(params)
+    state = opt.init(params)
 
-      with self.subTest('Test that attribute dtype is correct'):
-        if state_dtype is None:
-          expected_dtype = params_dtype
-        else:
-          expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
-        attribute = otu.tree_get(state, attribute_name)
-        self.assertEqual(expected_dtype, attribute.dtype)
-
-      with self.subTest(
-          'Verifies that the updates keep the same type as params'
-      ):
-        updates, _ = opt.update(jnp.ones_like(params), state, params)
-        self.assertEqual(updates.dtype, params.dtype)
-    else:
-      with self.subTest(
-          'Test that we forbid setting dtype s.t. updates dtype get promoted to'
-          ' the state dtype'
-      ):
-        with self.assertRaises(ValueError):
-          opt.init(params)
+    with self.subTest('Test that attribute dtype is correct'):
+      if state_dtype is None:
+        expected_dtype = params_dtype
+      else:
+        expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
+      attribute = otu.tree_get(state, attribute_name)
+      self.assertEqual(expected_dtype, attribute.dtype)
 
   # Not testing with `without_device=True` because without_device set the
   # variables to the host which appears to convert then the dtype, so we
@@ -269,7 +252,7 @@ class AliasTest(chex.TestCase):
   )
   @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
   def test_preserve_dtype(self, opt_name, opt_kwargs, dtype):
-    """Test that the optimizers return updates of same dtype as params."""
+    """Test that the optimizers return updates of same dtype as gradients."""
     # When debugging this test, note that operations like
     # x = 0.5**jnp.asarray(1, dtype=jnp.int32)
     # (appearing in e.g. optax.tree_utils.tree_bias_correction)
@@ -291,7 +274,7 @@ class AliasTest(chex.TestCase):
     else:
       update_kwargs = {}
     updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
-    self.assertEqual(updates.dtype, params.dtype)
+    self.assertEqual(updates.dtype, grads.dtype)
 
   @chex.variants(
       with_jit=True, without_jit=True, with_device=True, with_pmap=True

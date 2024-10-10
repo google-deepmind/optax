@@ -141,31 +141,14 @@ class ScheduleFreeTest(chex.TestCase):
 
     params_dtype = jax.dtypes.canonicalize_dtype(params_dtype)
     params = jnp.array([0.0, 0.0], dtype=params_dtype)
-    state_has_lower_dtype = (
-        jnp.promote_types(params_dtype, state_dtype) == params_dtype
-    )
-    if state_dtype is None or state_has_lower_dtype:
-      state = opt.init(params)
+    state = opt.init(params)
 
-      with self.subTest('Test that attribute dtype is correct'):
-        if state_dtype is None:
-          expected_dtype = params_dtype
-        else:
-          expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
-        self.assertEqual(expected_dtype, getattr(state, 'z').dtype)
-
-      with self.subTest(
-          'Verifies that the updates keep the same type as params'
-      ):
-        updates, _ = opt.update(jnp.ones_like(params), state, params)
-        self.assertEqual(getattr(updates, 'dtype'), params.dtype)
-    else:
-      with self.subTest(
-          'Test that we forbid setting dtype s.t. updates dtype get promoted to'
-          ' the state dtype'
-      ):
-        with self.assertRaises(ValueError):
-          opt.init(params)
+    with self.subTest('Test that attribute dtype is correct'):
+      if state_dtype is None:
+        expected_dtype = params_dtype
+      else:
+        expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
+      self.assertEqual(expected_dtype, getattr(state, 'z').dtype)
 
 
 if __name__ == '__main__':

@@ -293,17 +293,11 @@ def scale_by_adam(
 
   Returns:
     A `GradientTransformation` object.
-
-  Raises:
-    ValueError: If the selected ``mu_dtype`` induces a dtype promotion of the
-    dtypes of the parameters.
   """
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    if mu_dtype is not None:
-      otu.tree_assert_dtype_preserved(params, mu_dtype)
     mu = otu.tree_zeros_like(params, dtype=mu_dtype)  # First moment
     nu = otu.tree_zeros_like(params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
