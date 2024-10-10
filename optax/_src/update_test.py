@@ -79,5 +79,9 @@ class UpdateTest(chex.TestCase):
           params_2, new_params, atol=1e-10, rtol=1e-5)
 
 
+  def test_none_argument(self):
+    update.apply_updates(None, jnp.array([1.,2.,3.]))
+    update.incremental_update(None, jnp.array([1.,2.,3.]), 0.1)
+
 if __name__ == '__main__':
   absltest.main()
