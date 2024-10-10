@@ -326,7 +326,10 @@ def scale_by_adam(
     # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
-        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        mu_hat,
+        nu_hat,
+        is_leaf=lambda x: x is None)
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
@@ -385,7 +388,10 @@ def scale_by_amsgrad(
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_hat)
     updates = jax.tree.map(
-        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_max)
+        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        mu_hat,
+        nu_max,
+        is_leaf=lambda x: x is None)
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, ScaleByAmsgradState(
         count=count_inc,
@@ -640,7 +646,10 @@ def scale_by_belief(
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
-        lambda m, v: m / (jnp.sqrt(v) + eps), mu_hat, nu_hat)
+        lambda m, v: None if m is None else m / (jnp.sqrt(v) + eps),
+        mu_hat,
+        nu_hat,
+        is_leaf=lambda x: x is None)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -689,7 +698,10 @@ def scale_by_yogi(
     mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
-        lambda m, v: m / (jnp.sqrt(v + eps_root) + eps), mu_hat, nu_hat)
+        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        mu_hat,
+        nu_hat,
+        is_leaf=lambda x: x is None)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -1166,7 +1178,11 @@ def scale_by_novograd(
 
   def update_mu(grads, params, mu, nu):
     updates = jax.tree.map(mu_addition, grads, params, nu)
-    return jax.tree.map(lambda m, u: b1 * m + u, mu, updates)
+    return jax.tree.map(
+              lambda m, u: None if m is None else b1 * m + u,
+              mu,
+              updates,
+              is_leaf=lambda x: x is None)
 
   def update_fn(updates, state, params):
     count_inc = numerics.safe_increment(state.count)

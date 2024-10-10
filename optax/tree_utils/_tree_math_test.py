@@ -236,6 +236,13 @@ class TreeUtilsTest(parameterized.TestCase):
       self.assertEqual(tu.tree_sum(tree), 0)
       self.assertEqual(tu.tree_vdot(tree, tree), 0)
 
+  def test_none_arguments(self):
+    m = jnp.array([1.,2.,3.])
+    tu.tree_add_scalar_mul(None, 1, m)
+    tu.tree_update_moment(None, m, 1, 1)
+    tu.tree_update_infinity_moment(None, m, 1, 1)
+    tu.tree_update_moment_per_elem_norm(None, m, 1, 1)
+
 
 if __name__ == '__main__':
   absltest.main()
