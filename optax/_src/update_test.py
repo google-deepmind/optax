@@ -14,7 +14,7 @@
 # ==============================================================================
 """Tests for `update.py`."""
 
-from absl.testing import absltest
+from absl.testing import absltest, parameterized
 
 import chex
 import jax
@@ -78,10 +78,14 @@ class UpdateTest(chex.TestCase):
       chex.assert_trees_all_close(
           params_2, new_params, atol=1e-10, rtol=1e-5)
 
-
-  def test_none_argument(self):
-    update.apply_updates(None, jnp.array([1.,2.,3.]))
-    update.incremental_update(None, jnp.array([1.,2.,3.]), 0.1)
+  @parameterized.named_parameters(
+      dict(testcase_name='apply_updates', operation=update.apply_updates),
+      dict(testcase_name='incremental_update',
+           operation=lambda x, y: update.incremental_update(x,y,1)),
+  )
+  def test_none_argument(self, operation):
+    x = jnp.array([1., 2., 3.])
+    operation(None, x)
 
 if __name__ == '__main__':
   absltest.main()
