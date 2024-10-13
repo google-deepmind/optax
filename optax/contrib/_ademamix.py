@@ -1,3 +1,4 @@
+import optax.tree_utils as otu
 from typing import Any, Callable, NamedTuple, Optional, Union
 import chex
 import jax.numpy as jnp
@@ -165,7 +166,7 @@ def ademamix(
           distribution shift, or general cases in which the distribution is non-stationary.
   """
   return combine.chain(
-    transform.scale_by_ademamix(
+    scale_by_ademamix(
       b1, b2, b3, alpha, b3_scheduler, alpha_scheduler, eps
     ),
     transform.add_decayed_weights(weight_decay),
