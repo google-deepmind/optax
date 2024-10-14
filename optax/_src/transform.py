@@ -594,6 +594,86 @@ def scale_by_adadelta(
   return base.GradientTransformation(init_fn, update_fn)
 
 
+class ScaleByAdanState(NamedTuple):
+  m: base.Updates
+  v: base.Updates
+  n: base.Updates
+  g: base.Updates
+  t: chex.Array
+
+
+def scale_by_adan(
+    b1: float = 0.98,
+    b2: float = 0.92,
+    b3: float = 0.99,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+) -> base.GradientTransformation:
+  """Rescale updates according to the Adan algorithm.
+
+  References:
+    Xie et al, `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing
+    Deep Models
+    <https://arxiv.org/abs/1412.6980>`_, 2022
+
+  Args:
+    b1: Decay rate for the EWMA of gradients.
+    b2: Decay rate for the EWMA of differences of gradients.
+    b3: Decay rate for the EMWA of the algorithm's squared term.
+    eps: Term added to the denominator to improve numerical stability.
+    eps_root: Term added to the denominator inside the square-root to improve
+      numerical stability when backpropagating gradients through the rescaling.
+
+  Returns:
+    An :class:`optax.GradientTransformation` object.
+  """
+  def init_fn(params):
+    return ScaleByAdanState(
+        m=otu.tree_zeros_like(params),
+        v=otu.tree_zeros_like(params),
+        n=otu.tree_zeros_like(params),
+        g=otu.tree_zeros_like(params),
+        t=jnp.zeros([], jnp.int32),
+    )
+
+  def update_fn(updates, state, params=None):
+    """Based on Algorithm 1 in https://arxiv.org/pdf/2208.06677v4#page=6."""
+    del params
+    g = updates
+
+    diff = otu.tree_where(
+        state.t == 0,
+        otu.tree_zeros_like(g),
+        otu.tree_sub(g, state.g),
+    )
+    m = otu.tree_update_moment(g, state.m, b1, 1)
+    v = otu.tree_update_moment(diff, state.v, b2, 1)
+
+    sq = otu.tree_add_scalar_mul(g, 1 - b2, diff)
+    n = otu.tree_update_moment_per_elem_norm(sq, state.n, b3, 2)
+
+    t = numerics.safe_increment(state.t)
+    m_hat = otu.tree_bias_correction(m, b1, t)
+    v_hat = otu.tree_bias_correction(v, b2, t)
+    n_hat = otu.tree_bias_correction(n, b3, t)
+
+    u = otu.tree_add_scalar_mul(m_hat, 1 - b2, v_hat)
+    denom = jax.tree.map(lambda n_hat: jnp.sqrt(n_hat + eps_root) + eps, n_hat)
+    u = otu.tree_div(u, denom)
+
+    new_state = ScaleByAdanState(
+        m=m,
+        v=v,
+        n=n,
+        g=g,
+        t=t,
+    )
+
+    return u, new_state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 class ScaleByBeliefState(NamedTuple):
   """State for the rescaling by AdaBelief algorithm."""
   count: chex.Array  # shape=(), dtype=jnp.int32.

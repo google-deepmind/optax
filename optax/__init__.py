@@ -35,6 +35,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import adan
 from optax._src.alias import amsgrad
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -119,6 +120,7 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
@@ -142,6 +144,7 @@ from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByLBFGSState
@@ -296,6 +299,7 @@ __all__ = (
     "adamax",
     "adamaxw",
     "adamw",
+    "adan",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
@@ -399,6 +403,7 @@ __all__ = (
     "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_adan",
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
@@ -424,6 +429,7 @@ __all__ = (
     "scale",
     "ScaleByAdaDeltaState",
     "ScaleByAdamState",
+    "ScaleByAdanState",
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",

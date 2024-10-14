@@ -54,6 +54,7 @@ _OPTIMIZERS_UNDER_TEST = (
     dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
@@ -131,6 +132,7 @@ class AliasTest(chex.TestCase):
         'lion',
         'rprop',
         'adadelta',
+        'adan',
         'polyak_sgd',
         'sign_sgd',
     ) and jnp.iscomplexobj(dtype):
