@@ -108,9 +108,9 @@ def make_perturbed_fun(
   for :math:`Z` a random variable sample from the noise sampler. This implements
   a Monte-Carlo estimate.
 
-    References:
-      Berthet et al., `Learning with Differentiable Perturbed Optimizers
-      <https://arxiv.org/abs/2002.08676>`_, 2020
+  References:
+    Berthet et al., `Learning with Differentiable Perturbed Optimizers
+    <https://arxiv.org/abs/2002.08676>`_, 2020
 
   Args:
     fun: The function to transform into a differentiable function. Signature
@@ -124,6 +124,9 @@ def make_perturbed_fun(
   Returns:
     A function with the same signature (plus an additional rng in the input)
     that can be automatically differentiated.
+
+  .. seealso::
+    * :doc:`../_collections/examples/perturbations` example.
   """
 
   def _compute_residuals(
