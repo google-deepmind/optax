@@ -91,6 +91,14 @@ class AddingTest(chex.TestCase):
 
       chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
 
+  def test_none_argument(self):
+    weights = (
+        jnp.ones((2,), dtype=jnp.float32),
+        dict(
+            a=jnp.ones((2,), dtype=jnp.float32),
+            b=jnp.ones((2,), dtype=jnp.float32),))
+    tf = _adding.add_decayed_weights(0.1, mask=None)
+    tf.update(None, 0, weights)
 
 if __name__ == "__main__":
   absltest.main()

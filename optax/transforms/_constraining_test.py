@@ -114,6 +114,12 @@ class ConstraintsTest(chex.TestCase):
             (jnp.array(False), jnp.array(False), jnp.array(False))))
     chex.assert_trees_all_close(updates, grads)
 
+  def test_none_arguments(self):
+    tf = _constraining.keep_params_nonnegative()
+    state = tf.init(jnp.array([1.0, 2.0, 3.0]))
+    with self.assertRaises(ValueError):
+      tf.update(jnp.array([1.0, 2.0, 3.0]), state, None)
+
 
 if __name__ == '__main__':
   absltest.main()
