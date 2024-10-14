@@ -1,10 +1,18 @@
+"""AdeMAMix.
+
+Implementation of
+"THE ADEMAMIX OPTIMIZER: BETTER, FASTER, OLDER"
+(https://arxiv.org/pdf/2409.03137) by Matteo Pagliardini, 
+Pierre Ablin and David Grangier.
+"""
 import optax.tree_utils as otu
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import NamedTuple, Optional
 import chex
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from optax._src import base
 from optax._src import combine
+from optax._src import numerics
 from optax._src import transform
 
 
@@ -26,38 +34,37 @@ def scale_by_ademamix(
   b3_scheduler: Optional[base.ScalarOrSchedule] = None,
   alpha_scheduler: Optional[base.ScalarOrSchedule] = None,
   eps: float = 1e-8,
-  weight_decay: float = 0.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Ademamix algorithm.
 
   References:
-          [Pagliardini et al, 2024](https://arxiv.org/pdf/2409.03137)
+    [Pagliardini et al, 2024](https://arxiv.org/pdf/2409.03137)
 
   Args:
-          b1: Exponential decay rate to track the first moment of past gradients for
-                  the first Exponential Moving Average (EMA) - same as AdamW
-          b2: Exponential decay rate to track the second moment of past gradients for
-                  the first Exponential Moving Average (EMA) - same as AdamW
-          b3: Exponential decay rate to track the first moment of past gradients
-                  for the second EMA.
-          alpha: the coefficient that "blends" the two EMAs. paper states values in
-                  :math:`[4,10]` work well in practice.
-          b3_scheduler: The schedule for the b3 parameter
-          alpha_scheduler: The schedule for the alpha parameter
-          eps: A small constant applied to denominator outside of the square root
-          (as in the Adam paper) to avoid dividing by zero when rescaling.
-          weight_decay: Strength of the weight decay regularization.
+    b1: Exponential decay rate to track the first moment of past gradients for
+        the first Exponential Moving Average (EMA) - same as AdamW
+    b2: Exponential decay rate to track the second moment of past gradients for
+        the first Exponential Moving Average (EMA) - same as AdamW
+    b3: Exponential decay rate to track the first moment of past gradients
+        for the second EMA.
+    alpha: the coefficient that "blends" the two EMAs. paper states values in
+           :math:`[4,10]` work well in practice.
+    b3_scheduler: The schedule for the b3 parameter
+    alpha_scheduler: The schedule for the alpha parameter
+    eps: A small constant applied to denominator outside of the square root
+         (as in the Adam paper) to avoid dividing by zero when rescaling.
 
   Returns:
-          A `GradientTransformation` object.
+    A `GradientTransformation` object.
 
   Limitations: AdEMAMix consists in leveraging very old gradients. Therefore,
-          the method is best suited to settings where the number of iterations is
-          important. The paper reports on this effect in App. C.1.5, showing how
-          smaller values of b3 (e.g. b3 = 0.999) can be better for low iterations
-          scenarios. Moreover, retaining gradient information over many thousands
-          steps can pose a problem in domains requiring fast adaptation to a sudden
-          distribution shift, or general cases in which the distribution is non-stationary.
+    the method is best suited to settings where the number of iterations is
+    important. The paper reports on this effect in App. C.1.5, showing how
+    smaller values of b3 (e.g. b3 = 0.999) can be better for low iterations
+    scenarios. Moreover, retaining gradient information over many thousands
+    steps can pose a problem in domains requiring fast adaptation to a sudden
+    distribution shift, or general cases in which the distribution is 
+    non-stationary.
   """
 
   def init_fn(params):
@@ -116,54 +123,55 @@ def ademamix(
   Description
 
   Examples:
-          >>> import optax
-          >>> import jax
-          >>> import jax.numpy as jnp
-          >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-          >>> solver = optax.ademamix(learning_rate=0.003)
-          >>> params = jnp.array([1., 2., 3.])
-          >>> print('Objective function: ', f(params))
-          Objective function:  14.0
-          >>> opt_state = solver.init(params)
-          >>> for _ in range(5):
-          ...  grad = jax.grad(f)(params)
-          ...  updates, opt_state = solver.update(grad, opt_state, params)
-          ...  params = optax.apply_updates(params, updates)
-          ...  print('Objective function: {:.2E}'.format(f(params)))
-          Objective function: 1.40E+01
-          Objective function: 1.39E+01
-          Objective function: 1.39E+01
-          Objective function: 1.39E+01
-          Objective function: 1.38E+01
+    > import optax
+    > import jax
+    > import jax.numpy as jnp
+    > def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    > solver = optax.ademamix(learning_rate=0.003)
+    > params = jnp.array([1., 2., 3.])
+    > print('Objective function: ', f(params))
+      Objective function:  14.0
+    > opt_state = solver.init(params)
+    > for _ in range(5):
+      ...  grad = jax.grad(f)(params)
+      ...  updates, opt_state = solver.update(grad, opt_state, params)
+      ...  params = optax.apply_updates(params, updates)
+      ...  print('Objective function: {:.2E}'.format(f(params)))
+      Objective function: 1.40E+01
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.39E+01
+      Objective function: 1.38E+01
 
   References:
-        Pagliardini et al, 2024: https://arxiv.org/pdf/2409.03137
+    Pagliardini et al, 2024: https://arxiv.org/pdf/2409.03137
 
   Args:
-          b1: Exponential decay rate to track the first moment of past gradients for
-                  the first Exponential Moving Average (EMA) - same as AdamW
-          b2: Exponential decay rate to track the second moment of past gradients for
-                  the first Exponential Moving Average (EMA) - same as AdamW
-          b3: Exponential decay rate to track the first moment of past gradients
-                  for the second EMA.
-          alpha: the coefficient that "blends" the two EMAs. paper states values in
-                  :math:`[4,10]` work well in practice.
-          b3_scheduler: The schedule for the b3 parameter
-          alpha_scheduler: The schedule for the alpha parameter
-          eps: A small constant applied to denominator outside of the square root
-          (as in the Adam paper) to avoid dividing by zero when rescaling.
-          weight_decay: Strength of the weight decay regularization.
+    b1: Exponential decay rate to track the first moment of past gradients for
+        the first Exponential Moving Average (EMA) - same as AdamW
+    b2: Exponential decay rate to track the second moment of past gradients for
+        the first Exponential Moving Average (EMA) - same as AdamW
+    b3: Exponential decay rate to track the first moment of past gradients
+        for the second EMA.
+    alpha: the coefficient that "blends" the two EMAs. paper states values in
+           :math:`[4,10]` work well in practice.
+    b3_scheduler: The schedule for the b3 parameter
+    alpha_scheduler: The schedule for the alpha parameter
+    eps: A small constant applied to denominator outside of the square root
+         (as in the Adam paper) to avoid dividing by zero when rescaling.
+    weight_decay: Strength of the weight decay regularization.
 
   Returns:
-          A `GradientTransformation` object.
+    A `GradientTransformation` object.
 
   Limitations: AdEMAMix consists in leveraging very old gradients. Therefore,
-          the method is best suited to settings where the number of iterations is
-          important. The paper reports on this effect in App. C.1.5, showing how
-          smaller values of b3 (e.g. b3 = 0.999) can be better for low iterations
-          scenarios. Moreover, retaining gradient information over many thousands
-          steps can pose a problem in domains requiring fast adaptation to a sudden
-          distribution shift, or general cases in which the distribution is non-stationary.
+  the method is best suited to settings where the number of iterations is
+  important. The paper reports on this effect in App. C.1.5, showing how
+  smaller values of b3 (e.g. b3 = 0.999) can be better for low iterations
+  scenarios. Moreover, retaining gradient information over many thousands
+  steps can pose a problem in domains requiring fast adaptation to a sudden
+  distribution shift, or general cases in which the distribution is 
+  non-stationary.
   """
   return combine.chain(
     scale_by_ademamix(
