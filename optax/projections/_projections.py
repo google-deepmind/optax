@@ -123,7 +123,7 @@ def projection_simplex(pytree: Any,
   r"""Projection onto a simplex.
 
   This function solves the following constrained optimization problem,
-  where ``p`` is the input pytree.
+  where ``x`` is the input pytree.
 
   .. math::
 
