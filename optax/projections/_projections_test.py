@@ -167,6 +167,67 @@ class ProjectionsTest(parameterized.TestCase):
     np.testing.assert_array_equal(True, 0 <= p)
     np.testing.assert_array_equal(True, p <= scale)
 
+  def test_projection_l1_sphere(self):
+    rng = np.random.RandomState(0)
+
+    x = rng.randn(50).astype(np.float32)
+
+    p = proj.projection_l1_sphere(x)
+    np.testing.assert_almost_equal(jnp.sum(jnp.abs(p)), 1.0, decimal=4)
+
+    scale = 3.21
+    p = proj.projection_l1_sphere(x, scale)
+    np.testing.assert_almost_equal(jnp.sum(jnp.abs(p)), scale, decimal=4)
+
+    pytree = (x, x)
+    p = proj.projection_l1_sphere(pytree)
+    np.testing.assert_almost_equal(otu.tree_l1_norm(p), 1.0, decimal=4)
+
+  def _check_projection_ball(self, ball_fun, sphere_fun, norm_fun):
+    rng = np.random.RandomState(0)
+
+    x = rng.randn(50).astype(np.float32)
+    norm_value = norm_fun(x)
+
+    with self.subTest('Check when input is already in the ball'):
+      big_radius = norm_value * 2
+      p = ball_fun(x, big_radius)
+      np.testing.assert_array_almost_equal(x, p)
+      jacobian = jax.jacrev(ball_fun)(x, big_radius)
+      np.testing.assert_array_almost_equal(jacobian, jnp.eye(len(x)))
+      jacobian = jax.jacrev(ball_fun, argnums=1)(x, big_radius)
+      np.testing.assert_array_almost_equal(jacobian, jnp.zeros_like(x))
+
+    with self.subTest('Check when input is on the boundary of the ball'):
+      p = ball_fun(x, norm_value)
+      np.testing.assert_array_almost_equal(x, p)
+      jacobian = jax.jacrev(ball_fun)(x, norm_value)
+      np.testing.assert_array_almost_equal(jacobian, jnp.eye(len(x)))
+      jacobian = jax.jacrev(ball_fun, argnums=1)(x, norm_value)
+      np.testing.assert_array_almost_equal(jacobian, jnp.zeros_like(x))
+
+    with self.subTest('Check when input is outside the ball'):
+      small_radius = norm_value / 2
+      p = ball_fun(x, small_radius)
+      np.testing.assert_almost_equal(norm_fun(p), small_radius, decimal=4)
+      jacobian = jax.jacrev(ball_fun)(x, small_radius)
+      jacobian2 = jax.jacrev(sphere_fun)(x, small_radius)
+      np.testing.assert_array_almost_equal(jacobian, jacobian2)
+      jacobian = jax.jacrev(ball_fun, argnums=1)(x, small_radius)
+      jacobian2 = jax.jacrev(sphere_fun, argnums=1)(x, small_radius)
+      np.testing.assert_array_almost_equal(jacobian, jacobian2)
+
+    with self.subTest('Check when input is a pytree'):
+      pytree = (x[:25], x[25:])
+      p = ball_fun(pytree, norm_value)
+      np.testing.assert_array_almost_equal(x[:25], p[0])
+      np.testing.assert_array_almost_equal(x[25:], p[1])
+
+  def test_projection_l1_ball(self):
+    self._check_projection_ball(proj.projection_l1_ball,
+                                proj.projection_l1_sphere,
+                                otu.tree_l1_norm)
+
 
 if __name__ == '__main__':
   absltest.main()
