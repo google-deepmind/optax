@@ -70,6 +70,10 @@ _OPTIMIZERS_UNDER_TEST = (
         opt_name='optimistic_gradient_descent',
         opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1),
     ),
+    dict(
+        opt_name='optimistic_adam',
+        opt_kwargs=dict(learning_rate=2e-3),
+    ),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
     dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
     dict(opt_name='sign_sgd', opt_kwargs=dict(learning_rate=1e-1)),
@@ -129,6 +133,7 @@ class AliasTest(chex.TestCase):
         'noisy_sgd',
         'sm3',
         'optimistic_gradient_descent',
+        'optimistic_adam',
         'lion',
         'rprop',
         'adadelta',
