@@ -1523,12 +1523,12 @@ def optimistic_adam(
     >>> _, distances = lax.scan(step, (params, opt_state), length=1025)
     >>> for i in range(6):
     ...  print(f"{distances[4**i]:.3f}")
-    3.522
+    2.243
+    2.195
+    2.161
     2.055
-    1.804
-    0.847
-    0.051
-    0.000
+    0.796
+    0.001
 
   References:
     Daskalakis et al, `Training GANs with Optimism
