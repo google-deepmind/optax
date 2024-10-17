@@ -30,10 +30,13 @@ import inspect
 import os
 import sys
 
+import optax
+from sphinxcontrib import katex
+
 
 def _add_annotations_import(path):
   """Appends a future annotations import to the file at the given path."""
-  with open(path) as f:
+  with open(path, encoding='utf-8') as f:
     contents = f.read()
   if contents.startswith('from __future__ import annotations'):
     # If we run sphinx multiple times then we will append the future import
@@ -41,7 +44,7 @@ def _add_annotations_import(path):
     return
 
   assert contents.startswith('#'), (path, contents.split('\n')[0])
-  with open(path, 'w') as f:
+  with open(path, 'w', encoding='utf-8') as f:
     # NOTE: This is subtle and not unit tested, we're prefixing the first line
     # in each Python file with this future import. It is important to prefix
     # not insert a newline such that source code locations are accurate (we link
@@ -63,9 +66,6 @@ if 'READTHEDOCS' in os.environ:
 
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
-
-import optax
-from sphinxcontrib import katex
 
 # -- Project information -----------------------------------------------------
 
@@ -251,13 +251,10 @@ def linkcode_resolve(domain, info):
     return None
 
   # TODO(slebedev): support tags after we release an initial version.
+  path = os.path.relpath(filename, start=os.path.dirname(optax.__file__))
   return (
-      'https://github.com/google-deepmind/optax/tree/main/optax/%s#L%d#L%d'
-      % (
-          os.path.relpath(filename, start=os.path.dirname(optax.__file__)),
-          lineno,
-          lineno + len(source) - 1,
-      )
+    'https://github.com/google-deepmind/optax/tree/main/optax/'
+    f'{path}#L{lineno}#L{lineno + len(source) - 1}'
   )
 
 
