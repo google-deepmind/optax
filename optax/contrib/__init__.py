@@ -18,6 +18,9 @@
 
 from optax.contrib._acprop import acprop
 from optax.contrib._acprop import scale_by_acprop
+from optax.contrib._ademamix import ScaleByAdemamixState
+from optax.contrib._ademamix import scale_by_ademamix
+from optax.contrib._ademamix import ademamix
 from optax.contrib._cocob import cocob
 from optax.contrib._cocob import COCOBState
 from optax.contrib._cocob import scale_by_cocob

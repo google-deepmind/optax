@@ -8,6 +8,7 @@ Experimental features and algorithms that don't meet the
 
 .. autosummary::
     acprop
+    ademamix
     cocob
     COCOBState
     dadapt_adamw
@@ -81,6 +82,12 @@ Momo
 .. autoclass:: MomoState
 .. autofunction:: momo_adam
 .. autoclass:: MomoAdamState
+
+Multiple EMA AdEMAMix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: ademamix
+.. autofunction:: scale_by_ademamix
+.. autoclass:: ScaleByAdemamixState
 
 Prodigy
 ~~~~~~~
