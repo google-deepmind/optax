@@ -84,6 +84,75 @@ dp-accounting = [
     "scipy>=1.7.1"
 ]
 
+dev = [
+    "flake8",
+    "pylint",
+    "pytype",
+    "pytest",
+    "pytest-xdist",
+    "typing_extensions",
+]
+
 [tool.setuptools.packages.find]
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
+
+[tool.pytype]
+inputs = ["optax"]
+disable = ["import-error"]
+keep_going = true
+
+[tool.pytest.ini_options]
+addopts = "--pyargs optax --numprocesses auto"
+
+[tool.pylint.main]
+ignore-patterns = [
+    ".*.pyi",
+]
+ignore = [
+    "test_venv",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-indentation",
+    "invalid-name",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "unnecessary-lambda-assignment",
+    "no-member",
+    "use-dict-literal",
+    "too-many-locals",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "unused-argument",
+    "unused-import",
+    "line-too-long",
+    "no-value-for-parameter",
+    "wrong-import-order",
+    "no-else-return",
+    "too-many-lines",
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "abstract-method",
+    "used-before-assignment",
+    "too-many-statements",
+    "protected-access",
+    "too-many-instance-attributes",
+    "inconsistent-return-statements",
+    "trailing-newlines",
+    "consider-using-generator",
+    "no-else-raise",
+    "unknown-option-value",
+    "not-callable",
+    "consider-merging-isinstance",
+    "duplicate-code",
+    "import-error",
+    "overridden-final-method",
+]
+
+[tool.pylint.similarities]
+ignore-comments = true
+ignore-docstrings = true
+ignore-imports = true
+min-similarity-lines = 4

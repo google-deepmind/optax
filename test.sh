@@ -13,79 +13,78 @@
 # limitations under the License.
 # ==============================================================================
 
-function cleanup {
-  deactivate
-  rm -r "${TEMP_DIR}"
-}
-trap cleanup EXIT
-
-REPO_DIR=$(pwd)
-TEMP_DIR=$(mktemp --directory)
-
 set -o errexit
 set -o nounset
 set -o pipefail
 
-# Install deps in a virtual env.
-python3 -m venv "${TEMP_DIR}/test_venv"
-source "${TEMP_DIR}/test_venv/bin/activate"
+function cleanup {
+  deactivate
+}
+trap cleanup EXIT
 
-# Install dependencies.
-python3 -m pip install --quiet --upgrade pip setuptools wheel
-python3 -m pip install --quiet --upgrade flake8 pytest-xdist pylint pylint-exit
-python3 -m pip install --quiet --editable ".[test, examples]"
+echo "Deleting test environment (if it exists)"
+rm -rf test_venv
+
+echo "Creating test environment"
+python3 -m venv test_venv
+
+echo "Activating test environment"
+source test_venv/bin/activate
+
+for requirement in "pip" "setuptools" "wheel" "build" ".[test]" ".[examples]" ".[dev]" ".[docs]"
+do
+  echo "Installing" $requirement
+  python3 -m pip install -qU $requirement
+done
 
 # Dp-accounting specifies exact minor versions as requirements which sometimes
 # become incompatible with other libraries optax needs. We therefore install
 # dependencies for dp-accounting manually.
 # TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
 # version requirements.
-python3 -m pip install --quiet --editable ".[dp-accounting]"
-python3 -m pip install --quiet --no-deps "dp-accounting>=0.1.1"
+echo "Installing .[dp-accounting]"
+python3 -m pip install -qU --editable ".[dp-accounting]"
+python3 -m pip install -qU --no-deps "dp-accounting>=0.1.1"
 
+echo "Installing requested JAX version"
 # Install the requested JAX version
 if [ -z "${JAX_VERSION-}" ]; then
   : # use version installed in requirements above
 elif [ "$JAX_VERSION" = "newest" ]; then
-  python3 -m pip install --quiet --upgrade jax jaxlib
+  python3 -m pip install -qU jax jaxlib
 else
-  python3 -m pip install --quiet "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
+  python3 -m pip install -qU "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi
 
 # Ensure optax was not installed by one of the dependencies above,
 # since if it is, the tests below will be run against that version instead of
 # the branch build.
-python3 -m pip uninstall --quiet --yes optax
+echo "Uninstalling optax (if already installed)"
+python3 -m pip uninstall -q --yes optax
 
-# Lint with flake8.
-python3 -m flake8 --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+echo "Linting with flake8"
+flake8
 
-# Lint with pylint.
-PYLINT_ARGS="-efail -wfail -cfail -rfail"
-# Append specific config lines.
-# Lint modules and tests separately.
-python3 -m pylint --rcfile=.pylintrc $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
-# Disable protected-access warnings for tests.
-python3 -m pylint --rcfile=.pylintrc $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
+echo "Linting with pylint"
+pylint . --rcfile pyproject.toml
 
-# Build the package.
-python3 -m pip install --quiet build
+echo "Building the package"
 python3 -m build
-python3 -m pip wheel --no-deps dist/optax-*.tar.gz --wheel-dir "${TEMP_DIR}"
-python3 -m pip install --quiet "${TEMP_DIR}/optax-"*.whl
 
-# Check types with pytype.
-python3 -m pip install --quiet pytype
-pytype "optax" --keep-going --disable import-error
+echo "Building wheel"
+python3 -m pip wheel --no-deps dist/optax-*.tar.gz
 
-# Run tests using pytest.
-# Change directory to avoid importing the package from repo root.
-cd "${TEMP_DIR}"
-python3 -m pytest --numprocesses auto --pyargs optax
-cd "${REPO_DIR}"
+echo "Installing the wheel"
+python3 -m pip install -qU optax-*.whl
 
+echo "Checking types with pytype"
+pytype
+
+echo "Running tests with pytest"
+pytest
+
+echo "Building sphinx docs"
 # Build Sphinx docs.
-python3 -m pip install --quiet --editable ".[docs]"
 # NOTE(vroulet) We have dependencies issues:
 # tensorflow > 2.13.1 requires ml-dtypes <= 0.3.2
 # but jax requires ml-dtypes >= 0.4.0
@@ -95,9 +94,10 @@ python3 -m pip install --quiet --editable ".[docs]"
 # bug (which issues conflict warnings but runs fine).
 # A long term solution is probably to fully remove tensorflow from our
 # dependencies.
-python3 -m pip install --upgrade --verbose typing_extensions
 cd docs
+echo "make html"
 make html
+echo "make doctest"
 make doctest # run doctests
 cd ..
 
