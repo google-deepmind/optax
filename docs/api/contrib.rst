@@ -38,6 +38,12 @@ Experimental features and algorithms that don't meet the
     split_real_and_imaginary
     SplitRealAndImaginaryState
 
+AdEMAMix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: ademamix
+.. autofunction:: scale_by_ademamix
+.. autoclass:: ScaleByAdemamixState
+
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: acprop
@@ -82,12 +88,6 @@ Momo
 .. autoclass:: MomoState
 .. autofunction:: momo_adam
 .. autoclass:: MomoAdamState
-
-Multiple EMA AdEMAMix
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: ademamix
-.. autofunction:: scale_by_ademamix
-.. autoclass:: ScaleByAdemamixState
 
 Prodigy
 ~~~~~~~

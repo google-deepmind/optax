@@ -1,4 +1,4 @@
-"""AdeMAMix.
+"""AdEMAMix.
 
 Implementation of
 "THE ADEMAMIX OPTIMIZER: BETTER, FASTER, OLDER"
@@ -19,7 +19,7 @@ from optax._src import transform
 class ScaleByAdemamixState(NamedTuple):
   """State for the Ademamix algorithm."""
 
-  count: chex.Array
+  count: chex.Array  # shape=(), dtype=jnp.int32.
   count_m2: chex.Array
   m1: base.Updates
   m2: base.Updates
@@ -29,10 +29,8 @@ class ScaleByAdemamixState(NamedTuple):
 def scale_by_ademamix(
   b1: float = 0.9,
   b2: float = 0.999,
-  b3: float = 0.9999,
-  alpha: float = 5.0,
-  b3_scheduler: Optional[base.ScalarOrSchedule] = None,
-  alpha_scheduler: Optional[base.ScalarOrSchedule] = None,
+  b3: base.ScalarOrSchedule = 0.9999,
+  alpha: base.ScalarOrSchedule = 5.0,
   eps: float = 1e-8,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Ademamix algorithm.
@@ -49,8 +47,6 @@ def scale_by_ademamix(
         for the second EMA.
     alpha: the coefficient that "blends" the two EMAs. paper states values in
            :math:`[4,10]` work well in practice.
-    b3_scheduler: The schedule for the b3 parameter
-    alpha_scheduler: The schedule for the alpha parameter
     eps: A small constant applied to denominator outside of the square root
          (as in the Adam paper) to avoid dividing by zero when rescaling.
 
@@ -93,6 +89,7 @@ def scale_by_ademamix(
     count_inc = numerics.safe_int32_increment(state.count)
     count_m2_inc = numerics.safe_int32_increment(state.count_m2)
     m1_hat = otu.tree_bias_correction(m1, b1, count_inc)
+    # NOTE:  AdEMAMix does not perform bias correction on b2.
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
       lambda m1_, m2_, v_: (m1_ + c_alpha * m2_) / (jnp.sqrt(v_) + eps),
