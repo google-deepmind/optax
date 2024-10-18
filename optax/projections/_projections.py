@@ -24,6 +24,9 @@ from jax import flatten_util
 import jax.numpy as jnp
 
 
+from optax import tree_utils as otu
+
+
 def projection_non_negative(pytree: Any) -> Any:
   r"""Projection onto the non-negative orthant.
 
@@ -160,3 +163,65 @@ def projection_simplex(pytree: Any,
   new_values = scale * _projection_unit_simplex(values / scale)
 
   return unravel_fn(new_values)
+
+
+def projection_l1_sphere(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l1 sphere.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_1 = \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the sphere.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+  """
+  tree_abs = jax.tree.map(jnp.abs, pytree)
+  tree_sign = jax.tree.map(jnp.sign, pytree)
+  tree_abs_proj = projection_simplex(tree_abs, scale)
+  return otu.tree_mul(tree_sign, tree_abs_proj)
+
+
+def projection_l1_ball(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l1 ball.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_1 \le \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the ball.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+
+  .. versionadded:: 0.2.4
+
+  Example:
+
+      >>> import jax.numpy as jnp
+      >>> from optax import tree_utils, projections
+      >>> pytree = {"w": jnp.array([2.5, 3.2]), "b": 0.5}
+      >>> tree_utils.tree_l1_norm(pytree)
+      Array(6.2, dtype=float32)
+      >>> new_pytree = projections.projection_l1_ball(pytree)
+      >>> tree_utils.tree_l1_norm(new_pytree)
+      Array(1.0000002, dtype=float32)
+  """
+  l1_norm = otu.tree_l1_norm(pytree)
+  return jax.lax.cond(l1_norm <= scale,
+                      lambda pytree: pytree,
+                      lambda pytree: projection_l1_sphere(pytree, scale),
+                      operand=pytree)
