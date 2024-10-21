@@ -164,8 +164,8 @@ def ademamix(
     >>> import optax
     >>> import jax
     >>> import jax.numpy as jnp
-    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.ademamix(learning_rate=0.003)
+    >>> def f(x): return jnp.sum(jnp.square(x))  # simple quadratic function
+    >>> solver = optax.contrib.ademamix(learning_rate=0.01)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -175,11 +175,11 @@ def ademamix(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
+    Objective function: 1.36E+01
+    Objective function: 1.35E+01
+    Objective function: 1.34E+01
 
   References:
     "THE ADEMAMIX OPTIMIZER: BETTER, FASTER, OLDER"
