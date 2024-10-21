@@ -123,7 +123,7 @@ def scale_by_ademamix(
     del params
     c_b3 = b3_scheduler(state.count_m2) if callable(b3) else b3
     c_alpha = (
-      alpha_scheduler(state.count_m2) if callable(alpha) else alpha
+      alpha(state.count_m2) if callable(alpha) else alpha
     )
     m1 = otu.tree_update_moment(
       updates, state.m1, b1, order=1
@@ -159,7 +159,7 @@ def ademamix(
   eps_root: float = 0.0,
   weight_decay: float = 0.0,
 ) -> base.GradientTransformation:
-r"""AdEMAMix.
+  r"""AdEMAMix.
 
   AdEMAMix (Adaptive EMA Mixture) is AdamW with a mixture of two momentum 
   terms to better take advantage of historical gradients. 
@@ -210,7 +210,7 @@ r"""AdEMAMix.
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adamw(learning_rate=0.003)
+    >>> solver = optax.ademamix(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
