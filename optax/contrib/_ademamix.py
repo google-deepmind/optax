@@ -18,36 +18,6 @@ from jax.lax import rsqrt
 from typing import NamedTuple, Tuple
 
 
-def alpha_scheduler(
-  alpha_value,
-  alpha_start: float = 0,
-  warmup_alpha: int = 0
-) -> base.Schedule:
-  """The alpha scheduler from the paper.
-
-  This is a progressive increase in alpha using a linear scheduler.
-
-  Args:
-    alpha_value: The current value of alpha (the coefficient that "blends" 
-      the two EMAs)
-    alpha_start: The starting value of alpha
-    warmup_alpha: The warmup time for alpha to reach it's final value.
-
-  Returns:
-    A `base.Schedule` object.
-
-  """
-
-  def schedule(step: int) -> float:
-    is_warmup: float = jnp.array(step < warmup_alpha).astype(jnp.float32)
-    a: float = step / float(warmup_alpha)
-    return (
-      is_warmup * ((1.0 - a) * alpha_start + a * alpha_value) +
-      alpha_value * (1.0 - is_warmup)
-    )
-  return schedule
-
-
 def b3_scheduler(
   beta_end: float,
   beta_start: float = 0,
