@@ -17,49 +17,6 @@ import optax.tree_utils as otu
 from jax.lax import rsqrt
 from typing import NamedTuple, Tuple
 
-
-def b3_scheduler(
-  beta_end: float,
-  beta_start: float = 0,
-  warmup_b3: int = 0
-) -> base.Schedule:
-  """The b3 scheduler from the paper.
-
-  This is a progressive increase in b3 attempting to increase the number
-  of iterations corresponding to where half of the mass of the second EMA
-  is concentrated (denoted ``t_half`` in the paper).  This scheduler attempts
-  to increase this value linearly.  Note for ``b3 = 0.9999, t_half`` is
-  approximately ``6930.``
-  (Appendix A.1 of the paper derives the scheduler.)
-
-  Args:
-    beta_end: The desired ending value of b3 (the exponential decay rate to 
-      track the first moment of past gradients for the second EMA)
-    beta_start: The starting value of b3
-    warmup_b3: The warmup time for b3 to reach it's maximal value.
-
-  Returns:
-    A `base.Schedule` object.
-
-  """
-
-  def fun(beta: float) -> float:
-    return jnp.log(0.5) / jnp.log(beta) - 1
-
-  def f_inv(t: float) -> float:
-    return rsqrt(t + 1)
-
-  def schedule(step: int) -> float:
-    is_warmup = jnp.array(step < warmup_b3).astype(jnp.float32)
-    step_over_warmup = step / float(warmup_b3)
-    return (
-      is_warmup * f_inv((1.0 - step_over_warmup) * fun(beta_start)
-      + step_over_warmup * fun(beta_end))
-      + beta_end * (1.0 - is_warmup)
-    )
-  return schedule
-
-
 class ScaleByAdemamixState(NamedTuple):
   """State for the Ademamix algorithm."""
 
