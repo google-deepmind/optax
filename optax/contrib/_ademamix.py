@@ -78,7 +78,7 @@ def scale_by_ademamix(
     updates: jtu.tree_map, state, params=None
   ) -> Tuple[jtu.tree_map, ScaleByAdemamixState]:
     del params
-    c_b3 = b3_scheduler(state.count_m2) if callable(b3) else b3
+    c_b3 = b3(state.count_m2) if callable(b3) else b3
     c_alpha = (
       alpha(state.count_m2) if callable(alpha) else alpha
     )
