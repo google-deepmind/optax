@@ -14,7 +14,6 @@ from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 import optax.tree_utils as otu
-from jax.lax import rsqrt
 from typing import NamedTuple, Tuple
 
 class ScaleByAdemamixState(NamedTuple):
@@ -34,7 +33,6 @@ def scale_by_ademamix(
   alpha: base.ScalarOrSchedule,
   eps: float = 1e-8,
   eps_root: float = 0.0,
-  weight_decay: float=0.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Ademamix algorithm.
 
@@ -54,8 +52,6 @@ def scale_by_ademamix(
       (as in the Adam paper) to avoid dividing by zero when rescaling.
     eps_root: Term added to the denominator inside of the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    weight_decay: A small constant applied to denominator outside of the square root
-      (as in the Adam paper) to avoid dividing by zero when rescaling.
 
   Returns:
     A `GradientTransformation` object.
@@ -94,7 +90,8 @@ def scale_by_ademamix(
     # buffer fill itself slowly.
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
-      lambda m1_, m2_, v_: (m1_ + c_alpha * m2_) / (jnp.sqrt(v_) + eps),
+      lambda m1_, m2_, v_: ((m1_ + c_alpha * m2_) / (jnp.sqrt(v_+eps_root)
+        + eps)),
       m1_hat,
       m2,
       nu_hat,
@@ -131,13 +128,14 @@ def ademamix(
   the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
-  :math:`S_0 := (m1_0, m2_0, v_0) = (0, 0, 0)`, representing initial estimates 
-  for the first and second moments. In practice these values are stored as pytrees
-  containing all zeros, with the same shape as the model updates.
-  At step :math:`t`, the ``update`` function of this optimizer takes as
-  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t` 
-  and the parameters :math:`\theta_t` and computes updates :math:`\theta_{t+1}` and 
-  new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
+  :math:`S_0 := (m1_0, m2_0, v_0) = (0, 0, 0)`, representing initial
+  estimates for the first and second moments. In practice these values are
+  stored as pytrees containing all zeros, with the same shape as the model
+  updates.  At step :math:`t`, the ``update`` function of this optimizer takes
+  as arguments the incoming gradients :math:`g_t`, the optimizer state 
+  :math:`S_t` and the parameters :math:`\theta_t` and computes updates
+  :math:`\theta_{t+1}` and new state :math:`S_{t+1}`. Thus, for
+  :math:`t > 0`, we have,
 
   .. math::
 
@@ -147,9 +145,9 @@ def ademamix(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      \theta_t &\leftarrow \theta_{t-1} - \eta \cdot \left( (\hat{m1}_t +
-      \alpha m2_t) / \left({\sqrt{\hat{v}_t + \bar{\varepsilon}} + \varepsilon\right) 
-      + \lambda \theta_{t-1} \right).\\
+      \theta_t &\leftarrow \theta_{t-1} - \eta \cdot \left( 
+      (\hat{m1}_t + \alpha m2_t) / \left({\sqrt{\hat{v}_t + \bar{\varepsilon}}
+      + \varepsilon\right) + \lambda \theta_{t-1} \right).\\
       S_t &\leftarrow (m1_t, m2_t, v_t).
     \end{align*}
 
@@ -194,7 +192,8 @@ def ademamix(
     b1: Exponential decay rate to track the fast EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
     b3: Exponenital decay rate to track the slow EMA.
-    alpha: Mixing coefficient in the linear combination fo the fast and slow EMAs. 
+    alpha: Mixing coefficient in the linear combination fo the fast and 
+      slow EMAs. 
     eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
     eps_root: A small constant applied to denominator inside the square root (as
@@ -211,7 +210,8 @@ def ademamix(
 
   .. seealso::
     See the related functions :func:`optax.adam`, :func:`optax.nadamw`, as well
-    as the example :doc:`../_collections/examples/contrib/rosenbrock_ademamix` for a use case.
+    as the example :doc:`../_collections/examples/contrib/rosenbrock_ademamix` 
+    for a use case.
   """
   return combine.chain(
     scale_by_ademamix(b1, b2, b3, alpha, eps, eps_root),
