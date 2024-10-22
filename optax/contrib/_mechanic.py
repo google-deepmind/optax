@@ -32,9 +32,9 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax import tree_utils
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
+import optax.tree_utils as otu
 
 
 class MechanicState(NamedTuple):
@@ -108,10 +108,14 @@ def mechanize(
 
   def init_fn(params: base.Params) -> MechanicState:
     x0 = params
-    r = jnp.zeros([num_betas,], jnp.float32)
-    v = jnp.zeros([num_betas,], jnp.float32)
-    m = jnp.zeros([num_betas,], jnp.float32)
-    s = jnp.ones([num_betas,], jnp.float32) * s_init
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, 'lowest')
+    r = jnp.zeros([num_betas,], dtype=params_dtype)
+    v = jnp.zeros([num_betas,], dtype=params_dtype)
+    m = jnp.zeros([num_betas,], dtype=params_dtype)
+    s = jnp.ones([num_betas,], dtype=params_dtype) * s_init
     return MechanicState(
         base_optimizer_state=base_optimizer.init(params),
         count=jnp.zeros([], jnp.int32),
@@ -130,7 +134,7 @@ def mechanize(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    count_inc = utils.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     new_neg_updates, base_optimizer_state = base_optimizer.update(
         updates, state.base_optimizer_state, params
     )
@@ -139,16 +143,16 @@ def mechanize(
     # weights instead of what they were initialized with.
     x0 = jax.lax.cond(state.count == 0, lambda: params, lambda: state.x0)
 
-    # Add weight decay to raw gradients, note that this is othogonal to any
+    # Add weight decay to raw gradients, note that this is orthogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
-    grad_norm = tree_utils.tree_l2_norm(updates)
-    param_norm = tree_utils.tree_l2_norm(params)
+    grad_norm = otu.tree_l2_norm(updates)
+    param_norm = otu.tree_l2_norm(params)
 
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi
 
-    updates = jax.tree_util.tree_map(
+    updates = jax.tree.map(
         add_weight_decay,
         updates,
         params,
@@ -156,23 +160,26 @@ def mechanize(
 
     # We use the memory efficient version of Mechanic where we re-compute
     # \Delta every iteration.
-    delta_prev = jax.tree_util.tree_map(
+    delta_prev = jax.tree.map(
         lambda xti, x0i: (x0i - xti) / (s_sum + eps), params, x0
     )
 
     # We actually want to add the updates, but since optax by default flips
     # signs when applying the learning rate, we substract instead.
-    delta = jax.tree_util.tree_map(
+    delta = jax.tree.map(
         lambda si, ui: si - ui, delta_prev, new_neg_updates
     )
 
     # Now we are ready to run the actual Mechanic algorithm.
-    h = tree_utils.tree_vdot(updates, delta_prev)
+    h = otu.tree_vdot(updates, delta_prev)
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
-    betas = jnp.array([1.0 - 0.1**betai for betai in range(1, num_betas + 1)])
+    betas = jnp.array(
+        [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
+        dtype=state.s.dtype,
+    )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)
     v = (betas**2) * state.v + h**2
@@ -183,10 +190,10 @@ def mechanize(
 
     # Once we have the scale factor s, we produce new params with it.
     new_x0 = x0
-    new_params = jax.tree_util.tree_map(
+    new_params = jax.tree.map(
         lambda x0, deltai: x0 - jnp.sum(s) * deltai, new_x0, delta
     )
-    new_neg_updates = jax.tree_util.tree_map(
+    new_neg_updates = jax.tree.map(
         lambda np, op: np - op, new_params, params
     )
 

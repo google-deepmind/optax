@@ -14,11 +14,11 @@
 # ==============================================================================
 """Additive components in gradient transformations."""
 
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
 import chex
 import jax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -47,8 +47,11 @@ def add_decayed_weights(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    updates = jtu.tree_map(
-        lambda g, p: g + weight_decay * p, updates, params)
+    updates = jax.tree.map(
+        lambda g, p: None if g is None else g + weight_decay * p,
+        updates,
+        params,
+        is_leaf=lambda x: x is None)
     return updates, state
 
   # If mask is not `None`, apply mask to the gradient transformation.
@@ -92,7 +95,7 @@ def add_noise(
 
   def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
     del params
-    count_inc = numerics.safe_int32_increment(state.count)
+    count_inc = numerics.safe_increment(state.count)
     standard_deviation = jnp.sqrt(eta / count_inc**gamma)
 
     rng_key, sample_key = jax.random.split(state.rng_key)

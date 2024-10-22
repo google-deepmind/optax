@@ -28,8 +28,9 @@ S. Mohamed, M. Rosca, M. Figurnov, A Mnih.
   Monte Carlo Gradient Estimation in Machine Learning. JMLR, 2020.
 """
 
+from collections.abc import Callable
 import math
-from typing import Any, Callable, Sequence
+from typing import Any, Sequence
 
 import chex
 import jax
@@ -39,6 +40,7 @@ from optax._src import base
 from optax._src import utils
 
 
+@chex.warn_deprecated_function
 def score_function_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -74,6 +76,9 @@ def score_function_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   def surrogate(params):
     dist = dist_builder(*params)
@@ -86,6 +91,7 @@ def score_function_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
+@chex.warn_deprecated_function
 def pathwise_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -123,6 +129,9 @@ def pathwise_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   def surrogate(params):
     # We vmap the function application over samples - this ensures that the
@@ -133,6 +142,7 @@ def pathwise_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
+@chex.warn_deprecated_function
 def measure_valued_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -171,6 +181,9 @@ def measure_valued_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   if dist_builder is not utils.multi_normal:
     raise ValueError(
@@ -184,6 +197,7 @@ def measure_valued_jacobians(
           function, dist, rng, num_samples, coupling=coupling)]
 
 
+@chex.warn_deprecated_function
 def measure_valued_estimation_mean(
     function: Callable[[chex.Array], float],
     dist: Any,
@@ -207,6 +221,9 @@ def measure_valued_estimation_mean(
     obtained for each sample. The mean of this vector can be used to update
     the mean parameter. The entire vector can be used to assess estimator
     variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)
@@ -250,6 +267,7 @@ def measure_valued_estimation_mean(
   return grads
 
 
+@chex.warn_deprecated_function
 def measure_valued_estimation_std(
     function: Callable[[chex.Array], float],
     dist: Any,
@@ -273,6 +291,9 @@ def measure_valued_estimation_std(
     obtained for each sample. The mean of this vector can be used to update
     the scale parameter. The entire vector can be used to assess estimator
     variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)

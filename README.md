@@ -15,12 +15,12 @@ Our goals are to
 
 *   Provide simple, well-tested, efficient implementations of core components.
 *   Improve research productivity by enabling to easily combine low-level
-    ingredients into custom optimisers (or other gradient processing components).
+    ingredients into custom optimizers (or other gradient processing components).
 *   Accelerate adoption of new ideas by making it easy for anyone to contribute.
 
-We favour focusing on small composable building blocks that can be effectively
+We favor focusing on small composable building blocks that can be effectively
 combined into custom solutions. Others may build upon these basic components
-in more complicated abstractions. Whenever reasonable, implementations prioritise
+in more complicated abstractions. Whenever reasonable, implementations prioritize
 readability and structuring code to match standard equations, over code reuse.
 
 An initial prototype of this library was made available in JAX's experimental
@@ -95,7 +95,7 @@ git clone https://github.com/google-deepmind/optax.git
 To run the tests, please execute the following script.
 
 ```sh
-sh ./test.sh
+sh test.sh
 ```
 
 ### Documentation
@@ -106,7 +106,7 @@ pip install -e ".[docs]"
 ```
 Then, execute the following.
 ```sh
-cd docs/
+cd docs
 make html
 ```
 

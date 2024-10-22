@@ -6,6 +6,7 @@ Optimizers
 .. autosummary::
     adabelief
     adadelta
+    adan
     adafactor
     adagrad
     adam
@@ -16,16 +17,19 @@ Optimizers
     fromage
     lamb
     lars
+    lbfgs
     lion
     nadam
     nadamw
     noisy_sgd
     novograd
     optimistic_gradient_descent
+    optimistic_adam
     polyak_sgd
     radam
     rmsprop
     sgd
+    sign_sgd
     sm3
     yogi
 
@@ -37,6 +41,10 @@ AdaBelief
 AdaDelta
 ~~~~~~~~~
 .. autofunction:: adadelta
+
+Adan
+~~~~
+.. autofunction:: adan
 
 AdaGrad
 ~~~~~~~
@@ -78,6 +86,10 @@ Lars
 ~~~~
 .. autofunction:: lars
 
+LBFGS
+~~~~~
+.. autofunction:: lbfgs
+
 Lion
 ~~~~
 .. autofunction:: lion
@@ -102,6 +114,10 @@ Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
 
+Optimistic Adam
+~~~~~~~~~~~~~~~
+.. autofunction:: optimistic_adam
+
 Polyak step-size SGD
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: polyak_sgd
@@ -121,6 +137,10 @@ RProp
 SGD
 ~~~
 .. autofunction:: sgd
+
+SignSGD
+~~~~~~~
+.. autofunction:: sign_sgd
 
 SM3
 ~~~

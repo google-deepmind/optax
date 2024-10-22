@@ -29,7 +29,7 @@ import numpy as np
 
 
 def abs_sq(x: chex.Array) -> chex.Array:
-  """Returns the squared norm of a (maybe complex) array.
+  """Returns the squared absolute value of a (maybe complex) array.
 
   For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
   or `x**2`.
@@ -38,18 +38,20 @@ def abs_sq(x: chex.Array) -> chex.Array:
     x: a (maybe complex) array.
 
   Returns:
-    The squared norm of `x`.
+    The squared absolute value of `x`.
   """
   if not isinstance(x, (np.ndarray, jnp.ndarray)):
-    raise ValueError(f"`abs_sq` accepts only NDarrays, got: {x}.")
+    raise ValueError(f'`abs_sq` accepts only NDarrays, got: {x}.')
   return (x.conj() * x).real
 
 
-def safe_norm(x: chex.Array,
-              min_norm: chex.Numeric,
-              ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
-              axis: Union[None, tuple[int, ...], int] = None,
-              keepdims: bool = False) -> chex.Array:
+def safe_norm(
+    x: chex.Array,
+    min_norm: chex.Numeric,
+    ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
+    axis: Union[None, tuple[int, ...], int] = None,
+    keepdims: bool = False,
+) -> chex.Array:
   """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
 
   The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
@@ -100,19 +102,44 @@ def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
-def safe_int32_increment(count: chex.Numeric) -> chex.Numeric:
-  """Increments int32 counter by one.
+def safe_increment(count: chex.Numeric) -> chex.Numeric:
+  """Increments counter by one while avoiding overflow.
 
-  Normally `max_int + 1` would overflow to `min_int`. This functions ensures
-  that when `max_int` is reached the counter stays at `max_int`.
+  Denote ``max_val``, ``min_val`` as the maximum, minimum, possible values for
+  the ``dtype`` of ``count``. Normally ``max_val + 1`` would overflow to
+  ``min_val``. This functions ensures that when ``max_val`` is reached the
+  counter stays at ``max_val``.
+
+  Examples:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> optax.safe_increment(jnp.asarray(1, dtype=jnp.int32))
+    Array(2, dtype=int32)
+    >>> optax.safe_increment(jnp.asarray(2147483647, dtype=jnp.int32))
+    Array(2147483647, dtype=int32)
+
+  .. versionadded:: 0.2.4
 
   Args:
     count: a counter to be incremented.
 
   Returns:
-    A counter incremented by 1, or max_int if the maximum precision is reached.
+    A counter incremented by 1, or ``max_val`` if the maximum value is
+    reached.
   """
-  chex.assert_type(count, jnp.int32)
-  max_int32_value = jnp.iinfo(jnp.int32).max
-  one = jnp.array(1, dtype=jnp.int32)
-  return jnp.where(count < max_int32_value, count + one, max_int32_value)
+  count_dtype = jnp.asarray(count).dtype
+  if jnp.issubdtype(count_dtype, jnp.integer):
+    max_value = jnp.iinfo(count_dtype).max
+  elif jnp.issubdtype(count_dtype, jnp.floating):
+    max_value = jnp.finfo(count_dtype).max
+  else:
+    raise ValueError(
+        f'Cannot safely increment count with dtype {count_dtype},'
+        ' valid dtypes are subdtypes of "jnp.integer" or "jnp.floating".'
+    )
+  max_value = jnp.array(max_value, count_dtype)
+  one = jnp.array(1, count_dtype)
+  return jnp.where(count < max_value, count + one, max_value)
+
+
+safe_int32_increment = safe_increment

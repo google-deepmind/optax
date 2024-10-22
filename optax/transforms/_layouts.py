@@ -14,7 +14,7 @@
 # ==============================================================================
 """Wrappers changing the layouts of the tensors that transforms operate on."""
 
-from jax import tree_util as jtu
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -40,12 +40,12 @@ def flatten(
 
   def _flatten(params):
     """Flattens and concatenates all tensors in params to a single vector."""
-    params, _ = jtu.tree_flatten(params)
+    params, _ = jax.tree.flatten(params)
     return jnp.concatenate([jnp.reshape(param, [-1]) for param in params])
 
   def _unflatten(updates, flat):
     """Extracts tensors from flat, using the structure and shapes of params."""
-    updates_flat, treedef = jtu.tree_flatten(updates)
+    updates_flat, treedef = jax.tree.flatten(updates)
     offsets = []
     for update in updates_flat:
       size = np.size(update)
@@ -59,7 +59,7 @@ def flatten(
         jnp.reshape(flat_update, update.shape)
         for flat_update, update in zip(flat_split, updates_flat)
     ]
-    return jtu.tree_unflatten(treedef, reshaped)
+    return jax.tree.unflatten(treedef, reshaped)
 
   def init_fn(params):
     flat = _flatten(params)

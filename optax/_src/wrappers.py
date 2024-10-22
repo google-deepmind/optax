@@ -14,12 +14,11 @@
 # ==============================================================================
 """Transformation wrappers."""
 
+from collections.abc import Callable
 import functools
-from typing import Callable
 
 import chex
 import jax.numpy as jnp
-
 from optax._src import base
 from optax.transforms import _accumulation
 from optax.transforms import _conditionality

@@ -28,7 +28,7 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   then returns the updated parameters to the caller. As an example, the update
   may be a gradient transformed by a sequence of`GradientTransformations`. This
   function is exposed for convenience, but it just adds updates and parameters;
-  you may also apply updates to parameters manually, using `tree_map`
+  you may also apply updates to parameters manually, using `jax.tree.map`
   (e.g. if you want to manipulate updates in custom ways before applying them).
 
   Args:
@@ -39,9 +39,14 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   Returns:
     Updated parameters, with same structure, shape and type as `params`.
   """
-  return jax.tree_util.tree_map(
-      lambda p, u: jnp.asarray(p + u).astype(jnp.asarray(p).dtype),
-      params, updates)
+  return jax.tree.map(
+      lambda p, u: (
+          None if p is None else jnp.asarray(p + u).astype(jnp.asarray(p).dtype)
+      ),
+      params,
+      updates,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def incremental_update(
@@ -65,9 +70,14 @@ def incremental_update(
   Returns:
     an updated moving average `step_size*new+(1-step_size)*old` of the params.
   """
-  return jax.tree_util.tree_map(
-      lambda new, old: step_size * new + (1.0 - step_size) * old,
-      new_tensors, old_tensors)
+  return jax.tree.map(
+      lambda new, old: (
+          None if new is None else step_size * new + (1.0 - step_size) * old
+      ),
+      new_tensors,
+      old_tensors,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def periodic_update(
@@ -80,7 +90,7 @@ def periodic_update(
 
   A slow copy of a model's parameters, updated every K actual updates, can be
   used to implement forms of self-supervision (in supervised learning), or to
-  stabilise temporal difference learning updates (in reinforcement learning).
+  stabilize temporal difference learning updates (in reinforcement learning).
 
   References:
     [Grill et al., 2020](https://arxiv.org/abs/2006.07733)
@@ -100,4 +110,3 @@ def periodic_update(
       lambda _: new_tensors,
       lambda _: old_tensors,
       None)
-

@@ -19,7 +19,14 @@ from typing import NamedTuple, Optional
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import alias
 from optax._src import base
+from optax._src import combine
+from optax._src import numerics
+from optax._src import transform
+from optax.schedules import _schedule
+from optax.transforms import _adding
+import optax.tree_utils as otu
 
 
 class ScheduleFreeState(NamedTuple):
@@ -33,11 +40,17 @@ class ScheduleFreeState(NamedTuple):
   z: base.Params
 
 
-def schedule_free_eval_params(state: ScheduleFreeState, params: base.Params):
+def schedule_free_eval_params(state: base.OptState, params: base.Params):
   """Params for evaluation of :func:`optax.contrib.schedule_free`."""
-  return jax.tree_util.tree_map(
-      lambda yi, zi: (yi - (1.0 - state.b1) * zi) / state.b1, params, state.z
-  )
+  # Using ScheduleFreeState as a type hint above results in pytype errors in
+  # tests.
+  b1 = getattr(state, 'b1')
+  z = getattr(state, 'z')
+  if b1 is None or z is None:
+    raise ValueError(
+        'schedule_free_eval_params requires a ScheduleFreeState as input.'
+    )
+  return jax.tree.map(lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, z)
 
 
 def schedule_free(
@@ -45,7 +58,7 @@ def schedule_free(
     learning_rate: base.ScalarOrSchedule,
     b1: float = 0.9,
     weight_lr_power: float = 2.0,
-    state_dtype=jnp.float32,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""Turn base_optimizer schedule_free.
 
@@ -97,8 +110,15 @@ def schedule_free(
   optimizer. As of Apr, 2024, schedule_free is tested with SGD and Adam.
 
   References:
+    Defazio et al, `The Road Less Scheduled
+    <https://arxiv.org/abs/2405.15682>`_, 2024
+
     Defazio et al, `Schedule-Free Learning - A New Way to Train
     <https://github.com/facebookresearch/schedule_free/tree/main>`_, 2024
+
+  .. warning::
+    The current implementation requires the parameter ``b1`` to be strictly
+    positive.
 
   Args:
     base_optimizer: Base optimizer to compute updates from.
@@ -106,7 +126,7 @@ def schedule_free(
     b1: beta_1 parameter in the y update.
     weight_lr_power: we downweight the weight of averaging using this. This is
       especially helpful in early iterations during warmup.
-    state_dtype: dtype for z sequence.
+    state_dtype: dtype for z sequence in the schedule free method.
 
   Returns:
     A `GradientTransformationExtraArgs` with init and update functions.
@@ -114,12 +134,22 @@ def schedule_free(
   base_optimizer = base.with_extra_args_support(base_optimizer)
 
   def init_fn(params: base.Params) -> ScheduleFreeState:
-    z = jax.tree_util.tree_map(lambda t: t.astype(state_dtype), params)
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, 'lowest')
+    if state_dtype is not None:
+      z = otu.tree_cast(params, dtype=state_dtype)
+    else:
+      z = params
+    # It's imporant to copy the params here so that z is a distinct array and
+    # we can donate both z and the params to JITted functions.
+    z = jax.tree_util.tree_map(lambda t: t.copy(), z)
     return ScheduleFreeState(
-        b1=jnp.array([b1], dtype=jnp.float32),
-        weight_sum=jnp.zeros([], dtype=jnp.float32),
+        b1=jnp.asarray(b1, dtype=params_dtype),
+        weight_sum=jnp.zeros([], dtype=params_dtype),
         step_count=jnp.ones([], dtype=jnp.int32),
-        max_lr=jnp.zeros([], dtype=jnp.float32),
+        max_lr=jnp.zeros([], dtype=params_dtype),
         base_optimizer_state=base_optimizer.init(params),
         z=z,
     )
@@ -132,14 +162,21 @@ def schedule_free(
   ):
     lr = learning_rate
     if callable(learning_rate):
-      lr = learning_rate(state.step_count)
+      lr = jnp.asarray(
+          learning_rate(state.step_count), dtype=state.max_lr.dtype
+      )
     max_lr = jnp.maximum(state.max_lr, lr)
 
-    next_step_count = state.step_count + 1
+    next_step_count = numerics.safe_increment(state.step_count)
 
     weight = max_lr**weight_lr_power
     next_total_weight = state.weight_sum + weight
-    ck = weight / next_total_weight
+    # We add this to avoid NaNs in the case of a small learning rate.
+    ck = jnp.where(
+        jnp.logical_or(jnp.isnan(weight), jnp.isnan(next_total_weight)),
+        jnp.full(weight.shape, jnp.nan),
+        jnp.nan_to_num(weight / next_total_weight, nan=0.0, posinf=jnp.inf),
+    )
 
     base_updates, next_base_optimizer_state = base_optimizer.update(
         grads,
@@ -147,7 +184,7 @@ def schedule_free(
         params,
         **extra_args,
     )
-    z = jax.tree_util.tree_map(
+    z = jax.tree.map(
         lambda pi, ui: jnp.asarray(pi + ui).astype(jnp.asarray(pi).dtype),
         state.z,
         base_updates,
@@ -155,26 +192,24 @@ def schedule_free(
 
     # Important: recompute x to both save memory and maintain accurate x seq
     # especially if y is modified by another transform wrapped on top.
-    prev_x = jax.tree_util.tree_map(
+    prev_x = jax.tree.map(
         lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, state.z
     )
 
-    x = jax.tree_util.tree_map(
+    x = jax.tree.map(
         lambda xi, zi: (1.0 - ck) * xi + ck * zi,
         prev_x,
         z,
     )
-    new_params = jax.tree_util.tree_map(
+    new_params = jax.tree.map(
         lambda xi, zi: b1 * xi + (1.0 - b1) * zi,
         x,
         z,
     )
-    updates = jax.tree_util.tree_map(
-        lambda npi, pi: npi - pi, new_params, params
-    )
+    updates = jax.tree.map(lambda npi, pi: npi - pi, new_params, params)
 
     next_state = ScheduleFreeState(
-        b1=jnp.array([b1], dtype=jnp.float32),
+        b1=state.b1,
         weight_sum=next_total_weight,
         step_count=next_step_count,
         max_lr=max_lr,
@@ -185,3 +220,162 @@ def schedule_free(
     return updates, next_state
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+def schedule_free_sgd(
+    learning_rate: float = 1.0,
+    warmup_steps: Optional[int] = None,
+    b1: float = 0.9,
+    weight_decay: Optional[float] = None,
+    weight_lr_power: float = 2.0,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
+) -> base.GradientTransformationExtraArgs:
+  """Schedule-Free wrapper for SGD.
+
+  Shortcut example for using schedule_free with SGD, which is a common use case.
+  Note that this is just an example, and other use cases are possible, e.g.
+  using a weight decay mask. Note also that the EMA parameter of the
+  schedule free method (b1) must be strictly positive.
+
+  Args:
+    learning_rate: SGD learning rate.
+    warmup_steps: positive integer, the length of the linear warmup.
+    b1: beta_1 parameter in the y update.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent with
+      other frameworks such as PyTorch, but different from (Loshchilov et al,
+      2019) where the weight decay is only multiplied with the "schedule
+      multiplier", but not the base learning rate.
+    weight_lr_power: we downweight the weight of averaging using this. This is
+      especially helpful in early iterations during warmup.
+    state_dtype: dtype for z sequence in the schedule free method.
+
+  Returns:
+    A `GradientTransformationExtraArgs` with init and update functions.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.contrib.schedule_free_sgd()
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  eval_params = optax.contrib.schedule_free_eval_params(
+    ...      opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(eval_params)))
+    Objective function: 1.40E+01
+    Objective function: 1.75E-14
+    Objective function: 9.96E-01
+    Objective function: 8.06E-01
+    Objective function: 2.41E-01
+  """
+  if warmup_steps is not None:
+    learning_rate = _schedule.warmup_constant_schedule(
+        init_value=0,
+        peak_value=learning_rate,
+        warmup_steps=warmup_steps,
+    )
+  optimizer = alias.sgd(learning_rate)
+  if weight_decay is not None:
+    optimizer = combine.chain(
+        _adding.add_decayed_weights(weight_decay), optimizer
+    )
+  return schedule_free(
+      optimizer,
+      learning_rate=learning_rate,
+      b1=b1,
+      weight_lr_power=weight_lr_power,
+      state_dtype=state_dtype,
+  )
+
+
+def schedule_free_adamw(
+    learning_rate: float = 0.0025,
+    warmup_steps: Optional[int] = None,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    weight_decay: float = 0.0,
+    weight_lr_power: float = 2.0,
+    state_dtype: Optional[jax.typing.DTypeLike] = None,
+) -> base.GradientTransformationExtraArgs:
+  """Schedule-Free wrapper for AdamW.
+
+  Shortcut example for using schedule_free with AdamW, which is a common use
+  case. Note that this is just an example, and other usecases are possible, e.g.
+  using a weight decay mask, nesterov, etc. Note also that the EMA parameter of
+  the schedule free method (b1) must be strictly positive.
+
+  .. note::
+    Note that :func:`optax.scale_by_adam` with ``b1=0`` stores in its state an
+    unused first moment always equal to zero. To avoid this waste of memory,
+    we replace
+    :func:`optax.scale_by_adam` with ``b1=0`` by the equivalent
+    :func:`optax.scale_by_rms` with ``eps_in_sqrt=False, bias_correction=True``.
+
+  Args:
+    learning_rate: AdamW learning rate.
+    warmup_steps: positive integer, the length of the linear warmup.
+    b1: beta_1 parameter in the y update.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root (as
+      in the Adam paper) to avoid dividing by zero when rescaling.
+    weight_decay: Strength of the weight decay regularization.
+    weight_lr_power: we downweight the weight of averaging using this. This is
+      especially helpful in early iterations during warmup.
+    state_dtype: dtype for z sequence in the schedule free method.
+
+  Returns:
+    A `GradientTransformationExtraArgs` with init and update functions.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> solver = optax.contrib.schedule_free_adamw(1.0)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  eval_params = optax.contrib.schedule_free_eval_params(
+    ...      opt_state, params)
+    ...  print('Objective function: {:.2E}'.format(f(eval_params)))
+    Objective function: 5.00E+00
+    Objective function: 3.05E+00
+    Objective function: 1.73E+00
+    Objective function: 8.94E-01
+    Objective function: 4.13E-01
+  """
+  if warmup_steps is not None:
+    learning_rate = _schedule.warmup_constant_schedule(
+        init_value=0,
+        peak_value=learning_rate,
+        warmup_steps=warmup_steps,
+    )
+  # The following is the same as adamw, but with the momentum term removed.
+  optimizer = combine.chain(
+      transform.scale_by_rms(
+          decay=b2, eps=eps, eps_in_sqrt=False, bias_correction=True
+      ),
+      _adding.add_decayed_weights(weight_decay),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+  return schedule_free(
+      optimizer,
+      learning_rate=learning_rate,
+      b1=b1,
+      weight_lr_power=weight_lr_power,
+      state_dtype=state_dtype,
+  )

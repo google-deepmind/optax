@@ -21,8 +21,10 @@ import chex
 
 import jax
 from jax import flatten_util
-from jax import tree_util as jtu
 import jax.numpy as jnp
+
+
+from optax import tree_utils as otu
 
 
 def projection_non_negative(pytree: Any) -> Any:
@@ -40,7 +42,7 @@ def projection_non_negative(pytree: Any) -> Any:
   Returns:
     projected pytree, with the same structure as ``pytree``.
   """
-  return jtu.tree_map(jax.nn.relu, pytree)
+  return jax.tree.map(jax.nn.relu, pytree)
 
 
 def _clip_safe(leaf, lower, upper):
@@ -66,7 +68,7 @@ def projection_box(pytree: Any, lower: Any, upper: Any) -> Any:
   Returns:
     projected pytree, with the same structure as ``pytree``.
   """
-  return jtu.tree_map(_clip_safe, pytree, lower, upper)
+  return jax.tree.map(_clip_safe, pytree, lower, upper)
 
 
 def projection_hypercube(pytree: Any, scale: Any = 1.0) -> Any:
@@ -124,7 +126,7 @@ def projection_simplex(pytree: Any,
   r"""Projection onto a simplex.
 
   This function solves the following constrained optimization problem,
-  where ``p`` is the input pytree.
+  where ``x`` is the input pytree.
 
   .. math::
 
@@ -161,3 +163,65 @@ def projection_simplex(pytree: Any,
   new_values = scale * _projection_unit_simplex(values / scale)
 
   return unravel_fn(new_values)
+
+
+def projection_l1_sphere(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l1 sphere.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_1 = \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the sphere.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+  """
+  tree_abs = jax.tree.map(jnp.abs, pytree)
+  tree_sign = jax.tree.map(jnp.sign, pytree)
+  tree_abs_proj = projection_simplex(tree_abs, scale)
+  return otu.tree_mul(tree_sign, tree_abs_proj)
+
+
+def projection_l1_ball(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l1 ball.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_1 \le \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the ball.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+
+  .. versionadded:: 0.2.4
+
+  Example:
+
+      >>> import jax.numpy as jnp
+      >>> from optax import tree_utils, projections
+      >>> pytree = {"w": jnp.array([2.5, 3.2]), "b": 0.5}
+      >>> tree_utils.tree_l1_norm(pytree)
+      Array(6.2, dtype=float32)
+      >>> new_pytree = projections.projection_l1_ball(pytree)
+      >>> tree_utils.tree_l1_norm(new_pytree)
+      Array(1.0000002, dtype=float32)
+  """
+  l1_norm = otu.tree_l1_norm(pytree)
+  return jax.lax.cond(l1_norm <= scale,
+                      lambda pytree: pytree,
+                      lambda pytree: projection_l1_sphere(pytree, scale),
+                      operand=pytree)

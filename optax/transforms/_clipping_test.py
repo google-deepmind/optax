@@ -18,6 +18,7 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax._src import linear_algebra
 from optax.transforms import _clipping
@@ -44,7 +45,7 @@ class ClippingTest(absltest.TestCase):
     clipper = _clipping.clip(1.)
     clipped_updates, _ = clipper.update(updates, None)
     chex.assert_trees_all_close(
-        clipped_updates, jax.tree_util.tree_map(jnp.ones_like, updates))
+        clipped_updates, jax.tree.map(jnp.ones_like, updates))
 
   def test_clip_by_block_rms(self):
     rmf_fn = lambda t: jnp.sqrt(jnp.mean(t**2))
@@ -80,16 +81,42 @@ class ClippingTest(absltest.TestCase):
 
       # Check that the clipper actually works and upd_norm is < c * param_norm.
       updates, _ = clipper.update(updates, None, params)
-      u_norm, p_norm = jax.tree_util.tree_map(
+      u_norm, p_norm = jax.tree.map(
           _clipping.unitwise_norm, (updates, params))
-      cmp = jax.tree_util.tree_map(
+      cmp = jax.tree.map(
           lambda u, p, c=clip_r: u - c * p < 1e-6, u_norm, p_norm)
-      for leaf in jax.tree_util.tree_leaves(cmp):
+      for leaf in jax.tree.leaves(cmp):
         self.assertTrue(leaf.all())
 
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None, params)
       chex.assert_trees_all_close(updates, updates_step)
+
+  def test_per_example_global_norm_clip(self):
+    grads = [  # 3 users, 2 components
+        jnp.array([
+            [0, -0.5],  # norm = sqrt(0^2 + 0.5^2 + 0^2)
+            [3, 4],  # norm = sqrt(3^2 + 4^2 + 5^2)
+            [5, 6],  # norm = sqrt(5^2 + 6^2 + 3^2)
+            [0, 0],  # norm = 0
+        ]),
+        jnp.array([[0], [5], [-3], [0]]),
+    ]
+    answer = [
+        jnp.array([0, -0.5])
+        + jnp.array([3, 4]) / jnp.sqrt(50)
+        + jnp.array([5, 6]) / jnp.sqrt(70),
+        jnp.array([0])
+        + jnp.array([5]) / jnp.sqrt(50)
+        + jnp.array([-3]) / jnp.sqrt(70),
+    ]
+    sum_clipped_grads, num_clipped = _clipping.per_example_global_norm_clip(
+        grads, l2_norm_clip=1.0
+    )
+
+    for actual, expected in zip(sum_clipped_grads, answer):
+      np.testing.assert_allclose(actual, expected, atol=1e-6)
+    self.assertEqual(num_clipped, 2)
 
   def test_per_example_layer_norm_clip(self):
     # Test data for a model with two layers and a batch size of 4. The

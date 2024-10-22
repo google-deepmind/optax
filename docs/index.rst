@@ -6,19 +6,19 @@ Optax
 
 Optax is a gradient processing and optimization library for JAX. It is designed
 to facilitate research by providing building blocks that can be recombined in
-custom ways in order to optimise parametric models such as, but not limited to,
+custom ways in order to optimize parametric models such as, but not limited to,
 deep neural networks.
 
 Our goals are to
 
 *   Provide readable, well-tested, efficient implementations of core components,
 *   Improve researcher productivity by making it possible to combine low level
-    ingredients into custom optimiser (or other gradient processing components).
+    ingredients into custom optimizer (or other gradient processing components).
 *   Accelerate adoption of new ideas by making it easy for anyone to contribute.
 
-We favour focusing on small composable building blocks that can be effectively
+We favor focusing on small composable building blocks that can be effectively
 combined into custom solutions. Others may build upon these basic components
-more complicated abstractions. Whenever reasonable, implementations prioritise
+more complicated abstractions. Whenever reasonable, implementations prioritize
 readability and structuring code to match standard equations, over code reuse.
 
 Installation
@@ -54,12 +54,14 @@ for instructions on installing JAX.
    :caption: 📖 Reference
    :maxdepth: 2
 
+   api/assignment
    api/optimizers
    api/transformations
    api/combining_optimizers
    api/optimizer_wrappers
    api/optimizer_schedules
    api/apply_updates
+   api/perturbations
    api/projections
    api/losses
    api/control_variates

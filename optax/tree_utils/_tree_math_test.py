@@ -20,7 +20,6 @@ from absl.testing import parameterized
 import chex
 import jax
 from jax import flatten_util
-from jax import tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
 
@@ -44,8 +43,8 @@ class TreeUtilsTest(parameterized.TestCase):
     self.array_a = rng.randn(20) + 1j * rng.randn(20)
     self.array_b = rng.randn(20)
 
-    self.tree_a_dict_jax = jtu.tree_map(jnp.array, self.tree_a_dict)
-    self.tree_b_dict_jax = jtu.tree_map(jnp.array, self.tree_b_dict)
+    self.tree_a_dict_jax = jax.tree.map(jnp.array, self.tree_a_dict)
+    self.tree_b_dict_jax = jax.tree.map(jnp.array, self.tree_b_dict)
 
     self.data = dict(
         tree_a=self.tree_a,
@@ -231,6 +230,35 @@ class TreeUtilsTest(parameterized.TestCase):
         chex.assert_tree_all_finite(
             tu.tree_bias_correction(m, decay, count),
             custom_message=f'failed with decay={decay}, count={count}')
+
+  def test_empty_tree_reduce(self):
+    for tree in [{}, (), [], None, {'key': [None, [None]]}]:
+      self.assertEqual(tu.tree_sum(tree), 0)
+      self.assertEqual(tu.tree_vdot(tree, tree), 0)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='tree_add_scalar_mul',
+          operation=lambda m: tu.tree_add_scalar_mul(None, 1, m),
+      ),
+      dict(
+          testcase_name='tree_update_moment',
+          operation=lambda m: tu.tree_update_moment(None, m, 1, 1),
+      ),
+      dict(
+          testcase_name='tree_update_infinity_moment',
+          operation=lambda m: tu.tree_update_infinity_moment(None, m, 1, 1),
+      ),
+      dict(
+          testcase_name='tree_update_moment_per_elem_norm',
+          operation=lambda m: tu.tree_update_moment_per_elem_norm(
+              None, m, 1, 1
+          ),
+      ),
+  )
+  def test_none_arguments(self, operation):
+    m = jnp.array([1.0, 2.0, 3.0])
+    operation(m)
 
 
 if __name__ == '__main__':

@@ -32,6 +32,7 @@ Transformations
     identity
     keep_params_nonnegative
     NonNegativeParamsState
+    normalize_by_update_norm
     OptState
     Params
     per_example_global_norm_clip
@@ -40,6 +41,8 @@ Transformations
     ScaleState
     scale_by_adadelta
     ScaleByAdaDeltaState
+    scale_by_adan
+    ScaleByAdanState
     scale_by_adam
     scale_by_adamax
     ScaleByAdamState
@@ -51,6 +54,8 @@ Transformations
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_lbfgs
+    ScaleByLBFGSState
     scale_by_learning_rate
     scale_by_lion
     ScaleByLionState
@@ -69,6 +74,7 @@ Transformations
     ScaleByRssState
     scale_by_schedule
     ScaleByScheduleState
+    scale_by_sign
     scale_by_sm3
     ScaleBySM3State
     scale_by_stddev
@@ -76,6 +82,8 @@ Transformations
     scale_by_trust_ratio
     ScaleByTrustRatioState
     scale_by_yogi
+    scale_by_zoom_linesearch
+    ScaleByZoomLinesearchState
     set_to_zero
     stateless
     stateless_with_tree_map
@@ -90,6 +98,7 @@ Transformations
     with_extra_args_support
     zero_nans
     ZeroNansState
+    ZoomLinesearchInfo
 
 
 Types
@@ -154,6 +163,8 @@ Transformations and states
 .. autofunction:: keep_params_nonnegative
 .. autoclass:: NonNegativeParamsState
 
+.. autofunction:: normalize_by_update_norm
+
 .. autofunction:: per_example_global_norm_clip
 .. autofunction:: per_example_layer_norm_clip
 
@@ -162,6 +173,9 @@ Transformations and states
 
 .. autofunction:: scale_by_adadelta
 .. autoclass:: ScaleByAdaDeltaState
+
+.. autofunction:: scale_by_adan
+.. autoclass:: ScaleByAdanState
 
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
@@ -178,6 +192,9 @@ Transformations and states
 
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
+
+.. autofunction:: scale_by_lbfgs
+.. autoclass:: ScaleByLBFGSState
 
 .. autofunction:: scale_by_learning_rate
 
@@ -209,6 +226,8 @@ Transformations and states
 .. autofunction:: scale_by_schedule
 .. autoclass:: ScaleByScheduleState
 
+.. autofunction:: scale_by_sign
+
 .. autofunction:: scale_by_sm3
 .. autoclass:: ScaleBySM3State
 
@@ -219,6 +238,9 @@ Transformations and states
 .. autoclass:: ScaleByTrustRatioState
 
 .. autofunction:: scale_by_yogi
+
+.. autofunction:: scale_by_zoom_linesearch
+.. autoclass:: ScaleByZoomLinesearchState
 
 .. autofunction:: set_to_zero
 
@@ -236,3 +258,5 @@ Transformations and states
 
 .. autofunction:: zero_nans
 .. autoclass:: ZeroNansState
+
+.. autoclass:: ZoomLinesearchInfo

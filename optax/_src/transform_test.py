@@ -14,7 +14,7 @@
 # ==============================================================================
 
 
-"""Tests for `transform.py`."""
+"""Tests of gradient transformations."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -27,6 +27,7 @@ from optax._src import alias
 from optax._src import combine
 from optax._src import transform
 from optax._src import update
+import optax.tree_utils as otu
 
 STEPS = 50
 LR = 1e-2
@@ -44,6 +45,7 @@ class TransformTest(parameterized.TestCase):
       ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
+      ('adan', transform.scale_by_adan),
       ('lion', transform.scale_by_lion),
       ('polyak', transform.scale_by_polyak),
       ('rmsprop', transform.scale_by_rms),
@@ -52,6 +54,7 @@ class TransformTest(parameterized.TestCase):
       ('param_block_norm', transform.scale_by_param_block_norm),
       ('param_block_rms', transform.scale_by_param_block_rms),
       ('distance_over_gradients', transform.scale_by_distance_over_gradients),
+      ('normalize_by_update_norm', transform.normalize_by_update_norm),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params
@@ -71,8 +74,7 @@ class TransformTest(parameterized.TestCase):
         self.per_step_updates, state, params, **extra_args
     )
     chex.assert_tree_all_finite((params, updates, state))
-    jax.tree_util.tree_map(
-        lambda *args: chex.assert_equal_shape(args), params, updates)
+    jax.tree.map(lambda *args: chex.assert_equal_shape(args), params, updates)
 
   @chex.all_variants
   def test_apply_every(self):
@@ -125,7 +127,7 @@ class TransformTest(parameterized.TestCase):
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
-      manual_updates = jax.tree_util.tree_map(rescale, updates)
+      manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_trees_all_close(scaled_updates, manual_updates)
 
@@ -144,25 +146,29 @@ class TransformTest(parameterized.TestCase):
     chex.assert_trees_all_close(centralized_inputs, outputs)
 
   def test_scale_by_optimistic_gradient(self):
+    opt = transform.scale_by_optimistic_gradient()
 
-    def f(params: jnp.ndarray) -> jnp.ndarray:
-      return params['x'] ** 2
+    state = opt.init(jnp.asarray(10.0))
 
-    initial_params = {
-        'x': jnp.array(2.0)
-    }
+    grad_0 = jnp.asarray(2.0)
+    opt_grad_0, state = opt.update(grad_0, state)
 
-    og = transform.scale_by_optimistic_gradient()
-    og_state = og.init(initial_params)
-    # Provide some arbitrary previous gradient.
-    getattr(og_state, 'trace')['x'] = 1.5
+    grad_1 = jnp.asarray(3.0)
+    opt_grad_1, state = opt.update(grad_1, state)
 
-    g = jax.grad(f)(initial_params)
-    og_true = 2 * g['x'] - getattr(og_state, 'trace')['x']
-    og, _ = og.update(g, og_state)
+    grad_2 = jnp.asarray(4.0)
+    opt_grad_2, _ = opt.update(grad_2, state)
 
-    # Compare transformation output with manually computed optimistic gradient.
-    chex.assert_trees_all_close(og_true, og['x'])
+    with self.subTest('Check initial update is correct'):
+      # see https://github.com/google-deepmind/optax/issues/1082
+      # initial step should yield 2 * grad_0 - grad_0 = grad_0
+      chex.assert_trees_all_close(opt_grad_0, grad_0)
+
+    with self.subTest('Check second update is correct'):
+      chex.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
+
+    with self.subTest('Check third update is correct'):
+      chex.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
@@ -185,6 +191,30 @@ class TransformTest(parameterized.TestCase):
     print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
 
+  def test_rms_match_adam(self):
+    """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
+    fun = lambda x: otu.tree_l2_norm(x, squared=True)
+
+    rms = transform.scale_by_rms(
+        decay=0.999, eps_in_sqrt=False, bias_correction=True
+    )
+    rms_params = self.init_params
+    rms_state = rms.init(self.init_params)
+
+    adam = transform.scale_by_adam(b1=0)
+    adam_params = self.init_params
+    adam_state = adam.init(self.init_params)
+
+    for _ in range(5):
+      rms_grads = jax.grad(fun)(rms_params)
+      rms_updates, rms_state = rms.update(rms_grads, rms_state)
+      rms_params = update.apply_updates(rms_params, rms_updates)
+
+      adam_grads = jax.grad(fun)(adam_params)
+      adam_updates, adam_state = adam.update(adam_grads, adam_state)
+      adam_params = update.apply_updates(adam_params, adam_updates)
+
+    chex.assert_trees_all_close(adam_params, rms_params)
 
 if __name__ == '__main__':
   absltest.main()

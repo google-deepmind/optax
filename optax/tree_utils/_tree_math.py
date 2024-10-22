@@ -20,7 +20,6 @@ from typing import Any, Optional, Union
 
 import chex
 import jax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax._src import numerics
@@ -41,7 +40,7 @@ def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
     Added optional ``*other_trees`` argument.
   """
   trees = [tree_x, tree_y, *other_trees]
-  return jtu.tree_map(lambda *leaves: sum(leaves), *trees)
+  return jax.tree.map(lambda *leaves: sum(leaves), *trees)
 
 
 def tree_sub(tree_x: Any, tree_y: Any) -> Any:
@@ -54,7 +53,7 @@ def tree_sub(tree_x: Any, tree_y: Any) -> Any:
   Returns:
     the difference of the two pytrees.
   """
-  return jtu.tree_map(operator.sub, tree_x, tree_y)
+  return jax.tree.map(operator.sub, tree_x, tree_y)
 
 
 def tree_mul(tree_x: Any, tree_y: Any) -> Any:
@@ -67,7 +66,7 @@ def tree_mul(tree_x: Any, tree_y: Any) -> Any:
   Returns:
     the product of the two pytrees.
   """
-  return jtu.tree_map(operator.mul, tree_x, tree_y)
+  return jax.tree.map(operator.mul, tree_x, tree_y)
 
 
 def tree_div(tree_x: Any, tree_y: Any) -> Any:
@@ -80,7 +79,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   Returns:
     the quotient of the two pytrees.
   """
-  return jtu.tree_map(operator.truediv, tree_x, tree_y)
+  return jax.tree.map(operator.truediv, tree_x, tree_y)
 
 
 def tree_scalar_mul(
@@ -98,7 +97,7 @@ def tree_scalar_mul(
   Returns:
     a pytree with the same structure as ``tree``.
   """
-  return jtu.tree_map(lambda x: scalar * x, tree)
+  return jax.tree.map(lambda x: scalar * x, tree)
 
 
 def tree_add_scalar_mul(
@@ -117,10 +116,11 @@ def tree_add_scalar_mul(
     a pytree with the same structure as ``tree_x`` and ``tree_y``.
   """
   scalar = jnp.asarray(scalar)
-  return jtu.tree_map(
-      lambda x, y: x + scalar.astype(x.dtype) * y,
+  return jax.tree.map(
+      lambda x, y: None if x is None else x + scalar.astype(x.dtype) * y,
       tree_x,
-      tree_y)
+      tree_y,
+      is_leaf=lambda x: x is None)
 
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
@@ -151,8 +151,8 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   Implementation detail: we upcast the values to the highest precision to avoid
   numerical issues.
   """
-  vdots = jtu.tree_map(_vdot_safe, tree_x, tree_y)
-  return jtu.tree_reduce(operator.add, vdots)
+  vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
+  return jax.tree.reduce(operator.add, vdots, initializer=0)
 
 
 def tree_sum(tree: Any) -> chex.Numeric:
@@ -164,8 +164,8 @@ def tree_sum(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  sums = jtu.tree_map(jnp.sum, tree)
-  return jtu.tree_reduce(operator.add, sums)
+  sums = jax.tree.map(jnp.sum, tree)
+  return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
 def _square(leaf):
@@ -182,7 +182,7 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  squared_tree = jtu.tree_map(_square, tree)
+  squared_tree = jax.tree.map(_square, tree)
   sqnorm = tree_sum(squared_tree)
   if squared:
     return sqnorm
@@ -199,7 +199,7 @@ def tree_l1_norm(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  abs_tree = jtu.tree_map(jnp.abs, tree)
+  abs_tree = jax.tree.map(jnp.abs, tree)
   return tree_sum(abs_tree)
 
 
@@ -216,7 +216,7 @@ def tree_zeros_like(
   Returns:
     an all-zeros tree with the same structure as ``tree``.
   """
-  return jtu.tree_map(lambda x: jnp.zeros_like(x, dtype=dtype), tree)
+  return jax.tree.map(lambda x: jnp.zeros_like(x, dtype=dtype), tree)
 
 
 def tree_ones_like(
@@ -232,7 +232,7 @@ def tree_ones_like(
   Returns:
     an all-ones tree with the same structure as ``tree``.
   """
-  return jtu.tree_map(lambda x: jnp.ones_like(x, dtype=dtype), tree)
+  return jax.tree.map(lambda x: jnp.ones_like(x, dtype=dtype), tree)
 
 
 def tree_full_like(
@@ -250,7 +250,7 @@ def tree_full_like(
   Returns:
     an tree with the same structure as ``tree``.
   """
-  return jtu.tree_map(
+  return jax.tree.map(
       lambda x: jnp.full_like(x, fill_value, dtype=dtype), tree)
 
 
@@ -271,19 +271,31 @@ def tree_clip(
 
   .. versionadded:: 0.2.3
   """
-  return jtu.tree_map(lambda g: jnp.clip(g, min_value, max_value), tree)
+  return jax.tree.map(lambda g: jnp.clip(g, min_value, max_value), tree)
 
 
 def tree_update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order`-th moment."""
-  return jtu.tree_map(
-      lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
+  return jax.tree.map(
+      lambda g, t: (
+          (1 - decay) * (g**order) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def tree_update_infinity_moment(updates, moments, decay, eps):
   """Compute the exponential moving average of the infinity norm."""
-  return jtu.tree_map(
-      lambda g, t: jnp.maximum(jnp.abs(g) + eps, decay * t), updates, moments)
+  return jax.tree.map(
+      lambda g, t: (
+          jnp.maximum(jnp.abs(g) + eps, decay * t) if g is not None else g
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def tree_update_moment_per_elem_norm(updates, moments, decay, order):
@@ -299,8 +311,14 @@ def tree_update_moment_per_elem_norm(updates, moments, decay, order):
         half_order = int(half_order)
       return numerics.abs_sq(g) ** half_order
 
-  return jtu.tree_map(
-      lambda g, t: (1 - decay) * orderth_norm(g) + decay * t, updates, moments)
+  return jax.tree.map(
+      lambda g, t: (
+          (1 - decay) * orderth_norm(g) + decay * t if g is not None else None
+      ),
+      updates,
+      moments,
+      is_leaf=lambda x: x is None,
+  )
 
 
 @functools.partial(jax.jit, inline=True)
@@ -314,5 +332,21 @@ def tree_bias_correction(moment, decay, count):
   bias_correction_ = 1 - decay**count
 
   # Perform division in the original precision.
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       lambda t: t / bias_correction_.astype(t.dtype), moment)
+
+
+def tree_where(condition, tree_x, tree_y):
+  """Select tree_x values if condition is true else tree_y values.
+
+  Args:
+    condition: boolean specifying which values to select from tree x or tree_y
+    tree_x: pytree chosen if condition is True
+    tree_y: pytree chosen if condition is False
+
+  Returns:
+    tree_x or tree_y depending on condition.
+  """
+  return jax.tree.map(
+      lambda x, y: jnp.where(condition, x, y), tree_x, tree_y
+  )

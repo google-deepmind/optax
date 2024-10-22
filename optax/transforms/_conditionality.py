@@ -17,8 +17,8 @@
 from typing import Any, NamedTuple, Protocol
 
 import chex
+import jax
 from jax import lax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 
 from optax import tree_utils as otu
@@ -61,7 +61,7 @@ def conditionally_transform(
 
   Creates a transformation wrapper that conditionally applies the inner gradient
   transformation, and if the condition is not met, just passes the updates and
-  inner state through unchanged. The behaviour is controlled by a user specified
+  inner state through unchanged. The behavior is controlled by a user specified
   function ``should_transform_fn`` that is called by ``conditionally_transform``
   passing as input a counter of the number of times that the ``update`` function
   has been previously called, the user specified function must returns a boolean
@@ -102,7 +102,7 @@ def conditionally_transform(
         should_transform_fn(state.step, **condition_kwargs),
         do_update, reject_update, operand=None)
     return updates, ConditionallyTransformState(
-        new_inner_state, numerics.safe_int32_increment(state.step))
+        new_inner_state, numerics.safe_increment(state.step))
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -121,7 +121,7 @@ def conditionally_mask(
 
   Creates a transformation wrapper that conditionally applies the inner gradient
   transformation, and if the condition is not met, the updates are set to 0,
-  while the inner state is passed through unchanged. The behaviour is controlled
+  while the inner state is passed through unchanged. The behavior is controlled
   by a user specified function ``should_transform_fn`` that is called
   by ``conditionally_transform`` passing as input a counter of the number of
   times that the ``update`` function has been previously called, the user
@@ -165,7 +165,7 @@ def conditionally_mask(
         do_update, reject_update, operand=None)
 
     return updates, ConditionallyMaskState(
-        step=numerics.safe_int32_increment(state.step),
+        step=numerics.safe_increment(state.step),
         inner_state=new_inner_state,
     )
 
@@ -225,12 +225,12 @@ def apply_if_finite(
 
   def update(updates, state, params=None, **extra_args):
     inner_state = state.inner_state
-    flat_updates = jtu.tree_flatten(updates)[0]
+    flat_updates = jax.tree.flatten(updates)[0]
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
     notfinite_count = jnp.where(
         isfinite, jnp.zeros([], jnp.int32),
-        numerics.safe_int32_increment(state.notfinite_count))
+        numerics.safe_increment(state.notfinite_count))
 
     def do_update(_):
       return inner.update(updates, inner_state, params, **extra_args)
@@ -247,7 +247,7 @@ def apply_if_finite(
         last_finite=isfinite,
         total_notfinite=jnp.where(
             isfinite, state.total_notfinite,
-            numerics.safe_int32_increment(state.total_notfinite)),
+            numerics.safe_increment(state.total_notfinite)),
         inner_state=new_inner_state)
 
   return base.GradientTransformationExtraArgs(init=init, update=update)

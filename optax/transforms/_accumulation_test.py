@@ -141,7 +141,7 @@ class AccumulationTest(chex.TestCase):
   def test_multi_steps(self):
     batch_size = 32
     x_size = 7
-    # Parameters should be updated only every `k_steps` optimisation steps.
+    # Parameters should be updated only every `k_steps` optimization steps.
     k_steps = 4
     data = jnp.ones([batch_size, x_size])
 
@@ -158,7 +158,7 @@ class AccumulationTest(chex.TestCase):
       return loss.apply({'params': params}, data)
 
     ms_opt = _accumulation.MultiSteps(
-        # Use a non-trivial inner optimiser:
+        # Use a non-trivial inner optimizer:
         # * it has a state,
         # * it requires the params for the update.
         combine.chain(transform.scale_by_adam(),
@@ -184,7 +184,7 @@ class AccumulationTest(chex.TestCase):
       if idx % k_steps < k_steps - 1:
         # The parameters should not have changed and the loss should be
         # constant.
-        jax.tree_util.tree_map(
+        jax.tree.map(
             np.testing.assert_array_equal, new_params, params)
         np.testing.assert_equal(new_loss, prev_loss)
         self.assertFalse(ms_opt.has_updated(opt_state))

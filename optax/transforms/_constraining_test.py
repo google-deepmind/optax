@@ -105,7 +105,7 @@ class ConstraintsTest(chex.TestCase):
     chex.assert_trees_all_close(updates, (jnp.ones([3]), jnp.array(
         [1., 0., 0.]), jnp.array([float('inf'), 1., 1.])))
 
-    # Check an upate with only good values
+    # Check an update with only good values
     grads = (jnp.ones([3]), jnp.ones([3]), jnp.ones([3]))
     updates, opt_state = update_fn(grads, opt_state)
     chex.assert_trees_all_close(
@@ -113,6 +113,12 @@ class ConstraintsTest(chex.TestCase):
         _constraining.ZeroNansState(
             (jnp.array(False), jnp.array(False), jnp.array(False))))
     chex.assert_trees_all_close(updates, grads)
+
+  def test_none_arguments(self):
+    tf = _constraining.keep_params_nonnegative()
+    state = tf.init(jnp.array([1.0, 2.0, 3.0]))
+    with self.assertRaises(ValueError):
+      tf.update(jnp.array([1.0, 2.0, 3.0]), state, None)
 
 
 if __name__ == '__main__':

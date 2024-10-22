@@ -83,8 +83,8 @@ def lookahead(
     sync_period: Number of fast optimizer steps to take before synchronizing
       parameters. Must be >= 1.
     slow_step_size: Step size of the slow parameter updates.
-    reset_state: Whether to reset the optimizer state of the fast opimizer after
-      each synchronization.
+    reset_state: Whether to reset the optimizer state of the fast optimizer
+      after each synchronization.
 
   Returns:
     A `GradientTransformation` with init and update functions. The updates
@@ -123,7 +123,7 @@ def lookahead(
       # Jittable way of resetting the fast optimizer state if parameters will be
       # synchronized after this update step.
       initial_state = fast_optimizer.init(params.fast)
-      fast_state = jax.tree_util.tree_map(
+      fast_state = jax.tree.map(
           lambda current, init: (1 - sync_next) * current + sync_next * init,
           fast_state,
           initial_state,
@@ -165,7 +165,7 @@ def _lookahead_update(
   # without change and the slow parameter updates are zero (i.e. fast_updates =
   # updates, slow_updates = 0).
   #
-  # Synchronisation step (sync_next == True):
+  # Synchronization step (sync_next == True):
   # This consists of two substeps: a last fast optimizer step and the
   # synchronization.
   #   Substep 1 (last fast optimizer step):
@@ -182,17 +182,17 @@ def _lookahead_update(
   #
   # To make the equations jittable, the two types of steps are merged. Defining
   # last_difference = fast_params + updates - slow_params, this yields the
-  # following equtions which are implemented below:
+  # following equations which are implemented below:
   #   slow_updates = slow_step_size * sync_next * last_difference
   #   fast_updates = updates - (
   #                  1 - slow_step_size) * sync_next * last_difference
-  last_difference = jax.tree_util.tree_map(
+  last_difference = jax.tree.map(
       lambda f, u, s: f + u - s, params.fast, updates, params.slow
   )
-  slow_updates = jax.tree_util.tree_map(
+  slow_updates = jax.tree.map(
       lambda diff: slow_step_size * sync_next * diff, last_difference
   )
-  fast_updates = jax.tree_util.tree_map(
+  fast_updates = jax.tree.map(
       lambda up, diff: up - sync_next * (1 - slow_step_size) * diff,
       updates,
       last_difference,

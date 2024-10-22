@@ -16,12 +16,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
-from jax import config
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import base
 from optax._src import clipping
@@ -40,10 +37,16 @@ ALL_MODULES = [
     ('scale_by_stddev', transform.scale_by_stddev, {}),
     ('adam', transform.scale_by_adam, {}),
     ('scale', transform.scale, dict(step_size=3.0)),
-    ('add_decayed_weights', transform.add_decayed_weights,
-     dict(weight_decay=0.1)),
-    ('scale_by_schedule', transform.scale_by_schedule,
-     dict(step_size_fn=lambda x: x * 0.1)),
+    (
+        'add_decayed_weights',
+        transform.add_decayed_weights,
+        dict(weight_decay=0.1),
+    ),
+    (
+        'scale_by_schedule',
+        transform.scale_by_schedule,
+        dict(step_size_fn=lambda x: x * 0.1),
+    ),
     ('scale_by_trust_ratio', transform.scale_by_trust_ratio, {}),
     ('add_noise', transform.add_noise, dict(eta=1.0, gamma=0.1, seed=42)),
     ('apply_every_k', transform.apply_every, {}),
@@ -55,38 +58,43 @@ ALL_MODULES = [
     ('noisy_sgd', alias.noisy_sgd, dict(learning_rate=0.1)),
     ('rmsprop', alias.rmsprop, dict(learning_rate=0.1)),
     ('sgd', alias.sgd, dict(learning_rate=0.1)),
+    ('sign_sgd', alias.sgd, dict(learning_rate=0.1)),
 ]
 
 
 class Float64Test(parameterized.TestCase):
 
   def _assert_dtype_equals(self, tree1, tree2):
-    tree1_types = jax.tree_util.tree_map(lambda t: t.dtype, tree1)
-    tree2_types = jax.tree_util.tree_map(lambda t: t.dtype, tree2)
+    tree1_types = jax.tree.map(lambda t: t.dtype, tree1)
+    tree2_types = jax.tree.map(lambda t: t.dtype, tree2)
     self.assertEqual(tree1_types, tree2_types)
 
   @chex.all_variants
   @parameterized.named_parameters(ALL_MODULES)
   def test_mixed_dtype_input_outputs(self, transform_constr, transform_kwargs):
+    jax.config.update('jax_enable_x64', True)
     initial_params = (
-        jnp.array([1., 2.], dtype=jnp.float32),
-        jnp.array([3., 4.], dtype=jnp.float64))
+        jnp.array([1.0, 2.0], dtype=jnp.float32),
+        jnp.array([3.0, 4.0], dtype=jnp.float64),
+    )
     updates = (
-        jnp.array([10., 21.], dtype=jnp.float32),
-        jnp.array([33., 42.], dtype=jnp.float64))
+        jnp.array([10.0, 21.0], dtype=jnp.float32),
+        jnp.array([33.0, 42.0], dtype=jnp.float64),
+    )
     scaler = transform_constr(**transform_kwargs)
     init_fn = self.variant(scaler.init)
     update_fn = self.variant(scaler.update)
 
     initial_state = init_fn(initial_params)
     updates, new_state = update_fn(
-        updates, initial_state, params=initial_params)
+        updates, initial_state, params=initial_params
+    )
     new_params = update.apply_updates(initial_params, updates)
 
     self._assert_dtype_equals(initial_state, new_state)
     self._assert_dtype_equals(initial_params, new_params)
+    jax.config.update('jax_enable_x64', False)
 
 
 if __name__ == '__main__':
-  config.update('jax_enable_x64', True)
   absltest.main()

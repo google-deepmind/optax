@@ -14,10 +14,11 @@
 # ==============================================================================
 """Tools for mapping over optimizer states."""
 
+from collections.abc import Callable
 import dataclasses
 import functools
 import typing
-from typing import Any, Callable, Optional, Protocol, Tuple, Union, cast
+from typing import Any, Optional, Protocol, Tuple, Union, cast
 
 import jax
 from optax._src import base
@@ -59,6 +60,7 @@ class NamedTupleKey:
 
   .. versionadded:: 0.2.2
   """
+
   tuple_name: str
   name: str
 
@@ -149,13 +151,13 @@ def tree_map_params(
 
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
-      return jax.tree_util.tree_map(f, value, *rest, is_leaf=is_leaf)
+      return jax.tree.map(f, value, *rest, is_leaf=is_leaf)
     elif transform_non_params is not None:
       return transform_non_params(value)
     else:
       return value
 
-  return jax.tree_util.tree_map(
+  return jax.tree.map(
       map_params,
       state_with_placeholders,
       state,
@@ -226,10 +228,10 @@ def tree_get_all_with_path(
     tree: tree to search in.
     key: keyword or field to search in tree for.
     filtering: optional callable to further filter values in tree that match the
-      key. ``filtering(path: Key_Path, value: Any) -> bool: ...``
-      takes as arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the
-      value that match the given key.
+      key. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes as
+      arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      the given key.
 
   Returns:
     values_with_path
@@ -272,7 +274,7 @@ def tree_get(
   Raises a ``KeyError`` if multiple values of ``key`` are found in ``tree``.
 
   Generally, you may first get all pairs ``(path_to_value, value)`` for a given
-  ``key`` using :func:`optax.tree_utils.tree_get_all_with_path`. You may then 
+  ``key`` using :func:`optax.tree_utils.tree_get_all_with_path`. You may then
   define a filtering operation
   ``filtering(path: Key_Path, value: Any) -> bool: ...`` that enables you to
   select the specific values you wanted to fetch by looking at the type of the
@@ -354,10 +356,10 @@ def tree_get(
     key: keyword or field to search in ``tree`` for.
     default: default value to return if ``key`` is not found in ``tree``.
     filtering: optional callable to further filter values in ``tree`` that match
-      the ``key``. ``filtering(path: Key_Path, value: Any) -> bool: ...``
-      takes as arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the
-      value that match the given key.
+      the ``key``. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes
+      as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      the given key.
 
   Returns:
     value
@@ -441,11 +443,10 @@ def tree_set(
   Args:
     tree: pytree whose values are to be replaced.
     filtering: optional callable to further filter values in ``tree`` that match
-      the keys to replace.
-      ``filtering(path: Key_Path, value: Any) -> bool: ...``
-      takes as arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the
-      value that match a given key.
+      the keys to replace. ``filtering(path: Key_Path, value: Any) -> bool:
+      ...`` takes as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      a given key.
     **kwargs: dictionary of keys with values to replace in ``tree``.
 
   Returns:
@@ -518,7 +519,7 @@ def tree_set(
 
   # Mimics jax.tree_util.tree_map_with_path(_replace, tree, is_leaf)
   # except that the paths we consider can contain NamedTupleKeys
-  _, treedef = jax.tree_util.tree_flatten(tree, is_leaf=has_any_key)
+  _, treedef = jax.tree.flatten(tree, is_leaf=has_any_key)
   tree_leaves_with_path = _tree_leaves_with_named_tuple_path(
       tree, is_leaf=has_any_key
   )

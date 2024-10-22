@@ -11,6 +11,7 @@ _testing/
 docs/_autosummary
 docs/_collections
 docs/modules/generated
+docs/sg_execution_times.rst
 
 # Mac OS
 .DS_Store
@@ -19,7 +20,6 @@ docs/modules/generated
 .mypy_cache/
 .pytype/
 .ipynb_checkpoints
-.pylintrc
 
 # Editors
 .idea

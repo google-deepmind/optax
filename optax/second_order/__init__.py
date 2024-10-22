@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""The second order optimisation sub-package."""
+"""The second order optimization sub-package."""
 
 from optax.second_order._fisher import fisher_diag
 from optax.second_order._hessian import hessian_diag

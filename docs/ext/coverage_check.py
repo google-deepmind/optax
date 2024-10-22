@@ -14,9 +14,10 @@
 # ==============================================================================
 """Asserts all public symbols are covered in the docs."""
 
+from collections.abc import Mapping
 import inspect
 import types
-from typing import Any, Mapping, Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
 import optax
 from sphinx import application

@@ -15,7 +15,7 @@
 """Classification losses."""
 
 import functools
-from typing import Optional
+from typing import Optional, Union
 
 import chex
 import jax
@@ -209,65 +209,141 @@ def safe_softmax_cross_entropy(
 def softmax_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
-  """Computes the softmax cross entropy between sets of logits and labels.
+  r"""Computes the softmax cross entropy between sets of logits and labels.
 
-  Measures the probability error in discrete classification tasks in which
-  the classes are mutually exclusive (each entry is in exactly one class).
-  For example, each CIFAR-10 image is labeled with one and only one label:
-  an image can be a dog or a truck, but not both.
+  This loss function is commonly used for multi-class classification tasks. It
+  measures the dissimilarity between the predicted probability distribution
+  (obtained by applying the softmax function to the logits) and the true
+  probability distribution (represented by the one-hot encoded labels).
+  This loss is also known as categorical cross entropy.
+
+  Let :math:`x` denote the ``logits`` array of size ``[batch_size,
+  num_classes]`` and :math:`y` denote the ``labels`` array of size
+  ``[batch_size, num_classes]``. Then this function returns a vector
+  :math:`\sigma` of size ``[batch_size]`` defined as:
+
+  .. math::
+    \sigma_i =
+    - \sum_j y_{i j} \log\left(\frac{\exp(x_{i j})}{\sum_k
+    \exp(x_{i k})}\right) \,.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> # example: batch_size = 2, num_classes = 3
+    >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
+    >>> labels = jnp.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    >>> print(optax.softmax_cross_entropy(logits, labels))
+    [0.2761297 2.951799 ]
 
   References:
-    [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
+    `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
+    Wikipedia
+
+    `Multinomial Logistic Regression
+    <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
 
   Args:
-    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
-    labels: Valid probability distributions (non-negative, sum to 1), e.g a
-      one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]`.
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
+    labels: One-hot encoded labels, with shape `[batch_size, num_classes]`. Each
+      row represents the true class distribution for a single example.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
-    cross entropy between each prediction and the corresponding target
-    distributions, with shape `[...]`.
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
 
-  .. seealso:: :func:`optax.safe_softmax_cross_entropy`
+  .. seealso::
+    This function is similar to
+    :func:`optax.losses.softmax_cross_entropy_with_integer_labels`,
+    but accepts one-hot labels instead of integer labels.
+
+    :func:`optax.losses.safe_softmax_cross_entropy` provides an alternative
+    implementation that differs on how ``logits=-inf`` are handled.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits], float)
-  return -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
+  log_probs = jax.nn.log_softmax(logits, axis, where)
+  return -(labels * log_probs).sum(axis, where=where)
 
 
 def softmax_cross_entropy_with_integer_labels(
     logits: chex.Array,
     labels: chex.Array,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
-  """Computes softmax cross entropy between sets of logits and integer labels.
+  r"""Computes softmax cross entropy between the logits and integer labels.
 
-  Measures the probability error in discrete classification tasks in which
-  the classes are mutually exclusive (each entry is in exactly one class).
-  For example, each CIFAR-10 image is labeled with one and only one label:
-  an image can be a dog or a truck, but not both.
+  This loss is useful for classification problems with integer labels that are
+  not one-hot encoded. This loss is also known as categorical cross entropy.
+
+  Let :math:`x` denote the ``logits`` array of size ``[batch_size,
+  num_classes]`` and :math:`y` denote the ``labels`` array of size
+  ``[batch_size]``. Then this function returns a vector
+  :math:`\sigma` of size ``[batch_size]`` defined as:
+
+  .. math::
+    \sigma_i =
+    \log\left(\frac{\exp(x_{i y_i})}{\sum_j
+    \exp(x_{i j})}\right)\,.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> # example: batch_size = 2, num_classes = 3
+    >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
+    >>> labels = jnp.array([0, 1])
+    >>> print(optax.softmax_cross_entropy_with_integer_labels(logits, labels))
+    [0.2761297 2.951799 ]
 
   References:
-    [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
+    `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
+    Wikipedia
+
+    `Multinomial Logistic Regression
+    <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
 
   Args:
-    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
     labels: Integers specifying the correct class for each input, with shape
-      `[...]`.
+      ``[batch_size]``. Class labels are assumed to be between 0 and
+      ``num_classes - 1`` inclusive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
-    Cross entropy between each prediction and the corresponding target
-    distributions, with shape `[...]`.
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
+
+  .. seealso:: This function is similar to
+    :func:`optax.losses.softmax_cross_entropy`, but accepts integer labels
+    instead of one-hot labels.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
   # This is like jnp.take_along_axis(jax.nn.log_softmax(...), ...) except that
   # we avoid subtracting the normalizer from all values, just from the values
   # for the correct labels.
-  logits_max = jnp.max(logits, axis=-1, keepdims=True)
+  logits_max = jnp.max(
+      logits, axis, keepdims=True, where=where, initial=-jnp.inf
+  )
   logits -= jax.lax.stop_gradient(logits_max)
-  label_logits = jnp.take_along_axis(logits, labels[..., None], axis=-1)[..., 0]
-  log_normalizers = jnp.log(jnp.sum(jnp.exp(logits), axis=-1))
+  label_logits = jnp.take_along_axis(
+      logits, jnp.expand_dims(labels, axis), axis=axis
+  ).take(0, axis=axis)
+  log_normalizers = jnp.log(jnp.sum(jnp.exp(logits), axis=axis, where=where))
   return log_normalizers - label_logits
 
 
@@ -331,7 +407,9 @@ def multiclass_perceptron_loss(
 def poly_loss_cross_entropy(
     logits: chex.Array,
     labels: chex.Array,
-    epsilon: float = 2.0
+    epsilon: float = 2.0,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes PolyLoss between logits and labels.
 
@@ -364,20 +442,30 @@ def poly_loss_cross_entropy(
       - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
       - It is also recommended to adjust this value based on the task, e.g. by
         using grid search.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Poly loss between each prediction and the corresponding target
     distributions, with shape `[...]`.
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits, labels], float)
-  one_minus_pt = jnp.sum(labels * (1 - jax.nn.softmax(logits)), axis=-1)
-  cross_entropy = softmax_cross_entropy(logits=logits, labels=labels)
+  p = jax.nn.softmax(logits, axis=axis, where=where)
+  one_minus_pt = jnp.sum(labels * (1 - p), axis=axis, where=where)
+  cross_entropy = softmax_cross_entropy(
+      logits=logits, labels=labels, axis=axis, where=where
+  )
   return cross_entropy + epsilon * one_minus_pt
 
 
 def kl_divergence(
     log_predictions: chex.Array,
-    targets: chex.Array
+    targets: chex.Array,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -392,21 +480,28 @@ def kl_divergence(
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([log_predictions, targets], float)
   loss = targets * (
       jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
   )
-  return jnp.sum(loss, axis=-1)
+  return jnp.sum(loss, axis=axis, where=where)
 
 
 def kl_divergence_with_log_targets(
     log_predictions: chex.Array,
-    log_targets: chex.Array
+    log_targets: chex.Array,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -417,19 +512,26 @@ def kl_divergence_with_log_targets(
       [..., dim]. Expected to be in the log-space to avoid underflow.
     log_targets: Probabilities of target distribution with shape [..., dim].
       Expected to be in the log-space.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([log_predictions, log_targets], float)
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
-  return jnp.sum(loss, axis=-1)
+  return jnp.sum(loss, axis=axis, where=where)
 
 
 def convex_kl_divergence(
     log_predictions: chex.Array,
-    targets: chex.Array
+    targets: chex.Array,
+    axis: Union[int, tuple[int, ...], None] = -1,
+    where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   """Computes a convex version of the Kullback-Leibler divergence loss.
 
@@ -445,14 +547,19 @@ def convex_kl_divergence(
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
       Expected to be strictly positive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
 
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  .. versionchanged:: 0.2.4
+    Added ``axis`` and ``where`` arguments.
   """
-  return kl_divergence(log_predictions, targets) + jnp.sum(
-      jnp.exp(log_predictions) - targets, axis=-1
-  )
+  x = kl_divergence(log_predictions, targets, axis=axis, where=where)
+  y = jnp.sum(jnp.exp(log_predictions) - targets, axis=axis, where=where)
+  return x + y
 
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=4)

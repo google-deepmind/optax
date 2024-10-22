@@ -26,17 +26,18 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
+import optax.tree_utils as otu
 
 
 class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
-  scale: chex.Array  # shape=(), dtype=jnp.float32
-  best_value: chex.Array  # shape=(), dtype=jnp.float32
+  scale: chex.Array
+  best_value: chex.Array
   plateau_count: chex.Array  # shape=(), dtype=jnp.int32
   cooldown_count: chex.Array  # shape=(), dtype=jnp.int32
   count: chex.Array  # shape=(), dtype=jnp.int32
-  avg_value: chex.Array  # shape=(), dtype=jnp.float32
+  avg_value: chex.Array
 
 
 def reduce_on_plateau(
@@ -46,6 +47,7 @@ def reduce_on_plateau(
     atol: float = 0.0,
     cooldown: int = 0,
     accumulation_size: int = 1,
+    min_scale: float = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
@@ -62,10 +64,11 @@ def reduce_on_plateau(
     atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
       after scale has been reduced.
-    accumulation_size: Number of valeus to aggregate before applying the logic
+    accumulation_size: Number of values to aggregate before applying the logic
       of reduce on plateau. If the value fed to the optimizer is a test value,
       simply take 1 (default). If the value fed to the optimizer is the loss on
       a the current minibatch, consider using a larger accumulation size.
+    min_scale: Scale at which the learning rate decay stops.
 
   Returns:
     A GradientTransformationExtraArgs object.
@@ -73,6 +76,11 @@ def reduce_on_plateau(
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
+  if factor <= 0.0 or factor >= 1.0:
+    raise ValueError(
+        f"Factor must be in the range (0, 1), got factor = {factor}."
+    )
+
   if rtol < 0.0 or atol < 0.0:
     raise ValueError(
         "Both rtol and atol must be non-negative, got "
@@ -89,14 +97,17 @@ def reduce_on_plateau(
     )
 
   def init_fn(params) -> ReduceLROnPlateauState:
-    del params
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
+    params_dtype = otu.tree_dtype(params, "lowest")
     return ReduceLROnPlateauState(
-        best_value=jnp.asarray(float("inf"), dtype=jnp.float32),
+        best_value=jnp.asarray(float("inf")),
         plateau_count=jnp.asarray(0, jnp.int32),
-        scale=jnp.asarray(1.0, dtype=jnp.float32),
+        scale=jnp.asarray(1.0, dtype=params_dtype),
         cooldown_count=jnp.asarray(0, jnp.int32),
         count=jnp.asarray(0, jnp.int32),
-        avg_value=jnp.asarray(0.0, jnp.float32),
+        avg_value=jnp.asarray(0.0),
     )
 
   def _update_scale(state):
@@ -109,7 +120,7 @@ def reduce_on_plateau(
         has_improved, avg_value, state.best_value
     )
     curr_plateau_count = jnp.where(
-        has_improved, 0, numerics.safe_int32_increment(state.plateau_count)
+        has_improved, 0, numerics.safe_increment(state.plateau_count)
     )
 
     # We're in cooldown, so reduce the counter and ignore any bad epochs
@@ -124,14 +135,18 @@ def reduce_on_plateau(
       new_plateau_count = jnp.where(
           curr_plateau_count == patience, 0, curr_plateau_count
       )
-      new_scale = jnp.where(
-          curr_plateau_count == patience,
-          state.scale * factor,
-          state.scale,
+      new_scale = jnp.maximum(
+          jnp.where(
+              curr_plateau_count == patience,
+              state.scale * factor,
+              state.scale,
+          ),
+          min_scale,
       )
       new_cooldown_count = jnp.where(
           curr_plateau_count == patience, cooldown, 0
       ).astype(jnp.int32)
+
       return new_plateau_count, new_scale, new_cooldown_count
 
     new_plateau_count, new_scale, new_cooldown_count = jax.lax.cond(
@@ -143,7 +158,7 @@ def reduce_on_plateau(
         scale=new_scale,
         cooldown_count=new_cooldown_count,
         count=jnp.asarray(0, dtype=jnp.int32),
-        avg_value=jnp.asarray(0.0, dtype=jnp.float32),
+        avg_value=jnp.asarray(0.0),
     )
     return new_state
 
@@ -158,15 +173,17 @@ def reduce_on_plateau(
     del params, extra_args
 
     count = state.count
-    new_count = numerics.safe_int32_increment(count)
-    new_avg_value = (count * state.avg_value + value) / new_count
+    new_count = numerics.safe_increment(count)
+    new_avg_value = (
+        count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
+    ) / new_count
     new_state = state._replace(avg_value=new_avg_value, count=new_count)
 
     new_state = jax.lax.cond(
         new_count == accumulation_size, _update_scale, lambda x: x, new_state
     )
 
-    updates = jax.tree_util.tree_map(lambda g: new_state.scale * g, updates)
+    updates = jax.tree.map(lambda g: new_state.scale * g, updates)
 
     return updates, new_state
 

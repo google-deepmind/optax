@@ -14,9 +14,10 @@
 # ==============================================================================
 """Utilities to inject dynamically changing hyper-parameters."""
 
+from collections.abc import Callable
 import functools
 import inspect
-from typing import Callable, Iterable, NamedTuple, Optional, Union
+from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
 import chex
@@ -151,7 +152,7 @@ def inject_hyperparams(
       count = jnp.zeros([], jnp.int32)
       if hyperparam_dtype is None:
         dtype = getattr(
-            next(iter(jax.tree_util.tree_leaves(params)), None), 'dtype', None
+            next(iter(jax.tree.leaves(params)), None), 'dtype', None
         )
       else:
         dtype = hyperparam_dtype
@@ -174,7 +175,7 @@ def inject_hyperparams(
     def update_fn(updates, state, params=None, **extra_args):
       if hyperparam_dtype is None:
         dtype = getattr(
-            next(iter(jax.tree_util.tree_leaves(updates)), None), 'dtype', None
+            next(iter(jax.tree.leaves(updates)), None), 'dtype', None
         )
       else:
         dtype = hyperparam_dtype
@@ -197,7 +198,7 @@ def inject_hyperparams(
       ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
-          count=numerics.safe_int32_increment(state.count),
+          count=numerics.safe_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,
           inner_state=inner_state,
@@ -270,7 +271,7 @@ class WrappedSchedule:
       **extra_args,
   ) -> WrappedScheduleState:
     del extra_args
-    new_count = numerics.safe_int32_increment(state.count)
+    new_count = numerics.safe_increment(state.count)
     return WrappedScheduleState(count=new_count)
 
   def __call__(

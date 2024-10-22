@@ -53,7 +53,11 @@ years, well-cited (100+ citations), and demonstrate broad utility.
 if they offer clear advantages over widely used methods.
 
 If your algorithm doesn't meet the main package criteria, the {doc}`api/contrib`
-directory is perfect for sharing innovative work.
+directory is perfect for sharing innovative work. Please make sure that all
+common tests (in `optax/contrib/_common_test.py` or `optax/_src/alias_test.py`)
+are passed when you propose a new algorithm. These tests ensure the
+interoperability of algorithms with different features of optax (such as
+gradient accumulation or varying hyperparameters).
 
 
 ## Design Documents

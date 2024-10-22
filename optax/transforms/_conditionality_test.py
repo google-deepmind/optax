@@ -80,40 +80,40 @@ class ConditionalityTest(parameterized.TestCase):
     params = update.apply_updates(params, updates)
     # We know exactly what should be the value of params since we are
     # effectively using sgd in all cases.
-    self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
+    self.assertEqual(-1., float(jax.tree.flatten(params)[0][0]))
     self.assertTrue(bool(getattr(state, 'last_finite')))
     # Check 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-1., float(jax.tree_util.tree_flatten(params)[0][0]))
+      self.assertEqual(-1., float(jax.tree.flatten(params)[0][0]))
       self.assertFalse(bool(getattr(state, 'last_finite')))
       self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
+    self.assertEqual(-2., float(jax.tree.flatten(params)[0][0]))
     self.assertTrue(bool(getattr(state, 'last_finite')))
     # Again 2 rejected param updates
     for step in range(2):
       grads = grads_fn(params, nan)
       updates, state = opt.update(grads, state, params)
       params = update.apply_updates(params, updates)
-      self.assertEqual(-2., float(jax.tree_util.tree_flatten(params)[0][0]))
+      self.assertEqual(-2., float(jax.tree.flatten(params)[0][0]))
       self.assertFalse(bool(getattr(state, 'last_finite')))
       self.assertEqual(step + 1, int(getattr(state, 'notfinite_count')))
     # Next param update with NaN is accepted since we reached maximum
     grads = grads_fn(params, nan)
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
-    self.assertTrue(bool(jnp.isnan(jax.tree_util.tree_flatten(params)[0][0])))
+    self.assertTrue(bool(jnp.isnan(jax.tree.flatten(params)[0][0])))
     self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
     # Unlike in `test_apply_if_finite`:
-    # * pmap is applied to the gradient computation and the optimisation;
+    # * pmap is applied to the gradient computation and the optimization;
     # * the NaNs are caused inside the function and do not come from the inputs.
     half = jnp.ones([1]) / 2.
     two = jnp.ones([1]) * 2.  # Causes a NaN in arctanh
@@ -131,8 +131,8 @@ class ConditionalityTest(parameterized.TestCase):
 
     params = jnp.array(0.)
     opt_state = opt.init(params)
-    params = jax.tree_util.tree_map(lambda x: x[None], params)
-    opt_state = jax.tree_util.tree_map(lambda x: x[None], opt_state)
+    params = jax.tree.map(lambda x: x[None], params)
+    opt_state = jax.tree.map(lambda x: x[None], opt_state)
     # Do one successful param update
     params, opt_state = fn_update(params, opt_state, half)
     self.assertTrue(bool(opt_state.last_finite))
@@ -174,7 +174,7 @@ class ConditionallyTransformTest(chex.TestCase):
     for _ in range(ConditionallyTransformTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 1.)
@@ -199,7 +199,7 @@ class ConditionallyTransformTest(chex.TestCase):
     updates, state = update_fn(grads, state)
     self.assertEqual(updates, 1.)
     self.assertEqual(state.inner_state.found_nan, False)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads_with_nan, state)
       # Warning: do not use assertEqual with a NaN as NaN == NaN returns False.
@@ -228,7 +228,7 @@ class ConditionallyMaskTest(chex.TestCase):
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 0.)
@@ -253,7 +253,7 @@ class ConditionallyMaskTest(chex.TestCase):
     updates, state = update_fn(grads, state)
     self.assertEqual(updates, 1.)
     self.assertEqual(state.inner_state.found_nan, False)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads_with_nan, state)
       self.assertEqual(updates, 0.)
@@ -276,7 +276,7 @@ class ConditionallyMaskTest(chex.TestCase):
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state, loss=0.2)
       self.assertEqual(updates, 2.)
-    # Further updates stop calling the inner optimiser.
+    # Further updates stop calling the inner optimizer.
     for _ in range(5):
       updates, state = update_fn(grads, state, loss=0.)
       self.assertEqual(updates, 0.)

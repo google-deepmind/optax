@@ -17,9 +17,11 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=g-importing-member
 
+from optax import assignment
 from optax import contrib
 from optax import losses
 from optax import monte_carlo
+from optax import perturbations
 from optax import projections
 from optax import schedules
 from optax import second_order
@@ -33,22 +35,26 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import adan
 from optax._src.alias import amsgrad
 from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
+from optax._src.alias import lbfgs
 from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
 from optax._src.alias import nadam
 from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
+from optax._src.alias import optimistic_adam
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import polyak_sgd
 from optax._src.alias import radam
 from optax._src.alias import rmsprop
 from optax._src.alias import rprop
 from optax._src.alias import sgd
+from optax._src.alias import sign_sgd
 from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
@@ -90,10 +96,14 @@ from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
 from optax._src.linesearch import scale_by_backtracking_linesearch
+from optax._src.linesearch import scale_by_zoom_linesearch
 from optax._src.linesearch import ScaleByBacktrackingLinesearchState
+from optax._src.linesearch import ScaleByZoomLinesearchState
+from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
 from optax._src.lookahead import LookaheadState
+from optax._src.numerics import safe_increment
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
@@ -106,13 +116,16 @@ from optax._src.transform import ApplyEvery
 from optax._src.transform import centralize
 from optax._src.transform import ema
 from optax._src.transform import EmaState
+from optax._src.transform import normalize_by_update_norm
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
+from optax._src.transform import scale_by_lbfgs
 from optax._src.transform import scale_by_learning_rate
 from optax._src.transform import scale_by_lion
 from optax._src.transform import scale_by_novograd
@@ -125,14 +138,17 @@ from optax._src.transform import scale_by_rms
 from optax._src.transform import scale_by_rprop
 from optax._src.transform import scale_by_rss
 from optax._src.transform import scale_by_schedule
+from optax._src.transform import scale_by_sign
 from optax._src.transform import scale_by_sm3
 from optax._src.transform import scale_by_stddev
 from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
+from optax._src.transform import ScaleByLBFGSState
 from optax._src.transform import ScaleByLionState
 from optax._src.transform import ScaleByNovogradState
 from optax._src.transform import ScaleByRmsState
@@ -273,7 +289,7 @@ del _typing
 # pylint: enable=g-importing-member
 
 
-__version__ = "0.2.3.dev"
+__version__ = "0.2.4.dev"
 
 __all__ = (
     "adabelief",
@@ -284,6 +300,7 @@ __all__ = (
     "adamax",
     "adamaxw",
     "adamw",
+    "adan",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
@@ -296,6 +313,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "assignment",
     "centralize",
     "chain",
     "clip_by_block_rms",
@@ -340,6 +358,7 @@ __all__ = (
     "l2_loss",
     "lamb",
     "lars",
+    "lbfgs",
     "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
@@ -377,6 +396,7 @@ __all__ = (
     "radam",
     "rmsprop",
     "rprop",
+    "safe_increment",
     "safe_int32_increment",
     "safe_norm",
     "safe_root_mean_squares",
@@ -384,9 +404,11 @@ __all__ = (
     "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_adan",
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
+    "scale_by_lbfgs",
     "scale_by_lion",
     "scale_by_factored_rms",
     "scale_by_novograd",
@@ -398,17 +420,21 @@ __all__ = (
     "scale_by_rprop",
     "scale_by_rss",
     "scale_by_schedule",
+    "scale_by_sign",
     "scale_by_sm3",
     "scale_by_stddev",
     "scale_by_trust_ratio",
     "scale_by_yogi",
+    "scale_by_zoom_linesearch",
     "scale_gradient",
     "scale",
     "ScaleByAdaDeltaState",
     "ScaleByAdamState",
+    "ScaleByAdanState",
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",
+    "ScaleByLBFGSState",
     "ScaleByLionState",
     "ScaleByNovogradState",
     "ScaleByRmsState",
@@ -418,6 +444,7 @@ __all__ = (
     "ScaleByScheduleState",
     "ScaleBySM3State",
     "ScaleByTrustRatioState",
+    "ScaleByZoomLinesearchState",
     "ScaleState",
     "Schedule",
     "set_to_zero",
@@ -425,6 +452,7 @@ __all__ = (
     "sgdr_schedule",
     "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
+    "sign_sgd",
     "skip_large_updates",
     "skip_not_finite",
     "sm3",
@@ -445,6 +473,7 @@ __all__ = (
     "yogi",
     "zero_nans",
     "ZeroNansState",
+    "ZoomLinesearchInfo",
 )
 
 #  _________________________________________

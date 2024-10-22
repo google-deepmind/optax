@@ -14,7 +14,7 @@
 # ==============================================================================
 """Functions for computing diagonals of the Hessian wrt to a set of parameters.
 
-Computing the Hessian for neural networks is typically intractible due to the
+Computing the Hessian for neural networks is typically intractable due to the
 quadratic memory requirements. Solving for the diagonal can be done cheaply,
 with sub-quadratic memory requirements.
 """

@@ -14,7 +14,8 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
-from typing import Callable, NamedTuple, Union, Mapping, Hashable
+from collections.abc import Callable, Hashable, Mapping
+from typing import NamedTuple, Union
 
 import jax
 
@@ -176,7 +177,7 @@ def partition(
 
       >>> params = {'linear_1': {'w': jnp.zeros((5, 6)), 'b': jnp.zeros(5)},
       ...           'linear_2': {'w': jnp.zeros((6, 1)), 'b': jnp.zeros(1)}}
-      >>> gradients = jtu.tree_map(jnp.ones_like, params)  # dummy gradients
+      >>> gradients = jax.tree.map(jnp.ones_like, params)  # dummy gradients
 
       >>> label_fn = map_nested_fn(lambda k, _: k)
       >>> tx = optax.multi_transform(
@@ -222,12 +223,12 @@ def partition(
   }
 
   def make_mask(labels, group):
-    return jax.tree_util.tree_map(lambda label: label == group, labels)
+    return jax.tree.map(lambda label: label == group, labels)
 
   def init_fn(params):
     labels = param_labels(params) if callable(param_labels) else param_labels
 
-    label_set = set(jax.tree_util.tree_leaves(labels))
+    label_set = set(jax.tree.leaves(labels))
     if not label_set.issubset(transforms.keys()):
       raise ValueError('Some parameters have no corresponding transformation.\n'
                        f'Parameter labels: {list(sorted(label_set))} \n'
