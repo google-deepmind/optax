@@ -6,6 +6,7 @@ Implementation of
 Pierre Ablin and David Grangier.
 """
 
+from typing import NamedTuple, Tuple
 import chex
 import jax.numpy as jnp
 import jax.tree_util as jtu
@@ -14,7 +15,6 @@ from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 import optax.tree_utils as otu
-from typing import NamedTuple, Tuple
 
 class ScaleByAdemamixState(NamedTuple):
   """State for the Ademamix algorithm."""
