@@ -277,3 +277,26 @@ def projection_l2_ball(pytree: Any, scale: float = 1.0) -> Any:
                       lambda pytree: pytree,
                       lambda pytree: otu.tree_scalar_mul(factor, pytree),
                       operand=pytree)
+
+
+def projection_linf_ball(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l-infinity ball.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_{\infty} \le \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the ball.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+  """
+  lower_tree = otu.tree_full_like(pytree, -scale)
+  upper_tree = otu.tree_full_like(pytree, scale)
+  return projection_box(pytree, lower=lower_tree, upper=upper_tree)

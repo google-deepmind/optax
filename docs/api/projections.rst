@@ -37,6 +37,7 @@ Available projections
     projection_l1_sphere
     projection_l2_ball
     projection_l2_sphere
+    projection_linf_ball
     projection_non_negative
     projection_simplex
 
@@ -63,6 +64,10 @@ Projection onto the L2 ball
 Projection onto the L2 sphere
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_l2_sphere
+
+Projection onto the L-infinity ball
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_linf_ball
 
 Projection onto the non-negative orthant
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -43,6 +43,7 @@ class ProjectionsTest(parameterized.TestCase):
     self.fns = dict(
         l1=(proj.projection_l1_ball, otu.tree_l1_norm),
         l2=(proj.projection_l2_ball, otu.tree_l2_norm),
+        linf=(proj.projection_linf_ball, otu.tree_linf_norm),
     )
 
   def test_projection_non_negative(self):
@@ -196,7 +197,7 @@ class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'],
-      norm=['l1', 'l2'],
+      norm=['l1', 'l2', 'linf'],
   )
   def test_projection_ball(self, data_key, norm):
     """Check correctness of the projection onto a ball."""
