@@ -133,6 +133,16 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_sum(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
+  @parameterized.parameters(
+      'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
+  )
+  def test_tree_max(self, key):
+    tree = self.data[key]
+    values, _ = flatten_util.ravel_pytree(tree)
+    expected = jnp.max(values)
+    got = tu.tree_max(tree)
+    np.testing.assert_allclose(expected, got)
+
   def test_tree_l2_norm(self):
     expected = jnp.sqrt(jnp.vdot(self.array_a, self.array_a).real)
     got = tu.tree_l2_norm(self.array_a)

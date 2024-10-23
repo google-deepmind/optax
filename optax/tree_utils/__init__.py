@@ -32,6 +32,7 @@ from optax.tree_utils._tree_math import tree_div
 from optax.tree_utils._tree_math import tree_full_like
 from optax.tree_utils._tree_math import tree_l1_norm
 from optax.tree_utils._tree_math import tree_l2_norm
+from optax.tree_utils._tree_math import tree_max
 from optax.tree_utils._tree_math import tree_mul
 from optax.tree_utils._tree_math import tree_ones_like
 from optax.tree_utils._tree_math import tree_scalar_mul

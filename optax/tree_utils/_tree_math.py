@@ -168,6 +168,20 @@ def tree_sum(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
+def tree_max(tree: Any) -> chex.Numeric:
+  """Compute the max of all the elements in a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  maxes = jax.tree.map(jnp.max, tree)
+  # initializer=-jnp.inf should work but pytype wants a jax.Array.
+  return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
+
+
 def _square(leaf):
   return jnp.square(leaf.real) + jnp.square(leaf.imag)
 
