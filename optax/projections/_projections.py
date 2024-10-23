@@ -225,3 +225,55 @@ def projection_l1_ball(pytree: Any, scale: float = 1.0) -> Any:
                       lambda pytree: pytree,
                       lambda pytree: projection_l1_sphere(pytree, scale),
                       operand=pytree)
+
+
+def projection_l2_sphere(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l2 sphere.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_2 = \text{value}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the sphere.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+
+  .. versionadded:: 0.2.4
+  """
+  factor = scale / otu.tree_l2_norm(pytree)
+  return otu.tree_scalar_mul(factor, pytree)
+
+
+def projection_l2_ball(pytree: Any, scale: float = 1.0) -> Any:
+  r"""Projection onto the l2 ball.
+
+  This function solves the following constrained optimization problem,
+  where ``x`` is the input pytree.
+
+  .. math::
+
+    \underset{y}{\text{argmin}} ~ ||x - y||_2^2 \quad \textrm{subject to} \quad
+    ||y||_2 \le \text{scale}
+
+  Args:
+    pytree: pytree to project.
+    scale: radius of the ball.
+
+  Returns:
+    projected pytree, with the same structure as ``pytree``.
+
+  .. versionadded:: 0.2.4
+  """
+  l2_norm = otu.tree_l2_norm(pytree)
+  factor = scale / l2_norm
+  return jax.lax.cond(l2_norm <= scale,
+                      lambda pytree: pytree,
+                      lambda pytree: otu.tree_scalar_mul(factor, pytree),
+                      operand=pytree)

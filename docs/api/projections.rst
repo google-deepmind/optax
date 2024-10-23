@@ -35,6 +35,8 @@ Available projections
     projection_hypercube
     projection_l1_ball
     projection_l1_sphere
+    projection_l2_ball
+    projection_l2_sphere
     projection_non_negative
     projection_simplex
 
@@ -53,6 +55,14 @@ Projection onto the L1 ball
 Projection onto the L1 sphere
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_l1_sphere
+
+Projection onto the L2 ball
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_l2_ball
+
+Projection onto the L2 sphere
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_l2_sphere
 
 Projection onto the non-negative orthant
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

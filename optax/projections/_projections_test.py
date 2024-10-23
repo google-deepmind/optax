@@ -40,6 +40,10 @@ class ProjectionsTest(parameterized.TestCase):
     array_2d = jnp.array([[0.5, 2.1, -3.5], [1.0, 2.0, 3.0]])
     tree = (array_1d, array_1d)
     self.data = dict(array_1d=array_1d, array_2d=array_2d, tree=tree)
+    self.fns = dict(
+        l1=(proj.projection_l1_ball, otu.tree_l1_norm),
+        l2=(proj.projection_l2_ball, otu.tree_l2_norm),
+    )
 
   def test_projection_non_negative(self):
     with self.subTest('with an array'):
@@ -174,37 +178,46 @@ class ProjectionsTest(parameterized.TestCase):
     np.testing.assert_array_equal(True, 0 <= p)
     np.testing.assert_array_equal(True, p <= scale)
 
-  @parameterized.product(data_key=['array_1d', 'array_2d', 'tree'],
-                         scale=[1.0, 3.21])
+  @parameterized.product(
+      data_key=['array_1d', 'array_2d', 'tree'], scale=[1.0, 3.21]
+  )
   def test_projection_l1_sphere(self, data_key, scale):
     x = self.data[data_key]
     p = proj.projection_l1_sphere(x, scale)
-    # Check that the projection has the correct l1 norm.
     np.testing.assert_almost_equal(otu.tree_l1_norm(p), scale, decimal=4)
 
-  def _check_projection_ball(self, x, ball_proj, norm_fun):
+  @parameterized.product(
+      data_key=['array_1d', 'array_2d', 'tree'], scale=[1.0, 3.21]
+  )
+  def test_projection_l2_sphere(self, data_key, scale):
+    x = self.data[data_key]
+    p = proj.projection_l2_sphere(x, scale)
+    np.testing.assert_almost_equal(otu.tree_l2_norm(p), scale, decimal=4)
+
+  @parameterized.product(
+      data_key=['array_1d', 'array_2d', 'tree'],
+      norm=['l1', 'l2'],
+  )
+  def test_projection_ball(self, data_key, norm):
     """Check correctness of the projection onto a ball."""
+    proj_fun, norm_fun = self.fns[norm]
+    x = self.data[data_key]
+
     norm_value = norm_fun(x)
 
     with self.subTest('Check when input is already in the ball'):
       big_radius = norm_value * 2
-      p = ball_proj(x, big_radius)
+      p = proj_fun(x, big_radius)
       np.testing.assert_array_almost_equal(x, p)
 
     with self.subTest('Check when input is on the boundary of the ball'):
-      p = ball_proj(x, norm_value)
+      p = proj_fun(x, norm_value)
       np.testing.assert_array_almost_equal(x, p)
 
     with self.subTest('Check when input is outside the ball'):
       small_radius = norm_value / 2
-      p = ball_proj(x, small_radius)
+      p = proj_fun(x, small_radius)
       np.testing.assert_almost_equal(norm_fun(p), small_radius, decimal=4)
-
-  @parameterized.parameters('array_1d', 'array_2d', 'tree')
-  def test_projection_l1_ball(self, data_key):
-    x = self.data[data_key]
-    self._check_projection_ball(x, proj.projection_l1_ball, otu.tree_l1_norm)
-
 
 if __name__ == '__main__':
   absltest.main()
