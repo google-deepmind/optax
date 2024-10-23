@@ -163,6 +163,16 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_l1_norm(tree)
     np.testing.assert_allclose(expected, got, atol=1e-4)
 
+  @parameterized.parameters(
+      'tree_a', 'tree_a_dict', 'tree_b', 'array_a', 'array_b', 'tree_b_dict'
+  )
+  def test_tree_linf_norm(self, key):
+    tree = self.data[key]
+    values, _ = flatten_util.ravel_pytree(tree)
+    expected = jnp.max(jnp.abs(values))
+    got = tu.tree_linf_norm(tree)
+    np.testing.assert_allclose(expected, got, atol=1e-4)
+
   def test_tree_zeros_like(self):
     expected = jnp.zeros_like(self.array_a)
     got = tu.tree_zeros_like(self.array_a)

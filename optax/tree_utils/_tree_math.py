@@ -217,6 +217,19 @@ def tree_l1_norm(tree: Any) -> chex.Numeric:
   return tree_sum(abs_tree)
 
 
+def tree_linf_norm(tree: Any) -> chex.Numeric:
+  """Compute the l-infinity norm of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  abs_tree = jax.tree.map(jnp.abs, tree)
+  return tree_max(abs_tree)
+
+
 def tree_zeros_like(
     tree: Any,
     dtype: Optional[jax.typing.DTypeLike] = None,
