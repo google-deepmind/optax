@@ -649,8 +649,9 @@ def zoom_linesearch(
     """Compute decrease error."""
     # We consider either the usual sufficient decrease (Armijo criterion), see
     # equation (3.7a) of [Nocedal and Wright, 1999]
-    decrease_error = (
-        value_step - value_init - slope_rtol * stepsize * slope_init
+    decrease_error = jnp.asarray(
+        value_step - value_init - slope_rtol * stepsize * slope_init,
+        dtype=value_init.dtype
     )
     if approx_dec_rtol is not None:
       # or an approximate decrease criterion, see equation (23) of
@@ -1247,6 +1248,7 @@ def scale_by_zoom_linesearch(
     curv_rtol: float = 0.9,
     approx_dec_rtol: Optional[float] = 1e-6,
     stepsize_precision: float = 1e-5,
+    value_dtype: Optional[jnp.dtype] = None,
     verbose: bool = False,
     ) -> base.GradientTransformationExtraArgs:
   r"""Linesearch ensuring sufficient decrease and small curvature.
@@ -1407,6 +1409,10 @@ def scale_by_zoom_linesearch(
       interval is reduced below ``stepsize_precision`` and a stepsize satisfying
       a sufficient decrease has been found, the algorithm selects that stepsize
       even if the curvature condition is not satisfied.
+    value_dtype: using this linesearch in a JIT-compiled function can result in
+      the function being compiled twice instead of just once. You can prevent
+      this re-compilation by explicitly specifying, through this argument, the
+      dtype that is to be returned by the value function.
     verbose: whether to print additional debugging information in case the
       linesearch fails.
 
@@ -1432,12 +1438,12 @@ def scale_by_zoom_linesearch(
     """Initializes state of scale_by_zoom_linesearch."""
     return ScaleByZoomLinesearchState(
         learning_rate=jnp.asarray(1.0),
-        value=jnp.asarray(jnp.inf),
+        value=jnp.asarray(jnp.inf, dtype=value_dtype),
         grad=otu.tree_zeros_like(params),
         info=ZoomLinesearchInfo(
-            num_linesearch_steps=jnp.asarray(0),
-            decrease_error=jnp.asarray(jnp.inf),
-            curvature_error=jnp.asarray(jnp.inf),
+            num_linesearch_steps=jnp.asarray(0, dtype=jnp.int32),
+            decrease_error=jnp.asarray(jnp.inf, dtype=value_dtype),
+            curvature_error=jnp.asarray(jnp.inf, dtype=value_dtype),
         ),
     )
 

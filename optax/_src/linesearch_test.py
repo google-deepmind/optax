@@ -427,6 +427,26 @@ class ZoomLinesearchTest(chex.TestCase):
     value = otu.tree_get(state, 'value')
     self.assertFalse(jnp.isinf(value))
 
+  @chex.variants(with_jit=True)
+  def test_linesearch_with_dtypes(self):
+    """Test zoom linesearch with non-default dtypes."""
+    fun = lambda x: jnp.sum(x**2)
+    params = jnp.zeros(2, dtype=jnp.bfloat16)
+    updates = -jax.grad(fun)(params)
+
+    # the rest of this test is identical to test_linesearch_with_jax_variants
+    opt = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=5)
+    state = opt.init(params)
+    value = otu.tree_get(state, 'value')
+    self.assertTrue(jnp.isinf(value))
+    update_fn = functools.partial(opt.update, value_fn=fun)
+    update_fn = self.variant(update_fn)
+    _, state = update_fn(
+        updates, state, params, value=fun(params), grad=jax.grad(fun)(params)
+    )
+    value = otu.tree_get(state, 'value')
+    self.assertFalse(jnp.isinf(value))
+
   @parameterized.product(
       problem_name=[
           'polynomial',
