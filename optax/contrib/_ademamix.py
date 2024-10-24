@@ -238,7 +238,15 @@ def ademamix(
     for a use case.
   """
   return combine.chain(
-    scale_by_ademamix(b1=b1, b2=b2, b3=b3, alpha, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
-      transform.add_decayed_weights(weight_decay, mask),
-      transform.scale_by_learning_rate(learning_rate),
+    scale_by_ademamix(
+      b1=b1,
+      b2=b2,
+      b3=b3,
+      alpha=alpha,
+      eps=eps,
+      eps_root=eps_root,
+      mu_dtype=mu_dtype
+    ),
+    transform.add_decayed_weights(weight_decay, mask),
+    transform.scale_by_learning_rate(learning_rate),
   )
