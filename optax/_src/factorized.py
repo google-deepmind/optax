@@ -142,13 +142,12 @@ def scale_by_factored_rms(
             v_col=jnp.zeros(vc_shape, dtype=dtype),
             v=jnp.zeros((1,), dtype=dtype),
         )
-      else:
-        return _UpdateResult(
-            update=jnp.zeros((1,), dtype=dtype),
-            v_row=jnp.zeros((1,), dtype=dtype),
-            v_col=jnp.zeros((1,), dtype=dtype),
-            v=jnp.zeros(param.shape, dtype=dtype),
-        )
+      return _UpdateResult(
+          update=jnp.zeros((1,), dtype=dtype),
+          v_row=jnp.zeros((1,), dtype=dtype),
+          v_col=jnp.zeros((1,), dtype=dtype),
+          v=jnp.zeros(param.shape, dtype=dtype),
+      )
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree.map(_init, params))
 

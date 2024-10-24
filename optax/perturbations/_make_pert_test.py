@@ -33,8 +33,8 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   flat_one_hot = jax.nn.one_hot(jnp.argmax(inputs_flat), inputs_flat.shape[0])
   return jnp.reshape(flat_one_hot, inputs.shape)
 
-
-argmax_tree = lambda x: jtu.tree_map(one_hot_argmax, x)
+def argmax_tree(x):
+  return jtu.tree_map(one_hot_argmax, x)
 
 
 class MakePertTest(absltest.TestCase):
@@ -67,12 +67,10 @@ class MakePertTest(absltest.TestCase):
     example_tree = []
 
     for i in range(2):
-      example_tree.append(
-          dict(
-              weights=jnp.ones(weight_shapes[i]),
-              biases=jnp.ones(biases_shapes[i]),
-          )
-      )
+      example_tree.append({
+        "weights": jnp.ones(weight_shapes[i]),
+        "biases": jnp.ones(biases_shapes[i]),
+      })
 
     self.example_tree = example_tree
     self.element = jnp.array([1.0, 2.0, 3.0, 4.0])
@@ -92,7 +90,8 @@ class MakePertTest(absltest.TestCase):
         argmax_tree, self.num_samples, self.sigma
     )
     expected = pert_argmax_fun(self.array_a_jax, self.rng_jax)
-    softmax_fun = lambda x: jax.nn.softmax(x / self.sigma)
+    def softmax_fun(x):
+      return jax.nn.softmax(x / self.sigma)
     got = jtu.tree_map(softmax_fun, self.array_a_jax)
     np.testing.assert_array_almost_equal(expected, got, decimal=1)
     pert_argmax_fun_small = _make_pert.make_perturbed_fun(
@@ -134,7 +133,7 @@ class MakePertTest(absltest.TestCase):
       apply_tree = jtu.Partial(apply_both, tree)
       leaves, _ = jtu.tree_flatten(tree)
       return_tree = jtu.tree_map(apply_tree, self.element_tree)
-      return_tree.append(sum([jnp.sum(leaf) for leaf in leaves]))
+      return_tree.append(sum(jnp.sum(leaf) for leaf in leaves))
       return return_tree
 
     tree_out = apply_element_tree(self.example_tree)

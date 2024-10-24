@@ -152,10 +152,9 @@ def tree_map_params(
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
       return jax.tree.map(f, value, *rest, is_leaf=is_leaf)
-    elif transform_non_params is not None:
+    if transform_non_params is not None:
       return transform_non_params(value)
-    else:
-      return value
+    return value
 
   return jax.tree.map(
       map_params,
@@ -377,10 +376,9 @@ def tree_get(
   )
   if len(found_values_with_path) > 1:
     raise KeyError(f"Found multiple values for '{key}' in {tree}.")
-  elif not found_values_with_path:
+  if not found_values_with_path:
     return default
-  else:
-    return found_values_with_path[0][1]
+  return found_values_with_path[0][1]
 
 
 def tree_set(
@@ -472,8 +470,7 @@ def tree_set(
             f"Found no values matching '{key}' given the filtering operation in"
             f" {tree}"
         )
-      else:
-        raise KeyError(f"Found no values matching '{key}' in {tree}")
+      raise KeyError(f"Found no values matching '{key}' in {tree}")
 
   has_any_key = functools.partial(_node_has_keys, keys=tuple(kwargs.keys()))
 
@@ -487,35 +484,30 @@ def tree_set(
       ):
         # The node itself is a named tuple we wanted to replace
         return kwargs[node.__class__.__name__]
-      else:
-        # The node contains one of the keys we want to replace
-        children_with_path = _get_children_with_path(path, node)
-        new_children_with_keys = {}
-        for child_path, child in children_with_path:
-          # Scan each child of that node
-          key = _get_key(child_path[-1])
-          if key in kwargs and (
-              filtering is None or filtering(child_path, child)
-          ):
-            # If the child matches a given key given the filtering operation
-            # replaces with the new value
-            new_children_with_keys.update({key: kwargs[key]})
+      # The node contains one of the keys we want to replace
+      children_with_path = _get_children_with_path(path, node)
+      new_children_with_keys = {}
+      for child_path, child in children_with_path:
+        # Scan each child of that node
+        key = _get_key(child_path[-1])
+        if key in kwargs and (
+            filtering is None or filtering(child_path, child)
+        ):
+          # If the child matches a given key given the filtering operation
+          # replaces with the new value
+          new_children_with_keys.update({key: kwargs[key]})
+        else:
+          if isinstance(child, (dict, list, tuple)):
+            # If the child is itself a pytree, further search in the child to
+            # replace the given value
+            new_children_with_keys.update({key: _replace(child_path, child)})
           else:
-            if (
-                isinstance(child, tuple)
-                or isinstance(child, dict)
-                or isinstance(child, list)
-            ):
-              # If the child is itself a pytree, further search in the child to
-              # replace the given value
-              new_children_with_keys.update({key: _replace(child_path, child)})
-            else:
-              # If the child is just a leaf that does not contain the key or
-              # satisfies the filtering operation, just return the child.
-              new_children_with_keys.update({key: child})
-        return _set_children(node, new_children_with_keys)
-    else:
-      return node
+            # If the child is just a leaf that does not contain the key or
+            # satisfies the filtering operation, just return the child.
+            new_children_with_keys.update({key: child})
+      return _set_children(node, new_children_with_keys)
+
+    return node
 
   # Mimics jax.tree_util.tree_map_with_path(_replace, tree, is_leaf)
   # except that the paths we consider can contain NamedTupleKeys
@@ -667,12 +659,11 @@ def _node_has_keys(node: Any, keys: tuple[Any, ...]) -> bool:
   """
   if _is_named_tuple(node) and any(key in node._fields for key in keys):
     return True
-  elif _is_named_tuple(node) and (node.__class__.__name__ in keys):
+  if _is_named_tuple(node) and (node.__class__.__name__ in keys):
     return True
-  elif isinstance(node, dict) and any(key in node for key in keys):
+  if isinstance(node, dict) and any(key in node for key in keys):
     return True
-  else:
-    return False
+  return False
 
 
 def _flatten_to_key(
@@ -696,13 +687,11 @@ def _flatten_to_key(
   if _is_named_tuple(node):
     if key == node.__class__.__name__:
       return (path, node)
-    else:
-      path_to_key = (*path, NamedTupleKey(node.__class__.__name__, key))
-      return (path_to_key, getattr(node, key))
-  elif isinstance(node, dict) and key in node:
+    path_to_key = (*path, NamedTupleKey(node.__class__.__name__, key))
+    return (path_to_key, getattr(node, key))
+  if isinstance(node, dict) and key in node:
     return (*path, jax.tree_util.DictKey(key)), node[key]
-  else:
-    return path, node
+  return path, node
 
 
 def _get_children_with_path(
@@ -732,15 +721,14 @@ def _get_children_with_path(
         )
         for field in node._fields
     ]
-  elif isinstance(node, dict):
+  if isinstance(node, dict):
     return [
         ((*path, jax.tree_util.DictKey(key)), value)
         for key, value in node.items()
     ]
-  else:
-    raise ValueError(
-        f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
-    )
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
@@ -762,12 +750,11 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
   """
   if _is_named_tuple(node):
     return node._replace(**children_with_keys)
-  elif isinstance(node, dict):
+  if isinstance(node, dict):
     return children_with_keys
-  else:
-    raise ValueError(
-        f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
-    )
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:

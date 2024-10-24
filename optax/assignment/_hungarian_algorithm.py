@@ -127,8 +127,7 @@ def hungarian_algorithm(cost_matrix):
   if transpose:
     i = col4row.argsort()
     return col4row[i], i
-  else:
-    return jnp.arange(cost_matrix.shape[0]), col4row
+  return jnp.arange(cost_matrix.shape[0]), col4row
 
 
 def _find_short_augpath_while_body_inner_for(it, val):

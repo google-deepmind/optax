@@ -28,8 +28,10 @@ from optax.losses import _ranking
 # Export symbols from math for conciser test value definitions.
 exp = math.exp
 log = math.log
-logloss = lambda x: log(1.0 + exp(-x))
-sigmoid = lambda x: 1.0 / (1.0 + exp(-x))
+def logloss(x):
+  return log(1.0 + exp(-x))
+def sigmoid(x):
+  return 1.0 / (1.0 + exp(-x))
 
 
 class RankingLossesTest(parameterized.TestCase):

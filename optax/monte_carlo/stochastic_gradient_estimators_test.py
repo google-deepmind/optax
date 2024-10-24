@@ -76,21 +76,18 @@ class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product(
-          [
-              ('_score_function_jacobians', sge.score_function_jacobians),
-              ('_pathwise_jacobians', sge.pathwise_jacobians),
-              ('_measure_valued_jacobians', sge.measure_valued_jacobians),
-          ],
-          [
-              ('0.1', 0.1),
-              ('0.5', 0.5),
-              ('0.9', 0.9),
-          ],
-          named=True,
-      )
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('0.1', 0.1),
+          ('0.5', 0.5),
+          ('0.9', 0.9),
+      ],
+      named=True),
   )
-  def testConstantFunction(self, estimator, constant):
+  def test_constant_function(self, estimator, constant):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
 
@@ -125,21 +122,18 @@ class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product(
-          [
-              ('_score_function_jacobians', sge.score_function_jacobians),
-              ('_pathwise_jacobians', sge.pathwise_jacobians),
-              ('_measure_valued_jacobians', sge.measure_valued_jacobians),
-          ],
-          [
-              ('0.5_-1.', 0.5, -1.0),
-              ('0.7_0.0)', 0.7, 0.0),
-              ('0.8_0.1', 0.8, 0.1),
-          ],
-          named=True,
-      )
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('0.5_-1.', 0.5, -1.),
+          ('0.7_0.0)', 0.7, 0.0),
+          ('0.8_0.1', 0.8, 0.1),
+      ],
+      named=True),
   )
-  def testLinearFunction(self, estimator, effective_mean, effective_log_scale):
+  def test_linear_function(self, estimator, effective_mean, effective_log_scale):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)
@@ -166,19 +160,16 @@ class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product(
-          [
-              ('_score_function_jacobians', sge.score_function_jacobians),
-              ('_pathwise_jacobians', sge.pathwise_jacobians),
-              ('_measure_valued_jacobians', sge.measure_valued_jacobians),
-          ],
-          [
-              ('1.0_0.3', 1.0, 0.3),
-          ],
-          named=True,
-      )
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('1.0_0.3', 1.0, 0.3),
+      ],
+      named=True),
   )
-  def testQuadraticFunction(
+  def test_quadratic_function(
       self, estimator, effective_mean, effective_log_scale
   ):
     data_dims = 3
@@ -213,21 +204,18 @@ class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product(
-          [
-              ('_score_function_jacobians', sge.score_function_jacobians),
-              ('_pathwise_jacobians', sge.pathwise_jacobians),
-              ('_measure_valued_jacobians', sge.measure_valued_jacobians),
-          ],
-          [
-              ('case_1', [1.0, 2.0, 3.0], [-1.0, 0.3, -2.0], [1.0, 1.0, 1.0]),
-              ('case_2', [1.0, 2.0, 3.0], [-1.0, 0.3, -2.0], [4.0, 2.0, 3.0]),
-              ('case_3', [1.0, 2.0, 3.0], [0.1, 0.2, 0.1], [10.0, 5.0, 1.0]),
-          ],
-          named=True,
-      )
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('case_1', [1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
+          ('case_2', [1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
+          ('case_3', [1.0, 2.0, 3.], [0.1, 0.2, 0.1], [10., 5., 1.]),
+      ],
+      named=True),
   )
-  def testWeightedLinear(
+  def test_weighted_linear(
       self, estimator, effective_mean, effective_log_scale, weights
   ):
     num_samples = _weighted_estimator_to_num_samples[estimator]
@@ -239,7 +227,8 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x * weights)
+    def function(x):
+      return jnp.sum(x * weights)
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale], utils.multi_normal, rng, num_samples
     )
@@ -260,21 +249,17 @@ class GradientEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product(
-          [
-              ('_score_function_jacobians', sge.score_function_jacobians),
-              ('_pathwise_jacobians', sge.pathwise_jacobians),
-              ('_measure_valued_jacobians', sge.measure_valued_jacobians),
-          ],
-          [
-              ('case_1', [1.0, 2.0, 3.0], [-1.0, 0.3, -2.0], [1.0, 1.0, 1.0]),
-              ('case_2', [1.0, 2.0, 3.0], [-1.0, 0.3, -2.0], [4.0, 2.0, 3.0]),
-              ('case_3', [1.0, 2.0, 3.0], [0.1, 0.2, 0.1], [3.0, 5.0, 1.0]),
-          ],
-          named=True,
-      )
-  )
-  def testWeightedQuadratic(
+      chex.params_product([
+          ('_score_function_jacobians', sge.score_function_jacobians),
+          ('_pathwise_jacobians', sge.pathwise_jacobians),
+          ('_measure_valued_jacobians', sge.measure_valued_jacobians),
+      ], [
+          ('case_1', [1.0, 2.0, 3.], [-1., 0.3, -2.], [1., 1., 1.]),
+          ('case_2', [1.0, 2.0, 3.], [-1., 0.3, -2.], [4., 2., 3.]),
+          ('case_3', [1.0, 2.0, 3.], [0.1, 0.2, 0.1], [3., 5., 1.]),
+      ],
+                          named=True))
+  def test_weighted_quadratic(
       self, estimator, effective_mean, effective_log_scale, weights
   ):
     num_samples = _weighted_estimator_to_num_samples[estimator]
@@ -286,7 +271,8 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x * weights) ** 2
+    def function(x):
+      return jnp.sum(x * weights) ** 2
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale], utils.multi_normal, rng, num_samples
     )
@@ -333,10 +319,8 @@ class GradientEstimatorsTest(chex.TestCase):
               ('coupling', True),
               ('nocoupling', False),
           ],
-          named=True,
-      )
-  )
-  def testNonPolynomialFunctionConsistencyWithPathwise(
+          named=True))
+  def test_non_polynomial_function_consistency_with_pathwise(
       self, effective_mean, effective_log_scale, function, coupling
   ):
     num_samples = 10**5
@@ -401,11 +385,12 @@ class MeasuredValuedEstimatorsTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters([True, False])
-  def testRaisesErrorForNonGaussian(self, coupling):
+  def test_raises_error_for_non_gaussian(self, coupling):
     num_samples = 10**5
     rng = jax.random.PRNGKey(1)
 
-    function = lambda x: jnp.sum(x) ** 2
+    def function(x):
+      return jnp.sum(x) ** 2
 
     mean = jnp.array(0, dtype=jnp.float32)
     log_scale = jnp.array(0.0, dtype=jnp.float32)

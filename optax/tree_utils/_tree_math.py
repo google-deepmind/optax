@@ -201,8 +201,7 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
   sqnorm = tree_sum(squared_tree)
   if squared:
     return sqnorm
-  else:
-    return jnp.sqrt(sqnorm)
+  return jnp.sqrt(sqnorm)
 
 
 def tree_l1_norm(tree: Any) -> chex.Numeric:
@@ -330,13 +329,13 @@ def tree_update_moment_per_elem_norm(updates, moments, decay, order):
 
   def orderth_norm(g):
     if jnp.isrealobj(g):
-      return g**order
-    else:
-      half_order = order / 2
-      # JAX generates different HLO for int and float `order`
-      if half_order.is_integer():
-        half_order = int(half_order)
-      return numerics.abs_sq(g) ** half_order
+      return g ** order
+
+    half_order = order / 2
+    # JAX generates different HLO for int and float `order`
+    if half_order.is_integer():
+      half_order = int(half_order)
+    return numerics.abs_sq(g) ** half_order
 
   return jax.tree.map(
       lambda g, t: (

@@ -19,8 +19,9 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
-from optax.assignment import _hungarian_algorithm
 import scipy
+
+from optax.assignment import _hungarian_algorithm
 
 
 class HungarianAlgorithmTest(parameterized.TestCase):

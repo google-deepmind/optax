@@ -36,23 +36,23 @@ from optax.tree_utils import _state_utils
 
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
-    dict(opt_name='acprop', opt_kwargs=dict(learning_rate=1e-3)),
-    dict(opt_name='cocob', opt_kwargs={}),
-    dict(opt_name='cocob', opt_kwargs=dict(weight_decay=1e-2)),
-    dict(opt_name='dadapt_adamw', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='dog', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='dowg', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='momo', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='momo_adam', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(
-        opt_name='schedule_free_sgd',
-        opt_kwargs=dict(learning_rate=1e-2, warmup_steps=5000),
-    ),
-    dict(
-        opt_name='schedule_free_adamw',
-        opt_kwargs=dict(learning_rate=1e-2, warmup_steps=5000),
-    ),
+    {"opt_name": 'acprop', "opt_kwargs": {"learning_rate": 1e-3}},
+    {"opt_name": 'cocob', "opt_kwargs": {}},
+    {"opt_name": 'cocob', "opt_kwargs": {"weight_decay": 1e-2}},
+    {"opt_name": 'dadapt_adamw', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'dog', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'dowg', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'momo', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'momo_adam', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'prodigy', "opt_kwargs": {"learning_rate": 1e-1}},
+    {
+        "opt_name": 'schedule_free_sgd',
+        "opt_kwargs": {"learning_rate": 1e-2, "warmup_steps": 5000},
+    },
+    {
+        "opt_name": 'schedule_free_adamw',
+        "opt_kwargs": {"learning_rate": 1e-2, "warmup_steps": 5000},
+    },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
   optimizer['wrapper_name'] = None
@@ -61,59 +61,59 @@ for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
 # Testing contributions coded as wrappers
 # (just with sgd as we just want the behavior of the wrapper)
 _MAIN_OPTIMIZERS_UNDER_TEST += [
-    dict(
-        opt_name='sgd',
-        opt_kwargs=dict(learning_rate=1e-1),
-        wrapper_name='mechanize',
-        wrapper_kwargs=dict(weight_decay=0.0),
-    ),
-    dict(
-        opt_name='sgd',
-        opt_kwargs=dict(learning_rate=1e-2),
-        wrapper_name='schedule_free',
-        wrapper_kwargs=dict(learning_rate=1e-2),
-    ),
-    dict(
-        opt_name='sgd',
-        opt_kwargs=dict(learning_rate=1e-3),
-        wrapper_name='reduce_on_plateau',
-        wrapper_kwargs={},
-    ),
+    {
+        "opt_name": 'sgd',
+        "opt_kwargs": {"learning_rate": 1e-1},
+        "wrapper_name": 'mechanize',
+        "wrapper_kwargs": {"weight_decay": 0.0},
+    },
+    {
+        "opt_name": 'sgd',
+        "opt_kwargs": {"learning_rate": 1e-2},
+        "wrapper_name": 'schedule_free',
+        "wrapper_kwargs": {"learning_rate": 1e-2},
+    },
+    {
+        "opt_name": 'sgd',
+        "opt_kwargs": {"learning_rate": 1e-3},
+        "wrapper_name": 'reduce_on_plateau',
+        "wrapper_kwargs": {},
+    },
 ]
 
 # Adding here instantiations of wrappers with any base optimizer
 _BASE_OPTIMIZERS = [
-    dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1.0, momentum=0.9)),
-    dict(opt_name='adam', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='lion', opt_kwargs=dict(learning_rate=1.0, b1=0.99)),
-    dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1.0, eta=1e-4)),
-    dict(opt_name='novograd', opt_kwargs=dict(learning_rate=1.0)),
-    dict(
-        opt_name='optimistic_gradient_descent',
-        opt_kwargs=dict(learning_rate=1.0, alpha=0.7, beta=0.1),
-    ),
-    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=1.0, momentum=0.9)),
-    dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='radam', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1.0, b1=0.99)),
+    {"opt_name": 'sgd', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'sgd', "opt_kwargs": {"learning_rate": 1.0, "momentum": 0.9}},
+    {"opt_name": 'adam', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'adamw', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'adamax', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'adamaxw', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'adan', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'amsgrad', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'lamb', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'lion', "opt_kwargs": {"learning_rate": 1.0, "b1": 0.99}},
+    {"opt_name": 'noisy_sgd', "opt_kwargs": {"learning_rate": 1.0, "eta": 1e-4}},
+    {"opt_name": 'novograd', "opt_kwargs": {"learning_rate": 1.0}},
+    {
+        "opt_name": 'optimistic_gradient_descent',
+        "opt_kwargs": {"learning_rate": 1.0, "alpha": 0.7, "beta": 0.1},
+    },
+    {"opt_name": 'rmsprop', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'rmsprop', "opt_kwargs": {"learning_rate": 1.0, "momentum": 0.9}},
+    {"opt_name": 'adabelief', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'radam', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'sm3', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'yogi', "opt_kwargs": {"learning_rate": 1.0, "b1": 0.99}},
 ]
 # TODO(harshm): make LARS and Fromage work with mechanic.
 _OTHER_OPTIMIZERS_UNDER_TEST = [
-    dict(
-        opt_name=base_opt['opt_name'],
-        opt_kwargs=base_opt['opt_kwargs'],
-        wrapper_name='mechanize',
-        wrapper_kwargs=dict(weight_decay=0.0),
-    )
+    {
+        "opt_name": base_opt['opt_name'],
+        "opt_kwargs": base_opt['opt_kwargs'],
+        "wrapper_name": 'mechanize',
+        "wrapper_kwargs": {"weight_decay": 0.0},
+    }
     for base_opt in _BASE_OPTIMIZERS
 ]
 
@@ -135,8 +135,7 @@ def _get_opt_factory(opt_name):
 def _wrap_opt(opt, wrapper_name, wrapper_kwargs):
   if wrapper_name == 'reduce_on_plateau':
     return combine.chain(opt, contrib.reduce_on_plateau(**wrapper_kwargs))
-  else:
-    return getattr(contrib, wrapper_name)(opt, **wrapper_kwargs)
+  return getattr(contrib, wrapper_name)(opt, **wrapper_kwargs)
 
 
 def _setup_parabola(dtype):
@@ -311,7 +310,8 @@ class ContribTest(chex.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
@@ -341,7 +341,8 @@ class ContribTest(chex.TestCase):
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
     opt = _accumulation.MultiSteps(opt, every_k_schedule=4)
 
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)

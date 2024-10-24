@@ -77,11 +77,11 @@ class UpdateTest(chex.TestCase):
       chex.assert_trees_all_close(params_2, new_params, atol=1e-10, rtol=1e-5)
 
   @parameterized.named_parameters(
-      dict(testcase_name='apply_updates', operation=update.apply_updates),
-      dict(
-          testcase_name='incremental_update',
-          operation=lambda x, y: update.incremental_update(x, y, 1),
-      ),
+      {"testcase_name": 'apply_updates', "operation": update.apply_updates},
+      {
+          "testcase_name": 'incremental_update',
+          "operation": lambda x, y: update.incremental_update(x, y, 1),
+      },
   )
   def test_none_argument(self, operation):
     x = jnp.array([1.0, 2.0, 3.0])

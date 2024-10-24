@@ -24,14 +24,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-# pylint: disable=g-bad-import-order
-# pylint: disable=g-import-not-at-top
+# pylint: disable=invalid-name
+
 import inspect
 import os
 import sys
 
-import optax
 from sphinxcontrib import katex
+import optax
 
 
 def _add_annotations_import(path):
@@ -237,8 +237,7 @@ def linkcode_resolve(domain, info):
       obj = getattr(obj, attr)
   except AttributeError:
     return None
-  else:
-    obj = inspect.unwrap(obj)
+  obj = inspect.unwrap(obj)
 
   try:
     filename = inspect.getsourcefile(obj)

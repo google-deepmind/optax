@@ -14,6 +14,4 @@
 # ==============================================================================
 """The assignment sub-package."""
 
-# pylint:disable=g-importing-member
-
 from optax.assignment._hungarian_algorithm import hungarian_algorithm

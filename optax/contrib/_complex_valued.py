@@ -56,8 +56,7 @@ def _complex_to_real_pair(
   """
   if jnp.iscomplexobj(x):
     return SplitRealAndImaginaryArrays(x.real, x.imag)
-  else:
-    return x
+  return x
 
 
 def _real_pair_to_complex(
@@ -75,8 +74,7 @@ def _real_pair_to_complex(
   """
   if isinstance(x, SplitRealAndImaginaryArrays):
     return x.real + x.imaginary * 1j
-  else:
-    return x
+  return x
 
 
 class SplitRealAndImaginaryState(NamedTuple):

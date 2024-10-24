@@ -789,12 +789,9 @@ def sigmoid_focal_loss(
   p_t = p * labels + (1 - p) * (1 - labels)
   loss = ce_loss * ((1 - p_t) ** gamma)
 
-  weighted = (
-      lambda loss_arg: (alpha * labels + (1 - alpha) * (1 - labels)) * loss_arg
-  )
-  not_weighted = lambda loss_arg: loss_arg
+  weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
 
-  loss = jax.lax.cond(alpha >= 0, weighted, not_weighted, loss)
+  loss = jnp.where(alpha >= 0, weighted, loss)
 
   return loss
 

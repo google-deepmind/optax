@@ -81,7 +81,7 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         order=1,
     )
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.dirichlet(np.ones(size))
@@ -91,9 +91,9 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -230,9 +230,9 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     )
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -251,58 +251,58 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
 class SigmoidCrossEntropyTest(parameterized.TestCase):
 
   @parameterized.parameters(
-      dict(
-          preds=np.array([-1e09, -1e-09]),
-          labels=np.array([1.0, 0.0]),
-          expected=5e08,
-      ),
-      dict(
-          preds=np.array([-1e09, -1e-09]),
-          labels=np.array([0.0, 1.0]),
-          expected=0.3465736,
-      ),
-      dict(
-          preds=np.array([1e09, 1e-09]),
-          labels=np.array([1.0, 0.0]),
-          expected=0.3465736,
-      ),
-      dict(
-          preds=np.array([1e09, 1e-09]),
-          labels=np.array([0.0, 1.0]),
-          expected=5e08,
-      ),
-      dict(
-          preds=np.array([-1e09, 1e-09]),
-          labels=np.array([1.0, 0.0]),
-          expected=5e08,
-      ),
-      dict(
-          preds=np.array([-1e09, 1e-09]),
-          labels=np.array([0.0, 1.0]),
-          expected=0.3465736,
-      ),
-      dict(
-          preds=np.array([1e09, -1e-09]),
-          labels=np.array([1.0, 0.0]),
-          expected=0.3465736,
-      ),
-      dict(
-          preds=np.array([1e09, -1e-09]),
-          labels=np.array([0.0, 1.0]),
-          expected=5e08,
-      ),
-      dict(
-          preds=np.array([0.0, 0.0]),
-          labels=np.array([1.0, 0.0]),
-          expected=0.6931472,
-      ),
-      dict(
-          preds=np.array([0.0, 0.0]),
-          labels=np.array([0.0, 1.0]),
-          expected=0.6931472,
-      ),
+      {
+          "preds": np.array([-1e09, -1e-09]),
+          "labels": np.array([1.0, 0.0]),
+          "expected": 5e08,
+      },
+      {
+          "preds": np.array([-1e09, -1e-09]),
+          "labels": np.array([0.0, 1.0]),
+          "expected": 0.3465736,
+      },
+      {
+          "preds": np.array([1e09, 1e-09]),
+          "labels": np.array([1.0, 0.0]),
+          "expected": 0.3465736,
+      },
+      {
+          "preds": np.array([1e09, 1e-09]),
+          "labels": np.array([0.0, 1.0]),
+          "expected": 5e08,
+      },
+      {
+          "preds": np.array([-1e09, 1e-09]),
+          "labels": np.array([1.0, 0.0]),
+          "expected": 5e08,
+      },
+      {
+          "preds": np.array([-1e09, 1e-09]),
+          "labels": np.array([0.0, 1.0]),
+          "expected": 0.3465736,
+      },
+      {
+          "preds": np.array([1e09, -1e-09]),
+          "labels": np.array([1.0, 0.0]),
+          "expected": 0.3465736,
+      },
+      {
+          "preds": np.array([1e09, -1e-09]),
+          "labels": np.array([0.0, 1.0]),
+          "expected": 5e08,
+      },
+      {
+          "preds": np.array([0.0, 0.0]),
+          "labels": np.array([1.0, 0.0]),
+          "expected": 0.6931472,
+      },
+      {
+          "preds": np.array([0.0, 0.0]),
+          "labels": np.array([0.0, 1.0]),
+          "expected": 0.6931472,
+      },
   )
-  def testSigmoidCrossEntropy(self, preds, labels, expected):
+  def test_sigmoid_cross_entropy(self, preds, labels, expected):
     tested = jnp.mean(
         _classification.sigmoid_binary_cross_entropy(preds, labels)
     )
@@ -323,14 +323,14 @@ class PolyLossTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      dict(eps=2, expected=4.5317),
-      dict(eps=1, expected=3.7153),
-      dict(eps=-1, expected=2.0827),
-      dict(eps=0, expected=2.8990),
-      dict(eps=-0.5, expected=2.4908),
-      dict(eps=1.15, expected=3.8378),
-      dict(eps=1.214, expected=3.8900),
-      dict(eps=5.45, expected=7.3480),
+      {"eps": 2, "expected": 4.5317},
+      {"eps": 1, "expected": 3.7153},
+      {"eps": -1, "expected": 2.0827},
+      {"eps": 0, "expected": 2.8990},
+      {"eps": -0.5, "expected": 2.4908},
+      {"eps": 1.15, "expected": 3.8378},
+      {"eps": 1.214, "expected": 3.8900},
+      {"eps": 5.45, "expected": 7.3480},
   )
   def test_scalar(self, eps, expected):
     np.testing.assert_allclose(
@@ -343,13 +343,13 @@ class PolyLossTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      dict(eps=2, expected=np.array([0.4823, 1.2567])),
-      dict(eps=1, expected=np.array([0.3261, 1.0407])),
-      dict(eps=0, expected=np.array([0.1698, 0.8247])),
-      dict(eps=-0.5, expected=np.array([0.0917, 0.7168])),
-      dict(eps=1.15, expected=np.array([0.3495, 1.0731])),
-      dict(eps=1.214, expected=np.array([0.3595, 1.0870])),
-      dict(eps=5.45, expected=np.array([1.0211, 2.0018])),
+      {"eps": 2, "expected": np.array([0.4823, 1.2567])},
+      {"eps": 1, "expected": np.array([0.3261, 1.0407])},
+      {"eps": 0, "expected": np.array([0.1698, 0.8247])},
+      {"eps": -0.5, "expected": np.array([0.0917, 0.7168])},
+      {"eps": 1.15, "expected": np.array([0.3495, 1.0731])},
+      {"eps": 1.214, "expected": np.array([0.3595, 1.0870])},
+      {"eps": 5.45, "expected": np.array([1.0211, 2.0018])},
   )
   def test_batched(self, eps, expected):
     np.testing.assert_allclose(
@@ -362,28 +362,28 @@ class PolyLossTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      dict(
-          logits=np.array(
+      {
+          "logits": np.array(
               [[4.0, 2.0, 1.0], [0.0, 5.0, 1.0], [0.134, 1.234, 3.235]]
           ),
-          labels=np.array(
+          "labels": np.array(
               [[1.0, 0.0, 0.0], [0.0, 0.8, 0.2], [0.34, 0.33, 0.33]]
           ),
-      ),
-      dict(
-          logits=np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]]),
-          labels=np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]]),
-      ),
-      dict(
-          logits=np.array(
+      },
+      {
+          "logits": np.array([[4.0, 2.0, 1.0], [0.0, 5.0, 1.0]]),
+          "labels": np.array([[1.0, 0.0, 0.0], [0.0, 0.8, 0.2]]),
+      },
+      {
+          "logits": np.array(
               [[4.0, 2.0, 1.0, 0.134, 1.3515], [0.0, 5.0, 1.0, 0.5215, 5.616]]
           ),
-          labels=np.array(
+          "labels": np.array(
               [[0.5, 0.0, 0.0, 0.0, 0.5], [0.0, 0.12, 0.2, 0.56, 0.12]]
           ),
-      ),
-      dict(logits=np.array([1.89, 2.39]), labels=np.array([0.34, 0.66])),
-      dict(logits=np.array([0.314]), labels=np.array([1.0])),
+      },
+      {"logits": np.array([1.89, 2.39]), "labels": np.array([0.34, 0.66])},
+      {"logits": np.array([0.314]), "labels": np.array([1.0])},
   )
   def test_equals_to_cross_entropy_when_eps0(self, logits, labels):
     np.testing.assert_allclose(
@@ -394,7 +394,7 @@ class PolyLossTest(parameterized.TestCase):
         atol=1e-4,
     )
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.dirichlet(np.ones(size))
@@ -404,9 +404,9 @@ class PolyLossTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -482,10 +482,9 @@ class SparsemaxTest(parameterized.TestCase):
       scores = -(2 * label - 1) * logit
       if scores <= -1.0:
         return 0.0
-      elif scores >= 1.0:
+      if scores >= 1.0:
         return scores
-      else:
-        return (scores + 1.0) ** 2 / 4
+      return (scores + 1.0) ** 2 / 4
 
     expected = reference_impl(label, score)
     result = _classification.sparsemax_loss(
@@ -501,10 +500,9 @@ class SparsemaxTest(parameterized.TestCase):
       scores = -(2 * label - 1) * logit
       if scores <= -1.0:
         return 0.0
-      elif scores >= 1.0:
+      if scores >= 1.0:
         return scores
-      else:
-        return (scores + 1.0) ** 2 / 4
+      return (scores + 1.0) ** 2 / 4
 
     expected = jnp.asarray([
         reference_impl(labels[0], scores[0]),
@@ -569,7 +567,7 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
         atol=1e-4,
     )
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.dirichlet(np.ones(size))
@@ -579,9 +577,9 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -675,7 +673,7 @@ class KLDivergenceTest(parameterized.TestCase):
         atol=1e-4,
     )
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.dirichlet(np.ones(size))
@@ -685,9 +683,9 @@ class KLDivergenceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -735,7 +733,7 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
         atol=1e-4,
     )
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask(self, size):
     preds = np.random.normal(size=size)
     targets = np.log(np.random.dirichlet(np.ones(size)))
@@ -746,9 +744,9 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
@@ -934,7 +932,8 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     self.ts = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
     self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
 
-    logit = lambda x: jnp.log(x / (1.0 - x))
+    def logit(x):
+      return jnp.log(x / (1.0 - x))
     self.large_ys = logit(jnp.array([0.9, 0.98, 0.3, 0.99]))
     self.small_ys = logit(jnp.array([0.1, 0.02, 0.09, 0.15]))
     self.ones_ts = jnp.array([1.0, 1.0, 1.0, 1.0])

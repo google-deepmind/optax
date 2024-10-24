@@ -28,11 +28,11 @@ from optax import tree_utils as otu
 # We consider samplers with varying input dtypes, we do not test all possible
 # samplers from `jax.random`.
 _SAMPLER_DTYPES = (
-    dict(sampler=jrd.normal, dtype=None),
-    dict(sampler=jrd.normal, dtype='bfloat16'),
-    dict(sampler=jrd.normal, dtype='float32'),
-    dict(sampler=jrd.rademacher, dtype='int32'),
-    dict(sampler=jrd.bits, dtype='uint32'),
+    {"sampler": jrd.normal, "dtype": None},
+    {"sampler": jrd.normal, "dtype": 'bfloat16'},
+    {"sampler": jrd.normal, "dtype": 'float32'},
+    {"sampler": jrd.rademacher, "dtype": 'int32'},
+    {"sampler": jrd.bits, "dtype": 'uint32'},
 )
 
 
@@ -45,6 +45,7 @@ def get_variable(type_var: str):
   if type_var == 'pytree':
     pytree = {'k1': 1.0, 'k2': (2.0, 3.0), 'k3': jnp.asarray([4.0, 5.0])}
     return jax.tree.map(jnp.asarray, pytree)
+  raise ValueError(f'invalid type_var {type_var}')
 
 
 class RandomTest(chex.TestCase):

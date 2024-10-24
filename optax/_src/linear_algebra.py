@@ -102,7 +102,8 @@ def power_iteration(
       # v0 must be given as we don't know the underlying pytree structure.
       raise ValueError('v0 must be provided when `matrix` is a callable.')
   else:
-    mvp = lambda v: jnp.matmul(matrix, v, precision=precision)
+    def mvp(v):
+      return jnp.matmul(matrix, v, precision=precision)
     if v0 is None:
       if key is None:
         key = jax.random.PRNGKey(0)

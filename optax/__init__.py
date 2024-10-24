@@ -14,8 +14,7 @@
 # ==============================================================================
 """Optax: composable gradient processing and optimization, in JAX."""
 
-# pylint: disable=wrong-import-position
-# pylint: disable=g-importing-member
+import typing as _typing
 
 from optax import assignment
 from optax import contrib
@@ -185,6 +184,14 @@ from optax._src.wrappers import ShouldSkipUpdateFunction
 from optax._src.wrappers import skip_large_updates
 from optax._src.wrappers import skip_not_finite
 
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+# Deprecated modules
+from optax.contrib import differentially_private_aggregate as \
+    _deprecated_differentially_private_aggregate
+from optax.contrib import DifferentiallyPrivateAggregateState as \
+    _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import dpsgd as _deprecated_dpsgd
+
 
 # TODO(mtthss): remove tree_utils aliases after updates.
 tree_map_params = tree_utils.tree_map_params
@@ -236,13 +243,6 @@ softmax_cross_entropy_with_integer_labels = (
 squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
-# pylint: disable=g-import-not-at-top
-# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-# Deprecated modules
-from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
-from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
-from optax.contrib import dpsgd as _deprecated_dpsgd
-
 _deprecations = {
     # Added Apr 2024
     "differentially_private_aggregate": (
@@ -269,8 +269,6 @@ _deprecations = {
         _deprecated_dpsgd,
     ),
 }
-# pylint: disable=g-bad-import-order
-import typing as _typing
 
 if _typing.TYPE_CHECKING:
   # pylint: disable=reimported
@@ -285,9 +283,6 @@ else:
   __getattr__ = _deprecation_getattr(__name__, _deprecations)
   del _deprecation_getattr
 del _typing
-# pylint: enable=g-bad-import-order
-# pylint: enable=g-import-not-at-top
-# pylint: enable=g-importing-member
 
 
 __version__ = "0.2.4.dev"

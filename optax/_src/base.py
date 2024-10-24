@@ -313,9 +313,10 @@ def stateless_with_tree_map(
     del state
     if params is not None:
       return jax.tree.map(f, updates, params), EmptyState()
-    else:
-      f_ = lambda u: f(u, None)
-      return jax.tree.map(f_, updates), EmptyState()
+
+    def f_(u):
+      return f(u, None)
+    return jax.tree.map(f_, updates), EmptyState()
 
   return GradientTransformation(init_empty_state, update_fn)
 

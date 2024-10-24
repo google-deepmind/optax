@@ -124,8 +124,7 @@ def scale_by_rms(
     nu = otu.tree_full_like(params, initial_scale)  # second moment
     if bias_correction:
       return ScaleByRmsWithCountState(count=jnp.zeros([], jnp.int32), nu=nu)
-    else:
-      return ScaleByRmsState(nu=nu)
+    return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
@@ -198,8 +197,7 @@ def scale_by_stddev(
       return ScaleByRStdDevWithCountState(
           count=jnp.zeros([], jnp.int32), mu=mu, nu=nu
       )
-    else:
-      return ScaleByRStdDevState(mu=mu, nu=nu)
+    return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
@@ -738,6 +736,9 @@ def scale_by_yogi(
 
   Returns:
     A :class:`optax.GradientTransformation` object.
+
+  References:
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html)  # pylint: disable=line-too-long
   """
 
   def init_fn(params):
@@ -1076,8 +1077,7 @@ def apply_every(k: int = 1) -> base.GradientTransformation:
 def _subtract_mean(g):
   if len(g.shape) > 1:
     return g - g.mean(tuple(range(1, len(g.shape))), keepdims=True)
-  else:
-    return g
+  return g
 
 
 CentralState = base.EmptyState
@@ -1147,29 +1147,26 @@ def scale_by_sm3(
   def _new_accum(g, v):
     coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
     if g.ndim < 2:
-      return coeffs[0] * g**2 + coeffs[1] * v[0]
-    else:
-      return coeffs[0] * g**2 + coeffs[1] * functools.reduce(jnp.minimum, v)
+      return coeffs[0]*g**2 + coeffs[1]*v[0]
+    return coeffs[0]*g**2 + coeffs[1]*functools.reduce(jnp.minimum, v)
 
   def _new_mu(g, i):
     if g.ndim < 2:
       return g
-    else:
-      return jnp.max(g, axis=other_axes(i, g.ndim))
+    return jnp.max(g, axis=other_axes(i, g.ndim))
 
   def other_axes(idx, ndim):
     return list(range(idx)) + list(range(idx + 1, ndim))
 
   def update_fn(updates, state, params=None):
     del params
-    mu = jax.tree.map(
-        lambda g, v: [  # pylint:disable=g-long-lambda
-            jnp.reshape(v[i], _expanded_shape(g.shape, i))
-            for i in range(g.ndim)
-        ],
-        updates,
-        state.mu,
-    )
+
+    def f(g, v):
+      return [
+        jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)
+      ]
+
+    mu = jax.tree.map(f, updates, state.mu)
     accum = jax.tree.map(_new_accum, updates, mu)
     accum_inv_sqrt = jax.tree.map(
         lambda t: jnp.where(t > 0, jax.lax.rsqrt(t + eps), 0.0), accum

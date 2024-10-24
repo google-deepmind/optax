@@ -44,14 +44,14 @@ class TreeUtilsTest(parameterized.TestCase):
     self.tree_a_dict_jax = jax.tree.map(jnp.array, self.tree_a_dict)
     self.tree_b_dict_jax = jax.tree.map(jnp.array, self.tree_b_dict)
 
-    self.data = dict(
-        tree_a=self.tree_a,
-        tree_b=self.tree_b,
-        tree_a_dict=self.tree_a_dict,
-        tree_b_dict=self.tree_b_dict,
-        array_a=self.array_a,
-        array_b=self.array_b,
-    )
+    self.data = {
+        "tree_a": self.tree_a,
+        "tree_b": self.tree_b,
+        "tree_a_dict": self.tree_a_dict,
+        "tree_b_dict": self.tree_b_dict,
+        "array_a": self.array_a,
+        "array_b": self.array_b,
+    }
 
   def test_tree_add(self):
     expected = self.array_a + self.array_b
@@ -268,24 +268,24 @@ class TreeUtilsTest(parameterized.TestCase):
       self.assertEqual(tu.tree_vdot(tree, tree), 0)
 
   @parameterized.named_parameters(
-      dict(
-          testcase_name='tree_add_scalar_mul',
-          operation=lambda m: tu.tree_add_scalar_mul(None, 1, m),
-      ),
-      dict(
-          testcase_name='tree_update_moment',
-          operation=lambda m: tu.tree_update_moment(None, m, 1, 1),
-      ),
-      dict(
-          testcase_name='tree_update_infinity_moment',
-          operation=lambda m: tu.tree_update_infinity_moment(None, m, 1, 1),
-      ),
-      dict(
-          testcase_name='tree_update_moment_per_elem_norm',
-          operation=lambda m: tu.tree_update_moment_per_elem_norm(
+      {
+          "testcase_name": 'tree_add_scalar_mul',
+          "operation": lambda m: tu.tree_add_scalar_mul(None, 1, m),
+      },
+      {
+          "testcase_name": 'tree_update_moment',
+          "operation": lambda m: tu.tree_update_moment(None, m, 1, 1),
+      },
+      {
+          "testcase_name": 'tree_update_infinity_moment',
+          "operation": lambda m: tu.tree_update_infinity_moment(None, m, 1, 1),
+      },
+      {
+          "testcase_name": 'tree_update_moment_per_elem_norm',
+          "operation": lambda m: tu.tree_update_moment_per_elem_norm(
               None, m, 1, 1
           ),
-      ),
+      },
   )
   def test_none_arguments(self, operation):
     m = jnp.array([1.0, 2.0, 3.0])

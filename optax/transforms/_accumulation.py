@@ -65,7 +65,8 @@ def trace(
 
   def update_fn(updates, state, params=None):
     del params
-    f = lambda g, t: g + decay * t
+    def f(g, t):
+      return g + decay * t
     new_trace = jax.tree.map(f, updates, state.trace)
     updates = jax.tree.map(f, updates, new_trace) if nesterov else new_trace
     new_trace = otu.tree_cast(new_trace, accumulator_dtype)
@@ -176,9 +177,10 @@ def skip_not_finite(
   ]
   num_not_finite = jnp.sum(jnp.array(all_is_finite))
   should_skip = num_not_finite > 0
-  return should_skip, dict(
-      should_skip=should_skip, num_not_finite=num_not_finite
-  )
+  return should_skip, {
+      "should_skip": should_skip,
+      "num_not_finite": num_not_finite,
+  }
 
 
 def skip_large_updates(
@@ -208,7 +210,7 @@ def skip_large_updates(
   )
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
-  return should_skip, dict(should_skip=should_skip, norm_squared=norm_sq)
+  return should_skip, {"should_skip": should_skip, "norm_squared": norm_sq}
 
 
 class MultiStepsState(NamedTuple):
