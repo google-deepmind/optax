@@ -176,7 +176,8 @@ class MaskedTest(chex.TestCase):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
-    mask_arg = lambda _: mask if use_fn else mask
+    def mask_arg(_):
+      return mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
     params = jax.tree.map(jnp.asarray, params)
     input_updates = jax.tree.map(lambda x: x/10., params)
@@ -275,7 +276,8 @@ class MaskedTest(chex.TestCase):
     mask = {'a': True,
             'b': [False, True],
             'c': {'d': True, 'e': (False, True)}}
-    mask_arg = lambda _: mask if use_fn else mask
+    def mask_arg(_):
+      return mask if use_fn else mask
     params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
     params = jax.tree.map(jnp.asarray, params)
 
@@ -291,7 +293,8 @@ class MaskedTest(chex.TestCase):
   @chex.all_variants
   def test_mask_fn(self):
     params = {'a': jnp.ones((1, 2)), 'b': (jnp.ones((1,)), np.ones((1, 2, 3)))}
-    mask_fn = lambda p: jax.tree.map(lambda x: x.ndim > 1, p)
+    def mask_fn(p):
+      return jax.tree.map(lambda x: x.ndim > 1, p)
     init_fn, update_fn = _masking.masked(
         transform.add_decayed_weights(0.1), mask_fn)
     update_fn = self.variant(update_fn)
@@ -315,7 +318,8 @@ class MaskedTest(chex.TestCase):
               'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
               'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
 
-    outer_mask = lambda p: jax.tree.map(lambda x: x.ndim > 1, p)
+    def outer_mask(p):
+      return jax.tree.map(lambda x: x.ndim > 1, p)
     inner_mask = jax.tree.map(lambda _: True, params)
     inner_mask['linear_2'] = False
 

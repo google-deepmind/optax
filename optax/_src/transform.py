@@ -136,8 +136,7 @@ def scale_by_rms(
       return ScaleByRmsWithCountState(
           count=jnp.zeros([], jnp.int32), nu=nu
       )
-    else:
-      return ScaleByRmsState(nu=nu)
+    return ScaleByRmsState(nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
@@ -213,8 +212,7 @@ def scale_by_stddev(
       return ScaleByRStdDevWithCountState(
           count=jnp.zeros([], jnp.int32), mu=mu, nu=nu
       )
-    else:
-      return ScaleByRStdDevState(mu=mu, nu=nu)
+    return ScaleByRStdDevState(mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
     del params
@@ -742,7 +740,7 @@ def scale_by_yogi(
   https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 
   References:
-    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html) #pylint:disable=line-too-long
+    [Zaheer et al, 2018](https://papers.nips.cc/paper/2018/hash/90365351ccc7437a1309dc64e4db32a3-Abstract.html)  # pylint: disable=line-too-long
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -1088,8 +1086,7 @@ def apply_every(
 def _subtract_mean(g):
   if len(g.shape) > 1:
     return g - g.mean(tuple(range(1, len(g.shape))), keepdims=True)
-  else:
-    return g
+  return g
 
 
 CentralState = base.EmptyState
@@ -1161,14 +1158,12 @@ def scale_by_sm3(
     coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
     if g.ndim < 2:
       return coeffs[0]*g**2 + coeffs[1]*v[0]
-    else:
-      return coeffs[0]*g**2 + coeffs[1]*functools.reduce(jnp.minimum, v)
+    return coeffs[0]*g**2 + coeffs[1]*functools.reduce(jnp.minimum, v)
 
   def _new_mu(g, i):
     if g.ndim < 2:
       return g
-    else:
-      return jnp.max(g, axis=other_axes(i, g.ndim))
+    return jnp.max(g, axis=other_axes(i, g.ndim))
 
   def other_axes(idx, ndim):
     return list(range(idx)) + list(range(idx+1, ndim))
@@ -1176,7 +1171,7 @@ def scale_by_sm3(
   def update_fn(updates, state, params=None):
     del params
     mu = jax.tree.map(
-        lambda g, v:  # pylint:disable=g-long-lambda
+        lambda g, v:
         [jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)],
         updates, state.mu)
     accum = jax.tree.map(_new_accum, updates, mu)

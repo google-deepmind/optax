@@ -82,7 +82,8 @@ def score_function_jacobians(
   """
   def surrogate(params):
     dist = dist_builder(*params)
-    one_sample_surrogate_fn = lambda x: function(x) * dist.log_prob(x)
+    def one_sample_surrogate_fn(x):
+      return function(x) * dist.log_prob(x)
     samples = jax.lax.stop_gradient(dist.sample((num_samples,), seed=rng))
     # We vmap the function application over samples - this ensures that the
     # function we use does not have to be vectorized itself.
@@ -335,4 +336,3 @@ def measure_valued_estimation_std(
 
   chex.assert_shape(grads, (num_samples,) + std.shape)
   return grads
-

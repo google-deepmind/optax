@@ -14,8 +14,6 @@
 # ==============================================================================
 """The losses sub-package."""
 
-# pylint:disable=g-importing-member
-
 from optax.losses._classification import convex_kl_divergence
 from optax.losses._classification import ctc_loss
 from optax.losses._classification import ctc_loss_with_forward_probs

@@ -44,7 +44,8 @@ class ScheduleFreeTest(chex.TestCase):
     base_opt = alias.sgd(learning_rate=0.0, momentum=0.0)
     opt = _schedule_free.schedule_free(base_opt, learning_rate=0.0)
     initial_params = jnp.array([1.0, 2.0])
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     @jax.jit
     def step(params, state):
@@ -66,7 +67,8 @@ class ScheduleFreeTest(chex.TestCase):
   def test_schedule_free_adamw(self):
 
     initial_params = jnp.array([1.0, 2.0])
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     def step(params, state, opt):
       updates = jax.grad(fun)(params)
