@@ -6,7 +6,7 @@ Implementation of
 Pierre Ablin and David Grangier.
 """
 
-from typing import NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 import chex
 import jax.numpy as jnp
 import jax.tree_util as jtu
@@ -14,6 +14,7 @@ from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
+from optax._src import utils
 import optax.tree_utils as otu
 
 class ScaleByAdemamixState(NamedTuple):
@@ -42,6 +43,7 @@ def scale_by_ademamix(
   alpha: base.ScalarOrSchedule,
   eps: float = 1e-8,
   eps_root: float = 0.0,
+  mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Ademamix algorithm.
 
@@ -62,11 +64,15 @@ def scale_by_ademamix(
       (as in the Adam paper) to avoid dividing by zero when rescaling.
     eps_root: Term added to the denominator inside of the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
     A `GradientTransformation` object.
 
   """
+
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
     m1 = otu.tree_zeros_like(params)  # fast EMA
@@ -121,7 +127,9 @@ def ademamix(
   alpha: base.ScalarOrSchedule = 5.0,
   eps: float = 1e-8,
   eps_root: float = 0.0,
+  mu_dtype: Optional[Any] = None,
   weight_decay: float = 0.0,
+  mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   r"""AdEMAMix.
 
@@ -208,11 +216,18 @@ def ademamix(
     eps_root: A small constant applied to denominator inside the square root (as
       in RMSProp), to avoid dividing by zero when rescaling. This is needed for
       instance when computing (meta-)gradients through Adam.
+    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+      `None` then the `dtype` is inferred from `params` and `updates`.
     weight_decay: Strength of the weight decay regularization. Note that this
       weight decay is multiplied with the learning rate. This is consistent
       with other frameworks such as PyTorch, but different from
       (Loshchilov et al, 2019) where the weight decay is only multiplied with
       the "schedule multiplier", but not the base learning rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -223,7 +238,7 @@ def ademamix(
     for a use case.
   """
   return combine.chain(
-    scale_by_ademamix(b1, b2, b3, alpha, eps, eps_root),
-      transform.add_decayed_weights(weight_decay),
+    scale_by_ademamix(b1=b1, b2=b2, b3=b3, alpha, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+      transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )
