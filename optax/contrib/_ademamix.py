@@ -209,7 +209,7 @@ def ademamix(
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the fast EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
-    b3: Exponenital decay rate to track the slow EMA.
+    b3: Exponential decay rate to track the slow EMA.
     alpha: Mixing coefficient in the linear combination fo the fast and 
       slow EMAs. 
     eps: A small constant applied to denominator outside of the square root
