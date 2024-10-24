@@ -20,7 +20,8 @@ class ScaleByAdemamixState(NamedTuple):
   """State for the Ademamix algorithm.
 
   Attributes:
-    count: iteration of the algorithm used to update the fast EMA and second moment.
+    count: iteration of the algorithm used to update the fast EMA and 
+      second moment.
     count_m2: iteration of the algorithm used to update the slow EMA and alpha.
     m1: the fast EMA.
     m2: the slow EMA
@@ -95,7 +96,7 @@ def scale_by_ademamix(
     count_inc = numerics.safe_int32_increment(state.count)
     count_m2_inc = numerics.safe_int32_increment(state.count_m2)
     m1_hat = otu.tree_bias_correction(m1, b1, count_inc)
-    # NOTE:  AdEMAMix does not perform bias correction on b2 to let 
+    # NOTE:  AdEMAMix does not perform bias correction on b2 to let
     # the slow EMA momentum buffer fill itself slowly.
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
