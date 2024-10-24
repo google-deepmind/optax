@@ -153,20 +153,24 @@ def ademamix(
   all zeros, with the same shape as the model updates.  At step :math:`t`,
   the ``update`` function of this optimizer takes as arguments the incoming
   gradients :math:`g^t`, the optimizer state :math:`S^t` and the parameters
-  :math:`\theta^{(t)}`. It then computes updates :math:`\theta^{(t+1)}` and the new
-  state :math:`S^{(t+1)}`. Thus, for :math:`t > 0`, we have,
+  :math:`\theta^{(t)}`. It then computes updates :math:`\theta^{(t+1)}` and the
+  new state :math:`S^{(t+1)}`. Thus, for :math:`t > 0`, we have,
 
   .. math::
   
     \begin{align*}
-      m_1^{(t)} &\leftarrow \beta_1 \cdot m_1^{(t-1)} + (1-\beta_1) \cdot g^{(t)} \\  
-      m_2^{(t)} &\leftarrow \beta_3 \cdot m_2^{(t-1)} + (1-\beta_3) \cdot g^{(t)} \\  
-      \nu^{(t)} &\leftarrow \beta_2 \cdot \nu^{(t-1)} + (1-\beta_2) \cdot {g^{(t)}}^2 \\
+      m_1^{(t)} &\leftarrow \beta_1 \cdot m_1^{(t-1)} + (1-\beta_1) 
+      \cdot g^{(t)} \\  
+      m_2^{(t)} &\leftarrow \beta_3 \cdot m_2^{(t-1)} + (1-\beta_3) \cdot 
+      g^{(t)} \\  
+      \nu^{(t)} &\leftarrow \beta_2 \cdot \nu^{(t-1)} + (1-\beta_2) \cdot 
+      {g^{(t)}}^2 \\
       \hat{m_1}^{(t)} &\leftarrow m_1^{(t)} / {(1-\beta_1^{(t)})} \\
       \hat{\nu}^{(t)} &\leftarrow \nu^{(t)} / {(1-\beta_2^{(t)})} \\
       \theta^{(t)} &\leftarrow \theta^{(t-1)} - \eta \cdot \left( 
-      \frac{(\hat{m_1}^{(t)} + \alpha m_2^{(t)})}{\left(\sqrt{\hat{\nu}^{(t)} + \bar{\varepsilon}}
-      + \varepsilon\right)} + \lambda \theta^{(t-1)} \right).\\
+      \frac{(\hat{m_1}^{(t)} + \alpha m_2^{(t)})}{\left(\sqrt{\hat{\nu}^{(t)} 
+      + \bar{\varepsilon}} + \varepsilon\right)} + \lambda \theta^{(t-1)} 
+      \right).\\
       S^{(t)} &\leftarrow (m_1^{(t)}, m_2^{(t)}, v^{(t)}).
     \end{align*}
 
@@ -175,11 +179,11 @@ def ademamix(
   AdEMAMix consists in leveraging very old gradients. Therefore,
   the method is best suited to settings where the number of iterations is
   important. The paper reports on this effect in Appendix C.1.5, showing how
-  smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low iterations
-  scenarios. Moreover, retaining gradient information over many thousands of
-  steps can pose a problem in domains requiring fast adaptation to a sudden
-  distribution shift, or general cases in which the distribution is
-  non-stationary.
+  smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low
+  iterations scenarios. Moreover, retaining gradient information over many 
+  thousands of steps can pose a problem in domains requiring fast adaptation 
+  to a sudden distribution shift, or general cases in which the distribution
+  is non-stationary.
 
   Examples:
     >>> import optax
