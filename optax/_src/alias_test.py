@@ -25,6 +25,10 @@ from jax import flatten_util
 import jax.numpy as jnp
 import jax.random as jrd
 import numpy as np
+import scipy.optimize as scipy_optimize
+from sklearn import datasets
+from sklearn import linear_model
+
 from optax._src import alias
 from optax._src import base
 from optax._src import linesearch as _linesearch
@@ -35,9 +39,6 @@ from optax.losses import _classification
 from optax.schedules import _inject
 from optax.transforms import _accumulation
 import optax.tree_utils as otu
-import scipy.optimize as scipy_optimize
-from sklearn import datasets
-from sklearn import linear_model
 
 
 ##############
@@ -46,44 +47,50 @@ from sklearn import linear_model
 
 
 _OPTIMIZERS_UNDER_TEST = (
-    dict(opt_name='sgd', opt_kwargs=dict(learning_rate=1e-3, momentum=0.9)),
-    dict(opt_name='adadelta', opt_kwargs=dict(learning_rate=0.1)),
-    dict(opt_name='adafactor', opt_kwargs=dict(learning_rate=5e-3)),
-    dict(opt_name='adagrad', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='adam', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='adamw', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='adamax', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='adamaxw', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='adan', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='amsgrad', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='lars', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='lamb', opt_kwargs=dict(learning_rate=1e-3)),
-    dict(
-        opt_name='lion',
-        opt_kwargs=dict(learning_rate=1e-2, weight_decay=1e-4),
-    ),
-    dict(opt_name='nadam', opt_kwargs=dict(learning_rate=1e-2)),
-    dict(opt_name='nadamw', opt_kwargs=dict(learning_rate=1e-2)),
-    dict(opt_name='noisy_sgd', opt_kwargs=dict(learning_rate=1e-3, eta=1e-4)),
-    dict(opt_name='novograd', opt_kwargs=dict(learning_rate=1e-3)),
-    dict(
-        opt_name='optimistic_gradient_descent',
-        opt_kwargs=dict(learning_rate=2e-3, alpha=0.7, beta=0.1),
-    ),
-    dict(
-        opt_name='optimistic_adam',
-        opt_kwargs=dict(learning_rate=2e-3),
-    ),
-    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3)),
-    dict(opt_name='rmsprop', opt_kwargs=dict(learning_rate=5e-3, momentum=0.9)),
-    dict(opt_name='sign_sgd', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='fromage', opt_kwargs=dict(learning_rate=5e-3)),
-    dict(opt_name='adabelief', opt_kwargs=dict(learning_rate=1e-2)),
-    dict(opt_name='radam', opt_kwargs=dict(learning_rate=5e-3)),
-    dict(opt_name='rprop', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='sm3', opt_kwargs=dict(learning_rate=1.0)),
-    dict(opt_name='yogi', opt_kwargs=dict(learning_rate=1e-1)),
-    dict(opt_name='polyak_sgd', opt_kwargs=dict(max_learning_rate=1.0)),
+    {"opt_name": 'sgd', "opt_kwargs": {"learning_rate": 1e-3, "momentum": 0.9}},
+    {"opt_name": 'adadelta', "opt_kwargs": {"learning_rate": 0.1}},
+    {"opt_name": 'adafactor', "opt_kwargs": {"learning_rate": 5e-3}},
+    {"opt_name": 'adagrad', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'adam', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'adamw', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'adamax', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'adamaxw', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'adan', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'amsgrad', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'lars', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'lamb', "opt_kwargs": {"learning_rate": 1e-3}},
+    {
+        "opt_name": 'lion',
+        "opt_kwargs": {"learning_rate": 1e-2, "weight_decay": 1e-4},
+    },
+    {"opt_name": 'nadam', "opt_kwargs": {"learning_rate": 1e-2}},
+    {"opt_name": 'nadamw', "opt_kwargs": {"learning_rate": 1e-2}},
+    {
+        "opt_name": 'noisy_sgd',
+        "opt_kwargs": {"learning_rate": 1e-3, "eta": 1e-4},
+    },
+    {"opt_name": 'novograd', "opt_kwargs": {"learning_rate": 1e-3}},
+    {
+        "opt_name": 'optimistic_gradient_descent',
+        "opt_kwargs": {"learning_rate": 2e-3, "alpha": 0.7, "beta": 0.1},
+    },
+    {
+        "opt_name": 'optimistic_adam',
+        "opt_kwargs": {"learning_rate": 2e-3},
+    },
+    {"opt_name": 'rmsprop', "opt_kwargs": {"learning_rate": 5e-3}},
+    {
+        "opt_name": 'rmsprop',
+        "opt_kwargs": {"learning_rate": 5e-3, "momentum": 0.9},
+    },
+    {"opt_name": 'sign_sgd', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'fromage', "opt_kwargs": {"learning_rate": 5e-3}},
+    {"opt_name": 'adabelief', "opt_kwargs": {"learning_rate": 1e-2}},
+    {"opt_name": 'radam', "opt_kwargs": {"learning_rate": 5e-3}},
+    {"opt_name": 'rprop', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'sm3', "opt_kwargs": {"learning_rate": 1.0}},
+    {"opt_name": 'yogi', "opt_kwargs": {"learning_rate": 1e-1}},
+    {"opt_name": 'polyak_sgd', "opt_kwargs": {"max_learning_rate": 1.0}},
 )
 
 
@@ -271,7 +278,8 @@ class AliasTest(chex.TestCase):
     dtype = jnp.dtype(dtype)
     opt_factory = getattr(alias, opt_name)
     opt = opt_factory(**opt_kwargs)
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
@@ -295,7 +303,8 @@ class AliasTest(chex.TestCase):
     base_opt = opt_factory(**opt_kwargs)
     opt = _accumulation.MultiSteps(base_opt, every_k_schedule=4)
 
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
@@ -372,14 +381,13 @@ def _materialize_approx_inv_hessian(
   rhos = jnp.roll(rhos, -k, axis=0)
 
   id_mat = jnp.eye(d, d)
-  # pylint: disable=invalid-name
-  P = id_mat
-  safe_dot = lambda x, y: jnp.dot(x, y, precision=jax.lax.Precision.HIGHEST)
+  p = id_mat
+  def safe_dot(x, y):
+    return jnp.dot(x, y, precision=jax.lax.Precision.HIGHEST)
   for j in range(m):
-    V = id_mat - rhos[j] * jnp.outer(dus[j], dws[j])
-    P = safe_dot(V.T, safe_dot(P, V)) + rhos[j] * jnp.outer(dws[j], dws[j])
-  # pylint: enable=invalid-name
-  precond_mat = P
+    v = id_mat - rhos[j] * jnp.outer(dus[j], dws[j])
+    p = safe_dot(v.T, safe_dot(p, v)) + rhos[j] * jnp.outer(dws[j], dws[j])
+  precond_mat = p
   return precond_mat
 
 
@@ -520,44 +528,44 @@ def _get_problem(
     answer = sum1 + sum2**2 + sum2**4
     return answer
 
-  problems = dict(
-      rosenbrock=dict(
-          fun=lambda x: rosenbrock(x, jnp),
-          numpy_fun=lambda x: rosenbrock(x, np),
-          init=np.zeros(2),
-          minimum=0.0,
-          minimizer=np.ones(2),
-      ),
-      himmelblau=dict(
-          fun=himmelblau,
-          numpy_fun=himmelblau,
-          init=np.ones(2),
-          minimum=0.0,
+  problems = {
+      "rosenbrock": {
+          "fun": lambda x: rosenbrock(x, jnp),
+          "numpy_fun": lambda x: rosenbrock(x, np),
+          "init": np.zeros(2),
+          "minimum": 0.0,
+          "minimizer": np.ones(2),
+      },
+      "himmelblau": {
+          "fun": himmelblau,
+          "numpy_fun": himmelblau,
+          "init": np.ones(2),
+          "minimum": 0.0,
           # himmelblau has actually multiple minimizers, we simply consider one.
-          minimizer=np.array([3.0, 2.0]),
-      ),
-      matyas=dict(
-          fun=matyas,
-          numpy_fun=matyas,
-          init=np.ones(2) * 6.0,
-          minimum=0.0,
-          minimizer=np.zeros(2),
-      ),
-      eggholder=dict(
-          fun=lambda x: eggholder(x, jnp),
-          numpy_fun=lambda x: eggholder(x, np),
-          init=np.ones(2) * 6.0,
-          minimum=-959.6407,
-          minimizer=np.array([512.0, 404.22319]),
-      ),
-      zakharov=dict(
-          fun=lambda x: zakharov(x, jnp),
-          numpy_fun=lambda x: zakharov(x, np),
-          init=np.array([600.0, 700.0, 200.0, 100.0, 90.0, 1e3]),
-          minimum=0.0,
-          minimizer=np.zeros(6),
-      ),
-  )
+          "minimizer": np.array([3.0, 2.0]),
+      },
+      "matyas": {
+          "fun": matyas,
+          "numpy_fun": matyas,
+          "init": np.ones(2) * 6.0,
+          "minimum": 0.0,
+          "minimizer": np.zeros(2),
+      },
+      "eggholder": {
+          "fun": lambda x: eggholder(x, jnp),
+          "numpy_fun": lambda x: eggholder(x, np),
+          "init": np.ones(2) * 6.0,
+          "minimum": -959.6407,
+          "minimizer": np.array([512.0, 404.22319]),
+      },
+      "zakharov": {
+          "fun": lambda x: zakharov(x, jnp),
+          "numpy_fun": lambda x: zakharov(x, np),
+          "init": np.array([600.0, 700.0, 200.0, 100.0, 90.0, 1e3]),
+          "minimum": 0.0,
+          "minimizer": np.zeros(6),
+      },
+  }
   return problems[name]
 
 
@@ -629,11 +637,11 @@ class LBFGSTest(chex.TestCase):
     )
 
     flat_dws = [
-        flatten_util.ravel_pytree(jax.tree.map(lambda dw: dw[i], dws))[0]  # pylint: disable=cell-var-from-loop
+        flatten_util.ravel_pytree(jax.tree.map(lambda dw, i=i: dw[i], dws))[0]
         for i in range(m)
     ]
     flat_dus = [
-        flatten_util.ravel_pytree(jax.tree.map(lambda du: du[i], dus))[0]  # pylint: disable=cell-var-from-loop
+        flatten_util.ravel_pytree(jax.tree.map(lambda du, i=i: du[i], dus))[0]
         for i in range(m)
     ]
     flat_dws, flat_dus = jnp.stack(flat_dws), jnp.stack(flat_dus)

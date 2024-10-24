@@ -217,7 +217,7 @@ class StatefulTest(chex.TestCase):
       np.testing.assert_allclose(
           my_schedule(count), my_wrapped_schedule(state), atol=0.0)
       count = count + 1
-      extra_args = dict(loss=jnp.ones([], dtype=jnp.float32))
+      extra_args = {"loss": jnp.ones([], dtype=jnp.float32)}
       state = my_wrapped_schedule.update(state, **extra_args)
       np.testing.assert_allclose(count, state, atol=0.0)
 
@@ -233,7 +233,7 @@ class StatefulTest(chex.TestCase):
         transform.scale)(step_size=my_stateful_schedule)
     state = self.variant(tx.init)(params)
 
-    extra_args = dict(addendum=0.3 * jnp.ones((), dtype=jnp.float32))
+    extra_args = {"addendum": 0.3 * jnp.ones((), dtype=jnp.float32)}
     _, state = self.variant(tx.update)(
         grads, state, params=params, **extra_args)
     _, state = self.variant(tx.update)(

@@ -54,5 +54,3 @@ def deprecation_getattr(module, deprecations):
     raise AttributeError(f"module {module!r} has no attribute {name!r}")
 
   return _getattr
-
-

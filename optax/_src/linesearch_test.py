@@ -28,14 +28,15 @@ import chex
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
+import scipy.optimize as scipy_optimize
+
+import optax.tree_utils as otu
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import linesearch as _linesearch
 from optax._src import update
 from optax._src import utils
-import optax.tree_utils as otu
-import scipy.optimize as scipy_optimize
 
 
 def get_problem(name: str):
@@ -70,16 +71,16 @@ def get_problem(name: str):
     sum2 = (0.5 * ii * x).sum()
     return sum1 + sum2**2 + sum2**4
 
-  problems = dict(
-      polynomial=dict(fn=polynomial, input_shape=()),
-      exponential=dict(fn=exponential, input_shape=()),
-      sinusoidal=dict(fn=sinusoidal, input_shape=()),
-      rosenbrock=dict(fn=rosenbrock, input_shape=(16,)),
-      himmelblau=dict(fn=himmelblau, input_shape=(2,)),
-      matyas=dict(fn=matyas, input_shape=(2,)),
-      eggholder=dict(fn=eggholder, input_shape=(2,)),
-      zakharov=dict(fn=zakharov, input_shape=(6,)),
-  )
+  problems = {
+      "polynomial": {"fn": polynomial, "input_shape": ()},
+      "exponential": {"fn": exponential, "input_shape": ()},
+      "sinusoidal": {"fn": sinusoidal, "input_shape": ()},
+      "rosenbrock": {"fn": rosenbrock, "input_shape": (16,)},
+      "himmelblau": {"fn": himmelblau, "input_shape": (2,)},
+      "matyas": {"fn": matyas, "input_shape": (2,)},
+      "eggholder": {"fn": eggholder, "input_shape": (2,)},
+      "zakharov": {"fn": zakharov, "input_shape": (6,)},
+  }
   return problems[name]
 
 
@@ -108,7 +109,8 @@ class BacktrackingLinesearchTest(chex.TestCase):
   @chex.all_variants()
   def test_linesearch_with_jax_variants(self):
     """Test backtracking linesearch with jax variants (jit etc...)."""
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
 
@@ -156,13 +158,13 @@ class BacktrackingLinesearchTest(chex.TestCase):
     base_opt = alias.sgd(learning_rate=1.0)
     descent_dir = -jax.grad(fn)(init_params)
 
-    opt_args = dict(
-        max_backtracking_steps=50,
-        slope_rtol=slope_rtol,
-        increase_factor=increase_factor,
-        atol=atol,
-        rtol=rtol,
-    )
+    opt_args = {
+        "max_backtracking_steps": 50,
+        "slope_rtol": slope_rtol,
+        "increase_factor": increase_factor,
+        "atol": atol,
+        "rtol": rtol,
+    }
 
     solver = combine.chain(
         base_opt,
@@ -373,11 +375,11 @@ class ZoomLinesearchTest(chex.TestCase):
       potentially_failed = False
     slope_init = otu.tree_vdot(updates, grad_init)
     slope_final = otu.tree_vdot(updates, grad_final)
-    default_opt_args = dict(
-        slope_rtol=1e-4,
-        curv_rtol=0.9,
-        tol=0.0,
-    )
+    default_opt_args = {
+        "slope_rtol": 1e-4,
+        "curv_rtol": 0.9,
+        "tol": 0.0,
+    }
     opt_args = default_opt_args | opt_args
     slope_rtol, curv_rtol, tol = (
         opt_args['slope_rtol'],
@@ -405,7 +407,8 @@ class ZoomLinesearchTest(chex.TestCase):
   @chex.all_variants()
   def test_linesearch_with_jax_variants(self):
     """Test zoom linesearch with jax variants (jit etc...)."""
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
 
@@ -458,13 +461,13 @@ class ZoomLinesearchTest(chex.TestCase):
     # (non-negativity ensures that we keep a descent direction)
     init_updates = -precond_vec * jax.grad(fn)(init_params)
 
-    opt_args = dict(
-        max_linesearch_steps=30,
-        slope_rtol=slope_rtol,
-        curv_rtol=curv_rtol,
-        tol=tol,
-        max_learning_rate=None,
-    )
+    opt_args = {
+        "max_linesearch_steps": 30,
+        "slope_rtol": slope_rtol,
+        "curv_rtol": curv_rtol,
+        "tol": tol,
+        "max_learning_rate": None,
+    }
 
     opt = _linesearch.scale_by_zoom_linesearch(**opt_args)
     final_params, final_state = _run_linesearch(
@@ -497,30 +500,30 @@ class ZoomLinesearchTest(chex.TestCase):
     # program
     if jax.default_backend() in ['tpu', 'gpu']:
       return
-    else:
-      # For this f and p, starting at a point on axis 0, the strong Wolfe
-      # condition 2 is met if and only if the step length s satisfies
-      # |x + s| <= c2 * |x|
-      def fn(w):
-        return jnp.dot(w, w)
 
-      u = jnp.array([1.0, 0.0])
-      w = 60 * u
+    # For this f and p, starting at a point on axis 0, the strong Wolfe
+    # condition 2 is met if and only if the step length s satisfies
+    # |x + s| <= c2 * |x|
+    def fn(w):
+      return jnp.dot(w, w)
 
-      # Test that the line search fails for p not a descent direction
-      # For high maxiter, still finds a decrease error because of
-      # the approximate Wolfe condition so we reduced maxiter
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=18, curv_rtol=0.5, verbose=True
-      )
-      stdout = io.StringIO()
-      with contextlib.redirect_stdout(stdout):
-        _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-        stepsize = otu.tree_get(state, 'learning_rate')
-      # Check that we were not able to make a step or an infinitesimal one
-      self.assertLess(stepsize, 1e-5)
-      self.assertIn(_linesearch.FLAG_NOT_A_DESCENT_DIRECTION, stdout.getvalue())
-      self.assertIn(_linesearch.FLAG_NO_STEPSIZE_FOUND, stdout.getvalue())
+    u = jnp.array([1.0, 0.0])
+    w = 60 * u
+
+    # Test that the line search fails for p not a descent direction
+    # For high maxiter, still finds a decrease error because of
+    # the approximate Wolfe condition so we reduced maxiter
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=18, curv_rtol=0.5, verbose=True
+    )
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+      _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
+      stepsize = otu.tree_get(state, 'learning_rate')
+    # Check that we were not able to make a step or an infinitesimal one
+    self.assertLess(stepsize, 1e-5)
+    self.assertIn(_linesearch.FLAG_NOT_A_DESCENT_DIRECTION, stdout.getvalue())
+    self.assertIn(_linesearch.FLAG_NO_STEPSIZE_FOUND, stdout.getvalue())
 
   def test_failure_too_small_max_stepsize(self):
     """Check failure when the max stepsize is too small."""
@@ -531,32 +534,31 @@ class ZoomLinesearchTest(chex.TestCase):
     # program
     if jax.default_backend() in ['tpu', 'gpu']:
       return
-    else:
 
-      def fn(x):
-        return jnp.dot(x, x)
+    def fn(x):
+      return jnp.dot(x, x)
 
-      u = jnp.array([1.0, 0.0])
-      w = -60 * u
+    u = jnp.array([1.0, 0.0])
+    w = -60 * u
 
-      # Test that the line search fails if the maximum stepsize is too small
-      # Here, smallest s satisfying strong Wolfe conditions for c2=0.5 is 30
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=10,
-          curv_rtol=0.5,
-          verbose=True,
-          max_learning_rate=10.0,
-      )
-      stdout = io.StringIO()
-      with contextlib.redirect_stdout(stdout):
-        _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-      stepsize = otu.tree_get(state, 'learning_rate')
-      # Check that we still made a step
-      self.assertEqual(stepsize, 10.0)
-      self.assertIn(_linesearch.FLAG_INTERVAL_NOT_FOUND, stdout.getvalue())
-      self.assertIn(
-          _linesearch.FLAG_CURVATURE_COND_NOT_SATISFIED, stdout.getvalue()
-      )
+    # Test that the line search fails if the maximum stepsize is too small
+    # Here, smallest s satisfying strong Wolfe conditions for c2=0.5 is 30
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=10,
+        curv_rtol=0.5,
+        verbose=True,
+        max_learning_rate=10.0,
+    )
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+      _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
+    stepsize = otu.tree_get(state, 'learning_rate')
+    # Check that we still made a step
+    self.assertEqual(stepsize, 10.0)
+    self.assertIn(_linesearch.FLAG_INTERVAL_NOT_FOUND, stdout.getvalue())
+    self.assertIn(
+        _linesearch.FLAG_CURVATURE_COND_NOT_SATISFIED, stdout.getvalue()
+    )
 
   def test_failure_not_enough_iter(self):
     """Check failure for a very small number of iterations."""
@@ -567,47 +569,46 @@ class ZoomLinesearchTest(chex.TestCase):
     # program
     if jax.default_backend() in ['tpu', 'gpu']:
       return
-    else:
 
-      def fn(x):
-        return jnp.dot(x, x)
+    def fn(x):
+      return jnp.dot(x, x)
 
-      u = jnp.array([1.0, 0.0])
-      w = -60 * u
+    u = jnp.array([1.0, 0.0])
+    w = -60 * u
 
-      curv_rtol = 0.5
-      # s=30 will only be tried on the 6th iteration, so this fails because
-      # the maximum number of iterations is reached.
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=5, curv_rtol=curv_rtol, verbose=True
-      )
-      stdout = io.StringIO()
-      with contextlib.redirect_stdout(stdout):
-        _, final_state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-      stepsize = otu.tree_get(final_state, 'learning_rate')
-      # Check that we still made a step
-      self.assertEqual(stepsize, 16.0)
-      decrease_error = otu.tree_get(final_state, 'decrease_error')
-      curvature_error = otu.tree_get(final_state, 'curvature_error')
-      success = (decrease_error <= 0.0) and (curvature_error <= 0.0)
-      self.assertFalse(success)
-      # Here the error should not be that we haven't had a descent direction
-      self.assertNotIn(
-          _linesearch.FLAG_NOT_A_DESCENT_DIRECTION, stdout.getvalue()
-      )
+    curv_rtol = 0.5
+    # s=30 will only be tried on the 6th iteration, so this fails because
+    # the maximum number of iterations is reached.
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=5, curv_rtol=curv_rtol, verbose=True
+    )
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+      _, final_state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
+    stepsize = otu.tree_get(final_state, 'learning_rate')
+    # Check that we still made a step
+    self.assertEqual(stepsize, 16.0)
+    decrease_error = otu.tree_get(final_state, 'decrease_error')
+    curvature_error = otu.tree_get(final_state, 'curvature_error')
+    success = (decrease_error <= 0.0) and (curvature_error <= 0.0)
+    self.assertFalse(success)
+    # Here the error should not be that we haven't had a descent direction
+    self.assertNotIn(
+        _linesearch.FLAG_NOT_A_DESCENT_DIRECTION, stdout.getvalue()
+    )
 
-      # Check if it works normally
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=30, curv_rtol=curv_rtol
-      )
-      final_params, final_state = _run_linesearch(
-          opt, fn, w, u, stepsize_guess=1.0
-      )
-      s = otu.tree_get(final_state, 'learning_rate')
-      self._check_linesearch_conditions(
-          fn, w, u, final_params, final_state, dict(curv_rtol=curv_rtol)
-      )
-      self.assertGreaterEqual(s, 30.0)
+    # Check if it works normally
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=30, curv_rtol=curv_rtol
+    )
+    final_params, final_state = _run_linesearch(
+        opt, fn, w, u, stepsize_guess=1.0
+    )
+    s = otu.tree_get(final_state, 'learning_rate')
+    self._check_linesearch_conditions(
+        fn, w, u, final_params, final_state, {"curv_rtol": curv_rtol}
+    )
+    self.assertGreaterEqual(s, 30.0)
 
   def test_failure_flat_fun(self):
     """Check failure for a very flat function."""
@@ -618,20 +619,19 @@ class ZoomLinesearchTest(chex.TestCase):
     # program
     if jax.default_backend() in ['tpu', 'gpu']:
       return
-    else:
 
-      def fun_flat(x):
-        return jnp.exp(-1 / x**2)
+    def fun_flat(x):
+      return jnp.exp(-1 / x**2)
 
-      w = jnp.asarray(-0.2)
-      u = -jax.grad(fun_flat)(w)
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=30, verbose=True
-      )
-      stdout = io.StringIO()
-      with contextlib.redirect_stdout(stdout):
-        _, _ = _run_linesearch(opt, fun_flat, w, u, stepsize_guess=1.0)
-      self.assertIn(_linesearch.FLAG_INTERVAL_TOO_SMALL, stdout.getvalue())
+    w = jnp.asarray(-0.2)
+    u = -jax.grad(fun_flat)(w)
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=30, verbose=True
+    )
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+      _, _ = _run_linesearch(opt, fun_flat, w, u, stepsize_guess=1.0)
+    self.assertIn(_linesearch.FLAG_INTERVAL_TOO_SMALL, stdout.getvalue())
 
   def test_failure_inf_value(self):
     """Check behavior for inf/nan values."""
@@ -642,19 +642,18 @@ class ZoomLinesearchTest(chex.TestCase):
     # program
     if jax.default_backend() in ['tpu', 'gpu']:
       return
-    else:
 
-      def fun_inf(x):
-        return jnp.log(x)
+    def fun_inf(x):
+      return jnp.log(x)
 
-      w = jnp.asarray(1.0)
-      u = jnp.asarray(-2.0)
-      opt = _linesearch.scale_by_zoom_linesearch(
-          max_linesearch_steps=30, verbose=True
-      )
-      _, state = _run_linesearch(opt, fun_inf, w, u, stepsize_guess=1.0)
-      stepsize = otu.tree_get(state, 'learning_rate')
-      self.assertGreater(stepsize, 0.0)
+    w = jnp.asarray(1.0)
+    u = jnp.asarray(-2.0)
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=30, verbose=True
+    )
+    _, state = _run_linesearch(opt, fun_inf, w, u, stepsize_guess=1.0)
+    stepsize = otu.tree_get(state, 'learning_rate')
+    self.assertGreater(stepsize, 0.0)
 
   def test_high_smaller_than_low(self):
     # See google/jax/issues/16236

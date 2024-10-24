@@ -173,7 +173,7 @@ class CosineDistanceTest(parameterized.TestCase):
         self.variant(_regression.cosine_similarity)(self.ys, self.ts),
         1. - self.exp, atol=1e-4)
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask_distance(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.normal(size=size)
@@ -182,7 +182,7 @@ class CosineDistanceTest(parameterized.TestCase):
     y = _regression.cosine_distance(preds, targets, where=mask)
     np.testing.assert_allclose(x, y, atol=1e-4)
 
-  @parameterized.parameters(dict(size=5), dict(size=10))
+  @parameterized.parameters({"size": 5}, {"size": 10})
   def test_mask_similarity(self, size):
     preds = np.random.normal(size=size)
     targets = np.random.normal(size=size)
@@ -192,9 +192,9 @@ class CosineDistanceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
-      dict(axis=0, shape=[4, 5, 6]),
-      dict(axis=1, shape=[4, 5, 6]),
-      dict(axis=2, shape=[4, 5, 6]),
+      {"axis": 0, "shape": [4, 5, 6]},
+      {"axis": 1, "shape": [4, 5, 6]},
+      {"axis": 2, "shape": [4, 5, 6]},
   )
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
