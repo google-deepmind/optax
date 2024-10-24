@@ -17,7 +17,15 @@ from optax._src import transform
 import optax.tree_utils as otu
 
 class ScaleByAdemamixState(NamedTuple):
-  """State for the Ademamix algorithm."""
+  """State for the Ademamix algorithm.
+
+  Attributes:
+    count: iteration of the algorithm used to update the fast EMA and second moment.
+    count_m2: iteration of the algorithm used to update the slow EMA and alpha.
+    m1: the fast EMA.
+    m2: the slow EMA
+    nu: estimate of the second moment 
+  """
 
   count: chex.Array  # shape=(), dtype=jnp.int32.
   count_m2: chex.Array  # shape=(), dtype=jnp.int32.
@@ -87,8 +95,8 @@ def scale_by_ademamix(
     count_inc = numerics.safe_int32_increment(state.count)
     count_m2_inc = numerics.safe_int32_increment(state.count_m2)
     m1_hat = otu.tree_bias_correction(m1, b1, count_inc)
-    # NOTE:  AdEMAMix does not perform bias correction on b2 to let the momentum
-    # buffer fill itself slowly.
+    # NOTE:  AdEMAMix does not perform bias correction on b2 to let 
+    # the slow EMA momentum buffer fill itself slowly.
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jtu.tree_map(
       lambda m1_, m2_, v_: ((m1_ + c_alpha * m2_) / (jnp.sqrt(v_+eps_root)
@@ -130,13 +138,13 @@ def ademamix(
 
   The ``init`` function of this optimizer initializes an internal state
   :math:`S_0 := (m1_0, m2_0, v_0) = (0, 0, 0)`, representing initial
-  estimates for the first and second moments. In practice these values are
-  stored as pytrees containing all zeros, with the same shape as the model
-  updates.  At step :math:`t`, the ``update`` function of this optimizer takes
-  as arguments the incoming gradients :math:`g_t`, the optimizer state 
-  :math:`S_t` and the parameters :math:`\theta_t` and computes updates
-  :math:`\theta_{t+1}` and new state :math:`S_{t+1}`. Thus, for
-  :math:`t > 0`, we have,
+  estimates for the first moments of the fast and slow EMA and the second moment
+  of the fast EMA. In practice these values are stored as pytrees containing
+  all zeros, with the same shape as the model updates.  At step :math:`t`,
+  the ``update`` function of this optimizer takes as arguments the incoming
+  gradients :math:`g_t`, the optimizer state :math:`S_t` and the parameters
+  :math:`\theta_t`. It then computes updates :math:`\theta_{t+1}` and the new
+  state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
 
   .. math::
 
@@ -183,9 +191,8 @@ def ademamix(
     Objective function: 1.34E+01
 
   References:
-    "THE ADEMAMIX OPTIMIZER: BETTER, FASTER, OLDER"
-    (https://arxiv.org/pdf/2409.03137) by Matteo Pagliardini, 
-    Pierre Ablin and David Grangier.
+    Pagliardini et al, `The AdEMAMix Optimizer: Better, Faster, Older
+    <https://arxiv.org/abs/2409.03137>`_, 2024
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
