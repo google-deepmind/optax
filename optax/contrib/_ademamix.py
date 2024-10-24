@@ -37,10 +37,10 @@ class ScaleByAdemamixState(NamedTuple):
 
 
 def scale_by_ademamix(
-  b1: float,
-  b2: float,
-  b3: base.ScalarOrSchedule,
-  alpha: base.ScalarOrSchedule,
+  b1: float = 0.9,
+  b2: float = 0.999,
+  b3: base.ScalarOrSchedule = 0.9999,
+  alpha: base.ScalarOrSchedule = 6.0,
   eps: float = 1e-8,
   eps_root: float = 0.0,
   mu_dtype: Optional[chex.ArrayDType] = None,
