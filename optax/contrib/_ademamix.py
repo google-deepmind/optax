@@ -37,7 +37,8 @@ def scale_by_ademamix(
   """Rescale updates according to the Ademamix algorithm.
 
   References:
-    [Pagliardini et al, 2024](https://arxiv.org/pdf/2409.03137)
+    Pagliardini et al, `The AdEMAMix Optimizer: Better, Faster, Older
+    <https://arxiv.org/abs/2409.03137>`_, 2024
 
   Args:
     b1: Exponential decay rate to track the first moment of past gradients for
