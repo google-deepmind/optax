@@ -147,28 +147,39 @@ def ademamix(
   the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
-  :math:`S_0 := (m1_0, m2_0, v_0) = (0, 0, 0)`, representing initial
+  :math:`S_0 := (m^{(1)}_0, m^{(2)}_0, \nu_0) = (0, 0, 0)`, representing initial
   estimates for the fast and slow EMAs of the first moment along with the second 
   moment estimate. In practice, these values are stored as pytrees containing
   all zeros, with the same shape as the model updates.  At step :math:`t`,
   the ``update`` function of this optimizer takes as arguments the incoming
-  gradients :math:`g_t`, the optimizer state :math:`S_t` and the parameters
-  :math:`\theta_t`. It then computes updates :math:`\theta_{t+1}` and the new
-  state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
+  gradients :math:`g^t`, the optimizer state :math:`S^t` and the parameters
+  :math:`\theta^{(t)}`. It then computes updates :math:`\theta^{(t+1)}` and the new
+  state :math:`S^{(t+1)}`. Thus, for :math:`t > 0`, we have,
 
   .. math::
-
+  
     \begin{align*}
-      m1_t &\leftarrow \beta_1 \cdot m1_{t-1} + (1-\beta_1) \cdot g_t \\
-      m2_t &\leftarrow \beta_3 \cdot m2_{t-1} + (1-\beta_3) \cdot g_t \\
-      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
-      \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
-      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      \theta_t &\leftarrow \theta_{t-1} - \eta \cdot \left(
-      (\hat{m1}_t + \alpha m2_t) / \left({\sqrt{\hat{v}_t + \bar{\varepsilon}}
-      + \varepsilon\right) + \lambda \theta_{t-1} \right)\\
-      S_t &\leftarrow (m1_t, m2_t, v_t).
+      m_1^{(t)} &\leftarrow \beta_1 \cdot m_1^{(t-1)} + (1-\beta_1) \cdot g^{(t)} \\  
+      m_2^{(t)} &\leftarrow \beta_3 \cdot m_2^{(t-1)} + (1-\beta_3) \cdot g^{(t)} \\  
+      \nu^{(t)} &\leftarrow \beta_2 \cdot \nu^{(t-1)} + (1-\beta_2) \cdot {g^{(t)}}^2 \\
+      \hat{m_1}^{(t)} &\leftarrow m_1^{(t)} / {(1-\beta_1^{(t)})} \\
+      \hat{\nu}^{(t)} &\leftarrow \nu^{(t)} / {(1-\beta_2^{(t)})} \\
+      \theta^{(t)} &\leftarrow \theta^{(t-1)} - \eta \cdot \left( 
+      \frac{(\hat{m_1}^{(t)} + \alpha m_2^{(t)})}{\left(\sqrt{\hat{\nu}^{(t)} + \bar{\varepsilon}}
+      + \varepsilon\right)} + \lambda \theta^{(t-1)} \right).\\
+      S^{(t)} &\leftarrow (m_1^{(t)}, m_2^{(t)}, v^{(t)}).
     \end{align*}
+
+  .. note::
+
+  AdEMAMix consists in leveraging very old gradients. Therefore,
+  the method is best suited to settings where the number of iterations is
+  important. The paper reports on this effect in Appendix C.1.5, showing how
+  smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low iterations
+  scenarios. Moreover, retaining gradient information over many thousands of
+  steps can pose a problem in domains requiring fast adaptation to a sudden
+  distribution shift, or general cases in which the distribution is
+  non-stationary.
 
   Examples:
     >>> import optax
