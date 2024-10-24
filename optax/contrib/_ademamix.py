@@ -24,8 +24,8 @@ class ScaleByAdemamixState(NamedTuple):
     count: iteration of the algorithm used to update the fast EMA and 
       second moment.
     count_m2: iteration of the algorithm used to update the slow EMA and alpha.
-    m1: the fast EMA.
-    m2: the slow EMA
+    m1: fast EMA of the first moment
+    m2: slow EMA of the first moment
     nu: estimate of the second moment 
   """
 
@@ -45,31 +45,32 @@ def scale_by_ademamix(
   eps_root: float = 0.0,
   mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
-  """Rescale updates according to the Ademamix algorithm.
+  """Scale updates according to the Ademamix algorithm.
+
+  See :func:`optax.contrib.ademamix.` for a full description of the algorithm.
 
   References:
     Pagliardini et al, `The AdEMAMix Optimizer: Better, Faster, Older
     <https://arxiv.org/abs/2409.03137>`_, 2024
 
   Args:
-    b1: Exponential decay rate to track the first moment of past gradients for
-      the first Exponential Moving Average (EMA) - same as AdamW
-    b2: Exponential decay rate to track the second moment of past gradients for
-      the first Exponential Moving Average (EMA) - same as AdamW
-    b3: Exponential decay rate to track the first moment of past gradients
-      for the second EMA.
-    alpha: the coefficient that "blends" the two EMAs. paper states values in
-      :math:`[4,10]` work well in practice.
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    b1: Exponential decay rate to track the fast EMA.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    b3: Exponential decay rate to track the slow EMA.
+    alpha: Mixing coefficient in the linear combination fo the fast and 
+      slow EMAs. 
     eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: Term added to the denominator inside of the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    A `GradientTransformation` object.
-
+    The corresponding `GradientTransformation`.
   """
 
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
@@ -147,8 +148,8 @@ def ademamix(
 
   The ``init`` function of this optimizer initializes an internal state
   :math:`S_0 := (m1_0, m2_0, v_0) = (0, 0, 0)`, representing initial
-  estimates for the first moments of the fast and slow EMA and the second moment
-  of the fast EMA. In practice these values are stored as pytrees containing
+  estimates for the fast and slow EMAs of the first moment along with the second 
+  moment estimate. In practice, these values are stored as pytrees containing
   all zeros, with the same shape as the model updates.  At step :math:`t`,
   the ``update`` function of this optimizer takes as arguments the incoming
   gradients :math:`g_t`, the optimizer state :math:`S_t` and the parameters
