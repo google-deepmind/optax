@@ -37,6 +37,7 @@ from optax.tree_utils import _state_utils
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     dict(opt_name='acprop', opt_kwargs=dict(learning_rate=1e-3)),
+    dict(opt_name='ademamix', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='cocob', opt_kwargs={}),
     dict(opt_name='cocob', opt_kwargs=dict(weight_decay=1e-2)),
     dict(opt_name='dadapt_adamw', opt_kwargs=dict(learning_rate=1e-1)),

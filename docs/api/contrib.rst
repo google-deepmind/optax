@@ -8,6 +8,7 @@ Experimental features and algorithms that don't meet the
 
 .. autosummary::
     acprop
+    ademamix
     cocob
     COCOBState
     dadapt_adamw
@@ -36,6 +37,12 @@ Experimental features and algorithms that don't meet the
     ScheduleFreeState
     split_real_and_imaginary
     SplitRealAndImaginaryState
+
+AdEMAMix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: ademamix
+.. autofunction:: scale_by_ademamix
+.. autoclass:: ScaleByAdemamixState
 
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
