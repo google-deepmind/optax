@@ -164,12 +164,11 @@ def ademamix(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      \theta_t &\leftarrow \theta_{t-1} - \eta \cdot \left( 
+      \theta_t &\leftarrow \theta_{t-1} - \eta \cdot \left(
       (\hat{m1}_t + \alpha m2_t) / \left({\sqrt{\hat{v}_t + \bar{\varepsilon}}
-      + \varepsilon\right) + \lambda \theta_{t-1} \right).\\
+      + \varepsilon\right) + \lambda \theta_{t-1} \right)\\
       S_t &\leftarrow (m1_t, m2_t, v_t).
     \end{align*}
-
 
   AdEMAMix consists in leveraging very old gradients. Therefore,
   the method is best suited to settings where the number of iterations is
