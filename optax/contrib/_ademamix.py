@@ -170,12 +170,11 @@ def ademamix(
       S_t &\leftarrow (m1_t, m2_t, v_t).
     \end{align*}
 
-  .. note::
 
   AdEMAMix consists in leveraging very old gradients. Therefore,
   the method is best suited to settings where the number of iterations is
   important. The paper reports on this effect in Appendix C.1.5, showing how
-  smaller values of b3 (e.g. b3 = 0.999) can be better for low iterations
+  smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low iterations
   scenarios. Moreover, retaining gradient information over many thousands of
   steps can pose a problem in domains requiring fast adaptation to a sudden
   distribution shift, or general cases in which the distribution is
