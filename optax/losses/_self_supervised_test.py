@@ -71,18 +71,20 @@ class TripletMarginLossTest(chex.TestCase):
         [ 0.33538733, -0.66962659]])
     self.exp_1 = jnp.array(0.6877749)
     self.exp_2 = jnp.array(0.77367365)
-  
+
   @chex.all_variants
   def test_batched(self):
     """Tests"""
     np.testing.assert_allclose(
-        self.variant(_self_supervised.triplet_margin_loss)(self.a_1, self.p_1, self.n_1),
+        self.variant(_self_supervised.triplet_margin_loss)(
+          self.a_1, self.p_1, self.n_1),
         self.exp_1,
         atol=1e-4,
     )
 
     np.testing.assert_allclose(
-        self.variant(_self_supervised.triplet_margin_loss)(self.a_2, self.p_2, self.n_2),
+        self.variant(_self_supervised.triplet_margin_loss)(
+          self.a_2, self.p_2, self.n_2),
         self.exp_2,
         atol=1e-4,
     )
