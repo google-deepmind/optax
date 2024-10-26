@@ -53,5 +53,39 @@ class NtxentTest(chex.TestCase):
     )
 
 
+class TripletMarginLossTest(chex.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.a_1 = jnp.array([[ 0.8919014 ,  1.43801339],
+        [-1.00469918, -0.11962243]])
+    self.a_2 = jnp.array([[-0.43486292,  1.23246442],
+        [ 0.97871209,  0.09696856]])
+    self.p_1 = jnp.array([[-1.76960172,  0.44844366],
+        [-0.53867503, -0.18704526]])
+    self.p_2 = jnp.array([[ 0.36411669, -0.46389038],
+        [ 0.84194035,  0.15887335]])
+    self.n_1 =jnp.array( [[-1.1787581 ,  0.10253741],
+        [ 0.31388789,  0.75293212]])
+    self.n_2 = jnp.array([[ 0.02613382, -0.17087295],
+        [ 0.33538733, -0.66962659]])
+    self.exp_1 = jnp.array(0.6877749)
+    self.exp_2 = jnp.array(0.77367365)
+  
+  @chex.all_variants
+  def test_batched(self):
+    """Tests"""
+    np.testing.assert_allclose(
+        self.variant(_self_supervised.triplet_margin_loss)(self.a_1, self.p_1, self.n_1),
+        self.exp_1,
+        atol=1e-4,
+    )
+
+    np.testing.assert_allclose(
+        self.variant(_self_supervised.triplet_margin_loss)(self.a_2, self.p_2, self.n_2),
+        self.exp_2,
+        atol=1e-4,
+    )
+
 if __name__ == '__main__':
   absltest.main()
