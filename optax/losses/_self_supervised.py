@@ -88,7 +88,11 @@ def ntxent(
   return loss
 
 
-def _pairwise_distance(x: chex.Array, y: chex.Array, p: int = 2, eps: float = 1e-6) -> chex.Array:
+def _pairwise_distance(
+  x: chex.Array,
+  y: chex.Array,
+  p: int = 2,
+  eps: float = 1e-6) -> chex.Array:
   diff = x - y
   dist = jnp.sum(jnp.abs(diff) ** p + eps, axis=-1) ** (1.0 / p)
   return dist
@@ -107,8 +111,9 @@ def triplet_margin_loss(
 ) -> chex.Array:
   """Triplet margin loss function.
 
-  Measures the relative similarity between an anchor point, a positive point, and
-  a negative point using the distance metric specified by p-norm. The loss encourages
+  Measures the relative similarity between an anchor point, 
+  a positive point, and a negative point using the distance 
+  metric specified by p-norm. The loss encourages
   the distance between the anchor and positive points to be smaller than the distance
   between the anchor and negative points by at least the margin amount.
 
@@ -119,8 +124,9 @@ def triplet_margin_loss(
       margin: The margin value. Default: 1.0.
       p: The norm degree for pairwise distance. Default: 2.
       eps: Small epsilon value to avoid numerical issues. Default: 1e-6.
-      swap: Use the distance swap optimization from "Learning shallow convolutional
-          feature descriptors with triplet losses" by V. Balntas et al. Default: False.
+      swap: Use the distance swap optimization from "Learning shallow
+      convolutional feature descriptors with triplet losses" 
+      by V. Balntas et al. Default: False.
       reduction: Specifies the reduction to apply to the output:
           'none' | 'mean' | 'sum'. Default: 'mean'.
 
@@ -132,7 +138,7 @@ def triplet_margin_loss(
   chex.assert_equal_shape([anchor, positive, negative])
 
   if not(anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
-      raise ValueError("Inputs must be 2D tensors")
+    raise ValueError("Inputs must be 2D tensors")
 
   # Calculate distances between pairs
   dist_pos = _pairwise_distance(anchor, positive, p, eps)
@@ -140,18 +146,18 @@ def triplet_margin_loss(
 
   # Implement distance swap if enabled
   if swap:
-      dist_swap = _pairwise_distance(positive, negative)
-      dist_neg = jnp.minimum(dist_neg, dist_swap)
+    dist_swap = _pairwise_distance(positive, negative)
+    dist_neg = jnp.minimum(dist_neg, dist_swap)
 
   # Calculate loss with margin
   losses = jnp.maximum(margin + dist_pos - dist_neg, 0.0)
 
   # Apply reduction
   if reduction == 'none':
-      return losses
+    return losses
   elif reduction == 'mean':
-      return jnp.mean(losses)
+    return jnp.mean(losses)
   elif reduction == 'sum':
-      return jnp.sum(losses)
+    return jnp.sum(losses)
   else:
-      raise ValueError(f"Invalid reduction mode: {reduction}")
+    raise ValueError(f"Invalid reduction mode: {reduction}")
