@@ -114,8 +114,9 @@ def triplet_margin_loss(
   Measures the relative similarity between an anchor point, 
   a positive point, and a negative point using the distance 
   metric specified by p-norm. The loss encourages
-  the distance between the anchor and positive points to be smaller than the distance
-  between the anchor and negative points by at least the margin amount.
+  the distance between the anchor and positive points to be 
+  smaller than the distance between the anchor and negative 
+  points by at least the margin amount.
 
   Args:
       anchor: The anchor embeddings. Shape: [batch_size, feature_dim].
@@ -138,7 +139,7 @@ def triplet_margin_loss(
   chex.assert_equal_shape([anchor, positive, negative])
 
   if not(anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
-    raise ValueError("Inputs must be 2D tensors")
+    raise ValueError('Inputs must be 2D tensors')
 
   # Calculate distances between pairs
   dist_pos = _pairwise_distance(anchor, positive, p, eps)
@@ -160,4 +161,4 @@ def triplet_margin_loss(
   elif reduction == 'sum':
     return jnp.sum(losses)
   else:
-    raise ValueError(f"Invalid reduction mode: {reduction}")
+    raise ValueError(f'Invalid reduction mode: {reduction}')
