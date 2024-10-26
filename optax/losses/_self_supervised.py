@@ -131,7 +131,7 @@ def triplet_margin_loss(
     """
     chex.assert_equal_shape([anchor, positive, negative])
 
-    if not(anchor.ndim ==2 and positive.ndim ==2 and negative.ndim ==2):
+    if not(anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
         raise ValueError("Inputs must be 2D tensors")
     
     # Calculate distances between pairs
