@@ -88,7 +88,7 @@ def ntxent(
   return loss
 
 
-def _pairwise_distance(x: chex.Array, y: chex.Array) -> chex.Array:
+def _pairwise_distance(x: chex.Array, y: chex.Array, p: int = 2, eps: float = 1e-6) -> chex.Array:
     diff = x - y
     dist = jnp.sum(jnp.abs(diff) ** p + eps, axis=-1) ** (1.0 / p)
     return dist
@@ -135,8 +135,8 @@ def triplet_margin_loss(
         raise ValueError("Inputs must be 2D tensors")
     
     # Calculate distances between pairs
-    dist_pos = _pairwise_distance(anchor, positive)
-    dist_neg = _pairwise_distance(anchor, negative)
+    dist_pos = _pairwise_distance(anchor, positive, p, eps)
+    dist_neg = _pairwise_distance(anchor, negative, p, eps)
     
     # Implement distance swap if enabled
     if swap:
