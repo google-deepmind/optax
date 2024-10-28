@@ -356,7 +356,9 @@ class MultiSteps:
               new_inner_state,
           ),
           acc_grads=jax.tree.map(
-              lambda ga: (1 - emit) * ga, acc_grads
+              lambda ga, upd: (1 - emit) * ga.astype(upd.dtype),
+              acc_grads,
+              final_updates,
           ),
           skip_state=skip_state,
       )
@@ -367,15 +369,33 @@ class MultiSteps:
       return final_updates, new_state
 
     def _skip_update(updates, state, params):
-      del updates, params
+      # Create new skip state with correct dtype
+      zero_updates, new_inner_state = jax.eval_shape(
+          self._opt.update,
+          updates,
+          state.inner_opt_state,
+          params=params,
+          **extra_args
+      )
+      zero_updates = otu.tree_zeros_like(zero_updates)
+
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,
           gradient_step=state.gradient_step,
-          inner_opt_state=state.inner_opt_state,
-          acc_grads=state.acc_grads,
+          inner_opt_state=jax.tree.map(
+            lambda x, y: (
+              x.astype(y.dtype) if isinstance(x, jnp.ndarray) else x
+            ),
+            state.inner_opt_state, new_inner_state
+          ),
+          acc_grads=jax.tree.map(
+              lambda acc, upd: acc.astype(upd.dtype),
+              state.acc_grads,
+              zero_updates,
+          ),
           skip_state=skip_state,
       )
-      zero_updates = otu.tree_zeros_like(state.acc_grads)
+
       return zero_updates, multi_state_when_skip
 
     new_updates, new_state = lax.cond(

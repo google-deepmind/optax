@@ -293,6 +293,65 @@ class AccumulationTest(chex.TestCase):
       params = update.apply_updates(params, updates)
       np.testing.assert_array_equal(params['a'], jnp.negative(jnp.full([], 2.)))
 
+  def test_multi_steps_mixed_precision(self):
+    batch_size = 32
+    x_size = 7
+    k_steps = 4
+    data = jnp.ones([batch_size, x_size])
+    loss = Loss()
+
+    def loss_apply(params, data):
+      return loss.apply({'params': params}, data)
+
+    # Compare optimizer dtypes with and without MultiSteps
+    def create_optimizer(k_steps):
+      base_opt = combine.chain(
+          transform.scale_by_adam(),
+          transform.add_decayed_weights(1e-2),
+          transform.scale(-1e-4)
+      )
+      ms_opt = _accumulation.MultiSteps(base_opt, k_steps)
+      return base_opt, ms_opt
+
+    opt, ms_opt = create_optimizer(k_steps)
+    ms_opt_init, ms_opt_update = ms_opt.gradient_transformation()
+
+    # General train step
+    def train_step(data, opt_state, params, opt_update_fn, upd_dtype):
+      grad = jax.grad(loss_apply)(params, data)
+      grad = jax.tree.map(lambda x: x.astype(upd_dtype),
+                          grad) # mimic varying dtype
+      updates, opt_state = opt_update_fn(grad, opt_state, params)
+      return updates, opt_state
+
+    # Utility for dtype comparison
+    def compare_dtypes(tree1, tree2):
+      return jax.tree_util.tree_all(
+          jax.tree_util.tree_map(lambda x, y: x.dtype == y.dtype,
+                                  tree1, tree2)
+      )
+
+    # Iterate over parameter and update dtypes
+    dtypes = [jnp.float32, jnp.float16, jnp.bfloat16]
+    for upd_dtype in dtypes:
+      for param_dtype in dtypes:
+        with self.subTest(f'upd_dtype={upd_dtype.__name__}-'
+                          f'param_dtype={param_dtype.__name__}'):
+          # Initialize parameters with current combination of dtypes
+          params = loss.init({'params': jax.random.PRNGKey(0)},
+                              data, param_dtype=param_dtype)['params']
+          opt_state = opt.init(params)
+          ms_opt_state = ms_opt_init(params)
+
+          for _ in range(k_steps + 1):
+            updates, opt_state = train_step(
+              data, opt_state, params, opt.update, upd_dtype)
+            ms_updates, ms_opt_state = train_step(
+              data, ms_opt_state, params, ms_opt_update, upd_dtype)
+            self.assertTrue(compare_dtypes(updates, ms_updates))
+            new_params = update.apply_updates(params, ms_updates)
+            self.assertTrue(compare_dtypes(params, new_params))
+            params = new_params
 
 if __name__ == '__main__':
   absltest.main()
