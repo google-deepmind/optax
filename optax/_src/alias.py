@@ -912,7 +912,8 @@ def lion(
 
     \begin{align*}
       c_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
-      u_t &\leftarrow -\alpha_t \cdot \left( sign \left( c_t \right) + \lambda \theta_{t} \right)\\
+      u_t &\leftarrow -\alpha_t \cdot \left( sign \left( c_t \right) + 
+      \lambda \theta_{t} \right)\\
       m_t &\leftarrow \beta_2 \cdot m_{t-1} + (1-\beta_2) \cdot g_t \\
       S_t &\leftarrow (m_t).
     \end{align*}
