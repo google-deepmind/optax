@@ -29,6 +29,13 @@ from optax.transforms import _accumulation
 from optax.transforms import _constraining
 
 
+class Loss(flax.linen.Module):
+  @flax.linen.compact
+  def __call__(self, x, dtype=jnp.float32, param_dtype=jnp.float32):
+    return jnp.sum(
+        flax.linen.Dense(10, dtype=dtype, param_dtype=param_dtype
+                          )(x)**2)
+
 class AccumulationTest(chex.TestCase):
 
   @chex.all_variants
@@ -144,12 +151,6 @@ class AccumulationTest(chex.TestCase):
     # Parameters should be updated only every `k_steps` optimization steps.
     k_steps = 4
     data = jnp.ones([batch_size, x_size])
-
-    class Loss(flax.linen.Module):
-      @flax.linen.compact
-      def __call__(self, x):
-        return jnp.sum(flax.linen.Dense(10)(x)**2)
-
     loss = Loss()
 
     params = loss.init({'params': jax.random.PRNGKey(0)}, data)['params']
