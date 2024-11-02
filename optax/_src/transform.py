@@ -685,7 +685,9 @@ def scale_by_belief(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-16,
-    eps_root: float = 1e-16
+    eps_root: float = 1e-16,
+    *,
+    nesterov: bool = False,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AdaBelief algorithm.
 
@@ -699,6 +701,7 @@ def scale_by_belief(
     eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
     A `GradientTransformation` object.
@@ -717,7 +720,14 @@ def scale_by_belief(
     nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jax.tree.map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_increment(state.count)
-    mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
+    if nesterov:
+      mu_hat = jax.tree.map(
+          lambda m, g: b1 * m + (1 - b1) * g,
+          otu.tree_bias_correction(
+              mu, b1, numerics.safe_increment(count_inc)),
+          otu.tree_bias_correction(updates, b1, count_inc))
+    else:
+      mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
     nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
         lambda m, v: None if m is None else m / (jnp.sqrt(v) + eps),
