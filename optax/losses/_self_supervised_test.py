@@ -58,13 +58,14 @@ class TripletMarginLossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.a1 = jnp.ones((2, 2))
-    self.p1 = jnp.zeros((2, 2))
-    self.n1 = jnp.ones((2, 2))*2
+    self.t = jnp.random.normal((2,2))
+    self.a1 = self.t*0
+    self.p1 = self.a1+1
+    self.n1 = self.p1+1
 
-    self.a2 = jnp.zeros((2, 2))
-    self.p2 = jnp.ones((2, 2))
-    self.n2 = jnp.ones((2, 2))*2
+    self.a2 = self.t*0+1
+    self.p2 = self.a2-1
+    self.n2 = self.a2+1
 
   def testing_triplet_loss(self, a, p, n, margin=1.0, swap=False):
     ap = jnp.linalg.norm(a - p)
