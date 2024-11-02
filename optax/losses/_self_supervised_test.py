@@ -16,7 +16,7 @@
 
 from absl.testing import absltest
 import chex
-import jax
+#import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _self_supervised
