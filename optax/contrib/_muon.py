@@ -91,7 +91,12 @@ def scale_by_muon(
     else:
       mu_hat = otu.tree_bias_correction(mu, mumentum, count_inc)
     updates = jax.tree.map(
-      lambda x: x / jnp.linalg.norm(x, ord='fro'), mu_hat
+      lambda x: (
+        x / jnp.linalg.norm(x, ord='fro')
+        if len(x.shape) > 1
+        else x / jnp.linalg.norm(x, ord=2)
+      ),
+      mu_hat,
     )
     updates, _ = jax.lax.scan(muon_iterator, updates, muon_coeffs)
     mu = otu.tree_cast(mu, mu_dtype)
