@@ -16,10 +16,11 @@
 
 from absl.testing import absltest
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _self_supervised
-import jax
+
 
 class NtxentTest(chex.TestCase):
 
@@ -65,7 +66,7 @@ class TripletMarginLossTest(chex.TestCase):
     self.p2 = jnp.ones((2, 2))
     self.n2 = jnp.ones((2, 2))*2
 
-  def testing_triplet_loss(a, p, n, margin=1.0, swap=False):
+  def testing_triplet_loss(self, a, p, n, margin=1.0, swap=False):
     ap = jnp.linalg.norm(a - p)
     an = jnp.linalg.norm(a - n)
     if swap:
@@ -74,41 +75,48 @@ class TripletMarginLossTest(chex.TestCase):
     return jnp.maximum(ap - an + margin, 0)
   @chex.all_variants
   def test_batched(self):
-      handmade_result = self.variant(self.testing_triplet_loss)(
-        self.a1, self.p1, self.n1)
-      result = self.variant(_self_supervised.triplet_margin_loss)(
-        self.a1, self.p1, self.n1)
-      np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    handmade_result = self.variant(self.testing_triplet_loss)(
+    self.a1, self.p1, self.n1)
+    result = self.variant(_self_supervised.triplet_margin_loss)(
+    self.a1, self.p1, self.n1)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-      handmade_result = self.variant(self.testing_triplet_loss)(
-        self.a2, self.p2, self.n2)
-      result = self.variant(_self_supervised.triplet_margin_loss)(
-        self.a2, self.p2, self.n2)
-      np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    handmade_result = self.variant(self.testing_triplet_loss)(
+    self.a2, self.p2, self.n2)
+    result = self.variant(_self_supervised.triplet_margin_loss)(
+    self.a2, self.p2, self.n2)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-      handmade_result = self.variant(self.testing_triplet_loss)(
-        self.a1, self.p1, self.n1, swap=True)
-      result = self.variant(_self_supervised.triplet_margin_loss)(
-        self.a1, self.p1, self.n1, swap=True)
-      np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    handmade_result = self.variant(self.testing_triplet_loss)(
+    self.a1, self.p1, self.n1, swap=True)
+    result = self.variant(_self_supervised.triplet_margin_loss)(
+    self.a1, self.p1, self.n1, swap=True)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-      handmade_result = self.variant(self.testing_triplet_loss)(
-        self.a2, self.p2, self.n2, swap=True)
-      result = self.variant(_self_supervised.triplet_margin_loss)(
-        self.a2, self.p2, self.n2, swap=True)
-      np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    handmade_result = self.variant(self.testing_triplet_loss)(
+    self.a2, self.p2, self.n2, swap=True)
+    result = self.variant(_self_supervised.triplet_margin_loss)(
+    self.a2, self.p2, self.n2, swap=True)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
   @chex.all_variants
   def test_jit_vmap_compatibility(self):
     # Original function result
-    original_loss = _self_supervised.triplet_margin_loss(self.a1, self.p1, self.n1)
+    original_loss = _self_supervised.triplet_margin_loss(
+                    self.a1, self.p1, self.n1)
 
     # JIT compiled function result
-    jit_loss = self.variant(jax.jit(_self_supervised.triplet_margin_loss))(self.a1, self.p1, self.n1)
-    np.testing.assert_allclose(jit_loss, original_loss, atol=1e-4)
+    jit_loss = (self.variant(jax.jit(
+               _self_supervised.triplet_margin_loss))
+               (self.a1, self.p1, self.n1))
+    np.testing.assert_allclose(jit_loss, original_loss,
+                               atol=1e-4)
 
     # VMAP applied function result
-    vmap_loss = self.variant(jax.vmap(_self_supervised.triplet_margin_loss, in_axes=(0, 0, 0)))(self.a1, self.p1, self.n1)
+    vmap_loss = self.variant(jax.vmap(
+                _self_supervised.triplet_margin_loss,
+                in_axes=(0, 0, 0)))(self.a1, self.p1,
+                self.n1)
     np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
 
 
