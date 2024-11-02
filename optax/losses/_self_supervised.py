@@ -111,6 +111,11 @@ def triplet_margin_loss(
 ) -> chex.Array:
   """Triplet margin loss function.
 
+  References:
+    V. Balntas et al. `Learning shallow convolutional feature
+    descriptors with triplet losses 
+    <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/paper119.pdf>`_, 2016
+  
   Measures the relative similarity between an anchor point, 
   a positive point, and a negative point using the distance 
   metric specified by p-norm. The loss encourages
@@ -122,19 +127,20 @@ def triplet_margin_loss(
       anchor: The anchor embeddings. Shape: [batch_size, feature_dim].
       positive: The positive embeddings. Shape: [batch_size, feature_dim].
       negative: The negative embeddings. Shape: [batch_size, feature_dim].
-      margin: The margin value. Default: 1.0.
-      p: The norm degree for pairwise distance. Default: 2.
-      eps: Small epsilon value to avoid numerical issues. Default: 1e-6.
-      swap: Use the distance swap optimization from "Learning shallow
-      convolutional feature descriptors with triplet losses" 
-      by V. Balntas et al. Default: False.
+      margin: The margin value.
+      p: The norm degree for pairwise distance.
+      eps: Small epsilon value to avoid numerical issues.
+      swap: Use the distance swap optimization
       reduction: Specifies the reduction to apply to the output:
-          'none' | 'mean' | 'sum'. Default: 'mean'.
+          'none' | 'mean' | 'sum'
 
   Returns:
       The triplet margin loss value.
       If reduction is 'none': tensor of shape [batch_size]
       If reduction is 'mean' or 'sum': scalar tensor.
+  
+  example:
+      
   """
   chex.assert_equal_shape([anchor, positive, negative])
 
