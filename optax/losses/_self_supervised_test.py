@@ -76,25 +76,25 @@ class TripletMarginLossTest(chex.TestCase):
   @chex.all_variants
   def test_batched(self):
     handmade_result = self.variant(self.testing_triplet_loss)(
-    self.a1, self.p1, self.n1)
+    a=self.a1, p=self.p1, n=self.n1, margin=1.0, swap=False)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a1, self.p1, self.n1)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = self.variant(self.testing_triplet_loss)(
-    self.a2, self.p2, self.n2)
+    a=self.a2, p=self.p2, n=self.n2, margin=1.0, swap=False)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a2, self.p2, self.n2)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = self.variant(self.testing_triplet_loss)(
-    self.a1, self.p1, self.n1, swap=True)
+    a=self.a1, p=self.p1, n=self.n1, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a1, self.p1, self.n1, swap=True)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = self.variant(self.testing_triplet_loss)(
-    self.a2, self.p2, self.n2, swap=True)
+    a=self.a2, p=self.p2, n=self.n2, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a2, self.p2, self.n2, swap=True)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
