@@ -492,7 +492,7 @@ nadam.__doc__ = (
       \hat{m}_t &\leftarrow
       \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}\\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      u_t &\leftarrow \alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
       \bar{\varepsilon}} + \varepsilon} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
