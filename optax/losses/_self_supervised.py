@@ -145,7 +145,8 @@ def triplet_margin_loss(
         >>> positive = jnp.array([[1.1, 2.1], [3.1, 4.1]])
         >>> negative = jnp.array([[2.0, 3.0], [4.0, 5.0]])
         >>> margin = 1.0
-        >>> loss = triplet_margin_loss(anchor, positive, negative, margin=margin, reduction='mean')
+        >>> loss = triplet_margin_loss(anchor, positive, negative,
+        >>> margin=margin, reduction='mean')
         >>> print(loss)
   """
   chex.assert_equal_shape([anchor, positive, negative])
