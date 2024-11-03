@@ -66,34 +66,41 @@ class TripletMarginLossTest(chex.TestCase):
     self.p2 = jnp.ones((2, 2))
     self.n2 = jnp.ones((2, 2))*2
 
-  def testing_triplet_loss(self, a, p, n, margin=1.0, swap=False):
-    ap = jnp.linalg.norm(a - p)
-    an = jnp.linalg.norm(a - n)
-    if swap:
-      pn = jnp.linalg.norm(p - n)
-      an = min(an, pn)
-    return jnp.maximum(ap - an + margin, 0)
+  # def testing_triplet_loss(self, a, p, n, margin=1.0, swap=False):
+  #   ap = jnp.linalg.norm(a - p)
+  #   an = jnp.linalg.norm(a - n)
+  #   if swap:
+  #     pn = jnp.linalg.norm(p - n)
+  #     an = min(an, pn)
+  #   return jnp.maximum(ap - an + margin, 0)
   @chex.all_variants
   def test_batched(self):
-    handmade_result = self.variant(self.testing_triplet_loss)(
+    def testing_triplet_loss(a, p, n, margin=1.0, swap=False):
+      ap = jnp.linalg.norm(a - p)
+      an = jnp.linalg.norm(a - n)
+      if swap:
+        pn = jnp.linalg.norm(p - n)
+        an = min(an, pn)
+      return jnp.maximum(ap - an + margin, 0)
+    handmade_result = self.variant(testing_triplet_loss)(
     a=self.a1, p=self.p1, n=self.n1, margin=1.0, swap=False)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a1, self.p1, self.n1)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    handmade_result = self.variant(self.testing_triplet_loss)(
+    handmade_result = self.variant(testing_triplet_loss)(
     a=self.a2, p=self.p2, n=self.n2, margin=1.0, swap=False)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a2, self.p2, self.n2)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    handmade_result = self.variant(self.testing_triplet_loss)(
+    handmade_result = self.variant(testing_triplet_loss)(
     a=self.a1, p=self.p1, n=self.n1, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a1, self.p1, self.n1, swap=True)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    handmade_result = self.variant(self.testing_triplet_loss)(
+    handmade_result = self.variant(testing_triplet_loss)(
     a=self.a2, p=self.p2, n=self.n2, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
     self.a2, self.p2, self.n2, swap=True)
