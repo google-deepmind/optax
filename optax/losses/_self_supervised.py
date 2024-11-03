@@ -102,11 +102,11 @@ def triplet_margin_loss(
   anchor: chex.Array,
   positive: chex.Array,
   negative: chex.Array,
+  swap: bool = False,
   *,
   margin: float = 1.0,
   p: int = 2,
   eps: float = 1e-6,
-  swap: bool = False,
   reduction: str = 'mean',
 ) -> chex.Array:
   """Triplet margin loss function.
@@ -146,7 +146,10 @@ def triplet_margin_loss(
 
   if not(len(anchor.shape) == 2 and len(positive.shape) == 2
           and len(negative.shape) == 2):
-    raise ValueError('Inputs must be 2D tensors')
+    raise ValueError(
+      f"""Inputs must be 2D tensors but received
+      anchor: {anchor}, positive: {positive},
+      negative: {negative}""")
 
   # Calculate distances between pairs
   dist_pos = _pairwise_distance(anchor, positive, p, eps)
