@@ -102,10 +102,10 @@ def triplet_margin_loss(
   anchor: chex.Array,
   positive: chex.Array,
   negative: chex.Array,
-  swap: bool = False,
   *,
   margin: float = 1.0,
   p: int = 2,
+  swap: bool = False,
   eps: float = 1e-6,
   reduction: str = 'mean',
 ) -> chex.Array:
@@ -140,25 +140,30 @@ def triplet_margin_loss(
       If reduction is 'mean' or 'sum': scalar tensor.
   
   example:
-      
+        >>> import jax.numpy as jnp
+        >>> anchor = jnp.array([[1.0, 2.0], [3.0, 4.0]])
+        >>> positive = jnp.array([[1.1, 2.1], [3.1, 4.1]])
+        >>> negative = jnp.array([[2.0, 3.0], [4.0, 5.0]])
+        >>> margin = 1.0
+        >>> loss = triplet_margin_loss(anchor, positive, negative, margin=margin, reduction='mean')
+        >>> print(loss)
   """
   chex.assert_equal_shape([anchor, positive, negative])
 
-  if not(len(anchor.shape) == 2 and len(positive.shape) == 2
-          and len(negative.shape) == 2):
+  if not (anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
     raise ValueError(
-      f"""Inputs must be 2D tensors but received
-      anchor: {anchor}, positive: {positive},
-      negative: {negative}""")
+        f"""Inputs must be 2D tensors but received
+        anchor: {anchor.ndim}, positive: {positive.ndim},
+        negative: {negative.ndim}"""
+    )
 
   # Calculate distances between pairs
   dist_pos = _pairwise_distance(anchor, positive, p, eps)
   dist_neg = _pairwise_distance(anchor, negative, p, eps)
 
   # Implement distance swap if enabled
-  if swap:
-    dist_swap = _pairwise_distance(positive, negative)
-    dist_neg = jnp.minimum(dist_neg, dist_swap)
+  dist_swap = _pairwise_distance(positive, negative)
+  dist_neg = jnp.where(swap, jnp.minimum(dist_neg, dist_swap), dist_neg)
 
   # Calculate loss with margin
   losses = jnp.maximum(margin + dist_pos - dist_neg, 0.0)

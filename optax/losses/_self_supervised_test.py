@@ -16,11 +16,10 @@
 
 from absl.testing import absltest
 import chex
-#import jax
+import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _self_supervised
-
 
 class NtxentTest(chex.TestCase):
 
@@ -61,7 +60,6 @@ class TripletMarginLossTest(chex.TestCase):
     self.a1 = jnp.ones((2, 2))
     self.p1 = jnp.zeros((2, 2))
     self.n1 = jnp.ones((2, 2))*2
-
     self.a2 = jnp.zeros((2, 2))
     self.p2 = jnp.ones((2, 2))
     self.n2 = jnp.ones((2, 2))*2
@@ -90,30 +88,33 @@ class TripletMarginLossTest(chex.TestCase):
     handmade_result = testing_triplet_loss(
     a=self.a1, p=self.p1, n=self.n1, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
-    self.a1, self.p1, self.n1, swap=True)
+    anchor=self.a1, positive=self.p1, negative=self.n1, swap=True)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = testing_triplet_loss(
     a=self.a2, p=self.p2, n=self.n2, margin=1.0, swap=True)
     result = self.variant(_self_supervised.triplet_margin_loss)(
-    self.a2, self.p2, self.n2, swap=True)
+    anchor=self.a2, positive=self.p2, negative=self.n2, swap=True)
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
-    # original_loss = _self_supervised.triplet_margin_loss(
-    #                 self.a1, self.p1, self.n1)
+    original_loss = _self_supervised.triplet_margin_loss(
+                    self.a1, self.p1, self.n1)
 
-    # # JIT compiled function result
-    # jit_loss = (self.variant(jax.jit(
-    #            _self_supervised.triplet_margin_loss))
-    #            (self.a1, self.p1, self.n1))
-    # np.testing.assert_allclose(jit_loss, original_loss,
-    #                            atol=1e-4)
+    # JIT compiled function result
+    jit_loss = (self.variant(jax.jit(
+               _self_supervised.triplet_margin_loss))
+               (self.a1, self.p1, self.n1))
+    np.testing.assert_allclose(jit_loss, original_loss,
+                               atol=1e-4)
 
-    # # VMAP applied function result
-    # vmap_loss = self.variant(jax.vmap(
-    #             _self_supervised.triplet_margin_loss,
-    #             in_axes=(0, 0, 0)))(self.a1, self.p1,
-    #             self.n1)
-    # np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
+    # VMAP applied function result
+    self.a1 = self.a1.reshape(1, *self.a1.shape)
+    self.p1 = self.p1.reshape(1, *self.p1.shape) 
+    self.n1 = self.n1.reshape(1, *self.n1.shape)
+    vmap_loss = self.variant(jax.vmap(
+                _self_supervised.triplet_margin_loss
+                ))(self.a1, self.p1,
+                self.n1)
+    np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
 
 
 if __name__ == '__main__':
