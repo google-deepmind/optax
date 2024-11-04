@@ -105,7 +105,7 @@ class TripletMarginLossTest(chex.TestCase):
                (self.a1, self.p1, self.n1))
     np.testing.assert_allclose(jit_loss, original_loss,
                                atol=1e-4)
-  
+
   @chex.all_variants
   def test_vmap(self):
     # VMAP applied function result
