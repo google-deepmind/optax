@@ -128,7 +128,6 @@ def triplet_margin_loss(
       swap: Use the distance swap optimization
       reduction: Specifies the reduction to apply to the output:
           'none' | 'mean' | 'sum'
-  
   Returns:
       The triplet margin loss value.
       If reduction is 'none': tensor of shape [batch_size]
