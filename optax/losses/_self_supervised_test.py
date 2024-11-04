@@ -67,6 +67,8 @@ class TripletMarginLossTest(chex.TestCase):
   @chex.all_variants
   def test_vmap(self):
     # VMAP applied function result
+    original_loss = _self_supervised.triplet_margin_loss(
+                    self.a1, self.p1, self.n1)
     self.a1 = self.a1.reshape(1, *self.a1.shape)
     self.p1 = self.p1.reshape(1, *self.p1.shape)
     self.n1 = self.n1.reshape(1, *self.n1.shape)
