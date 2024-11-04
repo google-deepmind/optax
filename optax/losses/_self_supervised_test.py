@@ -100,9 +100,9 @@ class TripletMarginLossTest(chex.TestCase):
                     self.a1, self.p1, self.n1)
 
     # JIT compiled function result
-    jit_loss = (self.variant(jax.jit(
-               _self_supervised.triplet_margin_loss))
-               (self.a1, self.p1, self.n1))
+    jit_loss = (self.variant(
+               _self_supervised.triplet_margin_loss))(
+               self.a1, self.p1, self.n1)
     np.testing.assert_allclose(jit_loss, original_loss,
                                atol=1e-4)
 
