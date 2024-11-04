@@ -115,9 +115,8 @@ class TripletMarginLossTest(chex.TestCase):
     self.p1 = self.p1.reshape(1, *self.p1.shape)
     self.n1 = self.n1.reshape(1, *self.n1.shape)
     vmap_loss = self.variant(jax.vmap(
-                _self_supervised.triplet_margin_loss
-                ))(self.a1, self.p1,
-                self.n1)
+                _self_supervised.triplet_margin_loss))(self.a1,  
+                self.p1, self.n1)
     np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
 
 if __name__ == '__main__':
