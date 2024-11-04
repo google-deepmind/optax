@@ -36,7 +36,10 @@ def adabelief(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-16,
-    eps_root: float = 1e-16) -> base.GradientTransformation:
+    eps_root: float = 1e-16,
+    *,
+    nesterov: bool = False,
+) -> base.GradientTransformation:
   r"""The AdaBelief optimizer.
 
   AdaBelief is an adaptive learning rate optimizer that focuses on fast
@@ -74,6 +77,13 @@ def adabelief(
       S_t &\leftarrow (m_t, s_t).
     \end{align*}
 
+  With the keyword argument `nesterov=True`, the optimizer uses Nesterov
+  momentum, replacing the above :math:`\hat{m}_t` with
+
+  .. math::
+      \hat{m}_t \leftarrow
+        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+
   Examples:
     >>> import optax
     >>> import jax
@@ -107,12 +117,19 @@ def adabelief(
     eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
+    nesterov: Whether to use Nesterov momentum.
 
   Returns:
     The corresponding `GradientTransformation`.
   """
   return combine.chain(
-      transform.scale_by_belief(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
+      transform.scale_by_belief(
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          nesterov=nesterov,
+      ),
       transform.scale_by_learning_rate(learning_rate),
   )
 
