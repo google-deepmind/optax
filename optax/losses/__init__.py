@@ -42,4 +42,5 @@ from optax.losses._regression import l2_loss
 from optax.losses._regression import log_cosh
 from optax.losses._regression import squared_error
 from optax.losses._self_supervised import ntxent
+from optax.losses._self_supervised import triplet_margin_loss
 from optax.losses._smoothing import smooth_labels
