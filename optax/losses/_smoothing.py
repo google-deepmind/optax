@@ -28,15 +28,16 @@ def smooth_labels(
   Smoothed labels favor small logit gaps, and it has been shown that this can
   provide better model calibration by preventing overconfident predictions.
 
-  References:
-    [Müller et al, 2019](https://arxiv.org/pdf/1906.02629.pdf)
-
   Args:
     labels: One hot labels to be smoothed.
     alpha: The smoothing factor.
 
   Returns:
     a smoothed version of the one hot input labels.
+
+  References:
+    Muller et al, `When does label smoothing help?
+    <https://arxiv.org/abs/1906.02629>`_, 2019
   """
   chex.assert_type([labels], float)
   num_categories = labels.shape[-1]

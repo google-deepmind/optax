@@ -56,11 +56,6 @@ def ntxent(
     >>> print("loss:", loss)
     loss: 1.0986123
 
-  References:
-    T. Chen et al `A Simple Framework for Contrastive Learning of Visual
-    Representations <http://arxiv.org/abs/2002.05709>`_, 2020
-    kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
-
   Args:
     embeddings: batch of embeddings, with shape [batch, feature_length]
     labels: labels for groups that are positive pairs. e.g. if you have a batch
@@ -71,6 +66,12 @@ def ntxent(
   Returns:
     A scalar loss value of NT-Xent values averaged over all positive
     pairs
+
+  References:
+    T. Chen et al `A Simple Framework for Contrastive Learning of Visual
+    Representations <http://arxiv.org/abs/2002.05709>`_, 2020
+
+    kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
 
   .. versionadded:: 0.2.3
   """

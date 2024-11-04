@@ -20,7 +20,6 @@ from typing import Optional, Union
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax import projections
 
 
@@ -42,9 +41,6 @@ def sigmoid_binary_cross_entropy(
   your `logits` are also multiclass. Be particularly careful if you're relying
   on implicit broadcasting to reshape `logits` or `labels`.
 
-  References:
-    [Goodfellow et al, 2016](http://www.deeplearningbook.org/contents/prob.html)
-
   Args:
     logits: Each element is the unnormalized log probability of a binary
       prediction. See note about compatibility with `labels` above.
@@ -53,25 +49,28 @@ def sigmoid_binary_cross_entropy(
 
   Returns:
     cross entropy for each binary prediction, same shape as `logits`.
+
+  References:
+    Goodfellow et al, `Deep Learning
+    <http://www.deeplearningbook.org/contents/prob.html>`_, 2016
   """
   chex.assert_type([logits], float)
   labels = labels.astype(logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
-  return -labels * log_p - (1. - labels) * log_not_p
+  return -labels * log_p - (1.0 - labels) * log_not_p
 
 
 @functools.partial(
-    chex.warn_deprecated_function,
-    replacement='sigmoid_binary_cross_entropy')
+    chex.warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
+)
 def binary_logistic_loss(logits, labels):
   return sigmoid_binary_cross_entropy(logits, labels)
 
 
 def hinge_loss(
-    predictor_outputs: chex.Array,
-    targets: chex.Array
+    predictor_outputs: chex.Array, targets: chex.Array
 ) -> chex.Array:
   """Computes the hinge loss for binary classification.
 
@@ -86,13 +85,9 @@ def hinge_loss(
 
 
 def perceptron_loss(
-    predictor_outputs: chex.Numeric,
-    targets: chex.Numeric
+    predictor_outputs: chex.Numeric, targets: chex.Numeric
 ) -> chex.Numeric:
   """Binary perceptron loss.
-
-  References:
-    https://en.wikipedia.org/wiki/Perceptron
 
   Args:
     predictor_outputs: score produced by the model (float).
@@ -100,9 +95,12 @@ def perceptron_loss(
 
   Returns:
     loss value.
+
+  References:
+    `Perceptron <https://en.wikipedia.org/wiki/Perceptron>`_, Wikipedia
   """
   chex.assert_equal_shape([predictor_outputs, targets])
-  return jnp.maximum(0, - predictor_outputs * targets)
+  return jnp.maximum(0, -predictor_outputs * targets)
 
 
 def sparsemax_loss(
@@ -113,10 +111,6 @@ def sparsemax_loss(
 
   This loss is zero if and only if `jax.nn.sparse_sigmoid(logits) == labels`.
 
-  References:
-    Learning with Fenchel-Young Losses. Mathieu Blondel, André F. T. Martins,
-    Vlad Niculae. JMLR 2020. (Sec. 4.4)
-
   Args:
     logits: score produced by the model (float).
     labels: ground-truth integer label (0 or 1).
@@ -124,14 +118,16 @@ def sparsemax_loss(
   Returns:
     loss value
 
+  References:
+    Learning with Fenchel-Young Losses. Mathieu Blondel, André F. T. Martins,
+    Vlad Niculae. JMLR 2020. (Sec. 4.4)
+
   .. versionadded:: 0.2.3
   """
   return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
 
 
-@functools.partial(
-    chex.warn_deprecated_function,
-    replacement='sparsemax_loss')
+@functools.partial(chex.warn_deprecated_function, replacement='sparsemax_loss')
 def binary_sparsemax_loss(logits, labels):
   return sparsemax_loss(logits, labels)
 
@@ -194,9 +190,9 @@ def safe_softmax_cross_entropy(
 
   Args:
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
-    labels: Valid probability distributions (non-negative, sum to 1), e.g a
-      one hot encoding specifying the correct class for each input;
-      must have a shape broadcastable to `[..., num_classes]`.
+    labels: Valid probability distributions (non-negative, sum to 1), e.g a one
+      hot encoding specifying the correct class for each input; must have a
+      shape broadcastable to `[..., num_classes]`.
 
   Returns:
     cross entropy between each prediction and the corresponding target
@@ -230,6 +226,18 @@ def softmax_cross_entropy(
     - \sum_j y_{i j} \log\left(\frac{\exp(x_{i j})}{\sum_k
     \exp(x_{i k})}\right) \,.
 
+  Args:
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
+    labels: One-hot encoded labels, with shape `[batch_size, num_classes]`. Each
+      row represents the true class distribution for a single example.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
+
+  Returns:
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
+
   Examples:
     >>> import optax
     >>> import jax.numpy as jnp
@@ -245,18 +253,6 @@ def softmax_cross_entropy(
 
     `Multinomial Logistic Regression
     <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
-
-  Args:
-    logits: Unnormalized log probabilities, with shape ``[batch_size,
-      num_classes]``.
-    labels: One-hot encoded labels, with shape `[batch_size, num_classes]`. Each
-      row represents the true class distribution for a single example.
-    axis: Axis or axes along which to compute.
-    where: Elements to include in the computation.
-
-  Returns:
-    Cross-entropy between each prediction and the corresponding target
-    distributions, with shape ``[batch_size]``.
 
   .. seealso::
     This function is similar to
@@ -295,6 +291,19 @@ def softmax_cross_entropy_with_integer_labels(
     \log\left(\frac{\exp(x_{i y_i})}{\sum_j
     \exp(x_{i j})}\right)\,.
 
+  Args:
+    logits: Unnormalized log probabilities, with shape ``[batch_size,
+      num_classes]``.
+    labels: Integers specifying the correct class for each input, with shape
+      ``[batch_size]``. Class labels are assumed to be between 0 and
+      ``num_classes - 1`` inclusive.
+    axis: Axis or axes along which to compute.
+    where: Elements to include in the computation.
+
+  Returns:
+    Cross-entropy between each prediction and the corresponding target
+    distributions, with shape ``[batch_size]``.
+
   Examples:
     >>> import optax
     >>> import jax.numpy as jnp
@@ -310,19 +319,6 @@ def softmax_cross_entropy_with_integer_labels(
 
     `Multinomial Logistic Regression
     <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
-
-  Args:
-    logits: Unnormalized log probabilities, with shape ``[batch_size,
-      num_classes]``.
-    labels: Integers specifying the correct class for each input, with shape
-      ``[batch_size]``. Class labels are assumed to be between 0 and
-      ``num_classes - 1`` inclusive.
-    axis: Axis or axes along which to compute.
-    where: Elements to include in the computation.
-
-  Returns:
-    Cross-entropy between each prediction and the corresponding target
-    distributions, with shape ``[batch_size]``.
 
   .. seealso:: This function is similar to
     :func:`optax.losses.softmax_cross_entropy`, but accepts integer labels
@@ -349,7 +345,8 @@ def softmax_cross_entropy_with_integer_labels(
 
 @functools.partial(
     chex.warn_deprecated_function,
-    replacement='softmax_cross_entropy_with_integer_labels')
+    replacement='softmax_cross_entropy_with_integer_labels',
+)
 def multiclass_logistic_loss(logits, labels):
   return softmax_cross_entropy_with_integer_labels(logits, labels)
 
@@ -363,9 +360,6 @@ def multiclass_hinge_loss(
 ) -> chex.Array:
   """Multiclass hinge loss.
 
-  References:
-    https://en.wikipedia.org/wiki/Hinge_loss
-
   Args:
     scores: scores produced by the model (floats).
     labels: ground-truth integer labels.
@@ -373,11 +367,15 @@ def multiclass_hinge_loss(
   Returns:
     loss values
 
+  References:
+    `Hinge loss <https://en.wikipedia.org/wiki/Hinge_loss>`_, Wikipedia
+
   .. versionadded:: 0.2.3
   """
   one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
-  return (jnp.max(scores + 1.0 - one_hot_labels, axis=-1) -
-          _dot_last_dim(scores, one_hot_labels))
+  return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - _dot_last_dim(
+      scores, one_hot_labels
+  )
 
 
 def multiclass_perceptron_loss(
@@ -386,16 +384,16 @@ def multiclass_perceptron_loss(
 ) -> chex.Array:
   """Multiclass perceptron loss.
 
-  References:
-    Michael Collins. Discriminative training methods for Hidden Markov Models:
-    Theory and experiments with perceptron algorithms. EMNLP 2002
-
   Args:
     scores: scores produced by the model.
     labels: ground-truth integer labels.
 
   Returns:
     loss values.
+
+  References:
+    Michael Collins. Discriminative training methods for Hidden Markov Models:
+    Theory and experiments with perceptron algorithms. EMNLP 2002
 
   .. versionadded:: 0.2.2
   """
@@ -416,7 +414,7 @@ def poly_loss_cross_entropy(
   The PolyLoss is a loss function that decomposes commonly
   used classification loss functions into a series of weighted
   polynomial bases. It is inspired by the Taylor expansion of
-  cross-entropy loss and focal loss in the bases of :math:`(1 − P_t)^j`.
+  cross-entropy loss and focal loss in the bases of :math:`(1 - P_t)^j`.
 
   .. math::
     L_{Poly} = \sum_1^\infty \alpha_j \cdot (1 - P_t)^j \\
@@ -427,9 +425,6 @@ def poly_loss_cross_entropy(
 
   This function provides a simplified version of :math:`L_{Poly-N}`
   with only the coefficient of the first polynomial term being changed.
-
-  References:
-    [Zhaoqi Leng et al, 2022](https://arxiv.org/pdf/2204.12511.pdf)
 
   Args:
     logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
@@ -448,6 +443,10 @@ def poly_loss_cross_entropy(
   Returns:
     Poly loss between each prediction and the corresponding target
     distributions, with shape `[...]`.
+
+  References:
+    Leng et al, `PolyLoss: A Polynomial Expansion Perspective of Classification
+    Loss Functions <https://arxiv.org/pdf/2204.12511.pdf>`_, 2022
 
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
@@ -472,9 +471,6 @@ def kl_divergence(
   Measures the information gain achieved if target probability distribution
   would be used instead of predicted probability distribution.
 
-  References:
-    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
-
   Args:
     log_predictions: Probabilities of predicted distribution with shape [...,
       dim]. Expected to be in the log-space to avoid underflow.
@@ -486,6 +482,10 @@ def kl_divergence(
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  References:
+    Kullback and Leibler, `On Information and Sufficiency
+    <https://www.jstor.org/stable/2236703>`_, 1951
 
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
@@ -508,8 +508,8 @@ def kl_divergence_with_log_targets(
   Version of kl_div_loss where targets are given in log-space.
 
   Args:
-    log_predictions: Probabilities of predicted distribution with shape
-      [..., dim]. Expected to be in the log-space to avoid underflow.
+    log_predictions: Probabilities of predicted distribution with shape [...,
+      dim]. Expected to be in the log-space to avoid underflow.
     log_targets: Probabilities of target distribution with shape [..., dim].
       Expected to be in the log-space.
     axis: Axis or axes along which to compute.
@@ -539,9 +539,6 @@ def convex_kl_divergence(
   would be used instead of predicted probability distribution.
   This version is jointly convex in p (targets) and q (log_predictions).
 
-  References:
-    [Kullback, Leibler, 1951](https://www.jstor.org/stable/2236703)
-
   Args:
     log_predictions: Probabilities of predicted distribution with shape [...,
       dim]. Expected to be in the log-space to avoid underflow.
@@ -553,6 +550,10 @@ def convex_kl_divergence(
   Returns:
     Kullback-Leibler divergence of predicted distribution from target
     distribution with shape [...].
+
+  References:
+    Kullback and Leibler, `On Information and Sufficiency
+    <https://www.jstor.org/stable/2236703>`_, 1951
 
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
@@ -569,7 +570,7 @@ def ctc_loss_with_forward_probs(
     labels: chex.Array,
     label_paddings: chex.Array,
     blank_id: int = 0,
-    log_epsilon: float = -1e5
+    log_epsilon: float = -1e5,
 ) -> tuple[chex.Array, chex.Array, chex.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
@@ -590,9 +591,6 @@ def ctc_loss_with_forward_probs(
   Here, :math:`\pi` denotes the alignment sequence in the reference
   [Graves et al, 2006] that is blank-inserted representations of ``labels``.
   The return values are the logarithms of the above probabilities.
-
-  References:
-    [Graves et al, 2006](https://dl.acm.org/doi/abs/10.1145/1143844.1143891)
 
   Args:
     logits: (B, T, K)-array containing logits of each class where B denotes
@@ -620,6 +618,11 @@ def ctc_loss_with_forward_probs(
     (T, B, N+1)-arrays where the (t, b, n)-th element denotes
     \log \alpha_B(t, n) and \log \alpha_L(t, n), respectively, for ``b``-th
     sequence in the batch.
+
+  References:
+    Graves et al, `Connectionist temporal classification: labelling unsegmented
+    sequence data with recurrent neural networks
+    <https://dl.acm.org/doi/abs/10.1145/1143844.1143891>`_, 2006
   """
 
   chex.assert_rank(logits, 3)
@@ -637,22 +640,24 @@ def ctc_loss_with_forward_probs(
   repeat = (labels[:, :-1] == labels[:, 1:]).astype(jnp.float32)
   repeat = jnp.pad(repeat, ((0, 0), (0, 1)))
 
-  logprobs_phi = logprobs[:, :, blank_id:blank_id + 1]  # [B, T, 1]
+  logprobs_phi = logprobs[:, :, blank_id : blank_id + 1]  # [B, T, 1]
   logprobs_phi = jnp.transpose(logprobs_phi, (1, 0, 2))  # [T, B, 1]
 
   one_hot = jax.nn.one_hot(labels, num_classes=num_classes)  # [B, N, K]
   logprobs_emit = jnp.einsum('btk,bnk->btn', logprobs, one_hot)
   logprobs_emit = jnp.transpose(logprobs_emit, (1, 0, 2))  # [T, B, N]
 
-  logalpha_phi_init = jnp.ones(
-      (batchsize, maxlabellen + 1)) * log_epsilon  # [B, N]
+  logalpha_phi_init = (
+      jnp.ones((batchsize, maxlabellen + 1)) * log_epsilon
+  )  # [B, N]
   logalpha_phi_init = logalpha_phi_init.at[:, 0].set(0.0)
   logalpha_emit_init = jnp.ones((batchsize, maxlabellen)) * log_epsilon
 
   def update_phi_score(phi, added_score):
     # Update `phi[:, 1:]`` with adding `added_score` in log space.
     return jnp.concatenate(
-        [phi[:, :1], jnp.logaddexp(phi[:, 1:], added_score)], axis=-1)
+        [phi[:, :1], jnp.logaddexp(phi[:, 1:], added_score)], axis=-1
+    )
 
   def loop_body(prev, x):
     prev_phi, prev_emit = prev
@@ -663,13 +668,15 @@ def ctc_loss_with_forward_probs(
     logprob_emit, logprob_phi, pad = x
 
     # phi-to-emit transition
-    next_emit = jnp.logaddexp(prev_phi[:, :-1] + logprob_emit,
-                              prev_emit + logprob_emit)
+    next_emit = jnp.logaddexp(
+        prev_phi[:, :-1] + logprob_emit, prev_emit + logprob_emit
+    )
     # self-loop transition
     next_phi = prev_phi + logprob_phi
     # emit-to-phi blank transition only when the next label is repetition
     next_phi = update_phi_score(
-        next_phi, prev_emit + logprob_phi + log_epsilon * (1.0 - repeat))
+        next_phi, prev_emit + logprob_phi + log_epsilon * (1.0 - repeat)
+    )
 
     pad = pad.reshape((batchsize, 1))
     next_emit = pad * prev_emit + (1.0 - pad) * next_emit
@@ -678,9 +685,9 @@ def ctc_loss_with_forward_probs(
     return (next_phi, next_emit), (next_phi, next_emit)
 
   xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))
-  _, (logalpha_phi,
-      logalpha_emit) = jax.lax.scan(loop_body,
-                                    (logalpha_phi_init, logalpha_emit_init), xs)
+  _, (logalpha_phi, logalpha_emit) = jax.lax.scan(
+      loop_body, (logalpha_phi_init, logalpha_emit_init), xs
+  )
 
   # last row needs to be updated with the last epsilon transition
   logalpha_phi_last = update_phi_score(logalpha_phi[-1], logalpha_emit[-1])
@@ -700,21 +707,21 @@ def ctc_loss(
     labels: chex.Array,
     label_paddings: chex.Array,
     blank_id: int = 0,
-    log_epsilon: float = -1e5
+    log_epsilon: float = -1e5,
 ) -> chex.Array:
   """Computes CTC loss.
 
   See docstring for ``ctc_loss_with_forward_probs`` for details.
 
   Args:
-    logits: (B, T, K)-array containing logits of each class where B denotes
-      the batch size, T denotes the max time frames in ``logits``, and K
-      denotes the number of classes including a class for blanks.
+    logits: (B, T, K)-array containing logits of each class where B denotes the
+      batch size, T denotes the max time frames in ``logits``, and K denotes the
+      number of classes including a class for blanks.
     logit_paddings: (B, T)-array. Padding indicators for ``logits``. Each
       element must be either 1.0 or 0.0, and ``logitpaddings[b, t] == 1.0``
       denotes that ``logits[b, t, :]`` are padded values.
-    labels: (B, N)-array containing reference integer labels where N denotes
-      the max time frames in the label sequence.
+    labels: (B, N)-array containing reference integer labels where N denotes the
+      max time frames in the label sequence.
     label_paddings: (B, N)-array. Padding indicators for ``labels``. Each
       element must be either 1.0 or 0.0, and ``labelpaddings[b, n] == 1.0``
       denotes that ``labels[b, n]`` is a padded label. In the current
@@ -729,8 +736,13 @@ def ctc_loss(
     (B,)-array containing loss values for each sequence in the batch.
   """
   per_seq_loss, _, _ = ctc_loss_with_forward_probs(
-      logits, logit_paddings, labels, label_paddings,
-      blank_id=blank_id, log_epsilon=log_epsilon)
+      logits,
+      logit_paddings,
+      labels,
+      label_paddings,
+      blank_id=blank_id,
+      log_epsilon=log_epsilon,
+  )
   return per_seq_loss
 
 
@@ -739,32 +751,32 @@ def sigmoid_focal_loss(
     logits: chex.Array,
     labels: chex.Array,
     alpha: Optional[float] = None,
-    gamma: float = 2.,
-) ->  chex.Array:
+    gamma: float = 2.0,
+) -> chex.Array:
   """Sigmoid focal loss.
 
   The focal loss is a re-weighted cross entropy for unbalanced problems.
   Use this loss function if classes are not mutually exclusive.
   See `sigmoid_binary_cross_entropy` for more information.
 
-  References:
-    Lin et al. 2018. https://arxiv.org/pdf/1708.02002.pdf
-
   Args:
-    logits: Array of floats. The predictions for each example.
-      The predictions for each example.
-    labels: Array of floats. Labels and logits must have
-      the same shape. The label array must contain the binary
-      classification labels for each element in the data set
-      (0 for the out-of-class and 1 for in-class).
-    alpha: (optional) Weighting factor in range (0,1) to balance
-      positive vs negative examples. Default None (no weighting).
-    gamma: Exponent of the modulating factor (1 - p_t).
-      Balances easy vs hard examples.
+    logits: Array of floats. The predictions for each example. The predictions
+      for each example.
+    labels: Array of floats. Labels and logits must have the same shape. The
+      label array must contain the binary classification labels for each element
+      in the data set (0 for the out-of-class and 1 for in-class).
+    alpha: (optional) Weighting factor in range (0,1) to balance positive vs
+      negative examples. Default None (no weighting).
+    gamma: Exponent of the modulating factor (1 - p_t). Balances easy vs hard
+      examples.
 
   Returns:
     A loss value array with a shape identical to the logits and target
     arrays.
+
+  References:
+    Lin et al. `Focal Loss for Dense Object Detection
+    <https://arxiv.org/abs/1708.02002>`_, 2017
   """
   alpha = -1 if alpha is None else alpha
 
@@ -777,15 +789,12 @@ def sigmoid_focal_loss(
   p_t = p * labels + (1 - p) * (1 - labels)
   loss = ce_loss * ((1 - p_t) ** gamma)
 
-  weighted = lambda loss_arg: (alpha * labels
-                               + (1 - alpha) * (1 - labels)
-                              )*loss_arg
+  weighted = (
+      lambda loss_arg: (alpha * labels + (1 - alpha) * (1 - labels)) * loss_arg
+  )
   not_weighted = lambda loss_arg: loss_arg
 
-  loss = jax.lax.cond(alpha >= 0,
-                      weighted,
-                      not_weighted,
-                      loss)
+  loss = jax.lax.cond(alpha >= 0, weighted, not_weighted, loss)
 
   return loss
 
@@ -798,8 +807,9 @@ def _multiclass_sparsemax_loss(
   # Fenchel conjugate of the Gini negentropy, defined by:
   # cumulant = jnp.dot(proba, scores) + 0.5 * jnp.dot(proba, (1 - proba)).
   scores = (scores - scores[label]).at[label].set(0.0)
-  return (jnp.dot(proba, jnp.where(proba, scores, 0.0))
-          + 0.5 * (1.0 - jnp.dot(proba, proba)))
+  return jnp.dot(proba, jnp.where(proba, scores, 0.0)) + 0.5 * (
+      1.0 - jnp.dot(proba, proba)
+  )
 
 
 def multiclass_sparsemax_loss(
@@ -816,8 +826,7 @@ def multiclass_sparsemax_loss(
     loss values
 
   References:
-    From Softmax to Sparsemax: A Sparse Model of Attention and Multi-Label
-    Classification. André F. T. Martins, Ramón Fernandez Astudillo.
-    ICML 2016.
+    Martins et al, `From Softmax to Sparsemax: A Sparse Model of Attention and
+    Multi-Label Classification <https://arxiv.org/abs/1602.02068>`, 2016.
   """
   return jax.vmap(_multiclass_sparsemax_loss)(scores, labels)

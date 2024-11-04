@@ -122,7 +122,41 @@ def sam(
   Would implement the simple drop-in SAM version from the paper which uses
   an inner adversarial optimizer of a normalized sgd for one step.
 
-  NOTE:
+  Args:
+    optimizer: the outer optimizer.
+    adv_optimizer: the inner adversarial optimizer.
+    sync_period: how often to run the outer optimizer, defaults to 2, or every
+      other step.
+    reset_state: whether to reset the state of the inner optimizer after every
+      sync period, defaults to ``True``.
+    opaque_mode: bool. If ``True``, the outer optimizer and the adversarial
+      optimizer are run in an internal loop at each call to ``update``, so that
+      adversarial updates are opaque to the rest of the system. If ``False``,
+      one optimizer is (effectively) evaluated per call to ``update``, meaning
+      that adversarial updates are visible to the rest of the system. Setting
+      ``opaque_mode`` to ``True`` is necessary if the training system using SAM
+      has side effects from each call to ``update`` besides the changes to the
+      model's parameters. The most common example would be if the model uses
+      BatchNorm statistics -- those statistics would be updated on both
+      adversarial and non-adversarial update steps, causing them to get out of
+      sync with the model's parameters (which are effectively only updated on
+      non-adversarial steps). See the NOTE section for more details on
+      ``opaque_mode=True``.
+    batch_axis_name: str or None. Only used if ``opaque_mode=True``. When
+      running in a pmapped setting, it is necessary to take a ``jax.lax.pmean``
+      of the adversarial updates internally before passing them to the outer
+      optimizer. You only need to specify this if you have to use
+      ``jax.lax.pmean`` in your training loop.
+
+  Returns:
+    The corresponding :class:`optax.GradientTransformationExtraArgs`
+    implementation of SAM.
+
+  References:
+    Foret et al., `Sharpness-Aware Minimization for Efficiently Improving
+    Generalization <https://arxiv.org/abs/2010.01412>`_, 2021
+
+  .. note::
     When ``opaque_mode=True``, the ``update`` function must be called with a
     gradient function that takes two arguments (the params and the current
     adversarial step) and returns the gradients of the loss. This looks like
@@ -143,40 +177,6 @@ def sam(
     at each adversarial step::
 
       grad_fn = jax.grad(lambda params, i: loss(params, batches[i]))
-
-  References:
-    Foret et al., `Sharpness-Aware Minimization for Efficiently Improving
-    Generalization <https://arxiv.org/abs/2010.01412>`_, 2021
-
-  Args:
-    optimizer: the outer optimizer.
-    adv_optimizer: the inner adversarial optimizer.
-    sync_period: how often to run the outer optimizer, defaults to 2, or
-      every other step.
-    reset_state: whether to reset the state of the inner optimizer after
-      every sync period, defaults to ``True``.
-    opaque_mode: bool. If ``True``, the outer optimizer and the adversarial
-      optimizer are run in an internal loop at each call to ``update``, so that
-      adversarial updates are opaque to the rest of the system. If ``False``,
-      one optimizer is (effectively) evaluated per call to ``update``, meaning
-      that adversarial updates are visible to the rest of the system. 
-      Setting ``opaque_mode`` to ``True`` is necessary if the training system
-      using SAM has side effects from each call to ``update`` besides the
-      changes to the model's parameters. 
-      The most common example would be if the model uses BatchNorm
-      statistics -- those statistics would be updated on both adversarial and
-      non-adversarial update steps, causing them to get out of sync with the
-      model's parameters (which are effectively only updated on non-adversarial
-      steps). See the NOTE section for more details on ``opaque_mode=True``.
-    batch_axis_name: str or None. Only used if ``opaque_mode=True``. 
-      When running in a pmapped setting, it is necessary to take a 
-      ``jax.lax.pmean`` of the
-      adversarial updates internally before passing them to the outer optimizer.
-      You only need to specify this if you have to use ``jax.lax.pmean`` in your
-      training loop.
-
-  Returns:
-    sam_optimizer: a GradientTransformationExtraArgs implementation of SAM.
   """
 
   if sync_period < 1:
@@ -192,14 +192,15 @@ def sam(
 
   def pick_one(cond, if_true, if_false):
     return jax.tree.map(
-        lambda if_t, if_f: cond * if_t + (1 - cond) * if_f,
-        if_true,
-        if_false
+        lambda if_t, if_f: cond * if_t + (1 - cond) * if_f, if_true, if_false
     )
 
   def transparent_update_fn(
-      updates: base.Updates, state: SAMState, params: Optional[base.Params],
-      *, grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
+      updates: base.Updates,
+      state: SAMState,
+      params: Optional[base.Params],
+      *,
+      grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
   ) -> tuple[base.Updates, SAMState]:
     del grad_fn
     first_step = state.steps_since_sync == 0
@@ -214,7 +215,8 @@ def sam(
         updates, state.opt_state, state.cache
     )
     opt_updates = jax.tree.map(
-        lambda c, p, u: c - p + u, state.cache, params, opt_updates)
+        lambda c, p, u: c - p + u, state.cache, params, opt_updates
+    )
 
     cache = pick_one(first_step, params, state.cache)
     updates = pick_one(last_step, opt_updates, adv_updates)
@@ -230,12 +232,17 @@ def sam(
     steps_since_sync = (state.steps_since_sync + 1) % sync_period
     return updates, SAMState(
         steps_since_sync=steps_since_sync,
-        adv_state=adv_state, opt_state=opt_state, cache=cache,
+        adv_state=adv_state,
+        opt_state=opt_state,
+        cache=cache,
     )
 
   def opaque_update_fn(
-      updates: base.Updates, state: SAMState, params: Optional[base.Params],
-      *, grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
+      updates: base.Updates,
+      state: SAMState,
+      params: Optional[base.Params],
+      *,
+      grad_fn: Optional[Callable[[base.Params, int], base.Updates]] = None,
   ) -> tuple[base.Updates, SAMState]:
     if grad_fn is None:
       raise ValueError("grad_fn must be provided when opaque_mode=True.")
@@ -246,7 +253,8 @@ def sam(
     adv_state = state.adv_state
     for i in range(sync_period - 1):
       adv_updates, adv_state = adv_optimizer.update(
-          adv_updates, adv_state, adv_params)
+          adv_updates, adv_state, adv_params
+      )
       adv_updates = jax.tree.map(lambda x: -x, adv_updates)
 
       adv_params = update.apply_updates(adv_params, adv_updates)
@@ -263,7 +271,9 @@ def sam(
 
     return updates, SAMState(
         steps_since_sync=jnp.zeros(shape=(), dtype=jnp.int32),
-        adv_state=adv_state, opt_state=opt_state, cache=None,
+        adv_state=adv_state,
+        opt_state=opt_state,
+        cache=None,
     )
 
   if opaque_mode:

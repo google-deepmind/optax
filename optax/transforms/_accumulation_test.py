@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.transforms._accumulation."""
+"""Tests for methods in `optax.transforms._accumulation.py`."""
 
 from absl.testing import absltest
 import chex
@@ -20,7 +20,6 @@ import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import alias
 from optax._src import combine
 from optax._src import transform
@@ -42,12 +41,12 @@ class AccumulationTest(chex.TestCase):
 
     transform_fn = self.variant(ema.update)
     mean, state = transform_fn(values[0], state)
-    np.testing.assert_allclose(mean, (1-d) * values[0], atol=1e-4)
+    np.testing.assert_allclose(mean, (1 - d) * values[0], atol=1e-4)
 
     mean, _ = transform_fn(values[1], state)
     np.testing.assert_allclose(
-        mean,
-        (1 - d) * (values[1] + d * values[0]), atol=1e-2)
+        mean, (1 - d) * (values[1] + d * values[0]), atol=1e-2
+    )
 
   @chex.all_variants
   def test_ema_debias(self):
@@ -66,40 +65,44 @@ class AccumulationTest(chex.TestCase):
     np.testing.assert_allclose(
         mean,
         ((1 - d) * values[1] + d * (1 - d) * values[0]) / (1 - d**2),
-        atol=1e-2)
+        atol=1e-2,
+    )
     # The state must not be debiased.
     np.testing.assert_allclose(
-        state.ema,
-        (1 - d) * values[1] + d * (1 - d) * values[0],
-        atol=1e-2)
+        state.ema, (1 - d) * values[1] + d * (1 - d) * values[0], atol=1e-2
+    )
 
   def test_skip_not_finite(self):
     step = jnp.zeros([], dtype=jnp.int32)
 
     with self.subTest('test_pos_inf'):
       should_skip, skip_state = _accumulation.skip_not_finite(
-          [jnp.array(float('inf')), jnp.zeros([])], step, None)
+          [jnp.array(float('inf')), jnp.zeros([])], step, None
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
       self.assertEqual(int(skip_state['num_not_finite']), 1)
 
     with self.subTest('test_neg_inf'):
       should_skip, skip_state = _accumulation.skip_not_finite(
-          [jnp.array(-float('inf')), jnp.zeros([])], step, None)
+          [jnp.array(-float('inf')), jnp.zeros([])], step, None
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
       self.assertEqual(int(skip_state['num_not_finite']), 1)
 
     with self.subTest('test_nan'):
       should_skip, skip_state = _accumulation.skip_not_finite(
-          [jnp.array(float('nan')), jnp.zeros([])], step, None)
+          [jnp.array(float('nan')), jnp.zeros([])], step, None
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
       self.assertEqual(int(skip_state['num_not_finite']), 1)
 
     with self.subTest('test_finite'):
       should_skip, skip_state = _accumulation.skip_not_finite(
-          [jnp.array(11.), jnp.zeros([])], step, None)
+          [jnp.array(11.0), jnp.zeros([])], step, None
+      )
       self.assertFalse(bool(should_skip))
       self.assertFalse(bool(skip_state['should_skip']))
       self.assertEqual(int(skip_state['num_not_finite']), 0)
@@ -109,14 +112,16 @@ class AccumulationTest(chex.TestCase):
 
     with self.subTest('test_inf'):
       should_skip, skip_state = _accumulation.skip_large_updates(
-          [jnp.array(float('inf')), jnp.zeros([])], step, None, 100.)
+          [jnp.array(float('inf')), jnp.zeros([])], step, None, 100.0
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
       self.assertEqual(float(skip_state['norm_squared']), float('inf'))
 
     with self.subTest('test_nan'):
       should_skip, skip_state = _accumulation.skip_large_updates(
-          [jnp.array(float('nan')), jnp.zeros([])], step, None, 100.)
+          [jnp.array(float('nan')), jnp.zeros([])], step, None, 100.0
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
       # Recall that NaN != NaN.
@@ -125,17 +130,19 @@ class AccumulationTest(chex.TestCase):
 
     with self.subTest('test_large'):
       should_skip, skip_state = _accumulation.skip_large_updates(
-          [jnp.array(11.), jnp.zeros([])], step, None, 100.)
+          [jnp.array(11.0), jnp.zeros([])], step, None, 100.0
+      )
       self.assertTrue(bool(should_skip))
       self.assertTrue(bool(skip_state['should_skip']))
-      self.assertEqual(float(skip_state['norm_squared']), 121.)
+      self.assertEqual(float(skip_state['norm_squared']), 121.0)
 
     with self.subTest('test_small'):
       should_skip, skip_state = _accumulation.skip_large_updates(
-          [jnp.zeros([]), jnp.zeros([])], step, None, 100.)
+          [jnp.zeros([]), jnp.zeros([])], step, None, 100.0
+      )
       self.assertFalse(bool(should_skip))
       self.assertFalse(bool(skip_state['should_skip']))
-      self.assertEqual(float(skip_state['norm_squared']), 0.)
+      self.assertEqual(float(skip_state['norm_squared']), 0.0)
 
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
   def test_multi_steps(self):
@@ -146,9 +153,10 @@ class AccumulationTest(chex.TestCase):
     data = jnp.ones([batch_size, x_size])
 
     class Loss(flax.linen.Module):
+
       @flax.linen.compact
       def __call__(self, x):
-        return jnp.sum(flax.linen.Dense(10)(x)**2)
+        return jnp.sum(flax.linen.Dense(10)(x) ** 2)
 
     loss = Loss()
 
@@ -161,9 +169,13 @@ class AccumulationTest(chex.TestCase):
         # Use a non-trivial inner optimizer:
         # * it has a state,
         # * it requires the params for the update.
-        combine.chain(transform.scale_by_adam(),
-                      transform.add_decayed_weights(1e-2),
-                      transform.scale(-1e-4)), k_steps)
+        combine.chain(
+            transform.scale_by_adam(),
+            transform.add_decayed_weights(1e-2),
+            transform.scale(-1e-4),
+        ),
+        k_steps,
+    )
 
     opt_init, opt_update = ms_opt.gradient_transformation()
 
@@ -184,8 +196,7 @@ class AccumulationTest(chex.TestCase):
       if idx % k_steps < k_steps - 1:
         # The parameters should not have changed and the loss should be
         # constant.
-        jax.tree.map(
-            np.testing.assert_array_equal, new_params, params)
+        jax.tree.map(np.testing.assert_array_equal, new_params, params)
         np.testing.assert_equal(new_loss, prev_loss)
         self.assertFalse(ms_opt.has_updated(opt_state))
       else:
@@ -199,7 +210,8 @@ class AccumulationTest(chex.TestCase):
   def test_multi_steps_every_k_schedule(self):
     # Test a non-trivial schedule which varies over time.
     ms_opt = _accumulation.MultiSteps(
-        alias.sgd(1e-4), lambda grad_step: jnp.where(grad_step < 2, 1, 3))
+        alias.sgd(1e-4), lambda grad_step: jnp.where(grad_step < 2, 1, 3)
+    )
     opt_init, opt_update = ms_opt.gradient_transformation()
     params = dict(a=jnp.zeros([]))
     opt_state = opt_init(params)
@@ -222,7 +234,7 @@ class AccumulationTest(chex.TestCase):
     # https://github.com/google-deepmind/optax/issues/828
     ms_opt = _accumulation.MultiSteps(
         combine.chain(_constraining.zero_nans(), alias.sgd(1e-4)),
-        every_k_schedule=2
+        every_k_schedule=2,
     )
     opt_init, opt_update = ms_opt.gradient_transformation()
     params = dict(a=jnp.zeros([]))
@@ -233,7 +245,8 @@ class AccumulationTest(chex.TestCase):
   def test_multi_steps_computes_mean(self):
     k_steps = 4
     ms_opt = _accumulation.MultiSteps(
-        transform.scale(1.0), k_steps, use_grad_mean=True)
+        transform.scale(1.0), k_steps, use_grad_mean=True
+    )
     opt_init, opt_update = ms_opt.gradient_transformation()
     params = dict(a=jnp.zeros([]))
     opt_state = opt_init(params)
@@ -253,8 +266,10 @@ class AccumulationTest(chex.TestCase):
   def test_multi_steps_skip_not_finite(self):
     k_steps = 2
     ms_opt = _accumulation.MultiSteps(
-        alias.sgd(1.), k_steps,
-        should_skip_update_fn=_accumulation.skip_not_finite)
+        alias.sgd(1.0),
+        k_steps,
+        should_skip_update_fn=_accumulation.skip_not_finite,
+    )
     opt_init, opt_update = ms_opt.gradient_transformation()
     opt_init = jax.jit(opt_init)
     opt_update = jax.jit(opt_update)
@@ -272,14 +287,16 @@ class AccumulationTest(chex.TestCase):
 
     with self.subTest('test_inf_updates'):
       updates, opt_state = opt_update(
-          dict(a=jnp.array(float('inf'))), opt_state, params)
+          dict(a=jnp.array(float('inf'))), opt_state, params
+      )
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
       np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
 
     with self.subTest('test_nan_updates'):
       updates, opt_state = opt_update(
-          dict(a=jnp.full([], float('nan'))), opt_state, params)
+          dict(a=jnp.full([], float('nan'))), opt_state, params
+      )
       self.assertEqual(int(opt_state.mini_step), 0)  # No increase in mini_step
       params = update.apply_updates(params, updates)
       np.testing.assert_array_equal(params['a'], jnp.negative(jnp.ones([])))
@@ -291,7 +308,9 @@ class AccumulationTest(chex.TestCase):
       updates, opt_state = opt_update(dict(a=jnp.ones([])), opt_state, params)
       self.assertEqual(int(opt_state.mini_step), 0)
       params = update.apply_updates(params, updates)
-      np.testing.assert_array_equal(params['a'], jnp.negative(jnp.full([], 2.)))
+      np.testing.assert_array_equal(
+          params['a'], jnp.negative(jnp.full([], 2.0))
+      )
 
 
 if __name__ == '__main__':

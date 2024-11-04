@@ -29,27 +29,25 @@ def squared_error(
 
   Mean Squared Error can be computed as squared_error(a, b).mean().
 
-  Note: l2_loss = 0.5 * squared_error, where the 0.5 term is standard in
-  "Pattern Recognition and Machine Learning" by Bishop, but not
-  "The Elements of Statistical Learning" by Tibshirani.
-
-  References:
-    [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
-
   Args:
     predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
+    targets: a vector with shape broadcastable to that of `predictions`; if not
+      provided then it is assumed to be a vector of zeros.
 
   Returns:
     elementwise squared differences, with same shape as `predictions`.
+
+  .. note::
+    l2_loss = 0.5 * squared_error, where the 0.5 term is standard in
+    "Pattern Recognition and Machine Learning" by Bishop, but not
+    "The Elements of Statistical Learning" by Tibshirani.
   """
   chex.assert_type([predictions], float)
   if targets is not None:
     # Avoid broadcasting logic for "-" operator.
     chex.assert_equal_shape((predictions, targets))
   errors = predictions - targets if targets is not None else predictions
-  return errors ** 2
+  return errors**2
 
 
 def l2_loss(
@@ -58,19 +56,17 @@ def l2_loss(
 ) -> chex.Array:
   """Calculates the L2 loss for a set of predictions.
 
-  Note: the 0.5 term is standard in "Pattern Recognition and Machine Learning"
-  by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
-
-  References:
-    [Chris Bishop, 2006](https://bit.ly/3eeP0ga)
-
   Args:
     predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
+    targets: a vector with shape broadcastable to that of `predictions`; if not
+      provided then it is assumed to be a vector of zeros.
 
   Returns:
     elementwise squared differences, with same shape as `predictions`.
+
+  .. note::
+    the 0.5 term is standard in "Pattern Recognition and Machine Learning"
+    by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
   """
   return 0.5 * squared_error(predictions, targets)
 
@@ -79,24 +75,24 @@ def l2_loss(
 def huber_loss(
     predictions: chex.Array,
     targets: Optional[chex.Array] = None,
-    delta: float = 1.
+    delta: float = 1.0,
 ) -> chex.Array:
   """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
 
   If gradient descent is applied to the `huber loss`, it is equivalent to
   clipping gradients of an `l2_loss` to `[-delta, delta]` in the backward pass.
 
-  References:
-    [Huber, 1964](www.projecteuclid.org/download/pdf_1/euclid.aoms/1177703732)
-
   Args:
     predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
+    targets: a vector with shape broadcastable to that of `predictions`; if not
+      provided then it is assumed to be a vector of zeros.
     delta: the bounds for the huber loss transformation, defaults at 1.
 
   Returns:
     elementwise huber losses, with the same shape of `predictions`.
+
+  References:
+    `Huber loss <https://en.wikipedia.org/wiki/Huber_loss>`_, Wikipedia.
   """
   chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
@@ -106,7 +102,7 @@ def huber_loss(
   quadratic = jnp.minimum(abs_errors, delta)
   # Same as max(abs_x - delta, 0) but avoids potentially doubling gradient.
   linear = abs_errors - quadratic
-  return 0.5 * quadratic ** 2 + delta * linear
+  return 0.5 * quadratic**2 + delta * linear
 
 
 def log_cosh(
@@ -118,16 +114,17 @@ def log_cosh(
   log(cosh(x)) is approximately `(x**2) / 2` for small x and `abs(x) - log(2)`
   for large x.  It is a twice differentiable alternative to the Huber loss.
 
-  References:
-    [Chen et al, 2019](https://openreview.net/pdf?id=rkglvsC9Ym)
-
   Args:
     predictions: a vector of arbitrary shape `[...]`.
-    targets: a vector with shape broadcastable to that of `predictions`;
-      if not provided then it is assumed to be a vector of zeros.
+    targets: a vector with shape broadcastable to that of `predictions`; if not
+      provided then it is assumed to be a vector of zeros.
 
   Returns:
     the log-cosh loss, with same shape as `predictions`.
+
+  References:
+    Chen et al, `Log Hyperbolic Cosine Loss Improves Variational Auto-Encoder
+    <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
   chex.assert_type([predictions], float)
   errors = (predictions - targets) if (targets is not None) else predictions
@@ -139,7 +136,7 @@ def log_cosh(
 def cosine_similarity(
     predictions: chex.Array,
     targets: chex.Array,
-    epsilon: float = 0.,
+    epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[chex.Array, None] = None,
 ) -> chex.Array:
@@ -148,9 +145,6 @@ def cosine_similarity(
   The cosine **similarity** is a measure of similarity between vectors defined
   as the cosine of the angle between them, which is also the inner product of
   those vectors normalized to have unit norm.
-
-  References:
-    [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
 
   Args:
     predictions: The predicted vectors, with shape `[..., dim]`.
@@ -161,6 +155,10 @@ def cosine_similarity(
 
   Returns:
     cosine similarity measures, with shape `[...]`.
+
+  References:
+    `Cosine similarity <https://en.wikipedia.org/wiki/Cosine_similarity>`_,
+    Wikipedia.
 
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
@@ -187,7 +185,7 @@ def cosine_similarity(
 def cosine_distance(
     predictions: chex.Array,
     targets: chex.Array,
-    epsilon: float = 0.,
+    epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[chex.Array, None] = None,
 ) -> chex.Array:
@@ -195,9 +193,6 @@ def cosine_distance(
 
   The cosine **distance**, implemented here, measures the **dissimilarity**
   of two vectors as the opposite of cosine **similarity**: `1 - cos(\theta)`.
-
-  References:
-    [Wikipedia, 2021](https://en.wikipedia.org/wiki/Cosine_similarity)
 
   Args:
     predictions: The predicted vectors, with shape `[..., dim]`.
@@ -208,6 +203,11 @@ def cosine_distance(
 
   Returns:
     cosine distances, with shape `[...]`.
+
+  References:
+    `Cosine distance
+    <https://en.wikipedia.org/wiki/Cosine_similarity#Cosine_distance>`_,
+    Wikipedia.
 
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.

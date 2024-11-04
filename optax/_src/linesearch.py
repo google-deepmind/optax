@@ -90,29 +90,36 @@ def scale_by_backtracking_linesearch(
   The algorithm starts with a given guess of a learning rate and decrease it
   by ``decrease_factor`` until the criterion above is met.
 
-  .. warning::
-    The sufficient decrease criterion might be impossible to satisfy for some
-    update directions. To guarantee a non-trivial solution for the sufficient
-    decrease criterion, a descent direction for updates (:math:`u`) is required.
-    An update (:math:`u`) is considered a descent direction if the derivative of
-    :math:`f(w + \eta u)` at :math:`\eta = 0`
-    (i.e.,  :math:`\langle u, \nabla f(w)\rangle`) is negative.  This condition
-    is automatically satisfied when using :func:`optax.sgd` (without momentum),
-    but may not hold true for other optimizers like :func:`optax.adam`.
+  Args:
+    max_backtracking_steps: maximum number of iterations for the line-search.
+    slope_rtol: relative tolerance w.r.t. to the slope. The sufficient decrease
+      must be slope_rtol * lr * <grad, updates>, see formula above.
+    decrease_factor: decreasing factor to reduce learning rate.
+    increase_factor: increasing factor to increase learning rate guess. Setting
+      it to 1. amounts to keep the current guess, setting it to ``math.inf``
+      amounts to start with ``max_learning_rate`` at each round.
+    max_learning_rate: maximum learning rate (learning rate guess clipped to
+      this).
+    atol: absolute tolerance at which the criterion needs to be satisfied.
+    rtol: relative tolerance at which the criterion needs to be satisfied.
+    store_grad: whether to compute and store the gradient at the end of the
+      linesearch. Since the function is called to compute the value to accept
+      the learning rate, we can also access the gradient along the way. By doing
+      that, we can directly reuse the value and the gradient computed at the end
+      of the linesearch for the next iteration using
+      :func:`optax.value_and_grad_from_state`. See the example above.
 
+  Returns:
+    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
+    takes the following additional keyword arguments:
 
-    More generally, when chained with other transforms as
-    ``optax.chain(opt_1, ..., opt_k,
-    scale_by_backtraking_linesearch(max_backtracking_steps=...),
-    opt_kplusone, ..., opt_n)``, the updates returned by chaining
-    ``opt_1, ..., opt_k`` must be a descent direction. However, any transform
-    after the backtracking line-search doesn't necessarily need to satisfy the
-    descent direction property (one could for example use momentum).
-
-  .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
-    more efficient for non-stochastic objectives.
-
-  .. versionadded:: 0.2.0
+    * ``value``: value of the function at the current params.
+    * ``grad``: gradient of the function at the current params.
+    * ``value_fn``: function returning the value of the function we seek to
+      optimize.
+    * ``**extra_args``: additional keyword arguments, if the function needs
+      additional arguments such as input data, they should be put there (
+      see example in this docstring).
 
   Examples:
 
@@ -188,7 +195,6 @@ def scale_by_backtracking_linesearch(
       Objective function: 2.35E-01
       Objective function: 8.47E-02
 
-
   References:
     Vaswani et al., `Painless Stochastic Gradient
     <https://arxiv.org/abs/1905.09997>`_, 2019
@@ -196,36 +202,30 @@ def scale_by_backtracking_linesearch(
     Nocedal & Wright, `Numerical Optimization
     <https://doi.org/10.1007/978-0-387-40065-5>`_, 1999
 
-  Args:
-    max_backtracking_steps: maximum number of iterations for the line-search.
-    slope_rtol: relative tolerance w.r.t. to the slope. The sufficient decrease
-      must be slope_rtol * lr * <grad, updates>, see formula above.
-    decrease_factor: decreasing factor to reduce learning rate.
-    increase_factor: increasing factor to increase learning rate guess. Setting
-      it to 1. amounts to keep the current guess, setting it to ``math.inf``
-      amounts to start with ``max_learning_rate`` at each round.
-    max_learning_rate: maximum learning rate (learning rate guess clipped to
-      this).
-    atol: absolute tolerance at which the criterion needs to be satisfied.
-    rtol: relative tolerance at which the criterion needs to be satisfied.
-    store_grad: whether to compute and store the gradient at the end of the
-      linesearch. Since the function is called to compute the value to accept
-      the learning rate, we can also access the gradient along the way. By doing
-      that, we can directly reuse the value and the gradient computed at the end
-      of the linesearch for the next iteration using
-      :func:`optax.value_and_grad_from_state`. See the example above.
 
-  Returns:
-    A :class:`GradientTransformationExtraArgs`, where the ``update`` function
-    takes the following additional keyword arguments:
+  .. warning::
+    The sufficient decrease criterion might be impossible to satisfy for some
+    update directions. To guarantee a non-trivial solution for the sufficient
+    decrease criterion, a descent direction for updates (:math:`u`) is required.
+    An update (:math:`u`) is considered a descent direction if the derivative of
+    :math:`f(w + \eta u)` at :math:`\eta = 0`
+    (i.e.,  :math:`\langle u, \nabla f(w)\rangle`) is negative.  This condition
+    is automatically satisfied when using :func:`optax.sgd` (without momentum),
+    but may not hold true for other optimizers like :func:`optax.adam`.
 
-    * ``value``: value of the function at the current params.
-    * ``grad``: gradient of the function at the current params.
-    * ``value_fn``: function returning the value of the function we seek to
-      optimize.
-    * ``**extra_args``: additional keyword arguments, if the function needs
-      additional arguments such as input data, they should be put there (
-      see example in this docstring).
+
+    More generally, when chained with other transforms as
+    ``optax.chain(opt_1, ..., opt_k,
+    scale_by_backtraking_linesearch(max_backtracking_steps=...),
+    opt_kplusone, ..., opt_n)``, the updates returned by chaining
+    ``opt_1, ..., opt_k`` must be a descent direction. However, any transform
+    after the backtracking line-search doesn't necessarily need to satisfy the
+    descent direction property (one could for example use momentum).
+
+  .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
+    more efficient for non-stochastic objectives.
+
+  .. versionadded:: 0.2.0
   """
 
   def init_fn(params: base.Params) -> ScaleByBacktrackingLinesearchState:
@@ -258,13 +258,6 @@ def scale_by_backtracking_linesearch(
   ) -> tuple[base.Updates, ScaleByBacktrackingLinesearchState]:
     """Compute scaled updates guaranteeing decrease of current objective.
 
-    .. warning:: The objective to minimize, ``value_fn``, can take more than
-        one input, but must return a single scalar (float or jax.Array of
-        dimension one). If the function requires more than one input, the
-        additional inputs need to be fed to the update, see the example in the
-        docstring of the transform. The function value_fn needs to be amenable
-        to differentiation in JAX.
-
     Args:
       updates: current updates.
       state: current state.
@@ -280,6 +273,13 @@ def scale_by_backtracking_linesearch(
     Returns:
       updates: updates for the params (new_params = params + updates).
       state: updated state.
+
+    .. warning:: The objective to minimize, ``value_fn``, can take more than
+        one input, but must return a single scalar (float or jax.Array of
+        dimension one). If the function requires more than one input, the
+        additional inputs need to be fed to the update, see the example in the
+        docstring of the transform. The function value_fn needs to be amenable
+        to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
     (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
@@ -452,6 +452,8 @@ def _quadmin(a, fa, fpa, b, fb):
   B = (fb - D - C * db) / (db**2)
   xmin = a - C / (2.0 * B)
   return xmin
+
+
 # pylint: enable=invalid-name
 
 
@@ -540,34 +542,26 @@ def zoom_linesearch(
     and criteria. It iteratively narrows the interval until a satisfactory step
     size is found.
 
-  References:
-    Algorithms 3.5 3.6 of Nocedal and Wright, `Numerical Optimization
-    <https://doi.org/10.1007/978-0-387-40065-5>`_, 1999
-
-    Hager and Zhang `Algorithm 851: CG_DESCENT, a Conjugate Gradient Method
-    with Guaranteed Descent
-    <https://doi.org/10.1145/1132973.1132979>`_, 2006
-
   Args:
     max_linesearch_steps: maximum number of linesearch iterations.
-    max_stepsize: maximal admissible learning rate. Can be set to ``None``
-      for no upper bound. An inappropriate value may prevent the linesearch to
-      find a learning rate satisfying the small curvature criterion, since the
-      latter may require sufficiently large stepsizes.
+    max_stepsize: maximal admissible learning rate. Can be set to ``None`` for
+      no upper bound. An inappropriate value may prevent the linesearch to find
+      a learning rate satisfying the small curvature criterion, since the latter
+      may require sufficiently large stepsizes.
     tol: tolerance on the criterions.
     increase_factor: increasing factor to augment the learning rate when
       searching for an initial valid interval (1st phase above).
-    slope_rtol: relative tolerance for the slope in the sufficient
-      decrease criterion, see :func:`optax.scale_by_zoom_linesearch`.
+    slope_rtol: relative tolerance for the slope in the sufficient decrease
+      criterion, see :func:`optax.scale_by_zoom_linesearch`.
     curv_rtol: relative tolerance for the curvature in the small curvature
       criterion, see :func:`optax.scale_by_zoom_linesearch`.
-    approx_dec_rtol: relative tolerance for the initial value in the
-      approximate sufficient decrease criterion. Can be set to ``None`` to use
-      only the Armijo-Goldstein decrease criterion, see
+    approx_dec_rtol: relative tolerance for the initial value in the approximate
+      sufficient decrease criterion. Can be set to ``None`` to use only the
+      Armijo-Goldstein decrease criterion, see
       :func:`optax.scale_by_zoom_linesearch`.
     interval_threshold: if the size of the interval searched is below this
-      threshold and a sufficient decrease for some stepsize has been found,
-      then the linesearch selects the stepsize and ends.
+      threshold and a sufficient decrease for some stepsize has been found, then
+      the linesearch selects the stepsize and ends.
     verbose: whether to print debugging information if the linesearch fails.
 
   Returns:
@@ -587,6 +581,14 @@ def zoom_linesearch(
       additional data for example)
     * ``cond_step_fn(state) -> bool`` returns a boolean indicating whether the
       linesearch iterations should continue (``True``) or not (``False``).
+
+  References:
+    Algorithms 3.5 3.6 of Nocedal and Wright, `Numerical Optimization
+    <https://doi.org/10.1007/978-0-387-40065-5>`_, 1999
+
+    Hager and Zhang `Algorithm 851: CG_DESCENT, a Conjugate Gradient Method
+    with Guaranteed Descent
+    <https://doi.org/10.1145/1132973.1132979>`_, 2006
   """
 
   def _value_and_slope_on_line(
@@ -712,9 +714,7 @@ def zoom_linesearch(
       _cond_print(too_small_int, FLAG_INTERVAL_TOO_SMALL)
       jax.lax.cond(
           state.safe_stepsize > 0.0,
-          lambda *_: jax.debug.print(
-              FLAG_CURVATURE_COND_NOT_SATISFIED
-          ),
+          lambda *_: jax.debug.print(FLAG_CURVATURE_COND_NOT_SATISFIED),
           _failure_diagnostic,
           state,
       )
@@ -824,9 +824,7 @@ def zoom_linesearch(
     if verbose:
       _cond_print(
           (max_stepsize_reached & ~interval_found),
-          FLAG_INTERVAL_NOT_FOUND
-          + "\n"
-          + FLAG_CURVATURE_COND_NOT_SATISFIED,
+          FLAG_INTERVAL_NOT_FOUND + "\n" + FLAG_CURVATURE_COND_NOT_SATISFIED,
       )
     failed = (iter_num + 1 >= max_linesearch_steps) & (~done)
 
@@ -872,7 +870,7 @@ def zoom_linesearch(
       state: ZoomLinesearchState,
       value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
       fn_kwargs: dict[str, Any],
-    ) -> ZoomLinesearchState:
+  ) -> ZoomLinesearchState:
     """Zoom procedure, Algorithm 3.6 of [Nocedal and Wright, 1999]."""
 
     iter_num = state.count
@@ -930,10 +928,8 @@ def zoom_linesearch(
     middle = jnp.where(use_bisection, middle_bisection, middle)
 
     # Check if new point is good
-    _, value_middle, grad_middle, slope_middle = (
-        _value_and_slope_on_line(
-            value_and_grad_fn, params, middle, updates, fn_kwargs
-        )
+    _, value_middle, grad_middle, slope_middle = _value_and_slope_on_line(
+        value_and_grad_fn, params, middle, updates, fn_kwargs
     )
 
     decrease_error = _decrease_error(
@@ -1054,7 +1050,7 @@ def zoom_linesearch(
         stepsize,
         state.decrease_error,
         state.curvature_error,
-        ordered=True
+        ordered=True,
     )
 
     slope_init = state.slope_init
@@ -1179,10 +1175,7 @@ def zoom_linesearch(
         state,
     )
     new_state = jax.lax.cond(
-        new_state.failed,
-        _try_safe_step,
-        lambda x: x,
-        new_state
+        new_state.failed, _try_safe_step, lambda x: x, new_state
     )
     return new_state
 
@@ -1213,6 +1206,7 @@ class ZoomLinesearchInfo(NamedTuple):
       linesearch failed to find a stepsize that ensures a small curvature. A
       null value indicates it succeeded in finding such a stepsize.
   """
+
   num_linesearch_steps: Union[int, chex.Numeric]
   decrease_error: Union[float, chex.Numeric]
   curvature_error: Union[float, chex.Numeric]
@@ -1227,11 +1221,11 @@ class ScaleByZoomLinesearchState(NamedTuple):
     value: value of the objective computed at the end of a round of line-search.
       Can be reused using :func:`optax.value_and_grad_from_state`.
     grad: gradient of the objective computed at the end of a round of
-      line-search. Can be reused using
-      :func:`optax.value_and_grad_from_state`.
+      line-search. Can be reused using :func:`optax.value_and_grad_from_state`.
     info: Additional information on the status of the linesearch see
       :class:`otpax.ZoomLinesearchInfo`.
   """
+
   learning_rate: chex.Numeric
   value: chex.Numeric
   grad: base.Updates
@@ -1248,7 +1242,7 @@ def scale_by_zoom_linesearch(
     approx_dec_rtol: Optional[float] = 1e-6,
     stepsize_precision: float = 1e-5,
     verbose: bool = False,
-    ) -> base.GradientTransformationExtraArgs:
+) -> base.GradientTransformationExtraArgs:
   r"""Linesearch ensuring sufficient decrease and small curvature.
 
   This algorithm searches for a learning rate, a.k.a. stepsize, that satisfies
@@ -1300,12 +1294,39 @@ def scale_by_zoom_linesearch(
   differences up to :math:`\sqrt{\varepsilon_{machine}}` while the approximate
   sufficient decrease criterion can capture differences up to
   :math:`\varepsilon_{machine}` (see [Hager and Zhang, 2006]).
-  Note that this add-on is not part of the original implementation of 
+  Note that this add-on is not part of the original implementation of
   [Nocedal and Wright, 1999] and can be removed by
   setting ``approx_dec_rtol`` to ``None``.
 
-  .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
-    more efficient for non-stochastic objectives.
+  Args:
+    max_linesearch_steps: maximum number of linesearch iterations.
+    max_learning_rate: maximum admissible learning rate. Can be set to ``None``
+      for no upper bound. A non ``None`` value may prevent the linesearch to
+      find a learning rate satisfying the small curvature criterion, since the
+      latter may require sufficiently large stepsizes.
+    tol: tolerance on the criterions.
+    increase_factor: increasing factor to augment the learning rate when
+      searching for a valid interval containing a learning rate satisfying both
+      criterions.
+    slope_rtol: relative tolerance for the slope in the sufficient decrease
+      criterion.
+    curv_rtol: relative tolerance for the curvature in the small curvature
+      criterion.
+    approx_dec_rtol: relative tolerance for the initial value in the approximate
+      sufficient decrease criterion. Can be set to ``None`` to use only the
+      original Armijo-Goldstein decrease criterion.
+    stepsize_precision: precision in the search of a stepsize satisfying both
+      conditions. The algorithm proceeds with a bisection that refines an
+      interval containing a stepsize satisfying both conditions. If that
+      interval is reduced below ``stepsize_precision`` and a stepsize satisfying
+      a sufficient decrease has been found, the algorithm selects that stepsize
+      even if the curvature condition is not satisfied.
+    verbose: whether to print additional debugging information in case the
+      linesearch fails.
+
+  Returns:
+    A :class:`optax.GradientTransformationExtraArgs` object consisting in
+    an init and an update function.
 
   Examples:
     An example on using the zoom line-search with SGD::
@@ -1384,35 +1405,8 @@ def scale_by_zoom_linesearch(
     with Guaranteed Descent
     <https://doi.org/10.1145/1132973.1132979>`_, 2006
 
-  Args:
-    max_linesearch_steps: maximum number of linesearch iterations.
-    max_learning_rate: maximum admissible learning rate. Can be set to ``None``
-      for no upper bound. A non ``None`` value may prevent the linesearch to
-      find a learning rate satisfying the small curvature criterion, since the
-      latter may require sufficiently large stepsizes.
-    tol: tolerance on the criterions.
-    increase_factor: increasing factor to augment the learning rate when
-      searching for a valid interval containing a learning rate satisfying both
-      criterions.
-    slope_rtol: relative tolerance for the slope in the sufficient decrease
-      criterion.
-    curv_rtol: relative tolerance for the curvature in the small curvature
-      criterion.
-    approx_dec_rtol: relative tolerance for the initial value in the
-      approximate sufficient decrease criterion. Can be set to ``None`` to use
-      only the original Armijo-Goldstein decrease criterion.
-    stepsize_precision: precision in the search of a stepsize satisfying both
-      conditions. The algorithm proceeds with a bisection that refines an
-      interval containing a stepsize satisfying both conditions. If that
-      interval is reduced below ``stepsize_precision`` and a stepsize satisfying
-      a sufficient decrease has been found, the algorithm selects that stepsize
-      even if the curvature condition is not satisfied.
-    verbose: whether to print additional debugging information in case the
-      linesearch fails.
-
-  Returns:
-    A :class:`optax.GradientTransformationExtraArgs` object consisting in
-    an init and an update function.
+  .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
+    more efficient for non-stochastic objectives.
   """
 
   # Instantiates the linesearch with the given arguments.
@@ -1453,13 +1447,6 @@ def scale_by_zoom_linesearch(
   ) -> tuple[base.Updates, ScaleByZoomLinesearchState]:
     """Scales updates using the zoom linesearch.
 
-    .. warning:: The objective to minimize, ``value_fn``, can take more than
-        one input, but must return a single scalar (``float`` or scalar 
-        ``jax.Array``). If the function requires more than one input, the
-        additional inputs need to be fed to the update, see the example in the
-        docstring of the transform. The function value_fn needs to be amenable
-        to differentiation in JAX.
-
     Args:
       updates: current updates.
       state: current state.
@@ -1474,6 +1461,13 @@ def scale_by_zoom_linesearch(
     Returns:
       updates: updates for the params (new_params = params + updates).
       state: updated state.
+
+    .. warning:: The objective to minimize, ``value_fn``, can take more than
+        one input, but must return a single scalar (``float`` or scalar
+        ``jax.Array``). If the function requires more than one input, the
+        additional inputs need to be fed to the update, see the example in the
+        docstring of the transform. The function value_fn needs to be amenable
+        to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
     (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access

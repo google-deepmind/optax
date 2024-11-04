@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `utils.py`."""
+"""Tests for utilities in `utils.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -47,16 +47,10 @@ class ScaleGradientTest(parameterized.TestCase):
 
     grad = jax.grad(fn)
     grads = grad(inputs)
-    jax.tree.map(
-        lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads
-    )
+    jax.tree.map(lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
     self.assertEqual(
         fn(inputs),
-        sum(
-            jax.tree.leaves(
-                jax.tree.map(lambda x: x**2, inputs)
-            )
-        ),
+        sum(jax.tree.leaves(jax.tree.map(lambda x: x**2, inputs))),
     )
 
 

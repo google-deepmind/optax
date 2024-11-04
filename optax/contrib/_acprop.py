@@ -23,7 +23,6 @@ from typing import Any, Optional, Union
 
 import jax
 import jax.numpy as jnp
-
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import combine
@@ -39,9 +38,7 @@ def scale_by_acprop(
 ) -> base.GradientTransformation:
   """Rescale updates according to ACProp (asynchronous version of AdaBelief).
 
-  References:
-    Zuhang et al, `Momentum Centering and Asynchronous Update for Adaptive
-    Gradient Methods <https://arxiv.org/abs/2110.05454>`_, 2021
+  See :func:`optax.contrib.acprop` for more details.
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -129,10 +126,6 @@ def acprop(
       S_t &\leftarrow (m_t, s_t).
     \end{align*}
 
-  References:
-    Zuhang et al, `Momentum Centering and Asynchronous Update for Adaptive
-    Gradient Methods <https://arxiv.org/abs/2110.05454>`_, 2021
-
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
@@ -155,6 +148,10 @@ def acprop(
 
   Returns:
     The corresponding `GradientTransformation`.
+
+  References:
+    Zuhang et al, `Momentum Centering and Asynchronous Update for Adaptive
+    Gradient Methods <https://arxiv.org/abs/2110.05454>`_, 2021
   """
   return combine.chain(
       scale_by_acprop(b1=b1, b2=b2, eps=eps, eps_root=eps_root),

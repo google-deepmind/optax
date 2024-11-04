@@ -45,7 +45,7 @@ def dadapt_adamw(
     betas: tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-8,
     estim_lr0: float = 1e-6,
-    weight_decay: float = 0.,
+    weight_decay: float = 0.0,
 ) -> base.GradientTransformation:
   """Learning rate free AdamW by D-Adaptation.
 
@@ -53,9 +53,6 @@ def dadapt_adamw(
   initial distance to solution in the infinity norm.
   This method works best when combined with a learning rate schedule that
   treats 1.0 as the base (usually max) value.
-
-  References:
-    [Defazio & Mishchenko, 2023](https://arxiv.org/abs/2301.07733.pdf)
 
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
@@ -68,7 +65,11 @@ def dadapt_adamw(
       with add_decayed_weights.
 
   Returns:
-    A `GradientTransformation` object.
+    The corresponding :class:`optax.GradientTransformation`.
+
+  References:
+    Defazio et al, `Learning-Rate-Free Learning by D-Adaptation
+    <https://arxiv.org/abs/2301.07733>`_, 2023
   """
 
   def init_fn(params: base.Params) -> DAdaptAdamWState:
@@ -100,7 +101,7 @@ def dadapt_adamw(
     grad_sum = state.grad_sum
     numerator_weighted = state.numerator_weighted
     count_inc = numerics.safe_increment(count)
-    bc = ((1 - beta2 ** count_inc) ** 0.5) / (1 - beta1 ** count_inc)
+    bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = state.estim_lr * sched * bc
     dlr = dlr.astype(numerator_weighted.dtype)
     s_weighted = jax.tree.map(

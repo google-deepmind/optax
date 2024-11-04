@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses._self_supervised."""
+"""Tests for self-supervised losses in `optax.losses._self_supervised.py`."""
 
 from absl.testing import absltest
 import chex

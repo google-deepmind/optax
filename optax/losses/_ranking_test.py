@@ -22,7 +22,6 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 import optax
 from optax.losses import _ranking
 
