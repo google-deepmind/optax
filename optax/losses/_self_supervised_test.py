@@ -118,7 +118,8 @@ class TripletMarginLossTest(chex.TestCase):
                 _self_supervised.triplet_margin_loss
                 ))(self.a1, self.p1,
                 self.n1)
-    np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
+    np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4
+                               )
 
 
 if __name__ == '__main__':
