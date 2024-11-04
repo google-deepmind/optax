@@ -65,20 +65,6 @@ class TripletMarginLossTest(chex.TestCase):
     self.n2 = jnp.ones((2, 2))*2
 
   @chex.all_variants
-  def test_vmap(self):
-    # VMAP applied function result
-    original_loss = _self_supervised.triplet_margin_loss(
-                    self.a1, self.p1, self.n1)
-    self.a1 = self.a1.reshape(1, *self.a1.shape)
-    self.p1 = self.p1.reshape(1, *self.p1.shape)
-    self.n1 = self.n1.reshape(1, *self.n1.shape)
-    vmap_loss = self.variant(jax.vmap(
-                _self_supervised.triplet_margin_loss
-                ))(self.a1, self.p1,
-                self.n1)
-    np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
-
-  @chex.all_variants
   def test_batched(self):
     def testing_triplet_loss(a, p, n, margin=1.0, swap=False):
       ap = jnp.linalg.norm(a - p)
@@ -119,6 +105,20 @@ class TripletMarginLossTest(chex.TestCase):
                (self.a1, self.p1, self.n1))
     np.testing.assert_allclose(jit_loss, original_loss,
                                atol=1e-4)
+  
+  @chex.all_variants
+  def test_vmap(self):
+    # VMAP applied function result
+    original_loss = _self_supervised.triplet_margin_loss(
+                    self.a1, self.p1, self.n1)
+    self.a1 = self.a1.reshape(1, *self.a1.shape)
+    self.p1 = self.p1.reshape(1, *self.p1.shape)
+    self.n1 = self.n1.reshape(1, *self.n1.shape)
+    vmap_loss = self.variant(jax.vmap(
+                _self_supervised.triplet_margin_loss
+                ))(self.a1, self.p1,
+                self.n1)
+    np.testing.assert_allclose(vmap_loss, original_loss, atol=1e-4)
 
 
 if __name__ == '__main__':
