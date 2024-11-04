@@ -111,11 +111,6 @@ def triplet_margin_loss(
 ) -> chex.Array:
   """Triplet margin loss function.
 
-  References:
-    V. Balntas et al. `Learning shallow convolutional feature
-    descriptors with triplet losses 
-    <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/paper119.pdf>`_, 2016
-  
   Measures the relative similarity between an anchor point, 
   a positive point, and a negative point using the distance 
   metric specified by p-norm. The loss encourages
@@ -133,21 +128,28 @@ def triplet_margin_loss(
       swap: Use the distance swap optimization
       reduction: Specifies the reduction to apply to the output:
           'none' | 'mean' | 'sum'
-
+  
   Returns:
       The triplet margin loss value.
       If reduction is 'none': tensor of shape [batch_size]
       If reduction is 'mean' or 'sum': scalar tensor.
   
-  example:
+  Examples:
         >>> import jax.numpy as jnp
+        >>> import optax
         >>> anchor = jnp.array([[1.0, 2.0], [3.0, 4.0]])
         >>> positive = jnp.array([[1.1, 2.1], [3.1, 4.1]])
         >>> negative = jnp.array([[2.0, 3.0], [4.0, 5.0]])
         >>> margin = 1.0
-        >>> loss = triplet_margin_loss(anchor, positive, negative,
+        >>> loss = optax.losses.triplet_margin_loss(anchor, positive, negative,
         >>> margin=margin, reduction='mean')
         >>> print(loss)
+
+  References:
+    V. Balntas et al. `Learning shallow convolutional feature
+    descriptors with triplet losses 
+    <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/paper119.pdf>`_, 2016
+  
   """
   chex.assert_equal_shape([anchor, positive, negative])
 
