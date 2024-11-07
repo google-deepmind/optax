@@ -132,17 +132,6 @@ def triplet_margin_loss(
       The triplet margin loss value.
       If reduction is 'none': tensor of shape [batch_size]
       If reduction is 'mean' or 'sum': scalar tensor.
-  
-  Examples:
-        >>> import jax.numpy as jnp
-        >>> import optax
-        >>> anchor = jnp.array([[1.0, 2.0], [3.0, 4.0]])
-        >>> positive = jnp.array([[1.1, 2.1], [3.1, 4.1]])
-        >>> negative = jnp.array([[2.0, 3.0], [4.0, 5.0]])
-        >>> margin = 1.0
-        >>> loss = optax.losses.triplet_margin_loss(anchor, positive, negative,
-        ... margin=margin, reduction='mean')
-        >>> print(loss)
 
   References:
     V. Balntas et al. `Learning shallow convolutional feature
