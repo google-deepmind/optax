@@ -141,7 +141,7 @@ def triplet_margin_loss(
         >>> negative = jnp.array([[2.0, 3.0], [4.0, 5.0]])
         >>> margin = 1.0
         >>> loss = optax.losses.triplet_margin_loss(anchor, positive, negative,
-        >>> margin=margin, reduction='mean')
+        ... margin=margin, reduction='mean')
         >>> print(loss)
 
   References:
