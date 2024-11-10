@@ -88,83 +88,50 @@ def ntxent(
   return loss
 
 
-def _pairwise_distance(
-  x: chex.Array,
-  y: chex.Array,
-  p: int = 2,
-  eps: float = 1e-6) -> chex.Array:
-  diff = x - y
-  dist = jnp.sum(jnp.abs(diff) ** p + eps, axis=-1) ** (1.0 / p)
-  return dist
+def triplet_loss(
+    anchors: jnp.ndarray,
+    positives: jnp.ndarray,
+    negatives: jnp.ndarray,
+    axis: int = -1,
+    p: int = 2,
+    margin: float = 1.0,
+    eps: float = 1e-6,
+    reduction: str = "none",
+) -> jnp.ndarray:
+    """
+    Computes the triplet loss for a set of anchor, positive, and negative samples.
+    Margin is represented with alpha in the math section.
 
+    .. math::
 
-def triplet_margin_loss(
-  anchor: chex.Array,
-  positive: chex.Array,
-  negative: chex.Array,
-  *,
-  margin: float = 1.0,
-  p: int = 2,
-  swap: bool = False,
-  eps: float = 1e-6,
-  reduction: str = 'mean',
-) -> chex.Array:
-  """Triplet margin loss function.
+       \max\left(\|A - P\|_p - \|A - N\|_p + \alpha, 0\right)
 
-  Measures the relative similarity between an anchor point, 
-  a positive point, and a negative point using the distance 
-  metric specified by p-norm. The loss encourages
-  the distance between the anchor and positive points to be 
-  smaller than the distance between the anchor and negative 
-  points by at least the margin amount.
+    Args:
+        anchors (array): The anchor samples.
+        positives (array): The positive samples.
+        negatives (array): The negative samples.
+        axis (int, optional): The distribution axis. Default: ``-1``.
+        p (int, optional): The norm degree for pairwise distance. Default: ``2``.
+        margin (float, optional): Margin for the triplet loss. Defaults to ``1.0``.
+        eps (float, optional): Small positive constant to prevent numerical instability. Defaults to ``1e-6``.
+        reduction (str, optional): Specifies the reduction to apply to the output:
+          ``'none'`` | ``'mean'`` | ``'sum'``. Default: ``'none'``.
 
-  Args:
-      anchor: The anchor embeddings. Shape: [batch_size, feature_dim].
-      positive: The positive embeddings. Shape: [batch_size, feature_dim].
-      negative: The negative embeddings. Shape: [batch_size, feature_dim].
-      margin: The margin value.
-      p: The norm degree for pairwise distance.
-      eps: Small epsilon value to avoid numerical issues.
-      swap: Use the distance swap optimization
-      reduction: Specifies the reduction to apply to the output:
-          'none' | 'mean' | 'sum'
-  Returns:
-      The triplet margin loss value.
-      If reduction is 'none': tensor of shape [batch_size]
-      If reduction is 'mean' or 'sum': scalar tensor.
-
-  References:
-    V. Balntas et al. `Learning shallow convolutional feature
-    descriptors with triplet losses 
-    <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/paper119.pdf>`_, 2016
-  
-  """
-  chex.assert_equal_shape([anchor, positive, negative])
-
-  if not (anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
-    raise ValueError(
-        f"""Inputs must be 2D tensors but received
-        anchor: {anchor.ndim}, positive: {positive.ndim},
-        negative: {negative.ndim}"""
-    )
-
-  # Calculate distances between pairs
-  dist_pos = _pairwise_distance(anchor, positive, p, eps)
-  dist_neg = _pairwise_distance(anchor, negative, p, eps)
-
-  # Implement distance swap if enabled
-  dist_swap = _pairwise_distance(positive, negative)
-  dist_neg = jnp.where(swap, jnp.minimum(dist_neg, dist_swap), dist_neg)
-
-  # Calculate loss with margin
-  losses = jnp.maximum(margin + dist_pos - dist_neg, 0.0)
-
-  # Apply reduction
-  if reduction == 'none':
-    return losses
-  elif reduction == 'mean':
-    return jnp.mean(losses)
-  elif reduction == 'sum':
-    return jnp.sum(losses)
-  else:
-    raise ValueError(f'Invalid reduction mode: {reduction}')
+    Returns:
+        array: Computed triplet loss. If reduction is "none", returns a tensor of the same shape as input;
+                  if reduction is "mean" or "sum", returns a scalar tensor.
+    """
+    # Compute pairwise distances
+    positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps)
+    negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps)
+    
+    # Compute triplet loss
+    loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
+    
+    # Apply reduction
+    if reduction == "mean":
+        return loss.mean()
+    elif reduction == "sum":
+        return loss.sum()
+    else:  # "none"
+        return loss
