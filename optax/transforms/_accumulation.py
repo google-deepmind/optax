@@ -21,9 +21,7 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-
 from optax import tree_utils as otu
-
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
@@ -31,6 +29,7 @@ from optax._src import utils
 
 class TraceState(NamedTuple):
   """Holds an aggregation of past updates."""
+
   trace: base.Params
 
 
@@ -41,10 +40,6 @@ def trace(
 ) -> base.GradientTransformation:
   """Compute a trace of past updates.
 
-  Note: `trace` and `ema` have very similar but distinct updates;
-  `trace = decay * trace + t`, while `ema = decay * ema + (1-decay) * t`.
-  Both are frequently found in the optimization literature.
-
   Args:
     decay: Decay rate for the trace of past updates.
     nesterov: Whether to use Nesterov momentum.
@@ -52,14 +47,21 @@ def trace(
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  .. note::
+    :func:`optax.trace` and :func:`optax.ema` have very similar but distinct
+    updates; ``trace = decay * trace + t``, while
+    ``ema = decay * ema + (1-decay) * t``.
+    Both are frequently found in the optimization literature.
   """
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
   def init_fn(params):
     return TraceState(
-        trace=otu.tree_zeros_like(params, dtype=accumulator_dtype))
+        trace=otu.tree_zeros_like(params, dtype=accumulator_dtype)
+    )
 
   def update_fn(updates, state, params=None):
     del params
@@ -74,20 +76,15 @@ def trace(
 
 class EmaState(NamedTuple):
   """Holds an exponential moving average of past updates."""
+
   count: chex.Array  # shape=(), dtype=jnp.int32.
   ema: base.Params
 
 
 def ema(
-    decay: float,
-    debias: bool = True,
-    accumulator_dtype: Optional[Any] = None
+    decay: float, debias: bool = True, accumulator_dtype: Optional[Any] = None
 ) -> base.GradientTransformation:
   """Compute an exponential moving average of past updates.
-
-  Note: `trace` and `ema` have very similar but distinct updates;
-  `ema = decay * ema + (1-decay) * t`, while `trace = decay * trace + t`.
-  Both are frequently found in the optimization literature.
 
   Args:
     decay: Decay rate for the exponential moving average.
@@ -96,7 +93,13 @@ def ema(
       then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  .. note::
+    :func:`optax.trace` and :func:`optax.ema` have very similar but distinct
+    updates; ``trace = decay * trace + t``, while
+    ``ema = decay * ema + (1-decay) * t``.
+    Both are frequently found in the optimization literature.
   """
 
   accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
@@ -104,12 +107,14 @@ def ema(
   def init_fn(params):
     return EmaState(
         count=jnp.zeros([], jnp.int32),
-        ema=otu.tree_zeros_like(params, dtype=accumulator_dtype))
+        ema=otu.tree_zeros_like(params, dtype=accumulator_dtype),
+    )
 
   def update_fn(updates, state, params=None):
     del params
     updates = new_ema = otu.tree_update_moment(
-        updates, state.ema, decay, order=1)
+        updates, state.ema, decay, order=1
+    )
     count_inc = numerics.safe_increment(state.count)
     if debias:
       updates = otu.tree_bias_correction(new_ema, decay, count_inc)
@@ -125,7 +130,7 @@ class ShouldSkipUpdateFunction(Protocol):
       self,
       updates: base.Updates,
       gradient_step: chex.Array,
-      params: Optional[base.Params]
+      params: Optional[base.Params],
   ) -> tuple[chex.Array, chex.ArrayTree]:
     """Returns true to indicate that updates should be skipped in a multi-step.
 
@@ -148,7 +153,7 @@ class ShouldSkipUpdateFunction(Protocol):
 def skip_not_finite(
     updates: base.Updates,
     gradient_step: chex.Array,
-    params: Optional[base.Params]
+    params: Optional[base.Params],
 ) -> tuple[chex.Array, chex.ArrayTree]:
   """Returns True iff any of the `updates` contains an inf or a NaN.
 
@@ -165,19 +170,22 @@ def skip_not_finite(
       - `num_not_finite`: total number of inf and NaN found in `updates`.
   """
   del gradient_step, params
-  all_is_finite = [jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-                   for p in jax.tree.leaves(updates)]
+  all_is_finite = [
+      jnp.sum(jnp.logical_not(jnp.isfinite(p)))
+      for p in jax.tree.leaves(updates)
+  ]
   num_not_finite = jnp.sum(jnp.array(all_is_finite))
   should_skip = num_not_finite > 0
-  return should_skip, dict(should_skip=should_skip,
-                           num_not_finite=num_not_finite)
+  return should_skip, dict(
+      should_skip=should_skip, num_not_finite=num_not_finite
+  )
 
 
 def skip_large_updates(
     updates: base.Updates,
     gradient_step: chex.Array,
     params: Optional[base.Params],
-    max_squared_norm: float
+    max_squared_norm: float,
 ) -> tuple[chex.Array, chex.ArrayTree]:
   """Returns True if the global norm square of `updates` is small enough.
 
@@ -196,7 +204,8 @@ def skip_large_updates(
   """
   del gradient_step, params
   norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)]))
+      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)])
+  )
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, dict(should_skip=should_skip, norm_squared=norm_sq)
@@ -212,9 +221,10 @@ class MultiStepsState(NamedTuple):
       mini-steps have been accumulated.
     inner_opt_state: the state of the wrapped optimizer.
     acc_grads: accumulated gradients over multiple mini-steps.
-    skip_state: an arbitrarily py tree. This is only relevant when passing
-      a `should_skip_update_fn` to `MultiSteps`.
+    skip_state: an arbitrarily py tree. This is only relevant when passing a
+      `should_skip_update_fn` to `MultiSteps`.
   """
+
   mini_step: chex.Array
   gradient_step: chex.Array
   inner_opt_state: Any
@@ -245,37 +255,32 @@ class MultiSteps:
       opt: base.GradientTransformation,
       every_k_schedule: Union[int, Callable[[chex.Array], chex.Array]],
       use_grad_mean: bool = True,
-      should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None):
-    # pylint: disable=line-too-long
+      should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None,
+  ):
     """Initializer.
 
     Args:
       opt: the wrapped optimizer.
-      every_k_schedule: an int or a function.
-
-        * As a function, it returns how many mini-steps should be accumulated
-          in a single gradient step. Its only argument is the current
-          gradient step count. By varying the returned value, users can vary the
-          overall training batch size.
-        * If an ``int``, this is the constant number of mini-steps per gradient
-          update.
+      every_k_schedule: an int or a function.  * As a function, it returns how
+        many mini-steps should be accumulated in a single gradient step. Its
+        only argument is the current gradient step count. By varying the
+        returned value, users can vary the overall training batch size. * If an
+        ``int``, this is the constant number of mini-steps per gradient update.
       use_grad_mean: if ``True`` (the default), gradients accumulated over
         multiple mini-steps are averaged. Otherwise, they are summed.
       should_skip_update_fn: if provided, this function is used to decide when
         to accept or reject the updates from a mini-step. When a mini-step is
         rejected, the inner state of `MultiSteps` is not updated. In other
-        words, it is as if this mini-step never happened. For example:
-
-        * to ignore updates containing inf or NaN, do
-          ``should_skip_update_fn=skip_not_finite``;
-        * to ignore updates with a norm square larger then 42, do:
-          ``should_skip_update_fn=functools.partial(skip_large_updates, max_norm_sq=42.)``
-
-        Note that the optimizer's state :class:`optax.MultiStepsState` contains
-        a keyword argument ``skip_state`` in which debugging and monitoring
-        information returned by ``should_skip_update_fn`` is written.
+        words, it is as if this mini-step never happened. For example:  * to
+        ignore updates containing inf or NaN, do
+        ``should_skip_update_fn=skip_not_finite``; * to ignore updates with a
+        norm square larger then 42, do:
+        ``should_skip_update_fn=functools.partial(skip_large_updates,
+        max_norm_sq=42.)``  Note that the optimizer's state
+        :class:`optax.MultiStepsState` contains a keyword argument
+        ``skip_state`` in which debugging and monitoring information returned by
+        ``should_skip_update_fn`` is written.
     """
-    # pylint: enable=line-too-long
     self._opt = base.with_extra_args_support(opt)
 
     if isinstance(every_k_schedule, int):
@@ -286,8 +291,9 @@ class MultiSteps:
 
     if self._use_grad_mean:
       # Use Welford algorithm for numerically stable aggregation of mean.
-      self._acc_update = (
-          lambda grad, acc, *, n_acc: acc + (grad - acc) / (n_acc + 1))
+      self._acc_update = lambda grad, acc, *, n_acc: acc + (grad - acc) / (
+          n_acc + 1
+      )
     else:
       self._acc_update = lambda grad, acc, *, n_acc: grad + acc
 
@@ -312,19 +318,22 @@ class MultiSteps:
         gradient_step=gradient_step,
         inner_opt_state=self._opt.init(params),
         acc_grads=updates,
-        skip_state=skip_state)
+        skip_state=skip_state,
+    )
     return init_state
 
-  def update(self,
-             updates: base.Updates,
-             state: MultiStepsState,
-             params: Optional[base.Params] = None,
-             **extra_args: Any,
-             ) -> tuple[base.Updates, MultiStepsState]:
+  def update(
+      self,
+      updates: base.Updates,
+      state: MultiStepsState,
+      params: Optional[base.Params] = None,
+      **extra_args: Any,
+  ) -> tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
     k_steps = self._every_k_schedule(state.gradient_step)
     should_skip_update, skip_state = self._should_skip_update_fn(
-        updates, state.gradient_step, params)
+        updates, state.gradient_step, params
+    )
     if (should_skip_update.dtype, should_skip_update.shape) != (jnp.bool_, ()):
       raise ValueError(
           'The `should_skip_update_fn` function should return a boolean scalar '
@@ -347,8 +356,7 @@ class MultiSteps:
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
           mini_step=numerics.safe_increment(state.mini_step) % k_steps,
-          gradient_step=emit
-          * numerics.safe_increment(state.gradient_step)
+          gradient_step=emit * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jax.tree.map(
               lambda st, nst: jnp.where(emit, nst, st),
@@ -356,26 +364,45 @@ class MultiSteps:
               new_inner_state,
           ),
           acc_grads=jax.tree.map(
-              lambda ga: (1 - emit) * ga, acc_grads
+              lambda ga, upd: (1 - emit) * ga.astype(upd.dtype),
+              acc_grads,
+              final_updates,
           ),
           skip_state=skip_state,
       )
 
-      final_updates = jax.tree.map(
-          lambda ga: emit * ga, final_updates
-      )
+      final_updates = jax.tree.map(lambda ga: emit * ga, final_updates)
       return final_updates, new_state
 
     def _skip_update(updates, state, params):
-      del updates, params
+      # Create new skip state with correct dtype
+      zero_updates, new_inner_state = jax.eval_shape(
+          self._opt.update,
+          updates,
+          state.inner_opt_state,
+          params=params,
+          **extra_args,
+      )
+      zero_updates = otu.tree_zeros_like(zero_updates)
+
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,
           gradient_step=state.gradient_step,
-          inner_opt_state=state.inner_opt_state,
-          acc_grads=state.acc_grads,
+          inner_opt_state=jax.tree.map(
+              lambda x, y: (
+                  x.astype(y.dtype) if isinstance(x, chex.Array) else x
+              ),
+              state.inner_opt_state,
+              new_inner_state,
+          ),
+          acc_grads=jax.tree.map(
+              lambda acc, upd: acc.astype(upd.dtype),
+              state.acc_grads,
+              zero_updates,
+          ),
           skip_state=skip_state,
       )
-      zero_updates = otu.tree_zeros_like(state.acc_grads)
+
       return zero_updates, multi_state_when_skip
 
     new_updates, new_state = lax.cond(
@@ -384,7 +411,8 @@ class MultiSteps:
     return new_updates, new_state
 
   def has_updated(
-      self, state: Union[MultiStepsState, chex.ArrayTree]) -> chex.Array:
+      self, state: Union[MultiStepsState, chex.ArrayTree]
+  ) -> chex.Array:
     # Use `getattr` to bypass pytype checks.
     return jnp.logical_and(
         getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0

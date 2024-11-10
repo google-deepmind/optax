@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.tree_utils._tree_math."""
+"""Tests for methods in `optax.tree_utils._tree_math.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
 import numpy as np
-
 from optax import tree_utils as tu
 
 
@@ -60,8 +58,10 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_add(self.array_a, self.array_b)
     np.testing.assert_array_almost_equal(expected, got)
 
-    expected = (self.tree_a[0] + self.tree_b[0],
-                self.tree_a[1] + self.tree_b[1])
+    expected = (
+        self.tree_a[0] + self.tree_b[0],
+        self.tree_a[1] + self.tree_b[1],
+    )
     got = tu.tree_add(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -70,8 +70,10 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_sub(self.array_a, self.array_b)
     np.testing.assert_array_almost_equal(expected, got)
 
-    expected = (self.tree_a[0] - self.tree_b[0],
-                self.tree_a[1] - self.tree_b[1])
+    expected = (
+        self.tree_a[0] - self.tree_b[0],
+        self.tree_a[1] - self.tree_b[1],
+    )
     got = tu.tree_sub(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -80,8 +82,10 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_mul(self.array_a, self.array_b)
     np.testing.assert_array_almost_equal(expected, got)
 
-    expected = (self.tree_a[0] * self.tree_b[0],
-                self.tree_a[1] * self.tree_b[1])
+    expected = (
+        self.tree_a[0] * self.tree_b[0],
+        self.tree_a[1] * self.tree_b[1],
+    )
     got = tu.tree_mul(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -90,8 +94,10 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_div(self.array_a, self.array_b)
     np.testing.assert_array_almost_equal(expected, got)
 
-    expected = (self.tree_a[0] / self.tree_b[0],
-                self.tree_a[1] / self.tree_b[1])
+    expected = (
+        self.tree_a[0] / self.tree_b[0],
+        self.tree_a[1] / self.tree_b[1],
+    )
     got = tu.tree_div(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -105,8 +111,10 @@ class TreeUtilsTest(parameterized.TestCase):
     chex.assert_trees_all_close(expected, got)
 
   def test_tree_add_scalar_mul(self):
-    expected = (self.tree_a[0] + 0.5 * self.tree_b[0],
-                self.tree_a[1] + 0.5 * self.tree_b[1])
+    expected = (
+        self.tree_a[0] + 0.5 * self.tree_b[0],
+        self.tree_a[1] + 0.5 * self.tree_b[1],
+    )
     got = tu.tree_add_scalar_mul(self.tree_a, 0.5, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -119,8 +127,9 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_vdot(self.tree_a_dict, self.tree_b_dict)
     np.testing.assert_allclose(expected, got)
 
-    expected = (jnp.vdot(self.tree_a[0], self.tree_b[0]) +
-                jnp.vdot(self.tree_a[1], self.tree_b[1]))
+    expected = jnp.vdot(self.tree_a[0], self.tree_b[0]) + jnp.vdot(
+        self.tree_a[1], self.tree_b[1]
+    )
     got = tu.tree_vdot(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
@@ -129,7 +138,7 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_sum(self.array_a)
     np.testing.assert_allclose(expected, got)
 
-    expected = (jnp.sum(self.tree_a[0]) + jnp.sum(self.tree_a[1]))
+    expected = jnp.sum(self.tree_a[0]) + jnp.sum(self.tree_a[1])
     got = tu.tree_sum(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
@@ -148,8 +157,10 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_l2_norm(self.array_a)
     np.testing.assert_allclose(expected, got)
 
-    expected = jnp.sqrt(jnp.vdot(self.tree_a[0], self.tree_a[0]).real +
-                        jnp.vdot(self.tree_a[1], self.tree_a[1]).real)
+    expected = jnp.sqrt(
+        jnp.vdot(self.tree_a[0], self.tree_a[0]).real
+        + jnp.vdot(self.tree_a[1], self.tree_a[1]).real
+    )
     got = tu.tree_l2_norm(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
@@ -194,20 +205,20 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_add_multiple_trees(self):
     """Test adding more than 2 trees with tree_add."""
     trees = [self.tree_a_dict_jax, self.tree_a_dict_jax, self.tree_a_dict_jax]
-    expected = tu.tree_scalar_mul(3., self.tree_a_dict_jax)
+    expected = tu.tree_scalar_mul(3.0, self.tree_a_dict_jax)
     got = tu.tree_add(*trees)
     chex.assert_trees_all_close(expected, got)
 
   def test_tree_clip(self):
     """Clip the tree to range [min_value, max_value]."""
-    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    expected = tu.tree_scalar_mul(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=0, max_value=0.5)
     chex.assert_trees_all_close(expected, got)
-    expected = tu.tree_scalar_mul(.5, self.tree_a_dict_jax)
+    expected = tu.tree_scalar_mul(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=None, max_value=0.5)
     chex.assert_trees_all_close(expected, got)
-    expected = tu.tree_scalar_mul(2., self.tree_a_dict_jax)
-    got = tu.tree_clip(self.tree_a_dict_jax, min_value=2., max_value=None)
+    expected = tu.tree_scalar_mul(2.0, self.tree_a_dict_jax)
+    got = tu.tree_clip(self.tree_a_dict_jax, min_value=2.0, max_value=None)
     chex.assert_trees_all_close(expected, got)
 
   def test_update_infinity_moment(self):
@@ -219,28 +230,27 @@ class TreeUtilsTest(parameterized.TestCase):
 
     # identity if updating with itself (and positive decay)
     np.testing.assert_allclose(
-        transform_fn(values, values, decay=d, eps=0.),
-        values,
-        atol=1e-4
+        transform_fn(values, values, decay=d, eps=0.0), values, atol=1e-4
     )
     # return (decayed) max when updating with zeros
     np.testing.assert_allclose(
-        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.),
+        transform_fn(jnp.zeros_like(values), values, decay=d, eps=0.0),
         d * values,
-        atol=1e-4
+        atol=1e-4,
     )
     # infinity norm takes absolute values
     np.testing.assert_allclose(
-        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.),
+        transform_fn(-values, jnp.zeros_like(values), decay=d, eps=0.0),
         values,
-        atol=1e-4
+        atol=1e-4,
     )
     # return at least `eps`
     np.testing.assert_allclose(
-        transform_fn(jnp.zeros_like(values), jnp.zeros_like(values),
-                     decay=d, eps=1e-2),
+        transform_fn(
+            jnp.zeros_like(values), jnp.zeros_like(values), decay=d, eps=1e-2
+        ),
         jnp.ones_like(values) * 1e-2,
-        atol=1e-4
+        atol=1e-4,
     )
 
   def test_bias_correction_bf16(self):
@@ -249,7 +259,8 @@ class TreeUtilsTest(parameterized.TestCase):
       for count in (1, 10, 100, 1000):
         chex.assert_tree_all_finite(
             tu.tree_bias_correction(m, decay, count),
-            custom_message=f'failed with decay={decay}, count={count}')
+            custom_message=f'failed with decay={decay}, count={count}',
+        )
 
   def test_empty_tree_reduce(self):
     for tree in [{}, (), [], None, {'key': [None, [None]]}]:

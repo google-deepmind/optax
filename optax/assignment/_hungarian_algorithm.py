@@ -65,10 +65,6 @@ def hungarian_algorithm(cost_matrix):
     array of column indices.
     The cost of the assignment is ``cost_matrix[i, j].sum()``.
 
-  References:
-    David F. Crouse, `On implementing 2D rectangular assignment algorithms
-    <https://ieeexplore.ieee.org/document/7738348>`_, 2016
-
   Examples:
     >>> import optax
     >>> from jax import numpy as jnp
@@ -101,6 +97,10 @@ def hungarian_algorithm(cost_matrix):
     i: [0 1 2 3]
     >>> print("j:", j)
     j: [3 2 1 0]
+
+  References:
+    David F. Crouse, `On implementing 2D rectangular assignment algorithms
+    <https://ieeexplore.ieee.org/document/7738348>`_, 2016
   """
 
   if cost_matrix.shape[0] == 0 or cost_matrix.shape[1] == 0:

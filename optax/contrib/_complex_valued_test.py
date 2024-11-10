@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `complex_valued.py`."""
+"""Tests for methods in `complex_valued.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import transform
 from optax._src import update
 from optax.contrib import _complex_valued
@@ -50,7 +48,8 @@ class ComplexValuedTest(chex.TestCase):
       # Complex gradients need to be conjugated before being added to parameters
       grads = jax.tree.map(lambda x: x.conj(), grads)
       updates, opt_state = self.variant(optimizer.update)(
-          grads, opt_state, params)
+          grads, opt_state, params
+      )
       params = update.apply_updates(params, updates)
       return loss, grads, params, opt_state
 
@@ -67,9 +66,11 @@ class ComplexValuedTest(chex.TestCase):
     # real-to-real and complex-to-real loss functions in each step
     for _ in range(3):
       loss, (gx, gy), (x, y), opt_state = do_update(
-          _loss_fun_real_to_real, optimizer, (x, y), opt_state)
+          _loss_fun_real_to_real, optimizer, (x, y), opt_state
+      )
       loss_complex, gz, z, opt_state_complex = do_update(
-          _loss_fun_complex_to_real, optimizer_complex, z, opt_state_complex)
+          _loss_fun_complex_to_real, optimizer_complex, z, opt_state_complex
+      )
       np.testing.assert_allclose(loss, loss_complex)
       np.testing.assert_allclose(gx + gy * 1j, gz)
       np.testing.assert_allclose(x + y * 1j, z)

@@ -46,13 +46,15 @@ skip_large_updates = _accumulation.skip_large_updates
 
 @functools.partial(
     chex.warn_deprecated_function,
-    replacement='optax.transforms.maybe_transform')
+    replacement='optax.transforms.maybe_transform',
+)
 def maybe_update(
     inner: base.GradientTransformation,
-    should_update_fn: Callable[[jnp.ndarray], jnp.ndarray]
+    should_update_fn: Callable[[jnp.ndarray], jnp.ndarray],
 ) -> base.GradientTransformationExtraArgs:
   return conditionally_transform(
-      inner=inner, should_transform_fn=should_update_fn)
+      inner=inner, should_transform_fn=should_update_fn
+  )
 
 
 MaybeUpdateState = ConditionallyTransformState

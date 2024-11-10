@@ -64,10 +64,6 @@ def power_iteration(
   of a diagonalizable matrix. This matrix can be given as an array or as a
   callable implementing a matrix-vector product.
 
-  References:
-    Wikipedia contributors. `Power iteration
-    <https://en.wikipedia.org/w/index.php?tit0le=Power_iteration>`_.
-
   Args:
     matrix: a square matrix, either as an array or a callable implementing a
       matrix-vector product.
@@ -91,6 +87,10 @@ def power_iteration(
   Returns:
     A pair (eigenvalue, eigenvector), where eigenvalue is the dominant
     eigenvalue of ``matrix`` and eigenvector is its associated eigenvector.
+
+  References:
+    Wikipedia contributors. `Power iteration
+    <https://en.wikipedia.org/w/index.php?tit0le=Power_iteration>`_.
 
   .. versionchanged:: 0.2.2
     ``matrix`` can be a callable. Reversed the order of the return parameters,
@@ -151,12 +151,6 @@ def matrix_inverse_pth_root(
   This function uses the Coupled newton iterations algorithm for
   the computation of a matrix's inverse pth root.
 
-
-  References:
-    [Functions of Matrices, Theory and Computation,
-     Nicholas J Higham, Pg 184, Eq 7.18](
-     https://epubs.siam.org/doi/book/10.1137/1.9780898717778)
-
   Args:
     matrix: the symmetric PSD matrix whose power it to be computed
     p: exponent, for p a positive integer.
@@ -170,6 +164,11 @@ def matrix_inverse_pth_root(
 
   Returns:
     matrix^(-1/p)
+
+  References:
+    [Functions of Matrices, Theory and Computation,
+     Nicholas J Higham, Pg 184, Eq 7.18](
+     https://epubs.siam.org/doi/book/10.1137/1.9780898717778)
   """
 
   # We use float32 for the matrix inverse pth root.
@@ -258,7 +257,7 @@ def matrix_inverse_pth_root(
     init_state = tuple(
         [0, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]
     )
-    _, mat_m, mat_h, old_mat_h, error, convergence = lax.while_loop(
+    _, mat_m, mat_h, old_mat_h, _, convergence = lax.while_loop(
         _iter_condition, _iter_body, init_state
     )
     error = jnp.max(jnp.abs(mat_m - identity))

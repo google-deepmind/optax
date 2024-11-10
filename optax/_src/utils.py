@@ -41,7 +41,8 @@ def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
 
 
 def canonicalize_dtype(
-    dtype: Optional[chex.ArrayDType]) -> Optional[chex.ArrayDType]:
+    dtype: Optional[chex.ArrayDType],
+) -> Optional[chex.ArrayDType]:
   """Canonicalise a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
@@ -49,16 +50,15 @@ def canonicalize_dtype(
 
 
 @functools.partial(
-    chex.warn_deprecated_function,
-    replacement='optax.tree_utils.tree_cast')
+    chex.warn_deprecated_function, replacement='optax.tree_utils.tree_cast'
+)
 def cast_tree(
-    tree: chex.ArrayTree,
-    dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
 ) -> chex.ArrayTree:
   return otu.tree_cast(tree, dtype)
 
 
-def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
+def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -188,9 +188,19 @@ def _extract_fns_kwargs(
   dictionaries ``(fn_1_kwargs, ..., fn_n_kwargs), remaining_kwargs``. Each
   dictionary ``fn_i_kwargs`` correspond to a subset of ``{key: values}`` pairs
   from ``kwargs`` such that ``key`` is one possible argument of the function
-  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs 
+  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs
   ``{key: values}`` from ``kwargs`` whose ``key`` does not match any argument
   of any of the functions ``fns``.
+
+  Args:
+    fns: tuple of functions to feed kwargs to.
+    kwargs: dictionary of keyword variables to be fed to funs.
+
+  Returns:
+    (fn_1_kwargs, ..., fn_n_kwargs)
+      Keyword arguments for each function taken from kwargs.
+    remaining_kwargs
+      Keyword arguments present in kwargs but not in any of the input functions.
 
   Examples:
     >>> import optax
@@ -208,20 +218,8 @@ def _extract_fns_kwargs(
     ...  return fn1(a, **fn1_kwargs) + fn2(c, **fn2_kwargs)
     >>> print(super_fn(1., 2., b=3., d=4.))
     10.0
-
-  Args:
-    fns: tuple of functions to feed kwargs to.
-    kwargs: dictionary of keyword variables to be fed to funs.
-
-  Returns:
-    (fn_1_kwargs, ..., fn_n_kwargs)
-      Keyword arguments for each function taken from kwargs.
-    remaining_kwargs
-      Keyword arguments present in kwargs but not in any of the input functions.
   """
-  fns_arg_names = [
-      list(inspect.signature(fn).parameters.keys()) for fn in fns
-  ]
+  fns_arg_names = [list(inspect.signature(fn).parameters.keys()) for fn in fns]
   fns_kwargs = [
       {k: v for k, v in kwargs.items() if k in fn_arg_names}
       for fn_arg_names in fns_arg_names
@@ -241,6 +239,19 @@ def value_and_grad_from_state(
   require to compute the gradient and objective function at the candidate
   iterate. This objective value and gradient can be re-used in the next
   iteration to save some computations using this utility function.
+
+  Args:
+    value_fn: function returning a scalar (float or array of dimension 1),
+      amenable to differentiation in jax using :func:`jax.value_and_grad`.
+
+  Returns:
+    A callable akin to :func:`jax.value_and_grad` that fetches value
+    and grad from the state if present. If no value or grad are found or if
+    multiple value and grads are found this function raises an error. If a value
+    is found but is infinite or nan, the value and grad are computed using
+    :func:`jax.value_and_grad`. If the gradient found in the state is None,
+    raises an Error.
+
 
   Examples:
     >>> import optax
@@ -269,18 +280,6 @@ def value_and_grad_from_state(
     Objective function: 6.53E-01
     Objective function: 2.35E-01
     Objective function: 8.47E-02
-
-  Args:
-    value_fn: function returning a scalar (float or array of dimension 1),
-      amenable to differentiation in jax using :func:`jax.value_and_grad`.
-
-  Returns:
-    A callable akin to :func:`jax.value_and_grad` that fetches value
-    and grad from the state if present. If no value or grad are found or if
-    multiple value and grads are found this function raises an error. If a value
-    is found but is infinite or nan, the value and grad are computed using
-    :func:`jax.value_and_grad`. If the gradient found in the state is None,
-    raises an Error.
   """
 
   def _value_and_grad(
@@ -296,7 +295,7 @@ def value_and_grad_from_state(
           'Value or gradient not found in the state. '
           'Make sure that these values are stored in the state by the '
           'optimizer.'
-          )
+      )
     value, grad = jax.lax.cond(
         (~jnp.isinf(value)) & (~jnp.isnan(value)),
         lambda *_: (value, grad),

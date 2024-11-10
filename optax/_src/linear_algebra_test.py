@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for optax._src.linear_algebra."""
+"""Tests for linear_algebraic methods in `linear_algebra.py`."""
 
 from typing import Iterable
 
@@ -81,9 +81,7 @@ class LinearAlgebraTest(chex.TestCase):
       dict(implicit=True),
       dict(implicit=False),
   )
-  def test_power_iteration(
-      self, implicit, dim=6, tol=1e-3, num_iters=100
-  ):
+  def test_power_iteration(self, implicit, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration by comparing to numpy.linalg.eigh."""
 
     if implicit:
@@ -96,6 +94,7 @@ class LinearAlgebraTest(chex.TestCase):
             error_tolerance=tol,
             num_iters=num_iters,
         )
+
     else:
       power_iteration = linear_algebra.power_iteration
 
@@ -118,9 +117,7 @@ class LinearAlgebraTest(chex.TestCase):
     )
 
   @chex.all_variants
-  def test_power_iteration_pytree(
-      self, dim=6, tol=1e-3, num_iters=100
-  ):
+  def test_power_iteration_pytree(self, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration for matrix-vector products acting on pytrees."""
 
     def matrix_vector_product(x):
@@ -143,7 +140,7 @@ class LinearAlgebraTest(chex.TestCase):
     eigval_power, _ = power_iteration(v0=v0)
 
     # from the block-diagonal structure of matrix, largest eigenvalue is 2.
-    self.assertAlmostEqual(eigval_power, 2., delta=10 * tol)
+    self.assertAlmostEqual(eigval_power, 2.0, delta=10 * tol)
 
   @chex.all_variants
   def test_power_iteration_mlp_hessian(

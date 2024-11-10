@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.transforms._masking."""
+"""Tests for methods in `optax.transforms._masking.py`."""
 
 import copy
 import dataclasses
@@ -20,13 +20,11 @@ from typing import cast
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
-
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
@@ -37,14 +35,14 @@ from optax.tree_utils import _state_utils
 
 
 def _build_sgd():
-  return alias.sgd(1.)
+  return alias.sgd(1.0)
 
 
 def _build_stateful_sgd():
   # This SGD behaves like _build_sgd but also tests the optimizer state. The
   # momentum is set to zero rather than None so that the momentum terms are
   # calculated, but do not change the results.
-  return alias.sgd(1., momentum=0.)
+  return alias.sgd(1.0, momentum=0.0)
 
 
 def _build_sgd_extra_args():
@@ -173,18 +171,16 @@ class MaskedTest(chex.TestCase):
       ('stateful_sgd_w_mask_fn', _build_stateful_sgd, True),
   )
   def test_masked(self, opt_builder, use_fn):
-    mask = {'a': True,
-            'b': [False, True],
-            'c': {'d': True, 'e': (False, True)}}
+    mask = {'a': True, 'b': [False, True], 'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
-    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = {'a': 1.0, 'b': [2.0, 3.0], 'c': {'d': 4.0, 'e': (5.0, 6.0)}}
     params = jax.tree.map(jnp.asarray, params)
-    input_updates = jax.tree.map(lambda x: x/10., params)
+    input_updates = jax.tree.map(lambda x: x / 10.0, params)
 
     # Negate the updates wherever the mask is True
     def masked_negate(updates):
-      return jax.tree.map(
-          lambda upd, m: -upd if m else upd, updates, mask)
+      return jax.tree.map(lambda upd, m: -upd if m else upd, updates, mask)
+
     correct_updates = masked_negate(input_updates)
 
     init_fn, update_fn = _masking.masked(opt_builder(), mask_arg)
@@ -211,15 +207,19 @@ class MaskedTest(chex.TestCase):
   def test_prefix_mask(self, opt_builder):
     """Test when the mask is a prefix of the updates PyTree."""
     mask = {'a': True, 'b': False, 'c': {'d': False, 'e': True}}
-    params = {'a': 1., 'b': {'f': 2.}, 'c': {'d': 3., 'e': ([4., 5.], 6.)}}
+    params = {
+        'a': 1.0,
+        'b': {'f': 2.0},
+        'c': {'d': 3.0, 'e': ([4.0, 5.0], 6.0)},
+    }
     params = jax.tree.map(jnp.asarray, params)
-    input_updates = jax.tree.map(lambda x: x/10., params)
+    input_updates = jax.tree.map(lambda x: x / 10.0, params)
 
     # Negate the updates wherever the mask (or mask parent) is True
     def _masked_sgd_on_updates(m, upd):
       return jax.tree.map(lambda x: -x, upd) if m else upd
-    correct_updates = jax.tree.map(
-        _masked_sgd_on_updates, mask, input_updates)
+
+    correct_updates = jax.tree.map(_masked_sgd_on_updates, mask, input_updates)
 
     init_fn, update_fn = _masking.masked(opt_builder(), mask)
     update_fn = self.variant(update_fn)
@@ -229,26 +229,29 @@ class MaskedTest(chex.TestCase):
 
     # Check repeated application, this time with no params.
     correct_updates = jax.tree.map(
-        _masked_sgd_on_updates, mask, correct_updates)
+        _masked_sgd_on_updates, mask, correct_updates
+    )
     updates, _ = update_fn(updates, state)
     chex.assert_trees_all_close(updates, correct_updates)
 
   @chex.all_variants
   def test_update_requires_params(self):
     weight_decay = 0.1
-    mask = {'a': True,
-            'b': [False, True],
-            'c': {'d': True, 'e': (False, True)}}
-    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    mask = {'a': True, 'b': [False, True], 'c': {'d': True, 'e': (False, True)}}
+    params = {'a': 1.0, 'b': [2.0, 3.0], 'c': {'d': 4.0, 'e': (5.0, 6.0)}}
     params = jax.tree.map(jnp.asarray, params)
-    input_updates = jax.tree.map(lambda x: x/10., params)
+    input_updates = jax.tree.map(lambda x: x / 10.0, params)
 
     correct_updates = jax.tree.map(
         lambda m, u, p: u + weight_decay * p if m else u,
-        mask, input_updates, params)
+        mask,
+        input_updates,
+        params,
+    )
 
     init_fn, update_fn = _masking.masked(
-        transform.add_decayed_weights(weight_decay), mask)
+        transform.add_decayed_weights(weight_decay), mask
+    )
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)
@@ -260,7 +263,10 @@ class MaskedTest(chex.TestCase):
     # Test repeated application
     new_correct_updates = jax.tree.map(
         lambda m, u, p: u + weight_decay * p if m else u,
-        mask, correct_updates, params)
+        mask,
+        correct_updates,
+        params,
+    )
     updates, _ = update_fn(correct_updates, state, params)
     chex.assert_trees_all_close(updates, new_correct_updates)
 
@@ -270,13 +276,12 @@ class MaskedTest(chex.TestCase):
     update_fn(container(), init_fn(container()))
 
   @parameterized.parameters(
-      (False, False), (False, True), (True, False), (True, True))
+      (False, False), (False, True), (True, False), (True, True)
+  )
   def test_tree_mismatch_fails(self, extra_key_in_mask, use_fn):
-    mask = {'a': True,
-            'b': [False, True],
-            'c': {'d': True, 'e': (False, True)}}
+    mask = {'a': True, 'b': [False, True], 'c': {'d': True, 'e': (False, True)}}
     mask_arg = lambda _: mask if use_fn else mask
-    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = {'a': 1.0, 'b': [2.0, 3.0], 'c': {'d': 4.0, 'e': (5.0, 6.0)}}
     params = jax.tree.map(jnp.asarray, params)
 
     if extra_key_in_mask:
@@ -293,16 +298,18 @@ class MaskedTest(chex.TestCase):
     params = {'a': jnp.ones((1, 2)), 'b': (jnp.ones((1,)), np.ones((1, 2, 3)))}
     mask_fn = lambda p: jax.tree.map(lambda x: x.ndim > 1, p)
     init_fn, update_fn = _masking.masked(
-        transform.add_decayed_weights(0.1), mask_fn)
+        transform.add_decayed_weights(0.1), mask_fn
+    )
     update_fn = self.variant(update_fn)
 
     state = self.variant(init_fn)(params)
-    grads = jax.tree.map(lambda x: x*2, params)
+    grads = jax.tree.map(lambda x: x * 2, params)
     updates, _ = update_fn(grads, state, params)
-    np.testing.assert_allclose(updates['a'], grads['a'] + 0.1*params['a'])
+    np.testing.assert_allclose(updates['a'], grads['a'] + 0.1 * params['a'])
     np.testing.assert_allclose(updates['b'][0], grads['b'][0])
-    np.testing.assert_allclose(updates['b'][1],
-                               grads['b'][1] + 0.1*params['b'][1])
+    np.testing.assert_allclose(
+        updates['b'][1], grads['b'][1] + 0.1 * params['b'][1]
+    )
 
   @chex.all_variants
   @parameterized.named_parameters(
@@ -311,9 +318,11 @@ class MaskedTest(chex.TestCase):
   )
   def test_nested_mask(self, opt_builder):
     # https://github.com/deepmind/optax/issues/271
-    params = {'linear_1': {'w': jnp.zeros((1, 1)), 'b': jnp.zeros(1)},
-              'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
-              'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)}}
+    params = {
+        'linear_1': {'w': jnp.zeros((1, 1)), 'b': jnp.zeros(1)},
+        'linear_2': {'w': jnp.zeros((1, 2)), 'b': jnp.zeros(2)},
+        'linear_3': {'w': jnp.zeros((2, 3)), 'b': jnp.zeros(3)},
+    }
 
     outer_mask = lambda p: jax.tree.map(lambda x: x.ndim > 1, p)
     inner_mask = jax.tree.map(lambda _: True, params)
@@ -334,14 +343,16 @@ class MaskedTest(chex.TestCase):
   @chex.all_variants
   def test_masked_state_structure(self):
     # https://github.com/deepmind/optax/issues/271
-    params = {'a': [jnp.ones(1), (jnp.ones(2), jnp.ones(3))],
-              'b': {'c': jnp.ones(4), 'd': jnp.ones(5)}}
+    params = {
+        'a': [jnp.ones(1), (jnp.ones(2), jnp.ones(3))],
+        'b': {'c': jnp.ones(4), 'd': jnp.ones(5)},
+    }
     mask = {'a': [True, (True, False)], 'b': False}
     tx = _masking.masked(_build_stateful_sgd(), mask)
     trace = self.variant(tx.init)(params).inner_state[0].trace
     expected_trace = {
         'a': [jnp.zeros(1), (jnp.zeros(2), _masking.MaskedNode())],
-        'b': _masking.MaskedNode()
+        'b': _masking.MaskedNode(),
     }
     chex.assert_trees_all_equal_structs(trace, expected_trace)
 
@@ -351,7 +362,7 @@ class MaskedTest(chex.TestCase):
 
     # Define a dataclass with a callable
     @dataclasses.dataclass
-    class _MaskCompatibleModule():
+    class _MaskCompatibleModule:
       w: jax.Array
 
       def __call__(self, x):
@@ -361,9 +372,9 @@ class MaskedTest(chex.TestCase):
     jtu.register_pytree_node(
         _MaskCompatibleModule,
         lambda m: ((m.w,), None),
-        lambda _, c: _MaskCompatibleModule(*c)
+        lambda _, c: _MaskCompatibleModule(*c),
     )
-    module = _MaskCompatibleModule(jnp.array([1., 2., 3.]))
+    module = _MaskCompatibleModule(jnp.array([1.0, 2.0, 3.0]))
 
     with self.subTest('test _mask_callable utility'):
       # The module is then callable (like the Module class in equinox)
@@ -373,14 +384,12 @@ class MaskedTest(chex.TestCase):
 
     with self.subTest('test masked transform on callable pytree'):
       mask = _MaskCompatibleModule(False)
-      opt = _masking.masked(
-          _build_sgd(),
-          mask
-      )
+      opt = _masking.masked(_build_sgd(), mask)
       state = opt.init(module)
       updates = module
       new_updates, _ = opt.update(updates, state)
       chex.assert_trees_all_equal(updates, new_updates)
+
 
 if __name__ == '__main__':
   absltest.main()

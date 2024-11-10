@@ -56,8 +56,8 @@ def reduce_on_plateau(
   a ``patience`` number of epochs, the learning rate is reduced.
 
   Args:
-    factor: Factor by which to reduce the learning rate. 
-      new_scale = scale * factor.
+    factor: Factor by which to reduce the learning rate. new_scale = scale *
+      factor.
     patience: Number of iterations with no improvement after which learning rate
       will be reduced.
     rtol: Relative tolerance for measuring new optimum.
@@ -71,7 +71,7 @@ def reduce_on_plateau(
     min_scale: Scale at which the learning rate decay stops.
 
   Returns:
-    A GradientTransformationExtraArgs object.
+    A :class:`optax.GradientTransformationExtraArgs` object.
 
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
@@ -116,9 +116,7 @@ def reduce_on_plateau(
     has_improved = jnp.where(
         avg_value < (1 - rtol) * state.best_value - atol, 1, 0
     )
-    new_best_value = jnp.where(
-        has_improved, avg_value, state.best_value
-    )
+    new_best_value = jnp.where(has_improved, avg_value, state.best_value)
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_increment(state.plateau_count)
     )

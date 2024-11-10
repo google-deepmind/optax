@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses._fenchel_young."""
+"""Tests for fenchel young loss in `_fenchel_young.py`."""
 
 from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
-from jax.scipy.special import logsumexp
+from jax.scipy.special import logsumexp  # pylint: disable=g-importing-member
 
 from optax.losses import _classification
 from optax.losses import _fenchel_young

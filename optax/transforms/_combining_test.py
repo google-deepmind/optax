@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `optax.transforms._combining.py`."""
+"""Tests for methods in `optax.transforms._combining.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import base
 from optax._src import transform
@@ -36,15 +34,16 @@ class CombiningTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
+    self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
   @chex.all_variants
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
         _accumulation.trace(decay=0, nesterov=False),
-        transform.scale(-LR)]
+        transform.scale(-LR),
+    ]
 
     # Apply updates with chain.
     chain_params = self.init_params
@@ -79,8 +78,11 @@ class CombiningTest(chex.TestCase):
 
 def _map_keys_fn(fn):
   def map_fn(nested_dict):
-    return {k: (map_fn(v) if isinstance(v, dict) else fn(k, v))
-            for k, v in nested_dict.items()}
+    return {
+        k: map_fn(v) if isinstance(v, dict) else fn(k, v)
+        for k, v in nested_dict.items()
+    }
+
   return map_fn
 
 
@@ -111,6 +113,7 @@ class ExtraArgsTest(chex.TestCase):
     def init_fn(params):
       del params
       return {}
+
     def update_fn(updates, state, params=None):
       del params
       return updates, state
@@ -154,12 +157,14 @@ class PartitionTest(chex.TestCase):
   @chex.all_variants
   @parameterized.parameters(True, False)
   def test_partition(self, use_fn):
-    params = {'a1': 1., 'b1': 2., 'z1': {'a2': 3., 'z2': {'c1': 4.}}}
+    params = {'a1': 1.0, 'b1': 2.0, 'z1': {'a2': 3.0, 'z2': {'c1': 4.0}}}
     params = jax.tree.map(jnp.asarray, params)
     input_updates = jax.tree.map(lambda x: x / 10.0, params)
-    tx_dict = {'a': transform.scale(-1.0),
-               'b': transform.ema(0.0),  # stateful
-               'c': transform.scale(2.0)}
+    tx_dict = {
+        'a': transform.scale(-1.0),
+        'b': transform.ema(0.0),  # stateful
+        'c': transform.scale(2.0),
+    }
     param_labels = _map_keys_fn(lambda k, _: k[0])
     if not use_fn:
       param_labels = param_labels(params)
@@ -168,7 +173,8 @@ class PartitionTest(chex.TestCase):
     state = self.variant(tx.init)(params)
 
     correct_update_fn = _map_keys_fn(
-        lambda k, v: {'a': -v, 'b': v, 'c': 2.0*v}[k[0]])
+        lambda k, v: {'a': -v, 'b': v, 'c': 2.0 * v}[k[0]]
+    )
 
     updates, state = update_fn(input_updates, state, params)
     correct_updates = correct_update_fn(input_updates)
@@ -219,28 +225,31 @@ class PartitionTest(chex.TestCase):
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
-    init_fn, update_fn = _combining.partition(
-        {0: alias.sgd(1.)}, lambda _: 0)
+    init_fn, update_fn = _combining.partition({0: alias.sgd(1.0)}, lambda _: 0)
     updates, _ = update_fn(container(), init_fn(container()))
     self.assertEqual(updates, container())
 
   @chex.all_variants
   @parameterized.parameters(
-      (False, False), (False, True), (True, False), (True, True))
+      (False, False), (False, True), (True, False), (True, True)
+  )
   def test_labels_mismatch(self, use_extra_label, use_fn):
     # The labels from label_fn must be a subet of the keys for the tx.
-    params = {'a': 1., 'b': [2., 3.], 'c': {'d': 4., 'e': (5., 6.)}}
+    params = {'a': 1.0, 'b': [2.0, 3.0], 'c': {'d': 4.0, 'e': (5.0, 6.0)}}
     params = jax.tree.map(jnp.asarray, params)
     label_tree = {'a': 0, 'b': [1, 0], 'c': 1}  # prefix of params
 
     if use_extra_label:
       label_tree['a'] = 3
 
-    transforms = {0: alias.sgd(1.),
-                  1: alias.adam(1., b1=0., b2=0.),
-                  2: _accumulation.trace(1.0)}
+    transforms = {
+        0: alias.sgd(1.0),
+        1: alias.adam(1.0, b1=0.0, b2=0.0),
+        2: _accumulation.trace(1.0),
+    }
     init_fn, update_fn = _combining.partition(
-        transforms, (lambda _: label_tree) if use_fn else label_tree)
+        transforms, (lambda _: label_tree) if use_fn else label_tree
+    )
 
     if use_extra_label:
       with self.assertRaises(ValueError):
@@ -256,8 +265,7 @@ def scale_by_loss():
 
   def update_fn(updates, state, params, *, loss, **extra_args):
     del params, extra_args
-    updates = jax.tree.map(
-        lambda u: u / loss, updates)
+    updates = jax.tree.map(lambda u: u / loss, updates)
     return updates, state
 
   return base.GradientTransformationExtraArgs(base.init_empty_state, update_fn)

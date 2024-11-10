@@ -25,22 +25,53 @@ def ntxent(
 ) -> chex.Numeric:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
-  References:
-    T. Chen et al `A Simple Framework for Contrastive Learning of Visual
-    Representations <http://arxiv.org/abs/2002.05709>`_, 2020
-    kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
+  Examples:
+    >>> import jax
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>>
+    >>> key = jax.random.key(42)
+    >>> key1, key2, key3 = jax.random.split(key, 3)
+    >>> x = jax.random.normal(key1, shape=(4,2))
+    >>> labels = jnp.array([0, 0, 1, 1])
+    >>>
+    >>> print("input:", x)
+    input: [[-0.9155995   1.5534698 ]
+     [ 0.2623586  -1.5908985 ]
+     [-0.15977189  0.480501  ]
+     [ 0.58389133  0.10497775]]
+    >>> print("labels:", labels)
+    labels: [0 0 1 1]
+    >>>
+    >>> w = jax.random.normal(key2, shape=(2,1)) # params
+    >>> b = jax.random.normal(key3, shape=(1,)) # params
+    >>> out = x @ w + b # model
+    >>>
+    >>> print("Embeddings:", out)
+    Embeddings: [[-1.0076267]
+     [-1.2960069]
+     [-1.1829865]
+     [-1.3485558]]
+    >>> loss = optax.ntxent(out, labels)
+    >>> print("loss:", loss)
+    loss: 1.0986123
 
   Args:
     embeddings: batch of embeddings, with shape [batch, feature_length]
     labels: labels for groups that are positive pairs. e.g. if you have a batch
       of 4 embeddings and the first two and last two were positive pairs your
-      `labels` should look like [0, 0, 1, 1]. labels SHOULD NOT be all the same
-      (e.g. [0, 0, 0, 0]) you will get a NaN result. Shape [batch]
+      `labels` should look like [0, 0, 1, 1]. Shape [batch]
     temperature: temperature scaling parameter.
 
   Returns:
     A scalar loss value of NT-Xent values averaged over all positive
     pairs
+
+  References:
+    T. Chen et al `A Simple Framework for Contrastive Learning of Visual
+    Representations <http://arxiv.org/abs/2002.05709>`_, 2020
+
+    kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
 
   .. versionadded:: 0.2.3
   """
@@ -55,7 +86,8 @@ def ntxent(
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :], embeddings[:, None, :]
+          embeddings[None, :, :], embeddings[:, None, :],
+          epsilon=jnp.finfo(embeddings.dtype).eps
       )
       / temperature
   )
@@ -83,88 +115,54 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0
+                    ).sum()/matches.sum()
 
   return loss
 
 
-def _pairwise_distance(
-  x: chex.Array,
-  y: chex.Array,
-  p: int = 2,
-  eps: float = 1e-6) -> chex.Array:
-  diff = x - y
-  dist = jnp.sum(jnp.abs(diff) ** p + eps, axis=-1) ** (1.0 / p)
-  return dist
-
-
-def triplet_margin_loss(
-  anchor: chex.Array,
-  positive: chex.Array,
-  negative: chex.Array,
-  *,
-  margin: float = 1.0,
-  p: int = 2,
-  swap: bool = False,
-  eps: float = 1e-6,
-  reduction: str = 'mean',
-) -> chex.Array:
-  """Triplet margin loss function.
-
-  Measures the relative similarity between an anchor point, 
-  a positive point, and a negative point using the distance 
-  metric specified by p-norm. The loss encourages
-  the distance between the anchor and positive points to be 
-  smaller than the distance between the anchor and negative 
-  points by at least the margin amount.
+def triplet_loss(
+    anchors: jnp.ndarray,
+    positives: jnp.ndarray,
+    negatives: jnp.ndarray,
+    axis: int = -1,
+    p: int = 2,
+    margin: float = 1.0,
+    eps: float = 1e-6,
+    reduction: str = 'none',
+) -> jnp.ndarray:
+  """
+  Computes the triplet loss for a set of anchor, positive, and negative samples.
+  Margin is represented with alpha in the math section.
 
   Args:
-      anchor: The anchor embeddings. Shape: [batch_size, feature_dim].
-      positive: The positive embeddings. Shape: [batch_size, feature_dim].
-      negative: The negative embeddings. Shape: [batch_size, feature_dim].
-      margin: The margin value.
-      p: The norm degree for pairwise distance.
-      eps: Small epsilon value to avoid numerical issues.
-      swap: Use the distance swap optimization
-      reduction: Specifies the reduction to apply to the output:
-          'none' | 'mean' | 'sum'
+      anchors (array): The anchor samples.
+      positives (array): The positive samples.
+      negatives (array): The negative samples.
+      axis (int, optional): The distribution axis. Default: -1.
+      p (int, optional): The norm degree for pairwise distance. Default: 2.
+      margin (float, optional): Margin for the triplet loss. Defaults to 1.0.
+      eps (float, optional): Small positive constant to prevent numerical 
+      instability. Defaults to 1e-6.
+      reduction (str, optional): Specifies the reduction to apply to the 
+      output: 'none' | 'mean' | 'sum'. Default: 'none'.
+
   Returns:
-      The triplet margin loss value.
-      If reduction is 'none': tensor of shape [batch_size]
-      If reduction is 'mean' or 'sum': scalar tensor.
-
-  References:
-    V. Balntas et al. `Learning shallow convolutional feature
-    descriptors with triplet losses 
-    <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/paper119.pdf>`_, 2016
-  
+      array: Computed triplet loss. If reduction is 'none', returns a tensor of 
+      the same shape as input;
+      if reduction is 'mean' or 'sum', returns a scalar tensor.
   """
-  chex.assert_equal_shape([anchor, positive, negative])
-
-  if not (anchor.ndim == 2 and positive.ndim == 2 and negative.ndim == 2):
-    raise ValueError(
-        f"""Inputs must be 2D tensors but received
-        anchor: {anchor.ndim}, positive: {positive.ndim},
-        negative: {negative.ndim}"""
-    )
-
-  # Calculate distances between pairs
-  dist_pos = _pairwise_distance(anchor, positive, p, eps)
-  dist_neg = _pairwise_distance(anchor, negative, p, eps)
-
-  # Implement distance swap if enabled
-  dist_swap = _pairwise_distance(positive, negative)
-  dist_neg = jnp.where(swap, jnp.minimum(dist_neg, dist_swap), dist_neg)
-
-  # Calculate loss with margin
-  losses = jnp.maximum(margin + dist_pos - dist_neg, 0.0)
-
-  # Apply reduction
-  if reduction == 'none':
-    return losses
-  elif reduction == 'mean':
-    return jnp.mean(losses)
+  chex.assert_type([anchors], float)
+  chex.assert_type([positives], float)
+  chex.assert_type([negatives], float)
+  positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps
+                               )
+  negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps
+                               )
+  loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
+  if reduction == 'mean':
+    return loss.mean()
   elif reduction == 'sum':
-    return jnp.sum(losses)
+    return loss.sum()
   else:
-    raise ValueError(f'Invalid reduction mode: {reduction}')
+    return loss

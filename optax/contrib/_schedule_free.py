@@ -109,6 +109,17 @@ def schedule_free(
   Especially note that is important to switch off Momentum of the base
   optimizer. As of Apr, 2024, schedule_free is tested with SGD and Adam.
 
+  Args:
+    base_optimizer: Base optimizer to compute updates from.
+    learning_rate: learning_rate schedule w/o decay but with warmup.
+    b1: beta_1 parameter in the y update.
+    weight_lr_power: we downweight the weight of averaging using this. This is
+      especially helpful in early iterations during warmup.
+    state_dtype: dtype for z sequence in the schedule free method.
+
+  Returns:
+    A :class:`optax.GradientTransformationExtraArgs`.
+
   References:
     Defazio et al, `The Road Less Scheduled
     <https://arxiv.org/abs/2405.15682>`_, 2024
@@ -119,17 +130,6 @@ def schedule_free(
   .. warning::
     The current implementation requires the parameter ``b1`` to be strictly
     positive.
-
-  Args:
-    base_optimizer: Base optimizer to compute updates from.
-    learning_rate: learning_rate schedule w/o decay but with warmup.
-    b1: beta_1 parameter in the y update.
-    weight_lr_power: we downweight the weight of averaging using this. This is
-      especially helpful in early iterations during warmup.
-    state_dtype: dtype for z sequence in the schedule free method.
-
-  Returns:
-    A `GradientTransformationExtraArgs` with init and update functions.
   """
   base_optimizer = base.with_extra_args_support(base_optimizer)
 
@@ -251,7 +251,7 @@ def schedule_free_sgd(
     state_dtype: dtype for z sequence in the schedule free method.
 
   Returns:
-    A `GradientTransformationExtraArgs` with init and update functions.
+    A :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -313,13 +313,6 @@ def schedule_free_adamw(
   using a weight decay mask, nesterov, etc. Note also that the EMA parameter of
   the schedule free method (b1) must be strictly positive.
 
-  .. note::
-    Note that :func:`optax.scale_by_adam` with ``b1=0`` stores in its state an
-    unused first moment always equal to zero. To avoid this waste of memory,
-    we replace
-    :func:`optax.scale_by_adam` with ``b1=0`` by the equivalent
-    :func:`optax.scale_by_rms` with ``eps_in_sqrt=False, bias_correction=True``.
-
   Args:
     learning_rate: AdamW learning rate.
     warmup_steps: positive integer, the length of the linear warmup.
@@ -333,7 +326,7 @@ def schedule_free_adamw(
     state_dtype: dtype for z sequence in the schedule free method.
 
   Returns:
-    A `GradientTransformationExtraArgs` with init and update functions.
+    A :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -357,6 +350,14 @@ def schedule_free_adamw(
     Objective function: 1.73E+00
     Objective function: 8.94E-01
     Objective function: 4.13E-01
+
+  .. note::
+    Note that :func:`optax.scale_by_adam` with ``b1=0`` stores in its state an
+    unused first moment always equal to zero. To avoid this waste of memory,
+    we replace
+    :func:`optax.scale_by_adam` with ``b1=0`` by the equivalent
+    :func:`optax.scale_by_rms` with ``eps_in_sqrt=False, bias_correction=True``.
+
   """
   if warmup_steps is not None:
     learning_rate = _schedule.warmup_constant_schedule(

@@ -61,8 +61,8 @@ def safe_norm(
   Args:
     x: jax array.
     min_norm: lower bound for the returned norm.
-    ord: {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional. Order of the norm.
-      inf means numpy’s inf object. The default is None.
+    ord: {non-zero int, inf, -inf, 'fro', 'nuc'}, optional. Order of the norm.
+      inf means numpy's inf object. The default is None.
     axis: {None, int, 2-tuple of ints}, optional. If axis is an integer, it
       specifies the axis of x along which to compute the vector norms. If axis
       is a 2-tuple, it specifies the axes that hold 2-D matrices, and the matrix
@@ -110,6 +110,13 @@ def safe_increment(count: chex.Numeric) -> chex.Numeric:
   ``min_val``. This functions ensures that when ``max_val`` is reached the
   counter stays at ``max_val``.
 
+  Args:
+    count: a counter to be incremented.
+
+  Returns:
+    A counter incremented by 1, or ``max_val`` if the maximum value is
+    reached.
+
   Examples:
     >>> import jax.numpy as jnp
     >>> import optax
@@ -119,13 +126,6 @@ def safe_increment(count: chex.Numeric) -> chex.Numeric:
     Array(2147483647, dtype=int32)
 
   .. versionadded:: 0.2.4
-
-  Args:
-    count: a counter to be incremented.
-
-  Returns:
-    A counter incremented by 1, or ``max_val`` if the maximum value is
-    reached.
   """
   count_dtype = jnp.asarray(count).dtype
   if jnp.issubdtype(count_dtype, jnp.integer):

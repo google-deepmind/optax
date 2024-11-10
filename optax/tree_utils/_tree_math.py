@@ -21,7 +21,6 @@ from typing import Any, Optional, Union
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import numerics
 
 
@@ -120,7 +119,8 @@ def tree_add_scalar_mul(
       lambda x, y: None if x is None else x + scalar.astype(x.dtype) * y,
       tree_x,
       tree_y,
-      is_leaf=lambda x: x is None)
+      is_leaf=lambda x: x is None,
+  )
 
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
@@ -133,6 +133,13 @@ def _vdot_safe(a, b):
 def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   r"""Compute the inner product between two pytrees.
 
+  Args:
+    tree_x: first pytree to use.
+    tree_y: second pytree to use.
+
+  Returns:
+    inner product between ``tree_x`` and ``tree_y``, a scalar value.
+
   Examples:
 
     >>> optax.tree_utils.tree_vdot(
@@ -141,15 +148,9 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
     ... )
     Array(0, dtype=int32)
 
-  Args:
-    tree_x: first pytree to use.
-    tree_y: second pytree to use.
-
-  Returns:
-    inner product between ``tree_x`` and ``tree_y``, a scalar value.
-
-  Implementation detail: we upcast the values to the highest precision to avoid
-  numerical issues.
+  .. note::
+    We upcast the values to the highest precision to avoid
+    numerical issues.
   """
   vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
   return jax.tree.reduce(operator.add, vdots, initializer=0)
@@ -268,7 +269,7 @@ def tree_full_like(
     dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> Any:
   """Creates an identical tree where all tensors are filled with ``fill_value``.
-  
+
   Args:
     tree: pytree.
     fill_value: the fill value for all tensors in the tree.
@@ -277,8 +278,7 @@ def tree_full_like(
   Returns:
     an tree with the same structure as ``tree``.
   """
-  return jax.tree.map(
-      lambda x: jnp.full_like(x, fill_value, dtype=dtype), tree)
+  return jax.tree.map(lambda x: jnp.full_like(x, fill_value, dtype=dtype), tree)
 
 
 def tree_clip(
@@ -330,7 +330,7 @@ def tree_update_moment_per_elem_norm(updates, moments, decay, order):
 
   def orderth_norm(g):
     if jnp.isrealobj(g):
-      return g ** order
+      return g**order
     else:
       half_order = order / 2
       # JAX generates different HLO for int and float `order`
@@ -359,8 +359,7 @@ def tree_bias_correction(moment, decay, count):
   bias_correction_ = 1 - decay**count
 
   # Perform division in the original precision.
-  return jax.tree.map(
-      lambda t: t / bias_correction_.astype(t.dtype), moment)
+  return jax.tree.map(lambda t: t / bias_correction_.astype(t.dtype), moment)
 
 
 def tree_where(condition, tree_x, tree_y):
@@ -374,6 +373,4 @@ def tree_where(condition, tree_x, tree_y):
   Returns:
     tree_x or tree_y depending on condition.
   """
-  return jax.tree.map(
-      lambda x, y: jnp.where(condition, x, y), tree_x, tree_y
-  )
+  return jax.tree.map(lambda x, y: jnp.where(condition, x, y), tree_x, tree_y)

@@ -19,6 +19,28 @@ file in the source tree.
 but do not know what to start working on, check out our selection of
 [*good first issues*](https://github.com/google-deepmind/optax/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
+**Generic template.** When contributing with a new function or optimizer, use
+the following template for the docstring (see
+[optax.adam](https://optax.readthedocs.io/en/latest/api/optimizers.html#optax.adam)
+for example)
+- One-line description
+- Longer description with mathematic description if possible
+- Args section
+- Returns section
+- Examples
+- References
+- Additional notes, warnings
+
+The docs need to be in
+[reStructuredText format](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/index.html)!
+For example references should be written like
+```Doe et al `Yet another optimizer <link to optimizer>`_, 2042)```
+(so not in markdown format), same for
+[notes and warnings](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/notes_warnings.html).
+
+A longer description, references and additional notes may be optional. But
+examples are generally not, they are the best piece of documentation.
+
 
 ## Improving the documentation
 
