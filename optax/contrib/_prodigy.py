@@ -62,9 +62,6 @@ def prodigy(
   This method works best when combined with a learning rate schedule that
   treats 1.0 as the base (usually max) value.
 
-  References:
-    [Mishchenko & Defazio, 2023](https://arxiv.org/abs/2306.06101.pdf)
-
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
       is a linear_schedule with init_value=1.0 and end_value=0, combined with a
@@ -80,7 +77,11 @@ def prodigy(
       issues during warm-up stage. Off by default.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  References:
+    Mishchenko et al, `Prodigy: An Expeditiously Adaptive Parameter-Free Learner
+    <https://arxiv.org/abs/2306.06101>`_, 2023
   """
   beta1, beta2 = betas
   if beta3 is None:
@@ -122,7 +123,7 @@ def prodigy(
     params0 = state.params0
     estim_lr = state.estim_lr
     numerator_weighted = state.numerator_weighted
-    bc = ((1 - beta2 ** count_inc) ** 0.5) / (1 - beta1 ** count_inc)
+    bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)

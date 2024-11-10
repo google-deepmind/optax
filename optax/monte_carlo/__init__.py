@@ -14,6 +14,8 @@
 # ==============================================================================
 """Utilities for efficient monte carlo gradient estimation."""
 
+# pylint:disable=g-importing-member
+
 from optax.monte_carlo.control_variates import control_delta_method
 from optax.monte_carlo.control_variates import control_variates_jacobians
 from optax.monte_carlo.control_variates import moving_avg_baseline

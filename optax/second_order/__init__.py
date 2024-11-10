@@ -14,6 +14,8 @@
 # ==============================================================================
 """The second order optimization sub-package."""
 
+# pylint: disable=g-importing-member
+
 from optax.second_order._fisher import fisher_diag
 from optax.second_order._hessian import hessian_diag
 from optax.second_order._hessian import hvp

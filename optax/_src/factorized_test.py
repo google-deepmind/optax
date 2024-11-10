@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `factorized.py`."""
+"""Tests for methods in `factorized.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import factorized
 from optax.transforms import _accumulation
 
@@ -29,8 +27,8 @@ class FactorizedTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
+    self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
   @chex.all_variants
   def test_scale_by_factored_rms(self):
@@ -49,8 +47,7 @@ class FactorizedTest(parameterized.TestCase):
 
   @chex.variants(with_jit=True, without_jit=True, with_device=True)
   @parameterized.product(
-      factorized_dims=(True, False),
-      dtype=('bfloat16', 'float32')
+      factorized_dims=(True, False), dtype=('bfloat16', 'float32')
   )
   def test_preserve_dtype(self, factorized_dims: bool, dtype: str):
     """Test that the optimizer returns updates of same dtype as params."""
@@ -71,8 +68,7 @@ class FactorizedTest(parameterized.TestCase):
 
   @chex.variants(with_jit=True, without_jit=True, with_device=True)
   @parameterized.product(
-      factorized_dims=(True, False),
-      dtype=('bfloat16', 'float32')
+      factorized_dims=(True, False), dtype=('bfloat16', 'float32')
   )
   def test_gradient_accumulation(self, factorized_dims, dtype):
     """Test that the optimizers can safely be used with optax.MultiSteps."""

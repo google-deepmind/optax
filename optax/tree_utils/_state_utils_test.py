@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for _state_utils."""
+"""Tests for methods in `optax.tree_utils._state_utils.py`."""
 
 import dataclasses
 from typing import Optional, TypedDict, cast
@@ -429,11 +429,9 @@ class StateUtilsTest(absltest.TestCase):
       )
       state = opt.init(params)
       noise_state = _state_utils.tree_get(state, 'AddNoiseState')
-      expected_result = (
-          transform.AddNoiseState(
-              count=jnp.asarray(0),
-              rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
-          )
+      expected_result = transform.AddNoiseState(
+          count=jnp.asarray(0),
+          rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
       )
       chex.assert_trees_all_equal(noise_state, expected_result)
 
@@ -548,11 +546,9 @@ class StateUtilsTest(absltest.TestCase):
           transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
       )
       state = opt.init(params)
-      new_noise_state = (
-          transform.AddNoiseState(
-              count=jnp.array(42),
-              rng_key=jnp.array([4, 8], dtype=jnp.dtype('uint32')),
-          )
+      new_noise_state = transform.AddNoiseState(
+          count=jnp.array(42),
+          rng_key=jnp.array([4, 8], dtype=jnp.dtype('uint32')),
       )
       new_state = _state_utils.tree_set(state, AddNoiseState=new_noise_state)
       expected_result = (

@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `control_variates.py`."""
+"""Tests for methods in `control_variates.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import utils
 from optax.monte_carlo import control_variates
 from optax.monte_carlo import stochastic_gradient_estimators as sge
@@ -39,7 +37,8 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
   # Scalar.
   if not actual.shape:
     np.testing.assert_allclose(
-        np.asarray(actual), np.asarray(expected), rtol, atol)
+        np.asarray(actual), np.asarray(expected), rtol, atol
+    )
     return
 
   # We get around the bug https://github.com/numpy/numpy/issues/13801
@@ -50,7 +49,10 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
   non_zero_indices = np.argwhere(expected != 0)
   np.testing.assert_allclose(
       np.asarray(actual)[non_zero_indices],
-      expected[non_zero_indices], rtol, atol)
+      expected[non_zero_indices],
+      rtol,
+      atol,
+  )
 
 
 def _map(cv, params, samples, state=None):
@@ -64,7 +66,8 @@ def _map_variant(variant):
 def _cv_jac_variant(variant):
   return variant(
       control_variates.control_variates_jacobians,
-      static_argnums=(0, 1, 2, 4, 6, 7, 8))
+      static_argnums=(0, 1, 2, 4, 6, 7, 8),
+  )
 
 
 class DeltaControlVariateTest(chex.TestCase):
@@ -78,7 +81,8 @@ class DeltaControlVariateTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
     params = [mean, log_scale]
 
     dist = utils.multi_normal(*params)
@@ -102,7 +106,8 @@ class DeltaControlVariateTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
     params = [mean, log_scale]
 
     dist = utils.multi_normal(*params)
@@ -139,26 +144,25 @@ class DeltaControlVariateTest(chex.TestCase):
     _assert_equal(avg_cv, expected_cv(params, None), rtol=1e-1, atol=1e-3)
 
     # Second order expansion is log(\mu**2) + 1/2 * \sigma**2 (-2 / \mu**2)
-    expected_cv_val = - np.exp(1.) ** 2 * data_dims
+    expected_cv_val = -np.exp(1.0) ** 2 * data_dims
     _assert_equal(
-        expected_cv(params, None), expected_cv_val, rtol=1e-1, atol=1e-3)
+        expected_cv(params, None), expected_cv_val, rtol=1e-1, atol=1e-3
+    )
 
 
 class MovingAverageBaselineTest(chex.TestCase):
 
   @chex.all_variants
-  @parameterized.parameters(
-      [(1.0, 0.5, 0.9),
-       (1.0, 0.5, 0.99)])
-  def testLinearFunction(
-      self, effective_mean, effective_log_scale, decay):
-    weights = jnp.array([1., 2., 3.], dtype=jnp.float32)
+  @parameterized.parameters([(1.0, 0.5, 0.9), (1.0, 0.5, 0.99)])
+  def testLinearFunction(self, effective_mean, effective_log_scale, decay):
+    weights = jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32)
     num_samples = 10**4
     data_dims = len(weights)
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
@@ -168,44 +172,49 @@ class MovingAverageBaselineTest(chex.TestCase):
     dist_samples = dist.sample((num_samples,), rng)
 
     cv, expected_cv, update_state = control_variates.moving_avg_baseline(
-        function, decay=decay, zero_debias=False,
-        use_decay_early_training_heuristic=False)
+        function,
+        decay=decay,
+        zero_debias=False,
+        use_decay_early_training_heuristic=False,
+    )
 
-    state_1 = jnp.array(1.)
-    avg_cv = jnp.mean(_map_variant(self.variant)(
-        cv, params, dist_samples, (state_1, 0)))
+    state_1 = jnp.array(1.0)
+    avg_cv = jnp.mean(
+        _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
+    )
     _assert_equal(avg_cv, state_1)
     _assert_equal(expected_cv(params, (state_1, 0)), state_1)
 
-    state_2 = jnp.array(2.)
+    state_2 = jnp.array(2.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0)))
+        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
+    )
     _assert_equal(avg_cv, state_2)
     _assert_equal(expected_cv(params, (state_2, 0)), state_2)
 
     update_state_1 = update_state(params, dist_samples, (state_1, 0))[0]
     _assert_equal(
-        update_state_1,
-        decay * state_1 + (1 - decay) * function(mean))
+        update_state_1, decay * state_1 + (1 - decay) * function(mean)
+    )
 
     update_state_2 = update_state(params, dist_samples, (state_2, 0))[0]
     _assert_equal(
-        update_state_2,
-        decay * state_2 + (1 - decay) * function(mean))
+        update_state_2, decay * state_2 + (1 - decay) * function(mean)
+    )
 
   @chex.all_variants
-  @parameterized.parameters(
-      [(1.0, 0.5, 0.9),
-       (1.0, 0.5, 0.99)])
+  @parameterized.parameters([(1.0, 0.5, 0.9), (1.0, 0.5, 0.99)])
   def testLinearFunctionWithHeuristic(
-      self, effective_mean, effective_log_scale, decay):
-    weights = jnp.array([1., 2., 3.], dtype=jnp.float32)
+      self, effective_mean, effective_log_scale, decay
+  ):
+    weights = jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32)
     num_samples = 10**5
     data_dims = len(weights)
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
@@ -215,18 +224,23 @@ class MovingAverageBaselineTest(chex.TestCase):
     dist_samples = dist.sample((num_samples,), rng)
 
     cv, expected_cv, update_state = control_variates.moving_avg_baseline(
-        function, decay=decay, zero_debias=False,
-        use_decay_early_training_heuristic=True)
+        function,
+        decay=decay,
+        zero_debias=False,
+        use_decay_early_training_heuristic=True,
+    )
 
-    state_1 = jnp.array(1.)
-    avg_cv = jnp.mean(_map_variant(self.variant)(
-        cv, params, dist_samples, (state_1, 0)))
+    state_1 = jnp.array(1.0)
+    avg_cv = jnp.mean(
+        _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
+    )
     _assert_equal(avg_cv, state_1)
     _assert_equal(expected_cv(params, (state_1, 0)), state_1)
 
-    state_2 = jnp.array(2.)
+    state_2 = jnp.array(2.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0)))
+        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
+    )
     _assert_equal(avg_cv, state_2)
     _assert_equal(expected_cv(params, (state_2, 0)), state_2)
 
@@ -234,26 +248,28 @@ class MovingAverageBaselineTest(chex.TestCase):
     update_state_1 = update_state(params, dist_samples, (state_1, 0))[0]
     _assert_equal(
         update_state_1,
-        first_step_decay * state_1 + (1 - first_step_decay) * function(mean))
+        first_step_decay * state_1 + (1 - first_step_decay) * function(mean),
+    )
 
-    second_step_decay = 2. / 11
+    second_step_decay = 2.0 / 11
     update_state_2 = update_state(params, dist_samples, (state_2, 1))[0]
     _assert_equal(
         update_state_2,
-        second_step_decay * state_2 + (1 - second_step_decay) * function(mean))
+        second_step_decay * state_2 + (1 - second_step_decay) * function(mean),
+    )
 
-  @parameterized.parameters(
-      [(1.0, 0.5, 0.9),
-       (1.0, 0.5, 0.99)])
+  @parameterized.parameters([(1.0, 0.5, 0.9), (1.0, 0.5, 0.99)])
   def testLinearFunctionZeroDebias(
-      self, effective_mean, effective_log_scale, decay):
-    weights = jnp.array([1., 2., 3.], dtype=jnp.float32)
+      self, effective_mean, effective_log_scale, decay
+  ):
+    weights = jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32)
     num_samples = 10**5
     data_dims = len(weights)
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
@@ -263,20 +279,26 @@ class MovingAverageBaselineTest(chex.TestCase):
     dist_samples = dist.sample((num_samples,), rng)
 
     update_state = control_variates.moving_avg_baseline(
-        function, decay=decay, zero_debias=False,
-        use_decay_early_training_heuristic=False)[-1]
+        function,
+        decay=decay,
+        zero_debias=False,
+        use_decay_early_training_heuristic=False,
+    )[-1]
 
     update_state_zero_debias = control_variates.moving_avg_baseline(
-        function, decay=decay, zero_debias=True,
-        use_decay_early_training_heuristic=False)[-1]
+        function,
+        decay=decay,
+        zero_debias=True,
+        use_decay_early_training_heuristic=False,
+    )[-1]
 
-    updated_state = update_state(params, dist_samples, (jnp.array(0.), 0))[0]
+    updated_state = update_state(params, dist_samples, (jnp.array(0.0), 0))[0]
     _assert_equal(updated_state, (1 - decay) * function(mean))
 
     updated_state_zero_debias = update_state_zero_debias(
-        params, dist_samples, (jnp.array(0.), 0))[0]
-    _assert_equal(
-        updated_state_zero_debias, function(mean))
+        params, dist_samples, (jnp.array(0.0), 0)
+    )[0]
+    _assert_equal(updated_state_zero_debias, function(mean))
 
 
 class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
@@ -284,23 +306,43 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product([
-          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
-          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
-          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
-      ], [
-          ('estimate_cv_coeffs', True),
-          ('no_estimate_cv_coeffs', False),
-      ],
-                          named=True))
-  def testQuadraticFunction(self, effective_mean, effective_log_scale,
-                            grad_estimator, estimate_cv_coeffs):
+      chex.params_product(
+          [
+              (
+                  '_score_function_jacobians',
+                  1.0,
+                  1.0,
+                  sge.score_function_jacobians,
+              ),
+              ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+              (
+                  '_measure_valued_jacobians',
+                  1.0,
+                  1.0,
+                  sge.measure_valued_jacobians,
+              ),
+          ],
+          [
+              ('estimate_cv_coeffs', True),
+              ('no_estimate_cv_coeffs', False),
+          ],
+          named=True,
+      )
+  )
+  def testQuadraticFunction(
+      self,
+      effective_mean,
+      effective_log_scale,
+      grad_estimator,
+      estimate_cv_coeffs,
+  ):
     data_dims = 3
     num_samples = 10**3
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**2)
@@ -315,12 +357,17 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
         rng,
         num_samples,
         None,  # No cv state.
-        estimate_cv_coeffs)[0]
+        estimate_cv_coeffs,
+    )[0]
 
-    expected_mean_grads = 2 * effective_mean * np.ones(
-        data_dims, dtype=np.float32)
-    expected_log_scale_grads = 2 * np.exp(2 * effective_log_scale) * np.ones(
-        data_dims, dtype=np.float32)
+    expected_mean_grads = (
+        2 * effective_mean * np.ones(data_dims, dtype=np.float32)
+    )
+    expected_log_scale_grads = (
+        2
+        * np.exp(2 * effective_log_scale)
+        * np.ones(data_dims, dtype=np.float32)
+    )
 
     mean_jacobians = jacobians[0]
     chex.assert_shape(mean_jacobians, (num_samples, data_dims))
@@ -330,31 +377,55 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     chex.assert_shape(log_scale_jacobians, (num_samples, data_dims))
     log_scale_grads_from_jacobian = jnp.mean(log_scale_jacobians, axis=0)
 
-    _assert_equal(mean_grads_from_jacobian, expected_mean_grads,
-                  rtol=1e-1, atol=1e-3)
-    _assert_equal(log_scale_grads_from_jacobian, expected_log_scale_grads,
-                  rtol=1e-1, atol=1e-3)
+    _assert_equal(
+        mean_grads_from_jacobian, expected_mean_grads, rtol=1e-1, atol=1e-3
+    )
+    _assert_equal(
+        log_scale_grads_from_jacobian,
+        expected_log_scale_grads,
+        rtol=1e-1,
+        atol=1e-3,
+    )
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product([
-          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
-          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
-          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
-      ], [
-          ('estimate_cv_coeffs', True),
-          ('no_estimate_cv_coeffs', False),
-      ],
-                          named=True))
+      chex.params_product(
+          [
+              (
+                  '_score_function_jacobians',
+                  1.0,
+                  1.0,
+                  sge.score_function_jacobians,
+              ),
+              ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+              (
+                  '_measure_valued_jacobians',
+                  1.0,
+                  1.0,
+                  sge.measure_valued_jacobians,
+              ),
+          ],
+          [
+              ('estimate_cv_coeffs', True),
+              ('no_estimate_cv_coeffs', False),
+          ],
+          named=True,
+      )
+  )
   def testCubicFunction(
-      self, effective_mean, effective_log_scale, grad_estimator,
-      estimate_cv_coeffs):
+      self,
+      effective_mean,
+      effective_log_scale,
+      grad_estimator,
+      estimate_cv_coeffs,
+  ):
     data_dims = 1
     num_samples = 10**5
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**3)
@@ -369,16 +440,19 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
         rng,
         num_samples,
         None,  # No cv state.
-        estimate_cv_coeffs)[0]
+        estimate_cv_coeffs,
+    )[0]
 
     # The third order uncentered moment of the Gaussian distribution is
     # mu**3 + 2 mu * sigma **2. We use that to compute the expected value
     # of the gradients. Note: for the log scale we need use the chain rule.
     expected_mean_grads = (
-        3 * effective_mean**2 + 3 * np.exp(effective_log_scale)**2)
+        3 * effective_mean**2 + 3 * np.exp(effective_log_scale) ** 2
+    )
     expected_mean_grads *= np.ones(data_dims, dtype=np.float32)
     expected_log_scale_grads = (
-        6 * effective_mean * np.exp(effective_log_scale) ** 2)
+        6 * effective_mean * np.exp(effective_log_scale) ** 2
+    )
     expected_log_scale_grads *= np.ones(data_dims, dtype=np.float32)
 
     mean_jacobians = jacobians[0]
@@ -389,32 +463,56 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     chex.assert_shape(log_scale_jacobians, (num_samples, data_dims))
     log_scale_grads_from_jacobian = jnp.mean(log_scale_jacobians, axis=0)
 
-    _assert_equal(mean_grads_from_jacobian, expected_mean_grads,
-                  rtol=1e-1, atol=1e-3)
+    _assert_equal(
+        mean_grads_from_jacobian, expected_mean_grads, rtol=1e-1, atol=1e-3
+    )
 
-    _assert_equal(log_scale_grads_from_jacobian, expected_log_scale_grads,
-                  rtol=1e-1, atol=1e-3)
+    _assert_equal(
+        log_scale_grads_from_jacobian,
+        expected_log_scale_grads,
+        rtol=1e-1,
+        atol=1e-3,
+    )
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product([
-          ('_score_function_jacobians', 1.0, 1.0, sge.score_function_jacobians),
-          ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
-          ('_measure_valued_jacobians', 1.0, 1.0, sge.measure_valued_jacobians),
-      ], [
-          ('estimate_cv_coeffs', True),
-          ('no_estimate_cv_coeffs', False),
-      ],
-                          named=True))
+      chex.params_product(
+          [
+              (
+                  '_score_function_jacobians',
+                  1.0,
+                  1.0,
+                  sge.score_function_jacobians,
+              ),
+              ('_pathwise_jacobians', 1.0, 1.0, sge.pathwise_jacobians),
+              (
+                  '_measure_valued_jacobians',
+                  1.0,
+                  1.0,
+                  sge.measure_valued_jacobians,
+              ),
+          ],
+          [
+              ('estimate_cv_coeffs', True),
+              ('no_estimate_cv_coeffs', False),
+          ],
+          named=True,
+      )
+  )
   def testForthPowerFunction(
-      self, effective_mean, effective_log_scale, grad_estimator,
-      estimate_cv_coeffs):
+      self,
+      effective_mean,
+      effective_log_scale,
+      grad_estimator,
+      estimate_cv_coeffs,
+  ):
     data_dims = 1
     num_samples = 10**5
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**4)
@@ -429,18 +527,25 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
         rng,
         num_samples,
         None,  # No cv state
-        estimate_cv_coeffs)[0]
+        estimate_cv_coeffs,
+    )[0]
     # The third order uncentered moment of the Gaussian distribution is
     # mu**4 + 6 mu **2 sigma **2 + 3 sigma**4. We use that to compute the
     # expected value of the gradients.
     # Note: for the log scale we need use the chain rule.
     expected_mean_grads = (
         3 * effective_mean**3
-        + 12 * effective_mean * np.exp(effective_log_scale)**2)
+        + 12 * effective_mean * np.exp(effective_log_scale) ** 2
+    )
     expected_mean_grads *= np.ones(data_dims, dtype=np.float32)
-    expected_log_scale_grads = 12 * (
-        effective_mean**2 * np.exp(effective_log_scale) +
-        np.exp(effective_log_scale) ** 3) * np.exp(effective_log_scale)
+    expected_log_scale_grads = (
+        12
+        * (
+            effective_mean**2 * np.exp(effective_log_scale)
+            + np.exp(effective_log_scale) ** 3
+        )
+        * np.exp(effective_log_scale)
+    )
     expected_log_scale_grads *= np.ones(data_dims, dtype=np.float32)
 
     mean_jacobians = jacobians[0]
@@ -451,11 +556,16 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     chex.assert_shape(log_scale_jacobians, (num_samples, data_dims))
     log_scale_grads_from_jacobian = jnp.mean(log_scale_jacobians, axis=0)
 
-    _assert_equal(mean_grads_from_jacobian, expected_mean_grads,
-                  rtol=1e-1, atol=1e-3)
+    _assert_equal(
+        mean_grads_from_jacobian, expected_mean_grads, rtol=1e-1, atol=1e-3
+    )
 
-    _assert_equal(log_scale_grads_from_jacobian, expected_log_scale_grads,
-                  rtol=1e-1, atol=1e-3)
+    _assert_equal(
+        log_scale_grads_from_jacobian,
+        expected_log_scale_grads,
+        rtol=1e-1,
+        atol=1e-3,
+    )
 
 
 class ConsistencyWithStandardEstimators(chex.TestCase):
@@ -463,29 +573,43 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product([
-          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians),
-          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians),
-          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians),
-      ], [
-          (
-              'control_delta_method',
-              10**5,
-              control_variates.control_delta_method
-          ),
-          ('moving_avg_baseline', 10**6, control_variates.moving_avg_baseline),
-      ],
-                          named=True))
-  def testWeightedLinearFunction(self, effective_mean, effective_log_scale,
-                                 grad_estimator, num_samples,
-                                 control_variate_from_function):
+      chex.params_product(
+          [
+              ('_score_function_jacobians', 1, 1, sge.score_function_jacobians),
+              ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians),
+              ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians),
+          ],
+          [
+              (
+                  'control_delta_method',
+                  10**5,
+                  control_variates.control_delta_method,
+              ),
+              (
+                  'moving_avg_baseline',
+                  10**6,
+                  control_variates.moving_avg_baseline,
+              ),
+          ],
+          named=True,
+      )
+  )
+  def testWeightedLinearFunction(
+      self,
+      effective_mean,
+      effective_log_scale,
+      grad_estimator,
+      num_samples,
+      control_variate_from_function,
+  ):
     """Check that the gradients are consistent between estimators."""
-    weights = jnp.array([1., 2., 3.], dtype=jnp.float32)
+    weights = jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32)
     data_dims = len(weights)
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
@@ -500,8 +624,9 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
         utils.multi_normal,  # dist_builder
         cv_rng,  # rng
         num_samples,
-        (0., 0),  # control_variate_state
-        False)[0]
+        (0.0, 0),  # control_variate_state
+        False,
+    )[0]
 
     mean_jacobians = jacobians[0]
     chex.assert_shape(mean_jacobians, (num_samples, data_dims))
@@ -514,8 +639,12 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
     # We use a different random number generator for the gradient estimator
     # without the control variate.
     no_cv_jacobians = grad_estimator(
-        function, [mean, log_scale],
-        utils.multi_normal, ge_rng, num_samples=num_samples)
+        function,
+        [mean, log_scale],
+        utils.multi_normal,
+        ge_rng,
+        num_samples=num_samples,
+    )
 
     no_cv_mean_jacobians = no_cv_jacobians[0]
     chex.assert_shape(no_cv_mean_jacobians, (num_samples, data_dims))
@@ -530,26 +659,46 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters(
-      chex.params_product([
-          ('_score_function_jacobians', 1, 1, sge.score_function_jacobians,
-           10**5),
-          ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians, 10**5),
-          ('_measure_valued_jacobians', 1, 1, sge.measure_valued_jacobians,
-           10**5),
-      ], [
-          ('control_delta_method', control_variates.control_delta_method),
-          ('moving_avg_baseline', control_variates.moving_avg_baseline),
-      ],
-                          named=True))
+      chex.params_product(
+          [
+              (
+                  '_score_function_jacobians',
+                  1,
+                  1,
+                  sge.score_function_jacobians,
+                  10**5,
+              ),
+              ('_pathwise_jacobians', 1, 1, sge.pathwise_jacobians, 10**5),
+              (
+                  '_measure_valued_jacobians',
+                  1,
+                  1,
+                  sge.measure_valued_jacobians,
+                  10**5,
+              ),
+          ],
+          [
+              ('control_delta_method', control_variates.control_delta_method),
+              ('moving_avg_baseline', control_variates.moving_avg_baseline),
+          ],
+          named=True,
+      )
+  )
   def testNonPolynomialFunction(
-      self, effective_mean, effective_log_scale,
-      grad_estimator, num_samples, control_variate_from_function):
+      self,
+      effective_mean,
+      effective_log_scale,
+      grad_estimator,
+      num_samples,
+      control_variate_from_function,
+  ):
     """Check that the gradients are consistent between estimators."""
     data_dims = 3
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32)
+        shape=(data_dims), dtype=jnp.float32
+    )
 
     params = [mean, log_scale]
     function = lambda x: jnp.log(jnp.sum(x**2))
@@ -564,8 +713,9 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
         utils.multi_normal,
         cv_rng,
         num_samples,
-        (0., 0),  # control_variate_state
-        False)[0]
+        (0.0, 0),  # control_variate_state
+        False,
+    )[0]
 
     mean_jacobians = jacobians[0]
     chex.assert_shape(mean_jacobians, (num_samples, data_dims))
@@ -578,8 +728,12 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
     # We use a different random number generator for the gradient estimator
     # without the control variate.
     no_cv_jacobians = grad_estimator(
-        function, [mean, log_scale],
-        utils.multi_normal, ge_rng, num_samples=num_samples)
+        function,
+        [mean, log_scale],
+        utils.multi_normal,
+        ge_rng,
+        num_samples=num_samples,
+    )
 
     no_cv_mean_jacobians = no_cv_jacobians[0]
     chex.assert_shape(no_cv_mean_jacobians, (num_samples, data_dims))

@@ -50,20 +50,7 @@ def scale_by_dog(
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
 
-  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t`
-  according to the update rule:
-
-  .. math::
-
-    \begin{align*}
-      \eta_t &=\frac{max_{i\le t}{\|x_i-x_0\|}}{
-        \sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
-      x_{t+1} & = x_{t} - \eta_t\, g_t,
-    \end{align*}
-
-  References:
-    Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
-    Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
+  See :func:`optax.contrib.dog` for more details.
 
   Args:
     reps_rel: value to use to compute the  initial distance 
@@ -83,8 +70,7 @@ def scale_by_dog(
       with reps_rel.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation` with associated
-    init and update functions.
+    The corresponding :class:`optax.GradientTransformation`.
 
   .. versionadded:: 0.2.3
   """
@@ -158,6 +144,34 @@ def dog(
       x_{t+1} & = x_{t} - \eta_t\, g_t,
     \end{align*}
 
+  Args:
+    learning_rate: optional learning rate (potentially varying according to 
+      some predetermined scheduler).
+    reps_rel: value to use to compute the  initial distance 
+      (r_epsilon in the paper). Namely, the first step size is given by:
+      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the 
+      initial  weights of  the model (or the parameter group), and g_0 is the
+      gradient of the first step.
+      As discussed in the paper, this value should be small enough to ensure
+      that the first update step will be small enough to not cause the model to
+      diverge.
+      Suggested value is 1e-6, unless the model uses batch-normalization,
+      in which case the suggested value is 1e-4.
+    eps: epsilon used for numerical stability - added to the sum of squared
+      norm of gradients.
+    init_learning_rate: if specified, this value will be used the the initial
+      learning rate (i.e. first step size) instead of the rule described above
+      with reps_rel.
+    weight_decay: Strength of the weight decay regularization.
+    mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the gradient transformations is applied to all parameters.
+
+  Returns:
+    The corresponding :class:`optax.GradientTransformation`.
+
   Examples:
     >>> import optax
     >>> from optax import contrib
@@ -185,35 +199,6 @@ def dog(
     Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
     Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
 
-  Args:
-    learning_rate: optional learning rate (potentially varying according to 
-      some predetermined scheduler).
-    reps_rel: value to use to compute the  initial distance 
-      (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the 
-      initial  weights of  the model (or the parameter group), and g_0 is the
-      gradient of the first step.
-      As discussed in the paper, this value should be small enough to ensure
-      that the first update step will be small enough to not cause the model to
-      diverge.
-      Suggested value is 1e-6, unless the model uses batch-normalization,
-      in which case the suggested value is 1e-4.
-    eps: epsilon used for numerical stability - added to the sum of squared
-      norm of gradients.
-    init_learning_rate: if specified, this value will be used the the initial
-      learning rate (i.e. first step size) instead of the rule described above
-      with reps_rel.
-    weight_decay: Strength of the weight decay regularization.
-    mask: A tree with same structure as (or a prefix of) the params PyTree,
-      or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the weight decay to, and `False` for those you want to skip. Note
-      that the gradient transformations is applied to all parameters.
-
-  Returns:
-    The corresponding :class:`optax.GradientTransformation` with associated
-    init and update functions.
-
   .. versionadded:: 0.2.3
   """
   return combine.chain(
@@ -239,9 +224,7 @@ def scale_by_dowg(
 ) -> base.GradientTransformation:
   """Scale by Distance over Weighted Gradients (DoWG).
 
-  References:
-    Khaled et al., `DoWG Unleashed: An Efficient Universal Parameter-Free
-    Gradient Descent Method <https://arxiv.org/pdf/2305.16284>`_, 2023.
+  See :func:`optax.contrib.dowg` for more details.
 
   Args:
     init_estim_sq_dist: initial guess of the squared distance to solution.
@@ -250,8 +233,7 @@ def scale_by_dowg(
       if ``init_estim_sq_dist`` is None.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation` with associated
-    init and update functions.
+    The corresponding :class:`optax.GradientTransformation`.
 
   .. versionadded:: 0.2.3
   """
@@ -344,8 +326,7 @@ def dowg(
       gradient transformations is applied to all parameters.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation` with associated
-    init and update functions.
+    The corresponding :class:`optax.GradientTransformation`.
 
   .. versionadded:: 0.2.3
   """

@@ -20,7 +20,6 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
@@ -48,6 +47,7 @@ class ConditionFn(Protocol):
 
 class ConditionallyTransformState(NamedTuple):
   """Maintains inner transform state and adds a step counter."""
+
   inner_state: Any
   step: chex.Array
 
@@ -67,9 +67,6 @@ def conditionally_transform(
   has been previously called, the user specified function must returns a boolean
   controlling whether the inner transformation should be called.
 
-  WARNING: if instead you want to set the ``updates`` to zero when the condition
-  is not met, you can use the ``conditionally_mask`` wrapper.
-
   Args:
     inner: the inner transformation.
     should_transform_fn: function takes in a ``step`` counter (array of shape []
@@ -79,7 +76,11 @@ def conditionally_transform(
     forward_extra_args: forward extra args to ``should_transform_fn``.
 
   Returns:
-    A new ``GradientTransformationExtraArgs``.
+    A new :class:`optax.GradientTransformationExtraArgs`.
+
+  .. warning::
+    If instead you want to set the ``updates`` to zero when the condition
+    is not met, you can use the ``conditionally_mask`` wrapper.
 
   .. versionadded:: 0.2.3
   """
@@ -87,7 +88,8 @@ def conditionally_transform(
 
   def init_fn(params):
     return ConditionallyTransformState(
-        inner_state=inner.init(params), step=jnp.zeros([], dtype=jnp.int32))
+        inner_state=inner.init(params), step=jnp.zeros([], dtype=jnp.int32)
+    )
 
   def update_fn(updates, state, params=None, **extra_args):
 
@@ -100,9 +102,13 @@ def conditionally_transform(
     condition_kwargs = extra_args if forward_extra_args else {}
     updates, new_inner_state = lax.cond(
         should_transform_fn(state.step, **condition_kwargs),
-        do_update, reject_update, operand=None)
+        do_update,
+        reject_update,
+        operand=None,
+    )
     return updates, ConditionallyTransformState(
-        new_inner_state, numerics.safe_increment(state.step))
+        new_inner_state, numerics.safe_increment(state.step)
+    )
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -128,19 +134,20 @@ def conditionally_mask(
   specified function must returns a boolean controlling whether the inner
   transformation should be called.
 
-  WARNING: if instead you want to leave ``updates`` unchanged when the condition
-  is not met, you can use the ``conditionally_transform`` wrapper.
-
   Args:
     inner: the inner transformation.
-    should_transform_fn: function takes in a step counter (array of shape []
-      and dtype ``int32``), and returns a boolean array of shape []. If
+    should_transform_fn: function takes in a step counter (array of shape [] and
+      dtype ``int32``), and returns a boolean array of shape []. If
       ``forward_extra_args`` is set to True, any extra arguments are also
       forwarded to the ``should_transform_fn``.
     forward_extra_args: forward extra args to ``should_transform_fn``.
 
   Returns:
-    A new ``GradientTransformationExtraArgs``.
+    A new :class:`optax.GradientTransformationExtraArgs`.
+
+  .. warning::
+    If instead you want to leave ``updates`` unchanged when the condition
+    is not met, you can use the ``conditionally_transform`` wrapper.
 
   .. versionadded:: 0.2.3
   """
@@ -162,7 +169,10 @@ def conditionally_mask(
     condition_kwargs = extra_args if forward_extra_args else {}
     updates, new_inner_state = lax.cond(
         should_transform_fn(state.step, **condition_kwargs),
-        do_update, reject_update, operand=None)
+        do_update,
+        reject_update,
+        operand=None,
+    )
 
     return updates, ConditionallyMaskState(
         step=numerics.safe_increment(state.step),
@@ -181,11 +191,11 @@ class ApplyIfFiniteState(NamedTuple):
       or a NaN is done.
     last_finite: Whether or not the last gradient update contained an Inf or a
       NaN.
-    total_notfinite: Total number of gradient updates containing an Inf or
-      a NaN since this optimizer was initialised. This number is never reset.
+    total_notfinite: Total number of gradient updates containing an Inf or a NaN
+      since this optimizer was initialised. This number is never reset.
       inner_state: The state of the inner `GradientTransformation`.
-
   """
+
   notfinite_count: Any
   last_finite: Any
   total_notfinite: Any
@@ -193,8 +203,7 @@ class ApplyIfFiniteState(NamedTuple):
 
 
 def apply_if_finite(
-    inner: base.GradientTransformation,
-    max_consecutive_errors: int
+    inner: base.GradientTransformation, max_consecutive_errors: int
 ) -> base.GradientTransformation:
   """A function that wraps an optimizer to make it robust to a few NaNs or Infs.
 
@@ -207,11 +216,11 @@ def apply_if_finite(
   Args:
     inner: Inner transformation to be wrapped.
     max_consecutive_errors: Maximum number of consecutive gradient updates
-      containing NaNs or Infs that the wrapped optimizer will ignore. After
-      that many ignored updates, the optimizer will give up and accept.
+      containing NaNs or Infs that the wrapped optimizer will ignore. After that
+      many ignored updates, the optimizer will give up and accept.
 
   Returns:
-    New ``GradientTransformationExtraArgs``.
+    New :class:`optax.GradientTransformationExtraArgs`.
   """
 
   inner = base.with_extra_args_support(inner)
@@ -221,16 +230,20 @@ def apply_if_finite(
         notfinite_count=jnp.zeros([], jnp.int32),
         last_finite=jnp.array(True, jnp.bool_),
         total_notfinite=jnp.zeros([], jnp.int32),
-        inner_state=inner.init(params))
+        inner_state=inner.init(params),
+    )
 
   def update(updates, state, params=None, **extra_args):
     inner_state = state.inner_state
     flat_updates = jax.tree.flatten(updates)[0]
     isfinite = jnp.all(
-        jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates]))
+        jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates])
+    )
     notfinite_count = jnp.where(
-        isfinite, jnp.zeros([], jnp.int32),
-        numerics.safe_increment(state.notfinite_count))
+        isfinite,
+        jnp.zeros([], jnp.int32),
+        numerics.safe_increment(state.notfinite_count),
+    )
 
     def do_update(_):
       return inner.update(updates, inner_state, params, **extra_args)
@@ -240,14 +253,20 @@ def apply_if_finite(
 
     updates, new_inner_state = lax.cond(
         jnp.logical_or(isfinite, notfinite_count > max_consecutive_errors),
-        do_update, reject_update, operand=None)
+        do_update,
+        reject_update,
+        operand=None,
+    )
 
     return updates, ApplyIfFiniteState(
         notfinite_count=notfinite_count,
         last_finite=isfinite,
         total_notfinite=jnp.where(
-            isfinite, state.total_notfinite,
-            numerics.safe_increment(state.total_notfinite)),
-        inner_state=new_inner_state)
+            isfinite,
+            state.total_notfinite,
+            numerics.safe_increment(state.total_notfinite),
+        ),
+        inner_state=new_inner_state,
+    )
 
   return base.GradientTransformationExtraArgs(init=init, update=update)

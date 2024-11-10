@@ -32,18 +32,18 @@ from typing import NamedTuple, Union
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import base
 
 
 class SplitRealAndImaginaryArrays(NamedTuple):
   """A pair of real arrays split from a complex array."""
+
   real: chex.Array
   imaginary: chex.Array
 
 
 def _complex_to_real_pair(
-    x: chex.Array
+    x: chex.Array,
 ) -> Union[chex.Array, SplitRealAndImaginaryArrays]:
   """Splits a complex array into a `SplitRealAndImaginaryArrays`.
 
@@ -61,7 +61,7 @@ def _complex_to_real_pair(
 
 
 def _real_pair_to_complex(
-    x: Union[chex.Array, SplitRealAndImaginaryArrays]
+    x: Union[chex.Array, SplitRealAndImaginaryArrays],
 ) -> chex.Array:
   """Merges a `SplitRealAndImaginaryArrays` into a complex array.
 
@@ -81,11 +81,12 @@ def _real_pair_to_complex(
 
 class SplitRealAndImaginaryState(NamedTuple):
   """Maintains the inner transformation state for `split_real_and_imaginary`."""
+
   inner_state: base.OptState
 
 
 def split_real_and_imaginary(
-    inner: base.GradientTransformation
+    inner: base.GradientTransformation,
 ) -> base.GradientTransformation:
   """Splits the real and imaginary components of complex updates into two.
 
@@ -115,7 +116,8 @@ def split_real_and_imaginary(
     updates = jax.tree.map(
         _real_pair_to_complex,
         updates,
-        is_leaf=lambda x: isinstance(x, SplitRealAndImaginaryArrays))
+        is_leaf=lambda x: isinstance(x, SplitRealAndImaginaryArrays),
+    )
     return updates, SplitRealAndImaginaryState(inner_state)
 
   return base.GradientTransformation(init_fn, update_fn)

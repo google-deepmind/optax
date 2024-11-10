@@ -21,7 +21,6 @@ https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
@@ -35,7 +34,7 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
     max_delta: The maximum absolute value for each element in the update.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
 
   def update_fn(updates, state, params=None):
@@ -55,7 +54,7 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
     threshold: The maximum rms for the gradient of each param vector or matrix.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
 
   def update_fn(updates, state, params=None):
@@ -63,8 +62,8 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
 
     def _clip_fn(u):
       clip_denom = jnp.maximum(
-          1.0,
-          jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold)
+          1.0, jnp.sqrt(jnp.mean(numerics.abs_sq(u))) / threshold
+      )
       return u / clip_denom
 
     updates = jax.tree.map(_clip_fn, updates)
@@ -76,15 +75,15 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
 def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   """Clips updates using their global norm.
 
-  References:
-    Pascanu et al., `On the difficulty of training Recurrent Neural Networks
-    <https://arxiv.org/abs/1211.5063>`_, 2012
-
   Args:
     max_norm: The maximum global norm for an update.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  References:
+    Pascanu et al., `On the difficulty of training Recurrent Neural Networks
+    <https://arxiv.org/abs/1211.5063>`_, 2012
   """
 
   def update_fn(updates, state, params=None):
@@ -118,6 +117,15 @@ def per_example_global_norm_clip(
 ) -> tuple[chex.ArrayTree, jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
+  Args:
+    grads: flattened update; the function expects each array in this list to
+      have a batch dimension on the 0th axis.
+    l2_norm_clip: maximum L2 norm of the per-example gradients.
+
+  Returns:
+    A tuple containing sum of the clipped per-example grads, and the number of
+    per-example grads that were clipped.
+
   Example:
     >>> import optax
     >>> import jax.numpy as jnp
@@ -129,27 +137,20 @@ def per_example_global_norm_clip(
     >>> optax.per_example_global_norm_clip(grads, 1.25)
     ([Array([1.75, 1.75, 1.75], dtype=float32)], Array(3, dtype=int32))
 
-  See optax.contrib.differentially_private_aggregate for more more realistic
-  example usages.
-
   References:
     Abadi et al., `Deep Learning with Differential Privacy
     <https://arxiv.org/abs/1607.00133>`_, 2016
 
-  Args:
-    grads: flattened update; the function expects each array in this list to
-      have a batch dimension on the 0th axis.
-    l2_norm_clip: maximum L2 norm of the per-example gradients.
-
-  Returns:
-    A tuple containing sum of the clipped per-example grads, and the number of
-    per-example grads that were clipped.
+  .. seealso::
+    :func:`optax.contrib.differentially_private_aggregate` for more realistic
+    example usages.
   """
 
   if not _check_arrays_have_batch_dim(grads):
     raise ValueError(
         'Unlike other transforms, `per_example_global_norm_clip` expects'
-        ' `grads` to have a batch dimension in the 0th axis.')
+        ' `grads` to have a batch dimension in the 0th axis.'
+    )
 
   global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
   multipliers = jnp.nan_to_num(
@@ -163,15 +164,37 @@ def per_example_global_norm_clip(
 
 
 def per_example_layer_norm_clip(
-    grads: chex.ArrayTree,
-    global_l2_norm_clip: float,
-    uniform: bool = True
+    grads: chex.ArrayTree, global_l2_norm_clip: float, uniform: bool = True
 ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
   """Applies gradient clipping per-example using per-layer norms.
 
   If len(grads) == 1, this function is equivalent to
   optax.per_example_global_norm_clip.  If len(grads) > 1, each array in grads
   will be independently clipped to a value ``C_i`` documented below.
+
+  Let ``C = global_l2_norm_clip value``. Then per-layer clipping is done as
+  follows:
+
+  1. If ``uniform`` is ``True``, each of the ``K`` layers has an individual clip
+  norm of ``C / sqrt(K)``.
+
+  2. If ``uniform`` is ``False``, each of the ``K`` layers has an individual
+  clip norm of ``C * sqrt(D_i / D)`` where ``D_i`` is the number of parameters
+  in layer ``i``, and ``D`` is the total number of parameters in the model.
+
+  Args:
+    grads: flattened update; i.e. a list of gradients in which each item is the
+      gradient for one layer; the function expects these to have a batch
+      dimension on the 0th axis.
+    global_l2_norm_clip: overall L2 clip norm to use.
+    uniform: If `True`, per-layer clip norm is ``global_l2_norm_clip/sqrt(L)``,
+      where ``L`` is the number of layers. Otherwise, per-layer clip norm is
+      ``global_l2_norm_clip * sqrt(f)``, where ``f`` is the fraction of total
+      model parameters that are in this layer.
+
+  Returns:
+    A tuple containing sum of the clipped per-example grads and the number of
+    per-example grads that were clipped for each layer.
 
   Example:
     >>> import optax
@@ -187,30 +210,6 @@ def per_example_layer_norm_clip(
   References:
     McMahan et al., `Learning Differentially Private Recurrent Language Models
     <https://arxiv.org/abs/1710.06963>`_, 2017
-
-  Args:
-    grads: flattened update; i.e. a list of gradients in which each item is
-      the gradient for one layer; the function expects these to have a batch
-      dimension on the 0th axis.
-    global_l2_norm_clip: overall L2 clip norm to use.
-    uniform: If `True`, per-layer clip norm is ``global_l2_norm_clip/sqrt(L)``,
-      where ``L`` is the number of layers. Otherwise, per-layer clip norm is
-      ``global_l2_norm_clip * sqrt(f)``, where ``f`` is the fraction of total
-      model parameters that are in this layer.
-
-  Let ``C = global_l2_norm_clip value``. Then per-layer clipping is done as
-  follows:
-
-  1. If ``uniform`` is ``True``, each of the ``K`` layers has an individual clip
-  norm of ``C / sqrt(K)``.
-
-  2. If ``uniform`` is ``False``, each of the ``K`` layers has an individual
-  clip norm of ``C * sqrt(D_i / D)`` where ``D_i`` is the number of parameters
-  in layer ``i``, and ``D`` is the total number of parameters in the model.
-
-  Returns:
-    A tuple containing sum of the clipped per-example grads and the number of
-    per-example grads that were clipped for each layer.
   """
 
   if not _check_arrays_have_batch_dim(grads):
@@ -226,20 +225,20 @@ def per_example_layer_norm_clip(
     # Create list of length `num_layers` of per-layer clip norm.
     num_layers = len(jax.tree.leaves(grads))
     layer_clip_norms = jax.tree.map(
-        lambda _: global_l2_norm_clip * (1.0 / num_layers) ** 0.5,
-        grads
+        lambda _: global_l2_norm_clip * (1.0 / num_layers) ** 0.5, grads
     )
   else:
     total_params = jax.tree.reduce(lambda x, g: x + g[0].size, grads, 0)
     layer_clip_norms = jax.tree.map(
-        lambda g: global_l2_norm_clip * (g[0].size / total_params) ** 0.5,
-        grads
+        lambda g: global_l2_norm_clip * (g[0].size / total_params) ** 0.5, grads
     )
 
   result = jax.tree.map(per_example_global_norm_clip, grads, layer_clip_norms)
-  return jax.tree.transpose(outer_treedef=jax.tree.structure(grads),
-                            inner_treedef=jax.tree.structure((0, 0)),
-                            pytree_to_transpose=result)
+  return jax.tree.transpose(
+      outer_treedef=jax.tree.structure(grads),
+      inner_treedef=jax.tree.structure((0, 0)),
+      pytree_to_transpose=result,
+  )
 
 
 def unitwise_norm(x: chex.Array) -> chex.Array:
@@ -255,15 +254,18 @@ def unitwise_norm(x: chex.Array) -> chex.Array:
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2), keepdims=True)
   else:
     raise ValueError(
-        f'Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}.')
+        f'Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}.'
+    )
   chex.assert_is_broadcastable(squared_norm.shape, x.shape)
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)
 
 
-def unitwise_clip(g_norm: chex.Array,
-                  max_norm: chex.Array,
-                  grad: chex.Array,
-                  div_eps: float = 1e-6) -> chex.Array:
+def unitwise_clip(
+    g_norm: chex.Array,
+    max_norm: chex.Array,
+    grad: chex.Array,
+    div_eps: float = 1e-6,
+) -> chex.Array:
   """Applies gradient clipping unit-wise."""
   # This little max(., div_eps) is distinct from the normal eps and just
   # prevents division by zero. It technically should be impossible to engage.
@@ -272,20 +274,21 @@ def unitwise_clip(g_norm: chex.Array,
   return jnp.where(g_norm < max_norm, grad, clipped_grad)
 
 
-def adaptive_grad_clip(clipping: float,
-                       eps: float = 1e-3) -> base.GradientTransformation:
+def adaptive_grad_clip(
+    clipping: float, eps: float = 1e-3
+) -> base.GradientTransformation:
   """Clips updates to be at most ``clipping * parameter_norm``, unit-wise.
-
-  References:
-    Brock et al., `High-Performance Large-Scale Image Recognition Without
-    Normalization <https://arxiv.org/abs/2102.06171`_, 2021
 
   Args:
     clipping: The maximum allowed ratio of update norm to parameter norm.
     eps: An epsilon term to prevent clipping of zero-initialized params.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  References:
+    Brock et al., `High-Performance Large-Scale Image Recognition Without
+    Normalization <https://arxiv.org/abs/2102.06171`_, 2021
   """
 
   def update_fn(updates, state, params):
@@ -293,8 +296,7 @@ def adaptive_grad_clip(clipping: float,
       raise ValueError(base.NO_PARAMS_MSG)
     g_norm, p_norm = jax.tree.map(unitwise_norm, (updates, params))
     # Maximum allowable norm.
-    max_norm = jax.tree.map(
-        lambda x: clipping * jnp.maximum(x, eps), p_norm)
+    max_norm = jax.tree.map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
     updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
