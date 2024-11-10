@@ -152,6 +152,9 @@ def triplet_loss(
       the same shape as input;
       if reduction is 'mean' or 'sum', returns a scalar tensor.
   """
+  chex.assert_type([anchors], float)
+  chex.assert_type([positives], float)
+  chex.assert_type([negatives], float)
   positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps
                                )
   negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps

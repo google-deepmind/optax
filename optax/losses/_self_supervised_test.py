@@ -19,6 +19,7 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from optax.losses import _self_supervised
 
@@ -47,15 +48,21 @@ class NtxentTest(chex.TestCase):
 
   @chex.all_variants
   def test_batched(self):
-    jnp.testing.assert_allclose(
+    np.testing.assert_allclose(
         self.variant(_self_supervised.ntxent)(self.ys, self.ts_1),
         self.exp_1,
         atol=1e-4,
     )
 
-    jnp.testing.assert_allclose(
+    np.testing.assert_allclose(
         self.variant(_self_supervised.ntxent)(self.ys, self.ts_2),
         self.exp_2,
+        atol=1e-4,
+    )
+
+    np.testing.assert_allclose(
+        self.variant(_self_supervised.ntxent)(self.ys_2, self.ts_1),
+        self.exp_3,
         atol=1e-4,
     )
 
@@ -81,25 +88,25 @@ class TripletMarginLossTest(chex.TestCase):
     a=self.a1, p=self.p1, n=self.n1, margin=1.0)
     result = self.variant(_self_supervised.triplet_loss)(
     self.a1, self.p1, self.n1)
-    jnp.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = testing_triplet_loss(
     a=self.a2, p=self.p2, n=self.n2, margin=1.0)
     result = self.variant(_self_supervised.triplet_loss)(
     self.a2, self.p2, self.n2)
-    jnp.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = testing_triplet_loss(
     a=self.a1, p=self.p1, n=self.n1, margin=1.0)
     result = self.variant(_self_supervised.triplet_loss)(
     anchors=self.a1, positives=self.p1, negatives=self.n1)
-    jnp.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
     handmade_result = testing_triplet_loss(
     a=self.a2, p=self.p2, n=self.n2, margin=1.0)
     result = self.variant(_self_supervised.triplet_loss)(
     anchors=self.a2, positives=self.p2, negatives=self.n2)
-    jnp.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
   @chex.all_variants
   def test_vmap(self):
@@ -114,7 +121,7 @@ class TripletMarginLossTest(chex.TestCase):
                                       in_axes=(0, 0, 0)))(a1_batched,
                                       p1_batched, n1_batched)
 
-    jnp.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten(),
+    np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten(),
                                atol=1e-4)
 
 
