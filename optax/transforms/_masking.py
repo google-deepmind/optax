@@ -18,13 +18,13 @@ from collections.abc import Callable
 from typing import Any, NamedTuple, Union
 
 import jax
-
 from optax._src import base
 from optax.tree_utils import _state_utils
 
 
 class MaskedState(NamedTuple):
   """Maintains inner transform state for masked transformations."""
+
   inner_state: Any
 
 
@@ -38,7 +38,7 @@ class MaskedNode(NamedTuple):
 
 
 def _mask_callable(
-    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]]
+    mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]],
 ):
   callable_leaves = jax.tree.leaves(jax.tree.map(callable, mask))
   return (len(callable_leaves) > 0) and all(callable_leaves)  # pylint:disable=g-explicit-length-test
@@ -83,7 +83,7 @@ def masked(
       extra_arg fields with the same tree structure as params/updates.
 
   Returns:
-    New ``GradientTransformationExtraArgs`` wrapping ``inner``.
+    New :class:`optax.GradientTransformationExtraArgs` wrapping ``inner``.
   """
   inner = base.with_extra_args_support(inner)
 
@@ -100,7 +100,8 @@ def masked(
 
     def _maybe_mask(pytree):
       if mask_compatible_extra_args and (
-          jax.tree.structure(pytree) == base_structure):
+          jax.tree.structure(pytree) == base_structure
+      ):
         return mask_pytree(pytree, mask_tree)
       else:
         return pytree
@@ -134,11 +135,15 @@ def masked(
     masked_params = None if params is None else mask_pytree(params, mask_tree)
 
     new_masked_updates, new_inner_state = inner.update(
-        masked_updates, state.inner_state, masked_params, **masked_extra_args)
+        masked_updates, state.inner_state, masked_params, **masked_extra_args
+    )
 
     new_updates = jax.tree.map(
         lambda m, new_u, old_u: new_u if m else old_u,
-        mask_tree, new_masked_updates, updates)
+        mask_tree,
+        new_masked_updates,
+        updates,
+    )
     return new_updates, MaskedState(inner_state=new_inner_state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

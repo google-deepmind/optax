@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.transforms._layouts."""
+"""Tests for methods in `optax.transforms._layouts.py`."""
 
 from absl.testing import absltest
 import chex
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import update
 from optax.transforms import _layouts
@@ -27,7 +26,7 @@ class LayoutsTest(absltest.TestCase):
 
   def test_flatten(self):
     def init_params():
-      return (jnp.array(2.), jnp.array([1., 2.]), jnp.array([3., 4.]))
+      return (jnp.array(2.0), jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
 
     per_step_updates = (
         jnp.array(1.0),
@@ -52,7 +51,8 @@ class LayoutsTest(absltest.TestCase):
 
     # Test that both give the same result
     chex.assert_trees_all_close(
-        sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7)
+        sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7
+    )
 
 
 if __name__ == "__main__":

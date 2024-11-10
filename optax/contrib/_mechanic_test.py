@@ -29,6 +29,7 @@ from optax.tree_utils import _state_utils
 
 class OptimizerTestState(NamedTuple):
   """Inner optimizer state for the Mechanic tests."""
+
   aggregate_grads: base.Params
 
 
@@ -56,8 +57,8 @@ class MechanicTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.grads = {'x': np.array(2.), 'y': np.array(-2.)}
-    self.initial_params = {'x': np.array(3.), 'y': np.array(-3.)}
+    self.grads = {'x': np.array(2.0), 'y': np.array(-2.0)}
+    self.initial_params = {'x': np.array(3.0), 'y': np.array(-3.0)}
 
   def loop(self, optimizer, num_steps, params):
     """Performs a given number of optimizer steps."""

@@ -70,11 +70,12 @@ def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
     a pytree with the same structure as each tree in ``trees`` with leaves being
     the mean across the trees.
 
-  >>> optax.tree_utils.tree_reduce_mean_across(
-  ...   [{'first': [1, 2], 'last': 3},
-  ...    {'first': [5, 6], 'last': 7}]
-  ...   )
-  {'first': [3, 4], 'last': 5}
+  Examples:
+    >>> optax.tree_utils.tree_reduce_mean_across(
+    ...   [{'first': [1, 2], 'last': 3},
+    ...    {'first': [5, 6], 'last': 7}]
+    ...   )
+    {'first': [3, 4], 'last': 5}
   """
   mean_fun = lambda x: sum(x) / len(trees)
   return jtu.tree_map(lambda *leaves: mean_fun(leaves), *trees)
@@ -108,22 +109,22 @@ def make_perturbed_fun(
   for :math:`Z` a random variable sample from the noise sampler. This implements
   a Monte-Carlo estimate.
 
-  References:
-    Berthet et al., `Learning with Differentiable Perturbed Optimizers
-    <https://arxiv.org/abs/2002.08676>`_, 2020
-
   Args:
     fun: The function to transform into a differentiable function. Signature
       currently supported is from pytree to pytree, whose leaves are jax arrays.
     num_samples: an int, the number of perturbed outputs to average over.
     sigma: a float, the scale of the random perturbation.
     noise: a distribution object that must implement a sample function and a
-      log-pdf of the desired distribution, similar to 
+      log-pdf of the desired distribution, similar to
       :class:optax.perturbations.Gumbel. Default is Gumbel distribution.
 
   Returns:
     A function with the same signature (plus an additional rng in the input)
     that can be automatically differentiated.
+
+  References:
+    Berthet et al., `Learning with Differentiable Perturbed Optimizers
+    <https://arxiv.org/abs/2002.08676>`_, 2020
 
   .. seealso::
     * :doc:`../_collections/examples/perturbations` example.

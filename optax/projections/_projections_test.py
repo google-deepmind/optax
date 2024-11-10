@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for optax.projections."""
+"""Tests for methods in `optax.projections.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -156,8 +156,10 @@ class ProjectionsTest(parameterized.TestCase):
     with self.subTest('Check against finite difference'):
       jvp = jax.jvp(proj.projection_simplex, (x,), (v,))[1]
       eps = 1e-4
-      jvp_finite_diff = (proj.projection_simplex(x + eps * v) -
-                         proj.projection_simplex(x - eps * v)) / (2 * eps)
+      jvp_finite_diff = (
+          proj.projection_simplex(x + eps * v)
+          - proj.projection_simplex(x - eps * v)
+      ) / (2 * eps)
       np.testing.assert_array_almost_equal(jvp, jvp_finite_diff, decimal=3)
 
     with self.subTest('Check vector-Jacobian product'):
@@ -219,6 +221,7 @@ class ProjectionsTest(parameterized.TestCase):
       small_radius = norm_value / 2
       p = proj_fun(x, small_radius)
       np.testing.assert_almost_equal(norm_fun(p), small_radius, decimal=4)
+
 
 if __name__ == '__main__':
   absltest.main()

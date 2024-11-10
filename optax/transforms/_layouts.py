@@ -17,12 +17,11 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import base
 
 
 def flatten(
-    inner: base.GradientTransformation
+    inner: base.GradientTransformation,
 ) -> base.GradientTransformationExtraArgs:
   """Flattens parameters and gradients for init and update of inner transform.
 
@@ -33,7 +32,7 @@ def flatten(
     inner: Inner transformation to flatten inputs for.
 
   Returns:
-    New ``GradientTransformationExtraArgs``
+    New :class:`optax.GradientTransformationExtraArgs`
   """
 
   inner = base.with_extra_args_support(inner)

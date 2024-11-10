@@ -48,12 +48,6 @@ def tree_random_like(
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.
 
-  .. warning::
-    The possible dtypes may be limited by the sampler, for example
-    ``jax.random.rademacher`` only supports integer dtypes and will raise an
-    error if the dtype of the target tree is not an integer or if the dtype
-    is not of integer type.
-
   Args:
     rng_key: the key for the random number generator.
     target_tree: the tree whose structure to match. Leaves must be arrays.
@@ -64,6 +58,12 @@ def tree_random_like(
   Returns:
     a random tree with the same structure as ``target_tree``, whose leaves have
     distribution ``sampler``.
+
+  .. warning::
+    The possible dtypes may be limited by the sampler, for example
+    ``jax.random.rademacher`` only supports integer dtypes and will raise an
+    error if the dtype of the target tree is not an integer or if the dtype
+    is not of integer type.
 
   .. versionadded:: 0.2.1
   """

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses._self_supervised."""
+"""Tests for self-supervised losses in `optax.losses._self_supervised.py`."""
 
 from absl.testing import absltest
 
@@ -32,11 +32,18 @@ class NtxentTest(chex.TestCase):
         [1.8745, -0.0195],
         [-0.6719, -1.9210],
     ])
+    self.ys_2 = jnp.array([
+        [0.0, 0.0],
+        [0.2380, -0.5703],
+        [1.8745, -0.0195],
+        [-0.6719, -1.9210],
+    ])
     self.ts_1 = jnp.array([0, 0, 1, 1])
     self.ts_2 = jnp.array([0, 0, 0, 1])
     # Calculated expected output
     self.exp_1 = jnp.array(14.01032)
     self.exp_2 = jnp.array(8.968544)
+    self.exp_3 = jnp.array(9.2889)
 
   @chex.all_variants
   def test_batched(self):

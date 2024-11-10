@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `sam.py`."""
+"""Tests for the SAM optimizer in `sam.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -82,6 +82,7 @@ class SAMTest(chex.TestCase):
       update_kwargs = dict(grad_fn=lambda p, _: get_updates(p))
     else:
       update_kwargs = {}
+
     @jax.jit
     def step(params, state):
       updates = get_updates(params)

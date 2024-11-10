@@ -62,6 +62,20 @@ def momo(
   Note that one needs to pass the latest (batch) loss value to the update
   function using the keyword argument ``value``.
 
+  Args:
+    learning_rate: User-specified learning rate. Recommended to be chosen rather
+      large, by default 1.0.
+    beta: Momentum coefficient (for EMA).
+    lower_bound: Lower bound of the loss. Zero should be a good choice for many
+      tasks.
+    weight_decay: Weight-decay parameter.
+    adapt_lower_bound: If no good guess for the lower bound is available, set
+      this to true, in order to estimate the lower bound on the fly (see the
+      paper for details).
+
+  Returns:
+    A :class:`optax.GradientTransformation` object.
+
   Examples:
     >>> from optax import contrib
     >>> import jax
@@ -82,24 +96,10 @@ def momo(
     Objective function:  0.0
     Objective function:  0.0
 
-
   References:
     Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
     <https://arxiv.org/abs/2305.07583>`_, 2023
 
-  Args:
-    learning_rate: User-specified learning rate. Recommended to be chosen rather
-      large, by default 1.0.
-    beta: Momentum coefficient (for EMA).
-    lower_bound: Lower bound of the loss. Zero should be a good choice for many
-      tasks.
-    weight_decay: Weight-decay parameter.
-    adapt_lower_bound: If no good guess for the lower bound is available, set
-      this to true, in order to estimate the lower bound on the fly (see the
-      paper for details).
-
-  Returns:
-    A ``GradientTransformation`` object.
   .. versionadded:: 0.2.3
   """
 
@@ -216,6 +216,23 @@ def momo_adam(
   Note that one needs to pass the latest (batch) loss value to the update
   function using the keyword argument ``value``.
 
+  Args:
+    learning_rate: User-specified learning rate. Recommended to be chosen rather
+      large, by default 1.0.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: eps for the underlying Adam Optimizer.
+    lower_bound: Lower bound of the loss. Zero should be a good choice for many
+      tasks.
+    weight_decay: Weight-decay parameter. Momo-Adam performs weight decay in
+      similar fashion to AdamW.
+    adapt_lower_bound: If no good guess for the lower bound is available, set
+      this to true, in order to estimate the lower bound on the fly (see the
+      paper for details).
+
+  Returns:
+    A ``GradientTransformation`` object.
+
   Examples:
     >>> from optax import contrib
     >>> import jax
@@ -239,23 +256,6 @@ def momo_adam(
   References:
     Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
     <https://arxiv.org/abs/2305.07583>`_, 2023
-
-  Args:
-    learning_rate: User-specified learning rate. Recommended to be chosen rather
-      large, by default 1.0.
-    b1: Exponential decay rate to track the first moment of past gradients.
-    b2: Exponential decay rate to track the second moment of past gradients.
-    eps: eps for the underlying Adam Optimizer.
-    lower_bound: Lower bound of the loss. Zero should be a good choice for many
-      tasks.
-    weight_decay: Weight-decay parameter. Momo-Adam performs weight decay in
-      similar fashion to AdamW.
-    adapt_lower_bound: If no good guess for the lower bound is available, set
-      this to true, in order to estimate the lower bound on the fly (see the
-      paper for details).
-
-  Returns:
-    A ``GradientTransformation`` object.
 
   .. versionadded:: 0.2.3
   """
@@ -298,7 +298,7 @@ def momo_adam(
         state.exp_avg_sq,
         updates,
     )
-    bc2 = jnp.asarray(1 - b2 ** count_inc, dtype=barf.dtype)
+    bc2 = jnp.asarray(1 - b2**count_inc, dtype=barf.dtype)
     precond = jax.tree.map(lambda eas: eps + jnp.sqrt(eas / bc2), exp_avg_sq)
     exp_avg_weighted = jax.tree.map(
         lambda ea, prec: ea / prec, exp_avg, precond
@@ -307,7 +307,7 @@ def momo_adam(
     gamma = b1 * state.gamma + (1 - b1) * otu.tree_vdot(updates, params)
     iprod = otu.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    bc1 = jnp.asarray(1 - b1 ** count_inc, dtype=barf.dtype)
+    bc1 = jnp.asarray(1 - b1**count_inc, dtype=barf.dtype)
     # Reset lower bound
     if adapt_lower_bound:
       cap = (1 + alpha * weight_decay) * (barf - gamma) + iprod
