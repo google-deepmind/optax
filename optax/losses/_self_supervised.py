@@ -83,7 +83,8 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0
+                    ).sum()/matches.sum()
 
   return loss
 
@@ -96,42 +97,37 @@ def triplet_loss(
     p: int = 2,
     margin: float = 1.0,
     eps: float = 1e-6,
-    reduction: str = "none",
+    reduction: str = 'none',
 ) -> jnp.ndarray:
-    """
-    Computes the triplet loss for a set of anchor, positive, and negative samples.
-    Margin is represented with alpha in the math section.
+  """
+  Computes the triplet loss for a set of anchor, positive, and negative samples.
+  Margin is represented with alpha in the math section.
 
-    .. math::
+  Args:
+      anchors (array): The anchor samples.
+      positives (array): The positive samples.
+      negatives (array): The negative samples.
+      axis (int, optional): The distribution axis. Default: -1.
+      p (int, optional): The norm degree for pairwise distance. Default: 2.
+      margin (float, optional): Margin for the triplet loss. Defaults to 1.0.
+      eps (float, optional): Small positive constant to prevent numerical 
+      instability. Defaults to 1e-6.
+      reduction (str, optional): Specifies the reduction to apply to the 
+      output: 'none' | 'mean' | 'sum'. Default: 'none'.
 
-       \max\left(\|A - P\|_p - \|A - N\|_p + \alpha, 0\right)
-
-    Args:
-        anchors (array): The anchor samples.
-        positives (array): The positive samples.
-        negatives (array): The negative samples.
-        axis (int, optional): The distribution axis. Default: ``-1``.
-        p (int, optional): The norm degree for pairwise distance. Default: ``2``.
-        margin (float, optional): Margin for the triplet loss. Defaults to ``1.0``.
-        eps (float, optional): Small positive constant to prevent numerical instability. Defaults to ``1e-6``.
-        reduction (str, optional): Specifies the reduction to apply to the output:
-          ``'none'`` | ``'mean'`` | ``'sum'``. Default: ``'none'``.
-
-    Returns:
-        array: Computed triplet loss. If reduction is "none", returns a tensor of the same shape as input;
-                  if reduction is "mean" or "sum", returns a scalar tensor.
-    """
-    # Compute pairwise distances
-    positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps)
-    negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps)
-    
-    # Compute triplet loss
-    loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
-    
-    # Apply reduction
-    if reduction == "mean":
-        return loss.mean()
-    elif reduction == "sum":
-        return loss.sum()
-    else:  # "none"
-        return loss
+  Returns:
+      array: Computed triplet loss. If reduction is 'none', returns a tensor of 
+      the same shape as input;
+      if reduction is 'mean' or 'sum', returns a scalar tensor.
+  """
+  positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps
+                               )
+  negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps
+                               )
+  loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
+  if reduction == 'mean':
+    return loss.mean()
+  elif reduction == 'sum':
+    return loss.sum()
+  else:
+    return loss
