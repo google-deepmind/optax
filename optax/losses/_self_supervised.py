@@ -115,8 +115,7 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0
-                    ).sum()/matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0).sum()/matches.sum()
 
   return loss
 
