@@ -122,15 +122,15 @@ def ntxent(
 
 
 def triplet_loss(
-    anchors: jnp.ndarray,
-    positives: jnp.ndarray,
-    negatives: jnp.ndarray,
-    axis: int = -1,
-    p: int = 2,
-    margin: float = 1.0,
-    eps: float = 1e-6,
+    anchors: chex.Array,
+    positives: chex.Array,
+    negatives: chex.Array,
+    axis: chex.Numeric = -1,
+    p: chex.Numeric = 2,
+    margin: chex.Numeric = 1.0,
+    eps: chex.Numeric = 1e-6,
     reduction: str = 'none',
-) -> jnp.ndarray:
+) -> chex.Array:
   """
   Computes the triplet loss for a set of anchor, positive, and negative samples.
   Margin is represented with alpha in the math section.
