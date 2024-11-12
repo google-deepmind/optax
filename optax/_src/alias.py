@@ -2393,7 +2393,9 @@ def lbfgs(
     scale_init_precond: bool = True,
     linesearch: Optional[
         base.GradientTransformationExtraArgs
-    ] = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=15),
+    ] = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=20, initial_guess_strategy='one'
+    ),
 ) -> base.GradientTransformationExtraArgs:
   r"""L-BFGS optimizer.
 
@@ -2453,7 +2455,7 @@ def lbfgs(
     memory_size: number of past updates to keep in memory to approximate the
       Hessian inverse.
     scale_init_precond: whether to use a scaled identity as the initial
-      preconditioner, see formula above.
+      preconditioner, see formula of :math:`\gamma_k` above.
     linesearch: an instance of :class:`optax.GradientTransformationExtraArgs`
       such as :func:`optax.scale_by_zoom_linesearch` that computes a
       learning rate, a.k.a. stepsize, to satisfy some criterion such as a
@@ -2480,9 +2482,9 @@ def lbfgs(
     ...   )
     ...   params = optax.apply_updates(params, updates)
     ...   print('Objective function: ', f(params))
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
+    Objective function:  7.5166864
+    Objective function:  7.460699e-14
+    Objective function:  2.6505726e-28
     Objective function:  0.0
     Objective function:  0.0
 
@@ -2504,6 +2506,14 @@ def lbfgs(
     zoom linesearch). See example above for best use in a non-stochastic
     setting, where we can recycle gradients computed by the linesearch using
     :func:`optax.value_and_grad_from_state`.
+
+  .. note::
+    We initialize the scaling of the identity as a capped reciprocal of the
+    gradient norm. This avoids wasting linesearch iterations for the first step
+    by taking into account the magnitude of the gradients. In other words, we
+    constrain the trust-region of the first step to an Euclidean ball of radius
+    1 at the first iteration. The choice of :math:`\gamma_0` is not detailed in
+    the references above, so this is a heuristic choice.
   """
   if learning_rate is None:
     base_scaling = transform.scale(-1.0)
