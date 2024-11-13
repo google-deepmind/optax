@@ -14,15 +14,14 @@
 # ==============================================================================
 """Tests for self-supervised losses in `optax.losses._self_supervised.py`."""
 
-from absl.testing import absltest
-
+from absl.testing import absltest, parameterized
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from optax.losses import _self_supervised
-#import _self_supervised
+
 class NtxentTest(chex.TestCase):
 
   def setUp(self):
@@ -66,63 +65,66 @@ class NtxentTest(chex.TestCase):
         atol=1e-4,
     )
 
-class TripletMarginLossTest(chex.TestCase):
+class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.a1 = jnp.ones((2, 2))
     self.p1 = jnp.zeros((2, 2))
-    self.n1 = jnp.ones((2, 2))*2
+    self.n1 = jnp.ones((2, 2)) * 2
     self.a2 = jnp.zeros((2, 2))
     self.p2 = jnp.ones((2, 2))
-    self.n2 = jnp.ones((2, 2))*2
+    self.n2 = jnp.ones((2, 2)) * 2
 
   @chex.all_variants
-  def test_batched(self):
+  @parameterized.parameters([
+      {
+          'anchor': jnp.ones((2, 2)),
+          'positive': jnp.zeros((2, 2)),
+          'negative': jnp.ones((2, 2)) * 2,
+          'margin': 1.0,
+      },
+      {
+          'anchor': jnp.zeros((2, 2)),
+          'positive': jnp.ones((2, 2)),
+          'negative': jnp.ones((2, 2)) * 2,
+          'margin': 1.0,
+      }
+  ])
+  def test_batched(self, anchor, positive, negative, margin):
     def testing_triplet_loss(a, p, n, margin=1.0, p_norm=2, eps=1e-6):
       ap_distance = jnp.sqrt(jnp.sum(jnp.power(a - p, p_norm)) + eps)
       an_distance = jnp.sqrt(jnp.sum(jnp.power(a - n, p_norm)) + eps)
       return jnp.maximum(ap_distance - an_distance + margin, 0)
 
     handmade_result = testing_triplet_loss(
-    a=self.a1, p=self.p1, n=self.n1, margin=1.0)
+        a=anchor, p=positive, n=negative, margin=margin
+    )
     result = self.variant(_self_supervised.triplet_loss)(
-    self.a1, self.p1, self.n1)
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
-
-    handmade_result = testing_triplet_loss(
-    a=self.a2, p=self.p2, n=self.n2, margin=1.0)
-    result = self.variant(_self_supervised.triplet_loss)(
-    self.a2, self.p2, self.n2)
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
-
-    handmade_result = testing_triplet_loss(
-    a=self.a1, p=self.p1, n=self.n1, margin=1.0)
-    result = self.variant(_self_supervised.triplet_loss)(
-    anchors=self.a1, positives=self.p1, negatives=self.n1)
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
-
-    handmade_result = testing_triplet_loss(
-    a=self.a2, p=self.p2, n=self.n2, margin=1.0)
-    result = self.variant(_self_supervised.triplet_loss)(
-    anchors=self.a2, positives=self.p2, negatives=self.n2)
+        anchor, positive, negative
+    )
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
   @chex.all_variants
-  def test_vmap(self):
-    original_loss = _self_supervised.triplet_loss(self.a1, self.p1, self.n1,
-                                                  reduction='none')
-
-    a1_batched = self.a1.reshape(1, *self.a1.shape)
-    p1_batched = self.p1.reshape(1, *self.p1.shape)
-    n1_batched = self.n1.reshape(1, *self.n1.shape)
-
+  @parameterized.parameters([
+    {
+        'anchor': jnp.ones((2, 2)),
+        'positive': jnp.zeros((2, 2)),
+        'negative': jnp.ones((2, 2)) * 2,
+    },
+  ])
+  def test_vmap(self, anchor, positive, negative):
+    original_loss = _self_supervised.triplet_loss(anchor, positive,
+                                         negative, reduction='none')
+    anchor_batched = anchor.reshape(1, *anchor.shape)
+    positive_batched = positive.reshape(1, *positive.shape)
+    negative_batched = negative.reshape(1, *negative.shape)
     vmap_loss = self.variant(jax.vmap(_self_supervised.triplet_loss,
-                                      in_axes=(0, 0, 0)))(a1_batched,
-                                      p1_batched, n1_batched)
-
-    np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten(),
-                               atol=1e-4)
+                                in_axes=(0, 0, 0)))(anchor_batched,
+                                                    positive_batched,
+                                                    negative_batched)
+    np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten()
+                               , atol=1e-4)
 
 
 if __name__ == '__main__':
