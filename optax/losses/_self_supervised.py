@@ -130,27 +130,46 @@ def triplet_loss(
     eps: chex.Numeric = 1e-6,
     reduction: str = 'none',
 ) -> chex.Array:
-  """
-  Computes the triplet loss for a set of anchor, positive, and negative samples.
-  Margin is represented with alpha in the math section.
+  """Computes the triplet loss for a batch of embeddings.
 
-  Args:
-      anchors (array): The anchor samples.
-      positives (array): The positive samples.
-      negatives (array): The negative samples.
-      axis (int, optional): The distribution axis. Default: -1.
-      p (int, optional): The norm degree for pairwise distance. Default: 2.
-      margin (float, optional): Margin for the triplet loss. Defaults to 1.0.
-      eps (float, optional): Small positive constant to prevent numerical 
-      instability. Defaults to 1e-6.
-      reduction (str, optional): Specifies the reduction to apply to the 
-      output: 'none' | 'mean' | 'sum'. Default: 'none'.
+    Examples:
+      >>> import jax.numpy as jnp
+      >>> import optax
+      >>> import chex
+      >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
+      >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
+      >>> negatives = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+      >>> output =optax.triplet_loss(anchors, positives, negatives, margin=1.0)
+      >>> print(output)
+      >>> Array([0.14142442, 0.14142442], dtype=float32)
 
-  Returns:
-      array: Computed triplet loss. If reduction is 'none', returns a tensor of 
-      the same shape as input;
-      if reduction is 'mean' or 'sum', returns a scalar tensor.
-  """
+    Args:
+        anchors: An array of anchor embeddings, with shape [batch, feature_dim].
+        positives: An array of positive embeddings
+        (similar to anchors), with shape [batch, feature_dim].
+        negatives: An array of negative embeddings
+        (dissimilar to anchors), with shape [batch, feature_dim].
+        axis: The axis along which to compute the distances
+        (default is -1).
+        p: The norm degree for distance calculation
+        (default is 2 for Euclidean distance).
+        margin: The minimum margin by which the positive distance
+        should be smaller than the negative distance.
+        eps: A small epsilon value to ensure numerical stability
+        in the distance calculation.
+        reduction: Specifies the reduction to apply to the
+        output: 'none' | 'mean' | 'sum'.
+
+    Returns:
+        The computed triplet loss as an array or scalar
+        depending on the reduction parameter. 
+        If reduction is 'mean' or 'sum', returns a scalar.
+
+    References:
+        Learning shallow convolutional feature descriptors with triplet losses
+        by V. Balntas, E. Riba et al.
+        <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>
+    """
   chex.assert_type([anchors], float)
   chex.assert_type([positives], float)
   chex.assert_type([negatives], float)
