@@ -390,7 +390,7 @@ class MultiSteps:
           gradient_step=state.gradient_step,
           inner_opt_state=jax.tree.map(
               lambda x, y: (
-                  x.astype(y.dtype) if isinstance(x, chex.Array) else x
+                  x.astype(y.dtype) if isinstance(x, jax.Array) else x
               ),
               state.inner_opt_state,
               new_inner_state,

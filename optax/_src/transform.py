@@ -689,7 +689,7 @@ def scale_by_belief(
   def update_fn(updates, state, params=None):
     del params
     mu = otu.tree_update_moment(updates, state.mu, b1, 1)
-    prediction_error = jax.tree.map(lambda g, m: g - m, updates, state.mu)
+    prediction_error = otu.tree_sub(updates, mu)
     nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
     nu = jax.tree.map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_increment(state.count)

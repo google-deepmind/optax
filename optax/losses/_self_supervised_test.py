@@ -22,7 +22,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from optax.losses import _self_supervised
-
+#import _self_supervised
 class NtxentTest(chex.TestCase):
 
   def setUp(self):
