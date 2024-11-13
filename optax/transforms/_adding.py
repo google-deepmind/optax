@@ -94,7 +94,6 @@ def add_noise(
     >>> solver = optax.chain(noise, sgd)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
-    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
