@@ -26,7 +26,7 @@ from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import wrappers
-
+import chex
 
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
@@ -1253,10 +1253,10 @@ def lamb(
 
 
 def noisy_sgd(
+    key: chex.PRNGKey, 
     learning_rate: base.ScalarOrSchedule,
     eta: float = 0.01,
     gamma: float = 0.55,
-    seed: int = 0,
 ) -> base.GradientTransformation:
   r"""A variant of SGD with added noise.
 
@@ -1282,12 +1282,12 @@ def noisy_sgd(
   represents the initial variance ``eta``.
 
   Args:
+    key: a PRNG key used as the random key.
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time ``t``, the
       variance decays according to ``(1+t)**(-gamma)``.
-    seed: Seed for the pseudo-random generation process.
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
@@ -1297,7 +1297,8 @@ def noisy_sgd(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.noisy_sgd(learning_rate=0.003)
+    >>> key = jax.random.key(42)
+    >>> solver = optax.noisy_sgd(key, learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -1318,7 +1319,7 @@ def noisy_sgd(
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
   return combine.chain(
-      transform.add_noise(eta, gamma, seed),
+      transform.add_noise(eta, gamma, key),
       transform.scale_by_learning_rate(learning_rate),
   )
 
