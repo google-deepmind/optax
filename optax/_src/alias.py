@@ -1319,7 +1319,7 @@ def noisy_sgd(
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
   return combine.chain(
-      transform.add_noise(eta, gamma, key),
+      transform.add_noise(key, eta, gamma),
       transform.scale_by_learning_rate(learning_rate),
   )
 
