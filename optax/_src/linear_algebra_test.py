@@ -48,8 +48,8 @@ class LinearAlgebraTest(chex.TestCase):
   def test_global_norm(self):
     flat_updates = jnp.array([2.0, 4.0, 3.0, 5.0], dtype=jnp.float32)
     nested_updates = {
-        "a": jnp.array([2.0, 4.0], dtype=jnp.float32),
-        "b": jnp.array([3.0, 5.0], dtype=jnp.float32),
+        'a': jnp.array([2.0, 4.0], dtype=jnp.float32),
+        'b': jnp.array([3.0, 5.0], dtype=jnp.float32),
     }
     np.testing.assert_array_equal(
         jnp.sqrt(jnp.sum(flat_updates**2)),
@@ -79,8 +79,8 @@ class LinearAlgebraTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      {"implicit": True},
-      {"implicit": False},
+      {'implicit': True},
+      {'implicit': False},
   )
   def test_power_iteration(self, implicit, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration by comparing to numpy.linalg.eigh."""

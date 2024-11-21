@@ -72,14 +72,14 @@ def get_problem(name: str):
     return sum1 + sum2**2 + sum2**4
 
   problems = {
-      "polynomial": {"fn": polynomial, "input_shape": ()},
-      "exponential": {"fn": exponential, "input_shape": ()},
-      "sinusoidal": {"fn": sinusoidal, "input_shape": ()},
-      "rosenbrock": {"fn": rosenbrock, "input_shape": (16,)},
-      "himmelblau": {"fn": himmelblau, "input_shape": (2,)},
-      "matyas": {"fn": matyas, "input_shape": (2,)},
-      "eggholder": {"fn": eggholder, "input_shape": (2,)},
-      "zakharov": {"fn": zakharov, "input_shape": (6,)},
+      'polynomial': {'fn': polynomial, 'input_shape': ()},
+      'exponential': {'fn': exponential, 'input_shape': ()},
+      'sinusoidal': {'fn': sinusoidal, 'input_shape': ()},
+      'rosenbrock': {'fn': rosenbrock, 'input_shape': (16,)},
+      'himmelblau': {'fn': himmelblau, 'input_shape': (2,)},
+      'matyas': {'fn': matyas, 'input_shape': (2,)},
+      'eggholder': {'fn': eggholder, 'input_shape': (2,)},
+      'zakharov': {'fn': zakharov, 'input_shape': (6,)},
   }
   return problems[name]
 
@@ -159,11 +159,11 @@ class BacktrackingLinesearchTest(chex.TestCase):
     descent_dir = -jax.grad(fn)(init_params)
 
     opt_args = {
-        "max_backtracking_steps": 50,
-        "slope_rtol": slope_rtol,
-        "increase_factor": increase_factor,
-        "atol": atol,
-        "rtol": rtol,
+        'max_backtracking_steps': 50,
+        'slope_rtol': slope_rtol,
+        'increase_factor': increase_factor,
+        'atol': atol,
+        'rtol': rtol,
     }
 
     solver = combine.chain(
@@ -376,9 +376,9 @@ class ZoomLinesearchTest(chex.TestCase):
     slope_init = otu.tree_vdot(updates, grad_init)
     slope_final = otu.tree_vdot(updates, grad_final)
     default_opt_args = {
-        "slope_rtol": 1e-4,
-        "curv_rtol": 0.9,
-        "tol": 0.0,
+        'slope_rtol': 1e-4,
+        'curv_rtol': 0.9,
+        'tol': 0.0,
     }
     opt_args = default_opt_args | opt_args
     slope_rtol, curv_rtol, tol = (
@@ -462,11 +462,11 @@ class ZoomLinesearchTest(chex.TestCase):
     init_updates = -precond_vec * jax.grad(fn)(init_params)
 
     opt_args = {
-        "max_linesearch_steps": 30,
-        "slope_rtol": slope_rtol,
-        "curv_rtol": curv_rtol,
-        "tol": tol,
-        "max_learning_rate": None,
+        'max_linesearch_steps': 30,
+        'slope_rtol': slope_rtol,
+        'curv_rtol': curv_rtol,
+        'tol': tol,
+        'max_learning_rate': None,
     }
 
     opt = _linesearch.scale_by_zoom_linesearch(**opt_args)
@@ -606,7 +606,7 @@ class ZoomLinesearchTest(chex.TestCase):
     )
     s = otu.tree_get(final_state, 'learning_rate')
     self._check_linesearch_conditions(
-        fn, w, u, final_params, final_state, {"curv_rtol": curv_rtol}
+        fn, w, u, final_params, final_state, {'curv_rtol': curv_rtol}
     )
     self.assertGreaterEqual(s, 30.0)
 

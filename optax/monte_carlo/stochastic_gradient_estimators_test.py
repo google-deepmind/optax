@@ -133,7 +133,9 @@ class GradientEstimatorsTest(chex.TestCase):
       ],
       named=True),
   )
-  def test_linear_function(self, estimator, effective_mean, effective_log_scale):
+  def test_linear_function(
+    self, estimator, effective_mean, effective_log_scale
+  ):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
     rng = jax.random.PRNGKey(1)

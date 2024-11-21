@@ -68,8 +68,8 @@ class MakePertTest(absltest.TestCase):
 
     for i in range(2):
       example_tree.append({
-        "weights": jnp.ones(weight_shapes[i]),
-        "biases": jnp.ones(biases_shapes[i]),
+        'weights': jnp.ones(weight_shapes[i]),
+        'biases': jnp.ones(biases_shapes[i]),
       })
 
     self.example_tree = example_tree

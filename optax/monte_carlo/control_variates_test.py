@@ -37,7 +37,7 @@ def _assert_equal(actual, expected, rtol=1e-2, atol=1e-2):
   # Scalar.
   if not actual.shape:
     np.testing.assert_allclose(
-        np.asarray(actual), np.asarray(expected), rtol, atol
+      np.asarray(actual), np.asarray(expected), rtol, atol
     )
     return
 
@@ -81,14 +81,14 @@ class DeltaControlVariateTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32
+      shape=(data_dims), dtype=jnp.float32
     )
     params = [mean, log_scale]
 
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
     def function(x):
-        return jnp.sum(x**2)
+      return jnp.sum(x**2)
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -107,7 +107,7 @@ class DeltaControlVariateTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32
+      shape=(data_dims), dtype=jnp.float32
     )
     params = [mean, log_scale]
 
@@ -115,7 +115,7 @@ class DeltaControlVariateTest(chex.TestCase):
     rng = jax.random.PRNGKey(1)
     dist_samples = dist.sample((num_samples,), rng)
     def function(x):
-        return jnp.sum(x**5)
+      return jnp.sum(x**5)
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -137,7 +137,7 @@ class DeltaControlVariateTest(chex.TestCase):
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
     def function(x):
-        return jnp.sum(jnp.log(x**2))
+      return jnp.sum(jnp.log(x**2))
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -149,7 +149,7 @@ class DeltaControlVariateTest(chex.TestCase):
     # Second order expansion is log(\mu**2) + 1/2 * \sigma**2 (-2 / \mu**2)
     expected_cv_val = -np.exp(1.0) ** 2 * data_dims
     _assert_equal(
-        expected_cv(params, None), expected_cv_val, rtol=1e-1, atol=1e-3
+      expected_cv(params, None), expected_cv_val, rtol=1e-1, atol=1e-3
     )
 
 
@@ -164,46 +164,46 @@ class MovingAverageBaselineTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32
+      shape=(data_dims), dtype=jnp.float32
     )
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(weights * x)
+      return jnp.sum(weights * x)
 
     rng = jax.random.PRNGKey(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
     cv, expected_cv, update_state = control_variates.moving_avg_baseline(
-        function,
-        decay=decay,
-        zero_debias=False,
-        use_decay_early_training_heuristic=False,
+      function,
+      decay=decay,
+      zero_debias=False,
+      use_decay_early_training_heuristic=False,
     )
 
     state_1 = jnp.array(1.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
+      _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
     )
     _assert_equal(avg_cv, state_1)
     _assert_equal(expected_cv(params, (state_1, 0)), state_1)
 
     state_2 = jnp.array(2.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
+      _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
     )
     _assert_equal(avg_cv, state_2)
     _assert_equal(expected_cv(params, (state_2, 0)), state_2)
 
     update_state_1 = update_state(params, dist_samples, (state_1, 0))[0]
     _assert_equal(
-        update_state_1, decay * state_1 + (1 - decay) * function(mean)
+      update_state_1, decay * state_1 + (1 - decay) * function(mean)
     )
 
     update_state_2 = update_state(params, dist_samples, (state_2, 0))[0]
     _assert_equal(
-        update_state_2, decay * state_2 + (1 - decay) * function(mean)
+      update_state_2, decay * state_2 + (1 - decay) * function(mean)
     )
 
   @chex.all_variants
@@ -217,34 +217,34 @@ class MovingAverageBaselineTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32
+      shape=(data_dims), dtype=jnp.float32
     )
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(weights * x)
+      return jnp.sum(weights * x)
 
     rng = jax.random.PRNGKey(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
     cv, expected_cv, update_state = control_variates.moving_avg_baseline(
-        function,
-        decay=decay,
-        zero_debias=False,
-        use_decay_early_training_heuristic=True,
+      function,
+      decay=decay,
+      zero_debias=False,
+      use_decay_early_training_heuristic=True,
     )
 
     state_1 = jnp.array(1.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
+      _map_variant(self.variant)(cv, params, dist_samples, (state_1, 0))
     )
     _assert_equal(avg_cv, state_1)
     _assert_equal(expected_cv(params, (state_1, 0)), state_1)
 
     state_2 = jnp.array(2.0)
     avg_cv = jnp.mean(
-        _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
+      _map_variant(self.variant)(cv, params, dist_samples, (state_2, 0))
     )
     _assert_equal(avg_cv, state_2)
     _assert_equal(expected_cv(params, (state_2, 0)), state_2)
@@ -252,15 +252,15 @@ class MovingAverageBaselineTest(chex.TestCase):
     first_step_decay = 0.1
     update_state_1 = update_state(params, dist_samples, (state_1, 0))[0]
     _assert_equal(
-        update_state_1,
-        first_step_decay * state_1 + (1 - first_step_decay) * function(mean),
+      update_state_1,
+      first_step_decay * state_1 + (1 - first_step_decay) * function(mean),
     )
 
     second_step_decay = 2.0 / 11
     update_state_2 = update_state(params, dist_samples, (state_2, 1))[0]
     _assert_equal(
-        update_state_2,
-        second_step_decay * state_2 + (1 - second_step_decay) * function(mean),
+      update_state_2,
+      second_step_decay * state_2 + (1 - second_step_decay) * function(mean),
     )
 
   @parameterized.parameters([(1.0, 0.5, 0.9), (1.0, 0.5, 0.99)])
@@ -273,36 +273,36 @@ class MovingAverageBaselineTest(chex.TestCase):
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
-        shape=(data_dims), dtype=jnp.float32
+      shape=(data_dims), dtype=jnp.float32
     )
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(weights * x)
+      return jnp.sum(weights * x)
 
     rng = jax.random.PRNGKey(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
     update_state = control_variates.moving_avg_baseline(
-        function,
-        decay=decay,
-        zero_debias=False,
-        use_decay_early_training_heuristic=False,
+      function,
+      decay=decay,
+      zero_debias=False,
+      use_decay_early_training_heuristic=False,
     )[-1]
 
     update_state_zero_debias = control_variates.moving_avg_baseline(
-        function,
-        decay=decay,
-        zero_debias=True,
-        use_decay_early_training_heuristic=False,
+      function,
+      decay=decay,
+      zero_debias=True,
+      use_decay_early_training_heuristic=False,
     )[-1]
 
     updated_state = update_state(params, dist_samples, (jnp.array(0.0), 0))[0]
     _assert_equal(updated_state, (1 - decay) * function(mean))
 
     updated_state_zero_debias = update_state_zero_debias(
-        params, dist_samples, (jnp.array(0.0), 0)
+      params, dist_samples, (jnp.array(0.0), 0)
     )[0]
     _assert_equal(updated_state_zero_debias, function(mean))
 
@@ -339,7 +339,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(x**2)
+      return jnp.sum(x**2)
     rng = jax.random.PRNGKey(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -410,7 +410,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(x**3)
+      return jnp.sum(x**3)
     rng = jax.random.PRNGKey(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -485,7 +485,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(x**4)
+      return jnp.sum(x**4)
     rng = jax.random.PRNGKey(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -576,7 +576,7 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.sum(weights * x)
+      return jnp.sum(weights * x)
     rng = jax.random.PRNGKey(1)
     cv_rng, ge_rng = jax.random.split(rng)
 
@@ -653,7 +653,7 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
     params = [mean, log_scale]
     def function(x):
-        return jnp.log(jnp.sum(x**2))
+      return jnp.log(jnp.sum(x**2))
     rng = jax.random.PRNGKey(1)
     cv_rng, ge_rng = jax.random.split(rng)
 

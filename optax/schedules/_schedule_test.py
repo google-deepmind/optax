@@ -553,11 +553,11 @@ class SGDRTest(chex.TestCase):
     lr_kwargs = []
     for step, lr in zip([2e3, 3e3, 5e3], [lr0, lr1, lr2]):
       lr_kwargs += [{
-        "decay_steps": int(step),
-        "peak_value": lr,
-        "init_value": 0,
-        "end_value": 0.0,
-        "warmup_steps": 500,
+        'decay_steps': int(step),
+        'peak_value': lr,
+        'init_value': 0,
+        'end_value': 0.0,
+        'warmup_steps': 500,
       }]
     schedule_fn = self.variant(_schedule.sgdr_schedule(lr_kwargs))
     np.testing.assert_allclose(lr0, schedule_fn(500))

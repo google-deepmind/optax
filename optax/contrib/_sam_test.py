@@ -27,11 +27,11 @@ from optax.contrib import _sam
 from optax.tree_utils import _state_utils
 
 _BASE_OPTIMIZERS_UNDER_TEST = [
-    {"base_opt_name": 'sgd', "base_opt_kwargs": {"learning_rate": 1e-3}},
+    {'base_opt_name': 'sgd', 'base_opt_kwargs': {'learning_rate': 1e-3}},
 ]
 _ADVERSARIAL_OPTIMIZERS_UNDER_TEST = [
-    {"adv_opt_name": 'sgd', "adv_opt_kwargs": {"learning_rate": 1e-5}},
-    {"adv_opt_name": 'adam', "adv_opt_kwargs": {"learning_rate": 1e-4}},
+    {'adv_opt_name': 'sgd', 'adv_opt_kwargs': {'learning_rate': 1e-5}},
+    {'adv_opt_name': 'adam', 'adv_opt_kwargs': {'learning_rate': 1e-4}},
 ]
 
 
@@ -79,7 +79,7 @@ class SAMTest(chex.TestCase):
     initial_params, final_params, get_updates = target(dtype)
 
     if opaque_mode:
-      update_kwargs = {"grad_fn": lambda p, _: get_updates(p)}
+      update_kwargs = {'grad_fn': lambda p, _: get_updates(p)}
     else:
       update_kwargs = {}
 

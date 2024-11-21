@@ -89,10 +89,10 @@ class CastingTest(parameterized.TestCase):
       self.assertRaises(ValueError, otu.tree_dtype, tree, 'highest')
 
   @parameterized.named_parameters(
-      {"testcase_name": 'empty_dict', "tree": {}},
-      {"testcase_name": 'empty_list', "tree": []},
-      {"testcase_name": 'empty_tuple', "tree": ()},
-      {"testcase_name": 'empty_none', "tree": None},
+      {'testcase_name': 'empty_dict', 'tree': {}},
+      {'testcase_name': 'empty_list', 'tree': []},
+      {'testcase_name': 'empty_tuple', 'tree': ()},
+      {'testcase_name': 'empty_none', 'tree': None},
   )
   def test_tree_dtype_utilities_with_empty_trees(self, tree):
     """Test tree data type utilities on empty trees."""

@@ -43,7 +43,7 @@ class ScaleGradientTest(parameterized.TestCase):
       outputs = jax.tree.map(lambda x: x**2, outputs)
       return sum(jax.tree.leaves(outputs))
 
-    inputs = {"a": -1.0, "b": {"c": (2.0,), "d": 0.0}}
+    inputs = {'a': -1.0, 'b': {'c': (2.0,), 'd': 0.0}}
 
     grad = jax.grad(fn)
     grads = grad(inputs)

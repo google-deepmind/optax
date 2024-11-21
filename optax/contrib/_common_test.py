@@ -36,22 +36,22 @@ from optax.tree_utils import _state_utils
 
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
-    {"opt_name": 'acprop', "opt_kwargs": {"learning_rate": 1e-3}},
-    {"opt_name": 'cocob', "opt_kwargs": {}},
-    {"opt_name": 'cocob', "opt_kwargs": {"weight_decay": 1e-2}},
-    {"opt_name": 'dadapt_adamw', "opt_kwargs": {"learning_rate": 1e-1}},
-    {"opt_name": 'dog', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'dowg', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'momo', "opt_kwargs": {"learning_rate": 1e-1}},
-    {"opt_name": 'momo_adam', "opt_kwargs": {"learning_rate": 1e-1}},
-    {"opt_name": 'prodigy', "opt_kwargs": {"learning_rate": 1e-1}},
+    {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'cocob', 'opt_kwargs': {}},
+    {'opt_name': 'cocob', 'opt_kwargs': {'weight_decay': 1e-2}},
+    {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'dog', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'dowg', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'prodigy', 'opt_kwargs': {'learning_rate': 1e-1}},
     {
-        "opt_name": 'schedule_free_sgd',
-        "opt_kwargs": {"learning_rate": 1e-2, "warmup_steps": 5000},
+        'opt_name': 'schedule_free_sgd',
+        'opt_kwargs': {'learning_rate': 1e-2, 'warmup_steps': 5000},
     },
     {
-        "opt_name": 'schedule_free_adamw',
-        "opt_kwargs": {"learning_rate": 1e-2, "warmup_steps": 5000},
+        'opt_name': 'schedule_free_adamw',
+        'opt_kwargs': {'learning_rate': 1e-2, 'warmup_steps': 5000},
     },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
@@ -62,57 +62,63 @@ for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
 # (just with sgd as we just want the behavior of the wrapper)
 _MAIN_OPTIMIZERS_UNDER_TEST += [
     {
-        "opt_name": 'sgd',
-        "opt_kwargs": {"learning_rate": 1e-1},
-        "wrapper_name": 'mechanize',
-        "wrapper_kwargs": {"weight_decay": 0.0},
+        'opt_name': 'sgd',
+        'opt_kwargs': {'learning_rate': 1e-1},
+        'wrapper_name': 'mechanize',
+        'wrapper_kwargs': {'weight_decay': 0.0},
     },
     {
-        "opt_name": 'sgd',
-        "opt_kwargs": {"learning_rate": 1e-2},
-        "wrapper_name": 'schedule_free',
-        "wrapper_kwargs": {"learning_rate": 1e-2},
+        'opt_name': 'sgd',
+        'opt_kwargs': {'learning_rate': 1e-2},
+        'wrapper_name': 'schedule_free',
+        'wrapper_kwargs': {'learning_rate': 1e-2},
     },
     {
-        "opt_name": 'sgd',
-        "opt_kwargs": {"learning_rate": 1e-3},
-        "wrapper_name": 'reduce_on_plateau',
-        "wrapper_kwargs": {},
+        'opt_name': 'sgd',
+        'opt_kwargs': {'learning_rate': 1e-3},
+        'wrapper_name': 'reduce_on_plateau',
+        'wrapper_kwargs': {},
     },
 ]
 
 # Adding here instantiations of wrappers with any base optimizer
 _BASE_OPTIMIZERS = [
-    {"opt_name": 'sgd', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'sgd', "opt_kwargs": {"learning_rate": 1.0, "momentum": 0.9}},
-    {"opt_name": 'adam', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'adamw', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'adamax', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'adamaxw', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'adan', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'amsgrad', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'lamb', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'lion', "opt_kwargs": {"learning_rate": 1.0, "b1": 0.99}},
-    {"opt_name": 'noisy_sgd', "opt_kwargs": {"learning_rate": 1.0, "eta": 1e-4}},
-    {"opt_name": 'novograd', "opt_kwargs": {"learning_rate": 1.0}},
+    {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1.0, 'momentum': 0.9}},
+    {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'adamw', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'adamax', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'adamaxw', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'adan', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'amsgrad', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'lamb', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'lion', 'opt_kwargs': {'learning_rate': 1.0, 'b1': 0.99}},
     {
-        "opt_name": 'optimistic_gradient_descent',
-        "opt_kwargs": {"learning_rate": 1.0, "alpha": 0.7, "beta": 0.1},
+        'opt_name': 'noisy_sgd',
+        'opt_kwargs': {'learning_rate': 1.0, 'eta': 1e-4},
     },
-    {"opt_name": 'rmsprop', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'rmsprop', "opt_kwargs": {"learning_rate": 1.0, "momentum": 0.9}},
-    {"opt_name": 'adabelief', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'radam', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'sm3', "opt_kwargs": {"learning_rate": 1.0}},
-    {"opt_name": 'yogi', "opt_kwargs": {"learning_rate": 1.0, "b1": 0.99}},
+    {'opt_name': 'novograd', 'opt_kwargs': {'learning_rate': 1.0}},
+    {
+        'opt_name': 'optimistic_gradient_descent',
+        'opt_kwargs': {'learning_rate': 1.0, 'alpha': 0.7, 'beta': 0.1},
+    },
+    {'opt_name': 'rmsprop', 'opt_kwargs': {'learning_rate': 1.0}},
+    {
+      'opt_name': 'rmsprop',
+      'opt_kwargs': {'learning_rate': 1.0, 'momentum': 0.9},
+    },
+    {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'radam', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'yogi', 'opt_kwargs': {'learning_rate': 1.0, 'b1': 0.99}},
 ]
 # TODO(harshm): make LARS and Fromage work with mechanic.
 _OTHER_OPTIMIZERS_UNDER_TEST = [
     {
-        "opt_name": base_opt['opt_name'],
-        "opt_kwargs": base_opt['opt_kwargs'],
-        "wrapper_name": 'mechanize',
-        "wrapper_kwargs": {"weight_decay": 0.0},
+        'opt_name': base_opt['opt_name'],
+        'opt_kwargs': base_opt['opt_kwargs'],
+        'wrapper_name': 'mechanize',
+        'wrapper_kwargs': {'weight_decay': 0.0},
     }
     for base_opt in _BASE_OPTIMIZERS
 ]

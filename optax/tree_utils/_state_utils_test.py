@@ -307,7 +307,7 @@ class StateUtilsTest(absltest.TestCase):
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with optional filtering'):
-      state = {"hparams": {"learning_rate": 1.0}, "learning_rate": 'foo'}
+      state = {'hparams': {'learning_rate': 1.0}, 'learning_rate': 'foo'}
 
       # Without filtering two values are found
       found_values = _state_utils.tree_get_all_with_path(state, 'learning_rate')
@@ -348,7 +348,7 @@ class StateUtilsTest(absltest.TestCase):
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with nested tree containing a key'):
-      tree = {"a": {"a": 1.0}}
+      tree = {'a': {'a': 1.0}}
       found_values = _state_utils.tree_get_all_with_path(tree, 'a')
       expected_result = [
           ((jtu.DictKey(key='a'),), {'a': 1.0}),
@@ -402,7 +402,7 @@ class StateUtilsTest(absltest.TestCase):
         self.assertEqual(lr, 1 / (i + 1))
 
     with self.subTest('Test with optional filtering'):
-      state = {"hparams": {"learning_rate": 1.0}, "learning_rate": 'foo'}
+      state = {'hparams': {'learning_rate': 1.0}, 'learning_rate': 'foo'}
 
       # Without filtering raises an error
       self.assertRaises(KeyError, _state_utils.tree_get, state, 'learning_rate')
@@ -495,7 +495,7 @@ class StateUtilsTest(absltest.TestCase):
         self.assertEqual(value, 2.0)
 
     with self.subTest('Test with optional filtering'):
-      state = {"hparams": {"learning_rate": 1.0}, "learning_rate": 'foo'}
+      state = {'hparams': {'learning_rate': 1.0}, 'learning_rate': 'foo'}
       new_state = _state_utils.tree_set(
         state,
         lambda _, value: isinstance(value, float),
@@ -511,23 +511,23 @@ class StateUtilsTest(absltest.TestCase):
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with nested trees and filtering'):
-      tree = {"a": {"a": 1.0}, "b": {"a": 1}}
+      tree = {'a': {'a': 1.0}, 'b': {'a': 1}}
       new_tree = _state_utils.tree_set(
         tree,
         lambda _, value: isinstance(value, float),
         a=2.0,
       )
-      expected_result = {"a": {"a": 2.0}, "b": {"a": 1}}
+      expected_result = {'a': {'a': 2.0}, 'b': {'a': 1}}
       self.assertEqual(new_tree, expected_result)
 
     with self.subTest('Test setting a subtree'):
-      tree = {"a": {"a": 1.0}, "b": {"a": 1}}
+      tree = {'a': {'a': 1.0}, 'b': {'a': 1}}
       new_tree = _state_utils.tree_set(
         tree,
         lambda _, value: isinstance(value, dict),
-        a={"c": 0.0},
+        a={'c': 0.0},
       )
-      expected_result = {"a": {"c": 0.0}, "b": {"a": 1}}
+      expected_result = {'a': {'c': 0.0}, 'b': {'a': 1}}
       self.assertEqual(new_tree, expected_result)
 
     with self.subTest('Test setting a specific state'):

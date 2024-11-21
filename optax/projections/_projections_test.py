@@ -40,14 +40,14 @@ class ProjectionsTest(parameterized.TestCase):
     array_2d = jnp.array([[0.5, 2.1, -3.5], [1.0, 2.0, 3.0]])
     tree = (array_1d, array_1d)
     self.data = {
-        "array_1d": array_1d,
-        "array_2d": array_2d,
-        "tree": tree,
+        'array_1d': array_1d,
+        'array_2d': array_2d,
+        'tree': tree,
     }
     self.fns = {
-        "l1": (proj.projection_l1_ball, otu.tree_l1_norm),
-        "l2": (proj.projection_l2_ball, otu.tree_l2_norm),
-        "linf": (proj.projection_linf_ball, otu.tree_linf_norm),
+        'l1': (proj.projection_l1_ball, otu.tree_l1_norm),
+        'l2': (proj.projection_l2_ball, otu.tree_l2_norm),
+        'linf': (proj.projection_linf_ball, otu.tree_linf_norm),
     }
 
   def test_projection_non_negative(self):

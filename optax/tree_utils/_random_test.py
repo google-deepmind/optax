@@ -28,11 +28,11 @@ from optax import tree_utils as otu
 # We consider samplers with varying input dtypes, we do not test all possible
 # samplers from `jax.random`.
 _SAMPLER_DTYPES = (
-    {"sampler": jrd.normal, "dtype": None},
-    {"sampler": jrd.normal, "dtype": 'bfloat16'},
-    {"sampler": jrd.normal, "dtype": 'float32'},
-    {"sampler": jrd.rademacher, "dtype": 'int32'},
-    {"sampler": jrd.bits, "dtype": 'uint32'},
+    {'sampler': jrd.normal, 'dtype': None},
+    {'sampler': jrd.normal, 'dtype': 'bfloat16'},
+    {'sampler': jrd.normal, 'dtype': 'float32'},
+    {'sampler': jrd.rademacher, 'dtype': 'int32'},
+    {'sampler': jrd.bits, 'dtype': 'uint32'},
 )
 
 
