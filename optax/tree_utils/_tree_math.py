@@ -127,7 +127,7 @@ _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
 
 
 def _vdot_safe(a, b):
-  return _vdot(jnp.asarray(a), jnp.asarray(b))
+  return _vdot(jnp.asarray(a), jnp.asarray(b)).real
 
 
 def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
@@ -181,6 +181,18 @@ def tree_max(tree: Any) -> chex.Numeric:
   maxes = jax.tree.map(jnp.max, tree)
   # initializer=-jnp.inf should work but pytype wants a jax.Array.
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
+
+
+def tree_conj(tree: Any) -> Any:
+  """Compute the conjugate of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a pytree with the same structure as ``tree``.
+  """
+  return jax.tree.map(jnp.conj, tree)
 
 
 def _square(leaf):
