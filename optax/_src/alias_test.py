@@ -865,6 +865,41 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
     chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
 
+  def test_complex(self):
+    """Test that optimization over complex variable z = x + jy matches equivalent
+    real case"""
+
+    tol=1e-5
+    W = jnp.array(
+      [[1, - 2],
+       [3, 4],
+       [-4 + 2j, 5 - 3j],
+       [-2 - 2j, 6]]
+    )
+
+    def to_real(z):
+      return jnp.stack((z.real, z.imag))
+
+    def to_complex(x):
+      return x[..., 0, :] + 1j * x[..., 1, :]  # if len(x)>0 else jnp.zeros_like(x)
+
+    def f(z):
+      return W @ z
+
+    def fun_complex(z):
+      return jnp.sum(jnp.abs(f(z)) ** 1.5)
+
+    def fun_real(z):
+      return fun_complex(to_complex(z))
+
+    z0 = jnp.array([1 - 1j, 0 + 1j])
+
+    opt_complex = alias.lbfgs()
+    opt_real = alias.lbfgs()
+    sol_complex, _ = _run_opt(opt_complex, fun_complex, init_params=z0, tol=tol)
+    sol_real, _ = _run_opt(opt_real, fun_real, init_params=to_real(z0), tol=tol)
+
+    chex.assert_trees_all_close(sol_complex, to_complex(sol_real), atol=tol, rtol=tol)
 
 if __name__ == '__main__':
   absltest.main()
