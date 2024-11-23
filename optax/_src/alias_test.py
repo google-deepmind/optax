@@ -869,7 +869,7 @@ class LBFGSTest(chex.TestCase):
     """Test that optimization over complex variable z = x + jy matches equivalent
     real case"""
 
-    tol=1e-5
+    tol = 1e-5
     W = jnp.array(
       [[1, - 2],
        [3, 4],
