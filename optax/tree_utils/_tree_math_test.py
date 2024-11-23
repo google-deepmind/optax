@@ -152,6 +152,24 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_max(tree)
     np.testing.assert_allclose(expected, got)
 
+  def test_tree_conj(self):
+    expected = jnp.conj(self.array_a)
+    got = tu.tree_conj(self.array_a)
+    np.testing.assert_array_almost_equal(expected, got)
+
+    expected = (jnp.conj(self.tree_a[0]), jnp.conj(self.tree_a[1]))
+    got = tu.tree_conj(self.tree_a)
+    chex.assert_trees_all_close(expected, got)
+
+  def test_tree_real(self):
+    expected = jnp.real(self.array_a)
+    got = tu.tree_real(self.array_a)
+    np.testing.assert_array_almost_equal(expected, got)
+
+    expected = (jnp.real(self.tree_a[0]), jnp.real(self.tree_a[1]))
+    got = tu.tree_real(self.tree_a)
+    chex.assert_trees_all_close(expected, got)
+
   def test_tree_l2_norm(self):
     expected = jnp.sqrt(jnp.vdot(self.array_a, self.array_a).real)
     got = tu.tree_l2_norm(self.array_a)
