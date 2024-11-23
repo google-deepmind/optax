@@ -334,7 +334,7 @@ def _run_opt(
   def step(carry):
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
-    grad = jnp.conj(grad)
+    grad = otu.tree_conj(grad)
     updates, state = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
