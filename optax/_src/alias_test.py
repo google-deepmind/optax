@@ -37,6 +37,7 @@ import optax.tree_utils as otu
 import scipy.optimize as scipy_optimize
 from sklearn import datasets
 from sklearn import linear_model
+from optax._src import linesearch as _linesearch
 
 
 ##############
@@ -865,7 +866,16 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
     chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
 
-  def test_complex(self):
+  @parameterized.product(
+    linesearch=[
+      # _linesearch.zoom_linesearch(max_linesearch_steps=20),
+      _linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=20),
+      _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=20, initial_guess_strategy='one'
+      )
+    ],
+  )
+  def test_complex(self, linesearch):
     """Test that optimization over complex variable z = x + jy matches equivalent
     real case"""
 
@@ -892,8 +902,8 @@ class LBFGSTest(chex.TestCase):
     z0 = jnp.array([1 - 1j, 0 + 1j])
     x0 = to_real(z0)
 
-    opt_complex = alias.lbfgs()
-    opt_real = alias.lbfgs()
+    opt_complex = alias.lbfgs(linesearch=linesearch)
+    opt_real = alias.lbfgs(linesearch=linesearch)
     sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
     sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
 
