@@ -2482,7 +2482,7 @@ def lbfgs(
     ...   )
     ...   params = optax.apply_updates(params, updates)
     ...   print('Objective function: ', f(params))
-    Objective function:  7.5166864
+    Objective function:  7.516686...
     Objective function:  7.460699e-14
     Objective function:  2.6505726e-28
     Objective function:  0.0
