@@ -334,7 +334,7 @@ def _run_opt(
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
     updates, state = opt.update(
-        grad, state, params, value=value, grad=grad, value_fn=fun
+        jnp.conj(grad), state, params, value=value, grad=jnp.conj(grad), value_fn=fun
     )
     params = update.apply_updates(params, updates)
     return params, state, count + 1, grad
@@ -883,21 +883,19 @@ class LBFGSTest(chex.TestCase):
     def to_complex(x):
       return x[..., 0, :] + 1j * x[..., 1, :]  # if len(x)>0 else jnp.zeros_like(x)
 
-    def f(z):
-      return W @ z
+    def f_complex(z):
+      return jnp.sum(jnp.abs(W @ z) ** 1.5)
 
-    def fun_complex(z):
-      return jnp.sum(jnp.abs(f(z)) ** 1.5)
-
-    def fun_real(z):
-      return fun_complex(to_complex(z))
+    def f_real(x):
+      return f_complex(to_complex(x))
 
     z0 = jnp.array([1 - 1j, 0 + 1j])
+    x0 = to_real(z0)
 
     opt_complex = alias.lbfgs()
     opt_real = alias.lbfgs()
-    sol_complex, _ = _run_opt(opt_complex, fun_complex, init_params=z0, tol=tol)
-    sol_real, _ = _run_opt(opt_real, fun_real, init_params=to_real(z0), tol=tol)
+    sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
+    sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
 
     chex.assert_trees_all_close(sol_complex, to_complex(sol_real), atol=tol, rtol=tol)
 

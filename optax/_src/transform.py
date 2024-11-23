@@ -1691,7 +1691,7 @@ def scale_by_lbfgs(
     # used to initialize the approximation of the inverse through the memory
     # buffer.
     if scale_init_precond:
-      numerator = otu.tree_vdot(diff_updates, diff_params)
+      numerator = otu.tree_real(otu.tree_vdot(diff_updates, diff_params))
       denominator = otu.tree_l2_norm(diff_updates, squared=True)
       identity_scale = jnp.where(
           denominator > 0.0, numerator / denominator, 1.0
