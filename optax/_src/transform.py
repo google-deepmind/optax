@@ -1521,7 +1521,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
-    alpha = rhos[idx] * otu.tree_vdot(dwi, vec)
+    alpha = rhos[idx] * otu.tree_real(otu.tree_vdot(dwi, vec))
     vec = otu.tree_add_scalar_mul(vec, -alpha, dui)
     return vec, alpha
 
@@ -1536,7 +1536,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
-    beta = rhos[idx] * otu.tree_vdot(dui, vec)
+    beta = rhos[idx] * otu.tree_real(otu.tree_vdot(dui, vec))
     vec = otu.tree_add_scalar_mul(vec, alpha - beta, dwi)
     return vec, beta
 
@@ -1666,7 +1666,7 @@ def scale_by_lbfgs(
     # 1. Updates the memory buffers given fresh params and gradients/updates
     diff_params = otu.tree_sub(params, state.params)
     diff_updates = otu.tree_sub(updates, state.updates)
-    vdot_diff_params_updates = otu.tree_vdot(diff_updates, diff_params)
+    vdot_diff_params_updates = otu.tree_real(otu.tree_vdot(diff_updates, diff_params))
     weight = jnp.where(
         vdot_diff_params_updates == 0.0, 0.0, 1.0 / vdot_diff_params_updates
     )
