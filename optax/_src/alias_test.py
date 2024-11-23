@@ -27,6 +27,7 @@ import jax.random as jrd
 import numpy as np
 from optax._src import alias
 from optax._src import base
+from optax._src import linesearch as _linesearch
 from optax._src import numerics
 from optax._src import transform
 from optax._src import update
@@ -37,7 +38,6 @@ import optax.tree_utils as otu
 import scipy.optimize as scipy_optimize
 from sklearn import datasets
 from sklearn import linear_model
-from optax._src import linesearch as _linesearch
 
 
 ##############
@@ -334,8 +334,9 @@ def _run_opt(
   def step(carry):
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
+    grad = jnp.conj(grad)
     updates, state = opt.update(
-        jnp.conj(grad), state, params, value=value, grad=jnp.conj(grad), value_fn=fun
+        grad, state, params, value=value, grad=grad, value_fn=fun
     )
     params = update.apply_updates(params, updates)
     return params, state, count + 1, grad
@@ -876,11 +877,10 @@ class LBFGSTest(chex.TestCase):
     ],
   )
   def test_complex(self, linesearch):
-    """Test that optimization over complex variable z = x + jy matches equivalent
-    real case"""
+    # Test that optimization over complex variable matches equivalent real case
 
     tol = 1e-5
-    W = jnp.array(
+    mat = jnp.array(
       [[1, - 2],
        [3, 4],
        [-4 + 2j, 5 - 3j],
@@ -891,10 +891,10 @@ class LBFGSTest(chex.TestCase):
       return jnp.stack((z.real, z.imag))
 
     def to_complex(x):
-      return x[..., 0, :] + 1j * x[..., 1, :]  # if len(x)>0 else jnp.zeros_like(x)
+      return x[..., 0, :] + 1j * x[..., 1, :]
 
     def f_complex(z):
-      return jnp.sum(jnp.abs(W @ z) ** 1.5)
+      return jnp.sum(jnp.abs(mat @ z) ** 1.5)
 
     def f_real(x):
       return f_complex(to_complex(x))
@@ -907,7 +907,9 @@ class LBFGSTest(chex.TestCase):
     sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
     sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
 
-    chex.assert_trees_all_close(sol_complex, to_complex(sol_real), atol=tol, rtol=tol)
+    chex.assert_trees_all_close(
+        sol_complex, to_complex(sol_real), atol=tol, rtol=tol
+    )
 
 if __name__ == '__main__':
   absltest.main()
