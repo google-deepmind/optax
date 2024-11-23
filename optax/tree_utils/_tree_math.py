@@ -127,7 +127,7 @@ _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
 
 
 def _vdot_safe(a, b):
-  return _vdot(jnp.asarray(a), jnp.asarray(b)).real
+  return _vdot(jnp.asarray(a), jnp.asarray(b))
 
 
 def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
@@ -193,6 +193,18 @@ def tree_conj(tree: Any) -> Any:
     a pytree with the same structure as ``tree``.
   """
   return jax.tree.map(jnp.conj, tree)
+
+
+def tree_real(tree: Any) -> Any:
+  """Compute the real part of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a pytree with the same structure as ``tree``.
+  """
+  return jax.tree.map(jnp.real, tree)
 
 
 def _square(leaf):
