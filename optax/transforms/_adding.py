@@ -88,7 +88,7 @@ def add_noise(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> key = jax.random.key(42)
+    >>> key = jax.random.key(0)
     >>> noise = optax.add_noise(key=key, eta=0.01, gamma=0.55)
     >>> sgd = optax.scale_by_learning_rate(learning_rate=0.003)
     >>> solver = optax.chain(noise, sgd)
