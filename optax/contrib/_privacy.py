@@ -34,7 +34,9 @@ class DifferentiallyPrivateAggregateState(NamedTuple):
 
 
 def differentially_private_aggregate(
-    l2_norm_clip: float, noise_multiplier: float, key: Optional[chex.PRNGKey] = None
+    l2_norm_clip: float, 
+    noise_multiplier: float, 
+    key: Optional[chex.PRNGKey] = None
 ) -> base.GradientTransformation:
   """Aggregates gradients based on the DPSGD algorithm.
 
@@ -58,7 +60,10 @@ def differentially_private_aggregate(
     as long as it is the first in the chain.
   """
   if key is None:
-    raise ValueError("differentially_private_aggregate optimizer requires specifying random key: differentially_private_aggregate(..., key=crandom.key(0))")
+    raise ValueError(
+      "differentially_private_aggregate optimizer requires specifying random key: " 
+      "differentially_private_aggregate(..., key=random.key(0))"
+    )
   noise_std = l2_norm_clip * noise_multiplier
 
   def init_fn(params):
@@ -88,7 +93,7 @@ def dpsgd(
     learning_rate: base.ScalarOrSchedule,
     l2_norm_clip: float,
     noise_multiplier: float,
-    seed: int,
+    key: Optional[chex.PRNGKey] = None,
     momentum: Optional[float] = None,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -103,7 +108,7 @@ def dpsgd(
     learning_rate: A fixed global scaling factor.
     l2_norm_clip: Maximum L2 norm of the per-example gradients.
     noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
+    key: a PRNG key used as the random key.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
@@ -120,11 +125,16 @@ def dpsgd(
     batch dimension on the 0th axis. That is, this function expects per-example
     gradients as input (which are easy to obtain in JAX using `jax.vmap`).
   """
+  if key is None:
+    raise ValueError(
+        "dpsgd optimizer requires specifying random key: " 
+        "dpsgd(..., key=random.key(0))"
+        )
   return combine.chain(
       differentially_private_aggregate(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
-          seed=seed,
+          key=key,
       ),
       (
           transform.trace(decay=momentum, nesterov=nesterov)
