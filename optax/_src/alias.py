@@ -1321,7 +1321,7 @@ def noisy_sgd(
   """
   if key is None:
     raise ValueError(
-      "noisy_sgd optimizer requires specifying random key: " 
+      "noisy_sgd optimizer requires specifying key: " 
       "noisy_sgd(..., key=jax.random.key(0))"
     )
   return combine.chain(
@@ -2401,7 +2401,7 @@ def lbfgs(
     linesearch: Optional[
         base.GradientTransformationExtraArgs
     ] = _linesearch.scale_by_zoom_linesearch(
-        max_linesearch_steps=20, initial_guess_strategy='one'
+        max_linesearch_steps=20, initial_guess_strategy="one"
     ),
 ) -> base.GradientTransformationExtraArgs:
   r"""L-BFGS optimizer.
