@@ -1254,8 +1254,8 @@ def lamb(
 
 
 def noisy_sgd(
-    key: chex.PRNGKey, 
     learning_rate: base.ScalarOrSchedule,
+    key: Optional[chex.PRNGKey] = None,
     eta: float = 0.01,
     gamma: float = 0.55,
 ) -> base.GradientTransformation:
@@ -1283,12 +1283,12 @@ def noisy_sgd(
   represents the initial variance ``eta``.
 
   Args:
-    key: a PRNG key used as the random key.
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    key: a PRNG key used as the random key.
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time ``t``, the
-      variance decays according to ``(1+t)**(-gamma)``.
+      variance decays according to ``(1+t)**(-gamma)``.    
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
@@ -1298,8 +1298,8 @@ def noisy_sgd(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> key = jax.random.key(42)
-    >>> solver = optax.noisy_sgd(key, learning_rate=0.003)
+    >>> key = jax.random.key(0)
+    >>> solver = optax.noisy_sgd(learning_rate=0.003, key)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -1319,6 +1319,8 @@ def noisy_sgd(
     Neelakantan et al, `Adding Gradient Noise Improves Learning for Very Deep
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
+  if key is None:
+    raise ValueError("noisy_sgd optimizer requires specifying random key: noisy_sgd(..., key=key=jax.random.key(0))")
   return combine.chain(
       transform.add_noise(key, eta, gamma),
       transform.scale_by_learning_rate(learning_rate),
