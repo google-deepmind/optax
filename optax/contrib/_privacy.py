@@ -34,8 +34,8 @@ class DifferentiallyPrivateAggregateState(NamedTuple):
 
 
 def differentially_private_aggregate(
-    l2_norm_clip: float, 
-    noise_multiplier: float, 
+    l2_norm_clip: float,
+    noise_multiplier: float,
     key: Optional[chex.PRNGKey] = None
 ) -> base.GradientTransformation:
   """Aggregates gradients based on the DPSGD algorithm.
@@ -61,7 +61,7 @@ def differentially_private_aggregate(
   """
   if key is None:
     raise ValueError(
-      "differentially_private_aggregate optimizer requires specifying random key: " 
+      "differentially_private_aggregate optimizer requires specifying key: " 
       "differentially_private_aggregate(..., key=jax.random.key(0))"
     )
   noise_std = l2_norm_clip * noise_multiplier
@@ -127,7 +127,7 @@ def dpsgd(
   """
   if key is None:
     raise ValueError(
-        "dpsgd optimizer requires specifying random key: " 
+        "dpsgd optimizer requires specifying key: " 
         "dpsgd(..., key=jax.random.key(0))"
         )
   return combine.chain(
