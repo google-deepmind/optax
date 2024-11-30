@@ -62,7 +62,7 @@ def differentially_private_aggregate(
   if key is None:
     raise ValueError(
       "differentially_private_aggregate optimizer requires specifying random key: " 
-      "differentially_private_aggregate(..., key=random.key(0))"
+      "differentially_private_aggregate(..., key=jax.random.key(0))"
     )
   noise_std = l2_norm_clip * noise_multiplier
 
@@ -128,7 +128,7 @@ def dpsgd(
   if key is None:
     raise ValueError(
         "dpsgd optimizer requires specifying random key: " 
-        "dpsgd(..., key=random.key(0))"
+        "dpsgd(..., key=jax.random.key(0))"
         )
   return combine.chain(
       differentially_private_aggregate(
