@@ -46,7 +46,9 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
   def test_no_privacy(self):
     """l2_norm_clip=MAX_FLOAT32 and noise_multiplier=0 should recover SGD."""
     dp_agg = _privacy.differentially_private_aggregate(
-        l2_norm_clip=jnp.finfo(jnp.float32).max, noise_multiplier=0.0, key=jrd.key(0)
+        l2_norm_clip=jnp.finfo(jnp.float32).max,
+        noise_multiplier=0.0,
+        key=jrd.key(0)
     )
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
@@ -88,7 +90,9 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
   def test_noise_multiplier(self, l2_norm_clip, noise_multiplier):
     """Standard dev. of noise should be l2_norm_clip * noise_multiplier."""
     dp_agg = _privacy.differentially_private_aggregate(
-        l2_norm_clip=l2_norm_clip, noise_multiplier=noise_multiplier, key=jrd.key(1337)
+        l2_norm_clip=l2_norm_clip,
+        noise_multiplier=noise_multiplier,
+        key=jrd.key(1337)
     )
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
