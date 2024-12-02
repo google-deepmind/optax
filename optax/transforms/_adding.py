@@ -94,7 +94,7 @@ def add_noise(
         count=jnp.zeros([], jnp.int32), rng_key=jax.random.PRNGKey(seed)
     )
 
-  def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
+  def update_fn(updates, state, params=None):
     del params
     count_inc = numerics.safe_increment(state.count)
     standard_deviation = jnp.sqrt(eta / count_inc**gamma)

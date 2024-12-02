@@ -77,7 +77,8 @@ def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
     ...   )
     {'first': [3, 4], 'last': 5}
   """
-  mean_fun = lambda x: sum(x) / len(trees)
+  def mean_fun(x):
+    return sum(x) / len(trees)
   return jtu.tree_map(lambda *leaves: mean_fun(leaves), *trees)
 
 
@@ -87,7 +88,8 @@ def _tree_vmap(
 ) -> chex.ArrayTree:
   """Applies a function to a list of trees, akin to a vmap."""
   tree_def_in = jtu.tree_structure(trees[0])
-  has_in_structure = lambda x: jtu.tree_structure(x) == tree_def_in
+  def has_in_structure(x):
+    return jtu.tree_structure(x) == tree_def_in
   return jtu.tree_map(fun, trees, is_leaf=has_in_structure)
 
 
@@ -172,11 +174,13 @@ def make_perturbed_fun(
       The jacobian vector product.
     """
     outputs_pert, samples = _compute_residuals(inputs, rng)
-    array_sum_log_prob_func = lambda x: jnp.sum(noise.log_prob(x))
+    def array_sum_log_prob_func(x):
+      return jnp.sum(noise.log_prob(x))
     array_grad_log_prob_func = jax.grad(array_sum_log_prob_func)
     # computes [grad log_prob(Z_1), ... , grad log_prob(Z_num_samples)]
     tree_sum_log_probs = jtu.tree_map(array_grad_log_prob_func, samples)
-    fun_dot_prod = lambda z: jax.tree_util.tree_map(jnp.dot, z, tangent)
+    def fun_dot_prod(z):
+      return jax.tree_util.tree_map(jnp.dot, z, tangent)
     list_tree_dot_prods = _tree_vmap(fun_dot_prod, tree_sum_log_probs)
     # computes [<grad log_prob(Z_1), g>, .. , <grad log_prob(Z_num_samples), g>]
     list_dot_prods = _tree_vmap(

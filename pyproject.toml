@@ -84,6 +84,59 @@ dp-accounting = [
     "scipy>=1.7.1"
 ]
 
+dev = [
+    "flake8",
+    "pylint",
+    "pytype",
+    "pytest",
+    "pytest-xdist",
+    "typing_extensions",
+]
+
 [tool.setuptools.packages.find]
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
+
+[tool.pytype]
+inputs = ["optax"]
+disable = ["import-error"]
+keep_going = true
+
+[tool.pytest.ini_options]
+addopts = "--pyargs optax --numprocesses auto"
+
+[tool.pylint.main]
+ignore-patterns = [
+    ".*.pyi",
+]
+ignore = [
+    "test_venv",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-indentation",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "no-member",
+    "too-many-locals",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "no-value-for-parameter",
+    "too-many-lines",
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "too-many-public-methods",
+    "too-many-statements",
+    "protected-access",
+    "too-many-instance-attributes",
+    "not-callable",
+    "duplicate-code",
+    "unknown-option-value",
+]
+
+[tool.pylint.similarities]
+ignore-comments = true
+ignore-docstrings = true
+ignore-imports = true
+min-similarity-lines = 4

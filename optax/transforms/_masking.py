@@ -41,7 +41,7 @@ def _mask_callable(
     mask: Union[base.PyTree, Callable[[base.Params], base.PyTree]],
 ):
   callable_leaves = jax.tree.leaves(jax.tree.map(callable, mask))
-  return (len(callable_leaves) > 0) and all(callable_leaves)  # pylint:disable=g-explicit-length-test
+  return (len(callable_leaves) > 0) and all(callable_leaves)
 
 
 def masked(
@@ -103,8 +103,7 @@ def masked(
           jax.tree.structure(pytree) == base_structure
       ):
         return mask_pytree(pytree, mask_tree)
-      else:
-        return pytree
+      return pytree
 
     return {k: _maybe_mask(v) for k, v in pytree_dict.items()}
 

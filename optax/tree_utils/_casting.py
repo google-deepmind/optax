@@ -44,8 +44,7 @@ def tree_cast(
   """
   if dtype is not None:
     return jax.tree.map(lambda t: t.astype(dtype), tree)
-  else:
-    return tree
+  return tree
 
 
 def tree_dtype(
@@ -118,26 +117,25 @@ def tree_dtype(
     dtype = jnp.asarray(leaves[0]).dtype
     _tree_assert_all_dtypes_equal(tree, dtype)
     return dtype
-  elif mixed_dtype_handler == 'promote':
+  if mixed_dtype_handler == 'promote':
     promoted_dtype = functools.reduce(
         jnp.promote_types, [jnp.asarray(x).dtype for x in leaves]
     )
     return promoted_dtype
-  elif mixed_dtype_handler == 'highest':
+  if mixed_dtype_handler == 'highest':
     highest_dtype = functools.reduce(
         _higher_dtype, [jnp.asarray(x).dtype for x in leaves]
     )
     return highest_dtype
-  elif mixed_dtype_handler == 'lowest':
+  if mixed_dtype_handler == 'lowest':
     lowest_dtype = functools.reduce(
         _lower_dtype, [jnp.asarray(x).dtype for x in leaves]
     )
     return lowest_dtype
-  else:
-    raise ValueError(
-        f'Invalid value for {mixed_dtype_handler=}, possible values are: None,'
-        ' "promote", "highest", "lowest".'
-    )
+  raise ValueError(
+      f'Invalid value for {mixed_dtype_handler=}, possible values are: None,'
+      ' "promote", "highest", "lowest".'
+  )
 
 
 def _tree_assert_all_dtypes_equal(
@@ -158,6 +156,7 @@ def _tree_assert_all_dtypes_equal(
     if x_dtype != dtype:
       err_msg = f'Expected {dtype=} for {path} but got {x_dtype}.'
       return err_msg
+    return None
 
   err_msgs = jax.tree.leaves(
       jax.tree_util.tree_map_with_path(_assert_dtypes_equal, tree)
@@ -184,13 +183,12 @@ def _lower_dtype(
   """
   if jnp.promote_types(dtype1, dtype2) == dtype1:
     return dtype2
-  elif jnp.promote_types(dtype1, dtype2) == dtype2:
+  if jnp.promote_types(dtype1, dtype2) == dtype2:
     return dtype1
-  else:
-    raise ValueError(
-        f'Cannot compare dtype of {dtype1=} and {dtype2=}.'
-        f' Neither {dtype1} nor {dtype2} can be promoted to the other.'
-    )
+  raise ValueError(
+      f'Cannot compare dtype of {dtype1=} and {dtype2=}.'
+      f' Neither {dtype1} nor {dtype2} can be promoted to the other.'
+  )
 
 
 def _higher_dtype(
@@ -210,5 +208,4 @@ def _higher_dtype(
   """
   if _lower_dtype(dtype1, dtype2) == dtype1:
     return dtype2
-  else:
-    return dtype1
+  return dtype1

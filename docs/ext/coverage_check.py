@@ -19,10 +19,10 @@ import inspect
 import types
 from typing import Any, Sequence, Tuple
 
-import optax
 from sphinx import application
 from sphinx import builders
 from sphinx import errors
+import optax
 
 
 def find_internal_python_modules(
@@ -65,7 +65,7 @@ class OptaxCoverageCheck(builders.Builder):
   def get_outdated_docs(self) -> str:
     return "coverage_check"
 
-  def write(self, *ignored: Any) -> None:
+  def write(self, *ignored: Any) -> None:  # pylint: disable=overridden-final-method
     pass
 
   def finish(self) -> None:
@@ -78,7 +78,13 @@ class OptaxCoverageCheck(builders.Builder):
           "forget to add an entry to `api.rst`?\n"
           f"Undocumented symbols: {undocumented_objects}")
 
+  def get_target_uri(self, docname, typ=None):
+    raise NotImplementedError
+
+  def write_doc(self, docname, doctree):
+    raise NotImplementedError
+
 
 def setup(app: application.Sphinx) -> Mapping[str, Any]:
   app.add_builder(OptaxCoverageCheck)
-  return dict(version=optax.__version__, parallel_read_safe=True)
+  return {"version": optax.__version__, "parallel_read_safe": True}

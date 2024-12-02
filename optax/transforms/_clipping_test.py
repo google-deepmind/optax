@@ -48,7 +48,8 @@ class ClippingTest(absltest.TestCase):
     )
 
   def test_clip_by_block_rms(self):
-    rmf_fn = lambda t: jnp.sqrt(jnp.mean(t**2))
+    def rmf_fn(t):
+      return jnp.sqrt(jnp.mean(t**2))
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
       clipper = _clipping.clip_by_block_rms(1.0 / i)

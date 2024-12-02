@@ -24,14 +24,14 @@ import chex
 from etils import epy
 import jax
 import jax.numpy as jnp
+
+with epy.lazy_imports():
+  import jax.scipy.stats.norm as multivariate_normal
+
 from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
-
-
-with epy.lazy_imports():
-  import jax.scipy.stats.norm as multivariate_normal  # pylint: disable=g-import-not-at-top,ungrouped-imports
 
 
 def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
@@ -171,10 +171,9 @@ def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
   # Special case scales of 1. and 0. for more efficiency.
   if scale == 1.0:
     return inputs
-  elif scale == 0.0:
+  if scale == 0.0:
     return jax.lax.stop_gradient(inputs)
-  else:
-    return _scale_gradient(inputs, scale)
+  return _scale_gradient(inputs, scale)
 
 
 def _extract_fns_kwargs(
