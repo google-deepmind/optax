@@ -177,8 +177,6 @@ from optax._src.wrappers import flatten
 from optax._src.wrappers import masked
 from optax._src.wrappers import MaskedNode
 from optax._src.wrappers import MaskedState
-from optax._src.wrappers import maybe_update
-from optax._src.wrappers import MaybeUpdateState
 from optax._src.wrappers import MultiSteps
 from optax._src.wrappers import MultiStepsState
 from optax._src.wrappers import ShouldSkipUpdateFunction
@@ -371,8 +369,6 @@ __all__ = (
     "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
-    "maybe_update",
-    "MaybeUpdateState",
     "multi_normal",
     "multi_transform",
     "MultiSteps",
