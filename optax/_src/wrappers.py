@@ -14,12 +14,6 @@
 # ==============================================================================
 """Transformation wrappers."""
 
-from collections.abc import Callable
-import functools
-
-import chex
-import jax.numpy as jnp
-from optax._src import base
 from optax.transforms import _accumulation
 from optax.transforms import _conditionality
 from optax.transforms import _layouts
@@ -42,19 +36,3 @@ MultiStepsState = _accumulation.MultiStepsState
 ShouldSkipUpdateFunction = _accumulation.ShouldSkipUpdateFunction
 skip_not_finite = _accumulation.skip_not_finite
 skip_large_updates = _accumulation.skip_large_updates
-
-
-@functools.partial(
-    chex.warn_deprecated_function,
-    replacement='optax.transforms.maybe_transform',
-)
-def maybe_update(
-    inner: base.GradientTransformation,
-    should_update_fn: Callable[[jnp.ndarray], jnp.ndarray],
-) -> base.GradientTransformationExtraArgs:
-  return conditionally_transform(
-      inner=inner, should_transform_fn=should_update_fn
-  )
-
-
-MaybeUpdateState = ConditionallyTransformState
