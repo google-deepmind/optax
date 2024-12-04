@@ -910,5 +910,33 @@ class LBFGSTest(chex.TestCase):
         sol_complex, to_complex(sol_real), atol=tol, rtol=tol
     )
 
+  @parameterized.product(
+    linesearch=[
+      _linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=20),
+      _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=20, initial_guess_strategy='one'
+      )
+    ],
+  )
+  def test_lbfgs_complex_rosenbrock(self, linesearch):
+    # Taken from previous jax tests
+    tol = 1e-5
+    complex_dim = 5
+
+    fun_real = _get_problem('rosenbrock')['fun']
+    init_real = jnp.zeros((2 * complex_dim,), dtype=complex)
+    expected_real = jnp.ones((2 * complex_dim,), dtype=complex)
+
+    def fun(z):
+      x_real = jnp.concatenate([jnp.real(z), jnp.imag(z)])
+      return fun_real(x_real)
+
+    init = init_real[:complex_dim] + 1.j * init_real[complex_dim:]
+    expected = expected_real[:complex_dim] + 1.j * expected_real[complex_dim:]
+
+    opt = alias.lbfgs(linesearch=linesearch)
+    got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
+    chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
+
 if __name__ == '__main__':
   absltest.main()
