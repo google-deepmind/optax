@@ -240,6 +240,8 @@ def scale_by_backtracking_linesearch(
     after the backtracking line-search doesn't necessarily need to satisfy the
     descent direction property (one could for example use momentum).
 
+  .. note:: The algorithm can support complex inputs.
+
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
 
@@ -1510,6 +1512,8 @@ def scale_by_zoom_linesearch(
     searched by minimizing a quadratic or cubic approximation of the objective.
     This can be sufficient in practice and avoids having the linesearch spend 
     many iterations trying to satisfy the small curvature criterion.
+
+  .. note:: The algorithm can support complex inputs.
 
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
