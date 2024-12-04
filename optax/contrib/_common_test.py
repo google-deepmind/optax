@@ -301,7 +301,7 @@ class ContribTest(chex.TestCase):
     # x = 0.5**jnp.asarray(1, dtype=jnp.int32)
     # (appearing in e.g. optax.tree_utils.tree_bias_correction)
     # are promoted (strictly) to float32 when jitted
-    # see https://github.com/google/jax/issues/23337
+    # see https://github.com/jax-ml/jax/issues/23337
     # This may end up letting updates have a dtype different from params.
     # The solution is to fix the dtype of the result to the desired dtype
     # (just as done in optax.tree_utils.tree_bias_correction).
