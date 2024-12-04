@@ -869,14 +869,13 @@ class LBFGSTest(chex.TestCase):
 
   @parameterized.product(
     linesearch=[
-      # _linesearch.zoom_linesearch(max_linesearch_steps=20),
       _linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=20),
       _linesearch.scale_by_zoom_linesearch(
         max_linesearch_steps=20, initial_guess_strategy='one'
       )
     ],
   )
-  def test_complex(self, linesearch):
+  def test_lbfgs_complex(self, linesearch):
     # Test that optimization over complex variable matches equivalent real case
 
     tol = 1e-5
