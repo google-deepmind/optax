@@ -240,6 +240,8 @@ def scale_by_backtracking_linesearch(
     after the backtracking line-search doesn't necessarily need to satisfy the
     descent direction property (one could for example use momentum).
 
+  .. note:: The algorithm can support complex inputs.
+
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
 
@@ -319,7 +321,7 @@ def scale_by_backtracking_linesearch(
     # Slope of lr -> value_fn(params + lr * updates) at lr = 0
     # Should be negative to ensure that there exists a lr (potentially
     # infinitesimal) that satisfies the criterion.
-    slope = otu.tree_vdot(updates, grad)
+    slope = otu.tree_real(otu.tree_vdot(updates, otu.tree_conj(grad)))
 
     def cond_fn(
         search_state: BacktrackingLineSearchState,
@@ -698,7 +700,7 @@ def zoom_linesearch(
     """
     step = otu.tree_add_scalar_mul(params, stepsize, updates)
     value_step, grad_step = value_and_grad_fn(step, **fn_kwargs)
-    slope_step = otu.tree_vdot(grad_step, updates)
+    slope_step = otu.tree_real(otu.tree_vdot(otu.tree_conj(grad_step), updates))
     return step, value_step, grad_step, slope_step
 
   def _compute_decrease_error(
@@ -1205,7 +1207,7 @@ def zoom_linesearch(
           f"Unknown initial guess strategy: {initial_guess_strategy}"
       )
 
-    slope = otu.tree_vdot(updates, grad)
+    slope = otu.tree_real(otu.tree_vdot(updates, grad))
     return ZoomLinesearchState(
         count=jnp.asarray(0, dtype=jnp.int32),
         #
@@ -1510,6 +1512,8 @@ def scale_by_zoom_linesearch(
     searched by minimizing a quadratic or cubic approximation of the objective.
     This can be sufficient in practice and avoids having the linesearch spend 
     many iterations trying to satisfy the small curvature criterion.
+
+  .. note:: The algorithm can support complex inputs.
 
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.

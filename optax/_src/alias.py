@@ -2514,6 +2514,8 @@ def lbfgs(
     constrain the trust-region of the first step to an Euclidean ball of radius
     1 at the first iteration. The choice of :math:`\gamma_0` is not detailed in
     the references above, so this is a heuristic choice.
+
+  .. note:: The algorithm can support complex inputs.
   """
   if learning_rate is None:
     base_scaling = transform.scale(-1.0)

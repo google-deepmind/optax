@@ -27,6 +27,7 @@ import jax.random as jrd
 import numpy as np
 from optax._src import alias
 from optax._src import base
+from optax._src import linesearch as _linesearch
 from optax._src import numerics
 from optax._src import transform
 from optax._src import update
@@ -333,6 +334,7 @@ def _run_opt(
   def step(carry):
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
+    grad = otu.tree_conj(grad)
     updates, state = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
@@ -690,9 +692,7 @@ class LBFGSTest(chex.TestCase):
         scale_init_precond=scale_init_precond,
         linesearch=None,
     )
-    lbfgs_sol, _ = _run_opt(
-        opt, fun, init_params, maxiter=maxiter, tol=tol
-    )
+    lbfgs_sol, _ = _run_opt(opt, fun, init_params, maxiter=maxiter, tol=tol)
     expected_lbfgs_sol = _plain_lbfgs(
         fun,
         init_params,
@@ -806,9 +806,7 @@ class LBFGSTest(chex.TestCase):
     jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
 
     opt = alias.lbfgs()
-    optax_sol, _ = _run_opt(
-        opt, jnp_fun, init_params, maxiter=500, tol=tol
-    )
+    optax_sol, _ = _run_opt(opt, jnp_fun, init_params, maxiter=500, tol=tol)
     scipy_sol = scipy_optimize.minimize(np_fun, init_params, method='BFGS').x
 
     # 1. Check minimizer obtained against known minimizer or scipy minimizer
@@ -864,6 +862,76 @@ class LBFGSTest(chex.TestCase):
     opt = alias.lbfgs()
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
     chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
+
+  @parameterized.product(
+      linesearch=[
+          _linesearch.scale_by_backtracking_linesearch(
+              max_backtracking_steps=20
+          ),
+          _linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=20, initial_guess_strategy='one'
+          ),
+      ],
+  )
+  def test_lbfgs_complex(self, linesearch):
+    # Test that optimization over complex variable matches equivalent real case
+
+    tol = 1e-5
+    mat = jnp.array([[1, -2], [3, 4], [-4 + 2j, 5 - 3j], [-2 - 2j, 6]])
+
+    def to_real(z):
+      return jnp.stack((z.real, z.imag))
+
+    def to_complex(x):
+      return x[..., 0, :] + 1j * x[..., 1, :]
+
+    def f_complex(z):
+      return jnp.sum(jnp.abs(mat @ z) ** 1.5)
+
+    def f_real(x):
+      return f_complex(to_complex(x))
+
+    z0 = jnp.array([1 - 1j, 0 + 1j])
+    x0 = to_real(z0)
+
+    opt_complex = alias.lbfgs(linesearch=linesearch)
+    opt_real = alias.lbfgs(linesearch=linesearch)
+    sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
+    sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
+
+    chex.assert_trees_all_close(
+        sol_complex, to_complex(sol_real), atol=tol, rtol=tol
+    )
+
+  @parameterized.product(
+      linesearch=[
+          _linesearch.scale_by_backtracking_linesearch(
+              max_backtracking_steps=20
+          ),
+          _linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=20, initial_guess_strategy='one'
+          ),
+      ],
+  )
+  def test_lbfgs_complex_rosenbrock(self, linesearch):
+    # Taken from previous jax tests
+    tol = 1e-5
+    complex_dim = 5
+
+    fun_real = _get_problem('rosenbrock')['fun']
+    init_real = jnp.zeros((2 * complex_dim,), dtype=complex)
+    expected_real = jnp.ones((2 * complex_dim,), dtype=complex)
+
+    def fun(z):
+      x_real = jnp.concatenate([jnp.real(z), jnp.imag(z)])
+      return fun_real(x_real)
+
+    init = init_real[:complex_dim] + 1.0j * init_real[complex_dim:]
+    expected = expected_real[:complex_dim] + 1.0j * expected_real[complex_dim:]
+
+    opt = alias.lbfgs(linesearch=linesearch)
+    got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
+    chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
 
 if __name__ == '__main__':

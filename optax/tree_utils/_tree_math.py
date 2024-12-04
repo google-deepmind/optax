@@ -183,6 +183,30 @@ def tree_max(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
 
 
+def tree_conj(tree: Any) -> Any:
+  """Compute the conjugate of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a pytree with the same structure as ``tree``.
+  """
+  return jax.tree.map(jnp.conj, tree)
+
+
+def tree_real(tree: Any) -> Any:
+  """Compute the real part of a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a pytree with the same structure as ``tree``.
+  """
+  return jax.tree.map(jnp.real, tree)
+
+
 def _square(leaf):
   return jnp.square(leaf.real) + jnp.square(leaf.imag)
 
