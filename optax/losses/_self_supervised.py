@@ -115,6 +115,72 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0).sum()/matches.sum()
 
   return loss
+
+
+def triplet_loss(
+    anchors: chex.Array,
+    positives: chex.Array,
+    negatives: chex.Array,
+    axis: chex.Numeric = -1,
+    p: chex.Numeric = 2,
+    margin: chex.Numeric = 1.0,
+    eps: chex.Numeric = 1e-6,
+    reduction: str = 'none',
+) -> chex.Array:
+  """Computes the triplet loss for a batch of embeddings.
+
+    Examples:
+      >>> import jax.numpy as jnp
+      >>> import optax
+      >>> import chex
+      >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
+      >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
+      >>> negatives = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+      >>> output =optax.triplet_loss(anchors, positives, negatives, margin=1.0)
+      >>> print(output)
+      >>> Array([0.14142442, 0.14142442], dtype=float32)
+
+    Args:
+        anchors: An array of anchor embeddings, with shape [batch, feature_dim].
+        positives: An array of positive embeddings
+        (similar to anchors), with shape [batch, feature_dim].
+        negatives: An array of negative embeddings
+        (dissimilar to anchors), with shape [batch, feature_dim].
+        axis: The axis along which to compute the distances
+        (default is -1).
+        p: The norm degree for distance calculation
+        (default is 2 for Euclidean distance).
+        margin: The minimum margin by which the positive distance
+        should be smaller than the negative distance.
+        eps: A small epsilon value to ensure numerical stability
+        in the distance calculation.
+        reduction: Specifies the reduction to apply to the
+        output: 'none' | 'mean' | 'sum'.
+
+    Returns:
+        The computed triplet loss as an array or scalar
+        depending on the reduction parameter. 
+        If reduction is 'mean' or 'sum', returns a scalar.
+
+    References:
+        Learning shallow convolutional feature descriptors with triplet losses
+        by V. Balntas, E. Riba et al.
+        <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>
+    """
+  chex.assert_type([anchors], float)
+  chex.assert_type([positives], float)
+  chex.assert_type([negatives], float)
+  positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps
+                               )
+  negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps
+                               )
+  loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
+  if reduction == 'mean':
+    return loss.mean()
+  elif reduction == 'sum':
+    return loss.sum()
+  else:
+    return loss
