@@ -124,8 +124,8 @@ def triplet_loss(
     anchors: chex.Array,
     positives: chex.Array,
     negatives: chex.Array,
-    axis: chex.Numeric = -1,
-    p: chex.Numeric = 2,
+    axis: int = -1,
+    norm_degree: chex.Numeric = 2,
     margin: chex.Numeric = 1.0,
     eps: chex.Numeric = 1e-6,
     reduction: str = 'none',
@@ -145,20 +145,20 @@ def triplet_loss(
 
     Args:
         anchors: An array of anchor embeddings, with shape [batch, feature_dim].
-        positives: An array of positive embeddings
-        (similar to anchors), with shape [batch, feature_dim].
+          positives: An array of positive embeddings
+          (similar to anchors), with shape [batch, feature_dim].
         negatives: An array of negative embeddings
-        (dissimilar to anchors), with shape [batch, feature_dim].
+          (dissimilar to anchors), with shape [batch, feature_dim].
         axis: The axis along which to compute the distances
-        (default is -1).
+          (default is -1).
         p: The norm degree for distance calculation
-        (default is 2 for Euclidean distance).
+          (default is 2 for Euclidean distance).
         margin: The minimum margin by which the positive distance
-        should be smaller than the negative distance.
+          should be smaller than the negative distance.
         eps: A small epsilon value to ensure numerical stability
-        in the distance calculation.
+          in the distance calculation.
         reduction: Specifies the reduction to apply to the
-        output: 'none' | 'mean' | 'sum'.
+          output: 'none' | 'mean' | 'sum'.
 
     Returns:
         The computed triplet loss as an array or scalar
@@ -166,17 +166,14 @@ def triplet_loss(
         If reduction is 'mean' or 'sum', returns a scalar.
 
     References:
-        Learning shallow convolutional feature descriptors with triplet losses
-        by V. Balntas, E. Riba et al.
-        <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>
+        V. Balntas et al, `Learning shallow convolutional feature descriptors with triplet losses
+        <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`_, 2016
     """
-  chex.assert_type([anchors], float)
-  chex.assert_type([positives], float)
-  chex.assert_type([negatives], float)
-  positive_distance = jnp.sqrt(jnp.power(anchors - positives, p).sum(axis) + eps
-                               )
-  negative_distance = jnp.sqrt(jnp.power(anchors - negatives, p).sum(axis) + eps
-                               )
+  chex.assert_type([anchors, positives, negatives], float)
+  positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree).sum(axis) + eps,
+                               1/norm_degree)
+  negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree).sum(axis) + eps,
+                               1/norm_degree)
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
   if reduction == 'mean':
     return loss.mean()
