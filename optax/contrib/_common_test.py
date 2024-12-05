@@ -27,12 +27,14 @@ import jax
 import jax.numpy as jnp
 from optax import contrib
 from optax._src import alias
+from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import update
 from optax.schedules import _inject
 from optax.transforms import _accumulation
 from optax.tree_utils import _state_utils
+from optax.tree_utils import _tree_math
 
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
@@ -52,6 +54,10 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     dict(
         opt_name='schedule_free_adamw',
         opt_kwargs=dict(learning_rate=1e-2, warmup_steps=5000),
+    ),
+    dict(
+        opt_name='sophia',
+        opt_kwargs=dict(learning_rate=1e-2),
     ),
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
@@ -144,11 +150,10 @@ def _setup_parabola(dtype):
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
   final_params = jnp.array([1.0, -1.0, 1.0], dtype=dtype)
 
-  @jax.value_and_grad
-  def get_updates(params):
+  def obj_fn(params):
     return jnp.sum(numerics.abs_sq(params - final_params))
 
-  return initial_params, final_params, get_updates
+  return initial_params, final_params, obj_fn
 
 
 def _setup_rosenbrock(dtype):
@@ -159,13 +164,12 @@ def _setup_rosenbrock(dtype):
   initial_params = jnp.array([0.0, 0.0], dtype=dtype)
   final_params = jnp.array([a, a**2], dtype=dtype)
 
-  @jax.value_and_grad
-  def get_updates(params):
+  def obj_fn(params):
     return numerics.abs_sq(a - params[0]) + b * numerics.abs_sq(
         params[1] - params[0] ** 2
     )
 
-  return initial_params, final_params, get_updates
+  return initial_params, final_params, obj_fn
 
 
 class ContribTest(chex.TestCase):
@@ -188,16 +192,18 @@ class ContribTest(chex.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    initial_params, final_params, get_updates = target(dtype)
+    initial_params, final_params, obj_fn = target(dtype)
 
     @jax.jit
     def step(params, state):
-      value, updates = get_updates(params)
+      value, updates = jax.value_and_grad(obj_fn)(params)
       if (
           opt_name in ['momo', 'momo_adam']
           or wrapper_name == 'reduce_on_plateau'
       ):
         update_kwargs = {'value': value}
+      elif opt_name == 'sophia':
+        update_kwargs = {'obj_fn': obj_fn}
       else:
         update_kwargs = {}
       updates, state = opt.update(updates, state, params, **update_kwargs)
@@ -266,14 +272,21 @@ class ContribTest(chex.TestCase):
       update_kwargs = {'value': jnp.array(1.0)}
     else:
       update_kwargs = {}
+    if opt_name == 'sophia':
+      obj_fn = lambda x: _tree_math.tree_l2_norm(x, squared=True)
+      update_fn = functools.partial(opt.update, obj_fn=obj_fn)
+      inject_update_fn = functools.partial(opt_inject.update, obj_fn=obj_fn)
+    else:
+      update_fn = opt.update
+      inject_update_fn = opt_inject.update
 
     state = self.variant(opt.init)(params)
-    updates, new_state = self.variant(opt.update)(
+    updates, new_state = self.variant(update_fn)(
         grads, state, params, **update_kwargs
     )
 
     state_inject = self.variant(opt_inject.init)(params)
-    updates_inject, new_state_inject = self.variant(opt_inject.update)(
+    updates_inject, new_state_inject = self.variant(inject_update_fn)(
         grads, state_inject, params, **update_kwargs
     )
 
@@ -320,7 +333,11 @@ class ContribTest(chex.TestCase):
       update_kwargs = {'value': value}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    if opt_name == 'sophia':
+      update_fn = functools.partial(opt.update, obj_fn=fun)
+    else:
+      update_fn = opt.update
+    updates, _ = self.variant(update_fn)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, params.dtype)
 
   @chex.variants(
@@ -339,9 +356,15 @@ class ContribTest(chex.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    opt = _accumulation.MultiSteps(opt, every_k_schedule=4)
 
     fun = lambda x: jnp.sum(x**2)
+
+    if opt_name == 'sophia':
+      update_fn = functools.partial(opt.update, obj_fn=fun)
+    else:
+      update_fn = opt.update
+    opt = base.GradientTransformationExtraArgs(opt.init, update_fn)
+    opt = _accumulation.MultiSteps(opt, every_k_schedule=4)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
