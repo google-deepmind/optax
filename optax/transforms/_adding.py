@@ -71,17 +71,41 @@ class AddNoiseState(NamedTuple):
 
 
 def add_noise(
-    eta: float, gamma: float, seed: int
+    key: chex.PRNGKey, eta: float, gamma: float
 ) -> base.GradientTransformation:
   """Add gradient noise.
 
   Args:
+    key: a PRNG key used as the random key.
     eta: Base variance of the gaussian noise added to the gradient.
     gamma: Decay exponent for annealing of the variance.
-    seed: Seed for random number generation.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
+
+  Examples:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+    >>> key = jax.random.key(0)
+    >>> noise = optax.add_noise(key=key, eta=0.01, gamma=0.55)
+    >>> sgd = optax.scale_by_learning_rate(learning_rate=0.003)
+    >>> solver = optax.chain(noise, sgd)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: ', f(params))
+    Objective function:  14.0
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...  grad = jax.grad(f)(params)
+    ...  updates, opt_state = solver.update(grad, opt_state, params)
+    ...  params = optax.apply_updates(params, updates)
+    ...  print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 1.38E+01
+    Objective function: 1.37E+01
+    Objective function: 1.35E+01
+    Objective function: 1.33E+01
+    Objective function: 1.32E+01
 
   References:
     Neelakantan et al, `Adding Gradient Noise Improves Learning for Very Deep
@@ -91,7 +115,7 @@ def add_noise(
   def init_fn(params):
     del params
     return AddNoiseState(
-        count=jnp.zeros([], jnp.int32), rng_key=jax.random.PRNGKey(seed)
+        count=jnp.zeros([], jnp.int32), rng_key=key
     )
 
   def update_fn(updates, state, params=None):  # pylint: disable=missing-docstring
