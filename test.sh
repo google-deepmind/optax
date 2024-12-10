@@ -101,4 +101,7 @@ make html
 make doctest # run doctests
 cd ..
 
+pip install -U ruff
+ruff check .
+
 echo "All tests passed. Congrats!"
