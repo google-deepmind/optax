@@ -30,7 +30,7 @@ from optax._src import numerics
 
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
-  if jax.dtypes.scalar_type_of(x) == float:
+  if jax.dtypes.scalar_type_of(x) is float:
     return jnp.asarray(x, dtype=dtype)
   return x
 

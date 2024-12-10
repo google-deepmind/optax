@@ -87,3 +87,17 @@ dp-accounting = [
 [tool.setuptools.packages.find]
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+]
+ignore = [
+    "E731",  # lambdas are allowed
+    "E501",  # don't check line lengths
+    "F401",  # allow unused imports
+    "E402",  # allow modules not at top of file
+    "E741",  # allow "l" as a variable name
+    "E703",  # allow semicolons (for jupyter notebooks)
+]

@@ -9,10 +9,71 @@ on:
     - cron: '0 3 * * *'
 
 jobs:
+  linting:
+    name: "Lint check with flake8 and pylint"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v4"
+        with:
+            python-version: "3.11"
+            cache: "pip"
+            cache-dependency-path: "pyproject.toml"
+      - name: Install linting dependencies
+        run: |
+          pip install -U pip setuptools wheel
+          pip install -U flake8 pytest-xdist pylint pylint-exit
+      - name: Lint with flake8
+        run: |
+          python3 -m flake8 --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+      - name: Lint module files with pylint
+        run: |
+          PYLINT_ARGS="-efail -wfail -cfail -rfail"
+          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
+      - name: Lint test files with pylint
+        run: |
+          PYLINT_ARGS="-efail -wfail -cfail -rfail"
+          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
+  ruff-lint:
+    name: "Lint check with ruff"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v4"
+        with:
+            python-version: "3.11"
+            cache: "pip"
+            cache-dependency-path: "pyproject.toml"
+      - name: Install ruff and lint check
+        run: |
+          pip install -U ruff
+          ruff check .
+  doctests:
+    needs: [linting, ruff-lint]  # do not run doctests if linting fails
+    name: "Doctests on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        python-version: ["3.11"]  # only build docs with a somewhat latest python
+        os: [ubuntu-latest]
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v4"
+        with:
+            python-version: "${{ matrix.python-version }}"
+            cache: "pip"
+            cache-dependency-path: 'pyproject.toml'
+      - name: Build docs and run doctests
+        run: |
+          python3 -m pip install --quiet --editable ".[docs]"
+          cd docs
+          make html
+          make doctest # run doctests
+        shell: bash
   build-and-test:
+    needs: [linting, ruff-lint]  # do not run tests if linting fails
     name: "Python ${{ matrix.python-version }} on ${{ matrix.os }} jax=${{ matrix.jax-version }}"
     runs-on: "${{ matrix.os }}"
-
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
@@ -22,7 +83,6 @@ jobs:
           - python-version: "3.9"
             os: "ubuntu-latest"
             jax-version: "0.4.27"  # Keep version in sync with pyproject.toml and copy.bara.sky!
-
     steps:
       - uses: "actions/checkout@v2"
       - uses: "actions/setup-python@v4"
@@ -39,7 +99,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
     - name: Check links
       uses: gaurav-nelson/github-action-markdown-link-check@v1
       with:
