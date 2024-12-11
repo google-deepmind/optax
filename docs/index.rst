@@ -54,6 +54,7 @@ for instructions on installing JAX.
    :caption: 📖 Reference
    :maxdepth: 2
 
+   api/linprog
    api/assignment
    api/optimizers
    api/transformations
