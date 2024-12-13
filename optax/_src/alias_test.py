@@ -317,7 +317,7 @@ class AliasTest(chex.TestCase):
 # LBFGS
 
 
-def _run_lbfgs_solver(
+def _run_opt(
     opt: base.GradientTransformationExtraArgs,
     fun: Callable[[chex.ArrayTree], jnp.ndarray],
     init_params: chex.ArrayTree,
@@ -334,6 +334,7 @@ def _run_lbfgs_solver(
   def step(carry):
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
+    grad = otu.tree_conj(grad)
     updates, state = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
@@ -407,7 +408,7 @@ def _plain_preconditioning(
   m = len(dws)
 
   if m == 0:
-    return updates
+    return identity_scale * updates
 
   dws = jnp.array(dws)
   dus = jnp.array(dus)
@@ -465,9 +466,12 @@ def _plain_lbfgs(
   dus = []
 
   for it in range(maxiter):
-    if scale_init_precond and it > 0:
-      identity_scale = jnp.vdot(dus[-1], dws[-1])
-      identity_scale /= jnp.sum(dus[-1] ** 2)
+    if scale_init_precond:
+      if it == 0:
+        identity_scale = jnp.minimum(1.0, 1.0 / jnp.sqrt(jnp.sum(g**2)))
+      else:
+        identity_scale = jnp.vdot(dus[-1], dws[-1])
+        identity_scale /= jnp.sum(dus[-1] ** 2)
     else:
       identity_scale = 1.0
 
@@ -688,9 +692,7 @@ class LBFGSTest(chex.TestCase):
         scale_init_precond=scale_init_precond,
         linesearch=None,
     )
-    lbfgs_sol, _ = _run_lbfgs_solver(
-        opt, fun, init_params, maxiter=maxiter, tol=tol
-    )
+    lbfgs_sol, _ = _run_opt(opt, fun, init_params, maxiter=maxiter, tol=tol)
     expected_lbfgs_sol = _plain_lbfgs(
         fun,
         init_params,
@@ -719,8 +721,8 @@ class LBFGSTest(chex.TestCase):
     init_tree = (init_array[0], init_array[1])
 
     opt = alias.lbfgs()
-    sol_arr, _ = _run_lbfgs_solver(opt, fun, init_array, maxiter=3)
-    sol_tree, _ = _run_lbfgs_solver(opt, fun, init_tree, maxiter=3)
+    sol_arr, _ = _run_opt(opt, fun, init_array, maxiter=3)
+    sol_tree, _ = _run_opt(opt, fun, init_tree, maxiter=3)
     sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
     chex.assert_trees_all_close(sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5)
 
@@ -744,7 +746,7 @@ class LBFGSTest(chex.TestCase):
     init_params = (weights_init, biases_init)
 
     opt = alias.lbfgs(scale_init_precond=scale_init_precond)
-    sol, _ = _run_lbfgs_solver(opt, fun, init_params, tol=1e-3)
+    sol, _ = _run_opt(opt, fun, init_params, tol=1e-3)
 
     # Check optimality conditions.
     self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
@@ -766,7 +768,7 @@ class LBFGSTest(chex.TestCase):
 
     init_params = jnp.zeros(inputs.shape[1])
     opt = alias.lbfgs(scale_init_precond=scale_init_precond)
-    sol, _ = _run_lbfgs_solver(opt, fun, init_params, tol=1e-6)
+    sol, _ = _run_opt(opt, fun, init_params, tol=1e-6)
 
     # Check optimality conditions.
     self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
@@ -803,17 +805,8 @@ class LBFGSTest(chex.TestCase):
     init_params = problem['init']
     jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
 
-    if problem_name == 'zakharov':
-      opt = alias.lbfgs(
-          linesearch=_linesearch.scale_by_zoom_linesearch(
-              max_linesearch_steps=30
-          )
-      )
-    else:
-      opt = alias.lbfgs()
-    optax_sol, _ = _run_lbfgs_solver(
-        opt, jnp_fun, init_params, maxiter=500, tol=tol
-    )
+    opt = alias.lbfgs()
+    optax_sol, _ = _run_opt(opt, jnp_fun, init_params, maxiter=500, tol=tol)
     scipy_sol = scipy_optimize.minimize(np_fun, init_params, method='BFGS').x
 
     # 1. Check minimizer obtained against known minimizer or scipy minimizer
@@ -845,7 +838,7 @@ class LBFGSTest(chex.TestCase):
     jnp_fun, np_fun = problem['fun'], problem['numpy_fun']
     minimum = problem['minimum']
     opt = alias.lbfgs()
-    optax_sol, _ = _run_lbfgs_solver(opt, jnp_fun, init_params, tol=tol)
+    optax_sol, _ = _run_opt(opt, jnp_fun, init_params, tol=tol)
     scipy_sol = scipy_optimize.minimize(
         fun=np_fun,
         jac=jax.grad(np_fun),
@@ -867,8 +860,78 @@ class LBFGSTest(chex.TestCase):
       return jnp.mean((mat @ x) ** 2)
 
     opt = alias.lbfgs()
-    sol, _ = _run_lbfgs_solver(opt, fun, init_params=jnp.ones(n), tol=tol)
+    sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
     chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
+
+  @parameterized.product(
+      linesearch=[
+          _linesearch.scale_by_backtracking_linesearch(
+              max_backtracking_steps=20
+          ),
+          _linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=20, initial_guess_strategy='one'
+          ),
+      ],
+  )
+  def test_lbfgs_complex(self, linesearch):
+    # Test that optimization over complex variable matches equivalent real case
+
+    tol = 1e-5
+    mat = jnp.array([[1, -2], [3, 4], [-4 + 2j, 5 - 3j], [-2 - 2j, 6]])
+
+    def to_real(z):
+      return jnp.stack((z.real, z.imag))
+
+    def to_complex(x):
+      return x[..., 0, :] + 1j * x[..., 1, :]
+
+    def f_complex(z):
+      return jnp.sum(jnp.abs(mat @ z) ** 1.5)
+
+    def f_real(x):
+      return f_complex(to_complex(x))
+
+    z0 = jnp.array([1 - 1j, 0 + 1j])
+    x0 = to_real(z0)
+
+    opt_complex = alias.lbfgs(linesearch=linesearch)
+    opt_real = alias.lbfgs(linesearch=linesearch)
+    sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
+    sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
+
+    chex.assert_trees_all_close(
+        sol_complex, to_complex(sol_real), atol=tol, rtol=tol
+    )
+
+  @parameterized.product(
+      linesearch=[
+          _linesearch.scale_by_backtracking_linesearch(
+              max_backtracking_steps=20
+          ),
+          _linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=20, initial_guess_strategy='one'
+          ),
+      ],
+  )
+  def test_lbfgs_complex_rosenbrock(self, linesearch):
+    # Taken from previous jax tests
+    tol = 1e-5
+    complex_dim = 5
+
+    fun_real = _get_problem('rosenbrock')['fun']
+    init_real = jnp.zeros((2 * complex_dim,), dtype=complex)
+    expected_real = jnp.ones((2 * complex_dim,), dtype=complex)
+
+    def fun(z):
+      x_real = jnp.concatenate([jnp.real(z), jnp.imag(z)])
+      return fun_real(x_real)
+
+    init = init_real[:complex_dim] + 1.0j * init_real[complex_dim:]
+    expected = expected_real[:complex_dim] + 1.0j * expected_real[complex_dim:]
+
+    opt = alias.lbfgs(linesearch=linesearch)
+    got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
+    chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
 
 if __name__ == '__main__':

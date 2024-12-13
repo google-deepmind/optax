@@ -1521,7 +1521,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
-    alpha = rhos[idx] * otu.tree_vdot(dwi, vec)
+    alpha = rhos[idx] * otu.tree_real(otu.tree_vdot(dwi, vec))
     vec = otu.tree_add_scalar_mul(vec, -alpha, dui)
     return vec, alpha
 
@@ -1536,7 +1536,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
-    beta = rhos[idx] * otu.tree_vdot(dui, vec)
+    beta = rhos[idx] * otu.tree_real(otu.tree_vdot(dui, vec))
     vec = otu.tree_add_scalar_mul(vec, alpha - beta, dwi)
     return vec, beta
 
@@ -1605,7 +1605,7 @@ def scale_by_lbfgs(
     memory_size: number of past parameters, gradients/updates to keep in memory
       to approximate the Hessian inverse.
     scale_init_precond: whether to use a scaled identity as the initial
-      preconditioner, see formula above.
+      preconditioner, see formula of :math:`\gamma_k` above.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -1618,6 +1618,14 @@ def scale_by_lbfgs(
     Liu et al., `On the limited memory BFGS method for large scale optimization
     <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_
     , 1989.
+
+  .. note::
+    We initialize the scaling of the identity as a capped reciprocal of the
+    gradient norm. This avoids wasting linesearch iterations for the first step
+    by taking into account the magnitude of the gradients. In other words, we
+    constrain the trust-region of the first step to an Euclidean ball of radius
+    1 at the first iteration. The choice of :math:`\gamma_0` is not detailed in
+    the references above, so this is a heuristic choice.
   """
   if memory_size < 1:
     raise ValueError('memory_size must be >= 1')
@@ -1658,7 +1666,9 @@ def scale_by_lbfgs(
     # 1. Updates the memory buffers given fresh params and gradients/updates
     diff_params = otu.tree_sub(params, state.params)
     diff_updates = otu.tree_sub(updates, state.updates)
-    vdot_diff_params_updates = otu.tree_vdot(diff_updates, diff_params)
+    vdot_diff_params_updates = otu.tree_real(
+        otu.tree_vdot(diff_updates, diff_params)
+    )
     weight = jnp.where(
         vdot_diff_params_updates == 0.0, 0.0, 1.0 / vdot_diff_params_updates
     )
@@ -1683,10 +1693,16 @@ def scale_by_lbfgs(
     # used to initialize the approximation of the inverse through the memory
     # buffer.
     if scale_init_precond:
-      numerator = otu.tree_vdot(diff_updates, diff_params)
+      numerator = otu.tree_real(otu.tree_vdot(diff_updates, diff_params))
       denominator = otu.tree_l2_norm(diff_updates, squared=True)
       identity_scale = jnp.where(
           denominator > 0.0, numerator / denominator, 1.0
+      )
+      # For the very first step of the algorithm, we consider scaling by a
+      # capped reciprocal of the gradient norm, see note in the docstring.
+      capped_inv_norm = jnp.minimum(1.0, 1.0/otu.tree_l2_norm(updates))
+      identity_scale = jnp.where(
+          state.count > 0, identity_scale, capped_inv_norm
       )
     else:
       identity_scale = 1.0

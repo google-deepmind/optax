@@ -27,6 +27,20 @@ from optax._src import utils
 import optax.tree_utils as otu
 
 
+class BacktrackingLinesearchInfo(NamedTuple):
+  """Information about the backtracking linesearch step, for debugging.
+
+  Attributes:
+    num_linesearch_steps: number of linesearch steps.
+    decrease_error: error of the decrease criterion at the end of the
+      linesearch. A positive value indicates that
+      the linesearch failed to find a stepsize that ensures a sufficient
+      decrease. A null value indicates it succeeded in finding such a stepsize.
+  """
+  num_linesearch_steps: int
+  decrease_error: Union[float, chex.Numeric]
+
+
 class ScaleByBacktrackingLinesearchState(NamedTuple):
   """State for :func:`optax.scale_by_backtracking_linesearch`.
 
@@ -39,20 +53,22 @@ class ScaleByBacktrackingLinesearchState(NamedTuple):
       line-search if the line-search is instantiated with store_grad = True.
       Otherwise it is None. Can be reused using
       :func:`optax.value_and_grad_from_state`.
+    info: information about the backtracking linesearch step, for debugging.
   """
 
   learning_rate: Union[float, jax.Array]
   value: Union[float, jax.Array]
-  grad: Optional[base.Updates] = None
+  grad: Optional[base.Updates]
+  info: BacktrackingLinesearchInfo
 
 
-class BacktrackingSearchState(NamedTuple):
+class BacktrackingLineSearchState(NamedTuple):
   """State during the inner loop of a backtracking line-search."""
 
   learning_rate: Union[float, jax.Array]
   new_value: Union[float, jax.Array]
   new_grad: base.Updates
-  accepted: bool
+  decrease_error: chex.Numeric
   iter_num: Union[int, jax.Array]
 
 
@@ -65,6 +81,7 @@ def scale_by_backtracking_linesearch(
     atol: float = 0.0,
     rtol: float = 0.0,
     store_grad: bool = False,
+    verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   r"""Backtracking line-search ensuring sufficient decrease (Armijo criterion).
 
@@ -108,6 +125,7 @@ def scale_by_backtracking_linesearch(
       that, we can directly reuse the value and the gradient computed at the end
       of the linesearch for the next iteration using
       :func:`optax.value_and_grad_from_state`. See the example above.
+    verbose: whether to print debugging information.
 
   Returns:
     A :class:`GradientTransformationExtraArgs`, where the ``update`` function
@@ -222,6 +240,8 @@ def scale_by_backtracking_linesearch(
     after the backtracking line-search doesn't necessarily need to satisfy the
     descent direction property (one could for example use momentum).
 
+  .. note:: The algorithm can support complex inputs.
+
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
 
@@ -237,14 +257,25 @@ def scale_by_backtracking_linesearch(
         learning_rate=jnp.array(1.0),
         value=jnp.array(jnp.inf),
         grad=grad,
+        info=BacktrackingLinesearchInfo(
+            num_linesearch_steps=0,
+            decrease_error=jnp.array(jnp.inf),
+        ),
     )
 
-  def _check_criterion(learning_rate, slope, value, new_value):
-    violation = (
-        new_value - (1 + rtol) * value - learning_rate * slope_rtol * slope
+  def _compute_decrease_error(
+      stepsize: chex.Numeric,
+      slope: chex.Numeric,
+      value: chex.Numeric,
+      new_value: chex.Numeric,
+  ) -> chex.Numeric:
+    decrease_error = (
+        new_value - (1.0 + rtol) * value - stepsize * slope_rtol * slope
     )
-    violation = jnp.where(jnp.isnan(violation), jnp.inf, violation)
-    return violation <= atol
+    decrease_error = jnp.where(
+        jnp.isnan(decrease_error), jnp.inf, decrease_error
+    )
+    return jnp.maximum(decrease_error, 0.0)
 
   def update_fn(
       updates: base.Updates,
@@ -290,19 +321,19 @@ def scale_by_backtracking_linesearch(
     # Slope of lr -> value_fn(params + lr * updates) at lr = 0
     # Should be negative to ensure that there exists a lr (potentially
     # infinitesimal) that satisfies the criterion.
-    slope = otu.tree_vdot(updates, grad)
+    slope = otu.tree_real(otu.tree_vdot(updates, otu.tree_conj(grad)))
 
     def cond_fn(
-        search_state: BacktrackingSearchState,
-    ) -> Union[int, jax._src.basearray.Array]:
+        search_state: BacktrackingLineSearchState,
+    ):
       """Whether to stop the line-search inner loop."""
-      accepted = search_state.accepted
+      decrease_error = search_state.decrease_error
       iter_num = search_state.iter_num
-      return (~accepted) & (iter_num <= max_backtracking_steps)
+      return (~(decrease_error <= atol)) & (iter_num <= max_backtracking_steps)
 
     def body_fn(
-        search_state: BacktrackingSearchState,
-    ) -> BacktrackingSearchState:
+        search_state: BacktrackingLineSearchState,
+    ) -> BacktrackingLineSearchState:
       """Line-search inner loop step."""
       learning_rate = search_state.learning_rate
       new_grad = search_state.new_grad
@@ -320,11 +351,13 @@ def scale_by_backtracking_linesearch(
         # compute the gradient by transposing the jvp.
         new_value, jvp_value_fn = jax.linearize(value_fn_, new_params)
 
-        accepted = _check_criterion(learning_rate, slope, value, new_value)
+        decrease_error = _compute_decrease_error(
+            learning_rate, slope, value, new_value
+        )
         # If the line-search ends, we get the gradient for the new round of
         # line-search.
         new_grad = jax.lax.cond(
-            accepted | (iter_num == max_backtracking_steps),
+            (decrease_error <= atol) | (iter_num == max_backtracking_steps),
             lambda p: jax.linear_transpose(jvp_value_fn, p)(1.0)[0],
             lambda *_: new_grad,
             new_params,
@@ -332,12 +365,14 @@ def scale_by_backtracking_linesearch(
       else:
         # Here we just compute the value and leave the gradient as is
         new_value = value_fn_(new_params)
-        accepted = _check_criterion(learning_rate, slope, value, new_value)
-      search_state = BacktrackingSearchState(
+        decrease_error = _compute_decrease_error(
+            learning_rate, slope, value, new_value
+        )
+      search_state = BacktrackingLineSearchState(
           learning_rate=learning_rate,
           new_value=new_value,
           new_grad=new_grad,
-          accepted=accepted,
+          decrease_error=decrease_error,
           iter_num=iter_num + 1,
       )
       return search_state
@@ -347,12 +382,11 @@ def scale_by_backtracking_linesearch(
     learning_rate = jnp.minimum(
         increase_factor * state.learning_rate, max_learning_rate
     )
-
-    search_state = BacktrackingSearchState(
+    search_state = BacktrackingLineSearchState(
         learning_rate=learning_rate,
         new_value=value,
         new_grad=otu.tree_zeros_like(params),
-        accepted=False,
+        decrease_error=jnp.array(jnp.inf),
         iter_num=0,
     )
     search_state = jax.lax.while_loop(cond_fn, body_fn, search_state)
@@ -361,15 +395,43 @@ def scale_by_backtracking_linesearch(
     # otu.tree_zeros_like(params))
     new_grad = search_state.new_grad if store_grad else None
     new_value = search_state.new_value
-    new_learning_rate = search_state.learning_rate
+    # If the decrease error is infinite, we avoid making any step (which would
+    # result in nan or infinite values): we set the learning rate to 0.
+    new_learning_rate = jnp.where(
+        jnp.isinf(search_state.decrease_error), 0., search_state.learning_rate
+    )
 
+    if verbose:
+      # We print information only if the linesearch failed.
+      _cond_print(
+          search_state.decrease_error > atol,
+          "INFO: optax.scale_by_backtracking_linesearch:\n"
+          "Backtracking linesearch failed to find a stepsize ensuring sufficent"
+          " decrease.\n"
+          "Value at current params: {value},\n"
+          "Slope along update direction: {slope}\n"
+          "Stepsize: {stepsize}\n"
+          "Decrease Error: {decrease_error}",
+          stepsize=search_state.learning_rate,
+          decrease_error=search_state.decrease_error,
+          value=value,
+          slope=slope,
+      )
+      _cond_print(
+          jnp.isinf(search_state.decrease_error),
+          "Using a stepsize of 0 to avoid infinite or nan values.",
+      )
     # At the end, we just scale the updates with the learning rate found.
     new_updates = otu.tree_scalar_mul(new_learning_rate, updates)
-
+    info = BacktrackingLinesearchInfo(
+        num_linesearch_steps=search_state.iter_num,
+        decrease_error=search_state.decrease_error,
+    )
     new_state = ScaleByBacktrackingLinesearchState(
         learning_rate=new_learning_rate,
         value=new_value,
         grad=new_grad,
+        info=info
     )
     return new_updates, new_state
 
@@ -380,7 +442,7 @@ def _cond_print(condition, message, **kwargs):
   """Prints message if condition is true."""
   jax.lax.cond(
       condition,
-      lambda _: jax.debug.print(message, **kwargs),
+      lambda _: jax.debug.print(message, **kwargs, ordered=True),
       lambda _: None,
       None,
   )
@@ -638,10 +700,10 @@ def zoom_linesearch(
     """
     step = otu.tree_add_scalar_mul(params, stepsize, updates)
     value_step, grad_step = value_and_grad_fn(step, **fn_kwargs)
-    slope_step = otu.tree_vdot(grad_step, updates)
+    slope_step = otu.tree_real(otu.tree_vdot(otu.tree_conj(grad_step), updates))
     return step, value_step, grad_step, slope_step
 
-  def _decrease_error(
+  def _compute_decrease_error(
       stepsize: chex.Numeric,
       value_step: chex.Numeric,
       slope_step: chex.Numeric,
@@ -684,7 +746,7 @@ def zoom_linesearch(
     )
     return decrease_error
 
-  def _curvature_error(
+  def _compute_curvature_error(
       slope_step: chex.Numeric, slope_init: chex.Numeric
   ) -> chex.Numeric:
     """Compute curvature error."""
@@ -710,11 +772,34 @@ def zoom_linesearch(
         [state.stepsize, state.value, state.grad],
     )
     if verbose:
-      too_small_int = jnp.abs(state.low - state.high) <= interval_threshold
-      _cond_print(too_small_int, FLAG_INTERVAL_TOO_SMALL)
+      jax.debug.print(
+          "INFO: optax.scale_by_zoom_linesearch:\n"
+          "Value at current params: {value_init}\n"
+          "Slope along update direction: {slope_init}\n"
+          "Stepsize reached: {stepsize}\n"
+          "Decrease Error: {decrease_error}\n"
+          "Curvature Error: {curvature_error}",
+          value_init=state.value_init,
+          slope_init=state.slope_init,
+          stepsize=state.stepsize,
+          decrease_error=state.decrease_error,
+          curvature_error=state.curvature_error,
+          ordered=True,
+      )
+      interval_length = jnp.abs(state.low - state.high)
+      too_small_int = interval_length <= interval_threshold
+      _cond_print(
+          too_small_int,
+          FLAG_INTERVAL_TOO_SMALL + " Interval length: {interval_length}.",
+          interval_length=interval_length,
+      )
       jax.lax.cond(
           state.safe_stepsize > 0.0,
-          lambda *_: jax.debug.print(FLAG_CURVATURE_COND_NOT_SATISFIED),
+          lambda _: jax.debug.print(
+              FLAG_CURVATURE_COND_NOT_SATISFIED
+              + " Stepsize ensuring sufficient decrease: {safe_stepsize}.",
+              safe_stepsize=state.safe_stepsize,
+          ),
           _failure_diagnostic,
           state,
       )
@@ -761,10 +846,10 @@ def zoom_linesearch(
         value_and_grad_fn, params, new_stepsize, updates, fn_kwargs
     )
 
-    decrease_error = _decrease_error(
+    decrease_error = _compute_decrease_error(
         new_stepsize, new_value_step, new_slope_step, value_init, slope_init
     )
-    curvature_error = _curvature_error(new_slope_step, slope_init)
+    curvature_error = _compute_curvature_error(new_slope_step, slope_init)
     new_error = jnp.maximum(decrease_error, curvature_error)
 
     # If the new point satisfies at least the decrease error we keep it
@@ -824,7 +909,20 @@ def zoom_linesearch(
     if verbose:
       _cond_print(
           (max_stepsize_reached & ~interval_found),
-          FLAG_INTERVAL_NOT_FOUND + "\n" + FLAG_CURVATURE_COND_NOT_SATISFIED,
+          "INFO: optax.scale_by_zoom_linesearch:\n"
+          "Value at current params: {value_init}\n"
+          "Slope along update direction: {slope_init}\n"
+          "Stepsize reached: {stepsize}\n"
+          "Decrease Error: {decrease_error}\n"
+          "Curvature Error: {curvature_error}"
+          + FLAG_INTERVAL_NOT_FOUND
+          + "\n"
+          + FLAG_CURVATURE_COND_NOT_SATISFIED,
+          value_init=value_init,
+          slope_init=slope_init,
+          stepsize=new_stepsize,
+          decrease_error=decrease_error,
+          curvature_error=curvature_error,
       )
     failed = (iter_num + 1 >= max_linesearch_steps) & (~done)
 
@@ -932,10 +1030,10 @@ def zoom_linesearch(
         value_and_grad_fn, params, middle, updates, fn_kwargs
     )
 
-    decrease_error = _decrease_error(
+    decrease_error = _compute_decrease_error(
         middle, value_middle, slope_middle, value_init, slope_init
     )
-    curvature_error = _curvature_error(slope_middle, slope_init)
+    curvature_error = _compute_curvature_error(slope_middle, slope_init)
     new_error = jnp.maximum(decrease_error, curvature_error)
 
     # If the new point satisfies at least the decrease error we keep it in case
@@ -1038,20 +1136,8 @@ def zoom_linesearch(
 
   def _failure_diagnostic(state: ZoomLinesearchState) -> None:
     """Prints failure diagnostics."""
-    stepsize = state.stepsize
     jax.debug.print(FLAG_NO_STEPSIZE_FOUND)
-    jax.debug.print(
-        "INFO: optax.zoom_linesearch: "
-        "Iter: {} "
-        "Stepsize: {} "
-        "Decrease Error: {} "
-        "Curvature Error: {} ",
-        state.count,
-        stepsize,
-        state.decrease_error,
-        state.curvature_error,
-        ordered=True,
-    )
+    stepsize = state.stepsize
 
     slope_init = state.slope_init
     is_descent_dir = slope_init < 0.0
@@ -1063,15 +1149,13 @@ def zoom_linesearch(
     )
     _cond_print(
         is_descent_dir,
-        WARNING_PREAMBLE
-        + "Consider augmenting the maximal number of linesearch iterations.",
+        "Consider augmenting the maximal number of linesearch iterations.",
     )
     eps = jnp.finfo(jnp.float32).eps
     below_eps = stepsize < eps
     _cond_print(
         below_eps & is_descent_dir,
-        WARNING_PREAMBLE
-        + "Computed stepsize (={stepsize}) "
+        "Computed stepsize (={stepsize}) "
         "is below machine precision (={eps}), "
         "consider passing to higher precision like x64, using "
         "jax.config.update('jax_enable_x64', True).",
@@ -1082,8 +1166,7 @@ def zoom_linesearch(
     high_slope = abs_slope_init > 1e16
     _cond_print(
         high_slope & is_descent_dir,
-        WARNING_PREAMBLE
-        + "Very large absolute slope at stepsize=0. "
+        "Very large absolute slope at stepsize=0. "
         "(|slope|={abs_slope_init}). "
         "The objective is badly conditioned. "
         "Consider reparameterizing objective (e.g., normalizing parameters) "
@@ -1094,14 +1177,12 @@ def zoom_linesearch(
     outside_domain = jnp.isinf(state.decrease_error)
     _cond_print(
         outside_domain,
-        WARNING_PREAMBLE
-        + "Cannot even make a step without getting Inf or Nan. "
+        "Cannot even make a step without getting Inf or Nan. "
         + "The linesearch won't make a step and the optimizer is stuck.",
     )
     _cond_print(
         ~outside_domain,
-        WARNING_PREAMBLE
-        + "Making an unsafe step, not decreasing enough the objective. "
+        "Making an unsafe step, not decreasing enough the objective. "
         "Convergence of the solver is compromised as it does not reduce"
         " values.",
     )
@@ -1112,10 +1193,21 @@ def zoom_linesearch(
       *,
       value: chex.Numeric,
       grad: base.Updates,
-      stepsize_guess: chex.Numeric = 1.0,
+      prev_stepsize: chex.Numeric = 1.0,
+      initial_guess_strategy: str = "one",
   ) -> ZoomLinesearchState:
     """Initializes the linesearch state."""
-    slope = otu.tree_vdot(updates, grad)
+
+    if initial_guess_strategy == "one":
+      stepsize_guess = jnp.asarray(1.0)
+    elif initial_guess_strategy == "keep":
+      stepsize_guess = prev_stepsize
+    else:
+      raise ValueError(
+          f"Unknown initial guess strategy: {initial_guess_strategy}"
+      )
+
+    slope = otu.tree_real(otu.tree_vdot(updates, grad))
     return ZoomLinesearchState(
         count=jnp.asarray(0, dtype=jnp.int32),
         #
@@ -1241,6 +1333,7 @@ def scale_by_zoom_linesearch(
     curv_rtol: float = 0.9,
     approx_dec_rtol: Optional[float] = 1e-6,
     stepsize_precision: float = 1e-5,
+    initial_guess_strategy: str = "keep",
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   r"""Linesearch ensuring sufficient decrease and small curvature.
@@ -1321,6 +1414,13 @@ def scale_by_zoom_linesearch(
       interval is reduced below ``stepsize_precision`` and a stepsize satisfying
       a sufficient decrease has been found, the algorithm selects that stepsize
       even if the curvature condition is not satisfied.
+    initial_guess_strategy: initial guess for the learning rate used to start
+      the linesearch. Can be either ``one`` or ``keep``. If ``one``, the initial
+      guess is set to 1. If ``keep``, the initial guess is set to the learning
+      rate of the previous step. We recommend to use ``keep`` if this linesearch
+      is used in combination with SGD. We recommend to use ``one`` if this
+      linesearch is used in combination with Newton methods or quasi-Newton
+      methods such as L-BFGS.
     verbose: whether to print additional debugging information in case the
       linesearch fails.
 
@@ -1405,6 +1505,16 @@ def scale_by_zoom_linesearch(
     with Guaranteed Descent
     <https://doi.org/10.1145/1132973.1132979>`_, 2006
 
+  .. note::
+    The curvature criterion can be avoided by setting by setting
+    ``curv_rtol=jnp.inf``. The resulting algorithm will amount to a
+    backtracking linesearch where a point satisfying sufficient decrease is 
+    searched by minimizing a quadratic or cubic approximation of the objective.
+    This can be sufficient in practice and avoids having the linesearch spend 
+    many iterations trying to satisfy the small curvature criterion.
+
+  .. note:: The algorithm can support complex inputs.
+
   .. seealso:: :func:`optax.value_and_grad_from_state` to make this method
     more efficient for non-stochastic objectives.
   """
@@ -1476,13 +1586,13 @@ def scale_by_zoom_linesearch(
     del remaining_kwargs
     value_and_grad_fn = jax.value_and_grad(value_fn)
 
-    stepsize_guess = state.learning_rate
     init_state = init_ls(
         updates,
         params,
         value=value,
         grad=grad,
-        stepsize_guess=stepsize_guess,
+        prev_stepsize=state.learning_rate,
+        initial_guess_strategy=initial_guess_strategy,
     )
 
     final_state = jax.lax.while_loop(
@@ -1510,27 +1620,21 @@ def scale_by_zoom_linesearch(
 
 
 # Flags to print errors, used for debugging, tested
-WARNING_PREAMBLE = "WARNING: optax.zoom_linesearch: "
 FLAG_INTERVAL_NOT_FOUND = (
-    WARNING_PREAMBLE
-    + "No interval satisfying curvature condition."
+    "No interval satisfying curvature condition. "
     "Consider increasing maximal possible stepsize of the linesearch."
 )
 FLAG_INTERVAL_TOO_SMALL = (
-    WARNING_PREAMBLE
-    + "Length of searched interval has been reduced below threshold."
+    "Length of searched interval has been reduced below threshold."
 )
 FLAG_CURVATURE_COND_NOT_SATISFIED = (
-    WARNING_PREAMBLE
-    + "Returning stepsize with sufficient decrease "
+    "Returning stepsize with sufficient decrease "
     "but curvature condition not satisfied."
 )
 FLAG_NO_STEPSIZE_FOUND = (
-    WARNING_PREAMBLE
-    + "Linesearch failed, no stepsize satisfying sufficient decrease found."
+    "Linesearch failed, no stepsize satisfying sufficient decrease found."
 )
 FLAG_NOT_A_DESCENT_DIRECTION = (
-    WARNING_PREAMBLE
-    + "The linesearch failed because the provided direction "
+    "The linesearch failed because the provided direction "
     "is not a descent direction. "
 )
