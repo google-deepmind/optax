@@ -115,7 +115,7 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
   ])
   def test_vmap(self, anchor, positive, negative):
     original_loss = _self_supervised.triplet_loss(anchor, positive,
-                                         negative, reduction='none')
+                                         negative)
     anchor_batched = anchor.reshape(1, *anchor.shape)
     positive_batched = positive.reshape(1, *positive.shape)
     negative_batched = negative.reshape(1, *negative.shape)

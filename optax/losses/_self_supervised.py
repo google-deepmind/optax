@@ -128,7 +128,6 @@ def triplet_loss(
     norm_degree: chex.Numeric = 2,
     margin: chex.Numeric = 1.0,
     eps: chex.Numeric = 1e-6,
-    reduction: str = 'none',
 ) -> chex.Array:
   """Computes the triplet loss for a batch of embeddings.
 
@@ -145,7 +144,7 @@ def triplet_loss(
 
     Args:
         anchors: An array of anchor embeddings, with shape [batch, feature_dim].
-          positives: An array of positive embeddings
+        positives: An array of positive embeddings
           (similar to anchors), with shape [batch, feature_dim].
         negatives: An array of negative embeddings
           (dissimilar to anchors), with shape [batch, feature_dim].
@@ -175,9 +174,4 @@ def triplet_loss(
   negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree).sum(axis) + eps,
                                1/norm_degree)
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
-  if reduction == 'mean':
-    return loss.mean()
-  elif reduction == 'sum':
-    return loss.sum()
-  else:
-    return loss
+  return loss
