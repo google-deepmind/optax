@@ -503,7 +503,7 @@ def cosine_onecycle_schedule(
 ) -> base.Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
-  This learning rate increases the learning rate and then decreases it in a
+  This schedule increases the learning rate and then decreases it in a
   cosine-like manner. The number of steps over which the learning rate increases
   is determined by the ``pct_start`` argument. The maximum value of the learning
   rate is determined by the ``peak_value`` argument, the initial value of the
