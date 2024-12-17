@@ -46,6 +46,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     dict(opt_name='dowg', opt_kwargs=dict(learning_rate=1.0)),
     dict(opt_name='momo', opt_kwargs=dict(learning_rate=1e-1)),
     dict(opt_name='momo_adam', opt_kwargs=dict(learning_rate=1e-1)),
+    dict(opt_name='muon', opt_kwargs=dict(learning_rate=1e-3)),
     dict(opt_name='prodigy', opt_kwargs=dict(learning_rate=1e-1)),
     dict(
         opt_name='schedule_free_sgd',
