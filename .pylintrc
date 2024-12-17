@@ -129,6 +129,7 @@ disable=R,
         wrong-import-order,
         xrange-builtin,
         zip-builtin-not-iterating,
+        invalid-name,
 
 
 [REPORTS]

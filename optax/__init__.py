@@ -19,6 +19,7 @@
 
 from optax import assignment
 from optax import contrib
+from optax import linprog
 from optax import losses
 from optax import monte_carlo
 from optax import perturbations
@@ -364,6 +365,7 @@ __all__ = (
     "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
+    "linprog",
     "log_cosh",
     "lookahead",
     "LookaheadParams",
