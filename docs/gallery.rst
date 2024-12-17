@@ -209,13 +209,30 @@
 .. only:: html
 
   .. image:: /images/examples/linear_assignment_problem.png
-    :alt:
+    :alt: Linear assignment problem.
 
   :doc:`_collections/examples/linear_assignment_problem`
 
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Solving the linear assignment problem.</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Linear programming.">
+
+.. only:: html
+
+  .. image:: /images/examples/linear_programming.png
+     :alt: Linear programming.
+
+  :doc:`_collections/examples/linear_programming`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Linear programming.</div>
     </div>
 
 
