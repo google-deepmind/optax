@@ -284,6 +284,22 @@ Examples that make use of the :doc:`api/contrib` module.
       <div class="sphx-glr-thumbnail-title">Sharpness-Aware Minimization (SAM).</div>
     </div>
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="AdEMAMix.">
+
+.. only:: html
+
+  .. image:: /images/examples/contrib/ademamix_rosenbrock.png
+    :alt:
+
+  :doc:`_collections/examples/contrib/ademamix_rosenbrock`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">AdEMAMix.</div>
+    </div>
+
 
 .. raw:: html
 
