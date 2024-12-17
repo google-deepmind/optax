@@ -12,8 +12,6 @@ Optimizer Wrappers
     LookaheadState
     masked
     MaskedState
-    maybe_update
-    MaybeUpdateState
     MultiSteps
     MultiStepsState
     ShouldSkipUpdateFunction

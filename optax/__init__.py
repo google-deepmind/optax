@@ -140,8 +140,6 @@ from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
-from optax._src.wrappers import maybe_update
-from optax._src.wrappers import MaybeUpdateState
 
 # TODO(mtthss): remove tree_utils aliases after updates.
 adaptive_grad_clip = transforms.adaptive_grad_clip
@@ -372,8 +370,6 @@ __all__ = (
     "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
-    "maybe_update",
-    "MaybeUpdateState",
     "multi_normal",
     "multi_transform",
     "MultiSteps",
