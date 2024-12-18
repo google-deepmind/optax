@@ -28,8 +28,13 @@ from optax._src import numerics
 
 _ALL_ORDS = [None, np.inf, -np.inf, "fro", "nuc", 0, 1, 2, -2, -2, -1.5, 1.5]
 
-int32_array = lambda i: jnp.array(i, dtype=jnp.int32)
-float32_array = lambda i: jnp.array(i, dtype=jnp.float32)
+
+def int32_array(i):
+  return jnp.array(i, dtype=jnp.int32)
+
+
+def float32_array(i):
+  return jnp.array(i, dtype=jnp.float32)
 
 
 def _invalid_ord_axis_inputs(ord_axis_keepdims):

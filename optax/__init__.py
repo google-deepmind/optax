@@ -17,6 +17,8 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=g-importing-member
 
+import typing as _typing
+
 from optax import assignment
 from optax import contrib
 from optax import losses
@@ -141,7 +143,14 @@ from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
 
-# TODO(mtthss): remove tree_utils aliases after updates.
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+# Deprecated modules
+from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
+from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import dpsgd as _deprecated_dpsgd
+
+
+# TODO(mtthss): remove aliases after updates.
 adaptive_grad_clip = transforms.adaptive_grad_clip
 AdaptiveGradClipState = EmptyState
 clip = transforms.clip
@@ -192,7 +201,7 @@ update_infinity_moment = tree_utils.tree_update_infinity_moment
 update_moment = tree_utils.tree_update_moment
 update_moment_per_elem_norm = tree_utils.tree_update_moment_per_elem_norm
 
-# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+# TODO(mtthss): remove schedules aliases from flat namespaces after user updates
 constant_schedule = schedules.constant_schedule
 cosine_decay_schedule = schedules.cosine_decay_schedule
 cosine_onecycle_schedule = schedules.cosine_onecycle_schedule
@@ -235,13 +244,6 @@ softmax_cross_entropy_with_integer_labels = (
 squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
-# pylint: disable=g-import-not-at-top
-# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-# Deprecated modules
-from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
-from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
-from optax.contrib import dpsgd as _deprecated_dpsgd
-
 _deprecations = {
     # Added Apr 2024
     "differentially_private_aggregate": (
@@ -268,9 +270,8 @@ _deprecations = {
         _deprecated_dpsgd,
     ),
 }
+# pylint: disable=g-import-not-at-top
 # pylint: disable=g-bad-import-order
-import typing as _typing
-
 if _typing.TYPE_CHECKING:
   # pylint: disable=reimported
   from optax.contrib import differentially_private_aggregate
