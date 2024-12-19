@@ -68,7 +68,7 @@ def adabelief(
 
     \begin{align*}
       m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
-      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2 
+      s_t &\leftarrow \beta_2 \cdot s_{t-1} + (1-\beta_2) \cdot (g_t - m_t)^2
       + \bar{\varepsilon} \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{s}_t &\leftarrow s_t / {(1-\beta_2^t)} \\
@@ -593,7 +593,7 @@ def adamw(
   :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
   ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
   indexed by :math:`t` since the learning rate may also be provided by a
-  schedule function. Let :math:`\lambda` be the weight decay and 
+  schedule function. Let :math:`\lambda` be the weight decay and
   :math:`\theta_t` the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
@@ -601,8 +601,8 @@ def adamw(
   first and second moments. In practice these values are stored as pytrees
   containing all zeros, with the same shape as the model updates.
   At step :math:`t`, the ``update`` function of this optimizer takes as
-  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t` 
-  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and 
+  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t`
+  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and
   new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
 
   .. math::
@@ -612,7 +612,7 @@ def adamw(
       v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
       \hat{m}_t &\leftarrow m_t / {(1-\beta_1^t)} \\
       \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
-      u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t 
+      u_t &\leftarrow -\alpha_t \cdot \left( \hat{m}_t / \left({\sqrt{\hat{v}_t
       + \bar{\varepsilon}} + \varepsilon} \right) + \lambda \theta_{t} \right)\\
       S_t &\leftarrow (m_t, v_t).
     \end{align*}
@@ -767,7 +767,7 @@ nadamw.__doc__ = (
     Objective function: 1.38E+01
 
   References:
-    Loshchilov et al, `Decoupled Weight Decay 
+    Loshchilov et al, `Decoupled Weight Decay
     Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
 
     Dozat, `Incorporating Nesterov Momentum into Adam
@@ -935,7 +935,7 @@ def lion(
 
     \begin{align*}
       c_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
-      u_t &\leftarrow -\alpha_t \cdot \left( sign \left( c_t \right) + 
+      u_t &\leftarrow -\alpha_t \cdot \left( sign \left( c_t \right) +
       \lambda \theta_{t} \right)\\
       m_t &\leftarrow \beta_2 \cdot m_{t-1} + (1-\beta_2) \cdot g_t \\
       S_t &\leftarrow (m_t).
@@ -1923,13 +1923,13 @@ def sm3(
   (like Adagrad and unlike Adafactor); and 3) comes with rigorous convergence
   guarantees in stochastic convex optimization settings.
 
-  The init function of this optimizer initializes an internal state 
-  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for 
-  the cumulative squared gradients and the weights. These values are stored as 
-  pytrees containing all zeros, with the same shape as the model updates. At 
-  step :math:`t`, the update function of this optimizer takes as arguments 
-  the incoming gradients :math:`g_t` and optimizer state :math:`S_t` and 
-  computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for 
+  The init function of this optimizer initializes an internal state
+  :math:`S_0 := \{\mu_0, w_1\} = \{0, 0\}`, representing initial estimates for
+  the cumulative squared gradients and the weights. These values are stored as
+  pytrees containing all zeros, with the same shape as the model updates. At
+  step :math:`t`, the update function of this optimizer takes as arguments
+  the incoming gradients :math:`g_t` and optimizer state :math:`S_t` and
+  computes updates :math:`u_t` and new state :math:`S_{t+1}`. Thus, for
   :math:`t > 0`, we have:
 
   SM3-I Algorithm
@@ -1942,23 +1942,23 @@ def sm3(
       \text{for } t = 1, \ldots, T \text{ do} \\
       \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
       \quad \text{for } r = 1, \ldots, k \text{ do} \\
-      \quad \quad \mu_t(r) \leftarrow \mu_{t-1}(r) + 
+      \quad \quad \mu_t(r) \leftarrow \mu_{t-1}(r) +
       \max_{j \in S_r} g_t^2(j) \\
       \quad \text{for } i = 1, \ldots, d \text{ do} \\
       \quad \quad \nu_t(i) \leftarrow \min_{r:S_r \ni i} \mu_t(r) \\
-      \quad \quad w_{t+1}(i) \leftarrow w_t(i) - 
+      \quad \quad w_{t+1}(i) \leftarrow w_t(i) -
       \eta \frac{g_t(i)}{\sqrt{\nu_t(i)}} \\
       \quad \quad \text{with the convention that } 0/0 = 0
       \end{array}
 
   SM3-II Algorithm
 
-  The SM3-II optimizer initializes with parameters like the learning rate 
-  :math:\eta and weight :math:w_1. It updates weights iteratively using 
-  gradients :math:g_t, adjusting each component with minimum accumulated 
-  values :math:\nu'_t(i) and maintaining cumulative maximums :math:\mu'_t(r) 
-  for subsets :math:S_r. SM3-II starts with an initial state 
-  :math:S_0 := (m_0, s_0) set to zero, storing estimates for first and second 
+  The SM3-II optimizer initializes with parameters like the learning rate
+  :math:\eta and weight :math:w_1. It updates weights iteratively using
+  gradients :math:g_t, adjusting each component with minimum accumulated
+  values :math:\nu'_t(i) and maintaining cumulative maximums :math:\mu'_t(r)
+  for subsets :math:S_r. SM3-II starts with an initial state
+  :math:S_0 := (m_0, s_0) set to zero, storing estimates for first and second
   moments as pytrees matching model updates' shape
 
   .. math::
@@ -1970,9 +1970,9 @@ def sm3(
       \quad \text{receive gradient } g_t = \nabla \ell_t(w_t) \\
       \quad \text{initialize } \mu'_t(r) = 0 \text{ for all } r \in [k] \\
       \quad \text{for } i = 1, \ldots, d \text{ do} \\
-      \quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i} 
+      \quad \quad \nu'_t(i) \leftarrow \min_{r:S_r \ni i}
       \mu'_{t-1}(r) + g_t^2(i) \\
-      \quad \quad w_{t+1}(i) \leftarrow w_t(i) - 
+      \quad \quad w_{t+1}(i) \leftarrow w_t(i) -
       \eta \frac{g_t(i)}{\sqrt{\nu'_t(i)}} \\
       \quad \quad \text{with the convention that } 0/0 = 0 \\
       \quad \text{for all } r : S_r \ni i \text{ do} \\
@@ -2086,7 +2086,7 @@ def adamax(
 ) -> base.GradientTransformation:
   r"""A variant of the Adam optimizer that uses the infinity norm.
 
-  AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing 
+  AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing
   Adam's :math:`L^2` norm to an :math:`L^p` norm and taking the limit as
   :math:`p \rightarrow \infty`, we obtain a simple and stable update rule.
 
@@ -2449,7 +2449,7 @@ def lbfgs(
 
   Args:
     learning_rate: optional global scaling factor, either fixed or evolving
-      along iterations with a scheduler, see 
+      along iterations with a scheduler, see
       :func:`optax.scale_by_learning_rate`. By default the learning rate is
       handled by a linesearch.
     memory_size: number of past updates to keep in memory to approximate the
@@ -2498,7 +2498,7 @@ def lbfgs(
     , 1989.
 
   .. warning::
-    This method is memory intensive optimizer, best used for small to medium
+    This optimizer is memory intensive and best used for small to medium
     scale problems.
 
   .. warning::
