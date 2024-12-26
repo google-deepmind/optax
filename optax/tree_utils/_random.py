@@ -45,6 +45,7 @@ def tree_random_like(
         [chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array
     ] = jax.random.normal,
     dtype: Optional[chex.ArrayDType] = None,
+    batch_shape: tuple[int, ...] = (),
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.
 
@@ -54,6 +55,8 @@ def tree_random_like(
     sampler: the noise sampling function, by default ``jax.random.normal``.
     dtype: the desired dtype for the random numbers, passed to ``sampler``. If
       None, the dtype of the target tree is used if possible.
+    batch_shape: additional leading batch dimensions to insert before the shape
+      of each leaf, by default ``()``.
 
   Returns:
     a random tree with the same structure as ``target_tree``, whose leaves have
@@ -69,7 +72,11 @@ def tree_random_like(
   """
   keys_tree = tree_split_key_like(rng_key, target_tree)
   return jax.tree.map(
-      lambda leaf, key: sampler(key, leaf.shape, dtype or leaf.dtype),
+      lambda leaf, key: sampler(
+        key,
+        batch_shape + leaf.shape,
+        dtype or leaf.dtype,
+      ),
       target_tree,
       keys_tree,
   )
