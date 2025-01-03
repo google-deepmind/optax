@@ -15,18 +15,31 @@
 """Classification losses."""
 
 import functools
+import operator
 from typing import Optional, Union
 
 import chex
 import jax
 import jax.numpy as jnp
-import numpy as np
 from optax import projections
 
-if np.__version__.startswith('1.'):
-  from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
-else:
-  from numpy.lib.array_utils import normalize_axis_index, normalize_axis_tuple
+
+def canonicalize_axis(axis, ndim):
+  """Vendored version of :func:`numpy.lib.array_utils.normalize_axis_index`.
+  """
+  if 0 <= (axis := operator.index(axis)) < ndim:
+    return axis
+  elif -ndim <= axis < 0:
+    return axis + ndim
+  else:
+    raise ValueError(f'axis {axis} is out of bounds for array of '
+                     f'dimension {ndim}')
+
+
+def canonicalize_axes(axes, ndim) -> tuple[int, ...]:
+  """Vendored version of :func:`numpy.lib.array_utils.normalize_axis_tuple`.
+  """
+  return tuple(canonicalize_axis(x, ndim) for x in axes)
 
 
 def sigmoid_binary_cross_entropy(
@@ -354,11 +367,11 @@ def softmax_cross_entropy_with_integer_labels(
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
   if isinstance(axis, int):
-    axis = normalize_axis_index(axis, logits.ndim)
+    axis = canonicalize_axis(axis, logits.ndim)
   elif isinstance(axis, tuple):
     # Move all "feature" dimensions to the end preserving axis ordering and
     # subsequent flattening "feature" dimensions to a single one.
-    logit_axis = normalize_axis_tuple(axis, logits.ndim, argname='logits')
+    logit_axis = canonicalize_axes(axis, logits.ndim)
     batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)
     axis = len(batch_axis)
     logits = logits.transpose(batch_axis + logit_axis)

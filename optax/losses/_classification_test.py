@@ -254,6 +254,8 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
       {'axis': (-3, -1), 'shape': (2, 3, 4, 5)},
       {'axis': (-1, -2), 'shape': (2, 3, 4, 5)},
       {'axis': (-2, -1), 'shape': (2, 3, 4, 5)},
+      {'axis': (0, 1, 3), 'shape': (2, 3, 4, 5)},
+      {'axis': (-4, -3, -1), 'shape': (2, 3, 4, 5)},
   )
   def test_axes(self, shape: tuple[int, ...], axis: tuple[int, ...]):
     # Canonicalize axis and calculate shapes.
@@ -274,9 +276,11 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     desired = fn(logits, labels)
 
     # Apply inverse axes permutation to obtain an array of `shape` shape.
+    perm = labels_axis + logits_axis
+    perm_inv = tuple(i for i, p in sorted(enumerate(perm), key=lambda x: x[1]))
     logits = logits \
         .reshape(labels_shape + logits_shape) \
-        .transpose(labels_axis + logits_axis)
+        .transpose(perm_inv)
     assert logits.shape == shape
     actual = fn(logits, labels, axis)
     np.testing.assert_allclose(actual, desired)
