@@ -142,6 +142,7 @@ from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
+from optax._src import tree
 
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
 # Deprecated modules
