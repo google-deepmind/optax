@@ -85,7 +85,7 @@ def score_function_jacobians(
   def surrogate(params):
     dist = dist_builder(*params)
     one_sample_surrogate_fn = lambda x: function(x) * dist.log_prob(x)
-    samples = jax.lax.stop_gradient(dist.sample((num_samples,), seed=rng))
+    samples = jax.lax.stop_gradient(dist.sample((num_samples,), key=rng))
     # We vmap the function application over samples - this ensures that the
     # function we use does not have to be vectorized itself.
     return jax.vmap(one_sample_surrogate_fn)(samples)
@@ -141,7 +141,7 @@ def pathwise_jacobians(
     # We vmap the function application over samples - this ensures that the
     # function we use does not have to be vectorized itself.
     dist = dist_builder(*params)
-    return jax.vmap(function)(dist.sample((num_samples,), seed=rng))
+    return jax.vmap(function)(dist.sample((num_samples,), key=rng))
 
   return jax.jacfwd(surrogate)(params)
 
@@ -239,7 +239,7 @@ def measure_valued_estimation_mean(
   mean, log_std = dist.params
   std = jnp.exp(log_std)
 
-  dist_samples = dist.sample((num_samples,), seed=rng)
+  dist_samples = dist.sample((num_samples,), key=rng)
 
   pos_rng, neg_rng = jax.random.split(rng)
   pos_sample = jax.random.weibull_min(
@@ -312,7 +312,7 @@ def measure_valued_estimation_std(
   mean, log_std = dist.params
   std = jnp.exp(log_std)
 
-  dist_samples = dist.sample((num_samples,), seed=rng)
+  dist_samples = dist.sample((num_samples,), key=rng)
 
   pos_rng, neg_rng = jax.random.split(rng)
 
