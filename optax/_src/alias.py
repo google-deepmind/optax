@@ -1320,10 +1320,10 @@ def noisy_sgd(
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
   if key is None:
-      raise ValueError(
-        "noisy_sgd optimizer requires specifying key: " 
-        "noisy_sgd(..., key=jax.random.key(0))"
-      )
+    raise ValueError(
+      "noisy_sgd optimizer requires specifying key: " 
+      "noisy_sgd(..., key=jax.random.key(0))"
+    )
   return combine.chain(
       transform.add_noise(key, eta, gamma),
       transform.scale_by_learning_rate(learning_rate),
