@@ -34,6 +34,7 @@ from typing import Any, Sequence
 
 import chex
 import jax
+import jax.radom as jrd
 import jax.numpy as jnp
 import numpy as np
 from optax._src import base
@@ -241,15 +242,15 @@ def measure_valued_estimation_mean(
 
   dist_samples = dist.sample((num_samples,), seed=rng)
 
-  pos_rng, neg_rng = jax.random.split(rng)
-  pos_sample = jax.random.weibull_min(
+  pos_rng, neg_rng = jrd.split(rng)
+  pos_sample = jrd.weibull_min(
       pos_rng, scale=math.sqrt(2.0), concentration=2.0, shape=dist_samples.shape
   )
 
   if coupling:
     neg_sample = pos_sample
   else:
-    neg_sample = jax.random.weibull_min(
+    neg_sample = jrd.weibull_min(
         neg_rng,
         scale=math.sqrt(2.0),
         concentration=2.0,
@@ -314,17 +315,17 @@ def measure_valued_estimation_std(
 
   dist_samples = dist.sample((num_samples,), seed=rng)
 
-  pos_rng, neg_rng = jax.random.split(rng)
+  pos_rng, neg_rng = jrd.split(rng)
 
   # The only difference between mean and std gradients is what we sample.
-  pos_sample = jax.random.double_sided_maxwell(
+  pos_sample = jrd.double_sided_maxwell(
       pos_rng, loc=0.0, scale=1.0, shape=dist_samples.shape
   )
   if coupling:
-    unif_rvs = jax.random.uniform(neg_rng, dist_samples.shape)
+    unif_rvs = jrd.uniform(neg_rng, dist_samples.shape)
     neg_sample = unif_rvs * pos_sample
   else:
-    neg_sample = jax.random.normal(neg_rng, dist_samples.shape)
+    neg_sample = jrd.normal(neg_rng, dist_samples.shape)
 
   # Both need to be positive in the case of the scale.
   # N x D
