@@ -25,6 +25,8 @@ Experimental features and algorithms that don't meet the
     MomoState
     momo_adam
     MomoAdamState
+    muon
+    MuonState
     prodigy
     ProdigyState
     sam
@@ -83,6 +85,12 @@ Momo
 .. autoclass:: MomoState
 .. autofunction:: momo_adam
 .. autoclass:: MomoAdamState
+
+Muon
+~~~~
+.. autofunction:: muon
+.. autofunction:: scale_by_muon
+.. autoclass:: MuonState
 
 Prodigy
 ~~~~~~~
