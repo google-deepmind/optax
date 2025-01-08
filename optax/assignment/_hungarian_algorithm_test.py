@@ -30,7 +30,7 @@ class HungarianAlgorithmTest(parameterized.TestCase):
       m=[0, 1, 2, 4, 8, 16],
   )
   def test_hungarian_algorithm(self, n, m):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     costs = jrd.normal(key, (n, m))
 
     i, j = _hungarian_algorithm.hungarian_algorithm(costs)
@@ -91,7 +91,7 @@ class HungarianAlgorithmTest(parameterized.TestCase):
       m=[0, 1, 2, 4],
   )
   def test_hungarian_algorithm_vmap(self, k, n, m):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     costs = jrd.normal(key, (k, n, m))
 
     with self.subTest('works under vmap'):
@@ -106,7 +106,7 @@ class HungarianAlgorithmTest(parameterized.TestCase):
       assert j.shape == (k, r)
 
   def test_hungarian_algorithm_jit(self):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     costs = jrd.normal(key, (20, 30))
 
     with self.subTest('works under jit'):
