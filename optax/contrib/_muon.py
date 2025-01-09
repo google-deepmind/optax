@@ -169,7 +169,7 @@ def scale_by_muon(
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x: orthogonalize_via_newton_schulz(x, ns_coeffs_, ns_steps, eps),
-        updates,
+        mu_hat,
     )
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
