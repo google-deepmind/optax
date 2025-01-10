@@ -17,13 +17,14 @@
 import functools
 from typing import NamedTuple
 
-from absl.testing import absltest
-from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
-from jax import random
 import numpy as np
+from absl.testing import absltest
+from absl.testing import parameterized
+from jax import random
+
 from optax._src import base
 from optax._src import clipping
 from optax._src import transform
@@ -167,7 +168,7 @@ class InjectHyperparamsTest(chex.TestCase):
     """Check that random.key can be handled by :func:``inject_hyperparams``"""
 
     def random_noise_optimizer(
-      key: chex.PRNGKey, scale: jax.Array
+        key: chex.PRNGKey, scale: jax.Array
     ) -> base.GradientTransformation:
       def init_fn(params_like: base.Params):
         del params_like
@@ -175,15 +176,15 @@ class InjectHyperparamsTest(chex.TestCase):
         return (key, scale)
 
       def update_fn(
-        updates: base.Updates,
-        state: tuple[chex.PRNGKey, jax.Array],
-        params: None = None,
+          updates: base.Updates,
+          state: tuple[chex.PRNGKey, jax.Array],
+          params: None = None,
       ) -> tuple[base.Updates, chex.PRNGKey]:
         del params
         key, scale = state
         keyit = iter(random.split(key, len(jax.tree_leaves(updates)) + 1))
         new_updates = jax.tree.map(
-          lambda x: scale * random.normal(next(keyit), x.shape), updates
+            lambda x: scale * random.normal(next(keyit), x.shape), updates
         )
         new_key = next(keyit)
         return new_updates, (new_key, scale)
@@ -191,7 +192,7 @@ class InjectHyperparamsTest(chex.TestCase):
       return base.GradientTransformation(init_fn, update_fn)
 
     optim = _inject.inject_hyperparams(random_noise_optimizer)(
-      key=random.key(17), scale=1e-3
+        key=random.key(17), scale=1e-3
     )
 
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
