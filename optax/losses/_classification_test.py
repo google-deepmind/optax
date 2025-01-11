@@ -247,6 +247,42 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
 
+  @parameterized.parameters(
+      {'axis': (1, 3), 'shape': (2, 3, 4, 5)},
+      {'axis': (3, 2), 'shape': (2, 3, 4, 5)},
+      {'axis': (2, 3), 'shape': (2, 3, 4, 5)},
+      {'axis': (-3, -1), 'shape': (2, 3, 4, 5)},
+      {'axis': (-1, -2), 'shape': (2, 3, 4, 5)},
+      {'axis': (-2, -1), 'shape': (2, 3, 4, 5)},
+      {'axis': (0, 1, 3), 'shape': (2, 3, 4, 5)},
+      {'axis': (-4, -3, -1), 'shape': (2, 3, 4, 5)},
+  )
+  def test_axes(self, shape: tuple[int, ...], axis: tuple[int, ...]):
+    # Canonicalize axis and calculate shapes.
+    ndim = len(shape)
+    logits_axis = tuple((x + ndim) % ndim for x in axis)
+    labels_axis = tuple(x for x in range(ndim) if x not in logits_axis)
+    # Obtain shapes of batch and logits subspaces.
+    logits_shape = tuple(shape[x] for x in logits_axis)
+    labels_shape = tuple(shape[x] for x in labels_axis)
+    num_classes: float = np.prod(logits_shape).item()
+
+    key = jax.random.key(42)
+    keys = jax.random.split(key, 2)
+    logits = jax.random.uniform(keys[0], labels_shape + (num_classes,))
+    labels = jax.random.randint(keys[1], labels_shape, 0, num_classes - 1)
+
+    fn = _classification.softmax_cross_entropy_with_integer_labels
+    desired = fn(logits, labels)
+
+    # Apply inverse axes permutation to obtain an array of `shape` shape.
+    perm = labels_axis + logits_axis
+    perm_inv = tuple(i for i, _ in sorted(enumerate(perm), key=lambda x: x[1]))
+    logits = logits.reshape(labels_shape + logits_shape).transpose(perm_inv)
+    assert logits.shape == shape
+    actual = fn(logits, labels, axis)
+    np.testing.assert_allclose(actual, desired)
+
 
 class SigmoidCrossEntropyTest(parameterized.TestCase):
 

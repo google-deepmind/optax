@@ -15,12 +15,31 @@
 """Classification losses."""
 
 import functools
+import operator
 from typing import Optional, Union
 
 import chex
 import jax
 import jax.numpy as jnp
 from optax import projections
+
+
+def canonicalize_axis(axis, ndim):
+  """Vendored version of :func:`numpy.lib.array_utils.normalize_axis_index`.
+  """
+  if 0 <= (axis := operator.index(axis)) < ndim:
+    return axis
+  elif -ndim <= axis < 0:
+    return axis + ndim
+  else:
+    raise ValueError(f'axis {axis} is out of bounds for array of '
+                     f'dimension {ndim}')
+
+
+def canonicalize_axes(axes, ndim) -> tuple[int, ...]:
+  """Vendored version of :func:`numpy.lib.array_utils.normalize_axis_tuple`.
+  """
+  return tuple(canonicalize_axis(x, ndim) for x in axes)
 
 
 def sigmoid_binary_cross_entropy(
@@ -273,7 +292,7 @@ def softmax_cross_entropy(
 def softmax_cross_entropy_with_integer_labels(
     logits: chex.Array,
     labels: chex.Array,
-    axis: Union[int, None] = -1,
+    axis: Union[int, tuple[int, ...]] = -1,
     where: Union[chex.Array, None] = None,
 ) -> chex.Array:
   r"""Computes softmax cross entropy between the logits and integer labels.
@@ -297,7 +316,10 @@ def softmax_cross_entropy_with_integer_labels(
     labels: Integers specifying the correct class for each input, with shape
       ``[batch_size]``. Class labels are assumed to be between 0 and
       ``num_classes - 1`` inclusive.
-    axis: Axis along which to compute.
+    axis: Axis or axes along which to compute. If a tuple of axes is passed
+      then ``num_classes`` must match the total number of elements in ``axis``
+      dimensions and a label is interpreted as a flat index in a ``logits``
+      slice of shape ``logits[axis]``.
     where: Elements to include in the computation.
 
   Returns:
@@ -312,6 +334,21 @@ def softmax_cross_entropy_with_integer_labels(
     >>> labels = jnp.array([0, 1])
     >>> print(optax.softmax_cross_entropy_with_integer_labels(logits, labels))
     [0.2761297 2.951799 ]
+
+    >>> import jax.numpy as jnp
+    >>> import numpy as np
+    >>> import optax
+    >>> # example: batch_size = (1, 2), num_classes = 12 (i.e. 3 * 4)
+    >>> shape = (1, 2, 3, 4)
+    >>> logits = jnp.arange(np.prod(shape), dtype=jnp.float32).reshape(shape)
+    >>> # elements indices in slice of shape (3, 4)
+    >>> ix = jnp.array([[1, 2]])
+    >>> jx = jnp.array([[1, 3]])
+    >>> labels = jnp.ravel_multi_index((ix, jx), shape[2:])
+    >>> cross_entropy = optax.softmax_cross_entropy_with_integer_labels(
+    ...     logits, labels, axis=(2, 3))
+    >>> print(cross_entropy)
+    [[6.458669   0.45866907]]
 
   References:
     `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
@@ -329,9 +366,22 @@ def softmax_cross_entropy_with_integer_labels(
   """
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
-  if axis is not None and not isinstance(axis, int):
-    raise ValueError(f'axis = {axis} is unsupported. Provide an int or None.')
-
+  if isinstance(axis, int):
+    axis = canonicalize_axis(axis, logits.ndim)
+  elif isinstance(axis, tuple):
+    # Move all "feature" dimensions to the end preserving axis ordering and
+    # subsequent flattening "feature" dimensions to a single one.
+    logit_axis = canonicalize_axes(axis, logits.ndim)
+    batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)
+    axis = len(batch_axis)
+    logits = logits.transpose(batch_axis + logit_axis)
+    logits = logits.reshape(logits.shape[:len(batch_axis)] + (-1,))
+    if where is not None:
+      where = where.transpose(batch_axis + logit_axis)
+      where = where.reshape(where.shape[:len(batch_axis)] + (-1,))
+  else:
+    raise ValueError('Keyword argument \'axis\' must be of type \'int\' or '
+                     f'\'tuple[int, ...]\' but actual type is {type(axis)}.')
   # This is like jnp.take_along_axis(jax.nn.log_softmax(...), ...) except that
   # we avoid subtracting the normalizer from all values, just from the values
   # for the correct labels.
