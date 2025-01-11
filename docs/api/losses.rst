@@ -31,7 +31,7 @@ Losses
     softmax_cross_entropy_with_integer_labels
     sparsemax_loss
     squared_error
-
+    triplet_margin_loss
 
 Convex Kullback Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,3 +116,7 @@ Sparsemax
 ~~~~~~~~~
 .. autofunction:: sparsemax_loss
 .. autofunction:: multiclass_sparsemax_loss
+
+Triplet margin loss
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: triplet_margin_loss
