@@ -15,7 +15,7 @@
 """Tests for methods in `inject.py`."""
 
 import functools
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -171,7 +171,7 @@ class InjectHyperparamsTest(chex.TestCase):
         key: chex.PRNGKey, scale: jax.Array
     ) -> base.GradientTransformation:
       def init_fn(params_like: base.Params) -> tuple[chex.PRNGKey,
-                                                     jax.Array | float]:
+                                                     Union[jax.Array, float]]:
         del params_like
         nonlocal key, scale
         return (key, scale)
@@ -180,7 +180,7 @@ class InjectHyperparamsTest(chex.TestCase):
           updates: base.Updates,
           state: tuple[chex.PRNGKey, jax.Array],
           params: None = None,
-      ) -> tuple[base.Updates, tuple[chex.PRNGKey, jax.Array | float]]:
+      ) -> tuple[base.Updates, tuple[chex.PRNGKey, Union[jax.Array, float]]]:
         del params
         key, scale = state
         keyit = iter(random.split(key, len(jax.tree.leaves(updates)) + 1))

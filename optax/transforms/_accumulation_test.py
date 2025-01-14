@@ -162,7 +162,7 @@ class AccumulationTest(chex.TestCase):
     data = jnp.ones([batch_size, x_size])
     loss = Loss()
 
-    params = loss.init({'params': jax.random.PRNGKey(0)}, data)['params']
+    params = loss.init({'params': jax.random.key(0)}, data)['params']
 
     def loss_apply(params, data):
       return loss.apply({'params': params}, data)
@@ -359,7 +359,7 @@ class AccumulationTest(chex.TestCase):
         ):
           # Initialize parameters with current combination of dtypes
           params = loss.init(
-              {'params': jax.random.PRNGKey(0)}, data, param_dtype=param_dtype
+              {'params': jax.random.key(0)}, data, param_dtype=param_dtype
           )['params']
           opt_state = opt.init(params)
           ms_opt_state = ms_opt_init(params)

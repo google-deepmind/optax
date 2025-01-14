@@ -227,7 +227,9 @@ class AliasTest(chex.TestCase):
       chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
     with self.subTest('Equality of new optimizer states.'):
       chex.assert_trees_all_close(
-          new_state_inject.inner_state, new_state, rtol=1e-4
+          otu.tree_unwrap_random_key_data(new_state_inject.inner_state),
+          otu.tree_unwrap_random_key_data(new_state),
+          rtol=1e-4,
       )
 
   @parameterized.product(
@@ -573,7 +575,7 @@ def _get_problem(
 class LBFGSTest(chex.TestCase):
 
   def test_plain_preconditioning(self):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     key_ws, key_us, key_vec = jrd.split(key, 3)
     m = 4
     d = 3
@@ -592,7 +594,7 @@ class LBFGSTest(chex.TestCase):
 
   @parameterized.product(idx=[0, 1, 2, 3])
   def test_preconditioning_by_lbfgs_on_vectors(self, idx: int):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     key_ws, key_us, key_vec = jrd.split(key, 3)
     m = 4
     d = 3
@@ -619,7 +621,7 @@ class LBFGSTest(chex.TestCase):
 
   @parameterized.product(idx=[0, 1, 2, 3])
   def test_preconditioning_by_lbfgs_on_trees(self, idx: int):
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     key_ws, key_us, key_vec = jrd.split(key, 3)
     m = 4
     shapes = ((3, 2), (5,))
@@ -721,7 +723,7 @@ class LBFGSTest(chex.TestCase):
     def fun(x):
       return otu.tree_sum(jax.tree.map(fun_, x))
 
-    key = jrd.PRNGKey(0)
+    key = jrd.key(0)
     init_array = jrd.normal(key, (2, 4))
     init_tree = (init_array[0], init_array[1])
 

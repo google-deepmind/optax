@@ -44,7 +44,7 @@ class MakePertTest(absltest.TestCase):
     super().setUp()
     rng = np.random.RandomState(0)
 
-    self.rng_jax = jax.random.PRNGKey(0)
+    self.rng_jax = jax.random.key(0)
     self.num_samples = 1_000
     self.num_samples_small = 1_000
     self.sigma = 0.5

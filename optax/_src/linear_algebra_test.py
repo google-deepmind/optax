@@ -57,7 +57,7 @@ class LinearAlgebraTest(chex.TestCase):
 
   def test_power_iteration_cond_fun(self, dim=6):
     """Test the condition function for power iteration."""
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     all_eigenval, all_eigenvec = jax.numpy.linalg.eigh(matrix)
     dominant_eigenval = all_eigenval[-1]
@@ -102,7 +102,7 @@ class LinearAlgebraTest(chex.TestCase):
     power_iteration = self.variant(power_iteration)
 
     # create a random PSD matrix
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     v0 = jnp.ones((dim,))
 
@@ -148,7 +148,7 @@ class LinearAlgebraTest(chex.TestCase):
   ):
     """Test power_iteration on the Hessian of an MLP."""
     mlp = MLP(num_outputs=output_dim, hidden_sizes=[input_dim, 8, output_dim])
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     key_params, key_input, key_output = jax.random.split(key, 3)
     # initialize the mlp
     params = mlp.init(key_params, jnp.ones(input_dim))
