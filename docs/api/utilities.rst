@@ -50,6 +50,7 @@ Linear Algebra Operators
 .. autosummary::
     matrix_inverse_pth_root
     power_iteration
+    nnls
 
 Matrix inverse pth root
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,6 +59,10 @@ Matrix inverse pth root
 Power iteration
 ~~~~~~~~~~~~~~~
 .. autofunction:: power_iteration
+
+Non-negative least squares
+~~~~~~~~~~~~~~~
+.. autofunction:: nnls
 
 
 Second Order Optimization

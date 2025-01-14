@@ -265,3 +265,100 @@ def matrix_inverse_pth_root(
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
     resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
   return resultant_mat_h, error
+
+
+def masked_argmax(x, mask):
+  y = jnp.where(mask, x, -jnp.inf)
+  assert isinstance(y, jax.Array)
+  return jnp.argmax(y)
+
+
+def nnls(A: jax.Array, b: jax.Array, maxiter: int, tol: float) -> jax.Array:
+  r"""Solves the non-negative least squares problem.
+
+  Minimizes :math:`\|A x - b\|_2` subject to :math:`x \geq 0`.
+
+  Args:
+    A: A matrix.
+    b: A vector.
+    maxiter: The maximum number of iterations to run the algorithm for.
+    tol: The numerical tolerance to be used by the algorithm.
+
+  Returns:
+    The solution vector.
+
+  Examples:
+    >>> from jax import numpy as jnp
+    >>> import optax
+    >>> A = jnp.array([[1, 2], [3, 4]])
+    >>> b = jnp.array([5, 6])
+    >>> x = optax.nnls(A, b, 1000, 1e-3)
+    >>> print(x[0])
+    0.0
+    >>> print(x[1])
+    1.7
+
+  References:
+    Lawson and Hanson, `Solving Least Squares Problems
+    <https://doi.org/10.1137/1.9781611971217>`_, 1995
+    Bro and de Jong, `A fast non-negativity-constrained least squares algorithm
+    <https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/
+    (SICI)1099-128X(199709/10)11:5%3C393::AID-CEM483%3E3.0.CO;2-L>`_, 1999
+  """
+  def out_cond_fn(carry):
+    x, p, w, it = carry
+    del x, it
+    return ~p.all() & (w > tol).any(where=~p)
+
+  def out_body_fn(carry):
+
+    def in_cond_fn(carry):
+      x, p, s, it = carry
+      del x
+      return (it < maxiter) & (s <= 0).any(where=p)
+
+    def in_body_fn(carry):
+      x, p, s, it = carry
+      it += 1
+      alpha = (x / (x - s)).min(where=p & (s <= 0), initial=jnp.inf)
+      x += alpha * (s - x)
+
+      p = jnp.where(x <= 0, False, p)
+      assert isinstance(p, jax.Array)
+
+      # s = jnp.linalg.lstsq(A * p, b)[0]
+      s = jnp.linalg.lstsq(AtA * p[:, None] * p[None, :], Atb * p)[0]
+
+      return x, p, s, it
+
+    x, p, w, it = carry
+
+    j = masked_argmax(w, ~p)
+    p = p.at[j].set(True)
+
+    # s = jnp.linalg.lstsq(A * p, b)[0]
+    s = jnp.linalg.lstsq(AtA * p[:, None] * p[None, :], Atb * p)[0]
+
+    x, p, s, it = lax.while_loop(in_cond_fn, in_body_fn, (x, p, s, it))
+
+    x = s
+    w = Atb - AtA @ x
+
+    return x, p, w, it
+
+  _, n = A.shape
+
+  if n == 0:
+    return jnp.zeros(0)
+
+  Atb = b @ A
+  AtA = A.T @ A
+
+  x = jnp.zeros(n)
+  p = jnp.zeros(n, bool)
+  w = Atb.astype(float)
+  it = 0
+
+  x, p, w, it = lax.while_loop(out_cond_fn, out_body_fn, (x, p, w, it))
+
+  return x
