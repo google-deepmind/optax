@@ -17,6 +17,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=g-importing-member
 
+
 import typing as _typing
 
 from optax import assignment
