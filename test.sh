@@ -48,6 +48,8 @@ if [ -z "${JAX_VERSION-}" ]; then
   : # use version installed in requirements above
 elif [ "$JAX_VERSION" = "newest" ]; then
   python3 -m pip install --quiet --upgrade jax jaxlib
+elif [ "$JAX_VERSION" = "nightly" ]; then
+  python3 -m pip install --quiet --upgrade --pre jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
 else
   python3 -m pip install --quiet "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi

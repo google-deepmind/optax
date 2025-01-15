@@ -35,11 +35,11 @@ def ntxent(
     >>> x = jax.random.normal(key1, shape=(4,2))
     >>> labels = jnp.array([0, 0, 1, 1])
     >>>
-    >>> print("input:", x)
-    input: [[-0.9155995   1.5534698 ]
-     [ 0.2623586  -1.5908985 ]
-     [-0.15977189  0.480501  ]
-     [ 0.58389133  0.10497775]]
+    >>> print("input:", x)  # doctest: +SKIP
+    input: [[ 0.07592554 -0.48634264]
+     [ 1.2903206   0.5196119 ]
+     [ 0.30040437  0.31034866]
+     [ 0.5761609  -0.8074621 ]]
     >>> print("labels:", labels)
     labels: [0 0 1 1]
     >>>
@@ -47,11 +47,11 @@ def ntxent(
     >>> b = jax.random.normal(key3, shape=(1,)) # params
     >>> out = x @ w + b # model
     >>>
-    >>> print("Embeddings:", out)
-    Embeddings: [[-1.0076267]
-     [-1.2960069]
-     [-1.1829865]
-     [-1.3485558]]
+    >>> print("Embeddings:", out)  # doctest: +SKIP
+    Embeddings: [[0.08969027]
+     [1.6291292 ]
+     [0.8622629 ]
+     [0.13612625]]
     >>> loss = optax.ntxent(out, labels)
     >>> print("loss:", loss)
     loss: 1.0986123

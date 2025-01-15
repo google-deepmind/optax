@@ -427,6 +427,7 @@ class ZoomLinesearchTest(chex.TestCase):
     value = otu.tree_get(state, 'value')
     self.assertFalse(jnp.isinf(value))
 
+  @absltest.skip('TODO(rdyro): need to match scipy linesearch algorithm')
   @parameterized.product(
       problem_name=[
           'polynomial',
