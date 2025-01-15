@@ -1300,7 +1300,7 @@ def noisy_sgd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.noisy_sgd(
     ...   learning_rate=0.003,
-    ...   key=jax.random.PRNGKey(0))
+    ...   key=jax.random.key(0))
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -1323,7 +1323,7 @@ def noisy_sgd(
   if key is None:
     raise ValueError(
       "noisy_sgd optimizer requires specifying key: " 
-      "noisy_sgd(..., key=jax.random.PRNGKey(0))"
+      "noisy_sgd(..., key=jax.random.key(0))"
     )
   return combine.chain(
       transform.add_noise(key, eta, gamma),

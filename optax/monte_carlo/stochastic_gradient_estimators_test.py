@@ -99,7 +99,7 @@ class GradientEstimatorsTest(chex.TestCase):
 
     effective_log_scale = 0.0
     log_scale = effective_log_scale * _ones(data_dims)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     jacobians = _estimator_variant(self.variant, estimator)(
         lambda x: jnp.array(constant),
@@ -144,7 +144,7 @@ class GradientEstimatorsTest(chex.TestCase):
   ):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     mean = effective_mean * _ones(data_dims)
     log_scale = effective_log_scale * _ones(data_dims)
@@ -185,7 +185,7 @@ class GradientEstimatorsTest(chex.TestCase):
   ):
     data_dims = 3
     num_samples = _estimator_to_num_samples[estimator]
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     mean = effective_mean * _ones(data_dims)
     log_scale = effective_log_scale * _ones(data_dims)
@@ -233,7 +233,7 @@ class GradientEstimatorsTest(chex.TestCase):
       self, estimator, effective_mean, effective_log_scale, weights
   ):
     num_samples = _weighted_estimator_to_num_samples[estimator]
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     mean = jnp.array(effective_mean)
     log_scale = jnp.array(effective_log_scale)
@@ -280,7 +280,7 @@ class GradientEstimatorsTest(chex.TestCase):
       self, estimator, effective_mean, effective_log_scale, weights
   ):
     num_samples = _weighted_estimator_to_num_samples[estimator]
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     mean = jnp.array(effective_mean, dtype=jnp.float32)
     log_scale = jnp.array(effective_log_scale, dtype=jnp.float32)
@@ -342,7 +342,7 @@ class GradientEstimatorsTest(chex.TestCase):
       self, effective_mean, effective_log_scale, function, coupling
   ):
     num_samples = 10**5
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     measure_rng, pathwise_rng = jax.random.split(rng)
 
     mean = jnp.array(effective_mean, dtype=jnp.float32)
@@ -405,7 +405,7 @@ class MeasuredValuedEstimatorsTest(chex.TestCase):
   @parameterized.parameters([True, False])
   def test_raises_error_for_non_gaussian(self, coupling):
     num_samples = 10**5
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     function = lambda x: jnp.sum(x) ** 2
 

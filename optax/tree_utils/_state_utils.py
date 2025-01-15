@@ -341,7 +341,7 @@ def tree_get(
 
       >>> params = jnp.array([1., 2., 3.])
       >>> opt = optax.chain(
-      ...     optax.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+      ...     optax.add_noise(jax.random.key(0), 1.0, 0.9),
       ...     optax.scale_by_adam()
       ... )
       >>> state = opt.init(params)
@@ -355,7 +355,7 @@ def tree_get(
       >>> import optax
       >>> params = jnp.array([1., 2., 3.])
       >>> opt = optax.chain(
-      ...   optax.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+      ...   optax.add_noise(jax.random.key(0), 1.0, 0.9),
       ...   optax.scale_by_adam()
       ... )
       >>> state = opt.init(params)

@@ -51,7 +51,7 @@ ALL_MODULES = [
     (
         'add_noise',
         transform.add_noise,
-        {'key': jax.random.PRNGKey(42), 'eta': 1.0, 'gamma': 0.1}
+        {'key': jax.random.key(42), 'eta': 1.0, 'gamma': 0.1}
     ),
     ('apply_every_k', transform.apply_every, {}),
     ('adagrad', alias.adagrad, {'learning_rate': 0.1}),
@@ -62,7 +62,7 @@ ALL_MODULES = [
     (
         'noisy_sgd',
         alias.noisy_sgd,
-        {'learning_rate': 0.1, 'key': jax.random.PRNGKey(0)}
+        {'learning_rate': 0.1, 'key': jax.random.key(0)}
     ),
     ('rmsprop', alias.rmsprop, {'learning_rate': 0.1}),
     ('sgd', alias.sgd, {'learning_rate': 0.1}),

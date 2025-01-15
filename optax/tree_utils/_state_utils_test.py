@@ -417,7 +417,7 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test filtering for specific state'):
       opt = combine.chain(
-          transform.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+          transform.add_noise(jax.random.key(0), 1.0, 0.9),
           transform.scale_by_adam()
       )
       state = opt.init(params)
@@ -433,7 +433,7 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test extracting a state'):
       opt = combine.chain(
-          transform.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+          transform.add_noise(jax.random.key(0), 1.0, 0.9),
           transform.scale_by_adam()
       )
       state = opt.init(params)
@@ -536,7 +536,7 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test setting a specific state'):
       opt = combine.chain(
-          transform.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+          transform.add_noise(jax.random.key(0), 1.0, 0.9),
           transform.scale_by_adam()
       )
       state = opt.init(params)
@@ -563,7 +563,7 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test setting a state'):
       opt = combine.chain(
-          transform.add_noise(jax.random.PRNGKey(0), 1.0, 0.9),
+          transform.add_noise(jax.random.key(0), 1.0, 0.9),
           transform.scale_by_adam()
       )
       state = opt.init(params)

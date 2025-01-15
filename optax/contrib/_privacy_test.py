@@ -48,7 +48,7 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=jnp.finfo(jnp.float32).max,
         noise_multiplier=0.0,
-        key=jrd.PRNGKey(0)
+        key=jrd.key(0)
     )
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
@@ -64,7 +64,7 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=0.0,
-        key=jrd.PRNGKey(42)
+        key=jrd.key(42)
     )
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
@@ -94,7 +94,7 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=noise_multiplier,
-        key=jrd.PRNGKey(1337)
+        key=jrd.key(1337)
     )
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
@@ -112,7 +112,7 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=0.1,
         noise_multiplier=1.1,
-        key=jrd.PRNGKey(2021)
+        key=jrd.key(2021)
     )
     state = dp_agg.init(self.params)
     mean_grads = jax.tree.map(lambda g: g.mean(0), self.per_eg_grads)
