@@ -1322,7 +1322,7 @@ def noisy_sgd(
   """
   if key is None:
     raise ValueError(
-      "noisy_sgd optimizer requires specifying key: " 
+      "noisy_sgd optimizer requires specifying key: "
       "noisy_sgd(..., key=jax.random.key(0))"
     )
   return combine.chain(
