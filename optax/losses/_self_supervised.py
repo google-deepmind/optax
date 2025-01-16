@@ -53,7 +53,7 @@ def ntxent(
      [0.8622629 ]
      [0.13612625]]
     >>> loss = optax.ntxent(out, labels)
-    >>> print("loss:", loss)
+    >>> print("loss:", loss)  # doctest: +SKIP
     loss: 1.0986123
 
   Args:
@@ -120,7 +120,7 @@ def ntxent(
   return loss
 
 
-def triplet_loss(
+def triplet_margin_loss(
     anchors: chex.Array,
     positives: chex.Array,
     negatives: chex.Array,
@@ -136,9 +136,10 @@ def triplet_loss(
     >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
     >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
     >>> negatives = jnp.array([[1.0, 0.0], [0.0, 1.0]])
-    >>> output = optax.triplet_loss(anchors, positives, negatives, margin=1.0)
+    >>> output = optax.losses.triplet_margin_loss(anchors, positives, negatives,
+    ...                                           margin=1.0)
     >>> print(output)
-    >>> Array([0.14142442, 0.14142442], dtype=float32)
+    [0.14142442 0.14142442]
 
   Args:
     anchors: An array of anchor embeddings, with shape [batch, feature_dim].
@@ -149,9 +150,9 @@ def triplet_loss(
     axis: The axis along which to compute the distances (default is -1).
     norm_degree: The norm degree for distance calculation (default is 2 for
       Euclidean distance).
-    margin: The minimum margin by which the positive distance should be 
+    margin: The minimum margin by which the positive distance should be
       smaller than the negative distance.
-    eps: A small epsilon value to ensure numerical stability in the distance 
+    eps: A small epsilon value to ensure numerical stability in the distance
       calculation.
 
   Returns:

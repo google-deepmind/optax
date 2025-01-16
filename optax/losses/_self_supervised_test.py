@@ -95,15 +95,15 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
       }
   ])
   def test_batched(self, anchor, positive, negative, margin):
-    def testing_triplet_loss(a, p, n, margin=1.0, p_norm=2, eps=1e-6):
+    def testing_triplet_margin_loss(a, p, n, margin=1.0, p_norm=2, eps=1e-6):
       ap_distance = jnp.sqrt(jnp.sum(jnp.power(a - p, p_norm)) + eps)
       an_distance = jnp.sqrt(jnp.sum(jnp.power(a - n, p_norm)) + eps)
       return jnp.maximum(ap_distance - an_distance + margin, 0)
 
-    handmade_result = testing_triplet_loss(
+    handmade_result = testing_triplet_margin_loss(
         a=anchor, p=positive, n=negative, margin=margin
     )
-    result = self.variant(_self_supervised.triplet_loss)(
+    result = self.variant(_self_supervised.triplet_margin_loss)(
         anchor, positive, negative
     )
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
@@ -117,13 +117,13 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
       },
   ])
   def test_vmap(self, anchor, positive, negative):
-    original_loss = _self_supervised.triplet_loss(anchor, positive,
-                                                  negative)
+    original_loss = _self_supervised.triplet_margin_loss(anchor, positive,
+                                                         negative)
     anchor_batched = anchor.reshape(1, *anchor.shape)
     positive_batched = positive.reshape(1, *positive.shape)
     negative_batched = negative.reshape(1, *negative.shape)
     vmap_loss = self.variant(
-        jax.vmap(_self_supervised.triplet_loss, in_axes=(0, 0, 0)))(
+        jax.vmap(_self_supervised.triplet_margin_loss, in_axes=(0, 0, 0)))(
             anchor_batched, positive_batched, negative_batched)
     np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten()
                                , atol=1e-4)
