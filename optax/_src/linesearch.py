@@ -579,6 +579,7 @@ def zoom_linesearch(
     curv_rtol: float = 0.9,
     approx_dec_rtol: Optional[float] = 1e-6,
     interval_threshold: float = 1e-5,
+    value_fn_has_aux: bool = False,
     verbose: bool = False,
 ) -> tuple[
     Callable[..., ZoomLinesearchState],
@@ -652,6 +653,9 @@ def zoom_linesearch(
     with Guaranteed Descent
     <https://doi.org/10.1145/1132973.1132979>`_, 2006
   """
+
+  def _unpack_value(value):
+    return value[0] if value_fn_has_aux else value
 
   def _value_and_slope_on_line(
       value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
@@ -825,11 +829,11 @@ def zoom_linesearch(
     slope_init = state.slope_init
 
     prev_stepsize = state.stepsize
-    prev_value_step = state.value
+    prev_value_step = _unpack_value(state.value)
     prev_slope_step = state.slope
 
     safe_stepsize = state.safe_stepsize
-    safe_value = state.safe_value
+    safe_value_packed = state.safe_value
     safe_grad = state.safe_grad
 
     # Choose new point, larger than previous one or set to initial guess
@@ -842,9 +846,13 @@ def zoom_linesearch(
     else:
       max_stepsize_reached = jnp.asarray(False)
 
-    _, new_value_step, new_grad_step, new_slope_step = _value_and_slope_on_line(
-        value_and_grad_fn, params, new_stepsize, updates, fn_kwargs
+    _, new_value_step_packed, new_grad_step, new_slope_step = (
+        _value_and_slope_on_line(
+            value_and_grad_fn, params, new_stepsize, updates, fn_kwargs
+        )
     )
+
+    new_value_step = _unpack_value(new_value_step_packed)
 
     decrease_error = _compute_decrease_error(
         new_stepsize, new_value_step, new_slope_step, value_init, slope_init
@@ -855,10 +863,10 @@ def zoom_linesearch(
     # If the new point satisfies at least the decrease error we keep it
     # in case the curvature error cannot be satisfied.
     safe_decrease = decrease_error <= tol
-    new_safe_stepsize, new_safe_value, new_safe_grad = otu.tree_where(
+    new_safe_stepsize, new_safe_value_packed, new_safe_grad = otu.tree_where(
         safe_decrease,
-        [new_stepsize, new_value_step, new_grad_step],
-        [safe_stepsize, safe_value, safe_grad],
+        [new_stepsize, new_value_step_packed, new_grad_step],
+        [safe_stepsize, safe_value_packed, safe_grad],
     )
 
     # If the new point is not good, set high and low values according to
@@ -934,7 +942,7 @@ def zoom_linesearch(
         stepsize_guess=stepsize_guess,
         #
         stepsize=new_stepsize,
-        value=new_value_step,
+        value=new_value_step_packed,
         grad=new_grad_step,
         slope=new_slope_step,
         #
@@ -959,7 +967,7 @@ def zoom_linesearch(
         value_cubic_ref=value_low,
         #
         safe_stepsize=new_safe_stepsize,
-        safe_value=new_safe_value,
+        safe_value=new_safe_value_packed,
         safe_grad=new_safe_grad,
     )
     return new_state
@@ -989,7 +997,8 @@ def zoom_linesearch(
     value_cubic_ref = state.value_cubic_ref
 
     safe_stepsize = state.safe_stepsize
-    safe_value = state.safe_value
+    safe_value_packed = state.safe_value
+    safe_value = _unpack_value(safe_value_packed)
     safe_grad = state.safe_grad
 
     # Check if interval not too small otherwise fail
@@ -1026,9 +1035,11 @@ def zoom_linesearch(
     middle = jnp.where(use_bisection, middle_bisection, middle)
 
     # Check if new point is good
-    _, value_middle, grad_middle, slope_middle = _value_and_slope_on_line(
+    _, value_middle_packed, grad_middle, slope_middle = _value_and_slope_on_line(
         value_and_grad_fn, params, middle, updates, fn_kwargs
     )
+
+    value_middle = _unpack_value(value_middle_packed)
 
     decrease_error = _compute_decrease_error(
         middle, value_middle, slope_middle, value_init, slope_init
@@ -1041,10 +1052,10 @@ def zoom_linesearch(
     # We take the one with the smallest value.
     safe_decrease = decrease_error <= tol
     update_safe_stepsize = safe_decrease & (value_middle < safe_value)
-    new_safe_stepsize, new_safe_value, new_safe_grad = otu.tree_where(
+    new_safe_stepsize, new_safe_value_packed, new_safe_grad = otu.tree_where(
         update_safe_stepsize,
-        [middle, value_middle, grad_middle],
-        [safe_stepsize, safe_value, safe_grad],
+        [middle, value_middle_packed, grad_middle],
+        [safe_stepsize, safe_value_packed, safe_grad],
     )
 
     # If both Armijo and curvature criterions are satisfied, we are done.
@@ -1104,7 +1115,7 @@ def zoom_linesearch(
         stepsize_guess=state.stepsize_guess,
         #
         stepsize=middle,
-        value=value_middle,
+        value=value_middle_packed,
         grad=grad_middle,
         slope=slope_middle,
         #
@@ -1129,7 +1140,7 @@ def zoom_linesearch(
         value_cubic_ref=new_value_cubic_ref,
         #
         safe_stepsize=new_safe_stepsize,
-        safe_value=new_safe_value,
+        safe_value=new_safe_value_packed,
         safe_grad=new_safe_grad,
     )
     return new_state
@@ -1220,7 +1231,7 @@ def zoom_linesearch(
         grad=grad,
         slope=slope,
         #
-        value_init=value,
+        value_init=_unpack_value(value),
         slope_init=slope,
         #
         decrease_error=jnp.asarray(jnp.inf),
@@ -1232,13 +1243,13 @@ def zoom_linesearch(
         failed=jnp.asarray(False),
         #
         low=jnp.asarray(0.0),
-        value_low=value,
+        value_low=_unpack_value(value),
         slope_low=slope,
         high=jnp.asarray(0.0),
-        value_high=value,
+        value_high=_unpack_value(value),
         slope_high=slope,
         cubic_ref=jnp.asarray(0.0),
-        value_cubic_ref=value,
+        value_cubic_ref=_unpack_value(value),
         #
         safe_stepsize=jnp.asarray(0.0),
         safe_value=value,
@@ -1334,6 +1345,7 @@ def scale_by_zoom_linesearch(
     approx_dec_rtol: Optional[float] = 1e-6,
     stepsize_precision: float = 1e-5,
     initial_guess_strategy: str = "keep",
+    value_fn_has_aux: bool = False,
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   r"""Linesearch ensuring sufficient decrease and small curvature.
@@ -1529,14 +1541,16 @@ def scale_by_zoom_linesearch(
       curv_rtol=curv_rtol,
       approx_dec_rtol=approx_dec_rtol,
       interval_threshold=stepsize_precision,
+      value_fn_has_aux=value_fn_has_aux,
       verbose=verbose,
   )
 
   def init_fn(params: base.Params) -> ScaleByZoomLinesearchState:
     """Initializes state of scale_by_zoom_linesearch."""
+    value = (jnp.asarray(jnp.inf),) if value_fn_has_aux else jnp.asarray(jnp.inf)
     return ScaleByZoomLinesearchState(
         learning_rate=jnp.asarray(1.0),
-        value=jnp.asarray(jnp.inf),
+        value=value,
         grad=otu.tree_zeros_like(params),
         info=ZoomLinesearchInfo(
             num_linesearch_steps=jnp.asarray(0),
@@ -1584,7 +1598,7 @@ def scale_by_zoom_linesearch(
         (value_fn,), extra_args
     )
     del remaining_kwargs
-    value_and_grad_fn = jax.value_and_grad(value_fn)
+    value_and_grad_fn = jax.value_and_grad(value_fn, has_aux=value_fn_has_aux)
 
     init_state = init_ls(
         updates,

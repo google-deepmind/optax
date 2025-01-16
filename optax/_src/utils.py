@@ -231,6 +231,7 @@ def _extract_fns_kwargs(
 
 def value_and_grad_from_state(
     value_fn: Callable[..., Union[jax.Array, float]],
+    has_aux: bool = False,
 ) -> Callable[..., tuple[Union[float, jax.Array], base.Updates]]:
   r"""Alternative to ``jax.value_and_grad`` that fetches value, grad from state.
 
@@ -295,10 +296,13 @@ def value_and_grad_from_state(
           'Make sure that these values are stored in the state by the '
           'optimizer.'
       )
+    value_unpacked = value[0] if has_aux else value
     value, grad = jax.lax.cond(
-        (~jnp.isinf(value)) & (~jnp.isnan(value)),
+        (~jnp.isinf(value_unpacked)) & (~jnp.isnan(value_unpacked)),
         lambda *_: (value, grad),
-        lambda p, a, kwa: jax.value_and_grad(value_fn)(p, *a, **kwa),
+        lambda p, a, kwa: jax.value_and_grad(value_fn, has_aux=has_aux)(
+            p, *a, **kwa
+        ),
         params,
         fn_args,
         fn_kwargs,
