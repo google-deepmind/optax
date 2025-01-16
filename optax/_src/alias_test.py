@@ -66,7 +66,11 @@ _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'nadamw', 'opt_kwargs': {'learning_rate': 1e-2}},
     {
         'opt_name': 'noisy_sgd',
-        'opt_kwargs': {'learning_rate': 1e-3, 'eta': 1e-4},
+        'opt_kwargs': {
+          'learning_rate': 1e-3,
+          'key': jrd.key(0),
+          'eta': 1e-4
+        },
     },
     {'opt_name': 'novograd', 'opt_kwargs': {'learning_rate': 1e-3}},
     {
