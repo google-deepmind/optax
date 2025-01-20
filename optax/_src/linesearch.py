@@ -253,13 +253,15 @@ def scale_by_backtracking_linesearch(
       grad = otu.tree_zeros_like(params)
     else:
       grad = None
+    # base output type on params type, except only real part if complex
+    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
     return ScaleByBacktrackingLinesearchState(
         learning_rate=jnp.array(1.0),
-        value=jnp.array(jnp.inf),
+        value=jnp.array(jnp.inf, dtype=val_dtype),
         grad=grad,
         info=BacktrackingLinesearchInfo(
             num_linesearch_steps=0,
-            decrease_error=jnp.array(jnp.inf),
+            decrease_error=jnp.array(jnp.inf, dtype=val_dtype),
         ),
     )
 
