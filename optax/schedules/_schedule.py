@@ -33,19 +33,19 @@ from optax.schedules import _join
 def constant_schedule(value: Union[float, int]) -> base.Schedule:
   """Constructs a constant schedule.
 
-  Examples:
-    >>> schedule_fn = optax.constant_schedule(5)
-    >>> schedule_fn(0)
-    5
-    >>> schedule_fn(100)
-    5
-
   Args:
     value: value to be held constant throughout.
 
   Returns:
     schedule
       A function that maps step counts to values.
+
+  Examples:
+    >>> schedule_fn = optax.constant_schedule(5)
+    >>> schedule_fn(0)
+    5
+    >>> schedule_fn(100)
+    5
   """
   return lambda count: value
 
@@ -79,6 +79,22 @@ def polynomial_schedule(
   :math:`B` is the transition begin, :math:`T` is the transition steps,
   and :math:`P` is the power used for the polynomial transition.
 
+  Args:
+    init_value: initial value for the scalar to be annealed.
+    end_value: end value of the scalar to be annealed.
+    power: the power of the polynomial used to transition from init to end.
+    transition_steps: number of steps over which annealing takes place.
+      The scalar starts changing at ``transition_begin`` steps and completes
+      the transition by ``transition_begin + transition_steps`` steps.
+      If ``transition_steps <= 0``, then the entire annealing process is
+      disabled and the value is held fixed at ``init_value``.
+    transition_begin: must be positive. After how many steps to start annealing
+      (before this many steps the scalar value is held fixed at ``init_value``).
+
+  Returns:
+    schedule
+      A function that maps step counts to values.
+
   Examples:
     >>> schedule_fn = optax.polynomial_schedule(
     ...    init_value=1.0, end_value=0.01, transition_steps=100, power=2)
@@ -108,22 +124,6 @@ def polynomial_schedule(
     count:104 value:0.0101
     count:105 value:0.0100
     count:110 value:0.0100
-
-  Args:
-    init_value: initial value for the scalar to be annealed.
-    end_value: end value of the scalar to be annealed.
-    power: the power of the polynomial used to transition from init to end.
-    transition_steps: number of steps over which annealing takes place.
-      The scalar starts changing at ``transition_begin`` steps and completes
-      the transition by ``transition_begin + transition_steps`` steps.
-      If ``transition_steps <= 0``, then the entire annealing process is
-      disabled and the value is held fixed at ``init_value``.
-    transition_begin: must be positive. After how many steps to start annealing
-      (before this many steps the scalar value is held fixed at ``init_value``).
-
-  Returns:
-    schedule
-      A function that maps step counts to values.
   """
   if transition_steps <= 0:
     logging.info(
@@ -170,14 +170,6 @@ def linear_schedule(
   This schedule is equivalent to :func:`optax.polynomial_schedule` with
   ``power=1``.
 
-  Examples:
-    >>> schedule_fn = optax.linear_schedule(
-    ...    init_value=1.0, end_value=0.01, transition_steps=100)
-    >>> schedule_fn(0)  # learning rate on the first iteration
-    Array(1., dtype=float32, weak_type=True)
-    >>> schedule_fn(100)  # learning rate on the last iteration
-    Array(0.01, dtype=float32, weak_type=True)
-
   Args:
     init_value: initial value for the scalar to be annealed.
     end_value: end value of the scalar to be annealed.
@@ -192,6 +184,14 @@ def linear_schedule(
   Returns:
     schedule
       A function that maps step counts to values.
+
+  Examples:
+    >>> schedule_fn = optax.linear_schedule(
+    ...    init_value=1.0, end_value=0.01, transition_steps=100)
+    >>> schedule_fn(0)  # learning rate on the first iteration
+    Array(1., dtype=float32, weak_type=True)
+    >>> schedule_fn(100)  # learning rate on the last iteration
+    Array(0.01, dtype=float32, weak_type=True)
   """
   return polynomial_schedule(
       init_value=init_value,
@@ -307,7 +307,7 @@ def exponential_decay(
         decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)
     )
     if end_value is not None:
-      decayed_value = clip_fn(decayed_value, end_value)
+      decayed_value = clip_fn(decayed_value, end_value)  # pylint: disable=undefined-variable
     return decayed_value
 
   return schedule
@@ -338,10 +338,6 @@ def cosine_decay_schedule(
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
   the ``exponent`` and :math:`I` is the initial value (``init_value``).
 
-  References:
-    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
-    <https://arxiv.org/abs/1608.03983>`_, 2017
-
   Args:
     init_value: An initial value for the learning rate.
     decay_steps: Positive integer - the number of steps for which to apply
@@ -356,6 +352,10 @@ def cosine_decay_schedule(
   Returns:
     schedule
       A function that maps step counts to values.
+
+  References:
+    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
+    <https://arxiv.org/abs/1608.03983>`_, 2017
   """
   if not decay_steps > 0:
     raise ValueError(
@@ -456,12 +456,6 @@ def linear_onecycle_schedule(
     ``final_div_factor`` is larger than ``div_factor``, this is a decreasing
     phase.
 
-
-  References:
-    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
-    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
-
-
   Args:
     transition_steps: Number of steps over which annealing takes place.
     peak_value: Maximum value attained by schedule at pct_start percent of the
@@ -478,6 +472,10 @@ def linear_onecycle_schedule(
   Returns:
     schedule
       A function that maps step counts to values
+
+  References:
+    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
+    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
   """
   if transition_steps <= 0:
     raise ValueError(
@@ -505,17 +503,13 @@ def cosine_onecycle_schedule(
 ) -> base.Schedule:
   """Returns a function which implements the onecycle learning rate schedule.
 
-  This learning rate increases the learning rate and then decreases it in a
+  This schedule increases the learning rate and then decreases it in a
   cosine-like manner. The number of steps over which the learning rate increases
   is determined by the ``pct_start`` argument. The maximum value of the learning
   rate is determined by the ``peak_value`` argument, the initial value of the
   learning rate is determined through the formula ``init_value = peak_value /
   div_factor``, and the final value is determined by the ``final_div_factor``
   argument.
-
-  References:
-    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
-    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
 
   Args:
     transition_steps: Number of steps over which annealing takes place.
@@ -531,6 +525,10 @@ def cosine_onecycle_schedule(
   Returns:
     schedule
       A function that maps step counts to values
+
+  References:
+    Smith et al, `Super-Convergence: Very Fast Training of Neural Networks Using
+    Large Learning Rates <https://arxiv.org/abs/1708.07120>`_, 2017
   """
   if transition_steps <= 0:
     raise ValueError(
@@ -589,10 +587,9 @@ def warmup_cosine_decay_schedule(
       this includes the warmup time, so the number of steps during which cosine
       annealing is applied is ``decay_steps - warmup_steps``.
     end_value: End value of the scalar to be annealed.
-    exponent: The default decay is ``0.5 * (1 + cos(pi t/T))``, where
-      ``t`` is the current timestep and ``T`` is ``decay_steps``. The exponent
-      modifies this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``. Defaults
-      to 1.0.
+    exponent: The default decay is ``0.5 * (1 + cos(pi t/T))``, where ``t`` is
+      the current timestep and ``T`` is ``decay_steps``. The exponent modifies
+      this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``. Defaults to 1.0.
 
   Returns:
     schedule
@@ -670,10 +667,6 @@ def sgdr_schedule(
 
   This learning rate schedule applies multiple joined cosine decay cycles.
 
-  References:
-    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
-    <https://arxiv.org/abs/1608.03983>`_, 2017
-
   Args:
     cosine_kwargs: An Iterable of dicts, where each element specifies the
       arguments to pass to each cosine decay cycle. The ``decay_steps`` kwarg
@@ -683,6 +676,10 @@ def sgdr_schedule(
   Returns:
     schedule
       A function that maps step counts to values
+
+  References:
+    Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
+    <https://arxiv.org/abs/1608.03983>`_, 2017
   """
   boundaries = []
   schedules = []

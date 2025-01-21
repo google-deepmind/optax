@@ -24,7 +24,6 @@ from typing import Any
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
-
 from optax.second_order import _base
 
 

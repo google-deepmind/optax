@@ -18,7 +18,6 @@ from typing import Any, NamedTuple
 
 import jax
 import jax.numpy as jnp
-
 from optax._src import base
 
 
@@ -32,11 +31,12 @@ def keep_params_nonnegative() -> base.GradientTransformation:
   larger than or equal to zero.
   In a chain of transformations, this should be the last one.
 
-  WARNING: the transformation expects input params to be non-negative.
-  When params is negative the transformed update will move them to 0.
-
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
+
+  .. warning::
+    The transformation expects input params to be non-negative.
+    When params is negative the transformed update will move them to 0.
   """
 
   def init_fn(params):
@@ -48,7 +48,11 @@ def keep_params_nonnegative() -> base.GradientTransformation:
       raise ValueError(base.NO_PARAMS_MSG)
 
     updates = jax.tree.map(
-        lambda p, u: jnp.where((p + u) < 0., -p, u), params, updates)
+        lambda p, u: None if p is None else jnp.where((p + u) < 0.0, -p, u),
+        params,
+        updates,
+        is_leaf=lambda x: x is None,
+    )
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -61,6 +65,7 @@ class ZeroNansState(NamedTuple):
   Each leaf is a single boolean which contains True iff a NaN was detected in
   the corresponding parameter array at the last call to `update`.
   """
+
   found_nan: Any
 
 
@@ -74,20 +79,24 @@ def zero_nans() -> base.GradientTransformation:
   aware when NaNs have been zeroed out.
 
   Returns:
-    A `GradientTransformation`.
+    A :class:`optax.GradientTransformation`.
   """
 
   def init_fn(params):
     return ZeroNansState(
         found_nan=jax.tree.map(
-            lambda p: jnp.array(False, dtype=jnp.bool_), params))
+            lambda p: jnp.array(False, dtype=jnp.bool_), params
+        )
+    )
 
   def update_fn(updates, opt_state, params=None):
     del params, opt_state
     opt_state = ZeroNansState(
-        found_nan=jax.tree.map(lambda p: jnp.any(jnp.isnan(p)), updates))
+        found_nan=jax.tree.map(lambda p: jnp.any(jnp.isnan(p)), updates)
+    )
     updates = jax.tree.map(
-        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates)
+        lambda p: jnp.where(jnp.isnan(p), jnp.zeros_like(p), p), updates
+    )
     return updates, opt_state
 
   return base.GradientTransformation(init=init_fn, update=update_fn)

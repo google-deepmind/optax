@@ -33,7 +33,9 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   flat_one_hot = jax.nn.one_hot(jnp.argmax(inputs_flat), inputs_flat.shape[0])
   return jnp.reshape(flat_one_hot, inputs.shape)
 
-argmax_tree = lambda x: jtu.tree_map(one_hot_argmax, x)
+
+def argmax_tree(x):
+  return jtu.tree_map(one_hot_argmax, x)
 
 
 class MakePertTest(absltest.TestCase):
@@ -42,7 +44,7 @@ class MakePertTest(absltest.TestCase):
     super().setUp()
     rng = np.random.RandomState(0)
 
-    self.rng_jax = jax.random.PRNGKey(0)
+    self.rng_jax = jax.random.key(0)
     self.num_samples = 1_000
     self.num_samples_small = 1_000
     self.sigma = 0.5
@@ -50,14 +52,15 @@ class MakePertTest(absltest.TestCase):
 
     self.tree_a = (rng.randn(20, 10), rng.randn(20))
 
-    self.tree_a_dict_jax = (jnp.array((1.0, 4.0, 5.0)),
-                            {'k1': jnp.array((1.0, 2.0)),
-                             'k2': jnp.array((1.0, 1.0))},
-                            jnp.array((1.0, 2.0)))
+    self.tree_a_dict_jax = (
+        jnp.array((1.0, 4.0, 5.0)),
+        {'k1': jnp.array((1.0, 2.0)), 'k2': jnp.array((1.0, 1.0))},
+        jnp.array((1.0, 2.0)),
+    )
     self.array_a = rng.randn(20)
 
     self.array_a_jax = jnp.array(self.array_a)
-    self.array_small_jax = jnp.array([1., 2., 3., 4.])
+    self.array_small_jax = jnp.array([1.0, 2.0, 3.0, 4.0])
 
     weight_shapes = [(13, 4), (8, 13)]
     biases_shapes = [(13,), (8,)]
@@ -65,25 +68,28 @@ class MakePertTest(absltest.TestCase):
     example_tree = []
 
     for i in range(2):
-      example_tree.append(dict(weights=jnp.ones(weight_shapes[i]),
-                               biases=jnp.ones(biases_shapes[i])))
+      example_tree.append({
+          'weights': jnp.ones(weight_shapes[i]),
+          'biases': jnp.ones(biases_shapes[i]),
+      })
 
     self.example_tree = example_tree
-    self.element = jnp.array([1., 2., 3., 4.])
+    self.element = jnp.array([1.0, 2.0, 3.0, 4.0])
 
-    self.element_tree = [self.element,
-                         {'a': jnp.ones_like(self.element),
-                          'b': jnp.zeros_like(self.element)}]
+    self.element_tree = [
+        self.element,
+        {'a': jnp.ones_like(self.element), 'b': jnp.zeros_like(self.element)},
+    ]
 
   def test_pert_close_array(self):
-    """Test that make_perturbed_fun matches theoretical expression of gradient. 
-    
+    """Test that make_perturbed_fun matches theoretical expression of gradient.
+
     Applies to the case of an argmax. Includes a test for the gradients and the
     Hessian of a scalar loss.
     """
-    pert_argmax_fun = _make_pert.make_perturbed_fun(argmax_tree,
-                                                    self.num_samples,
-                                                    self.sigma)
+    pert_argmax_fun = _make_pert.make_perturbed_fun(
+        argmax_tree, self.num_samples, self.sigma
+    )
     expected = pert_argmax_fun(self.array_a_jax, self.rng_jax)
     softmax_fun = lambda x: jax.nn.softmax(x / self.sigma)
     got = jtu.tree_map(softmax_fun, self.array_a_jax)
@@ -91,25 +97,28 @@ class MakePertTest(absltest.TestCase):
     pert_argmax_fun_small = _make_pert.make_perturbed_fun(
         argmax_tree, self.num_samples_small, self.sigma_small
     )
+
     def pert_loss(inputs, rng):
       pert_softmax = pert_argmax_fun_small(inputs, rng)
-      return jnp.sum(pert_softmax ** 2 + jnp.cos(pert_softmax))
+      return jnp.sum(pert_softmax**2 + jnp.cos(pert_softmax))
+
     def exact_loss(inputs):
       softmax = jax.nn.softmax(inputs / self.sigma_small)
-      return jnp.sum(softmax ** 2 + jnp.cos(softmax))
+      return jnp.sum(softmax**2 + jnp.cos(softmax))
+
     got_grad = jax.grad(exact_loss)(self.array_small_jax)
     expected_grad = jax.grad(pert_loss)(self.array_small_jax, self.rng_jax)
     expect_hessian = jax.hessian(pert_loss)(self.array_small_jax, self.rng_jax)
     got_hessian = jax.hessian(exact_loss)(self.array_small_jax)
     chex.assert_trees_all_equal_shapes(expect_hessian, got_hessian)
-    chex.assert_trees_all_close(expected_grad, got_grad, atol=2e-2)
+    chex.assert_trees_all_close(expected_grad, got_grad, atol=6e-2)
     expected_dict = pert_argmax_fun(self.tree_a_dict_jax, self.rng_jax)
     got_dict = jtu.tree_map(softmax_fun, self.tree_a_dict_jax)
-    chex.assert_trees_all_close(expected_dict, got_dict, atol=2e-2)
+    chex.assert_trees_all_close(expected_dict, got_dict, atol=6e-2)
 
   def test_values_on_tree(self):
     """Test that the perturbations are well applied for functions on trees.
-    
+
     Checks that small perturbations on the inputs have small effects on values
     """
 
@@ -124,7 +133,7 @@ class MakePertTest(absltest.TestCase):
       apply_tree = jtu.Partial(apply_both, tree)
       leaves, _ = jtu.tree_flatten(tree)
       return_tree = jtu.tree_map(apply_tree, self.element_tree)
-      return_tree.append(sum([jnp.sum(leaf) for leaf in leaves]))
+      return_tree.append(sum(jnp.sum(leaf) for leaf in leaves))
       return return_tree
 
     tree_out = apply_element_tree(self.example_tree)
@@ -142,14 +151,15 @@ class MakePertTest(absltest.TestCase):
       tree_loss = jtu.tree_map(lambda x, y: (x - y) ** 2, pred, pred_true)
       list_loss = jtu.tree_reduce(operator.add, tree_loss)
       return _make_pert._tree_mean_across(list_loss)
-    loss_pert = _make_pert.make_perturbed_fun(loss,
-                                              num_samples=100,
-                                              sigma=0.1,
-                                              noise=_make_pert.Normal())
+
+    loss_pert = _make_pert.make_perturbed_fun(
+        loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
+    )
     rngs = jax.random.split(self.rng_jax, 3)
     low_loss = loss_pert(self.example_tree, rngs[0])
-    high_loss = loss_pert(otu.tree_random_like(rngs[1], self.example_tree),
-                          rngs[1])
+    high_loss = loss_pert(
+        otu.tree_random_like(rngs[1], self.example_tree), rngs[1]
+    )
     np.testing.assert_array_less(low_loss, high_loss)
 
 

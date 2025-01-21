@@ -44,12 +44,7 @@ def scale_by_cocob(
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
 
-  Algorithm for stochastic subgradient descent. Uses a gambling algorithm to
-  find the minimizer of a non-smooth objective function by accessing its
-  subgradients. All we need is a good gambling strategy. See Algorithm 2 of:
-
-  References:
-    [Orabona & Tommasi, 2017](https://arxiv.org/pdf/1705.07795.pdf)
+  See :func:`optax.contrib.cocob` for more details.
 
   Args:
     alpha: fraction to bet parameter of the COCOB optimizer
@@ -116,7 +111,7 @@ def scale_by_cocob(
 
 
 def cocob(
-    learning_rate: base.ScalarOrSchedule = 1.,
+    learning_rate: base.ScalarOrSchedule = 1.0,
     alpha: float = 100,
     eps: float = 1e-8,
     weight_decay: float = 0,
@@ -128,9 +123,6 @@ def cocob(
   find the minimizer of a non-smooth objective function by accessing its
   subgradients. All we need is a good gambling strategy. See Algorithm 2 of:
 
-  References:
-    [Orabona & Tommasi, 2017](https://arxiv.org/pdf/1705.07795.pdf)
-
   Args:
     learning_rate: optional learning rate to e.g. inject some scheduler
     alpha: fraction to bet parameter of the COCOB optimizer
@@ -140,6 +132,10 @@ def cocob(
 
   Returns:
     A `GradientTransformation` object.
+
+  References:
+    Orabana et al, `Training Deep Networks without Learning Rates Through Coin
+    Betting <https://arxiv.org/pdf/1705.07795.pdf>`_, 2017
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask),

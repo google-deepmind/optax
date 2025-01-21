@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `reduce_on_plateau.py`."""
+"""Tests for the Reduce on Plateau method in `reduce_on_plateau.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -164,7 +164,9 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     updates = self.updates
     for _ in range(self.patience + 1):
       updates, state = self.transform.update(
-          updates=self.updates, state=state, value=0.1,
+          updates=self.updates,
+          state=state,
+          value=0.1,
       )
 
     # Check that learning rate is not reduced

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX Schedules.
+"""Hyper-parameters Schedules.
 
 Schedules may be used to anneal the value of a hyper-parameter over time; for
 instance, they may be used to anneal the learning rate used to update an agent's

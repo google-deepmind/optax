@@ -5,11 +5,13 @@ Combining Optimizers
 
 .. autosummary::
     chain
+    named_chain
     multi_transform
 
 Chain
 ~~~~~
 .. autofunction:: chain
+.. autofunction:: named_chain
 
 Multi-transform
 ~~~~~~~~~~~~~~~

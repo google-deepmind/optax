@@ -23,36 +23,39 @@ import jax.numpy as jnp
 def hungarian_algorithm(cost_matrix):
   r"""The Hungarian algorithm for the linear assignment problem.
 
-  In this problem, we are given an $n \times m$ cost matrix.
-  The goal is to compute an assignment, i.e. a set of pairs of rows and columns,
-  in such a way that:
+  In `this problem <https://en.wikipedia.org/wiki/Linear_assignment_problem>`_,
+  we are given an :math:`n \times m` cost matrix. The goal is to compute an
+  assignment, i.e. a set of pairs of rows and columns, in such a way that:
+
   - At most one column is assigned to each row.
   - At most one row is assigned to each column.
-  - The total number of assignments is $\min(n, m)$.
+  - The total number of assignments is :math:`\min(n, m)`.
   - The assignment minimizes the sum of costs.
 
   Equivalently, given a weighted complete bipartite graph, the problem is to
   find a maximum-cardinality matching that minimizes the sum of the weights of
   the edges included in the matching.
 
-  Formally, the problem is as follows. Given $C \in \mathbb{R}^{n \times m}$,
-  solve the following [integer linear program](https://en.wikipedia.org/wiki/
-  Integer_linear_program):
+  Formally, the problem is as follows. Given :math:`C \in \mathbb{R}^{n \times m
+  }`, solve the following `integer linear program <https://en.wikipedia.org/wiki
+  /Integer_linear_program>`_:
 
-  \begin{align}
-      \text{minimize} \quad & \sum_{i \in [n]} \sum_{j \in [m]} C_{ij} X_{ij} \\
-      \text{subject to} \quad
-      & X_{ij} \in \{0, 1\} & \forall i \in [n], j \in [m] \\
-      & \sum_{i \in [n]} X_{ij} \leq 1 & \forall j \in [m] \\
-      & \sum_{j \in [m]} X_{ij} \leq 1 & \forall i \in [n] \\
-      & \sum_{i \in [n]} \sum_{j \in [m]} X_{ij} = \min(n, m)
-  \end{align}
+  .. math::
 
-  The [Hungarian algorithm](https://en.wikipedia.org/wiki/Hungarian_algorithm)
-  is a cubic-time algorithm for this problem.
+    \begin{align*}
+        \text{minimize} \quad & \sum_{i \in [n]} \sum_{j \in [m]} C_{ij} X_{ij}
+        \\ \text{subject to} \quad
+        & X_{ij} \in \{0, 1\} & \forall i \in [n], j \in [m] \\
+        & \sum_{i \in [n]} X_{ij} \leq 1 & \forall j \in [m] \\
+        & \sum_{j \in [m]} X_{ij} \leq 1 & \forall i \in [n] \\
+        & \sum_{i \in [n]} \sum_{j \in [m]} X_{ij} = \min(n, m)
+    \end{align*}
 
-  This implementation is based on the pseudocode presented in pages 1685-1686
-  of the IEEE paper cited below.
+  The `Hungarian algorithm <https://en.wikipedia.org/wiki/Hungarian_algorithm>`_
+  is a cubic-time algorithm that solves this problem.
+
+  This implementation of the Hungarian algorithm is based on the pseudocode
+  presented in pages 1685-1686 of the IEEE paper cited below.
 
   Args:
     cost_matrix: A matrix of costs.
@@ -61,13 +64,6 @@ def hungarian_algorithm(cost_matrix):
     A pair ``(i, j)`` where ``i`` is an array of row indices and ``j`` is an
     array of column indices.
     The cost of the assignment is ``cost_matrix[i, j].sum()``.
-
-  References:
-    David F. Crouse. [On implementing 2D rectangular assignment algorithms](
-     https://ieeexplore.ieee.org/document/7738348). IEEE Transactions on
-     Aerospace and Electronic Systems. 52(4):1679-1696, August 2016.
-    https://en.wikipedia.org/wiki/Linear_assignment_problem
-    https://en.wikipedia.org/wiki/Hungarian_algorithm
 
   Examples:
     >>> import optax
@@ -101,6 +97,10 @@ def hungarian_algorithm(cost_matrix):
     i: [0 1 2 3]
     >>> print("j:", j)
     j: [3 2 1 0]
+
+  References:
+    David F. Crouse, `On implementing 2D rectangular assignment algorithms
+    <https://ieeexplore.ieee.org/document/7738348>`_, 2016
   """
 
   if cost_matrix.shape[0] == 0 or cost_matrix.shape[1] == 0:

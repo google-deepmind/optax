@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for optax._src.linear_algebra."""
+"""Tests for linear_algebraic methods in `linear_algebra.py`."""
 
 from typing import Iterable
 
@@ -46,10 +46,10 @@ class LinearAlgebraTest(chex.TestCase):
 
   def test_global_norm(self):
     flat_updates = jnp.array([2.0, 4.0, 3.0, 5.0], dtype=jnp.float32)
-    nested_updates = dict(
-        a=jnp.array([2.0, 4.0], dtype=jnp.float32),
-        b=jnp.array([3.0, 5.0], dtype=jnp.float32),
-    )
+    nested_updates = {
+        'a': jnp.array([2.0, 4.0], dtype=jnp.float32),
+        'b': jnp.array([3.0, 5.0], dtype=jnp.float32),
+    }
     np.testing.assert_array_equal(
         jnp.sqrt(jnp.sum(flat_updates**2)),
         linear_algebra.global_norm(nested_updates),
@@ -57,7 +57,7 @@ class LinearAlgebraTest(chex.TestCase):
 
   def test_power_iteration_cond_fun(self, dim=6):
     """Test the condition function for power iteration."""
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     all_eigenval, all_eigenvec = jax.numpy.linalg.eigh(matrix)
     dominant_eigenval = all_eigenval[-1]
@@ -78,12 +78,10 @@ class LinearAlgebraTest(chex.TestCase):
 
   @chex.all_variants
   @parameterized.parameters(
-      dict(implicit=True),
-      dict(implicit=False),
+      {'implicit': True},
+      {'implicit': False},
   )
-  def test_power_iteration(
-      self, implicit, dim=6, tol=1e-3, num_iters=100
-  ):
+  def test_power_iteration(self, implicit, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration by comparing to numpy.linalg.eigh."""
 
     if implicit:
@@ -96,6 +94,7 @@ class LinearAlgebraTest(chex.TestCase):
             error_tolerance=tol,
             num_iters=num_iters,
         )
+
     else:
       power_iteration = linear_algebra.power_iteration
 
@@ -103,7 +102,7 @@ class LinearAlgebraTest(chex.TestCase):
     power_iteration = self.variant(power_iteration)
 
     # create a random PSD matrix
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     v0 = jnp.ones((dim,))
 
@@ -118,9 +117,7 @@ class LinearAlgebraTest(chex.TestCase):
     )
 
   @chex.all_variants
-  def test_power_iteration_pytree(
-      self, dim=6, tol=1e-3, num_iters=100
-  ):
+  def test_power_iteration_pytree(self, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration for matrix-vector products acting on pytrees."""
 
     def matrix_vector_product(x):
@@ -143,7 +140,7 @@ class LinearAlgebraTest(chex.TestCase):
     eigval_power, _ = power_iteration(v0=v0)
 
     # from the block-diagonal structure of matrix, largest eigenvalue is 2.
-    self.assertAlmostEqual(eigval_power, 2., delta=10 * tol)
+    self.assertAlmostEqual(eigval_power, 2.0, delta=10 * tol)
 
   @chex.all_variants
   def test_power_iteration_mlp_hessian(
@@ -151,7 +148,7 @@ class LinearAlgebraTest(chex.TestCase):
   ):
     """Test power_iteration on the Hessian of an MLP."""
     mlp = MLP(num_outputs=output_dim, hidden_sizes=[input_dim, 8, output_dim])
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     key_params, key_input, key_output = jax.random.split(key, 3)
     # initialize the mlp
     params = mlp.init(key_params, jnp.ones(input_dim))

@@ -18,7 +18,6 @@ from collections.abc import Callable, Hashable, Mapping
 from typing import NamedTuple, Union
 
 import jax
-
 from optax._src import base
 from optax._src import wrappers
 
@@ -34,6 +33,18 @@ def chain(
   of the individual transforms, while the ``update`` function applies the
   updates in the given order.
 
+  Args:
+    *args: an arbitrary number of ``transform``-s of
+      :class:`GradientTransformation` or
+      :class:`GradientTransformationExtraArgs`.
+
+  Returns:
+    A :class:`GradientTransformationExtraArgs`, created by chaining the input
+    transformations. Note that independent of the argument types, the resulting
+    transformation always supports extra args. Any extra arguments passed to the
+    returned transformation will be passed only to those transformations in the
+    chain that support extra args.
+
   Examples:
 
     A transform that scales by -0.1 the adam update:
@@ -47,15 +58,17 @@ def chain(
       >>> updates = {'a': -0.5}
       >>> updates, new_state = chained_transform.update(updates, state, params)
 
-  Args:
-    *args: a sequence of chainable (init_fn, update_fn) tuples.
+    An optimizer in the chain might require extra args:
 
-  Returns:
-    A :func:`GradientTransformationExtraArgs`, created by chaining the input
-    transformations. Note that independent of the argument types, the resulting
-    transformation always supports extra args. Any extra arguments passed to the
-    returned transformation will be passed only to those transformations in the
-    chain that support extra args.
+      >>> import optax
+      >>> opt1 = optax.scale(0.1)    # scale incoming gradients
+      >>> opt2 = optax.polyak_sgd()  # requires a `value` extra arg for `update`
+      >>> chained_transform = optax.chain(opt1, opt2)
+      >>> state = chained_transform.init(0.5)
+      >>> extra_args = {"value": 1.0}
+      >>> updates, new_state = chained_transform.update(
+      ...     0.7, state, 0.7, **extra_args  # extra args for all transforms
+      ... )
   """
 
   transforms = [base.with_extra_args_support(t) for t in args]
@@ -66,8 +79,10 @@ def chain(
 
   def update_fn(updates, state, params=None, **extra_args):
     if len(update_fns) != len(state):
-      raise ValueError('The number of updates and states has to be the same in '
-                       'chain! Make sure you have called init first!')
+      raise ValueError(
+          'The number of updates and states has to be the same in '
+          'chain! Make sure you have called init first!'
+      )
 
     new_state = []
     for s, fn in zip(state, update_fns):
@@ -84,60 +99,67 @@ def chain(
 
 
 def named_chain(
-    *transforms: tuple[str, base.GradientTransformation]
+    *args: tuple[str, base.GradientTransformation]
 ) -> base.GradientTransformationExtraArgs:
-  """Chains optax gradient transformations.
+  """Applies a list of named chainable update transformations.
 
   A variant of :func:`optax.chain` that allows to name each transformation.
 
-  Here the ``transforms`` are ``(name, transformation)`` pairs, constituted of a
+  Here the ``args`` are ``(name, transformation)`` pairs, constituted of a
   string ``name`` and an associated transformation ``transformation``. The
-  gradient transformation must be an instance of :func:`GradientTransformation`
-  or :func:`GradientTransformationExtraArgs`.
+  gradient transformation must be an instance of :class:`GradientTransformation`
+  or :class:`GradientTransformationExtraArgs`.
 
   Each ``name`` is used as key for the state of the corresponding transformation
   within the ``named_chain`` state. Thus the state of the transformation
   with a given ``name`` can be easily retrieved as ``opt_state[name]``.
 
-  Examples:
-
-    >>> # tx1 is a GradientTransformation with no extra_args. 
-    >>> # tx2 is a GradientTransformationExtraArgs that requires `loss`.
-    >>> # tx3 is a GradientTransformationExtraArgs that requires `temperature`.
-    >>> tx = named_chain(('one', tx1), ('two', tx2), ('three', tx3))
-    >>> extra_args={'loss': 0.3, 'temperature': 0.01}
-    >>> tx.init(params)
-    >>> tx.update(grads, state, params, **extra_args)
-
   Args:
-    *transforms: an arbitrary number of ``(name, tx)`` pairs, constituted of a
-      string ``name`` and an associated transformation ``tx``. The latter is a
-      :func:`GradientTransformation` or :func:`GradientTransformationExtraArgs`.
+    *args: an arbitrary number of ``(name, transform)`` pairs, constituted of a
+      string ``name`` and an associated transformation ``transform``. The latter
+      is a :class:`GradientTransformation` or
+      :class:`GradientTransformationExtraArgs`.
 
-  Returns: 
-    A single (init_fn, update_fn) tuple. 
+  Returns:
+    A single (init_fn, update_fn) tuple.
+
+  Examples:
+    >>> import optax
+    >>> opt1 = optax.scale(0.1)    # scale incoming gradients
+    >>> opt2 = optax.polyak_sgd()  # requires a `value` extra arg for `update`
+    >>> chained_transform = optax.named_chain(("scale", opt1), ("sgd", opt2))
+    >>> state = chained_transform.init(0.5)
+    >>> extra_args = {"value": 1.0}
+    >>> updates, new_state = chained_transform.update(
+    ...     0.7, state, 0.7, **extra_args  # extra args for all transforms
+    ... )
+    >>> tuple(new_state.keys()) == ("scale", "sgd")
+    True
   """
 
-  names = [name for name, _ in transforms]
+  names = [name for name, _ in args]
 
   if len(names) != len(set(names)):
     raise ValueError(
-        f'Named transformations must have unique names, but got {names}')
+        f'Named transformations must have unique names, but got {names}'
+    )
 
   transforms = [
-      (name, base.with_extra_args_support(t))
-      for name, t in transforms]
+      (name, base.with_extra_args_support(t)) for name, t in args
+  ]
 
   def init_fn(params):
     states = {}
-    for (name, tx) in transforms:
+    for name, tx in transforms:
       states[name] = tx.init(params)
     return states
+
   def update_fn(updates, state, params=None, **extra_args):
     new_state = {}
-    for (name, tx) in transforms:
+    for name, tx in transforms:
       updates, new_state[name] = tx.update(
-          updates, state[name], params, **extra_args)
+          updates, state[name], params, **extra_args
+      )
     return updates, new_state
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
@@ -158,6 +180,20 @@ def partition(
   Sometimes you may want to apply different transformations to different
   parameters. For example, you may want to apply Adam to the weights of a
   neural network, but SGD to the biases. This function allows you to do that.
+
+  Args:
+    transforms: A mapping from labels to transformations. Each transformation
+      will be only be applied to parameters with the same label.
+    param_labels: A PyTree that is the same shape or a prefix of the
+      parameters/updates (or a function that returns one given the parameters as
+      input). The leaves of this PyTree correspond to the keys of the transforms
+      (therefore the values at the leaves must be a subset of the keys).
+    mask_compatible_extra_args: Whether to also apply the same masking to
+      extra_arg fields with the same tree structure as params/updates.
+
+  Returns:
+    A :func:`optax.GradientTransformationExtraArgs` that implements an ``init``
+    and ``update`` function.
 
   Examples:
 
@@ -180,7 +216,7 @@ def partition(
       >>> gradients = jax.tree.map(jnp.ones_like, params)  # dummy gradients
 
       >>> label_fn = map_nested_fn(lambda k, _: k)
-      >>> tx = optax.multi_transform(
+      >>> tx = optax.partition(
       ...     {'w': optax.adam(1.0), 'b': optax.sgd(1.0)}, label_fn)
       >>> state = tx.init(params)
       >>> updates, new_state = tx.update(gradients, state, params)
@@ -195,31 +231,16 @@ def partition(
       >>> all_params = (generator_params, discriminator_params)
       >>> param_labels = ('generator', 'discriminator')
 
-      >>> tx = optax.multi_transform(
+      >>> tx = optax.partition(
       >>>     {'generator': optax.adam(0.1), 'discriminator': optax.adam(0.5)},
       >>>     param_labels)
 
     If you would like to not optimize some parameters, you may wrap
-    :func:`optax.multi_transform` with :func:`optax.masked`.
-
-  Args:
-    transforms: A mapping from labels to transformations. Each transformation
-      will be only be applied to parameters with the same label.
-    param_labels: A PyTree that is the same shape or a prefix of the
-      parameters/updates (or a function that returns one given the parameters as
-      input). The leaves of this PyTree correspond to the keys of the transforms
-      (therefore the values at the leaves must be a subset of the keys).
-    mask_compatible_extra_args: Whether to also apply the same masking to
-      extra_arg fields with the same tree structure as params/updates.
-
-  Returns:
-    A :func:`optax.GradientTransformationExtraArgs` that implements an ``init``
-    and ``update`` function.
+    :func:`optax.partition` with :func:`optax.masked`.
   """
 
   transforms = {
-      k: base.with_extra_args_support(v)
-      for k, v in transforms.items()
+      k: base.with_extra_args_support(v) for k, v in transforms.items()
   }
 
   def make_mask(labels, group):
@@ -230,14 +251,18 @@ def partition(
 
     label_set = set(jax.tree.leaves(labels))
     if not label_set.issubset(transforms.keys()):
-      raise ValueError('Some parameters have no corresponding transformation.\n'
-                       f'Parameter labels: {list(sorted(label_set))} \n'
-                       f'Transforms keys: {list(sorted(transforms.keys()))} \n')
+      raise ValueError(
+          'Some parameters have no corresponding transformation.\n'
+          f'Parameter labels: {list(sorted(label_set))} \n'
+          f'Transforms keys: {list(sorted(transforms.keys()))} \n'
+      )
 
     inner_states = {
         group: wrappers.masked(
-            tx, make_mask(labels, group),
-            mask_compatible_extra_args=mask_compatible_extra_args).init(params)
+            tx,
+            make_mask(labels, group),
+            mask_compatible_extra_args=mask_compatible_extra_args,
+        ).init(params)
         for group, tx in transforms.items()
     }
     return PartitionState(inner_states)
@@ -247,10 +272,13 @@ def partition(
     new_inner_state = {}
     for group, tx in transforms.items():
       masked_tx = wrappers.masked(
-          tx, make_mask(labels, group),
-          mask_compatible_extra_args=mask_compatible_extra_args)
+          tx,
+          make_mask(labels, group),
+          mask_compatible_extra_args=mask_compatible_extra_args,
+      )
       updates, new_inner_state[group] = masked_tx.update(
-          updates, state.inner_states[group], params, **extra_args)
+          updates, state.inner_states[group], params, **extra_args
+      )
     return updates, PartitionState(new_inner_state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

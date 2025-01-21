@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax.losses._fenchel_young."""
+"""Tests for fenchel young loss in `_fenchel_young.py`."""
 
 from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
-from jax.scipy.special import logsumexp
+from jax.scipy.special import logsumexp  # pylint: disable=g-importing-member
 
 from optax.losses import _classification
 from optax.losses import _fenchel_young
@@ -37,7 +37,7 @@ class FenchelYoungTest(chex.TestCase):
   def test_fenchel_young_reg(self):
     # Checks the behavior of the Fenchel-Young loss.
     fy_loss = self.variant(_fenchel_young.make_fenchel_young_loss(logsumexp))
-    rng = jax.random.PRNGKey(0)
+    rng = jax.random.key(0)
     rngs = jax.random.split(rng, 2)
     theta_true = jax.random.uniform(rngs[0], (8, 5))
     y_true = jax.vmap(jax.nn.softmax)(theta_true)

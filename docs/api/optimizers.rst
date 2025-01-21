@@ -6,6 +6,7 @@ Optimizers
 .. autosummary::
     adabelief
     adadelta
+    adan
     adafactor
     adagrad
     adam
@@ -23,6 +24,7 @@ Optimizers
     noisy_sgd
     novograd
     optimistic_gradient_descent
+    optimistic_adam
     polyak_sgd
     radam
     rmsprop
@@ -39,6 +41,10 @@ AdaBelief
 AdaDelta
 ~~~~~~~~~
 .. autofunction:: adadelta
+
+Adan
+~~~~
+.. autofunction:: adan
 
 AdaGrad
 ~~~~~~~
@@ -107,6 +113,10 @@ Novograd
 Optimistic GD
 ~~~~~~~~~~~~~
 .. autofunction:: optimistic_gradient_descent
+
+Optimistic Adam
+~~~~~~~~~~~~~~~
+.. autofunction:: optimistic_adam
 
 Polyak step-size SGD
 ~~~~~~~~~~~~~~~~~~~~

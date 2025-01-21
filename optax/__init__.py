@@ -17,6 +17,8 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=g-importing-member
 
+import typing as _typing
+
 from optax import assignment
 from optax import contrib
 from optax import losses
@@ -35,6 +37,7 @@ from optax._src.alias import adam
 from optax._src.alias import adamax
 from optax._src.alias import adamaxw
 from optax._src.alias import adamw
+from optax._src.alias import adan
 from optax._src.alias import amsgrad
 from optax._src.alias import fromage
 from optax._src.alias import lamb
@@ -46,6 +49,7 @@ from optax._src.alias import nadam
 from optax._src.alias import nadamw
 from optax._src.alias import noisy_sgd
 from optax._src.alias import novograd
+from optax._src.alias import optimistic_adam
 from optax._src.alias import optimistic_gradient_descent
 from optax._src.alias import polyak_sgd
 from optax._src.alias import radam
@@ -71,23 +75,6 @@ from optax._src.base import TransformUpdateExtraArgsFn
 from optax._src.base import TransformUpdateFn
 from optax._src.base import Updates
 from optax._src.base import with_extra_args_support
-from optax._src.clipping import adaptive_grad_clip
-from optax._src.clipping import AdaptiveGradClipState
-from optax._src.clipping import clip
-from optax._src.clipping import clip_by_block_rms
-from optax._src.clipping import clip_by_global_norm
-from optax._src.clipping import ClipByGlobalNormState
-from optax._src.clipping import ClipState
-from optax._src.clipping import per_example_global_norm_clip
-from optax._src.clipping import per_example_layer_norm_clip
-from optax._src.combine import chain
-from optax._src.combine import multi_transform
-from optax._src.combine import MultiTransformState
-from optax._src.combine import named_chain
-from optax._src.constrain import keep_params_nonnegative
-from optax._src.constrain import NonNegativeParamsState
-from optax._src.constrain import zero_nans
-from optax._src.constrain import ZeroNansState
 from optax._src.factorized import FactoredState
 from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
@@ -105,20 +92,15 @@ from optax._src.numerics import safe_increment
 from optax._src.numerics import safe_int32_increment
 from optax._src.numerics import safe_norm
 from optax._src.numerics import safe_root_mean_squares
-from optax._src.transform import add_decayed_weights
-from optax._src.transform import add_noise
-from optax._src.transform import AddDecayedWeightsState
-from optax._src.transform import AddNoiseState
 from optax._src.transform import apply_every
 from optax._src.transform import ApplyEvery
 from optax._src.transform import centralize
-from optax._src.transform import ema
-from optax._src.transform import EmaState
 from optax._src.transform import normalize_by_update_norm
 from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
+from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
 from optax._src.transform import scale_by_distance_over_gradients
@@ -142,6 +124,7 @@ from optax._src.transform import scale_by_trust_ratio
 from optax._src.transform import scale_by_yogi
 from optax._src.transform import ScaleByAdaDeltaState
 from optax._src.transform import ScaleByAdamState
+from optax._src.transform import ScaleByAdanState
 from optax._src.transform import ScaleByAmsgradState
 from optax._src.transform import ScaleByBeliefState
 from optax._src.transform import ScaleByLBFGSState
@@ -153,34 +136,63 @@ from optax._src.transform import ScaleByRssState
 from optax._src.transform import ScaleByRStdDevState
 from optax._src.transform import ScaleByScheduleState
 from optax._src.transform import ScaleBySM3State
-from optax._src.transform import ScaleByTrustRatioState
-from optax._src.transform import ScaleState
-from optax._src.transform import trace
-from optax._src.transform import TraceState
 from optax._src.update import apply_updates
 from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
 from optax._src.utils import value_and_grad_from_state
-from optax._src.wrappers import apply_if_finite
-from optax._src.wrappers import ApplyIfFiniteState
-from optax._src.wrappers import conditionally_mask
-from optax._src.wrappers import conditionally_transform
-from optax._src.wrappers import ConditionallyMaskState
-from optax._src.wrappers import ConditionallyTransformState
-from optax._src.wrappers import flatten
-from optax._src.wrappers import masked
-from optax._src.wrappers import MaskedNode
-from optax._src.wrappers import MaskedState
-from optax._src.wrappers import maybe_update
-from optax._src.wrappers import MaybeUpdateState
-from optax._src.wrappers import MultiSteps
-from optax._src.wrappers import MultiStepsState
-from optax._src.wrappers import ShouldSkipUpdateFunction
-from optax._src.wrappers import skip_large_updates
-from optax._src.wrappers import skip_not_finite
 
+# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
+# Deprecated modules
+from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
+from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import dpsgd as _deprecated_dpsgd
+
+
+# TODO(mtthss): remove aliases after updates.
+adaptive_grad_clip = transforms.adaptive_grad_clip
+AdaptiveGradClipState = EmptyState
+clip = transforms.clip
+clip_by_block_rms = transforms.clip_by_block_rms
+clip_by_global_norm = transforms.clip_by_global_norm
+ClipByGlobalNormState = EmptyState
+ClipState = EmptyState
+per_example_global_norm_clip = transforms.per_example_global_norm_clip
+per_example_layer_norm_clip = transforms.per_example_layer_norm_clip
+keep_params_nonnegative = transforms.keep_params_nonnegative
+NonNegativeParamsState = transforms.NonNegativeParamsState
+zero_nans = transforms.zero_nans
+ZeroNansState = transforms.ZeroNansState
+chain = transforms.chain
+multi_transform = transforms.partition
+MultiTransformState = transforms.PartitionState
+named_chain = transforms.named_chain
+trace = transforms.trace
+TraceState = transforms.TraceState
+ema = transforms.ema
+EmaState = transforms.EmaState
+add_noise = transforms.add_noise
+AddNoiseState = transforms.AddNoiseState
+add_decayed_weights = transforms.add_decayed_weights
+AddDecayedWeightsState = EmptyState
+ScaleByTrustRatioState = EmptyState
+ScaleState = EmptyState
+apply_if_finite = transforms.apply_if_finite
+ApplyIfFiniteState = transforms.ApplyIfFiniteState
+conditionally_mask = transforms.conditionally_mask
+conditionally_transform = transforms.conditionally_transform
+ConditionallyMaskState = transforms.ConditionallyMaskState
+ConditionallyTransformState = transforms.ConditionallyTransformState
+flatten = transforms.flatten
+masked = transforms.masked
+MaskedNode = transforms.MaskedNode
+MaskedState = transforms.MaskedState
+MultiSteps = transforms.MultiSteps
+MultiStepsState = transforms.MultiStepsState
+ShouldSkipUpdateFunction = transforms.ShouldSkipUpdateFunction
+skip_large_updates = transforms.skip_large_updates
+skip_not_finite = transforms.skip_not_finite
 
 # TODO(mtthss): remove tree_utils aliases after updates.
 tree_map_params = tree_utils.tree_map_params
@@ -189,7 +201,7 @@ update_infinity_moment = tree_utils.tree_update_infinity_moment
 update_moment = tree_utils.tree_update_moment
 update_moment_per_elem_norm = tree_utils.tree_update_moment_per_elem_norm
 
-# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+# TODO(mtthss): remove schedules aliases from flat namespaces after user updates
 constant_schedule = schedules.constant_schedule
 cosine_decay_schedule = schedules.cosine_decay_schedule
 cosine_onecycle_schedule = schedules.cosine_onecycle_schedule
@@ -203,6 +215,7 @@ piecewise_constant_schedule = schedules.piecewise_constant_schedule
 piecewise_interpolate_schedule = schedules.piecewise_interpolate_schedule
 polynomial_schedule = schedules.polynomial_schedule
 sgdr_schedule = schedules.sgdr_schedule
+warmup_constant_schedule = schedules.warmup_constant_schedule
 warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
 warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule
 inject_stateful_hyperparams = schedules.inject_stateful_hyperparams
@@ -231,13 +244,6 @@ softmax_cross_entropy_with_integer_labels = (
 squared_error = losses.squared_error
 sigmoid_focal_loss = losses.sigmoid_focal_loss
 
-# pylint: disable=g-import-not-at-top
-# TODO(mtthss): remove contrib aliases from flat namespace once users updated.
-# Deprecated modules
-from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
-from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
-from optax.contrib import dpsgd as _deprecated_dpsgd
-
 _deprecations = {
     # Added Apr 2024
     "differentially_private_aggregate": (
@@ -264,9 +270,8 @@ _deprecations = {
         _deprecated_dpsgd,
     ),
 }
+# pylint: disable=g-import-not-at-top
 # pylint: disable=g-bad-import-order
-import typing as _typing
-
 if _typing.TYPE_CHECKING:
   # pylint: disable=reimported
   from optax.contrib import differentially_private_aggregate
@@ -285,7 +290,7 @@ del _typing
 # pylint: enable=g-importing-member
 
 
-__version__ = "0.2.4.dev"
+__version__ = "0.2.5.dev"
 
 __all__ = (
     "adabelief",
@@ -296,6 +301,7 @@ __all__ = (
     "adamax",
     "adamaxw",
     "adamw",
+    "adan",
     "adaptive_grad_clip",
     "AdaptiveGradClipState",
     "add_decayed_weights",
@@ -365,8 +371,6 @@ __all__ = (
     "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
-    "maybe_update",
-    "MaybeUpdateState",
     "multi_normal",
     "multi_transform",
     "MultiSteps",
@@ -399,6 +403,7 @@ __all__ = (
     "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
+    "scale_by_adan",
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
     "scale_by_belief",
@@ -424,6 +429,7 @@ __all__ = (
     "scale",
     "ScaleByAdaDeltaState",
     "ScaleByAdamState",
+    "ScaleByAdanState",
     "ScaleByAmsgradState",
     "ScaleByBacktrackingLinesearchState",
     "ScaleByBeliefState",

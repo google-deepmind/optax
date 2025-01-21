@@ -28,11 +28,11 @@ from optax import tree_utils as otu
 # We consider samplers with varying input dtypes, we do not test all possible
 # samplers from `jax.random`.
 _SAMPLER_DTYPES = (
-    dict(sampler=jrd.normal, dtype=None),
-    dict(sampler=jrd.normal, dtype='bfloat16'),
-    dict(sampler=jrd.normal, dtype='float32'),
-    dict(sampler=jrd.rademacher, dtype='int32'),
-    dict(sampler=jrd.bits, dtype='uint32'),
+    {'sampler': jrd.normal, 'dtype': None},
+    {'sampler': jrd.normal, 'dtype': 'bfloat16'},
+    {'sampler': jrd.normal, 'dtype': 'float32'},
+    {'sampler': jrd.rademacher, 'dtype': 'int32'},
+    {'sampler': jrd.bits, 'dtype': 'uint32'},
 )
 
 
@@ -45,12 +45,13 @@ def get_variable(type_var: str):
   if type_var == 'pytree':
     pytree = {'k1': 1.0, 'k2': (2.0, 3.0), 'k3': jnp.asarray([4.0, 5.0])}
     return jax.tree.map(jnp.asarray, pytree)
+  raise ValueError(f'Invalid type_var {type_var}')
 
 
 class RandomTest(chex.TestCase):
 
   def test_tree_split_key_like(self):
-    rng_key = jrd.PRNGKey(0)
+    rng_key = jrd.key(0)
     tree = {'a': jnp.zeros(2), 'b': {'c': [jnp.ones(3), jnp.zeros([4, 5])]}}
     keys_tree = otu.tree_split_key_like(rng_key, tree)
 
@@ -60,7 +61,8 @@ class RandomTest(chex.TestCase):
     with self.subTest('Test random key split'):
       fst = jnp.stack(jax.tree.flatten(keys_tree)[0])
       snd = jrd.split(rng_key, jax.tree.structure(tree).num_leaves)
-      np.testing.assert_array_equal(fst, snd)
+      np.testing.assert_array_equal(otu.tree_unwrap_random_key_data(fst),
+                                    otu.tree_unwrap_random_key_data(snd))
 
   @parameterized.product(
       _SAMPLER_DTYPES,
@@ -77,7 +79,7 @@ class RandomTest(chex.TestCase):
     """Test that tree_random_like matches its flat counterpart."""
     if dtype is not None:
       dtype = jnp.dtype(dtype)
-    rng_key = jrd.PRNGKey(0)
+    rng_key = jrd.key(0)
     target_tree = get_variable(type_var)
 
     rand_tree = otu.tree_random_like(

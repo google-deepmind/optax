@@ -17,7 +17,6 @@
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import base
 
 
@@ -34,28 +33,28 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
   Args:
     params: a tree of parameters.
     updates: a tree of updates, the tree structure and the shape of the leaf
-    nodes must match that of `params`.
+      nodes must match that of `params`.
 
   Returns:
     Updated parameters, with same structure, shape and type as `params`.
   """
   return jax.tree.map(
-      lambda p, u: jnp.asarray(p + u).astype(jnp.asarray(p).dtype),
-      params, updates)
+      lambda p, u: (
+          None if p is None else jnp.asarray(p + u).astype(jnp.asarray(p).dtype)
+      ),
+      params,
+      updates,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def incremental_update(
-    new_tensors: base.Params,
-    old_tensors: base.Params,
-    step_size: chex.Numeric
+    new_tensors: base.Params, old_tensors: base.Params, step_size: chex.Numeric
 ) -> base.Params:
   """Incrementally update parameters via polyak averaging.
 
   Polyak averaging tracks an (exponential moving) average of the past
   parameters of a model, for use at test/evaluation time.
-
-  References:
-    [Polyak et al, 1991](https://epubs.siam.org/doi/10.1137/0330046)
 
   Args:
     new_tensors: the latest value of the tensors.
@@ -64,27 +63,31 @@ def incremental_update(
 
   Returns:
     an updated moving average `step_size*new+(1-step_size)*old` of the params.
+
+  References:
+    [Polyak et al, 1991](https://epubs.siam.org/doi/10.1137/0330046)
   """
   return jax.tree.map(
-      lambda new, old: step_size * new + (1.0 - step_size) * old,
-      new_tensors, old_tensors)
+      lambda new, old: (
+          None if new is None else step_size * new + (1.0 - step_size) * old
+      ),
+      new_tensors,
+      old_tensors,
+      is_leaf=lambda x: x is None,
+  )
 
 
 def periodic_update(
     new_tensors: base.Params,
     old_tensors: base.Params,
     steps: chex.Array,
-    update_period: int
+    update_period: int,
 ) -> base.Params:
   """Periodically update all parameters with new values.
 
   A slow copy of a model's parameters, updated every K actual updates, can be
   used to implement forms of self-supervision (in supervised learning), or to
   stabilize temporal difference learning updates (in reinforcement learning).
-
-  References:
-    [Grill et al., 2020](https://arxiv.org/abs/2006.07733)
-    [Mnih et al., 2015](https://arxiv.org/abs/1312.5602)
 
   Args:
     new_tensors: the latest value of the tensors.
@@ -94,10 +97,14 @@ def periodic_update(
 
   Returns:
     a slow copy of the model's parameters, updated every `update_period` steps.
+
+  References:
+    [Grill et al., 2020](https://arxiv.org/abs/2006.07733)
+    [Mnih et al., 2015](https://arxiv.org/abs/1312.5602)
   """
   return jax.lax.cond(
       jnp.mod(steps, update_period) == 0,
       lambda _: new_tensors,
       lambda _: old_tensors,
-      None)
-
+      None,
+  )

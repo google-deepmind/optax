@@ -18,11 +18,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import combine
 from optax._src import transform
@@ -37,14 +35,15 @@ class TransformTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.init_params = (jnp.array([1., 2.]), jnp.array([3., 4.]))
-    self.per_step_updates = (jnp.array([500., 5.]), jnp.array([300., 3.]))
+    self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
+    self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
   @chex.all_variants
   @parameterized.named_parameters([
       ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
       ('adamax', transform.scale_by_adamax),
+      ('adan', transform.scale_by_adan),
       ('lion', transform.scale_by_lion),
       ('polyak', transform.scale_by_polyak),
       ('rmsprop', transform.scale_by_rms),
@@ -79,7 +78,7 @@ class TransformTest(parameterized.TestCase):
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
-    zero_update = (jnp.array([0., 0.]), jnp.array([0., 0.]))
+    zero_update = (jnp.array([0.0, 0.0]), jnp.array([0.0, 0.0]))
 
     # optax sgd
     optax_sgd_params = self.init_params
@@ -91,7 +90,8 @@ class TransformTest(parameterized.TestCase):
     sgd_apply_every = combine.chain(
         transform.apply_every(k=k),
         transform.trace(decay=0, nesterov=False),
-        transform.scale(-LR))
+        transform.scale(-LR),
+    )
     state_sgd_apply_every = sgd_apply_every.init(optax_sgd_apply_every_params)
     transform_fn = self.variant(sgd_apply_every.update)
 
@@ -102,30 +102,35 @@ class TransformTest(parameterized.TestCase):
 
       # Apply a step of sgd_apply_every
       updates_sgd_apply_every, state_sgd_apply_every = transform_fn(
-          self.per_step_updates, state_sgd_apply_every)
+          self.per_step_updates, state_sgd_apply_every
+      )
       optax_sgd_apply_every_params = update.apply_updates(
-          optax_sgd_apply_every_params, updates_sgd_apply_every)
+          optax_sgd_apply_every_params, updates_sgd_apply_every
+      )
 
       # Every k steps, check equivalence.
-      if i % k == k-1:
+      if i % k == k - 1:
         chex.assert_trees_all_close(
-            optax_sgd_apply_every_params, optax_sgd_params,
-            atol=1e-6, rtol=1e-5)
+            optax_sgd_apply_every_params, optax_sgd_params, atol=1e-6, rtol=1e-5
+        )
       # Otherwise, check update is zero.
       else:
         chex.assert_trees_all_close(
-            updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0)
+            updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0
+        )
 
   def test_scale(self):
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
-      factor = 0.1 ** i
+      factor = 0.1**i
       rescaler = transform.scale(factor)
       # Apply rescaling.
       scaled_updates, _ = rescaler.update(updates, {})
+
       # Manually scale updates.
       def rescale(t):
         return t * factor  # pylint:disable=cell-var-from-loop
+
       manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
       chex.assert_trees_all_close(scaled_updates, manual_updates)
@@ -133,9 +138,11 @@ class TransformTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
       ('2d', [[1.0, 2.0], [3.0, 4.0]], [[-0.5, 0.5], [-0.5, 0.5]]),
-      ('3d', [[[1., 2.], [3., 4.]],
-              [[5., 6.], [7., 8.]]], [[[-1.5, -0.5], [0.5, 1.5]],
-                                      [[-1.5, -0.5], [0.5, 1.5]]]),
+      (
+          '3d',
+          [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+          [[[-1.5, -0.5], [0.5, 1.5]], [[-1.5, -0.5], [0.5, 1.5]]],
+      ),
   ])
   def test_centralize(self, inputs, outputs):
     inputs = jnp.asarray(inputs)
@@ -183,9 +190,7 @@ class TransformTest(parameterized.TestCase):
       polyak.update(self.per_step_updates, polyak_state, init_params)
 
     value, grad = jax.value_and_grad(objective)(init_params)
-    updates, _ = polyak.update(
-        grad, polyak_state, init_params, value=value
-    )
+    updates, _ = polyak.update(grad, polyak_state, init_params, value=value)
     # check that objective at (init_params - updates) is smaller than tol
     print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
@@ -214,6 +219,7 @@ class TransformTest(parameterized.TestCase):
       adam_params = update.apply_updates(adam_params, adam_updates)
 
     chex.assert_trees_all_close(adam_params, rms_params)
+
 
 if __name__ == '__main__':
   absltest.main()

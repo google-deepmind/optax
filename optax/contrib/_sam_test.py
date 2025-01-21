@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `sam.py`."""
+"""Tests for the SAM optimizer in `sam.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -27,11 +27,11 @@ from optax.contrib import _sam
 from optax.tree_utils import _state_utils
 
 _BASE_OPTIMIZERS_UNDER_TEST = [
-    dict(base_opt_name='sgd', base_opt_kwargs=dict(learning_rate=1e-3)),
+    {'base_opt_name': 'sgd', 'base_opt_kwargs': {'learning_rate': 1e-3}},
 ]
 _ADVERSARIAL_OPTIMIZERS_UNDER_TEST = [
-    dict(adv_opt_name='sgd', adv_opt_kwargs=dict(learning_rate=1e-5)),
-    dict(adv_opt_name='adam', adv_opt_kwargs=dict(learning_rate=1e-4)),
+    {'adv_opt_name': 'sgd', 'adv_opt_kwargs': {'learning_rate': 1e-5}},
+    {'adv_opt_name': 'adam', 'adv_opt_kwargs': {'learning_rate': 1e-4}},
 ]
 
 
@@ -79,9 +79,10 @@ class SAMTest(chex.TestCase):
     initial_params, final_params, get_updates = target(dtype)
 
     if opaque_mode:
-      update_kwargs = dict(grad_fn=lambda p, _: get_updates(p))
+      update_kwargs = {'grad_fn': lambda p, _: get_updates(p)}
     else:
       update_kwargs = {}
+
     @jax.jit
     def step(params, state):
       updates = get_updates(params)

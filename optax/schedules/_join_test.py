@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `join.py`."""
+"""Tests for methods in `join.py`."""
 
 from absl.testing import absltest
-
 import numpy as np
-
 from optax.schedules import _join
 from optax.schedules import _schedule
 
@@ -27,17 +25,19 @@ class JoinTest(absltest.TestCase):
   def test_join_schedules(self):
     my_schedule = _join.join_schedules(
         schedules=[
-            _schedule.constant_schedule(1.),
-            _schedule.constant_schedule(2.),
-            _schedule.constant_schedule(1.)],
-        boundaries=[3, 6])
-    np.testing.assert_allclose(1., my_schedule(0), atol=0.0)
-    np.testing.assert_allclose(1., my_schedule(1), atol=0.0)
-    np.testing.assert_allclose(1., my_schedule(2), atol=0.0)
-    np.testing.assert_allclose(2., my_schedule(3), atol=0.0)
-    np.testing.assert_allclose(2., my_schedule(4), atol=0.0)
-    np.testing.assert_allclose(2., my_schedule(5), atol=0.0)
-    np.testing.assert_allclose(1., my_schedule(6), atol=0.0)
+            _schedule.constant_schedule(1.0),
+            _schedule.constant_schedule(2.0),
+            _schedule.constant_schedule(1.0),
+        ],
+        boundaries=[3, 6],
+    )
+    np.testing.assert_allclose(1.0, my_schedule(0), atol=0.0)
+    np.testing.assert_allclose(1.0, my_schedule(1), atol=0.0)
+    np.testing.assert_allclose(1.0, my_schedule(2), atol=0.0)
+    np.testing.assert_allclose(2.0, my_schedule(3), atol=0.0)
+    np.testing.assert_allclose(2.0, my_schedule(4), atol=0.0)
+    np.testing.assert_allclose(2.0, my_schedule(5), atol=0.0)
+    np.testing.assert_allclose(1.0, my_schedule(6), atol=0.0)
 
 
 if __name__ == "__main__":

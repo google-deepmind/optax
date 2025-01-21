@@ -42,12 +42,13 @@ class LookaheadParams(NamedTuple):
   parameters should be used for testing and inference as they generalize better.
   See the reference for a detailed discussion.
 
-  References:
-    [Zhang et al, 2019](https://arxiv.org/pdf/1907.08610v1.pdf)
-
   Attributes:
     fast: Fast parameters.
     slow: Slow parameters.
+
+  References:
+    Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
+    <https://arxiv.org/abs/1907.08610>`_, 2019
   """
 
   fast: base.Params
@@ -75,9 +76,6 @@ def lookahead(
   are applied, otherwise fast and slow parameters are not synchronized
   correctly.
 
-  References:
-    [Zhang et al, 2019](https://arxiv.org/pdf/1907.08610v1.pdf)
-
   Args:
     fast_optimizer: The optimizer to use in the inner loop of lookahead.
     sync_period: Number of fast optimizer steps to take before synchronizing
@@ -87,9 +85,13 @@ def lookahead(
       after each synchronization.
 
   Returns:
-    A `GradientTransformation` with init and update functions. The updates
-    passed to the update function should be calculated using the fast lookahead
-    parameters only.
+    A :class:`optax.GradientTransformation` with init and update functions. The
+    updates passed to the update function should be calculated using the fast
+    lookahead parameters only.
+
+  References:
+    Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
+    <https://arxiv.org/abs/1907.08610>`_, 2019
   """
   if sync_period < 1:
     raise ValueError('Synchronization period must be >= 1.')
@@ -143,9 +145,6 @@ def _lookahead_update(
 ) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 
-  References:
-    [Zhang et al, 2019](https://arxiv.org/pdf/1907.08610v1.pdf)
-
   Args:
     updates: Updates returned by the fast optimizer.
     sync_next: Wether fast and slow parameters should be synchronized after the
@@ -155,6 +154,10 @@ def _lookahead_update(
 
   Returns:
     The updates for the lookahead parameters.
+
+  References:
+    Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
+    <https://arxiv.org/abs/1907.08610>`_, 2019
   """
   # In the paper, lookahead is presented as two nested loops. To write lookahead
   # as optax wrapper, these loops have to be broken into successive updates.

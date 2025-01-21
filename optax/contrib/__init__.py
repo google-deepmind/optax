@@ -38,6 +38,9 @@ from optax.contrib._momo import momo
 from optax.contrib._momo import momo_adam
 from optax.contrib._momo import MomoAdamState
 from optax.contrib._momo import MomoState
+from optax.contrib._muon import muon
+from optax.contrib._muon import MuonState
+from optax.contrib._muon import scale_by_muon
 from optax.contrib._privacy import differentially_private_aggregate
 from optax.contrib._privacy import DifferentiallyPrivateAggregateState
 from optax.contrib._privacy import dpsgd
@@ -54,3 +57,7 @@ from optax.contrib._schedule_free import schedule_free_adamw
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import schedule_free_sgd
 from optax.contrib._schedule_free import ScheduleFreeState
+from optax.contrib._sophia import hutchinson_estimator_diag_hessian
+from optax.contrib._sophia import HutchinsonState
+from optax.contrib._sophia import sophia
+from optax.contrib._sophia import SophiaState

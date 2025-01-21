@@ -26,6 +26,8 @@ Experimental features and algorithms that don't meet the
     MomoState
     momo_adam
     MomoAdamState
+    muon
+    MuonState
     prodigy
     ProdigyState
     sam
@@ -35,6 +37,8 @@ Experimental features and algorithms that don't meet the
     schedule_free_eval_params
     schedule_free_sgd
     ScheduleFreeState
+    sophia
+    SophiaState
     split_real_and_imaginary
     SplitRealAndImaginaryState
 
@@ -89,6 +93,12 @@ Momo
 .. autofunction:: momo_adam
 .. autoclass:: MomoAdamState
 
+Muon
+~~~~
+.. autofunction:: muon
+.. autofunction:: scale_by_muon
+.. autoclass:: MuonState
+
 Prodigy
 ~~~~~~~
 .. autofunction:: prodigy
@@ -106,3 +116,10 @@ Sharpness aware minimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: sam
 .. autoclass:: SAMState
+
+Sophia
+~~~~~~
+.. autofunction:: hutchinson_estimator_diag_hessian
+.. autoclass:: HutchinsonState
+.. autofunction:: sophia
+.. autoclass:: SophiaState

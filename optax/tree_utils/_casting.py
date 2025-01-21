@@ -27,6 +27,13 @@ def tree_cast(
 ) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None.
 
+  Args:
+    tree: the tree to cast.
+    dtype: the dtype to cast to, or None to skip.
+
+  Returns:
+    the tree, with leaves casted to dtype.
+
   Examples:
     >>> import jax.numpy as jnp
     >>> import optax
@@ -34,13 +41,6 @@ def tree_cast(
     ...         'c': jnp.array(2.0, dtype=jnp.float32)}
     >>> optax.tree_utils.tree_cast(tree, dtype=jnp.bfloat16)
     {'a': {'b': Array(1, dtype=bfloat16)}, 'c': Array(2, dtype=bfloat16)}
-
-  Args:
-    tree: the tree to cast.
-    dtype: the dtype to cast to, or None to skip.
-
-  Returns:
-    the tree, with leaves casted to dtype.
   """
   if dtype is not None:
     return jax.tree.map(lambda t: t.astype(dtype), tree)
@@ -54,6 +54,33 @@ def tree_dtype(
   """Fetch dtype of tree.
 
   If the tree is empty, returns the default dtype of JAX arrays.
+
+  Args:
+    tree: the tree to fetch the dtype of.
+    mixed_dtype_handler: how to handle mixed dtypes in the tree.  - If
+      ``mixed_dtype_handler=None``, returns the common dtype of the leaves of
+      the tree if it exists, otherwise raises an error. - If
+      ``mixed_dtype_handler='promote'``, promotes the dtypes of the leaves of
+      the tree to a common promoted dtype using :func:`jax.numpy.promote_types`.
+      - If ``mixed_dtype_handler='highest'`` or
+      ``mixed_dtype_handler='lowest'``, returns the highest/lowest dtype of the
+      leaves of the tree. We consider a partial ordering of dtypes as ``dtype1
+      <= dtype2`` if ``dtype1`` is promoted to ``dtype2``, that is, if
+      ``jax.numpy.promote_types(dtype1, dtype2) == dtype2``. Since some dtypes
+      cannot be promoted to one another, this is not a total ordering, and the
+      'highest' or 'lowest' options may not be applicable. These options will
+      throw an error if the dtypes of the leaves of the tree cannot be promoted
+      to one another.
+
+  Returns:
+    the dtype of the tree.
+
+  Raises:
+    ValueError: If ``mixed_dtype_handler`` is set to ``None`` and multiple
+      dtypes are found in the tree.
+    ValueError: If ``mixed_dtype_handler`` is set to  ``'highest'`` or
+      ``'lowest'`` and some leaves' dtypes in the tree cannot be promoted to one
+      another.
 
   Examples:
     >>> import jax.numpy as jnp
@@ -76,35 +103,6 @@ def tree_dtype(
     >>> optax.tree_utils.tree_dtype(tree, 'promote')
     dtype('int64')
 
-  Args:
-    tree: the tree to fetch the dtype of.
-    mixed_dtype_handler: how to handle mixed dtypes in the tree.
-
-      - If ``mixed_dtype_handler=None``, returns the common dtype of the leaves
-        of the tree if it exists, otherwise raises an error.
-      - If ``mixed_dtype_handler='promote'``, promotes the dtypes of the leaves
-        of the tree to a common promoted dtype using
-        :func:`jax.numpy.promote_types`.
-      - If ``mixed_dtype_handler='highest'`` or
-        ``mixed_dtype_handler='lowest'``, returns the highest/lowest dtype of
-        the leaves of the tree. We consider a partial ordering of dtypes as
-        ``dtype1 <= dtype2`` if ``dtype1`` is promoted to ``dtype2``, that is,
-        if ``jax.numpy.promote_types(dtype1, dtype2) == dtype2``. Since some
-        dtypes cannot be promoted to one another, this is not a total ordering,
-        and the 'highest' or 'lowest' options may not be applicable. These
-        options will throw an error if the dtypes of the leaves of the tree
-        cannot be promoted to one another.
-
-  Returns:
-    the dtype of the tree.
-
-  Raises:
-    ValueError: If ``mixed_dtype_handler`` is set to ``None`` and multiple
-      dtypes are found in the tree.
-    ValueError: If ``mixed_dtype_handler`` is set to  ``'highest'`` or
-      ``'lowest'`` and some leaves' dtypes in the tree cannot be promoted to one
-      another.
-
   .. seealso:: :func:`jax.numpy.promote_types`,
     `Type promotion semantics in JAX
     <https://jax.readthedocs.io/en/latest/type_promotion.html#type-promotion>`_
@@ -120,26 +118,25 @@ def tree_dtype(
     dtype = jnp.asarray(leaves[0]).dtype
     _tree_assert_all_dtypes_equal(tree, dtype)
     return dtype
-  elif mixed_dtype_handler == 'promote':
+  if mixed_dtype_handler == 'promote':
     promoted_dtype = functools.reduce(
         jnp.promote_types, [jnp.asarray(x).dtype for x in leaves]
     )
     return promoted_dtype
-  elif mixed_dtype_handler == 'highest':
+  if mixed_dtype_handler == 'highest':
     highest_dtype = functools.reduce(
         _higher_dtype, [jnp.asarray(x).dtype for x in leaves]
     )
     return highest_dtype
-  elif mixed_dtype_handler == 'lowest':
+  if mixed_dtype_handler == 'lowest':
     lowest_dtype = functools.reduce(
         _lower_dtype, [jnp.asarray(x).dtype for x in leaves]
     )
     return lowest_dtype
-  else:
-    raise ValueError(
-        f'Invalid value for {mixed_dtype_handler=}, possible values are: None,'
-        ' "promote", "highest", "lowest".'
-    )
+  raise ValueError(
+      f'Invalid value for {mixed_dtype_handler=}, possible values are: None,'
+      ' "promote", "highest", "lowest".'
+  )
 
 
 def _tree_assert_all_dtypes_equal(
@@ -160,6 +157,7 @@ def _tree_assert_all_dtypes_equal(
     if x_dtype != dtype:
       err_msg = f'Expected {dtype=} for {path} but got {x_dtype}.'
       return err_msg
+    return None
 
   err_msgs = jax.tree.leaves(
       jax.tree_util.tree_map_with_path(_assert_dtypes_equal, tree)
@@ -186,13 +184,12 @@ def _lower_dtype(
   """
   if jnp.promote_types(dtype1, dtype2) == dtype1:
     return dtype2
-  elif jnp.promote_types(dtype1, dtype2) == dtype2:
+  if jnp.promote_types(dtype1, dtype2) == dtype2:
     return dtype1
-  else:
-    raise ValueError(
-        f'Cannot compare dtype of {dtype1=} and {dtype2=}.'
-        f' Neither {dtype1} nor {dtype2} can be promoted to the other.'
-    )
+  raise ValueError(
+      f'Cannot compare dtype of {dtype1=} and {dtype2=}.'
+      f' Neither {dtype1} nor {dtype2} can be promoted to the other.'
+  )
 
 
 def _higher_dtype(

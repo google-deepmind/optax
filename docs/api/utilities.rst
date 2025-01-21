@@ -99,7 +99,9 @@ Tree
     tree_get_all_with_path
     tree_l1_norm
     tree_l2_norm
+    tree_linf_norm
     tree_map_params
+    tree_max
     tree_mul
     tree_ones_like
     tree_random_like
@@ -152,9 +154,17 @@ Tree l2 norm
 ~~~~~~~~~~~~
 .. autofunction:: tree_l2_norm
 
+Tree l-infinity norm
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_linf_norm
+
 Tree map parameters
 ~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_map_params
+
+Tree max
+~~~~~~~~
+.. autofunction:: tree_max
 
 Tree multiply
 ~~~~~~~~~~~~~

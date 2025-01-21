@@ -15,7 +15,7 @@
 """Base interfaces and datatypes."""
 
 from collections.abc import Callable
-from typing import Any, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
+from typing import Any, NamedTuple, Optional, Protocol, Sequence, Union, runtime_checkable
 
 import chex
 import jax
@@ -23,7 +23,8 @@ import jax.numpy as jnp
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
-    'parameters, but you are not passing `params` when calling `update`.')
+    'parameters, but you are not passing `params` when calling `update`.'
+)
 
 PyTree = Any
 Shape = Sequence[int]
@@ -41,9 +42,7 @@ ScalarOrSchedule = Union[float, jax.Array, Schedule]
 class StatefulSchedule(Protocol):
   """Base interface for stateful schedules."""
 
-  def init(
-      self
-  ) -> ScheduleState:
+  def init(self) -> ScheduleState:
     """Initialize the state of the stateful schedule."""
 
   def update(
@@ -94,11 +93,8 @@ class TransformUpdateFn(Protocol):
   """
 
   def __call__(
-      self,
-      updates: Updates,
-      state: OptState,
-      params: Optional[Params] = None
-    ) -> tuple[Updates, OptState]:
+      self, updates: Updates, state: OptState, params: Optional[Params] = None
+  ) -> tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
@@ -145,6 +141,7 @@ class TransformUpdateExtraArgsFn(Protocol):
         arguments, ignoring those that are not needed for the current
         transformation. Transformations that require specific extra args should
         specify these using keyword-only arguments.
+
     Returns:
       Transformed updates, and an updated value for the state.
     """
@@ -174,7 +171,9 @@ class GradientTransformation(NamedTuple):
   to change the behavior of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
   optimizer state in order to control the behavior of an optax gradient
-  transformation see the `meta-learning example <https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html>`_ in the optax documentation.
+  transformation see the `meta-learning example
+  <https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html>`_
+  in the optax documentation.
 
   Attributes:
     init: A pure function which, when called with an example instance of the
@@ -208,6 +207,7 @@ class GradientTransformationExtraArgs(GradientTransformation):
     update: Overrides the type signature of the update in the base type to
       accept extra arguments.
   """
+
   update: TransformUpdateExtraArgsFn
 
 
@@ -231,7 +231,7 @@ def identity() -> GradientTransformation:
   to be left unchanged when the updates are applied to them.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
 
   def update_fn(updates, state, params=None):
@@ -258,7 +258,7 @@ def set_to_zero() -> GradientTransformation:
   parameters, unnecessary computations will in general be dropped.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
 
   def update_fn(updates, state, params=None):
@@ -277,11 +277,11 @@ def stateless(
   does not require saved state between iterations.
 
   Args:
-    f: Update function that takes in updates (e.g. gradients) and parameters
-      and returns updates. The parameters may be `None`.
+    f: Update function that takes in updates (e.g. gradients) and parameters and
+      returns updates. The parameters may be `None`.
 
   Returns:
-    An `optax.GradientTransformation`.
+    A :class:`optax.GradientTransformation`.
   """
 
   def update_fn(updates, state, params=None):
@@ -306,7 +306,7 @@ def stateless_with_tree_map(
       `None`.
 
   Returns:
-    An `optax.GradientTransformation`.
+    A :class:`optax.GradientTransformation`.
   """
 
   def update_fn(updates, state, params=None):

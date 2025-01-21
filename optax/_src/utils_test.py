@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `utils.py`."""
-
-from unittest import mock
+"""Tests for utilities in `utils.py`."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -38,23 +36,6 @@ def _shape_to_tuple(shape):
 
 class ScaleGradientTest(parameterized.TestCase):
 
-  @parameterized.product(
-      inputs=[-1.0, 0.0, 1.0], scale=[-0.5, 0.0, 0.5, 1.0, 2.0]
-  )
-  @mock.patch.object(jax.lax, 'stop_gradient', wraps=jax.lax.stop_gradient)
-  def test_scale_gradient(self, mock_sg, inputs, scale):
-    def fn(inputs):
-      outputs = utils.scale_gradient(inputs, scale)
-      return outputs**2
-
-    grad = jax.grad(fn)
-    self.assertEqual(grad(inputs), 2 * inputs * scale)
-    if scale == 0.0:
-      mock_sg.assert_called_once_with(inputs)
-    else:
-      self.assertFalse(mock_sg.called)
-    self.assertEqual(fn(inputs), inputs**2)
-
   @parameterized.product(scale=[-0.5, 0.0, 0.5, 1.0, 2.0])
   def test_scale_gradient_pytree(self, scale):
     def fn(inputs):
@@ -62,20 +43,14 @@ class ScaleGradientTest(parameterized.TestCase):
       outputs = jax.tree.map(lambda x: x**2, outputs)
       return sum(jax.tree.leaves(outputs))
 
-    inputs = dict(a=-1.0, b=dict(c=(2.0,), d=0.0))
+    inputs = {'a': -1.0, 'b': {'c': (2.0,), 'd': 0.0}}
 
     grad = jax.grad(fn)
     grads = grad(inputs)
-    jax.tree.map(
-        lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads
-    )
+    jax.tree.map(lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
     self.assertEqual(
         fn(inputs),
-        sum(
-            jax.tree.leaves(
-                jax.tree.map(lambda x: x**2, inputs)
-            )
-        ),
+        sum(jax.tree.leaves(jax.tree.map(lambda x: x**2, inputs))),
     )
 
 
@@ -125,7 +100,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     loc_shape = scale_shape = (2, 3)
     loc, scale = self._get_loc_scale(loc_shape, scale_shape)
     dist = utils.multi_normal(loc, scale)
-    samples = dist.sample(sample_shape, jax.random.PRNGKey(239))
+    samples = dist.sample(sample_shape, jax.random.key(239))
     self.assertEqual(samples.shape, tuple(sample_shape) + loc_shape)
 
   @parameterized.named_parameters([

@@ -46,6 +46,10 @@ class NamedTupleKey:
   filter the path to check if of the KeyEntry is a NamedTupleKey and then check
   if the name of named tuple is the one intended to be searched.
 
+  Attributes:
+    tuple_name (str): name of the tuple containing the key.
+    name (str): name of the key.
+
   .. seealso:: :class:`jax.tree_util.DictKey`,
     :class:`jax.tree_util.FlattenedIndexKey`,
     :class:`jax.tree_util.GetAttrKey`,
@@ -53,10 +57,6 @@ class NamedTupleKey:
     :func:`optax.tree_utils.tree_get_all_with_path`,
     :func:`optax.tree_utils.tree_get`,
     :func:`optax.tree_utils.tree_set`,
-
-  Attributes:
-    tuple_name (str): name of the tuple containing the key.
-    name (str): name of the key.
 
   .. versionadded:: 0.2.2
   """
@@ -152,10 +152,9 @@ def tree_map_params(
   def map_params(maybe_placeholder_value, value):
     if isinstance(maybe_placeholder_value, _ParamsPlaceholder):
       return jax.tree.map(f, value, *rest, is_leaf=is_leaf)
-    elif transform_non_params is not None:
+    if transform_non_params is not None:
       return transform_non_params(value)
-    else:
-      return value
+    return value
 
   return jax.tree.map(
       map_params,
@@ -180,6 +179,26 @@ def tree_get_all_with_path(
   returns a list of all values corresponding to ``key`` with the path to
   that value. The path is a sequence of ``KeyEntry`` that can be transformed in
   readable format using :func:`jax.tree_util.keystr`, see the example below.
+
+  Args:
+    tree: tree to search in.
+    key: keyword or field to search in tree for.
+    filtering: optional callable to further filter values in tree that match the
+      key. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes as
+      arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      the given key.
+
+  Returns:
+    values_with_path
+      list of tuples where each tuple is of the form
+      (``path_to_value``, ``value``). Here ``value`` is one entry of the tree
+      that corresponds to the ``key``, and ``path_to_value`` is a tuple of
+      `KeyEntry` that is a tuple of :class:`jax.tree_util.DictKey`,
+      :class:`jax.tree_util.FlattenedIndexKey`,
+      :class:`jax.tree_util.GetAttrKey`,
+      :class:`jax.tree_util.SequenceKey`, or
+      :class:`optax.tree_utils.NamedTupleKey`.
 
   Examples:
 
@@ -223,26 +242,6 @@ def tree_get_all_with_path(
 
   .. seealso:: :func:`optax.tree_utils.tree_get`,
     :func:`optax.tree_utils.tree_set`
-
-  Args:
-    tree: tree to search in.
-    key: keyword or field to search in tree for.
-    filtering: optional callable to further filter values in tree that match the
-      key. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes as
-      arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
-      the given key.
-
-  Returns:
-    values_with_path
-      list of tuples where each tuple is of the form
-      (``path_to_value``, ``value``). Here ``value`` is one entry of the tree
-      that corresponds to the ``key``, and ``path_to_value`` is a tuple of
-      `KeyEntry` that is a tuple of :class:`jax.tree_util.DictKey`,
-      :class:`jax.tree_util.FlattenedIndexKey`,
-      :class:`jax.tree_util.GetAttrKey`,
-      :class:`jax.tree_util.SequenceKey`, or
-      :class:`optax.tree_utils.NamedTupleKey`.
 
   .. versionadded:: 0.2.2
   """
@@ -291,8 +290,23 @@ def tree_get(
   values in different named tuples (arising for example when chaining
   transformations in optax). See the last example below.
 
-  .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`,
-    :func:`optax.tree_utils.tree_set`
+  Args:
+    tree: tree to search in.
+    key: keyword or field to search in ``tree`` for.
+    default: default value to return if ``key`` is not found in ``tree``.
+    filtering: optional callable to further filter values in ``tree`` that match
+      the ``key``. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes
+      as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      the given key.
+
+  Returns:
+    value
+      value in ``tree`` matching the given ``key``. If none are
+      found return ``default`` value. If multiple are found raises an error.
+
+  Raises:
+    KeyError: If multiple values of ``key`` are found in ``tree``.
 
   Examples:
 
@@ -351,23 +365,8 @@ def tree_get(
       >>> print(count)
       0
 
-  Args:
-    tree: tree to search in.
-    key: keyword or field to search in ``tree`` for.
-    default: default value to return if ``key`` is not found in ``tree``.
-    filtering: optional callable to further filter values in ``tree`` that match
-      the ``key``. ``filtering(path: Key_Path, value: Any) -> bool: ...`` takes
-      as arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
-      the given key.
-
-  Returns:
-    value
-      value in ``tree`` matching the given ``key``. If none are
-      found return ``default`` value. If multiple are found raises an error.
-
-  Raises:
-    KeyError: If multiple values of ``key`` are found in ``tree``.
+  .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`,
+    :func:`optax.tree_utils.tree_set`
 
   .. versionadded:: 0.2.2
   """
@@ -377,10 +376,9 @@ def tree_get(
   )
   if len(found_values_with_path) > 1:
     raise KeyError(f"Found multiple values for '{key}' in {tree}.")
-  elif not found_values_with_path:
+  if not found_values_with_path:
     return default
-  else:
-    return found_values_with_path[0][1]
+  return found_values_with_path[0][1]
 
 
 def tree_set(
@@ -400,9 +398,24 @@ def tree_set(
   Raises a ``KeyError`` if some keys in ``**kwargs`` are not present in the
   tree.
 
-  .. note:: The recommended usage to inject hyperparameters schedules is through
-    :func:`optax.inject_hyperparams`. This function is a helper for other
-    purposes.
+  Args:
+    tree: pytree whose values are to be replaced.
+    filtering: optional callable to further filter values in ``tree`` that match
+      the keys to replace. ``filtering(path: Key_Path, value: Any) -> bool:
+      ...`` takes as arguments both the path to the value (as returned by
+      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
+      a given key.
+    **kwargs: dictionary of keys with values to replace in ``tree``.
+
+  Returns:
+    new_tree
+      new pytree with the same structure as ``tree``. For each element in
+      ``tree`` whose key/field matches a key in ``**kwargs``, its value is
+      set by the corresponding value in ``**kwargs``.
+
+  Raises:
+    KeyError: If no values of some key in ``**kwargs`` are found in ``tree``
+      or none of the values satisfy the filtering operation.
 
   Examples:
 
@@ -437,27 +450,12 @@ def tree_set(
       >>> print(new_state)
       InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'learning_rate': Array(0.1, dtype=float32, weak_type=True)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState()))
 
+  .. note:: The recommended usage to inject hyperparameters schedules is through
+    :func:`optax.inject_hyperparams`. This function is a helper for other
+    purposes.
+
   .. seealso:: :func:`optax.tree_utils.tree_get_all_with_path`,
     :func:`optax.tree_utils.tree_get`
-
-  Args:
-    tree: pytree whose values are to be replaced.
-    filtering: optional callable to further filter values in ``tree`` that match
-      the keys to replace. ``filtering(path: Key_Path, value: Any) -> bool:
-      ...`` takes as arguments both the path to the value (as returned by
-      :func:`optax.tree_utils.tree_get_all_with_path`) and the value that match
-      a given key.
-    **kwargs: dictionary of keys with values to replace in ``tree``.
-
-  Returns:
-    new_tree
-      new pytree with the same structure as ``tree``. For each element in
-      ``tree`` whose key/field matches a key in ``**kwargs``, its value is
-      set by the corresponding value in ``**kwargs``.
-
-  Raises:
-    KeyError: If no values of some key in ``**kwargs`` are found in ``tree``
-      or none of the values satisfy the filtering operation.
 
   .. versionadded:: 0.2.2
   """
@@ -472,8 +470,7 @@ def tree_set(
             f"Found no values matching '{key}' given the filtering operation in"
             f" {tree}"
         )
-      else:
-        raise KeyError(f"Found no values matching '{key}' in {tree}")
+      raise KeyError(f"Found no values matching '{key}' in {tree}")
 
   has_any_key = functools.partial(_node_has_keys, keys=tuple(kwargs.keys()))
 
@@ -487,35 +484,30 @@ def tree_set(
       ):
         # The node itself is a named tuple we wanted to replace
         return kwargs[node.__class__.__name__]
-      else:
-        # The node contains one of the keys we want to replace
-        children_with_path = _get_children_with_path(path, node)
-        new_children_with_keys = {}
-        for child_path, child in children_with_path:
-          # Scan each child of that node
-          key = _get_key(child_path[-1])
-          if key in kwargs and (
-              filtering is None or filtering(child_path, child)
-          ):
-            # If the child matches a given key given the filtering operation
-            # replaces with the new value
-            new_children_with_keys.update({key: kwargs[key]})
+      # The node contains one of the keys we want to replace
+      children_with_path = _get_children_with_path(path, node)
+      new_children_with_keys = {}
+      for child_path, child in children_with_path:
+        # Scan each child of that node
+        key = _get_key(child_path[-1])
+        if key in kwargs and (
+            filtering is None or filtering(child_path, child)
+        ):
+          # If the child matches a given key given the filtering operation
+          # replaces with the new value
+          new_children_with_keys.update({key: kwargs[key]})
+        else:
+          if isinstance(child, (dict, list, tuple)):
+            # If the child is itself a pytree, further search in the child to
+            # replace the given value
+            new_children_with_keys.update({key: _replace(child_path, child)})
           else:
-            if (
-                isinstance(child, tuple)
-                or isinstance(child, dict)
-                or isinstance(child, list)
-            ):
-              # If the child is itself a pytree, further search in the child to
-              # replace the given value
-              new_children_with_keys.update({key: _replace(child_path, child)})
-            else:
-              # If the child is just a leaf that does not contain the key or
-              # satisfies the filtering operation, just return the child.
-              new_children_with_keys.update({key: child})
-        return _set_children(node, new_children_with_keys)
-    else:
-      return node
+            # If the child is just a leaf that does not contain the key or
+            # satisfies the filtering operation, just return the child.
+            new_children_with_keys.update({key: child})
+      return _set_children(node, new_children_with_keys)
+
+    return node
 
   # Mimics jax.tree_util.tree_map_with_path(_replace, tree, is_leaf)
   # except that the paths we consider can contain NamedTupleKeys
@@ -667,12 +659,11 @@ def _node_has_keys(node: Any, keys: tuple[Any, ...]) -> bool:
   """
   if _is_named_tuple(node) and any(key in node._fields for key in keys):
     return True
-  elif _is_named_tuple(node) and (node.__class__.__name__ in keys):
+  if _is_named_tuple(node) and (node.__class__.__name__ in keys):
     return True
-  elif isinstance(node, dict) and any(key in node for key in keys):
+  if isinstance(node, dict) and any(key in node for key in keys):
     return True
-  else:
-    return False
+  return False
 
 
 def _flatten_to_key(
@@ -699,10 +690,9 @@ def _flatten_to_key(
     else:
       path_to_key = (*path, NamedTupleKey(node.__class__.__name__, key))
       return (path_to_key, getattr(node, key))
-  elif isinstance(node, dict) and key in node:
+  if isinstance(node, dict) and key in node:
     return (*path, jax.tree_util.DictKey(key)), node[key]
-  else:
-    return path, node
+  return path, node
 
 
 def _get_children_with_path(
@@ -732,15 +722,14 @@ def _get_children_with_path(
         )
         for field in node._fields
     ]
-  elif isinstance(node, dict):
+  if isinstance(node, dict):
     return [
         ((*path, jax.tree_util.DictKey(key)), value)
         for key, value in node.items()
     ]
-  else:
-    raise ValueError(
-        f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
-    )
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
@@ -762,12 +751,11 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
   """
   if _is_named_tuple(node):
     return node._replace(**children_with_keys)
-  elif isinstance(node, dict):
+  if isinstance(node, dict):
     return children_with_keys
-  else:
-    raise ValueError(
-        f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
-    )
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:
@@ -776,6 +764,7 @@ def _get_key(key: _KeyEntry) -> Union[int, str]:
     if isinstance(key.key, (str, int)):
       return key.key
     raise KeyError("Hashable keys not supported")
+  # pylint: disable=attribute-error
   if isinstance(key, jax.tree_util.FlattenedIndexKey):
     return key.key  # int.
   if isinstance(key, jax.tree_util.GetAttrKey):
@@ -784,4 +773,5 @@ def _get_key(key: _KeyEntry) -> Union[int, str]:
     return key.idx  # int.
   if isinstance(key, NamedTupleKey):
     return key.name  # str.
+  # pylint: enable=attribute-error
   raise KeyError(f"Tree key '{key}' of type '{type(key)}' not valid.")

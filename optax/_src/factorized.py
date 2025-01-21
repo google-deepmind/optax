@@ -26,9 +26,6 @@ from optax._src import base
 from optax._src import numerics
 
 
-# pylint:disable=no-value-for-parameter
-
-
 def _decay_rate_pow(i: int, exponent: float = 0.8) -> chex.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
@@ -93,16 +90,13 @@ def scale_by_factored_rms(
   efficient compared to RMSProp/Adam, and has had wide success when applied to
   large-scale training of attention-based models.
 
-  References:
-    [Shazeer et al, 2018](https://arxiv.org/abs/1804.04235)
-
   Args:
     factored: boolean: whether to use factored second-moment estimates..
     decay_rate: float: controls second-moment exponential decay schedule.
-    step_offset: for finetuning, one may set this to the starting step-number
-      of the fine tuning phase.
-    min_dim_size_to_factor: only factor accumulator if two array dimensions
-      are at least this size.
+    step_offset: for finetuning, one may set this to the starting step-number of
+      the fine tuning phase.
+    min_dim_size_to_factor: only factor accumulator if two array dimensions are
+      at least this size.
     epsilon: Regularization constant for squared gradient.
     decay_rate_fn: A function that accepts the current step, the decay rate
       parameter and controls the schedule for the second momentum. Defaults to
@@ -110,10 +104,17 @@ def scale_by_factored_rms(
       of the original schedule is the fact that second momentum converges to 1,
       which effectively freezes the second momentum. To prevent this the user
       can opt for a custom schedule that sets an upper bound for the second
-      momentum, like in [Zhai et al., 2021](https://arxiv.org/abs/2106.04560).
+      momentum, like in Zhai et al., 2021.
 
   Returns:
-    the corresponding `GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformation`.
+
+  References:
+    Shazeer et al, `Adafactor: Adaptive Learning Rates with Sublinear Memory
+    Cost <https://arxiv.org/abs/1804.04235>`_, 2018
+
+    Zhai et al, `Scaling Vision Transformers
+    <https://arxiv.org/abs/2106.04560>`_, 2021
   """
 
   def _to_state(count: chex.Array, result_tree):
@@ -141,13 +142,12 @@ def scale_by_factored_rms(
             v_col=jnp.zeros(vc_shape, dtype=dtype),
             v=jnp.zeros((1,), dtype=dtype),
         )
-      else:
-        return _UpdateResult(
-            update=jnp.zeros((1,), dtype=dtype),
-            v_row=jnp.zeros((1,), dtype=dtype),
-            v_col=jnp.zeros((1,), dtype=dtype),
-            v=jnp.zeros(param.shape, dtype=dtype),
-        )
+      return _UpdateResult(
+          update=jnp.zeros((1,), dtype=dtype),
+          v_row=jnp.zeros((1,), dtype=dtype),
+          v_col=jnp.zeros((1,), dtype=dtype),
+          v=jnp.zeros(param.shape, dtype=dtype),
+      )
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree.map(_init, params))
 

@@ -14,6 +14,8 @@
 # ==============================================================================
 """The transforms sub-package."""
 
+# pylint: disable=g-importing-member
+
 from optax.transforms._accumulation import ema
 from optax.transforms._accumulation import EmaState
 from optax.transforms._accumulation import MultiSteps

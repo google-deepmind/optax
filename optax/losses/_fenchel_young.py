@@ -26,15 +26,14 @@ class MaxFun(Protocol):
     ...
 
 
-def make_fenchel_young_loss(
-    max_fun: MaxFun
-):
+def make_fenchel_young_loss(max_fun: MaxFun):
   """Creates a Fenchel-Young loss from a max function.
 
-  .. warning::
-    The resulting loss accepts an arbitrary number of leading dimensions
-    with the fy_loss operating over the last dimension. The jaxopt version of
-    this function would instead flatten any vector in a single big 1D vector.
+  Args:
+    max_fun: the max function on which the Fenchel-Young loss is built.
+
+  Returns:
+    A Fenchel-Young loss function with the same signature.
 
   Examples:
     Given a max function, e.g., the log sum exp, you can construct a
@@ -47,11 +46,10 @@ def make_fenchel_young_loss(
     Blondel et al. `Learning with Fenchel-Young Losses
     <https://arxiv.org/pdf/1901.02324.pdf>`_, 2020
 
-  Args:
-    max_fun: the max function on which the Fenchel-Young loss is built.
-
-  Returns:
-    A Fenchel-Young loss function with the same signature.
+  .. warning::
+    The resulting loss accepts an arbitrary number of leading dimensions
+    with the fy_loss operating over the last dimension. The jaxopt version of
+    this function would instead flatten any vector in a single big 1D vector.
   """
 
   vdot_last_dim = jnp.vectorize(jnp.vdot, signature="(n),(n)->()")

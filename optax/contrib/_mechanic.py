@@ -31,7 +31,6 @@ from typing import NamedTuple, Optional
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import base
 from optax._src import numerics
 import optax.tree_utils as otu
@@ -82,10 +81,6 @@ def mechanize(
   inner optimizers but we expect it to work with almost any first-order
   optimizer (except for normalized gradient optimizer like LARS or LAMB).
 
-  References:
-    Cutkosky et al, `Mechanic: A Learning Rate Tuner
-    <https://arxiv.org/pdf/2306.00144.pdf>`_ 2023
-
   Args:
     base_optimizer: Base optimizer to compute updates from.
     weight_decay: A scalar weight decay rate. Note that this weight decay is not
@@ -103,7 +98,11 @@ def mechanize(
       0.999].
 
   Returns:
-    A `GradientTransformation` with init and update functions.
+    A :class:`optax.GradientTransformation`.
+
+  References:
+    Cutkosky et al, `Mechanic: A Learning Rate Tuner
+    <https://arxiv.org/pdf/2306.00144.pdf>`_ 2023
   """
 
   def init_fn(params: base.Params) -> MechanicState:
@@ -112,10 +111,33 @@ def mechanize(
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
     params_dtype = otu.tree_dtype(params, 'lowest')
-    r = jnp.zeros([num_betas,], dtype=params_dtype)
-    v = jnp.zeros([num_betas,], dtype=params_dtype)
-    m = jnp.zeros([num_betas,], dtype=params_dtype)
-    s = jnp.ones([num_betas,], dtype=params_dtype) * s_init
+    r = jnp.zeros(
+        [
+            num_betas,
+        ],
+        dtype=params_dtype,
+    )
+    v = jnp.zeros(
+        [
+            num_betas,
+        ],
+        dtype=params_dtype,
+    )
+    m = jnp.zeros(
+        [
+            num_betas,
+        ],
+        dtype=params_dtype,
+    )
+    s = (
+        jnp.ones(
+            [
+                num_betas,
+            ],
+            dtype=params_dtype,
+        )
+        * s_init
+    )
     return MechanicState(
         base_optimizer_state=base_optimizer.init(params),
         count=jnp.zeros([], jnp.int32),
@@ -166,9 +188,7 @@ def mechanize(
 
     # We actually want to add the updates, but since optax by default flips
     # signs when applying the learning rate, we substract instead.
-    delta = jax.tree.map(
-        lambda si, ui: si - ui, delta_prev, new_neg_updates
-    )
+    delta = jax.tree.map(lambda si, ui: si - ui, delta_prev, new_neg_updates)
 
     # Now we are ready to run the actual Mechanic algorithm.
     h = otu.tree_vdot(updates, delta_prev)
@@ -193,9 +213,7 @@ def mechanize(
     new_params = jax.tree.map(
         lambda x0, deltai: x0 - jnp.sum(s) * deltai, new_x0, delta
     )
-    new_neg_updates = jax.tree.map(
-        lambda np, op: np - op, new_params, params
-    )
+    new_neg_updates = jax.tree.map(lambda np, op: np - op, new_params, params)
 
     return new_neg_updates, MechanicState(
         base_optimizer_state=base_optimizer_state,
