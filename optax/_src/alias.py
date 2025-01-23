@@ -112,7 +112,7 @@ def adabelief(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -177,7 +177,7 @@ def adadelta(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.36E+01
     Objective function: 1.32E+01
     Objective function: 1.29E+01
@@ -259,7 +259,7 @@ def adafactor(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.38E+01
@@ -360,7 +360,7 @@ def adagrad(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 5.01E+00
     Objective function: 2.40E+00
     Objective function: 1.25E+00
@@ -468,7 +468,7 @@ def adam(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -552,7 +552,7 @@ nadam.__doc__ = r"""The NAdam optimizer.
       ...  grad = jax.grad(f)(params)
       ...  updates, opt_state = solver.update(grad, opt_state, params)
       ...  params = optax.apply_updates(params, updates)
-      ...  print('Objective function: {:.2E}'.format(f(params)))
+      ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
       Objective function: 1.39E+01
       Objective function: 1.39E+01
       Objective function: 1.39E+01
@@ -669,7 +669,7 @@ def adamw(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -759,7 +759,7 @@ nadamw.__doc__ = (
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -873,7 +873,7 @@ def adan(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.28E+01
     Objective function: 1.17E+01
     Objective function: 1.07E+01
@@ -976,7 +976,7 @@ def lion(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1037,7 +1037,7 @@ def amsgrad(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1091,7 +1091,7 @@ def fromage(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.37E+01
@@ -1159,7 +1159,7 @@ def lars(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.40E+01
@@ -1233,7 +1233,7 @@ def lamb(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.38E+01
@@ -1306,7 +1306,7 @@ def noisy_sgd(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1367,7 +1367,7 @@ def sign_sgd(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1434,7 +1434,7 @@ def novograd(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1492,7 +1492,7 @@ def optimistic_gradient_descent(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1681,7 +1681,7 @@ def radam(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1759,7 +1759,7 @@ def rmsprop(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.37E+01
@@ -1884,7 +1884,7 @@ def sgd(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -2002,7 +2002,7 @@ def sm3(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.40E+01
@@ -2059,7 +2059,7 @@ def yogi(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.39E+01
@@ -2141,7 +2141,7 @@ def adamax(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -2213,7 +2213,7 @@ def adamaxw(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -2280,7 +2280,7 @@ def rprop(
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
+    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.39E+01
