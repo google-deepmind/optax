@@ -1218,7 +1218,7 @@ def zoom_linesearch(
           f"Unknown initial guess strategy: {initial_guess_strategy}"
       )
 
-    slope = otu.tree_real(otu.tree_vdot(updates, grad))
+    slope = otu.tree_real(otu.tree_vdot(updates, otu.tree_conj(grad)))
     return ZoomLinesearchState(
         count=jnp.asarray(0, dtype=jnp.int32),
         #
