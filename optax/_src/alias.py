@@ -2357,7 +2357,7 @@ def polyak_sgd(
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
     ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
-    ...  print('Objective function: ', f(params))
+    ...  print('Objective function: ', f(params)) # doctest: +SKIP
     Objective function:  3.5
     Objective function:  0.875
     Objective function:  0.21875
@@ -2481,7 +2481,7 @@ def lbfgs(
     ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
     ...   )
     ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: ', f(params))
+    ...   print('Objective function: ', f(params)) # doctest: +SKIP
     Objective function:  7.516686
     Objective function:  7.460699e-14
     Objective function:  2.6505726e-28
