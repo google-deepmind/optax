@@ -105,14 +105,14 @@ def adabelief(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adabelief(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -170,14 +170,14 @@ def adadelta(
     >>> f = lambda x: jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adadelta(learning_rate=10.)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.36E+01
     Objective function: 1.32E+01
     Objective function: 1.29E+01
@@ -252,14 +252,14 @@ def adafactor(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adafactor(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.38E+01
@@ -353,14 +353,14 @@ def adagrad(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adagrad(learning_rate=1.0)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 5.01E+00
     Objective function: 2.40E+00
     Objective function: 1.25E+00
@@ -461,14 +461,14 @@ def adam(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adam(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -545,14 +545,14 @@ nadam.__doc__ = r"""The NAdam optimizer.
       >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
       >>> solver = optax.nadam(learning_rate=0.003)
       >>> params = jnp.array([1., 2., 3.])
-      >>> print('Objective function: ', f(params)) # doctest: +SKIP
+      >>> print('Objective function: ', f(params))
       Objective function:  14.0
       >>> opt_state = solver.init(params)
       >>> for _ in range(5):
       ...  grad = jax.grad(f)(params)
       ...  updates, opt_state = solver.update(grad, opt_state, params)
       ...  params = optax.apply_updates(params, updates)
-      ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+      ...  print('Objective function: {:.2E}'.format(f(params)))
       Objective function: 1.39E+01
       Objective function: 1.39E+01
       Objective function: 1.39E+01
@@ -662,14 +662,14 @@ def adamw(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adamw(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -752,14 +752,14 @@ nadamw.__doc__ = (
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.nadamw(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -866,14 +866,14 @@ def adan(
     >>> f = lambda x: x @ x  # simple quadratic function
     >>> solver = optax.adan(learning_rate=1e-1)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.28E+01
     Objective function: 1.17E+01
     Objective function: 1.07E+01
@@ -969,14 +969,14 @@ def lion(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.lion(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1030,14 +1030,14 @@ def amsgrad(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.amsgrad(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1084,14 +1084,14 @@ def fromage(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.fromage(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.37E+01
@@ -1152,14 +1152,14 @@ def lars(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.lars(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.40E+01
@@ -1226,14 +1226,14 @@ def lamb(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.lamb(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.38E+01
@@ -1299,14 +1299,14 @@ def noisy_sgd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.noisy_sgd(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1360,14 +1360,14 @@ def sign_sgd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.sign_sgd(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1427,14 +1427,14 @@ def novograd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.novograd(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -1485,14 +1485,14 @@ def optimistic_gradient_descent(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.optimistic_gradient_descent(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1674,14 +1674,14 @@ def radam(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.radam(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1752,14 +1752,14 @@ def rmsprop(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.rmsprop(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.39E+01
     Objective function: 1.38E+01
     Objective function: 1.37E+01
@@ -1877,14 +1877,14 @@ def sgd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.sgd(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.38E+01
     Objective function: 1.37E+01
     Objective function: 1.35E+01
@@ -1995,14 +1995,14 @@ def sm3(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.sm3(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.40E+01
@@ -2052,14 +2052,14 @@ def yogi(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.yogi(learning_rate=0.002)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.39E+01
@@ -2134,14 +2134,14 @@ def adamax(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adamax(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -2206,14 +2206,14 @@ def adamaxw(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.adamaxw(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
@@ -2273,14 +2273,14 @@ def rprop(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.rprop(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  grad = jax.grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params))) # doctest: +SKIP
+    ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
     Objective function: 1.40E+01
     Objective function: 1.39E+01
@@ -2351,13 +2351,13 @@ def polyak_sgd(
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
     >>> solver = optax.polyak_sgd()
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
     ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
-    ...  print('Objective function: ', f(params)) # doctest: +SKIP
+    ...  print('Objective function: ', f(params))
     Objective function:  3.5
     Objective function:  0.875
     Objective function:  0.21875
@@ -2471,7 +2471,7 @@ def lbfgs(
     >>> def f(x): return jnp.sum(x ** 2)
     >>> solver = optax.lbfgs()
     >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params)) # doctest: +SKIP
+    >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> value_and_grad = optax.value_and_grad_from_state(f)
@@ -2481,7 +2481,7 @@ def lbfgs(
     ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
     ...   )
     ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: ', f(params)) # doctest: +SKIP
+    ...   print('Objective function: ', f(params))
     Objective function:  7.516686
     Objective function:  7.460699e-14
     Objective function:  2.6505726e-28
