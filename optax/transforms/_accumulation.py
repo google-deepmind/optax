@@ -66,7 +66,12 @@ def trace(
   def update_fn(updates, state, params=None):
     del params
     f = lambda g, t: g + decay * t
-    new_trace = jax.tree.map(f, updates, state.trace)
+    new_trace = jax.tree.map(
+            lambda g, t: None if g is None else f(g, t),
+            updates,
+            state.trace,
+            is_leaf=lambda g: g is None,
+        )
     updates = jax.tree.map(f, updates, new_trace) if nesterov else new_trace
     new_trace = otu.tree_cast(new_trace, accumulator_dtype)
     return updates, TraceState(trace=new_trace)
