@@ -2481,12 +2481,12 @@ def lbfgs(
     ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
     ...   )
     ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: ', f(params))
-    Objective function:  7.5166864
-    Objective function:  7.460699e-14
-    Objective function:  2.6505726e-28
-    Objective function:  0.0
-    Objective function:  0.0
+    ...   print('Objective function: {:.2E}'.format(f(params)))
+    Objective function: 7.52E+00
+    Objective function: 7.46E-14
+    Objective function: 2.65E-28
+    Objective function: 0.00E+00
+    Objective function: 0.00E+00
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
