@@ -116,7 +116,7 @@ _BASE_OPTIMIZERS = [
     },
     {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'radam', 'opt_kwargs': {'learning_rate': 1.0}},
-    {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 3.0}},
     {'opt_name': 'yogi', 'opt_kwargs': {'learning_rate': 1.0, 'b1': 0.99}},
 ]
 # TODO(harshm): make LARS and Fromage work with mechanic.
