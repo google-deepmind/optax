@@ -99,8 +99,8 @@ def scale_by_backtracking_linesearch(
     :math:`\eta` is the learning rate to find,
     :math:`u` is the update direction,
     :math:`c` is a coefficient (``slope_rtol``) measuring the relative decrease
-      of the function in terms of the slope (scalar product between the gradient
-      and the updates),
+    of the function in terms of the slope (scalar product between the gradient
+    and the updates),
     :math:`\delta` is a relative tolerance (``rtol``),
     :math:`\epsilon` is an absolute tolerance (``atol``).
 

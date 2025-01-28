@@ -293,7 +293,7 @@ Examples that make use of the :doc:`api/contrib` module.
   .. image:: /images/examples/contrib/ademamix_rosenbrock.png
     :alt:
 
-  :doc:`_collections/examples/contrib/ademamix_rosenbrock`
+  :doc:`_collections/examples/contrib/rosenbrock_ademamix`
 
 .. raw:: html
 

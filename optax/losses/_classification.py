@@ -489,7 +489,7 @@ def poly_loss_cross_entropy(
       - For the ImageNet 2d image classification, epsilon = 2.0.
       - For the 2d Instance Segmentation and object detection, epsilon = -1.0.
       - It is also recommended to adjust this value based on the task, e.g. by
-        using grid search.
+      using grid search.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
