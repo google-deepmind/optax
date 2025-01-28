@@ -255,6 +255,22 @@ def tree_linf_norm(tree: Any) -> chex.Numeric:
   return tree_max(abs_tree)
 
 
+def tree_batch_shape(
+    tree: Any,
+    shape: tuple[int, ...] = (),
+):
+  """Add leading batch dimensions to each leaf of a pytree.
+
+  Args:
+    tree: a pytree.
+    shape: a shape indicating what leading batch dimensions to add.
+
+  Returns:
+    a pytree with the leading batch dimensions added.
+  """
+  return jax.tree.map(lambda x: jnp.broadcast_to(x, shape + x.shape), tree)
+
+
 def tree_zeros_like(
     tree: Any,
     dtype: Optional[jax.typing.DTypeLike] = None,

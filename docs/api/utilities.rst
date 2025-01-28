@@ -92,6 +92,7 @@ Tree
     NamedTupleKey
     tree_add
     tree_add_scalar_mul
+    tree_batch_shape
     tree_cast
     tree_div
     tree_dtype
@@ -125,6 +126,10 @@ Tree add
 Tree add and scalar multiply
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_add_scalar_mul
+
+Tree batch reshaping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_batch_shape
 
 Tree cast
 ~~~~~~~~~
