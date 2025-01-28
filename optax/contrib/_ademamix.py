@@ -185,15 +185,14 @@ def ademamix(
     \end{align*}
 
   .. note::
-
-  AdEMAMix consists in leveraging very old gradients. Therefore,
-  the method is best suited to settings where the number of iterations is
-  important. The paper reports on this effect in Appendix C.1.5, showing how
-  smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low
-  iterations scenarios. Moreover, retaining gradient information over many 
-  thousands of steps can pose a problem in domains requiring fast adaptation 
-  to a sudden distribution shift, or general cases in which the distribution
-  is non-stationary.
+    AdEMAMix consists in leveraging very old gradients. Therefore,
+    the method is best suited to settings where the number of iterations is
+    important. The paper reports on this effect in Appendix C.1.5, showing how
+    smaller values of ``b3`` (e.g. ``b3 = 0.999``) can be better for low
+    iterations scenarios. Moreover, retaining gradient information over many
+    thousands of steps can pose a problem in domains requiring fast adaptation
+    to a sudden distribution shift, or general cases in which the distribution
+    is non-stationary.
 
   Examples:
     >>> import optax
@@ -251,8 +250,9 @@ def ademamix(
 
   .. seealso::
     See the related functions :func:`optax.adam`, :func:`optax.nadamw`, as well
-    as the example :doc:`../_collections/examples/contrib/rosenbrock_ademamix` 
-    for a use case.
+    as the example
+    :doc:`../../_collections/examples/contrib/rosenbrock_ademamix` for a use
+    case.
   """
   return combine.chain(
       scale_by_ademamix(

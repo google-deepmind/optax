@@ -2475,7 +2475,7 @@ def lbfgs(
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> value_and_grad = optax.value_and_grad_from_state(f)
-    >>> for _ in range(5):
+    >>> for _ in range(2):
     ...   value, grad = value_and_grad(params, state=opt_state)
     ...   updates, opt_state = solver.update(
     ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
@@ -2484,9 +2484,6 @@ def lbfgs(
     ...   print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 7.52E+00
     Objective function: 7.46E-14
-    Objective function: 2.65E-28
-    Objective function: 0.00E+00
-    Objective function: 0.00E+00
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization

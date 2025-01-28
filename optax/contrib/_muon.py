@@ -129,17 +129,17 @@ def scale_by_muon(
     mu_dtype: Data type of the momentum accumulator.
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
-      original updates. See https://arxiv.org/abs/2409.20325
+      original updates. See <https://arxiv.org/abs/2409.20325>
 
   Returns:
     A `GradientTransformation` object.
 
   References:
     Jordan, `modded-nanogpt: Speedrunning the NanoGPT baseline
-    https://github.com/KellerJordan/modded-nanogpt`_, 2024
+    <https://github.com/KellerJordan/modded-nanogpt>`_, 2024
 
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
-    https://arxiv.org/abs/2409.20325`_, 2024
+    <https://arxiv.org/abs/2409.20325>`_, 2024
   """
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
   ns_coeffs_ = jnp.asarray(ns_coeffs)
@@ -223,7 +223,7 @@ def muon(
     mu_dtype: Data type of the momentum accumulator.
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
-      original updates. See https://arxiv.org/abs/2409.20325
+      original updates. See <https://arxiv.org/abs/2409.20325>
     adam_b1: Exponential decay rate for Adam's first moment estimates.
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
@@ -234,10 +234,10 @@ def muon(
 
   References:
     Jordan, `modded-nanogpt: Speedrunning the NanoGPT baseline
-    https://github.com/KellerJordan/modded-nanogpt`_, 2024
+    <https://github.com/KellerJordan/modded-nanogpt>`_, 2024
 
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
-    https://arxiv.org/abs/2409.20325`_, 2024
+    <https://arxiv.org/abs/2409.20325>`_, 2024
   """
   return combine.multi_transform(
       transforms={
