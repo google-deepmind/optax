@@ -2314,6 +2314,7 @@ def polyak_sgd(
     scaling: base.ScalarOrSchedule = 1.0,
     f_min: float = 0.0,
     eps: float = 0.0,
+    variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""SGD with Polyak step-size.
 
@@ -2331,6 +2332,10 @@ def polyak_sgd(
   :math:`f^\star` is a guess of the minimum value of the function set with
   ``f_min``.
 
+  Setting ``variant="sps+"`` (Garrigos et al. 2023) uses only the non-negative
+  part of the suboptimality gap. That is, it replaces :math:`f(x) - f^\star`
+  with :math:`(f(x) - f^\star)_+`, where :math:`a_+ = \max \{x, 0\}`.
+
   Args:
     max_learning_rate: a maximum step size to use (defaults to 1).
     scaling: A global scaling factor, either fixed or evolving along iterations
@@ -2338,6 +2343,7 @@ def polyak_sgd(
     f_min: a lower bound on the objective function (defaults to 0). Corresponds
       to :math:`f^\star` in the formula above.
     eps: a value to add in the denominator of the update (defaults to 0).
+    variant: either ``'sps'`` or ``'sps+'`` (defaults to ``'sps'``).
 
   Returns:
     A :class:`optax.GradientTransformationExtraArgs`, where the ``update``
@@ -2371,6 +2377,10 @@ def polyak_sgd(
     Berrada et al., `Training neural networks for and by interpolation
     <https://arxiv.org/pdf/1906.05661.pdf>`_, 2020
 
+    Garrigos et al., `Function value learning: Adaptive learning rates based on
+    the Polyak stepsize and function splitting in ERM
+    <https://arxiv.org/abs/2307.14528>`_, 2023
+
   .. warning::
     This method requires knowledge of an approximate value of the of the
     objective function minimum, passed through the ``f_min`` argument.
@@ -2382,7 +2392,10 @@ def polyak_sgd(
   return combine.chain(
       sgd(learning_rate=scaling),
       transform.scale_by_polyak(
-          max_learning_rate=max_learning_rate, f_min=f_min, eps=eps
+          max_learning_rate=max_learning_rate,
+          f_min=f_min,
+          eps=eps,
+          variant=variant,
       ),
   )
 

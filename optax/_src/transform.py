@@ -19,6 +19,7 @@ from typing import NamedTuple, Optional, Union
 
 import chex
 import jax
+from jax import nn
 import jax.numpy as jnp
 from optax import tree_utils as otu
 from optax._src import base
@@ -1393,6 +1394,7 @@ def scale_by_polyak(
     f_min: float = 0.0,
     max_learning_rate: float = 1.0,
     eps: float = 0.0,
+    variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""Scales the update by Polyak's step-size.
 
@@ -1403,6 +1405,7 @@ def scale_by_polyak(
       to :math:`f^\star` in the formula above.
     max_learning_rate: a maximum step size to use (defaults to 1).
     eps: a value to add in the denominator of the update (defaults to 0).
+    variant: either ``'sps'`` or ``'sps+'`` (defaults to ``'sps'``).
 
   Returns:
     A :class:`optax.GradientTransformationExtraArgs`, where the ``update``
@@ -1433,11 +1436,18 @@ def scale_by_polyak(
     """
     del params, extra_args
     grad_sq_norm = otu.tree_l2_norm(updates, squared=True)
+    gap = value - f_min
+    if variant == 'sps':
+      pass
+    elif variant == 'sps+':
+      gap = nn.relu(gap)
+    else:
+      raise ValueError(f'Invalid argument value for Polyak SGD: {variant=}')
     # avoid division by zero
     step = jnp.where(
         grad_sq_norm + eps <= jnp.finfo(float).eps,
         jnp.array(0.0),
-        jnp.minimum((value - f_min) / (grad_sq_norm + eps), max_learning_rate),
+        jnp.minimum(gap / (grad_sq_norm + eps), max_learning_rate),
     )
     updates = otu.tree_scalar_mul(step, updates)
     return updates, state
