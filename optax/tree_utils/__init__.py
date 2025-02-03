@@ -28,6 +28,7 @@ from optax.tree_utils._state_utils import tree_map_params
 from optax.tree_utils._state_utils import tree_set
 from optax.tree_utils._tree_math import tree_add
 from optax.tree_utils._tree_math import tree_add_scalar_mul
+from optax.tree_utils._tree_math import tree_batch_shape
 from optax.tree_utils._tree_math import tree_bias_correction
 from optax.tree_utils._tree_math import tree_clip
 from optax.tree_utils._tree_math import tree_conj
