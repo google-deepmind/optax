@@ -37,11 +37,11 @@ jobs:
       - name: Lint module files with pylint
         run: |
           PYLINT_ARGS="-efail -wfail -cfail -rfail"
-          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
+          python3 -m pylint $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
       - name: Lint test files with pylint
         run: |
           PYLINT_ARGS="-efail -wfail -cfail -rfail"
-          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
+          python3 -m pylint $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
   ruff-lint:
     name: "Lint check with ruff"
     runs-on: "ubuntu-latest"
