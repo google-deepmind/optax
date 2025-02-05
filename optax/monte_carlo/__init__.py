@@ -16,9 +16,9 @@
 
 # pylint:disable=g-importing-member
 
-from optax.monte_carlo.control_variates import control_delta_method
-from optax.monte_carlo.control_variates import control_variates_jacobians
-from optax.monte_carlo.control_variates import moving_avg_baseline
-from optax.monte_carlo.stochastic_gradient_estimators import measure_valued_jacobians
-from optax.monte_carlo.stochastic_gradient_estimators import pathwise_jacobians
-from optax.monte_carlo.stochastic_gradient_estimators import score_function_jacobians
+from optax.monte_carlo.control_variates import control_delta_method as control_delta_method
+from optax.monte_carlo.control_variates import control_variates_jacobians as control_variates_jacobians
+from optax.monte_carlo.control_variates import moving_avg_baseline as moving_avg_baseline
+from optax.monte_carlo.stochastic_gradient_estimators import measure_valued_jacobians as measure_valued_jacobians
+from optax.monte_carlo.stochastic_gradient_estimators import pathwise_jacobians as pathwise_jacobians
+from optax.monte_carlo.stochastic_gradient_estimators import score_function_jacobians as score_function_jacobians

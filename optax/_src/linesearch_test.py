@@ -108,7 +108,8 @@ class BacktrackingLinesearchTest(chex.TestCase):
   @chex.all_variants()
   def test_linesearch_with_jax_variants(self):
     """Test backtracking linesearch with jax variants (jit etc...)."""
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
 
@@ -405,7 +406,8 @@ class ZoomLinesearchTest(chex.TestCase):
   @chex.all_variants()
   def test_linesearch_with_jax_variants(self):
     """Test zoom linesearch with jax variants (jit etc...)."""
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
 

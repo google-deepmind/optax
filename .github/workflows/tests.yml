@@ -31,6 +31,7 @@ jobs:
         run: |
           pip install -U pip setuptools wheel
           pip install -U flake8 pytest-xdist pylint pylint-exit
+          pip install -U jax chex etils flax scikit-learn
       - name: Lint with flake8
         run: |
           python3 -m flake8 --select=E9,F63,F7,F82,E225,E251 --show-source --statistics

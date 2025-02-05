@@ -15,14 +15,13 @@
 """Tests for smoothing functions in `optax.losses._smoothing.py`."""
 
 from absl.testing import absltest
-from absl.testing import parameterized
 import chex
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _smoothing
 
 
-class SmoothLabelsTest(parameterized.TestCase):
+class SmoothLabelsTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()

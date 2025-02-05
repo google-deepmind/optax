@@ -34,6 +34,7 @@ source "${TEMP_DIR}/test_venv/bin/activate"
 python3 -m pip install --quiet --upgrade pip setuptools wheel
 python3 -m pip install --quiet --upgrade flake8 pytest-xdist pylint pylint-exit
 python3 -m pip install --quiet --editable ".[test, examples]"
+python3 -m pip install --quiet --upgrade sphinx
 
 # Dp-accounting specifies exact minor versions as requirements which sometimes
 # become incompatible with other libraries optax needs. We therefore install

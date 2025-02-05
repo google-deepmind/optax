@@ -87,7 +87,8 @@ class DeltaControlVariateTest(chex.TestCase):
 
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
-    function = lambda x: jnp.sum(x**2)
+    def function(x):
+        return jnp.sum(x**2)
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -113,7 +114,8 @@ class DeltaControlVariateTest(chex.TestCase):
     dist = utils.multi_normal(*params)
     rng = jax.random.key(1)
     dist_samples = dist.sample((num_samples,), rng)
-    function = lambda x: jnp.sum(x**5)
+    def function(x):
+        return jnp.sum(x**5)
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -134,7 +136,8 @@ class DeltaControlVariateTest(chex.TestCase):
     rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
-    function = lambda x: jnp.sum(jnp.log(x**2))
+    def function(x):
+        return jnp.sum(jnp.log(x**2))
 
     cv, expected_cv, _ = control_variates.control_delta_method(function)
     avg_cv = jnp.mean(_map_variant(self.variant)(cv, params, dist_samples))
@@ -165,7 +168,8 @@ class MovingAverageBaselineTest(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(weights * x)
+    def function(x):
+        return jnp.sum(weights * x)
 
     rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
@@ -217,7 +221,8 @@ class MovingAverageBaselineTest(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(weights * x)
+    def function(x):
+        return jnp.sum(weights * x)
 
     rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
@@ -272,7 +277,8 @@ class MovingAverageBaselineTest(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(weights * x)
+    def function(x):
+        return jnp.sum(weights * x)
 
     rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
@@ -345,7 +351,8 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(x**2)
+    def function(x):
+        return jnp.sum(x**2)
     rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -428,7 +435,8 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(x**3)
+    def function(x):
+        return jnp.sum(x**3)
     rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -515,7 +523,8 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(x**4)
+    def function(x):
+        return jnp.sum(x**4)
     rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -612,7 +621,8 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.sum(weights * x)
+    def function(x):
+        return jnp.sum(weights * x)
     rng = jax.random.key(1)
     cv_rng, ge_rng = jax.random.split(rng)
 
@@ -701,7 +711,8 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
     )
 
     params = [mean, log_scale]
-    function = lambda x: jnp.log(jnp.sum(x**2))
+    def function(x):
+        return jnp.log(jnp.sum(x**2))
     rng = jax.random.key(1)
     cv_rng, ge_rng = jax.random.split(rng)
 

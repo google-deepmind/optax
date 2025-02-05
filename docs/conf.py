@@ -63,8 +63,8 @@ sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
 # pylint: disable=g-import-not-at-top
-import optax
-from sphinxcontrib import katex
+import optax # noqa E402
+from sphinxcontrib import katex  # pylint: disable=no-name-in-module # noqa E402
 # pylint: enable=g-import-not-at-top
 
 # -- Project information -----------------------------------------------------

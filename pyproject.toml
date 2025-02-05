@@ -96,11 +96,15 @@ select = [
 ignore = [
     "E731",  # lambdas are allowed
     "E501",  # don't check line lengths
-    "F401",  # allow unused imports
-    "E402",  # allow modules not at top of file
-    "E741",  # allow "l" as a variable name
-    "E703",  # allow semicolons (for jupyter notebooks)
 ]
+
+[tool.pylint.main]
+ignore-patterns = [
+    ".*.pyi",
+]
+
+[tool.pylint.imports]
+allow-reexport-from-package = true
 
 [tool.pylint.messages_control]
 disable = [
@@ -121,20 +125,12 @@ disable = [
     "unused-argument",
     "too-few-public-methods",
     "wrong-import-order",
-    "unused-import",
     "wrong-import-position",
-    "unnecessary-lambda-assignment",
     "too-many-lines",
     "too-many-statements",
-    "deprecated-class",
-    "redefined-builtin",
-    "used-before-assignment",
-    "undefined-variable",
     "protected-access",
     "not-callable",
-    "redefined-outer-name",
     "too-many-instance-attributes",
-    "missing-final-newline",
     "too-many-public-methods",
-    "import-error",
+    "unnecessary-lambda-assignment",
 ]

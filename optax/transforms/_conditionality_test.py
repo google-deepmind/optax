@@ -53,7 +53,7 @@ def _build_sgd_extra_args():
   return combine.chain(_build_sgd(), t)
 
 
-class ConditionalityTest(parameterized.TestCase):
+class ConditionalityTest(chex.TestCase):
 
   @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
   @parameterized.named_parameters(

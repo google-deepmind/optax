@@ -27,7 +27,7 @@ from optax import projections
 from optax.losses import _classification
 
 
-class SoftmaxCrossEntropyTest(parameterized.TestCase):
+class SoftmaxCrossEntropyTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -106,7 +106,7 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
-class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
+class SafeSoftmaxCrossEntropyTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -183,7 +183,7 @@ class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
     chex.assert_trees_all_close(plain_val_and_grad, val_and_grad, atol=1e-4)
 
 
-class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
+class SoftmaxCrossEntropyWithIntegerLabelsTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -284,7 +284,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     np.testing.assert_allclose(actual, desired)
 
 
-class SigmoidCrossEntropyTest(parameterized.TestCase):
+class SigmoidCrossEntropyTest(chex.TestCase):
 
   @parameterized.parameters(
       {
@@ -345,7 +345,7 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
     np.testing.assert_allclose(tested, expected, rtol=1e-6, atol=1e-6)
 
 
-class PolyLossTest(parameterized.TestCase):
+class PolyLossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -455,7 +455,7 @@ class PolyLossTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
-class HingeTest(parameterized.TestCase):
+class HingeTest(chex.TestCase):
 
   def test_binary(self):
     label = jnp.array(1)
@@ -508,7 +508,7 @@ class HingeTest(parameterized.TestCase):
     np.testing.assert_allclose(result, expected, atol=1e-4)
 
 
-class SparsemaxTest(parameterized.TestCase):
+class SparsemaxTest(chex.TestCase):
 
   def test_binary(self):
     label = 1
@@ -570,7 +570,7 @@ class SparsemaxTest(parameterized.TestCase):
     np.testing.assert_allclose(grad, grad_expected, atol=1e-4)
 
 
-class ConvexKLDivergenceTest(parameterized.TestCase):
+class ConvexKLDivergenceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -630,7 +630,7 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
-class PerceptronTest(parameterized.TestCase):
+class PerceptronTest(chex.TestCase):
 
   def test_binary(self):
     label = jnp.array(1)
@@ -681,7 +681,7 @@ class PerceptronTest(parameterized.TestCase):
     np.testing.assert_allclose(result, expected, atol=1e-4)
 
 
-class KLDivergenceTest(parameterized.TestCase):
+class KLDivergenceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -736,7 +736,7 @@ class KLDivergenceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
-class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
+class KLDivergenceWithLogTargetsTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -818,7 +818,7 @@ def _average_ctc_loss(
   )
 
 
-class CTCTest(parameterized.TestCase):
+class CTCTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -962,7 +962,7 @@ class CTCTest(parameterized.TestCase):
       )
 
 
-class SigmoidFocalLossTest(parameterized.TestCase):
+class SigmoidFocalLossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -970,7 +970,8 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     self.ts = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
     self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
 
-    logit = lambda x: jnp.log(x / (1.0 - x))
+    def logit(x):
+      return jnp.log(x / (1.0 - x))
     self.large_ys = logit(jnp.array([0.9, 0.98, 0.3, 0.99]))
     self.small_ys = logit(jnp.array([0.1, 0.02, 0.09, 0.15]))
     self.ones_ts = jnp.array([1.0, 1.0, 1.0, 1.0])

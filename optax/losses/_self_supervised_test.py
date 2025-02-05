@@ -68,7 +68,7 @@ class NtxentTest(chex.TestCase):
     )
 
 
-class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
+class TripletMarginLossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()

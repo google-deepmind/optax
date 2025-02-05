@@ -241,7 +241,8 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x * weights)
+    def function(x):
+      return jnp.sum(x * weights)
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale], utils.multi_normal, rng, num_samples
     )
@@ -288,7 +289,8 @@ class GradientEstimatorsTest(chex.TestCase):
 
     data_dims = len(effective_mean)
 
-    function = lambda x: jnp.sum(x * weights) ** 2
+    def function(x):
+      return jnp.sum(x * weights) ** 2
     jacobians = _estimator_variant(self.variant, estimator)(
         function, [mean, log_scale], utils.multi_normal, rng, num_samples
     )
@@ -407,7 +409,8 @@ class MeasuredValuedEstimatorsTest(chex.TestCase):
     num_samples = 10**5
     rng = jax.random.key(1)
 
-    function = lambda x: jnp.sum(x) ** 2
+    def function(x):
+      return jnp.sum(x) ** 2
 
     mean = jnp.array(0, dtype=jnp.float32)
     log_scale = jnp.array(0.0, dtype=jnp.float32)

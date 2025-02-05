@@ -23,7 +23,7 @@ from optax._src import factorized
 from optax.transforms import _accumulation
 
 
-class FactorizedTest(parameterized.TestCase):
+class FactorizedTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -53,7 +53,8 @@ class FactorizedTest(parameterized.TestCase):
     """Test that the optimizer returns updates of same dtype as params."""
     dtype = jnp.dtype(dtype)
     opt = factorized.scale_by_factored_rms()
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     if factorized_dims:
       # The updates are factored only for large enough parameters
@@ -77,7 +78,8 @@ class FactorizedTest(parameterized.TestCase):
     base_opt = factorized.scale_by_factored_rms()
     opt = _accumulation.MultiSteps(base_opt, every_k_schedule=4)
 
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     if factorized_dims:
       # The updates are factored only for large enough parameters

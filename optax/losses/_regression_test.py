@@ -22,7 +22,7 @@ import numpy as np
 from optax.losses import _regression
 
 
-class SquaredErrorTest(parameterized.TestCase):
+class SquaredErrorTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -52,7 +52,7 @@ class SquaredErrorTest(parameterized.TestCase):
       )
 
 
-class L2LossTest(parameterized.TestCase):
+class L2LossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -81,7 +81,7 @@ class L2LossTest(parameterized.TestCase):
       )
 
 
-class HuberLossTest(parameterized.TestCase):
+class HuberLossTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -106,7 +106,7 @@ class HuberLossTest(parameterized.TestCase):
 
 
 # TODO(b/188419459): add test for grad and second order grad.
-class LogCoshTest(parameterized.TestCase):
+class LogCoshTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -140,7 +140,7 @@ class LogCoshTest(parameterized.TestCase):
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
 
 
-class CosineDistanceTest(parameterized.TestCase):
+class CosineDistanceTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()

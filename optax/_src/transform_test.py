@@ -31,7 +31,7 @@ STEPS = 50
 LR = 1e-2
 
 
-class TransformTest(parameterized.TestCase):
+class TransformTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -180,7 +180,8 @@ class TransformTest(parameterized.TestCase):
     """Polyak step-size on L1 norm."""
     # for this objective, the Polyak step-size has an exact model and should
     # converge to the minimizer in one step
-    objective = lambda x: jnp.abs(x).sum()
+    def objective(x):
+      return jnp.abs(x).sum()
 
     init_params = jnp.array([1.0, -1.0])
     polyak = transform.scale_by_polyak()
@@ -197,7 +198,8 @@ class TransformTest(parameterized.TestCase):
 
   def test_rms_match_adam(self):
     """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
-    fun = lambda x: otu.tree_l2_norm(x, squared=True)
+    def fun(x):
+      return otu.tree_l2_norm(x, squared=True)
 
     rms = transform.scale_by_rms(
         decay=0.999, eps_in_sqrt=False, bias_correction=True

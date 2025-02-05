@@ -317,7 +317,8 @@ class ContribTest(chex.TestCase):
     else:
       update_kwargs = {}
     if opt_name == 'sophia':
-      obj_fn = lambda x: _tree_math.tree_l2_norm(x, squared=True)
+      def obj_fn(x):
+        return _tree_math.tree_l2_norm(x, squared=True)
       update_fn = functools.partial(opt.update, obj_fn=obj_fn)
       inject_update_fn = functools.partial(opt_inject.update, obj_fn=obj_fn)
     else:
@@ -368,7 +369,8 @@ class ContribTest(chex.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
@@ -401,7 +403,8 @@ class ContribTest(chex.TestCase):
     if wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
 
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     if opt_name == 'sophia':
       update_fn = functools.partial(opt.update, obj_fn=fun)

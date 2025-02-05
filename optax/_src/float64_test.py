@@ -62,7 +62,7 @@ ALL_MODULES = [
 ]
 
 
-class Float64Test(parameterized.TestCase):
+class Float64Test(chex.TestCase):
 
   def _assert_dtype_equals(self, tree1, tree2):
     tree1_types = jax.tree.map(lambda t: t.dtype, tree1)

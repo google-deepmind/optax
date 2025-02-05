@@ -279,7 +279,8 @@ class AliasTest(chex.TestCase):
     dtype = jnp.dtype(dtype)
     opt_factory = getattr(alias, opt_name)
     opt = opt_factory(**opt_kwargs)
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
@@ -303,7 +304,8 @@ class AliasTest(chex.TestCase):
     base_opt = opt_factory(**opt_kwargs)
     opt = _accumulation.MultiSteps(base_opt, every_k_schedule=4)
 
-    fun = lambda x: jnp.sum(x**2)
+    def fun(x):
+      return jnp.sum(x**2)
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
@@ -382,7 +384,8 @@ def _materialize_approx_inv_hessian(
 
   id_mat = jnp.eye(d, d)
   p = id_mat
-  safe_dot = lambda x, y: jnp.dot(x, y, precision=jax.lax.Precision.HIGHEST)
+  def safe_dot(x, y):
+    return jnp.dot(x, y, precision=jax.lax.Precision.HIGHEST)
 
   for j in range(m):
     v = id_mat - rhos[j] * jnp.outer(dus[j], dws[j])

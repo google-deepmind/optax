@@ -65,7 +65,8 @@ def trace(
 
   def update_fn(updates, state, params=None):
     del params
-    f = lambda g, t: g + decay * t
+    def f(g, t):
+      return g + decay * t
     new_trace = jax.tree.map(
         lambda g, t: None if g is None else f(g, t),
         updates,

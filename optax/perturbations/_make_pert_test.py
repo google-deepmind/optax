@@ -91,7 +91,8 @@ class MakePertTest(absltest.TestCase):
         argmax_tree, self.num_samples, self.sigma
     )
     expected = pert_argmax_fun(self.array_a_jax, self.rng_jax)
-    softmax_fun = lambda x: jax.nn.softmax(x / self.sigma)
+    def softmax_fun(x):
+      return jax.nn.softmax(x / self.sigma)
     got = jtu.tree_map(softmax_fun, self.array_a_jax)
     np.testing.assert_array_almost_equal(expected, got, decimal=1)
     pert_argmax_fun_small = _make_pert.make_perturbed_fun(

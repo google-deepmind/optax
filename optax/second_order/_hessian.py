@@ -52,7 +52,8 @@ def hvp(
     evaluated at `(params, inputs, targets)`.
   """
   _, unravel_fn = flatten_util.ravel_pytree(params)
-  loss_fn = lambda p: loss(p, inputs, targets)
+  def loss_fn(p):
+    return loss(p, inputs, targets)
   return jax.jvp(jax.grad(loss_fn), [params], [unravel_fn(v)])[1]
 
 
@@ -75,5 +76,6 @@ def hessian_diag(
     evaluated at `(params, inputs, targets)`.
   """
   vs = jnp.eye(_ravel(params).size)
-  comp = lambda v: jnp.vdot(v, _ravel(hvp(loss, v, params, inputs, targets)))
+  def comp(v):
+    return jnp.vdot(v, _ravel(hvp(loss, v, params, inputs, targets)))
   return jax.vmap(comp)(vs)
