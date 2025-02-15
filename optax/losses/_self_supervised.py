@@ -133,13 +133,14 @@ def triplet_margin_loss(
 
   Examples:
     >>> import jax.numpy as jnp, optax, chex
+    >>> jnp.set_printoptions(precision=4)
     >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
     >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
     >>> negatives = jnp.array([[1.0, 0.0], [0.0, 1.0]])
     >>> output = optax.losses.triplet_margin_loss(anchors, positives, negatives,
     ...                                           margin=1.0)
     >>> print(output)
-    [0.14142442 0.14142442]
+    [0.1414 0.1414]
 
   Args:
     anchors: An array of anchor embeddings, with shape [batch, feature_dim].

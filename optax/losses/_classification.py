@@ -260,11 +260,12 @@ def softmax_cross_entropy(
   Examples:
     >>> import optax
     >>> import jax.numpy as jnp
+    >>> jnp.set_printoptions(precision=4)
     >>> # example: batch_size = 2, num_classes = 3
     >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
     >>> labels = jnp.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
     >>> print(optax.softmax_cross_entropy(logits, labels))
-    [0.2761297 2.951799 ]
+    [0.2761 2.9518]
 
   References:
     `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
@@ -329,15 +330,17 @@ def softmax_cross_entropy_with_integer_labels(
   Examples:
     >>> import optax
     >>> import jax.numpy as jnp
+    >>> jnp.set_printoptions(precision=4)
     >>> # example: batch_size = 2, num_classes = 3
     >>> logits = jnp.array([[1.2, -0.8, -0.5], [0.9, -1.2, 1.1]])
     >>> labels = jnp.array([0, 1])
     >>> print(optax.softmax_cross_entropy_with_integer_labels(logits, labels))
-    [0.2761297 2.951799 ]
+    [0.2761 2.9518]
 
     >>> import jax.numpy as jnp
     >>> import numpy as np
     >>> import optax
+    >>> jnp.set_printoptions(precision=4)
     >>> # example: batch_size = (1, 2), num_classes = 12 (i.e. 3 * 4)
     >>> shape = (1, 2, 3, 4)
     >>> logits = jnp.arange(np.prod(shape), dtype=jnp.float32).reshape(shape)
@@ -348,7 +351,7 @@ def softmax_cross_entropy_with_integer_labels(
     >>> cross_entropy = optax.softmax_cross_entropy_with_integer_labels(
     ...     logits, labels, axis=(2, 3))
     >>> print(cross_entropy)
-    [[6.458669   0.45866907]]
+    [[6.4587 0.4587]]
 
   References:
     `Cross-entropy Loss <https://en.wikipedia.org/wiki/Cross-entropy>`_,
