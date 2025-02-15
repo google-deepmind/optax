@@ -209,6 +209,39 @@ class LinearAlgebraTest(chex.TestCase):
         # No guarantee of success after e >= 7
         pass
 
+  @parameterized.parameters(
+    {'n': n, 'd': d, 'zero_A': zero_A}
+    for n in [24] + list(range(10))
+    for d in [64] + list(range(10))
+    for zero_A in [False, True]
+  )
+  def test_nnls(self, n, d, zero_A, atol=1e-3, iters=10**4):
+    """Test non-negative least squares solver."""
+    if zero_A:
+      A = jnp.zeros((n, d))
+    else:
+      A = np.random.normal(size=(n, d))
+    b = np.random.normal(size=(n,))
+
+    x = linear_algebra.nnls(A, b, iters=iters)
+
+    with self.subTest('x is non-negative'):
+      assert jnp.allclose(x.clip(max=0), 0, atol=atol)
+
+    try:
+      xr, _ = scipy.optimize.nnls(A, b, maxiter=iters)
+    except RuntimeError:
+      return
+
+    with self.subTest('xr is non-negative'):
+      assert jnp.allclose(xr.clip(max=0), 0, atol=atol)
+
+    d = jnp.square(A @ x - b).sum()
+    dr = jnp.square(A @ xr - b).sum()
+
+    with self.subTest('x is optimal'):
+      np.testing.assert_allclose(d, dr.clip(max=d), atol=atol)
+
 
 if __name__ == '__main__':
   absltest.main()

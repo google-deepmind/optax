@@ -80,6 +80,7 @@ from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
 from optax._src.linear_algebra import power_iteration
+from optax._src.linear_algebra import nnls
 from optax._src.linesearch import scale_by_backtracking_linesearch
 from optax._src.linesearch import scale_by_zoom_linesearch
 from optax._src.linesearch import ScaleByBacktrackingLinesearchState
@@ -378,6 +379,7 @@ __all__ = (
     "MultiTransformState",
     "nadam",
     "nadamw",
+    "nnls",
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",

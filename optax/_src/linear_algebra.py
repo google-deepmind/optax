@@ -265,3 +265,79 @@ def matrix_inverse_pth_root(
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
     resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
   return resultant_mat_h, error
+
+
+def get_spectral_radius_upper_bound(matrix):
+  # Get an upper bound on the spectral radius of a matrix.
+  a = jnp.linalg.matrix_norm(matrix, ord="fro")
+  if matrix.size == 0:
+    b = 0  # TODO: remove this branch after jax/issues/26555 is fixed
+  else:
+    b = jnp.linalg.matrix_norm(matrix, ord=1)
+  return jnp.minimum(a, b)
+
+
+def nnls(
+    A: jax.Array,
+    b: jax.Array,
+    iters: int,
+    unroll: Union[int, bool] = 1,
+    L: Union[jax.Array, float, None] = None,
+) -> jax.Array:
+  r"""Solves the non-negative least squares problem.
+
+  Minimizes :math:`\|A x - b\|_2` subject to :math:`x \geq 0`.
+
+  Uses the fast projected gradient (FPG) algorithm of Polyak 2015.
+
+  Args:
+    A: Input matrix.
+    b: Input vector.
+    iters: Number of iterations to run the algorithm for.
+    unroll: Unroll parameter passed to `lax.scan`.
+    L: An upper bound on the spectral radius of `A.T @ A` (optional).
+
+  Returns:
+    The solution vector.
+
+  Examples:
+    >>> from jax import numpy as jnp
+    >>> import optax
+    >>> A = jnp.array([[1., 2.], [3., 4.]])
+    >>> b = jnp.array([5., 6.])
+    >>> x = optax.nnls(A, b, 10**3)
+    >>> print(f"{x[0]:.2f}")
+    0.00
+    >>> print(f"{x[1]:.2f}")
+    1.70
+
+  References:
+    Roman A. Polyak, `Projected gradient method for non-negative least square
+    <http://www.ams.org/books/conm/636/>`_, 2015
+  """
+  Q = A.T @ A
+  q = A.T @ b
+
+  if L is None:
+    L = get_spectral_radius_upper_bound(Q)
+
+  L = jnp.where(L == 0, 1, L)  # avoid division by zero below
+
+  def f(x_p_c, _):
+    x, p, c = x_p_c
+
+    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
+    s = (c - 1) / cn
+
+    xn = (p - (Q @ p - q) / L).clip(0)
+    pn = xn + s * (xn - x)
+
+    return (xn, pn, cn), None
+
+  x = jnp.zeros(A.shape[1])
+  p = x
+  c = 0.
+
+  (x, p, c), _ = lax.scan(f, (x, p, c), length=iters, unroll=unroll)
+
+  return x
