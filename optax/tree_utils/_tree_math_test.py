@@ -101,13 +101,13 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_div(self.tree_a, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
-  def test_tree_scalar_mul(self):
+  def test_tree_scalar(self):
     expected = 0.5 * self.array_a
-    got = tu.tree_scalar_mul(0.5, self.array_a)
+    got = tu.tree_scalar(0.5, self.array_a)
     np.testing.assert_array_almost_equal(expected, got)
 
     expected = (0.5 * self.tree_a[0], 0.5 * self.tree_a[1])
-    got = tu.tree_scalar_mul(0.5, self.tree_a)
+    got = tu.tree_scalar(0.5, self.tree_a)
     chex.assert_trees_all_close(expected, got)
 
   def test_tree_add_scalar_mul(self):
@@ -223,19 +223,19 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_add_multiple_trees(self):
     """Test adding more than 2 trees with tree_add."""
     trees = [self.tree_a_dict_jax, self.tree_a_dict_jax, self.tree_a_dict_jax]
-    expected = tu.tree_scalar_mul(3.0, self.tree_a_dict_jax)
+    expected = tu.tree_scalar(3.0, self.tree_a_dict_jax)
     got = tu.tree_add(*trees)
     chex.assert_trees_all_close(expected, got)
 
   def test_tree_clip(self):
     """Clip the tree to range [min_value, max_value]."""
-    expected = tu.tree_scalar_mul(0.5, self.tree_a_dict_jax)
+    expected = tu.tree_scalar(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=0, max_value=0.5)
     chex.assert_trees_all_close(expected, got)
-    expected = tu.tree_scalar_mul(0.5, self.tree_a_dict_jax)
+    expected = tu.tree_scalar(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=None, max_value=0.5)
     chex.assert_trees_all_close(expected, got)
-    expected = tu.tree_scalar_mul(2.0, self.tree_a_dict_jax)
+    expected = tu.tree_scalar(2.0, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=2.0, max_value=None)
     chex.assert_trees_all_close(expected, got)
 
