@@ -81,7 +81,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   return jax.tree.map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(
+def tree_scalar(
     scalar: Union[float, jax.Array],
     tree: Any,
 ) -> Any:
