@@ -99,7 +99,7 @@ def tree_scalar(
   return jax.tree.map(lambda x: scalar * x, tree)
 
 
-def tree_add_scalar_mul(
+def tree_add_scalar(
     tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
