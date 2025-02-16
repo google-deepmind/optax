@@ -110,12 +110,12 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_scalar(0.5, self.tree_a)
     chex.assert_trees_all_close(expected, got)
 
-  def test_tree_add_scalar_mul(self):
+  def test_tree_add_scale(self):
     expected = (
         self.tree_a[0] + 0.5 * self.tree_b[0],
         self.tree_a[1] + 0.5 * self.tree_b[1],
     )
-    got = tu.tree_add_scalar_mul(self.tree_a, 0.5, self.tree_b)
+    got = tu.tree_add_scale(self.tree_a, 0.5, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
   def test_tree_vdot(self):
@@ -287,8 +287,8 @@ class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       {
-          'testcase_name': 'tree_add_scalar_mul',
-          'operation': lambda m: tu.tree_add_scalar_mul(None, 1, m),
+          'testcase_name': 'tree_add_scale',
+          'operation': lambda m: tu.tree_add_scale(None, 1, m),
       },
       {
           'testcase_name': 'tree_update_moment',
