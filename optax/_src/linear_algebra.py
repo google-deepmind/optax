@@ -333,7 +333,7 @@ def nnls(
 
     return (xn, pn, cn), None
 
-  x = jnp.zeros(A.shape[1])
+  x = jnp.zeros_like(b, shape=b.shape[:-1] + A.shape[-1:])
   p = x
   c = 0.
 
