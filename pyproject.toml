@@ -102,6 +102,22 @@ ignore = [
     "E703",  # allow semicolons (for jupyter notebooks)
 ]
 
+[tool.pytype]
+inputs = ["optax"]
+disable = ["import-error"]
+keep_going = true
+
+[tool.pytest.ini_options]
+addopts = "--pyargs optax --numprocesses auto"
+
+[tool.pylint.main]
+ignore-patterns = [
+    ".*.pyi",
+]
+ignore = [
+    "test_venv",
+]
+
 [tool.pylint.messages_control]
 disable = [
     "bad-indentation",
