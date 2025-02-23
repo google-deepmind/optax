@@ -18,5 +18,9 @@ from optax.transforms import _combining
 
 chain = _combining.chain
 named_chain = _combining.named_chain
-multi_transform = _combining.partition
-MultiTransformState = _combining.PartitionState
+multi_transform = _combining.multi_transform
+MultiTransformState = _combining.MultiTransformState
+
+# Backward compatability.
+partition = _combining.multi_transform
+PartitionState = _combining.MultiTransformState
