@@ -151,12 +151,12 @@ class ExtraArgsTest(chex.TestCase):
     opt.update(params, state, params=params, ignored_kwarg='hi')
 
 
-class PartitionTest(chex.TestCase):
-  """Tests for the partition wrapper."""
+class MultiTransformTest(chex.TestCase):
+  """Tests for the multi_transform wrapper."""
 
   @chex.all_variants
   @parameterized.parameters(True, False)
-  def test_partition(self, use_fn):
+  def test_multi_transform(self, use_fn):
     params = {'a1': 1.0, 'b1': 2.0, 'z1': {'a2': 3.0, 'z2': {'c1': 4.0}}}
     params = jax.tree.map(jnp.asarray, params)
     input_updates = jax.tree.map(lambda x: x / 10.0, params)
@@ -168,7 +168,7 @@ class PartitionTest(chex.TestCase):
     param_labels = _map_keys_fn(lambda k, _: k[0])
     if not use_fn:
       param_labels = param_labels(params)
-    tx = _combining.partition(tx_dict, param_labels)
+    tx = _combining.multi_transform(tx_dict, param_labels)
     update_fn = self.variant(tx.update)
     state = self.variant(tx.init)(params)
 
@@ -206,7 +206,7 @@ class PartitionTest(chex.TestCase):
     opt_no_arg = base.GradientTransformation(init, update_without_arg)
     opt_extra_arg = base.GradientTransformationExtraArgs(init, update_with_arg)
 
-    opt = _combining.partition(
+    opt = _combining.multi_transform(
         {
             'a': opt_no_arg,
             'b': opt_extra_arg,
@@ -225,7 +225,7 @@ class PartitionTest(chex.TestCase):
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
-    init_fn, update_fn = _combining.partition({0: alias.sgd(1.0)}, lambda _: 0)
+    init_fn, update_fn = _combining.multi_transform({0: alias.sgd(1.0)}, lambda _: 0)
     updates, _ = update_fn(container(), init_fn(container()))
     self.assertEqual(updates, container())
 
@@ -247,7 +247,7 @@ class PartitionTest(chex.TestCase):
         1: alias.adam(1.0, b1=0.0, b2=0.0),
         2: _accumulation.trace(1.0),
     }
-    init_fn, update_fn = _combining.partition(
+    init_fn, update_fn = _combining.multi_transform(
         transforms, (lambda _: label_tree) if use_fn else label_tree
     )
 

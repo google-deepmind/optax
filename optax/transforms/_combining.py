@@ -165,11 +165,11 @@ def named_chain(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-class PartitionState(NamedTuple):
+class MultiTransformState(NamedTuple):
   inner_states: Mapping[Hashable, base.OptState]
 
 
-def partition(
+def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
     param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]],
     *,
@@ -265,7 +265,7 @@ def partition(
         ).init(params)
         for group, tx in transforms.items()
     }
-    return PartitionState(inner_states)
+    return MultiTransformState(inner_states)
 
   def update_fn(updates, state, params=None, **extra_args):
     labels = param_labels(updates) if callable(param_labels) else param_labels
@@ -279,6 +279,6 @@ def partition(
       updates, new_inner_state[group] = masked_tx.update(
           updates, state.inner_states[group], params, **extra_args
       )
-    return updates, PartitionState(new_inner_state)
+    return updates, MultiTransformState(new_inner_state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

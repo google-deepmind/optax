@@ -38,8 +38,8 @@ from optax.transforms._clipping import unitwise_clip
 from optax.transforms._clipping import unitwise_norm
 from optax.transforms._combining import chain
 from optax.transforms._combining import named_chain
-from optax.transforms._combining import partition
-from optax.transforms._combining import PartitionState
+from optax.transforms._combining import multi_transform
+from optax.transforms._combining import MultiTransformState
 from optax.transforms._conditionality import apply_if_finite
 from optax.transforms._conditionality import ApplyIfFiniteState
 from optax.transforms._conditionality import conditionally_mask
@@ -56,6 +56,9 @@ from optax.transforms._masking import masked
 from optax.transforms._masking import MaskedNode
 from optax.transforms._masking import MaskedState
 
+# Backward compatibility.
+partition = multi_transform
+PartitionState = MultiTransformState
 
 __all__ = (
     "adaptive_grad_clip",
@@ -80,9 +83,11 @@ __all__ = (
     "MaskedState",
     "MultiSteps",
     "MultiStepsState",
+    "multi_transform",
+    "MultiTransformState",
     "named_chain",
     "NonNegativeParamsState",
-    "partition",
+    "partition",    
     "PartitionState",
     "ShouldSkipUpdateFunction",
     "skip_large_updates",
