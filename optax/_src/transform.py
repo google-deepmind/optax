@@ -1707,7 +1707,8 @@ def scale_by_lbfgs(
       )
       # For the very first step of the algorithm, we consider scaling by a
       # capped reciprocal of the gradient norm, see note in the docstring.
-      capped_inv_norm = jnp.minimum(1.0, 1.0/otu.tree_l2_norm(updates))
+      update_norm = otu.tree_l2_norm(jax.lax.stop_gradient(updates))
+      capped_inv_norm = jnp.minimum(1.0, 1.0 / update_norm)
       identity_scale = jnp.where(
           state.count > 0, identity_scale, capped_inv_norm
       )
