@@ -165,11 +165,11 @@ def named_chain(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-class PartitionState(NamedTuple):
+class MultiTransformState(NamedTuple):
   inner_states: Mapping[Hashable, base.OptState]
 
 
-def partition(
+def multi_transform(
     transforms: Mapping[Hashable, base.GradientTransformation],
     param_labels: Union[base.PyTree, Callable[[base.PyTree], base.PyTree]],
     *,
@@ -216,7 +216,7 @@ def partition(
       >>> gradients = jax.tree.map(jnp.ones_like, params)  # dummy gradients
 
       >>> label_fn = map_nested_fn(lambda k, _: k)
-      >>> tx = optax.partition(
+      >>> tx = optax.multi_transform(
       ...     {'w': optax.adam(1.0), 'b': optax.sgd(1.0)}, label_fn)
       >>> state = tx.init(params)
       >>> updates, new_state = tx.update(gradients, state, params)
@@ -231,12 +231,12 @@ def partition(
       >>> all_params = (generator_params, discriminator_params)
       >>> param_labels = ('generator', 'discriminator')
 
-      >>> tx = optax.partition(
+      >>> tx = optax.multi_transform(
       >>>     {'generator': optax.adam(0.1), 'discriminator': optax.adam(0.5)},
       >>>     param_labels)
 
     If you would like to not optimize some parameters, you may wrap
-    :func:`optax.partition` with :func:`optax.masked`.
+    :func:`optax.multi_transform` with :func:`optax.masked`.
   """
 
   transforms = {
@@ -265,7 +265,7 @@ def partition(
         ).init(params)
         for group, tx in transforms.items()
     }
-    return PartitionState(inner_states)
+    return MultiTransformState(inner_states)
 
   def update_fn(updates, state, params=None, **extra_args):
     labels = param_labels(updates) if callable(param_labels) else param_labels
@@ -279,6 +279,6 @@ def partition(
       updates, new_inner_state[group] = masked_tx.update(
           updates, state.inner_states[group], params, **extra_args
       )
-    return updates, PartitionState(new_inner_state)
+    return updates, MultiTransformState(new_inner_state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
