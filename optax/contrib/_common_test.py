@@ -103,7 +103,11 @@ _BASE_OPTIMIZERS = [
     {'opt_name': 'lion', 'opt_kwargs': {'learning_rate': 1.0, 'b1': 0.99}},
     {
         'opt_name': 'noisy_sgd',
-        'opt_kwargs': {'learning_rate': 1.0, 'eta': 1e-4},
+        'opt_kwargs': {
+          'learning_rate': 1.0,
+          'key': jax.random.key(0),
+          'eta': 1e-4
+        },
     },
     {'opt_name': 'novograd', 'opt_kwargs': {'learning_rate': 1.0}},
     {
