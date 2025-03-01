@@ -64,6 +64,12 @@ def power_iteration(
   of a diagonalizable matrix. This matrix can be given as an array or as a
   callable implementing a matrix-vector product.
 
+  If a matrix has a dominant eigenvalue, then the magnitude of that eigenvalue equals
+  the spectral radius of the matrix.
+
+  Note that a matrix might not have a dominant eigenvalue, that is, an eigenvalue that
+  is `strictly` greater in magnitude than any other eigenvalue.
+
   Args:
     matrix: a square matrix, either as an array or a callable implementing a
       matrix-vector product.
