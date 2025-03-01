@@ -16,6 +16,13 @@
 
 # pylint: disable=g-importing-member
 
-from optax.perturbations._make_pert import Gumbel
 from optax.perturbations._make_pert import make_perturbed_fun
 from optax.perturbations._make_pert import Normal
+from optax.perturbations._make_pert import Gumbel
+from optax.perturbations._make_pert import Laplace
+from optax.perturbations._make_pert import Cauchy
+from optax.perturbations._make_pert import Logistic
+from optax.perturbations._make_pert import StudentT
+from optax.perturbations._make_pert import ChiSquare
+from optax.perturbations._make_pert import GeneralizedNormal
+from optax.perturbations._make_pert import Triangular
