@@ -6,14 +6,14 @@ Combining Optimizers
 .. autosummary::
     chain
     named_chain
-    multi_transform
+    partition
 
 Chain
 ~~~~~
 .. autofunction:: chain
 .. autofunction:: named_chain
 
-Multi-transform
-~~~~~~~~~~~~~~~
-.. autofunction:: multi_transform
-.. autoclass::  MultiTransformState
+Partition
+~~~~~~~~~
+.. autofunction:: partition
+.. autoclass::  PartitionmState

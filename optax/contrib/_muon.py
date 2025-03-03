@@ -250,7 +250,7 @@ def muon(
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
     <https://arxiv.org/abs/2409.20325>`_, 2024
   """
-  return combine.multi_transform(
+  return combine.partition(
       transforms={
           'muon': combine.chain(
               scale_by_muon(
