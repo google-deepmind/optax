@@ -17,6 +17,7 @@
 # pylint: disable=g-importing-member
 
 from optax.tree_utils._casting import tree_cast
+from optax.tree_utils._casting import tree_cast_like
 from optax.tree_utils._casting import tree_dtype
 from optax.tree_utils._random import tree_random_like
 from optax.tree_utils._random import tree_split_key_like
