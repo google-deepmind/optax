@@ -940,6 +940,28 @@ class LBFGSTest(chex.TestCase):
     got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
     chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
+  def test_float64_compatibility(self):
+    """Test that types of state, updates are preserved in float64."""
+    jax.config.update('jax_enable_x64', True)
+
+    pb = _get_problem('rosenbrock')
+    fun, init_params = pb['fun'], pb['init']
+    init_params = init_params.astype(jnp.float64)
+    opt = alias.lbfgs()
+    init_state = opt.init(init_params)
+    grad = jax.grad(fun)(init_params)
+    updates, state = opt.update(
+        grad,
+        init_state,
+        init_params,
+        value=fun(init_params),
+        grad=grad,
+        value_fn=fun,
+    )
+    init_types = jax.tree.map(lambda t: t.dtype, (grad, init_state))
+    updates_types = jax.tree.map(lambda t: t.dtype, (updates, state))
+    self.assertEqual(init_types, updates_types)
+    jax.config.update('jax_enable_x64', False)
 
 if __name__ == '__main__':
   absltest.main()
