@@ -138,6 +138,31 @@ Transformations and states
 
 .. autofunction:: centralize
 
+   Centralizes gradients by subtracting their mean value, making them zero-centered. 
+   This helps stabilize training and improve convergence in deep learning models.
+
+   **Example Usage:**
+
+   .. code-block:: python
+
+       import optax
+       import jax.numpy as jnp
+
+       grads = {
+           'w': jnp.array([1.0, 2.0, 3.0]),
+           'b': jnp.array([0.5, -0.5])
+       }
+
+       centralizer = optax.centralize()
+       updates, _ = centralizer.init(grads)
+       updates, _ = centralizer.update(grads, None)
+
+       print(updates)  # Gradients will be zero-centered
+
+   **Reference:**
+   Yong et al., *Gradient Centralization: A New Optimization Technique for Deep 
+   Neural Networks* (2020). Available at: `<https://arxiv.org/abs/2004.01461>`_.
+
 .. autofunction:: conditionally_mask
 .. autoclass:: ConditionallyMaskState
 

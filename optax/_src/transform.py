@@ -1083,14 +1083,35 @@ CentralState = base.EmptyState
 
 
 def centralize() -> base.GradientTransformation:
-  """Centralize gradients.
+  """
+  Centralizes gradients by subtracting their mean along the feature dimension.
+
+  Gradient centralization re-scales gradients such that their mean across the feature
+  dimension is zero. This technique has been shown to improve convergence stability
+  and generalization in deep learning models.
 
   Returns:
-    A :class:`optax.GradientTransformation` object.
+    optax.GradientTransformation: A transformation that modifies gradients to be centralized.
+
+  Example:
+      ```python
+      import jax.numpy as jnp
+      import optax
+
+      # Define a dummy gradient
+      grads = {'param': jnp.array([[1.0, 2.0], [3.0, 4.0]])}
+
+      # Apply centralization
+      centralizer = optax.centralize()
+      centralized_grads, _ = centralizer.update(grads, optax.EmptyState())
+
+      print(centralized_grads)
+      ```
 
   References:
-    Yong et al, `Gradient Centralization: A New Optimization Technique for Deep
-    Neural Networks <https://arxiv.org/abs/2004.01461>`_, 2020.
+      Yong et al., "Gradient Centralization: A New Optimization Technique for Deep
+      Neural Networks" (2020). Available at:
+      `<https://arxiv.org/abs/2004.01461>`_.
   """
 
   def init_fn(params):
