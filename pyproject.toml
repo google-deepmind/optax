@@ -36,7 +36,6 @@ dependencies = [
   "jax>=0.4.27",
   "jaxlib>=0.4.27",
   "numpy>=1.18.0",
-  "etils[epy]",
 ]
 
 [project.urls]
