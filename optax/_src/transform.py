@@ -1097,7 +1097,7 @@ def centralize() -> base.GradientTransformation:
     >>> updates, state = opt.update(grad, state)
     >>> print(updates)
     [[-1.  0.  1.]
-    [-1.  0.  1.]]
+     [-1.  0.  1.]]
     >>> print(state)
     EmptyState()
 
