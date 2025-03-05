@@ -1083,10 +1083,23 @@ CentralState = base.EmptyState
 
 
 def centralize() -> base.GradientTransformation:
-  """Centralize gradients.
+  """Centralizes gradients by subtracting their mean along leading dimension.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
+
+  Example:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> grad = jnp.array([[1, 2, 3], [4, 5, 6]])
+    >>> opt = optax.centralize()
+    >>> state = opt.init(grad)
+    >>> updates, state = opt.update(grad, state)
+    >>> print(updates)
+    [[-1.  0.  1.]
+    [-1.  0.  1.]]
+    >>> print(state)
+    EmptyState()
 
   References:
     Yong et al, `Gradient Centralization: A New Optimization Technique for Deep
