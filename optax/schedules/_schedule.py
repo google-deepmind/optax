@@ -330,9 +330,8 @@ def cosine_decay_schedule(
 
   .. math::
     \begin{cases}
-      \frac{I (1 - \alpha)}{2}(1+\cos(\pi\,\frac{t}{T})^p) + I \alpha\, 
-      & \text{if } t \leq T \\
-      I \alpha, & \text{if } t > T 
+      \alpha I + (1 - \alpha) I  \left[ \frac{1}{2} \left( 1+ \cos \left( \pi\,\frac{t}{T} \right) \right) \right] ^p  & \text{, if } t \leq T \\
+      \alpha I  & \text{, if } t > T 
     \end{cases}
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
