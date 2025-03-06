@@ -39,7 +39,7 @@ def adabelief(
     eps_root: float = 1e-16,
     *,
     nesterov: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The AdaBelief optimizer.
 
   AdaBelief is an adaptive learning rate optimizer that focuses on fast
@@ -96,7 +96,7 @@ def adabelief(
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -141,7 +141,7 @@ def adadelta(
     eps: float = 1e-6,
     weight_decay: float = 0.0,
     weight_decay_mask: MaskOrFn = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The Adadelta optimizer.
 
   Adadelta is a stochastic gradient descent method that adapts learning rates
@@ -161,7 +161,7 @@ def adadelta(
       apply the transformation to, and `False` for those you want to skip.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -208,7 +208,7 @@ def adafactor(
     eps: float = 1e-30,
     factored: bool = True,
     weight_decay_mask: MaskOrFn = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The Adafactor optimizer.
 
   Adafactor is an adaptive learning rate optimizer that focuses on fast
@@ -243,7 +243,7 @@ def adafactor(
         those you want to skip.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -304,7 +304,7 @@ def adagrad(
     learning_rate: base.ScalarOrSchedule,
     initial_accumulator_value: float = 0.1,
     eps: float = 1e-7,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The Adagrad optimizer.
 
   AdaGrad is a sub-gradient algorithm for stochastic optimization that adapts
@@ -344,7 +344,7 @@ def adagrad(
       in RMSProp) to avoid dividing by zero when rescaling.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -394,7 +394,7 @@ def adam(
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The Adam optimizer.
 
   Adam is an SGD variant with gradient scaling adaptation. The scaling
@@ -452,7 +452,7 @@ def adam(
       described in [Dozat 2016].
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -536,7 +536,7 @@ nadam.__doc__ = r"""The NAdam optimizer.
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
       >>> import optax
@@ -580,7 +580,7 @@ def adamw(
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     *,
     nesterov: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""Adam with weight decay regularization.
 
   AdamW uses weight decay to regularize learning towards small weights, as
@@ -653,7 +653,7 @@ def adamw(
       modification is described in [Dozat 2016].
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -743,7 +743,7 @@ nadamw.__doc__ = (
       that the Adam gradient transformations are applied to all parameters.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -789,7 +789,7 @@ def adan(
     eps_root: float = 1e-8,
     weight_decay: float = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The ADAptive Nesterov momentum algorithm (Adan).
 
   Adan first reformulates the vanilla Nesterov acceleration to develop a new
@@ -857,7 +857,7 @@ def adan(
       apply the weight decay to, and `False` for those you want to skip.
 
   Returns:
-    the corresponding :class:`optax.GradientTransformation`.
+    the corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -905,7 +905,7 @@ def lion(
     mu_dtype: Optional[Any] = None,
     weight_decay: float = 1e-3,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The Lion optimizer.
 
   Lion is discovered by symbolic program search. Unlike most adaptive optimizers
@@ -960,7 +960,7 @@ def lion(
       Adam gradient transformations are applied to all parameters.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1001,7 +1001,7 @@ def amsgrad(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The AMSGrad optimizer.
 
   The original Adam can fail to converge to the optimal solution in some cases.
@@ -1021,7 +1021,7 @@ def amsgrad(
       `None` then the `dtype` is inferred from `params` and `updates`.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1058,7 +1058,7 @@ def amsgrad(
 
 def fromage(
     learning_rate: float, min_norm: float = 1e-6
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
   Fromage is a learning algorithm that does not require learning rate tuning.
@@ -1075,7 +1075,7 @@ def fromage(
       computing the trust ratio (as in the LARS paper).
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1119,7 +1119,7 @@ def lars(
     trust_ratio_mask: MaskOrFn = True,
     momentum: float = 0.9,
     nesterov: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The LARS optimizer.
 
   LARS is a layer-wise adaptive optimizer introduced to help scale SGD to
@@ -1143,7 +1143,7 @@ def lars(
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1191,7 +1191,7 @@ def lamb(
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
     mask: MaskOrFn = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The LAMB optimizer.
 
   LAMB is a general purpose layer-wise adaptive large batch optimizer designed
@@ -1217,7 +1217,7 @@ def lamb(
       transformation to, and `False` for those you want to skip.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1257,7 +1257,7 @@ def noisy_sgd(
     eta: float = 0.01,
     gamma: float = 0.55,
     seed: int = 0,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""A variant of SGD with added noise.
 
   Noisy SGD is a variant of :func:`optax.sgd` that incorporates Gaussian noise
@@ -1290,7 +1290,7 @@ def noisy_sgd(
     seed: Seed for the pseudo-random generation process.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1325,7 +1325,7 @@ def noisy_sgd(
 
 def sign_sgd(
     learning_rate: base.ScalarOrSchedule,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""A variant of SGD using only the signs of the gradient components.
 
   SignSGD is a variant of SGD that uses the signs of the gradient components in
@@ -1351,7 +1351,7 @@ def sign_sgd(
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1394,7 +1394,7 @@ def novograd(
     eps: float = 1e-6,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """NovoGrad optimizer.
 
   NovoGrad is more robust to the initial learning rate and
@@ -1418,7 +1418,7 @@ def novograd(
     weight_decay: Strength of the weight decay regularization.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1461,7 +1461,7 @@ def optimistic_gradient_descent(
     learning_rate: base.ScalarOrSchedule,
     alpha: base.ScalarOrSchedule = 1.0,
     beta: base.ScalarOrSchedule = 1.0,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """An Optimistic Gradient Descent optimizer.
 
   Optimistic gradient descent is an approximation of extra-gradient methods
@@ -1476,7 +1476,7 @@ def optimistic_gradient_descent(
     beta: Coefficient for generalized OGD negative momentum.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1523,7 +1523,7 @@ def optimistic_adam(
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = True,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The Optimistic Adam optimizer.
 
   This is an optimistic version of the Adam optimizer. It addresses the issue
@@ -1579,7 +1579,7 @@ def optimistic_adam(
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1643,7 +1643,7 @@ def radam(
     threshold: float = 5.0,
     *,
     nesterov: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The Rectified Adam optimizer.
 
   The adaptive learning rate in Adam has undesirably large variance in early
@@ -1665,7 +1665,7 @@ def radam(
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1715,7 +1715,7 @@ def rmsprop(
     momentum: Optional[float] = None,
     nesterov: bool = False,
     bias_correction: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""A flexible RMSProp optimizer.
 
   RMSProp is an SGD variant with learning rate adaptation. The `learning_rate`
@@ -1743,7 +1743,7 @@ def rmsprop(
       second moments (and first moment if ``centered=True``).
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1824,7 +1824,7 @@ def sgd(
     momentum: Optional[float] = None,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""A canonical Stochastic Gradient Descent optimizer.
 
   This implements stochastic gradient descent. It also includes support for
@@ -1868,7 +1868,7 @@ def sgd(
       ``None`` then the ``dtype`` is inferred from ``params`` and ``updates``.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -1911,7 +1911,7 @@ def sgd(
 
 def sm3(
     learning_rate: float, momentum: float = 0.9
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""The SM3 optimizer.
 
   SM3 (Square-root of Minima of Sums of Maxima of Squared-gradients Method) is a
@@ -1986,7 +1986,7 @@ def sm3(
       `None`, then momentum is not used at all).
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -2024,7 +2024,7 @@ def yogi(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-3,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   # pylint: disable=line-too-long
   """The Yogi optimizer.
 
@@ -2043,7 +2043,7 @@ def yogi(
       in the Adam paper) to avoid dividing by zero when rescaling.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -2083,7 +2083,7 @@ def adamax(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   r"""A variant of the Adam optimizer that uses the infinity norm.
 
   AdaMax is a variant of the :func:`optax.adam` optimizer. By generalizing
@@ -2125,7 +2125,7 @@ def adamax(
       rescaling.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -2170,7 +2170,7 @@ def adamaxw(
     eps: float = 1e-8,
     weight_decay: float = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Adamax with weight decay regularization.
 
   AdamaxW uses weight decay to regularize learning towards small weights, as
@@ -2197,7 +2197,7 @@ def adamaxw(
       Adamax gradient transformations are applied to all parameters.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -2244,7 +2244,7 @@ def rprop(
     eta_plus: float = 1.2,
     min_step_size: float = 1e-6,
     max_step_size: float = 50.0,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """The Rprop optimizer.
 
   Rprop, short for resillient backpropogation, is a first order variant of
@@ -2264,7 +2264,7 @@ def rprop(
       this value.
 
   Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
   Examples:
     >>> import optax
@@ -2405,7 +2405,7 @@ def lbfgs(
     memory_size: int = 10,
     scale_init_precond: bool = True,
     linesearch: Optional[
-        base.GradientTransformationExtraArgs
+        Union[base.GradientTransformationExtraArgs, base.GradientTransformation]
     ] = _linesearch.scale_by_zoom_linesearch(
         max_linesearch_steps=20, initial_guess_strategy='one'
     ),

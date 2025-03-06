@@ -46,7 +46,7 @@ def dadapt_adamw(
     eps: float = 1e-8,
     estim_lr0: float = 1e-6,
     weight_decay: float = 0.0,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Learning rate free AdamW by D-Adaptation.
 
   Adapts the baseline learning rate of AdamW automatically by estimating the
@@ -91,7 +91,10 @@ def dadapt_adamw(
       updates: base.Updates,
       state: DAdaptAdamWState,
       params: Optional[base.Params] = None,
+      **extra_args,
   ) -> tuple[base.Updates, DAdaptAdamWState]:
+    del extra_args  # complies with signature of GradientTransformationExtraArgs
+                    # but ignores the extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count
@@ -141,4 +144,4 @@ def dadapt_adamw(
     )
     return p_update, new_state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)

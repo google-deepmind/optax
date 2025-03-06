@@ -1441,13 +1441,14 @@ def scale_by_polyak(
       state: the state of the transformation.
       params: the parameters of the model.
       value: the value of the loss function.
-      **extra_args: additional keyword arguments. They are ignored by this
-        transformation.
+      **extra_args: unused,complying with GradientTransformationExtraArgs.
 
     Returns:
       The scaled updates and the state of the transformation.
     """
-    del params, extra_args
+    del params
+    del extra_args  # complies with signature of GradientTransformationExtraArgs
+                    # but ignores the extra_args
     grad_sq_norm = otu.tree_l2_norm(updates, squared=True)
     gap = value - f_min
     if variant == 'sps':

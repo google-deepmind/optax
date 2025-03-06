@@ -187,6 +187,29 @@ class AliasTest(chex.TestCase):
 
       chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
+  @parameterized.product(_OPTIMIZERS_UNDER_TEST)
+  def test_optimizers_accept_extra_args(self, opt_name, opt_kwargs):
+    opt = getattr(alias, opt_name)(**opt_kwargs)
+    # intentionally ommit: opt = base.with_extra_args_support(opt)
+    initial_params, _, objective = _setup_rosenbrock(jnp.float32)
+
+    @jax.jit
+    def step(params, state):
+      value, updates = jax.value_and_grad(objective)(params)
+      update_kwargs = {'unexpected_extra_args_your_optimizer_doesnt_expect': 1}
+      if opt_name in ['polyak_sgd']:
+        update_kwargs = {'value': value}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+
+    with self.subTest('Test that update works with extra values'):
+      for _ in range(2):
+        params, state = step(params, state)
+
   @chex.all_variants
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(

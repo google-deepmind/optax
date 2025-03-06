@@ -52,7 +52,7 @@ def prodigy(
     estim_lr_coef: float = 1.0,
     weight_decay: float = 0.0,
     safeguard_warmup: bool = False,
-) -> base.GradientTransformation:
+) -> base.GradientTransformationExtraArgs:
   """Learning rate free AdamW with Prodigy.
 
   Implementation of the Prodigy method from "Prodigy: An Expeditiously
@@ -113,7 +113,10 @@ def prodigy(
       updates: base.Updates,
       state: ProdigyState,
       params: Optional[base.Params] = None,
+      **extra_args,
   ) -> tuple[base.Updates, ProdigyState]:
+    del extra_args  # complies with signature of GradientTransformationExtraArgs
+                    # but ignores the extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count
@@ -167,4 +170,4 @@ def prodigy(
     )
     return p_update, new_state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
