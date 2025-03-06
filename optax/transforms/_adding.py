@@ -103,7 +103,7 @@ def add_noise(
     noise = otu.tree_random_like(
         sample_key, target_tree=updates, sampler=jax.random.normal
     )
-    updates = otu.tree_add_scalar_mul(
+    updates = otu.tree_add_scale(
         tree_x=updates, scalar=standard_deviation, tree_y=noise
     )
     return updates, AddNoiseState(count=count_inc, rng_key=rng_key)

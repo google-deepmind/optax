@@ -27,7 +27,7 @@ from optax.tree_utils._state_utils import tree_get_all_with_path
 from optax.tree_utils._state_utils import tree_map_params
 from optax.tree_utils._state_utils import tree_set
 from optax.tree_utils._tree_math import tree_add
-from optax.tree_utils._tree_math import tree_add_scalar_mul
+from optax.tree_utils._tree_math import tree_add_scale
 from optax.tree_utils._tree_math import tree_batch_shape
 from optax.tree_utils._tree_math import tree_bias_correction
 from optax.tree_utils._tree_math import tree_clip
@@ -41,7 +41,7 @@ from optax.tree_utils._tree_math import tree_max
 from optax.tree_utils._tree_math import tree_mul
 from optax.tree_utils._tree_math import tree_ones_like
 from optax.tree_utils._tree_math import tree_real
-from optax.tree_utils._tree_math import tree_scalar_mul
+from optax.tree_utils._tree_math import tree_scale
 from optax.tree_utils._tree_math import tree_sub
 from optax.tree_utils._tree_math import tree_sum
 from optax.tree_utils._tree_math import tree_update_infinity_moment
