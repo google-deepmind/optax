@@ -22,7 +22,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
-
+import warnings
 
 def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
   r"""Add two (or more) pytrees.
@@ -81,7 +81,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   return jax.tree.map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(
+def tree_scale(
     scalar: Union[float, jax.Array],
     tree: Any,
 ) -> Any:
@@ -98,8 +98,30 @@ def tree_scalar_mul(
   """
   return jax.tree.map(lambda x: scalar * x, tree)
 
+def tree_scalar_mul(
+    scalar: Union[float, jax.Array],
+    tree: Any,
+) -> Any:
+    r"""Deprecated alias for tree_scale.
 
-def tree_add_scalar_mul(
+    This function is deprecated and will be removed in a future version.
+    Use ``tree_scale`` instead.
+
+    Args:
+        scalar: scalar value.
+        tree: pytree.
+
+    Returns:
+        A pytree with the same structure as ``tree``.
+    """
+    warnings.warn(
+        "tree_scalar_mul is deprecated and will be removed in a future version. Use tree_scale instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return tree_scale(scalar, tree)
+
+def tree_add_scale(
     tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
@@ -122,6 +144,30 @@ def tree_add_scalar_mul(
       is_leaf=lambda x: x is None,
   )
 
+def tree_add_scalar_mul(
+    tree_x: Any,
+    scalar: Union[float, jax.Array],
+    tree_y: Any,
+) -> Any:
+    r"""Deprecated alias for tree_add_scale.
+
+    This function is deprecated and will be removed in a future version.
+    Use ``tree_add_scale`` instead.
+
+    Args:
+        tree_x: first pytree.
+        scalar: scalar value.
+        tree_y: second pytree.
+
+    Returns:
+        A pytree with the same structure as ``tree_x`` and ``tree_y``.
+    """
+    warnings.warn(
+        "tree_add_scalar_mul is deprecated and will be removed in a future version. Use tree_add_scale instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return tree_add_scale(tree_x, scalar, tree_y)
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
 

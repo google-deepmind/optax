@@ -96,7 +96,7 @@ Tree
 .. autosummary::
     NamedTupleKey
     tree_add
-    tree_add_scalar_mul
+    tree_add_scale
     tree_batch_shape
     tree_cast
     tree_div
@@ -112,7 +112,7 @@ Tree
     tree_ones_like
     tree_random_like
     tree_split_key_like
-    tree_scalar_mul
+    tree_scale
     tree_set
     tree_sub
     tree_sum
@@ -130,7 +130,7 @@ Tree add
 
 Tree add and scalar multiply
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_add_scalar_mul
+.. autofunction:: tree_add_scale
 
 Tree batch reshaping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,7 +194,7 @@ Tree with random values
 
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_scalar_mul
+.. autofunction:: tree_scale
 
 Set values in a tree
 ~~~~~~~~~~~~~~~~~~~~

@@ -622,7 +622,7 @@ def scale_by_adan(
     m = otu.tree_update_moment(g, state.m, b1, 1)
     v = otu.tree_update_moment(diff, state.v, b2, 1)
 
-    sq = otu.tree_add_scalar_mul(g, 1 - b2, diff)
+    sq = otu.tree_add_scale(g, 1 - b2, diff)
     n = otu.tree_update_moment_per_elem_norm(sq, state.n, b3, 2)
 
     t = numerics.safe_increment(state.t)
@@ -630,7 +630,7 @@ def scale_by_adan(
     v_hat = otu.tree_bias_correction(v, b2, t)
     n_hat = otu.tree_bias_correction(n, b3, t)
 
-    u = otu.tree_add_scalar_mul(m_hat, 1 - b2, v_hat)
+    u = otu.tree_add_scale(m_hat, 1 - b2, v_hat)
     denom = jax.tree.map(lambda n_hat: jnp.sqrt(n_hat + eps_root) + eps, n_hat)
     u = otu.tree_div(u, denom)
 
@@ -1463,7 +1463,7 @@ def scale_by_polyak(
         jnp.array(0.0),
         jnp.minimum(gap / (grad_sq_norm + eps), max_learning_rate),
     )
-    updates = otu.tree_scalar_mul(step, updates)
+    updates = otu.tree_scale(step, updates)
     return updates, state
 
   return base.GradientTransformationExtraArgs(base.init_empty_state, update_fn)
@@ -1543,14 +1543,14 @@ def _precondition_by_lbfgs(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
     alpha = rhos[idx] * otu.tree_real(otu.tree_vdot(dwi, vec))
-    vec = otu.tree_add_scalar_mul(vec, -alpha, dui)
+    vec = otu.tree_add_scale(vec, -alpha, dui)
     return vec, alpha
 
   precond_updates, alphas = jax.lax.scan(
       right_product, updates, indices, reverse=True
   )
 
-  precond_updates = otu.tree_scalar_mul(identity_scale, precond_updates)
+  precond_updates = otu.tree_scale(identity_scale, precond_updates)
 
   def left_product(vec, idx_alpha):
     idx, alpha = idx_alpha
@@ -1558,7 +1558,7 @@ def _precondition_by_lbfgs(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
     beta = rhos[idx] * otu.tree_real(otu.tree_vdot(dui, vec))
-    vec = otu.tree_add_scalar_mul(vec, alpha - beta, dwi)
+    vec = otu.tree_add_scale(vec, alpha - beta, dwi)
     return vec, beta
 
   precond_updates, _ = jax.lax.scan(
