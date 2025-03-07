@@ -1450,7 +1450,8 @@ def scale_by_polyak(
     del extra_args  # complies with signature of GradientTransformationExtraArgs
                     # but ignores the extra_args
     grad_sq_norm = otu.tree_l2_norm(updates, squared=True)
-    gap = value - f_min
+    gap = jnp.array(value - f_min).astype(
+        jax.tree.leaves(grad_sq_norm)[0].dtype)
     if variant == 'sps':
       pass
     elif variant == 'sps+':

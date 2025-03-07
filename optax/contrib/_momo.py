@@ -133,7 +133,7 @@ def momo(
     count = state.count
     # initialize at first gradient, and loss
     bt = jnp.where(count == 0, 0.0, beta)
-    barf = bt * state.barf + (1 - bt) * value
+    barf = bt * state.barf + (1 - bt) * value.astype(state.barf.dtype)
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
     )
@@ -291,7 +291,7 @@ def momo_adam(
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
     count_inc = numerics.safe_increment(count)
-    barf = b1 * state.barf + (1 - b1) * value
+    barf = b1 * state.barf + (1 - b1) * value.astype(state.barf.dtype)
     exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
     )

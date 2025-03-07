@@ -15,21 +15,23 @@
 """Utilities to cast pytrees to specific dtypes."""
 
 import functools
-from typing import Optional
+from typing import Optional, TypeVar
 
 import chex
 import jax
 import jax.numpy as jnp
 
+T = TypeVar('T')
 
-def tree_cast(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
-) -> chex.ArrayTree:
+
+def tree_cast(tree: T, dtype: Optional[chex.ArrayDType] = None,
+              other_tree: Optional[chex.ArrayTree] = None) -> T:
   """Cast tree to given dtype, skip if None.
 
   Args:
     tree: the tree to cast.
     dtype: the dtype to cast to, or None to skip.
+    other_tree: reference array tree to use to cast to dtypes of leaves
 
   Returns:
     the tree, with leaves casted to dtype.
@@ -43,7 +45,12 @@ def tree_cast(
     {'a': {'b': Array(1, dtype=bfloat16)}, 'c': Array(2, dtype=bfloat16)}
   """
   if dtype is not None:
+    if other_tree is not None:
+      raise ValueError('Specify either dtype or other_tree, not both.')
     return jax.tree.map(lambda t: t.astype(dtype), tree)
+  elif other_tree is not None:
+    return jax.tree.map(lambda t, o: t.astype(o.dtype)
+                        if hasattr(o, 'dtype') else t, tree, other_tree)
   else:
     return tree
 
