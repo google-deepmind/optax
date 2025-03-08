@@ -1395,7 +1395,7 @@ def novograd(
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
 ) -> base.GradientTransformationExtraArgs:
-  """NovoGrad optimizer.
+  r"""NovoGrad optimizer.
 
   NovoGrad is more robust to the initial learning rate and
   weight initialization than other methods. For example,
@@ -1404,6 +1404,31 @@ def novograd(
   outperforms other methods for ResNet-50 for all batches up to 32K.
   In addition, NovoGrad requires half the memory compared to Adam.
   It was introduced together with Jasper ASR model.
+
+  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`
+  represent the arguments ``b1`` and ``b2`` respectively. The learning rate is
+  indexed by :math:`t` since the learning rate may also be provided by a
+  schedule function. Let :math:`\lambda` be the weight decay and
+  :math:`\theta_t` the parameter vector at time :math:`t`.
+
+  The ``init`` function of this optimizer initializes an internal state
+  :math:`S_0 := (m_0, v_0) = (0, 0)`, representing the initial estimates for the
+  first and second moments. In practice, these values are stored as pytrees
+  containing all zeros, with the same shape as the model updates.
+
+  At step :math:`t`, the ``update`` function of this optimizer takes as
+  arguments the incoming gradients :math:`g_t`, the optimizer state :math:`S_t`
+  and the parameters :math:`\theta_t` and computes updates :math:`u_t` and
+  new state :math:`S_{t+1}`. Thus, for :math:`t > 0`, we have,
+
+  .. math::
+    \begin{align*}
+      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1 - \beta_1) \cdot g_t \\
+      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1 - \beta_2) \cdot g_t^2 \\
+      \hat{g_t} &\leftarrow \frac{g_t}{\sqrt{v_t} + \epsilon} \\
+      u_t &\leftarrow -\alpha_t \cdot \left( m_t + \lambda \theta_t \right) \\
+      S_t &\leftarrow (m_t, v_t).
+    \end{align*}
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
