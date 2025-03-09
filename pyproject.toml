@@ -30,6 +30,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+  "cmake>=3.15.1",
   "absl-py>=0.7.1",
   "chex>=0.1.87",
   # Keep jax, jaxlib versions in sync with .github/workflows/tests.yml
