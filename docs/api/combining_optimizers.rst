@@ -16,4 +16,4 @@ Chain
 Partition
 ~~~~~~~~~
 .. autofunction:: partition
-.. autoclass::  PartitionmState
+.. autoclass::  PartitionState

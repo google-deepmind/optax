@@ -60,9 +60,9 @@ def power_iteration(
 ) -> tuple[chex.Numeric, chex.ArrayTree]:
   r"""Power iteration algorithm.
 
-  This algorithm computes the dominant eigenvalue and its associated eigenvector
-  of a diagonalizable matrix. This matrix can be given as an array or as a
-  callable implementing a matrix-vector product.
+  This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
+  its associated eigenvector of a diagonalizable matrix. This matrix can be
+  given as an array or as a callable implementing a matrix-vector product.
 
   Args:
     matrix: a square matrix, either as an array or a callable implementing a
@@ -91,6 +91,10 @@ def power_iteration(
   References:
     Wikipedia contributors. `Power iteration
     <https://en.wikipedia.org/w/index.php?tit0le=Power_iteration>`_.
+
+  .. note::
+    If the matrix is not diagonalizable or the dominant eigenvalue is not
+    unique, the algorithm may not converge.
 
   .. versionchanged:: 0.2.2
     ``matrix`` can be a callable. Reversed the order of the return parameters,
