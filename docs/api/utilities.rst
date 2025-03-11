@@ -99,8 +99,11 @@ Tree
     tree_add_scalar_mul
     tree_batch_shape
     tree_cast
+    tree_clip
+    tree_conj
     tree_div
     tree_dtype
+    tree_full_like
     tree_get
     tree_get_all_with_path
     tree_l1_norm
@@ -111,6 +114,7 @@ Tree
     tree_mul
     tree_ones_like
     tree_random_like
+    tree_real
     tree_split_key_like
     tree_scalar_mul
     tree_set
@@ -140,9 +144,21 @@ Tree cast
 ~~~~~~~~~
 .. autofunction:: tree_cast
 
+Tree clip
+~~~~~~~~~
+.. autofunction:: tree_clip
+
+Tree conjugate
+~~~~~~~~~~~~~~
+.. autofunction:: tree_conj
+
 Tree data type
 ~~~~~~~~~~~~~~
 .. autofunction:: tree_dtype
+
+Tree full like
+~~~~~~~~~~~~~~
+.. autofunction:: tree_full_like
 
 Tree divide
 ~~~~~~~~~~~
@@ -191,6 +207,10 @@ Split key according to structure of a tree
 Tree with random values
 ~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_random_like
+
+Tree real part
+~~~~~~~~~~~~~~
+.. autofunction:: tree_real
 
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
