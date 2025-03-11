@@ -148,7 +148,7 @@ def adadelta(
   based on a moving window of gradient updates. Adadelta is a modification of
   Adagrad.
   It addresses the diminishing learning rates problem in Adagrad by maintaining running averages of squared
-  gradients and parameter updates
+  gradients.
 
   The weight update :math:`\Delta w_t` for this optimizer is given as follows:
 
