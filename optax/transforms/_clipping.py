@@ -288,7 +288,7 @@ def adaptive_grad_clip(
 
   References:
     Brock et al., `High-Performance Large-Scale Image Recognition Without
-    Normalization <https://arxiv.org/abs/2102.06171`_, 2021
+    Normalization <https://arxiv.org/abs/2102.06171>`_, 2021
   """
 
   def update_fn(updates, state, params):

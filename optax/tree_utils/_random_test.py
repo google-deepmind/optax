@@ -51,7 +51,7 @@ def get_variable(type_var: str):
 class RandomTest(chex.TestCase):
 
   def test_tree_split_key_like(self):
-    rng_key = jrd.PRNGKey(0)
+    rng_key = jrd.key(0)
     tree = {'a': jnp.zeros(2), 'b': {'c': [jnp.ones(3), jnp.zeros([4, 5])]}}
     keys_tree = otu.tree_split_key_like(rng_key, tree)
 
@@ -61,7 +61,8 @@ class RandomTest(chex.TestCase):
     with self.subTest('Test random key split'):
       fst = jnp.stack(jax.tree.flatten(keys_tree)[0])
       snd = jrd.split(rng_key, jax.tree.structure(tree).num_leaves)
-      np.testing.assert_array_equal(fst, snd)
+      np.testing.assert_array_equal(otu.tree_unwrap_random_key_data(fst),
+                                    otu.tree_unwrap_random_key_data(snd))
 
   @parameterized.product(
       _SAMPLER_DTYPES,
@@ -78,7 +79,7 @@ class RandomTest(chex.TestCase):
     """Test that tree_random_like matches its flat counterpart."""
     if dtype is not None:
       dtype = jnp.dtype(dtype)
-    rng_key = jrd.PRNGKey(0)
+    rng_key = jrd.key(0)
     target_tree = get_variable(type_var)
 
     rand_tree = otu.tree_random_like(

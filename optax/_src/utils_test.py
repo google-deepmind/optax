@@ -100,7 +100,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     loc_shape = scale_shape = (2, 3)
     loc, scale = self._get_loc_scale(loc_shape, scale_shape)
     dist = utils.multi_normal(loc, scale)
-    samples = dist.sample(sample_shape, jax.random.PRNGKey(239))
+    samples = dist.sample(sample_shape, jax.random.key(239))
     self.assertEqual(samples.shape, tuple(sample_shape) + loc_shape)
 
   @parameterized.named_parameters([

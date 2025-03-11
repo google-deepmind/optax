@@ -15,14 +15,16 @@
 """Tests for methods in `inject.py`."""
 
 import functools
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
 import jax
+from jax import random
 import jax.numpy as jnp
 import numpy as np
+
 from optax._src import base
 from optax._src import clipping
 from optax._src import transform
@@ -160,6 +162,45 @@ class InjectHyperparamsTest(chex.TestCase):
     _, state = self.variant(optim.update)(grads, state)
 
     assert not set(state.hyperparams.keys()).intersection(set(static_args))
+
+  @chex.all_variants
+  def test_prng_key_not_hyperparameter(self):
+    """Check that random.key can be handled by :func:``inject_hyperparams``."""
+
+    def random_noise_optimizer(
+        key: chex.PRNGKey, scale: jax.Array
+    ) -> base.GradientTransformation:
+      def init_fn(params_like: base.Params) -> tuple[chex.PRNGKey,
+                                                     Union[jax.Array, float]]:
+        del params_like
+        nonlocal key, scale
+        return (key, scale)
+
+      def update_fn(
+          updates: base.Updates,
+          state: tuple[chex.PRNGKey, jax.Array],
+          params: None = None,
+      ) -> tuple[base.Updates, tuple[chex.PRNGKey, Union[jax.Array, float]]]:
+        del params
+        key, scale = state
+        keyit = iter(random.split(key, len(jax.tree.leaves(updates)) + 1))
+        new_updates = jax.tree.map(
+            lambda x: scale * random.normal(next(keyit), x.shape), updates
+        )
+        new_key = next(keyit)
+        return new_updates, (new_key, scale)
+
+      return base.GradientTransformation(init_fn, update_fn)
+
+    optim = _inject.inject_hyperparams(random_noise_optimizer)(
+        key=random.key(17), scale=1e-3
+    )
+
+    params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
+    grads = params
+    state = self.variant(optim.init)(params)
+    _, state = self.variant(optim.update)(grads, state)
+    del state
 
   @chex.all_variants
   @parameterized.named_parameters(

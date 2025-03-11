@@ -148,10 +148,10 @@ def projection_simplex(tree: Any, scale: chex.Numeric = 1.0) -> Any:
       >>> import jax.numpy as jnp
       >>> from optax import tree_utils, projections
       >>> tree = {"w": jnp.array([2.5, 3.2]), "b": 0.5}
-      >>> tree_utils.tree_sum(tree)
+      >>> print(tree_utils.tree_sum(tree))
       6.2
       >>> new_tree = projections.projection_simplex(tree)
-      >>> tree_utils.tree_sum(new_tree)
+      >>> print(tree_utils.tree_sum(new_tree))
       1.0000002
 
   .. versionadded:: 0.2.3
@@ -212,11 +212,11 @@ def projection_l1_ball(tree: Any, scale: float = 1.0) -> Any:
       >>> import jax.numpy as jnp
       >>> from optax import tree_utils, projections
       >>> tree = {"w": jnp.array([2.5, 3.2]), "b": 0.5}
-      >>> tree_utils.tree_l1_norm(tree)
-      Array(6.2, dtype=float32)
+      >>> print(tree_utils.tree_l1_norm(tree))
+      6.2
       >>> new_tree = projections.projection_l1_ball(tree)
-      >>> tree_utils.tree_l1_norm(new_tree)
-      Array(1.0000002, dtype=float32)
+      >>> print(tree_utils.tree_l1_norm(new_tree))
+      1.0000002
 
   .. versionadded:: 0.2.4
   """

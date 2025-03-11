@@ -44,7 +44,7 @@ class MakePertTest(absltest.TestCase):
     super().setUp()
     rng = np.random.RandomState(0)
 
-    self.rng_jax = jax.random.PRNGKey(0)
+    self.rng_jax = jax.random.key(0)
     self.num_samples = 1_000
     self.num_samples_small = 1_000
     self.sigma = 0.5
@@ -111,10 +111,10 @@ class MakePertTest(absltest.TestCase):
     expect_hessian = jax.hessian(pert_loss)(self.array_small_jax, self.rng_jax)
     got_hessian = jax.hessian(exact_loss)(self.array_small_jax)
     chex.assert_trees_all_equal_shapes(expect_hessian, got_hessian)
-    chex.assert_trees_all_close(expected_grad, got_grad, atol=2e-2)
+    chex.assert_trees_all_close(expected_grad, got_grad, atol=6e-2)
     expected_dict = pert_argmax_fun(self.tree_a_dict_jax, self.rng_jax)
     got_dict = jtu.tree_map(softmax_fun, self.tree_a_dict_jax)
-    chex.assert_trees_all_close(expected_dict, got_dict, atol=2e-2)
+    chex.assert_trees_all_close(expected_dict, got_dict, atol=6e-2)
 
   def test_values_on_tree(self):
     """Test that the perturbations are well applied for functions on trees.

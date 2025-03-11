@@ -7,14 +7,24 @@ on:
     branches: ["main"]
   schedule:
     - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs: {}
+
+permissions:
+  contents: read  # to fetch code
+  actions: write  # to cancel previous workflows
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   linting:
     name: "Lint check with flake8 and pylint"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v4"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
             python-version: "3.11"
             cache: "pip"
@@ -29,17 +39,17 @@ jobs:
       - name: Lint module files with pylint
         run: |
           PYLINT_ARGS="-efail -wfail -cfail -rfail"
-          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
+          python3 -m pylint $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
       - name: Lint test files with pylint
         run: |
           PYLINT_ARGS="-efail -wfail -cfail -rfail"
-          python3 -m pylint --rcfile=.pylintrc $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
+          python3 -m pylint $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
   ruff-lint:
     name: "Lint check with ruff"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v4"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
             python-version: "3.11"
             cache: "pip"
@@ -57,8 +67,8 @@ jobs:
         python-version: ["3.11"]  # only build docs with a somewhat latest python
         os: [ubuntu-latest]
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v4"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
             python-version: "${{ matrix.python-version }}"
             cache: "pip"
@@ -83,9 +93,12 @@ jobs:
           - python-version: "3.9"
             os: "ubuntu-latest"
             jax-version: "0.4.27"  # Keep version in sync with pyproject.toml and copy.bara.sky!
+          - python-version: "3.12"
+            os: "ubuntu-latest"
+            jax-version: "nightly"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v4"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
             python-version: "${{ matrix.python-version }}"
             cache: "pip"
@@ -98,9 +111,9 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Check links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      uses: gaurav-nelson/github-action-markdown-link-check@d53a906aa6b22b8979d33bc86170567e619495ec # v1.0.15
       with:
         use-quiet-mode: yes
         use-verbose-mode: yes

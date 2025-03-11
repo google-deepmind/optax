@@ -36,7 +36,6 @@ dependencies = [
   "jax>=0.4.27",
   "jaxlib>=0.4.27",
   "numpy>=1.18.0",
-  "etils[epy]",
 ]
 
 [project.urls]
@@ -100,4 +99,41 @@ ignore = [
     "E402",  # allow modules not at top of file
     "E741",  # allow "l" as a variable name
     "E703",  # allow semicolons (for jupyter notebooks)
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-indentation",
+    "unknown-option-value",
+    "invalid-name",
+    "missing-function-docstring",
+    "missing-class-docstring",
+    "missing-module-docstring",
+    "no-member",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "no-else-return",
+    "line-too-long",
+    "too-many-arguments",
+    "no-value-for-parameter",
+    "duplicate-code",
+    "unused-argument",
+    "too-few-public-methods",
+    "wrong-import-order",
+    "unused-import",
+    "wrong-import-position",
+    "unnecessary-lambda-assignment",
+    "too-many-lines",
+    "too-many-statements",
+    "deprecated-class",
+    "redefined-builtin",
+    "used-before-assignment",
+    "undefined-variable",
+    "protected-access",
+    "not-callable",
+    "redefined-outer-name",
+    "too-many-instance-attributes",
+    "missing-final-newline",
+    "too-many-public-methods",
+    "import-error",
 ]

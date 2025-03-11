@@ -150,6 +150,8 @@ class TransformUpdateExtraArgsFn(Protocol):
 class GradientTransformation(NamedTuple):
   # pylint: disable=line-too-long
   """A pair of pure functions implementing a gradient transformation.
+  
+  Prefer :class:`GradientTransformationExtraArgs` for new optimizers.
 
   Optax optimizers are all implemented as *gradient transformations*.
   A gradient transformation is defined to be a pair of pure functions, which
@@ -158,7 +160,7 @@ class GradientTransformation(NamedTuple):
 
   Note that an extended API is provided for users wishing to build optimizers
   that take additional arguments during the update step. For more details,
-  see :func:`optax.GradientTransoformationExtraArgs`.
+  see :func:`optax.GradientTransformationExtraArgs`.
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer

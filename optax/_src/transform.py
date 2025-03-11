@@ -19,6 +19,7 @@ from typing import NamedTuple, Optional, Union
 
 import chex
 import jax
+from jax import nn
 import jax.numpy as jnp
 from optax import tree_utils as otu
 from optax._src import base
@@ -1082,10 +1083,23 @@ CentralState = base.EmptyState
 
 
 def centralize() -> base.GradientTransformation:
-  """Centralize gradients.
+  """Centralizes gradients by subtracting their mean along leading dimension.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
+
+  Example:
+    >>> import jax.numpy as jnp
+    >>> import optax
+    >>> grad = jnp.array([[1, 2, 3], [4, 5, 6]])
+    >>> opt = optax.centralize()
+    >>> state = opt.init(grad)
+    >>> updates, state = opt.update(grad, state)
+    >>> print(updates)
+    [[-1.  0.  1.]
+     [-1.  0.  1.]]
+    >>> print(state)
+    EmptyState()
 
   References:
     Yong et al, `Gradient Centralization: A New Optimization Technique for Deep
@@ -1393,6 +1407,7 @@ def scale_by_polyak(
     f_min: float = 0.0,
     max_learning_rate: float = 1.0,
     eps: float = 0.0,
+    variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""Scales the update by Polyak's step-size.
 
@@ -1403,6 +1418,7 @@ def scale_by_polyak(
       to :math:`f^\star` in the formula above.
     max_learning_rate: a maximum step size to use (defaults to 1).
     eps: a value to add in the denominator of the update (defaults to 0).
+    variant: either ``'sps'`` or ``'sps+'`` (defaults to ``'sps'``).
 
   Returns:
     A :class:`optax.GradientTransformationExtraArgs`, where the ``update``
@@ -1425,19 +1441,27 @@ def scale_by_polyak(
       state: the state of the transformation.
       params: the parameters of the model.
       value: the value of the loss function.
-      **extra_args: additional keyword arguments. They are ignored by this
-        transformation.
+      **extra_args: unused,complying with GradientTransformationExtraArgs.
 
     Returns:
       The scaled updates and the state of the transformation.
     """
-    del params, extra_args
+    del params
+    del extra_args  # complies with signature of GradientTransformationExtraArgs
+                    # but ignores the extra_args
     grad_sq_norm = otu.tree_l2_norm(updates, squared=True)
+    gap = value - f_min
+    if variant == 'sps':
+      pass
+    elif variant == 'sps+':
+      gap = nn.relu(gap)
+    else:
+      raise ValueError(f'Invalid argument value for Polyak SGD: {variant=}')
     # avoid division by zero
     step = jnp.where(
         grad_sq_norm + eps <= jnp.finfo(float).eps,
         jnp.array(0.0),
-        jnp.minimum((value - f_min) / (grad_sq_norm + eps), max_learning_rate),
+        jnp.minimum(gap / (grad_sq_norm + eps), max_learning_rate),
     )
     updates = otu.tree_scalar_mul(step, updates)
     return updates, state
@@ -1697,7 +1721,8 @@ def scale_by_lbfgs(
       )
       # For the very first step of the algorithm, we consider scaling by a
       # capped reciprocal of the gradient norm, see note in the docstring.
-      capped_inv_norm = jnp.minimum(1.0, 1.0/otu.tree_l2_norm(updates))
+      update_norm = otu.tree_l2_norm(jax.lax.stop_gradient(updates))
+      capped_inv_norm = jnp.minimum(1.0, 1.0 / update_norm)
       identity_scale = jnp.where(
           state.count > 0, identity_scale, capped_inv_norm
       )

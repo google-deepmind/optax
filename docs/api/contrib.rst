@@ -8,6 +8,7 @@ Experimental features and algorithms that don't meet the
 
 .. autosummary::
     acprop
+    ademamix
     cocob
     COCOBState
     dadapt_adamw
@@ -25,6 +26,8 @@ Experimental features and algorithms that don't meet the
     MomoState
     momo_adam
     MomoAdamState
+    muon
+    MuonState
     prodigy
     ProdigyState
     sam
@@ -38,6 +41,12 @@ Experimental features and algorithms that don't meet the
     SophiaState
     split_real_and_imaginary
     SplitRealAndImaginaryState
+
+AdEMAMix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: ademamix
+.. autofunction:: scale_by_ademamix
+.. autoclass:: ScaleByAdemamixState
 
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,6 +92,12 @@ Momo
 .. autoclass:: MomoState
 .. autofunction:: momo_adam
 .. autoclass:: MomoAdamState
+
+Muon
+~~~~
+.. autofunction:: muon
+.. autofunction:: scale_by_muon
+.. autoclass:: MuonState
 
 Prodigy
 ~~~~~~~

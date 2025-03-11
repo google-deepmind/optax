@@ -77,7 +77,7 @@ class DeltaControlVariateTest(chex.TestCase):
   def test_quadratic_function(self, effective_mean, effective_log_scale):
     data_dims = 20
     num_samples = 10**6
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     mean = effective_mean * jnp.ones(shape=(data_dims), dtype=jnp.float32)
     log_scale = effective_log_scale * jnp.ones(
@@ -111,7 +111,7 @@ class DeltaControlVariateTest(chex.TestCase):
     params = [mean, log_scale]
 
     dist = utils.multi_normal(*params)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     dist_samples = dist.sample((num_samples,), rng)
     function = lambda x: jnp.sum(x**5)
 
@@ -131,7 +131,7 @@ class DeltaControlVariateTest(chex.TestCase):
     log_scale = jnp.ones(shape=(data_dims), dtype=jnp.float32)
     params = [mean, log_scale]
 
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
     function = lambda x: jnp.sum(jnp.log(x**2))
@@ -167,7 +167,7 @@ class MovingAverageBaselineTest(chex.TestCase):
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
 
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
@@ -219,7 +219,7 @@ class MovingAverageBaselineTest(chex.TestCase):
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
 
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
@@ -274,7 +274,7 @@ class MovingAverageBaselineTest(chex.TestCase):
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
 
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     dist = utils.multi_normal(*params)
     dist_samples = dist.sample((num_samples,), rng)
 
@@ -346,7 +346,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**2)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
         function,
@@ -429,7 +429,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**3)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
         function,
@@ -516,7 +516,7 @@ class DeltaMethodAnalyticalExpectedGrads(chex.TestCase):
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(x**4)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
 
     jacobians = _cv_jac_variant(self.variant)(
         function,
@@ -613,7 +613,7 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
     params = [mean, log_scale]
     function = lambda x: jnp.sum(weights * x)
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     cv_rng, ge_rng = jax.random.split(rng)
 
     jacobians = _cv_jac_variant(self.variant)(
@@ -702,7 +702,7 @@ class ConsistencyWithStandardEstimators(chex.TestCase):
 
     params = [mean, log_scale]
     function = lambda x: jnp.log(jnp.sum(x**2))
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.key(1)
     cv_rng, ge_rng = jax.random.split(rng)
 
     jacobians = _cv_jac_variant(self.variant)(

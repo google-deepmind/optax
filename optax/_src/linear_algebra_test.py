@@ -57,7 +57,7 @@ class LinearAlgebraTest(chex.TestCase):
 
   def test_power_iteration_cond_fun(self, dim=6):
     """Test the condition function for power iteration."""
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     all_eigenval, all_eigenvec = jax.numpy.linalg.eigh(matrix)
     dominant_eigenval = all_eigenval[-1]
@@ -102,7 +102,7 @@ class LinearAlgebraTest(chex.TestCase):
     power_iteration = self.variant(power_iteration)
 
     # create a random PSD matrix
-    matrix = jax.random.normal(jax.random.PRNGKey(0), (dim, dim))
+    matrix = jax.random.normal(jax.random.key(0), (dim, dim))
     matrix = matrix @ matrix.T
     v0 = jnp.ones((dim,))
 
@@ -148,7 +148,7 @@ class LinearAlgebraTest(chex.TestCase):
   ):
     """Test power_iteration on the Hessian of an MLP."""
     mlp = MLP(num_outputs=output_dim, hidden_sizes=[input_dim, 8, output_dim])
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     key_params, key_input, key_output = jax.random.split(key, 3)
     # initialize the mlp
     params = mlp.init(key_params, jnp.ones(input_dim))
@@ -208,6 +208,44 @@ class LinearAlgebraTest(chex.TestCase):
       else:
         # No guarantee of success after e >= 7
         pass
+
+  @parameterized.product(n=[24, 32], d=[24, 32], zero_lhs=[False, True],
+                         seed=[0], dtype=[jnp.float32, jnp.bfloat16])
+  def test_nnls(self, n, d, zero_lhs, seed, dtype, atol=1e-5):
+    """Test non-negative least squares solver."""
+    keys = jax.random.split(jax.random.key(seed), 2)
+    if zero_lhs:
+      if not (dtype == jnp.float32 and n == 32 and d == 32 and seed == 0):
+        self.skipTest('Only 1 test case for zero_lhs=True')
+      A = jnp.zeros((n, d), dtype=dtype)  # pylint: disable=invalid-name
+    else:
+      A = jax.random.normal(keys[0], (n, d), dtype=dtype)  # pylint: disable=invalid-name
+    b = jax.random.normal(keys[1], (n,), dtype=dtype)
+
+    x10 = linear_algebra.nnls(A, b, iters=10)
+    x100 = linear_algebra.nnls(A, b, iters=100)
+    x1000 = linear_algebra.nnls(A, b, iters=100000)
+
+    with self.subTest('x has the correct dtype'):
+      self.assertEqual(x10.dtype, dtype)
+      self.assertEqual(x100.dtype, dtype)
+      self.assertEqual(x1000.dtype, dtype)
+
+    with self.subTest('x is non-negative'):
+      assert jnp.allclose(x10.clip(max=0), 0, atol=atol)
+      assert jnp.allclose(x100.clip(max=0), 0, atol=atol)
+      assert jnp.allclose(x1000.clip(max=0), 0, atol=atol)
+
+    # we skip comparison to scipy.optimize.nnls as convergence is flaky (by
+    # design, this is an iterative algorithm)
+
+    l10 = jnp.square(A @ x10 - b).sum()
+    l100 = jnp.square(A @ x100 - b).sum()
+    l1000 = jnp.square(A @ x1000 - b).sum()
+
+    with self.subTest('x is converging'):
+      jnp.allclose((l100 - l10).clip(max=0), 0, atol=atol)
+      jnp.allclose((l1000 - l100).clip(max=0), 0, atol=atol)
 
 
 if __name__ == '__main__':

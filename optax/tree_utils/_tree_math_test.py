@@ -30,7 +30,7 @@ class TreeUtilsTest(parameterized.TestCase):
     super().setUp()
     rng = np.random.RandomState(0)
 
-    self.rng_jax = jax.random.PRNGKey(0)
+    self.rng_jax = jax.random.key(0)
 
     self.tree_a = (rng.randn(20, 10) + 1j * rng.randn(20, 10), rng.randn(20))
     self.tree_b = (rng.randn(20, 10), rng.randn(20))

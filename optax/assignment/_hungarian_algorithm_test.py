@@ -19,21 +19,22 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
-from optax.assignment import _hungarian_algorithm
+from optax import assignment
 import scipy
 
 
 class HungarianAlgorithmTest(parameterized.TestCase):
 
   @parameterized.product(
+      fn=[assignment.hungarian_algorithm, assignment.base_hungarian_algorithm],
       n=[0, 1, 2, 4, 8, 16],
       m=[0, 1, 2, 4, 8, 16],
   )
-  def test_hungarian_algorithm(self, n, m):
+  def test_hungarian_algorithm(self, fn, n, m):
     key = jrd.key(0)
     costs = jrd.normal(key, (n, m))
 
-    i, j = _hungarian_algorithm.hungarian_algorithm(costs)
+    i, j = fn(costs)
 
     r = min(costs.shape)
 
@@ -86,16 +87,17 @@ class HungarianAlgorithmTest(parameterized.TestCase):
       assert jnp.isclose(cost_optax, cost_scipy)
 
   @parameterized.product(
+      fn=[assignment.hungarian_algorithm, assignment.base_hungarian_algorithm],
       k=[0, 1, 2, 4],
       n=[0, 1, 2, 4],
       m=[0, 1, 2, 4],
   )
-  def test_hungarian_algorithm_vmap(self, k, n, m):
+  def test_hungarian_algorithm_vmap(self, fn, k, n, m):
     key = jrd.key(0)
     costs = jrd.normal(key, (k, n, m))
 
     with self.subTest('works under vmap'):
-      i, j = jax.vmap(_hungarian_algorithm.hungarian_algorithm)(costs)
+      i, j = jax.vmap(fn)(costs)
 
     r = min(costs.shape[1:])
 
@@ -105,12 +107,15 @@ class HungarianAlgorithmTest(parameterized.TestCase):
     with self.subTest('batch j has correct shape'):
       assert j.shape == (k, r)
 
-  def test_hungarian_algorithm_jit(self):
+  @parameterized.product(
+      fn=[assignment.hungarian_algorithm, assignment.base_hungarian_algorithm],
+  )
+  def test_hungarian_algorithm_jit(self, fn):
     key = jrd.key(0)
     costs = jrd.normal(key, (20, 30))
 
     with self.subTest('works under jit'):
-      i, j = jax.jit(_hungarian_algorithm.hungarian_algorithm)(costs)
+      i, j = jax.jit(fn)(costs)
 
     r = min(costs.shape)
 

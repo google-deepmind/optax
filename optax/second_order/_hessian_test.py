@@ -51,7 +51,7 @@ class HessianTest(chex.TestCase):
         return x
 
     net = MLP()
-    self.parameters = net.init({'params': jax.random.PRNGKey(0)}, self.data)[
+    self.parameters = net.init({'params': jax.random.key(0)}, self.data)[
         'params'
     ]
 

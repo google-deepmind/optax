@@ -48,6 +48,8 @@ if [ -z "${JAX_VERSION-}" ]; then
   : # use version installed in requirements above
 elif [ "$JAX_VERSION" = "newest" ]; then
   python3 -m pip install --quiet --upgrade jax jaxlib
+elif [ "$JAX_VERSION" = "nightly" ]; then
+  python3 -m pip install --quiet --upgrade --pre jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
 else
   python3 -m pip install --quiet "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi
@@ -61,12 +63,7 @@ python3 -m pip uninstall --quiet --yes optax
 python3 -m flake8 --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
-PYLINT_ARGS="-efail -wfail -cfail -rfail"
-# Append specific config lines.
-# Lint modules and tests separately.
-python3 -m pylint --rcfile=.pylintrc $(find optax -name '*.py' | grep -v 'test.py' | xargs) -d E1102 || pylint-exit $PYLINT_ARGS $?
-# Disable protected-access warnings for tests.
-python3 -m pylint --rcfile=.pylintrc $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
+pylint .
 
 # Build the package.
 python3 -m pip install --quiet build

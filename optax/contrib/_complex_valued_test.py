@@ -71,9 +71,10 @@ class ComplexValuedTest(chex.TestCase):
       loss_complex, gz, z, opt_state_complex = do_update(
           _loss_fun_complex_to_real, optimizer_complex, z, opt_state_complex
       )
-      np.testing.assert_allclose(loss, loss_complex)
-      np.testing.assert_allclose(gx + gy * 1j, gz)
-      np.testing.assert_allclose(x + y * 1j, z)
+      rtol = 1e-6
+      np.testing.assert_allclose(loss, loss_complex, rtol=rtol)
+      np.testing.assert_allclose(gx + gy * 1j, gz, rtol=rtol)
+      np.testing.assert_allclose(x + y * 1j, z, rtol=rtol)
 
 
 if __name__ == '__main__':

@@ -20,6 +20,7 @@ from optax.tree_utils._casting import tree_cast
 from optax.tree_utils._casting import tree_dtype
 from optax.tree_utils._random import tree_random_like
 from optax.tree_utils._random import tree_split_key_like
+from optax.tree_utils._random import tree_unwrap_random_key_data
 from optax.tree_utils._state_utils import NamedTupleKey
 from optax.tree_utils._state_utils import tree_get
 from optax.tree_utils._state_utils import tree_get_all_with_path
@@ -27,6 +28,7 @@ from optax.tree_utils._state_utils import tree_map_params
 from optax.tree_utils._state_utils import tree_set
 from optax.tree_utils._tree_math import tree_add
 from optax.tree_utils._tree_math import tree_add_scalar_mul
+from optax.tree_utils._tree_math import tree_batch_shape
 from optax.tree_utils._tree_math import tree_bias_correction
 from optax.tree_utils._tree_math import tree_clip
 from optax.tree_utils._tree_math import tree_conj
