@@ -148,37 +148,21 @@ def adadelta(
   based on a moving window of gradient updates. Adadelta is a modification of
   Adagrad.
   It addresses the diminishing learning rates problem in Adagrad by maintaining running averages of squared
-  gradients and parameter updates over a window.
+  gradients and parameter updates
 
-  The update rule for this optimizer is as follows:
-
-  Since storing all previous squared gradients is inefficient, Adadelta instead uses an exponentially decaying average of the squared gradients.
-  Assume at time :math:`t` the running average is :math:`E[g^2]_t`, then we compute exponentially decaying average of the squared gradients as:
+  The weight update :math:`\Delta w_t` for this optimizer is given as follows:
 
   .. math::
+      \begin{align*}
 
-      E[g^2]_t = \rho \cdot E[g^2]_{t-1} + (1-\rho) \cdot g_t^2
+      &E[g^2]_t = \rho \cdot E[g^2]_{t-1} + (1-\rho) \cdot g_t^2 \\
+      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \cdot g_t
 
-  The weight update is computed as:
+      \end{align*}
 
-  .. math::
 
-    \Delta w_t = -\frac{\text{RMS}(\Delta w)_{t-1}}{\text{RMS}(g)_t} \cdot g_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}
-                        {\sqrt{E[g^2]_t + \epsilon}} \cdot g_t
-
-  Next, we update the running average of the squared updates:
-
-  .. math::
-
-      E[\Delta w^2]_t = \rho \cdot E[\Delta w^2]_{t-1} + (1-\rho) \cdot \Delta w_t^2
-
-  Finally, the weight update step is given by:
-
-  .. math::
-      w_{t+1} = w_t + \Delta w_t
 
   where:
-    - :math:`w_t` is the parameter vector at time step :math:`t`,
     - :math:`g_t` is the gradient at time step :math:`t`,
     - :math:`E[g^2]_t` is the running average of squared gradients,
     - :math:`E[\Delta w^2]_t` is the running average of squared parameter updates,
