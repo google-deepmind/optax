@@ -37,7 +37,7 @@ class BacktrackingLinesearchInfo(NamedTuple):
       the linesearch failed to find a stepsize that ensures a sufficient
       decrease. A null value indicates it succeeded in finding such a stepsize.
   """
-  num_linesearch_steps: int
+  num_linesearch_steps: Union[int, chex.Numeric]
   decrease_error: Union[float, chex.Numeric]
 
 
@@ -260,7 +260,7 @@ def scale_by_backtracking_linesearch(
         value=jnp.array(jnp.inf, dtype=val_dtype),
         grad=grad,
         info=BacktrackingLinesearchInfo(
-            num_linesearch_steps=0,
+            num_linesearch_steps=jnp.asarray(0),
             decrease_error=jnp.array(jnp.inf, dtype=val_dtype),
         ),
     )
