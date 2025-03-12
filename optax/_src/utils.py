@@ -105,10 +105,10 @@ class MultiNormalDiagFromLogScale:
         self._mean.shape, self._scale.shape
     )
 
-  def sample(self, shape: Sequence[int], seed: chex.PRNGKey) -> chex.Array:
+  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> chex.Array:
     sample_shape = tuple(shape) + self._param_shape
     return (
-        jax.random.normal(seed, shape=sample_shape) * self._scale + self._mean
+        jax.random.normal(key, shape=sample_shape) * self._scale + self._mean
     )
 
   def log_prob(self, x: chex.Array) -> chex.Array:
