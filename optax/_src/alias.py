@@ -1745,6 +1745,61 @@ def rmsprop(
   in the literature. This alias provides an easy to configure RMSProp
   optimizer that can be used to switch between several of these variants.
 
+  Let :math:`\alpha_t` be the learning rate, :math:`\gamma` be the decay rate,
+    :math:`\epsilon` be the epsilon value, and :math:`g_t` be the gradient at step
+    :math:`t`.
+
+    **RMSProp without Centering:**
+
+    If `centered` is `False`, the update rule is as follows:
+
+    .. math::
+        \begin{align*}
+            v_t &\leftarrow \gamma v_{t-1} + (1 - \gamma) g_t^2 \\
+            \hat{v}_t &\leftarrow v_t / (1 - \gamma^t) \quad \text{(if bias_correction is enabled)} \\
+            \text{denominator} &\leftarrow \sqrt{\hat{v}_t + \epsilon} \quad \text{(if eps_in_sqrt is True)} \\
+            \text{denominator} &\leftarrow \sqrt{\hat{v}_t} + \epsilon \quad \text{(if eps_in_sqrt is False)} \\
+            u_t &\leftarrow g_t / \text{denominator} \\
+            m_t &\leftarrow \beta m_{t-1} + (1 - \beta) u_t \quad \text{(if momentum is enabled)} \\
+            w_t &\leftarrow w_{t-1} - \alpha_t m_t
+        \end{align*}
+
+    where :math:`v_t` is the exponentially moving average of squared gradients,
+    :math:`\hat{v}_t` is the bias-corrected version of :math:`v_t`,
+    :math:`u_t` is the rescaled gradient, :math:`m_t` is the momentum term,
+    :math:`w_t` is the updated weight, and :math:`\beta` is the momentum decay rate.
+
+    **RMSProp with Centering:**
+
+    If `centered` is `True`, the update rule is as follows:
+
+    .. math::
+        \begin{align*}
+            \mu_t &\leftarrow \gamma \mu_{t-1} + (1 - \gamma) g_t \\
+            v_t &\leftarrow \gamma v_{t-1} + (1 - \gamma) (g_t - \mu_t)^2 \\
+            \hat{\mu}_t &\leftarrow \mu_t / (1 - \gamma^t) \quad \text{(if bias_correction is enabled)} \\
+            \hat{v}_t &\leftarrow v_t / (1 - \gamma^t) \quad \text{(if bias_correction is enabled)} \\
+            \text{denominator} &\leftarrow \sqrt{\hat{v}_t + \epsilon} \quad \text{(if eps_in_sqrt is True)} \\
+            \text{denominator} &\leftarrow \sqrt{\hat{v}_t} + \epsilon \quad \text{(if eps_in_sqrt is False)} \\
+            u_t &\leftarrow (g_t - \hat{\mu}_t) / \text{denominator} \\
+            m_t &\leftarrow \beta m_{t-1} + (1 - \beta) u_t \quad \text{(if momentum is enabled)} \\
+            w_t &\leftarrow w_{t-1} - \alpha_t m_t
+        \end{align*}
+
+    where :math:`\mu_t` is the exponentially moving average of gradients,
+    :math:`\hat{\mu}_t` is the bias-corrected version of :math:`\mu_t`,
+    and the other terms are as defined above.
+
+    **Nesterov Momentum:**
+
+    If `nesterov` is `True`, the momentum update is modified to:
+
+    .. math::
+        \begin{align*}
+            m_t &\leftarrow \beta m_{t-1} + (1 - \beta) u_t \\
+            w_t &\leftarrow w_{t-1} - \alpha_t (\beta m_t + u_t)
+        \end{align*}
+        
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
