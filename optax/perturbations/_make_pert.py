@@ -35,11 +35,11 @@ class Normal:
 
   def sample(
       self,
-      seed: chex.PRNGKey,
+      key: chex.PRNGKey,
       sample_shape: Shape,
       dtype: chex.ArrayDType = float,
   ) -> jax.Array:
-    return jax.random.normal(seed, sample_shape, dtype)
+    return jax.random.normal(key, sample_shape, dtype)
 
   def log_prob(self, inputs: jax.Array) -> jax.Array:
     return -0.5 * inputs**2
@@ -50,11 +50,11 @@ class Gumbel:
 
   def sample(
       self,
-      seed: chex.PRNGKey,
+      key: chex.PRNGKey,
       sample_shape: Shape,
       dtype: chex.ArrayDType = float,
   ) -> jax.Array:
-    return jax.random.gumbel(seed, sample_shape, dtype)
+    return jax.random.gumbel(key, sample_shape, dtype)
 
   def log_prob(self, inputs: jax.Array) -> jax.Array:
     return -inputs - jnp.exp(-inputs)

@@ -73,8 +73,8 @@ class AddingTest(chex.TestCase):
     # Prepare to compare noise with a rescaled unit-variance substitute.
     eta = 0.3
     gamma = 0.55
-    seed = 314
-    noise = _adding.add_noise(eta, gamma, seed)
+    key = jax.random.key(314)
+    noise = _adding.add_noise(key, eta, gamma)
     noise_unit = _adding.add_noise(1.0, 0.0, seed)
 
     params = self.init_params
