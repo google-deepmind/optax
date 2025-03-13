@@ -28,7 +28,7 @@ from optax._src import combine
 from optax._src import transform
 from optax.schedules import _inject
 from optax.schedules import _schedule
-from optax.tree_utils import _state_utils
+from optax.tree_utils import _state_utils, _random
 
 
 @dataclasses.dataclass
@@ -442,7 +442,10 @@ class StateUtilsTest(absltest.TestCase):
           count=jnp.asarray(0),
           rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
       )
-      chex.assert_trees_all_equal(noise_state, expected_result)
+      chex.assert_trees_all_equal(
+          _random.tree_unwrap_random_key_data(noise_state),
+          _random.tree_unwrap_random_key_data(expected_result)
+      )
 
   def test_tree_set(self):
     params = jnp.array([1.0, 2.0, 3.0])
@@ -559,7 +562,10 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(new_state, expected_result)
+      chex.assert_trees_all_equal(
+          _random.tree_unwrap_random_key_data(new_state),
+          _random.tree_unwrap_random_key_data(expected_result)
+      )
 
     with self.subTest('Test setting a state'):
       opt = combine.chain(

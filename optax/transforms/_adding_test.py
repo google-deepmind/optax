@@ -75,7 +75,7 @@ class AddingTest(chex.TestCase):
     gamma = 0.55
     key = jax.random.key(314)
     noise = _adding.add_noise(key, eta, gamma)
-    noise_unit = _adding.add_noise(1.0, 0.0, seed)
+    noise_unit = _adding.add_noise(key, 1.0, 0.0)
 
     params = self.init_params
     state = noise.init(params)
