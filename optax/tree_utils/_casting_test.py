@@ -41,6 +41,23 @@ class CastingTest(parameterized.TestCase):
     tree = otu.tree_cast(tree, dtype=dtype)
     jax.tree.map(np.testing.assert_array_equal, tree, _build_tree(new_b, new_c))
 
+  @parameterized.parameters([
+      (jnp.float16, [1.3, 2.001, 3.6], [-3]),
+      (jnp.bfloat16, [1.3, 2.001, 3.6], [-3.3]),
+      (jnp.float32, [1.3, 2.001, 3.6], [-3.3]),
+      (jnp.int32, [1.3, 2.001, 3.6], [-3]),
+  ])
+  def test_tree_cast_like(self, dtype, b, c):
+    def _build_tree(val1, val2):
+      dict_tree = {'a': {'b': jnp.array(val1)}, 'c': jnp.array(val2)}
+      return jax.tree.map(lambda x: x, dict_tree)
+
+    tree = _build_tree(b, c)
+    target_tree = _build_tree(b, c)
+    target_tree = jax.tree.map(lambda x: x.astype(dtype), target_tree)
+    tree = otu.tree_cast_like(tree, target_tree)
+    jax.tree.map(np.testing.assert_array_equal, tree, target_tree)
+
   def test_tree_dtype(self):
     """Test fecthing data type of a tree."""
 
