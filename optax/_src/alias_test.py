@@ -48,7 +48,9 @@ from sklearn import linear_model
 _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
     {'opt_name': 'adadelta', 'opt_kwargs': {'learning_rate': 0.1}},
+    {'opt_name': 'adadelta', 'opt_kwargs': {}},
     {'opt_name': 'adafactor', 'opt_kwargs': {'learning_rate': 5e-3}},
+    {'opt_name': 'adafactor', 'opt_kwargs': {}},
     {'opt_name': 'adagrad', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
@@ -185,6 +187,12 @@ class AliasTest(chex.TestCase):
       for _ in range(10000):
         params, state = step(params, state)
 
+      if (opt_name in ('adadelta', 'adafactor')
+          and opt_kwargs.get('learning_rate') is None):
+        raise absltest.SkipTest(
+            f'{opt_name} needs a non-None learning rate for numerically stable'
+            ' optimization in practice.'
+        )
       chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
