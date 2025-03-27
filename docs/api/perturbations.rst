@@ -4,14 +4,10 @@ Perturbations
 .. currentmodule:: optax.perturbations
 
 .. autosummary::
-    Gumbel
     make_perturbed_fun
     Normal
+    Gumbel
 
-
-Gumbel noise
-~~~~~~~~~~~~
-.. autoclass:: Gumbel
 
 Make perturbed function
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,3 +17,34 @@ Normal noise
 ~~~~~~~~~~~~
 .. autoclass:: Normal
 
+Gumbel noise
+~~~~~~~~~~~~
+.. autoclass:: Gumbel
+
+Laplace noise
+~~~~~~~~~~~~
+.. autoclass:: Laplace
+
+Cauchy noise
+~~~~~~~~~~~~
+.. autoclass:: Cauchy
+
+Logistic noise
+~~~~~~~~~~~~
+.. autoclass:: Logistic
+
+Student T noise
+~~~~~~~~~~~~
+.. autoclass:: StudentT
+
+Chi-square noise
+~~~~~~~~~~~~
+.. autoclass:: ChiSquare
+
+Generalized normal noise
+~~~~~~~~~~~~
+.. autoclass:: GeneralizedNormal
+
+Triangular noise
+~~~~~~~~~~~~
+.. autoclass:: Triangular
