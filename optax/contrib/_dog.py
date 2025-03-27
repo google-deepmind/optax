@@ -112,7 +112,7 @@ def scale_by_dog(
           state.first_step, init_learning_rate, learning_rate
       )
 
-    new_updates = otu.tree_scalar_mul(learning_rate, updates)
+    new_updates = otu.tree_scale(learning_rate, updates)
     return new_updates, DoGState(
         first_step=jnp.asarray(False),
         init_params=init_params,
@@ -266,7 +266,7 @@ def scale_by_dowg(
     )
     learning_rate = estim_sq_dist / (jnp.sqrt(weighted_sq_norm_grads) + eps)
 
-    new_updates = otu.tree_scalar_mul(learning_rate, updates)
+    new_updates = otu.tree_scale(learning_rate, updates)
     return new_updates, state._replace(
         estim_sq_dist=estim_sq_dist,
         weighted_sq_norm_grads=weighted_sq_norm_grads,

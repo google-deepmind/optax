@@ -57,7 +57,7 @@ def scale_by_cocob(
   def init_fn(params):
     init_adapt = otu.tree_zeros_like(params)
     init_scale = otu.tree_ones_like(params)
-    init_scale = otu.tree_scalar_mul(eps, init_scale)
+    init_scale = otu.tree_scale(eps, init_scale)
     return COCOBState(
         init_particles=params,
         cumulative_gradients=init_adapt,
