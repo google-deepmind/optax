@@ -81,7 +81,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
   return jax.tree.map(operator.truediv, tree_x, tree_y)
 
 
-def tree_scalar_mul(
+def tree_scale(
     scalar: Union[float, jax.Array],
     tree: Any,
 ) -> Any:
@@ -99,7 +99,7 @@ def tree_scalar_mul(
   return jax.tree.map(lambda x: scalar * x, tree)
 
 
-def tree_add_scalar_mul(
+def tree_add_scale(
     tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
