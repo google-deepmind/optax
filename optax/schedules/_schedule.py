@@ -331,7 +331,7 @@ def cosine_decay_schedule(
   .. math::
     \begin{cases}
       \alpha I + (1 - \alpha) I  \left[ \frac{1}{2} \left( 1+ \cos \left( \pi\,\frac{t}{T} \right) \right) \right] ^p  & \text{, if } t \leq T \\
-      \alpha I  & \text{, if } t > T 
+      \alpha I  & \text{, if } t > T
     \end{cases}
 
   where :math:`T` is the number of decay steps (``decay_steps``), :math:`p` is
@@ -343,7 +343,7 @@ def cosine_decay_schedule(
       the decay for.
     alpha: The minimum value of the multiplier used to adjust the
       learning rate. Defaults to 0.0.
-    exponent:  The default decay is ``0.5 * (1 + cos(pi * t/T))``, where 
+    exponent:  The default decay is ``0.5 * (1 + cos(pi * t/T))``, where
       ``t`` is the current timestep and ``T`` is the ``decay_steps``. The
       exponent modifies this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``.
       Defaults to 1.0.

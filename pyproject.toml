@@ -91,6 +91,7 @@ exclude = ["*_test.py"]
 select = [
     "F",
     "E",
+    "W291",  # whitespace at the end of the line
 ]
 ignore = [
     "E731",  # lambdas are allowed
