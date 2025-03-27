@@ -1613,7 +1613,7 @@ def scale_by_lbfgs(
 
   The formula for updating :math:`P_k` is obtained by computing the optimal
   preconditioning matrix subject to some secant condition, see references
-  for more details. Computing :math:`P_k u_k` can be done by a sequence of 
+  for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
   a memory bufffer.
 
