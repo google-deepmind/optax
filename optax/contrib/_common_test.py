@@ -213,6 +213,35 @@ def _setup_mixed_tensor_target(dtype):
 
 class ContribTest(chex.TestCase):
 
+  @parameterized.product(_ALL_OPTIMIZERS_UNDER_TEST, wrap=[True, False])
+  def test_optimizers_accept_extra_args(
+      self, opt_name, opt_kwargs, wrapper_name, wrapper_kwargs, wrap):
+    opt = _get_opt_factory(opt_name)(**opt_kwargs)
+    if wrap and wrapper_name is not None:
+      opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
+    # intentionally ommit: opt = base.with_extra_args_support(opt)
+
+    initial_params, _, objective = _setup_rosenbrock(jnp.float32)
+
+    @jax.jit
+    def step(params, state):
+      value, updates = jax.value_and_grad(objective)(params)
+      update_kwargs = {'unexpected_extra_args_your_optimizer_doesnt_expect': 1}
+      if opt_name in ['momo', 'momo_adam', 'sgd']:
+        update_kwargs['value'] = value
+      if opt_name in ['sophia']:
+        update_kwargs['obj_fn'] = objective
+      updates, state = opt.update(updates, state, params, **update_kwargs)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+
+    with self.subTest('Test that update works with extra args'):
+      for _ in range(2):
+        params, state = step(params, state)
+
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,
       target=(

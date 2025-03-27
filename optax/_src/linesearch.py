@@ -1211,7 +1211,7 @@ def zoom_linesearch(
 
     slope = otu.tree_real(otu.tree_vdot(updates, grad))
     return ZoomLinesearchState(
-        count=jnp.asarray(0, dtype=jnp.int32),
+        count=jnp.asarray(0),
         #
         params=params,
         updates=updates,

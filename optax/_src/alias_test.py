@@ -48,7 +48,9 @@ from sklearn import linear_model
 _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
     {'opt_name': 'adadelta', 'opt_kwargs': {'learning_rate': 0.1}},
+    {'opt_name': 'adadelta', 'opt_kwargs': {}},
     {'opt_name': 'adafactor', 'opt_kwargs': {'learning_rate': 5e-3}},
+    {'opt_name': 'adafactor', 'opt_kwargs': {}},
     {'opt_name': 'adagrad', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
@@ -185,7 +187,36 @@ class AliasTest(chex.TestCase):
       for _ in range(10000):
         params, state = step(params, state)
 
+      if (opt_name in ('adadelta', 'adafactor')
+          and opt_kwargs.get('learning_rate') is None):
+        raise absltest.SkipTest(
+            f'{opt_name} needs a non-None learning rate for numerically stable'
+            ' optimization in practice.'
+        )
       chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+
+  @parameterized.product(_OPTIMIZERS_UNDER_TEST)
+  def test_optimizers_accept_extra_args(self, opt_name, opt_kwargs):
+    opt = getattr(alias, opt_name)(**opt_kwargs)
+    # intentionally ommit: opt = base.with_extra_args_support(opt)
+    initial_params, _, objective = _setup_rosenbrock(jnp.float32)
+
+    @jax.jit
+    def step(params, state):
+      value, updates = jax.value_and_grad(objective)(params)
+      update_kwargs = {'unexpected_extra_args_your_optimizer_doesnt_expect': 1}
+      if opt_name in ['polyak_sgd']:
+        update_kwargs = {'value': value}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+
+    with self.subTest('Test that update works with extra values'):
+      for _ in range(2):
+        params, state = step(params, state)
 
   @chex.all_variants
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
@@ -940,6 +971,28 @@ class LBFGSTest(chex.TestCase):
     got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
     chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
+  def test_float64_compatibility(self):
+    """Test that types of state, updates are preserved in float64."""
+    jax.config.update('jax_enable_x64', True)
+
+    pb = _get_problem('rosenbrock')
+    fun, init_params = pb['fun'], pb['init']
+    init_params = init_params.astype(jnp.float64)
+    opt = alias.lbfgs()
+    init_state = opt.init(init_params)
+    grad = jax.grad(fun)(init_params)
+    updates, state = opt.update(
+        grad,
+        init_state,
+        init_params,
+        value=fun(init_params),
+        grad=grad,
+        value_fn=fun,
+    )
+    init_types = jax.tree.map(lambda t: t.dtype, (grad, init_state))
+    updates_types = jax.tree.map(lambda t: t.dtype, (updates, state))
+    self.assertEqual(init_types, updates_types)
+    jax.config.update('jax_enable_x64', False)
 
 if __name__ == '__main__':
   absltest.main()

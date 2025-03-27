@@ -79,6 +79,7 @@ from optax._src.factorized import FactoredState
 from optax._src.factorized import scale_by_factored_rms
 from optax._src.linear_algebra import global_norm
 from optax._src.linear_algebra import matrix_inverse_pth_root
+from optax._src.linear_algebra import nnls
 from optax._src.linear_algebra import power_iteration
 from optax._src.linesearch import scale_by_backtracking_linesearch
 from optax._src.linesearch import scale_by_zoom_linesearch
@@ -165,8 +166,10 @@ NonNegativeParamsState = transforms.NonNegativeParamsState
 zero_nans = transforms.zero_nans
 ZeroNansState = transforms.ZeroNansState
 chain = transforms.chain
-multi_transform = transforms.partition
-MultiTransformState = transforms.PartitionState
+partition = transforms.partition
+PartitionState = transforms.PartitionState
+multi_transform = transforms.partition  # for backwards compatibility
+MultiTransformState = transforms.PartitionState  # for backwards compatibility
 named_chain = transforms.named_chain
 trace = transforms.trace
 TraceState = transforms.TraceState
@@ -372,18 +375,21 @@ __all__ = (
     "MaskedState",
     "matrix_inverse_pth_root",
     "multi_normal",
-    "multi_transform",
+    "multi_transform",  # for backwards compatibility
     "MultiSteps",
     "MultiStepsState",
-    "MultiTransformState",
+    "MultiTransformState",  # for backwards compatibility
     "nadam",
     "nadamw",
+    "nnls",
     "noisy_sgd",
     "novograd",
     "NonNegativeParamsState",
     "ntxent",
     "OptState",
     "Params",
+    "partition",
+    "PartitionState",
     "periodic_update",
     "per_example_global_norm_clip",
     "per_example_layer_norm_clip",
