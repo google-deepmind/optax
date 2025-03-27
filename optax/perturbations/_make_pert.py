@@ -140,7 +140,7 @@ def make_perturbed_fun(
     ]
     # creates [inputs + Z_1, ..., inputs + Z_num_samples]
     inputs_pert = _tree_vmap(
-        lambda z: otu.tree_add_scalar_mul(inputs, sigma, z), samples
+        lambda z: otu.tree_add_scale(inputs, sigma, z), samples
     )
     # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
     outputs_pert = _tree_vmap(fun, inputs_pert)
@@ -185,7 +185,7 @@ def make_perturbed_fun(
     # TODO(qberthet): implement with the jvp of the grad log prob.
     # computes 1/M * sum_i fun(inputs + sigma * Z_i) < - grad log_prob(Z_i), g>
     tangent_out = _tree_mean_across([
-        otu.tree_scalar_mul(-scalar_dot_prod, output)
+        otu.tree_scale(-scalar_dot_prod, output)
         for scalar_dot_prod, output in zip(list_dot_prods, outputs_pert)
     ])
     return tangent_out
