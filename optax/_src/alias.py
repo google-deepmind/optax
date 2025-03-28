@@ -680,8 +680,15 @@ def adamw(
     >>> import optax
     >>> import jax
     >>> import jax.numpy as jnp
-    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adamw(learning_rate=0.003)
+    >>> def loss_fn(x): return jnp.sum(x ** 2)  # simple quadratic
+    >>> optimizer = optax.adamw(learning_rate=0.01, weight_decay=1e-4)
+    >>> params = jnp.array([1.0, 2.0, 3.0])
+    >>> opt_state = optimizer.init(params)
+    >>> for _ in range(5):
+    ...     grads = jax.grad(loss_fn)(params)
+    ...     updates, opt_state = optimizer.update(grads, opt_state, params)
+    ...     params = optax.apply_updates(params, updates)
+    ...     print('Loss:', loss_fn(params))
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
