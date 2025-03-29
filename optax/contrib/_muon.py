@@ -179,11 +179,19 @@ def scale_by_muon(
         mu_hat,
     )
     if adaptive:
-      # Scale the orthogonalized updates by the dual norm of the original
-      # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
-      updates = jax.tree.map(
-          lambda x, y: jnp.einsum('ij,ij,ab->ab', x, y, y), mu_hat, updates
-      )
+        # Scale the orthogonalized updates by the dual norm of the original
+        # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
+        updates = jax.tree.map(
+            lambda x, y: jnp.sqrt(jnp.maximum(1, x.shape[-1] / x.shape[-2]))
+            * jnp.einsum("ij,ij,ab->ab", x, y, y),
+            mu_hat,
+            updates,
+        )
+    else:
+        updates = jax.tree.map(
+            lambda x: jnp.sqrt(jnp.maximum(1, x.shape[-1] / x.shape[-2])) * x,
+            updates,
+        )
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, MuonState(
         count=count_inc,
