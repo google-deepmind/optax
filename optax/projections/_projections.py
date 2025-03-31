@@ -250,7 +250,7 @@ def projection_l2_sphere(tree: Any, scale: float = 1.0) -> Any:
   .. versionadded:: 0.2.4
   """
   factor = scale / otu.tree_l2_norm(tree)
-  return otu.tree_scalar_mul(factor, tree)
+  return otu.tree_scale(factor, tree)
 
 
 def projection_l2_ball(tree: Any, scale: float = 1.0) -> Any:
@@ -278,7 +278,7 @@ def projection_l2_ball(tree: Any, scale: float = 1.0) -> Any:
   return jax.lax.cond(
       l2_norm <= scale,
       lambda tree: tree,
-      lambda tree: otu.tree_scalar_mul(factor, tree),
+      lambda tree: otu.tree_scale(factor, tree),
       operand=tree,
   )
 

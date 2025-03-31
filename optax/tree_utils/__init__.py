@@ -14,6 +14,8 @@
 # ==============================================================================
 """The tree_utils sub-package."""
 
+import typing
+
 # pylint: disable=g-importing-member
 
 from optax.tree_utils._casting import tree_cast
@@ -27,7 +29,7 @@ from optax.tree_utils._state_utils import tree_get_all_with_path
 from optax.tree_utils._state_utils import tree_map_params
 from optax.tree_utils._state_utils import tree_set
 from optax.tree_utils._tree_math import tree_add
-from optax.tree_utils._tree_math import tree_add_scalar_mul
+from optax.tree_utils._tree_math import tree_add_scale
 from optax.tree_utils._tree_math import tree_batch_shape
 from optax.tree_utils._tree_math import tree_bias_correction
 from optax.tree_utils._tree_math import tree_clip
@@ -41,7 +43,7 @@ from optax.tree_utils._tree_math import tree_max
 from optax.tree_utils._tree_math import tree_mul
 from optax.tree_utils._tree_math import tree_ones_like
 from optax.tree_utils._tree_math import tree_real
-from optax.tree_utils._tree_math import tree_scalar_mul
+from optax.tree_utils._tree_math import tree_scale
 from optax.tree_utils._tree_math import tree_sub
 from optax.tree_utils._tree_math import tree_sum
 from optax.tree_utils._tree_math import tree_update_infinity_moment
@@ -50,3 +52,31 @@ from optax.tree_utils._tree_math import tree_update_moment_per_elem_norm
 from optax.tree_utils._tree_math import tree_vdot
 from optax.tree_utils._tree_math import tree_where
 from optax.tree_utils._tree_math import tree_zeros_like
+
+_deprecations = {
+    # Added Mar 2025
+    'tree_scalar_mul': (
+        ('optax.tree_utils.tree_scalar_mul is deprecated: use'
+         ' optax.tree_utils.tree_scale(optax v0.2.5 or newer).'),
+        tree_scale,
+    ),
+    'tree_add_scalar_mul': (
+        ('optax.tree_utils.tree_scalar_mul is deprecated: use'
+         ' optax.tree_utils.tree_scale(optax v0.2.5 or newer).'),
+        tree_add_scale,
+    ),
+}
+
+# pylint: disable=g-import-not-at-top
+# pylint: disable=g-bad-import-order
+if typing.TYPE_CHECKING:
+  tree_scalar_mul = tree_scale
+  tree_add_scalar_mul = tree_add_scale
+
+else:
+  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
+
+  __getattr__ = _deprecation_getattr(__name__, _deprecations)
+  del _deprecation_getattr
+# pylint: enable=g-bad-import-order
+# pylint: enable=g-import-not-at-top

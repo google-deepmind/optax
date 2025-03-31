@@ -141,7 +141,7 @@ class MakePertTest(absltest.TestCase):
         self.rng_jax, self.example_tree, sampler=_make_pert.Normal().sample
     )
     tree_out_noisy = apply_element_tree(
-        otu.tree_add_scalar_mul(self.example_tree, 1e-4, tree_noise)
+        otu.tree_add_scale(self.example_tree, 1e-4, tree_noise)
     )
     chex.assert_trees_all_close(tree_out, tree_out_noisy, rtol=1e-4)
 

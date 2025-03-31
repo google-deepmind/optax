@@ -29,7 +29,7 @@ from optax._src import numerics
 
 def _normalize_tree(x):
   # divide by the L2 norm of the tree weights.
-  return otu.tree_scalar_mul(1.0 / otu.tree_l2_norm(x), x)
+  return otu.tree_scale(1.0 / otu.tree_l2_norm(x), x)
 
 
 def global_norm(updates: base.PyTree) -> chex.Array:
@@ -42,7 +42,7 @@ def global_norm(updates: base.PyTree) -> chex.Array:
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
   normalized_eigvec, unnormalized_eigvec, eig, iter_num = loop_vars
   residual = otu.tree_sub(
-      unnormalized_eigvec, otu.tree_scalar_mul(eig, normalized_eigvec)
+      unnormalized_eigvec, otu.tree_scale(eig, normalized_eigvec)
   )
   residual_norm = otu.tree_l2_norm(residual)
   converged = jnp.abs(residual_norm / eig) < error_tolerance

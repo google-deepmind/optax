@@ -345,7 +345,7 @@ def scale_by_backtracking_linesearch(
       learning_rate = jnp.where(
           iter_num > 0, decrease_factor * learning_rate, learning_rate
       )
-      new_params = otu.tree_add_scalar_mul(params, learning_rate, updates)
+      new_params = otu.tree_add_scale(params, learning_rate, updates)
 
       value_fn_ = functools.partial(value_fn, **fn_kwargs)
       if store_grad:
@@ -424,7 +424,7 @@ def scale_by_backtracking_linesearch(
           "Using a stepsize of 0 to avoid infinite or nan values.",
       )
     # At the end, we just scale the updates with the learning rate found.
-    new_updates = otu.tree_scalar_mul(new_learning_rate, updates)
+    new_updates = otu.tree_scale(new_learning_rate, updates)
     info = BacktrackingLinesearchInfo(
         num_linesearch_steps=search_state.iter_num,
         decrease_error=search_state.decrease_error,
@@ -700,7 +700,7 @@ def zoom_linesearch(
         * ``slope_step`` is the derivative of the function in terms of the
           stepsize at the step.
     """
-    step = otu.tree_add_scalar_mul(params, stepsize, updates)
+    step = otu.tree_add_scale(params, stepsize, updates)
     value_step, grad_step = value_and_grad_fn(step, **fn_kwargs)
     slope_step = otu.tree_real(otu.tree_vdot(otu.tree_conj(grad_step), updates))
     return step, value_step, grad_step, slope_step
@@ -1605,7 +1605,7 @@ def scale_by_zoom_linesearch(
         init_state,
     )
     learning_rate = final_state.stepsize
-    scaled_updates = otu.tree_scalar_mul(learning_rate, updates)
+    scaled_updates = otu.tree_scale(learning_rate, updates)
     info_step = ZoomLinesearchInfo(
         num_linesearch_steps=final_state.count,
         decrease_error=final_state.decrease_error,
