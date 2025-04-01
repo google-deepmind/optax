@@ -173,7 +173,6 @@ class InjectHyperparamsTest(chex.TestCase):
       def init_fn(params_like: base.Params) -> tuple[chex.PRNGKey,
                                                      Union[jax.Array, float]]:
         del params_like
-        nonlocal key, scale
         return (key, scale)
 
       def update_fn(
