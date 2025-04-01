@@ -1081,9 +1081,6 @@ def _subtract_mean(g):
     return g
 
 
-CentralState = base.EmptyState
-
-
 def centralize() -> base.GradientTransformation:
   """Centralizes gradients by subtracting their mean along leading dimension.
 
@@ -1108,16 +1105,12 @@ def centralize() -> base.GradientTransformation:
     Neural Networks <https://arxiv.org/abs/2004.01461>`_, 2020.
   """
 
-  def init_fn(params):
-    del params
-    return CentralState()
-
   def update_fn(updates, state, params=None):
     del params
     updates = jax.tree.map(_subtract_mean, updates)
     return updates, state
 
-  return base.GradientTransformation(init_fn, update_fn)
+  return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
 class ScaleBySM3State(NamedTuple):
