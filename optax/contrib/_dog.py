@@ -53,9 +53,9 @@ def scale_by_dog(
   See :func:`optax.contrib.dog` for more details.
 
   Args:
-    reps_rel: value to use to compute the  initial distance 
+    reps_rel: value to use to compute the  initial distance
       (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the 
+      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
       initial  weights of  the model (or the parameter group), and g_0 is the
       gradient of the first step.
       As discussed in the paper, this value should be small enough to ensure
@@ -133,7 +133,7 @@ def dog(
 ):
   r"""Distance over Gradients optimizer.
 
-  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t` 
+  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t`
   according to the update rule:
 
   .. math::
@@ -145,11 +145,11 @@ def dog(
     \end{align*}
 
   Args:
-    learning_rate: optional learning rate (potentially varying according to 
+    learning_rate: optional learning rate (potentially varying according to
       some predetermined scheduler).
-    reps_rel: value to use to compute the  initial distance 
+    reps_rel: value to use to compute the  initial distance
       (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the 
+      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
       initial  weights of  the model (or the parameter group), and g_0 is the
       gradient of the first step.
       As discussed in the paper, this value should be small enough to ensure

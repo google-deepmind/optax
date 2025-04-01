@@ -1510,9 +1510,9 @@ def scale_by_zoom_linesearch(
   .. note::
     The curvature criterion can be avoided by setting by setting
     ``curv_rtol=jnp.inf``. The resulting algorithm will amount to a
-    backtracking linesearch where a point satisfying sufficient decrease is 
+    backtracking linesearch where a point satisfying sufficient decrease is
     searched by minimizing a quadratic or cubic approximation of the objective.
-    This can be sufficient in practice and avoids having the linesearch spend 
+    This can be sufficient in practice and avoids having the linesearch spend
     many iterations trying to satisfy the small curvature criterion.
 
   .. note:: The algorithm can support complex inputs.

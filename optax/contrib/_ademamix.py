@@ -144,21 +144,21 @@ def ademamix(
 ) -> base.GradientTransformation:
   r"""AdEMAMix.
 
-  AdEMAMix (Adaptive EMA Mixture) is AdamW with a mixture of two momentum 
-  terms to better take advantage of historical gradients. 
+  AdEMAMix (Adaptive EMA Mixture) is AdamW with a mixture of two momentum
+  terms to better take advantage of historical gradients.
 
   Both SGD with momemtum (SGD+M) and Adam incorporate momentum using
   Exponential Moving Averages (EMAs) of past gradients
 
   Let :math:`\eta` represent the learning rate and :math:`\beta_1, \beta_2`,
-  :math:`\beta_3, \alpha, \varepsilon, \bar{\varepsilon}`, represent the 
+  :math:`\beta_3, \alpha, \varepsilon, \bar{\varepsilon}`, represent the
   arguments ``b1``, ``b2``, ``b3``, ``alpha``, ``eps``  and ``eps_root``
-  respectively. Let :math:`\lambda` be the weight decay and :math:`\theta_t` 
+  respectively. Let :math:`\lambda` be the weight decay and :math:`\theta_t`
   the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
   :math:`S_0 := (m^{(1)}_0, m^{(2)}_0, \nu_0) = (0, 0, 0)`, representing initial
-  estimates for the fast and slow EMAs of the first moment along with the second 
+  estimates for the fast and slow EMAs of the first moment along with the second
   moment estimate. In practice, these values are stored as pytrees containing
   all zeros, with the same shape as the model updates.  At step :math:`t`,
   the ``update`` function of this optimizer takes as arguments the incoming
@@ -169,17 +169,17 @@ def ademamix(
   .. math::
   
     \begin{align*}
-      m_1^{(t)} &\leftarrow \beta_1 \cdot m_1^{(t-1)} + (1-\beta_1) 
-      \cdot g^{(t)} \\  
-      m_2^{(t)} &\leftarrow \beta_3 \cdot m_2^{(t-1)} + (1-\beta_3) \cdot 
-      g^{(t)} \\  
-      \nu^{(t)} &\leftarrow \beta_2 \cdot \nu^{(t-1)} + (1-\beta_2) \cdot 
+      m_1^{(t)} &\leftarrow \beta_1 \cdot m_1^{(t-1)} + (1-\beta_1)
+      \cdot g^{(t)} \\
+      m_2^{(t)} &\leftarrow \beta_3 \cdot m_2^{(t-1)} + (1-\beta_3) \cdot
+      g^{(t)} \\
+      \nu^{(t)} &\leftarrow \beta_2 \cdot \nu^{(t-1)} + (1-\beta_2) \cdot
       {g^{(t)}}^2 \\
       \hat{m_1}^{(t)} &\leftarrow m_1^{(t)} / {(1-\beta_1^{(t)})} \\
       \hat{\nu}^{(t)} &\leftarrow \nu^{(t)} / {(1-\beta_2^{(t)})} \\
-      \theta^{(t)} &\leftarrow \theta^{(t-1)} - \eta \cdot \left( 
-      \frac{(\hat{m_1}^{(t)} + \alpha m_2^{(t)})}{\left(\sqrt{\hat{\nu}^{(t)} 
-      + \bar{\varepsilon}} + \varepsilon\right)} + \lambda \theta^{(t-1)} 
+      \theta^{(t)} &\leftarrow \theta^{(t-1)} - \eta \cdot \left(
+      \frac{(\hat{m_1}^{(t)} + \alpha m_2^{(t)})}{\left(\sqrt{\hat{\nu}^{(t)}
+      + \bar{\varepsilon}} + \varepsilon\right)} + \lambda \theta^{(t-1)}
       \right).\\
       S^{(t)} &\leftarrow (m_1^{(t)}, m_2^{(t)}, v^{(t)}).
     \end{align*}
@@ -225,8 +225,8 @@ def ademamix(
     b1: Exponential decay rate to track the fast EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
     b3: Exponential decay rate to track the slow EMA.
-    alpha: Mixing coefficient in the linear combination fo the fast and 
-      slow EMAs. 
+    alpha: Mixing coefficient in the linear combination fo the fast and
+      slow EMAs.
     eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
     eps_root: A small constant applied to denominator inside the square root (as
