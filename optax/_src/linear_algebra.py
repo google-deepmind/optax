@@ -294,14 +294,15 @@ def nnls(
   Uses the fast projected gradient (FPG) algorithm of Polyak 2015.
 
   Args:
-    A: Input matrix.
-    b: Input vector.
+    A: Input matrix of shape `(..., M, N)`.
+    b: Input vector of shape `(..., M)`. Leading dimensions must be broadcast-compatible
+      with the leading dimensions of `A`.
     iters: Number of iterations to run the algorithm for.
     unroll: Unroll parameter passed to `lax.scan`.
     L: An upper bound on the spectral radius of `A.T @ A` (optional).
 
   Returns:
-    The solution vector.
+    A solution vector of shape `(..., N)`.
 
   Examples:
     >>> from jax import numpy as jnp
@@ -318,8 +319,12 @@ def nnls(
     Roman A. Polyak, `Projected gradient method for non-negative least square
     <http://www.ams.org/books/conm/636/>`_, 2015
   """
-  Q = A.T @ A
-  q = A.T @ b
+  def matvec(A, x):
+    # Replace with jax.numpy.matvec once Python 3.9 support is dropped.
+    return jnp.einsum("...ij,...j", A, x)
+
+  Q = A.mT @ A
+  q = matvec(A.mT, b)
 
   if L is None:
     L = get_spectral_radius_upper_bound(Q)
@@ -332,17 +337,17 @@ def nnls(
     cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
     s = (c - 1) / cn
 
-    xn = (p - (Q @ p - q) / L).clip(0)
+    xn = (p - (matvec(Q, p) - q) / jnp.expand_dims(L, -1)).clip(0)
     pn = xn + s * (xn - x)
 
     return (xn, pn, cn), None
 
-  x = jnp.zeros_like(b, shape=b.shape[:-1] + A.shape[-1:])
+  batch_shape = jnp.broadcast_shapes(b.shape[:-1], A.shape[:-2])
+  x = jnp.zeros_like(b, shape=batch_shape + A.shape[-1:])
   p = x
   c = 0.
 
-  (x, p, c), _ = lax.scan(f, (x, p, c), length=iters, unroll=unroll)
-  del p, c
+  (x, _, _), _ = lax.scan(f, (x, p, c), length=iters, unroll=unroll)
 
   return x
 # pylint: enable=invalid-name
