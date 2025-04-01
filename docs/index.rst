@@ -35,7 +35,7 @@ can be used to obtain the most recent version of Optax::
    pip install git+git://github.com/google-deepmind/optax.git
 
 Note that Optax is built on top of JAX.
-See `here <https://github.com/google/jax?tab=readme-ov-file#installation>`_
+See `here <https://github.com/jax-ml/jax?tab=readme-ov-file#installation>`_
 for instructions on installing JAX.
 
 
