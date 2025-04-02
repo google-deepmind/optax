@@ -205,17 +205,30 @@ def linear_schedule(
 def piecewise_constant_schedule(
     init_value: float, boundaries_and_scales: Optional[dict[int, float]] = None
 ) -> base.Schedule:
-  """Returns a function which implements a piecewise constant schedule.
+  """Piecewise constant schedule with scaled jumps at specific boundaries.
+
+  At each step `t`, this schedule returns `init_value` scaled by the product
+  of all factors `f_i` such that `t >= b_i`, where `(b_i, f_i)` are the
+  entries in `boundaries_and_scales`.
 
   Args:
-    init_value: An initial value ``init_v``.
-    boundaries_and_scales: A map from boundaries ``b_i`` to non-negative scaling
-      factors ``f_i``. For any step count `s`, the schedule returns ``init_v``
-      scaled by the product of all factors ``f_i`` such that ``b_i < s``.
+    init_value: The starting value of the schedule.
+    boundaries_and_scales: Dictionary of `{step: scale}` where `scale` is
+      multiplied into the schedule value at the given `step`. All `scale` values
+      must be non-negative.
 
   Returns:
-    schedule
-      A function that maps step counts to values.
+    A function that maps step index to schedule value.
+
+  Example:
+    >>> sched = optax.piecewise_constant_schedule(
+    ...     init_value=1.0, boundaries_and_scales={100: 0.1, 200: 0.01})
+    >>> sched(50)   # before first boundary
+    1.0
+    >>> sched(150)  # after first boundary
+    0.1
+    >>> sched(250)  # after second boundary
+    0.001
   """
   if boundaries_and_scales is not None:
     all_positive = all(scale >= 0.0 for scale in boundaries_and_scales.values())
@@ -378,10 +391,12 @@ def cosine_decay_schedule(
 
 
 def _linear_interpolate(start: float, end: float, pct: float):
+  """Linearly interpolate between two values."""
   return (end - start) * pct + start
 
 
 def _cosine_interpolate(start: float, end: float, pct: float):
+  """Cosine interpolate between two values (smoother transitions)."""
   return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
@@ -390,27 +405,42 @@ def piecewise_interpolate_schedule(
     init_value: float,
     boundaries_and_scales: Optional[dict[int, float]] = None,
 ) -> base.Schedule:
-  """Returns a function which implements a piecewise interpolated schedule.
+  """Piecewise interpolated schedule with linear or cosine transitions.
+
+  This schedule interpolates smoothly between scaled values defined at specific
+  boundaries. You can choose either `'linear'` or `'cosine'` interpolation.
 
   Args:
-    interpolate_type: 'linear' or 'cosine', specifying the interpolation
-      strategy.
-    init_value: An initial value ``init_v``.
-    boundaries_and_scales: A map from boundaries ``b_i`` to non-negative scaling
-      factors ``f_i``. At boundary step ``b_i``, the schedule returns ``init_v``
-      scaled by the product of all factors ``f_j`` such that ``b_j <= b_i``. The
-      values in between each boundary will be interpolated as per ``type``.
+    interpolate_type: Either `'linear'` or `'cosine'`, specifying the
+      interpolation method between boundaries.
+    init_value: Starting value for the schedule.
+    boundaries_and_scales: A dict `{step: scale}` defining the boundary points
+      and their respective multiplicative scale factors. Values are interpolated
+      between these points.
 
   Returns:
-    schedule
-      A function that maps step counts to values.
+    A function that maps step counts to interpolated values.
+
+  Example:
+    >>> sched = optax.piecewise_interpolate_schedule(
+    ...     interpolate_type='linear',
+    ...     init_value=1.0,
+    ...     boundaries_and_scales={100: 0.5, 200: 0.1})
+    >>> sched(0)
+    1.0
+    >>> sched(100)
+    0.5
+    >>> sched(150)
+    0.3
+    >>> sched(200)
+    0.1
   """
   if interpolate_type == 'linear':
     interpolate_fn = _linear_interpolate
   elif interpolate_type == 'cosine':
     interpolate_fn = _cosine_interpolate
   else:
-    raise ValueError("`interpolate_type` must be either 'cos' or 'linear'")
+    raise ValueError("`interpolate_type` must be either 'cosine' or 'linear'")
 
   if boundaries_and_scales:
     boundaries, scales = zip(*sorted(boundaries_and_scales.items()))
