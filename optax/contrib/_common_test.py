@@ -42,6 +42,7 @@ from optax.tree_utils import _tree_math
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'simplified_ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'cocob', 'opt_kwargs': {}},
     {'opt_name': 'cocob', 'opt_kwargs': {'weight_decay': 1e-2}},
     {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
