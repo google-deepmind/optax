@@ -15,6 +15,7 @@
 """Tests for methods defined in `alias.py`."""
 
 from collections.abc import Callable
+import functools
 from typing import Any, Union
 
 from absl.testing import absltest
@@ -31,6 +32,7 @@ from optax._src import linesearch as _linesearch
 from optax._src import numerics
 from optax._src import transform
 from optax._src import update
+from optax._src import utils
 from optax.losses import _classification
 from optax.schedules import _inject
 from optax.transforms import _accumulation
@@ -46,20 +48,21 @@ from sklearn import linear_model
 
 
 _OPTIMIZERS_UNDER_TEST = (
-    {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
+    {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'adadelta', 'opt_kwargs': {'learning_rate': 0.1}},
     {'opt_name': 'adadelta', 'opt_kwargs': {}},
     {'opt_name': 'adafactor', 'opt_kwargs': {'learning_rate': 5e-3}},
     {'opt_name': 'adafactor', 'opt_kwargs': {}},
     {'opt_name': 'adagrad', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 1e-1}},
-    {'opt_name': 'adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'adamax', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'adamaxw', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'adan', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'amsgrad', 'opt_kwargs': {'learning_rate': 1e-1}},
-    {'opt_name': 'lars', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'fromage', 'opt_kwargs': {'learning_rate': 5e-3}},
     {'opt_name': 'lamb', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'lars', 'opt_kwargs': {'learning_rate': 1.0}},
     {
         'opt_name': 'lion',
         'opt_kwargs': {'learning_rate': 1e-2, 'weight_decay': 1e-4},
@@ -71,27 +74,23 @@ _OPTIMIZERS_UNDER_TEST = (
         'opt_kwargs': {'learning_rate': 1e-3, 'eta': 1e-4},
     },
     {'opt_name': 'novograd', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'optimistic_adam', 'opt_kwargs': {'learning_rate': 2e-3}},
     {
         'opt_name': 'optimistic_gradient_descent',
         'opt_kwargs': {'learning_rate': 2e-3, 'alpha': 0.7, 'beta': 0.1},
     },
-    {
-        'opt_name': 'optimistic_adam',
-        'opt_kwargs': {'learning_rate': 2e-3},
-    },
+    {'opt_name': 'polyak_sgd', 'opt_kwargs': {'max_learning_rate': 1.0}},
+    {'opt_name': 'radam', 'opt_kwargs': {'learning_rate': 5e-3}},
     {'opt_name': 'rmsprop', 'opt_kwargs': {'learning_rate': 5e-3}},
     {
         'opt_name': 'rmsprop',
         'opt_kwargs': {'learning_rate': 5e-3, 'momentum': 0.9},
     },
-    {'opt_name': 'sign_sgd', 'opt_kwargs': {'learning_rate': 1e-1}},
-    {'opt_name': 'fromage', 'opt_kwargs': {'learning_rate': 5e-3}},
-    {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1e-2}},
-    {'opt_name': 'radam', 'opt_kwargs': {'learning_rate': 5e-3}},
     {'opt_name': 'rprop', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
+    {'opt_name': 'sign_sgd', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'yogi', 'opt_kwargs': {'learning_rate': 1e-1}},
-    {'opt_name': 'polyak_sgd', 'opt_kwargs': {'max_learning_rate': 1.0}},
 )
 
 
@@ -322,6 +321,62 @@ class AliasTest(chex.TestCase):
     updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, grads.dtype)
 
+  @parameterized.product(
+      _OPTIMIZERS_UNDER_TEST,
+      dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64, jnp.complex64,
+             jnp.complex128),
+  )
+  def test_state_shape_dtype_shard_stability(self, opt_name, opt_kwargs, dtype):
+    if dtype == jnp.complex128 and jax.default_backend() == 'tpu':
+      self.skipTest('TPU backend does not support complex128')
+    if opt_name in (
+        'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent',
+        'optimistic_adam', 'lion', 'rprop', 'adadelta', 'adan', 'polyak_sgd',
+        'sign_sgd') and jnp.iscomplexobj(dtype):
+      raise absltest.SkipTest(
+          f'{opt_name} does not support complex parameters.'
+      )
+
+    with utils.x64_precision(dtype in (jnp.float64, jnp.complex128)):
+      opt = getattr(alias, opt_name)(**opt_kwargs)
+      initial_params, _, objective = _setup_parabola(dtype)
+
+      @jax.jit
+      def step(params, state):
+        value, updates = jax.value_and_grad(objective)(params)
+        # Complex gradients need to be conjugated before being added to
+        # parameters
+        # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+        updates = jax.tree.map(lambda x: x.conj(), updates)
+        value = value.astype(jnp.float16 if dtype != jnp.float16
+                             else jnp.float32)
+        if opt_name == 'polyak_sgd':
+          update_kwargs = {'value': value}
+        elif opt_name == 'lbfgs':
+          update_kwargs = {'value': value, 'grad': updates,
+                           'value_fn': objective}
+        else:
+          update_kwargs = {}
+        # defeat compiler optimization, use lax.cond to check for stability
+        cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+        updates, state = jax.lax.cond(
+            cond, lambda: opt.update(updates, state, params, **update_kwargs),
+            lambda: (params, state))
+        params = update.apply_updates(params, updates)
+        return params, state
+
+      params = initial_params
+      state = opt.init(params)
+
+      with self.subTest('Test that update is dtype stable'):
+        for _ in range(2):
+          params, new_state = step(params, state)
+          assert jax.tree.leaves(params)[0].dtype == dtype
+          cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+          # pylint: disable=cell-var-from-loop
+          state = jax.lax.cond(cond, lambda: state, lambda: new_state)
+          # pylint: enable=cell-var-from-loop
+
   @chex.variants(
       with_jit=True, without_jit=True, with_device=True, with_pmap=True
   )
@@ -341,9 +396,17 @@ class AliasTest(chex.TestCase):
     state = self.variant(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': fun(params)}
+    elif opt_name == 'lbfgs':
+      update_kwargs = {'value': fun(params), 'grad': grads, 'value_fn': fun}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+
+    static_kwargs = {
+        k: v for k, v in update_kwargs.items() if not isinstance(v, jax.Array)}
+    dyn_kwargs = {
+        k: v for k, v in update_kwargs.items() if isinstance(v, jax.Array)}
+    updates, _ = self.variant(functools.partial(opt.update, **static_kwargs))(
+        grads, state, params, **dyn_kwargs)
     chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
@@ -971,28 +1034,52 @@ class LBFGSTest(chex.TestCase):
     got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
     chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
-  def test_float64_compatibility(self):
-    """Test that types of state, updates are preserved in float64."""
-    jax.config.update('jax_enable_x64', True)
+  @parameterized.product(
+      dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64, jnp.complex64,
+             jnp.complex128),
+      linesearch=[
+          _linesearch.scale_by_backtracking_linesearch(
+              max_backtracking_steps=20
+          ),
+          _linesearch.scale_by_zoom_linesearch(
+              max_linesearch_steps=20, initial_guess_strategy='one'
+          ),
+      ],
+  )
+  def test_state_shape_dtype_shard_stability(self, dtype, linesearch):
+    target = _setup_parabola
+    if dtype == jnp.complex128 and jax.default_backend() == 'tpu':
+      self.skipTest('TPU backend does not support complex128')
+    with utils.x64_precision(dtype in (jnp.float64, jnp.complex128)):
+      opt = alias.lbfgs(learning_rate=0.1, linesearch=linesearch)
+      initial_params, _, objective = target(dtype)
 
-    pb = _get_problem('rosenbrock')
-    fun, init_params = pb['fun'], pb['init']
-    init_params = init_params.astype(jnp.float64)
-    opt = alias.lbfgs()
-    init_state = opt.init(init_params)
-    grad = jax.grad(fun)(init_params)
-    updates, state = opt.update(
-        grad,
-        init_state,
-        init_params,
-        value=fun(init_params),
-        grad=grad,
-        value_fn=fun,
-    )
-    init_types = jax.tree.map(lambda t: t.dtype, (grad, init_state))
-    updates_types = jax.tree.map(lambda t: t.dtype, (updates, state))
-    self.assertEqual(init_types, updates_types)
-    jax.config.update('jax_enable_x64', False)
+      @jax.jit
+      def step(params, state):
+        value, updates = jax.value_and_grad(objective)(params)
+        # Complex gradients need to be conjugated before being added to
+        # parameters
+        # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+        updates = jax.tree.map(lambda x: x.conj(), updates)
+        value = value.astype(jnp.float16 if dtype != jnp.float16
+                             else jnp.bfloat16)  # confuse dtype intentionally
+        update_kwargs = {'value': value, 'grad': updates, 'value_fn': objective}
+        # defeat compiler optimization, use lax.cond to check for stability
+        cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+        updates, state = jax.lax.cond(
+            cond, lambda: opt.update(updates, state, params, **update_kwargs),
+            lambda: (params, state))
+        params = update.apply_updates(params, updates)
+        return params, state
+
+      params = initial_params
+      state = opt.init(params)
+
+      with self.subTest('Test that update is dtype stable'):
+        for _ in range(2):
+          params, state = step(params, state)
+          assert jax.tree.leaves(params)[0].dtype == dtype
+
 
 if __name__ == '__main__':
   absltest.main()

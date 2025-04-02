@@ -1,3 +1,4 @@
+
 # Copyright 2023 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +32,7 @@ from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import update
+from optax._src import utils
 from optax.schedules import _inject
 from optax.transforms import _accumulation
 from optax.tree_utils import _state_utils
@@ -448,6 +450,50 @@ class ContribTest(chex.TestCase):
       update_kwargs = {}
     updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
     chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+
+  @parameterized.product(
+      _ALL_OPTIMIZERS_UNDER_TEST,
+      dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+  )
+  def test_state_shape_dtype_shard_stability(
+      self, opt_name, opt_kwargs, wrapper_name, wrapper_kwargs, dtype):
+    if dtype == jnp.complex128 and jax.default_backend() == 'tpu':
+      self.skipTest('TPU backend does not support complex128')
+    del wrapper_name, wrapper_kwargs  # Unused.
+    with utils.x64_precision(dtype in (jnp.float64, jnp.complex128)):
+      opt = _get_opt_factory(opt_name)(**opt_kwargs)
+      initial_params, _, objective = _setup_parabola(dtype)
+
+      @jax.jit
+      def step(params, state):
+        value, updates = jax.value_and_grad(objective)(params)
+        value = value.astype(jnp.float16 if dtype != jnp.float16
+                             else jnp.bfloat16)  # confuse dtype intentionally
+        if opt_name in ['polyak_sgd', 'momo', 'momo_adam']:
+          update_kwargs = {'value': value}
+        elif opt_name == 'sophia':
+          update_kwargs = {'obj_fn': objective}
+        else:
+          update_kwargs = {}
+        # defeat compiler optimization, use lax.cond to check for stability
+        cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+        updates, state = jax.lax.cond(
+            cond, lambda: opt.update(updates, state, params, **update_kwargs),
+            lambda: (params, state))
+        params = update.apply_updates(params, updates)
+        return params, state
+
+      params = initial_params
+      state = opt.init(params)
+
+      with self.subTest('Test that update is dtype stable'):
+        for _ in range(2):
+          params, new_state = step(params, state)
+          assert jax.tree.leaves(params)[0].dtype == dtype
+          cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+          # pylint: disable=cell-var-from-loop
+          state = jax.lax.cond(cond, lambda: state, lambda: new_state)
+          # pylint: enable=cell-var-from-loop
 
 
 if __name__ == '__main__':

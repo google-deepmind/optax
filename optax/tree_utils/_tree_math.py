@@ -211,7 +211,7 @@ def _square(leaf):
   return jnp.square(leaf.real) + jnp.square(leaf.imag)
 
 
-def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
+def tree_l2_norm(tree: Any, squared: bool = False) -> jax.Array:
   """Compute the l2 norm of a pytree.
 
   Args:
@@ -224,7 +224,7 @@ def tree_l2_norm(tree: Any, squared: bool = False) -> chex.Numeric:
   squared_tree = jax.tree.map(_square, tree)
   sqnorm = tree_sum(squared_tree)
   if squared:
-    return sqnorm
+    return jnp.array(sqnorm)
   else:
     return jnp.sqrt(sqnorm)
 

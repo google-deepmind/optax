@@ -256,7 +256,7 @@ def scale_by_backtracking_linesearch(
     # base output type on params type, except only real part if complex
     val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
     return ScaleByBacktrackingLinesearchState(
-        learning_rate=jnp.array(1.0),
+        learning_rate=jnp.array(1.0, dtype=val_dtype),
         value=jnp.array(jnp.inf, dtype=val_dtype),
         grad=grad,
         info=BacktrackingLinesearchInfo(
@@ -370,14 +370,14 @@ def scale_by_backtracking_linesearch(
         decrease_error = _compute_decrease_error(
             learning_rate, slope, value, new_value
         )
-      search_state = BacktrackingLineSearchState(
+      new_search_state = BacktrackingLineSearchState(
           learning_rate=learning_rate,
           new_value=new_value,
           new_grad=new_grad,
           decrease_error=decrease_error,
           iter_num=iter_num + 1,
       )
-      return search_state
+      return otu.tree_cast_like(new_search_state, other_tree=search_state)
 
     # We start with a guess candidate learning rate that may be larger than
     # the current one but no larger than the maximum one.
@@ -435,7 +435,8 @@ def scale_by_backtracking_linesearch(
         grad=new_grad,
         info=info
     )
-    return new_updates, new_state
+
+    return new_updates, otu.tree_cast_like(new_state, other_tree=state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -808,7 +809,7 @@ def zoom_linesearch(
     final_state = state._replace(
         stepsize=final_stepsize, grad=final_grad, value=final_value
     )
-    return final_state
+    return otu.tree_cast_like(final_state, other_tree=state)
 
   def _search_interval(
       state: ZoomLinesearchState,
@@ -964,7 +965,7 @@ def zoom_linesearch(
         safe_value=new_safe_value,
         safe_grad=new_safe_grad,
     )
-    return new_state
+    return otu.tree_cast_like(new_state, other_tree=state)
 
   def _zoom_into_interval(
       state: ZoomLinesearchState,
@@ -1134,7 +1135,7 @@ def zoom_linesearch(
         safe_value=new_safe_value,
         safe_grad=new_safe_grad,
     )
-    return new_state
+    return otu.tree_cast_like(new_state, other_tree=state)
 
   def _failure_diagnostic(state: ZoomLinesearchState) -> None:
     """Prints failure diagnostics."""
@@ -1208,7 +1209,7 @@ def zoom_linesearch(
       raise ValueError(
           f"Unknown initial guess strategy: {initial_guess_strategy}"
       )
-
+    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
     slope = otu.tree_real(otu.tree_vdot(updates, grad))
     return ZoomLinesearchState(
         count=jnp.asarray(0),
@@ -1217,8 +1218,8 @@ def zoom_linesearch(
         updates=updates,
         stepsize_guess=stepsize_guess,
         #
-        stepsize=jnp.asarray(0.0),
-        value=value,
+        stepsize=jnp.asarray(0.0, dtype=val_dtype),
+        value=jnp.array(value, dtype=val_dtype),
         grad=grad,
         slope=slope,
         #
@@ -1271,7 +1272,7 @@ def zoom_linesearch(
     new_state = jax.lax.cond(
         new_state.failed, _try_safe_step, lambda x: x, new_state
     )
-    return new_state
+    return otu.tree_cast_like(new_state, other_tree=state)
 
   def step_cond_fn(state: ZoomLinesearchState) -> Union[bool, chex.Numeric]:
     """Continuing criterion for the while loop of the linesearch."""
@@ -1536,9 +1537,10 @@ def scale_by_zoom_linesearch(
 
   def init_fn(params: base.Params) -> ScaleByZoomLinesearchState:
     """Initializes state of scale_by_zoom_linesearch."""
+    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
     return ScaleByZoomLinesearchState(
-        learning_rate=jnp.asarray(1.0),
-        value=jnp.asarray(jnp.inf),
+        learning_rate=jnp.asarray(1.0, dtype=val_dtype),
+        value=jnp.asarray(jnp.inf, dtype=val_dtype),
         grad=otu.tree_zeros_like(params),
         info=ZoomLinesearchInfo(
             num_linesearch_steps=jnp.asarray(0),
@@ -1611,12 +1613,13 @@ def scale_by_zoom_linesearch(
         decrease_error=final_state.decrease_error,
         curvature_error=final_state.curvature_error,
     )
-    return scaled_updates, ScaleByZoomLinesearchState(
+    new_state = ScaleByZoomLinesearchState(
         learning_rate=learning_rate,
         value=final_state.value,
         grad=final_state.grad,
         info=info_step,
     )
+    return scaled_updates, otu.tree_cast_like(new_state, other_tree=state)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 

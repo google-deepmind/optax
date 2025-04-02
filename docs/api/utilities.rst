@@ -99,6 +99,7 @@ Tree
     tree_add_scale
     tree_batch_shape
     tree_cast
+    tree_cast_like
     tree_clip
     tree_conj
     tree_div

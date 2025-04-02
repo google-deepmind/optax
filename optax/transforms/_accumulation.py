@@ -15,6 +15,7 @@
 """Gradient transformations for accumulating gradients across updates."""
 
 from collections.abc import Callable
+import functools
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
 import chex
@@ -382,13 +383,13 @@ class MultiSteps:
 
     def _skip_update(updates, state, params):
       # Create new skip state with correct dtype
+      static_args = {
+          k: v for k, v in extra_args.items() if not isinstance(v, jax.Array)}
+      dyn_args = {
+          k: v for k, v in extra_args.items() if isinstance(v, jax.Array)}
+      eval_fn = functools.partial(self._opt.update, **static_args)
       zero_updates, new_inner_state = jax.eval_shape(
-          self._opt.update,
-          updates,
-          state.inner_opt_state,
-          params=params,
-          **extra_args,
-      )
+          eval_fn, updates, state.inner_opt_state, params=params, **dyn_args)
       zero_updates = otu.tree_zeros_like(zero_updates)
 
       multi_state_when_skip = MultiStepsState(
