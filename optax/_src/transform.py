@@ -311,11 +311,10 @@ def scale_by_adopt(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-    eps_root: float = 0.0,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
     nesterov: bool = False,
-    use_clipping: bool = False,
+    use_clipping: bool = True,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Adam algorithm.
 
@@ -345,27 +344,23 @@ def scale_by_adopt(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = otu.tree_update_moment(updates, state.mu, b1, 1)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
+    if use_clipping:
+      clip_value = count_inc * 0.25
+      mu_updates = jax.tree.map(lambda ud, nu: jnp.clip(ud / jnp.maximum(jnp.sqrt(nu), eps), -clip_value, clip_value), updates, state.nu)
+    else:
+      mu_updates = jax.tree.map(lambda ud, nu: ud / jnp.maximum(jnp.sqrt(nu), eps), updates, nu)
+    mu = otu.tree_update_moment(mu_updates, state.mu, b1, 1)
     if nesterov:
       mu_hat = jax.tree.map(
           lambda m, g: b1 * m + (1 - b1) * g,
           otu.tree_bias_correction(mu, b1, numerics.safe_increment(count_inc)),
-          otu.tree_bias_correction(updates, b1, count_inc),
+          otu.tree_bias_correction(mu_updates, b1, count_inc),
       )
     else:
       mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
-    # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ
-    # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
-    # unclear why. Other Nadam implementations also omit the extra b2 factor.
-    nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
-    updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
-        mu_hat,
-        nu_hat,
-        is_leaf=lambda x: x is None,
-    )
+    updates = mu_hat
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
