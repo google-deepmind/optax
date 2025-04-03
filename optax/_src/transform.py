@@ -356,12 +356,14 @@ def scale_by_adopt(
       b1_ = jnp.where(count_inc > 1, b1, 0)
     mu = otu.tree_update_moment(mu_updates, state.mu, b1_, 1)
     if nesterov:
-      mu = jax.tree.map(
+      mu_ = jax.tree.map(
           lambda m, g: b1 * m + (1 - b1) * g,
           mu,
           mu_updates,
       )
-    updates = mu
+    else:
+      mu_ = mu  
+    updates = mu_
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
