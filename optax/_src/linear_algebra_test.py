@@ -23,6 +23,7 @@ import chex
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+from jax import random
 import numpy as np
 from optax._src import linear_algebra
 import optax.tree_utils as otu
@@ -209,43 +210,60 @@ class LinearAlgebraTest(chex.TestCase):
         # No guarantee of success after e >= 7
         pass
 
-  @parameterized.product(n=[24, 32], d=[24, 32], zero_lhs=[False, True],
-                         seed=[0], dtype=[jnp.float32, jnp.bfloat16])
-  def test_nnls(self, n, d, zero_lhs, seed, dtype, atol=1e-5):
+  @parameterized.product(
+    n=[24, 32],
+    d=[24, 32],
+    seed=[0],
+    dtype=[jnp.float32, jnp.bfloat16],
+  )
+  def test_nnls(self, n, d, seed, dtype):
     """Test non-negative least squares solver."""
-    keys = jax.random.split(jax.random.key(seed), 2)
-    if zero_lhs:
-      if not (dtype == jnp.float32 and n == 32 and d == 32 and seed == 0):
-        self.skipTest('Only 1 test case for zero_lhs=True')
-      A = jnp.zeros((n, d), dtype=dtype)  # pylint: disable=invalid-name
-    else:
-      A = jax.random.normal(keys[0], (n, d), dtype=dtype)  # pylint: disable=invalid-name
-    b = jax.random.normal(keys[1], (n,), dtype=dtype)
 
-    x10 = linear_algebra.nnls(A, b, iters=10)
-    x100 = linear_algebra.nnls(A, b, iters=100)
-    x1000 = linear_algebra.nnls(A, b, iters=100000)
+    keys = random.split(random.key(seed), 2)
+    A = random.normal(keys[0], (n, d), dtype=dtype)  # pylint: disable=invalid-name
+    b = random.normal(keys[1], (n,), dtype=dtype)
 
-    with self.subTest('x has the correct dtype'):
-      self.assertEqual(x10.dtype, dtype)
-      self.assertEqual(x100.dtype, dtype)
-      self.assertEqual(x1000.dtype, dtype)
+    ys = []
 
-    with self.subTest('x is non-negative'):
-      assert jnp.allclose(x10.clip(max=0), 0, atol=atol)
-      assert jnp.allclose(x100.clip(max=0), 0, atol=atol)
-      assert jnp.allclose(x1000.clip(max=0), 0, atol=atol)
+    for iters in [0, 10, 20, 30]:
 
-    # we skip comparison to scipy.optimize.nnls as convergence is flaky (by
-    # design, this is an iterative algorithm)
+      x = linear_algebra.nnls(A, b, iters=iters)
 
-    l10 = jnp.square(A @ x10 - b).sum()
-    l100 = jnp.square(A @ x100 - b).sum()
-    l1000 = jnp.square(A @ x1000 - b).sum()
+      with self.subTest('x has the correct dtype'):
+        assert x.dtype == dtype
 
-    with self.subTest('x is converging'):
-      jnp.allclose((l100 - l10).clip(max=0), 0, atol=atol)
-      jnp.allclose((l1000 - l100).clip(max=0), 0, atol=atol)
+      batch_shape = jnp.broadcast_shapes(A.shape[:-2], b.shape[:-1])
+      with self.subTest('x has the correct shape'):
+        assert x.shape == batch_shape + A.shape[-1:]
+
+      with self.subTest('x is non-negative'):
+        assert (x >= 0).all()
+
+      def matvec(A, x):
+        # Replace with jax.numpy.matvec once Python 3.9 support is dropped.
+        return jnp.einsum("...ij,...j", A, x)
+
+      y = jnp.square(matvec(A, x) - b).sum(-1)
+      ys.append(y)
+
+    ys = jnp.stack(ys)
+
+    with self.subTest('objective decreases with more iterations'):
+      assert (jnp.diff(ys, axis=0) <= 0).all()
+
+  @parameterized.product(
+    A_batch_shape=[(3, 2), (4, 3, 2)],
+    b_batch_shape=[(4, 3, 2)],
+    n=[2, 3],
+    d=[2, 3],
+  )
+  def test_nnls_shape(self, n, d, A_batch_shape, b_batch_shape):
+    A = jnp.zeros(A_batch_shape + (n, d))
+    b = jnp.zeros(b_batch_shape + (n,))
+    x = linear_algebra.nnls(A, b, 10**5)
+    batch_shape = jnp.broadcast_shapes(A.shape[:-2], b.shape[:-1])
+    assert x.shape == batch_shape + A.shape[-1:]
+    assert (x == 0).all()
 
 
 if __name__ == '__main__':
