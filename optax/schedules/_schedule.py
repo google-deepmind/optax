@@ -223,11 +223,11 @@ def piecewise_constant_schedule(
   Example:
     >>> sched = optax.piecewise_constant_schedule(
     ...     init_value=1.0, boundaries_and_scales={100: 0.1, 200: 0.01})
-    >>> sched(50)   # before first boundary
+    >>> print(sched(50))   # before first boundary
     1.0
-    >>> sched(150)  # after first boundary
+    >>> print(sched(150))  # after first boundary
     0.1
-    >>> sched(250)  # after second boundary
+    >>> print(sched(250))  # after second boundary
     0.001
   """
   if boundaries_and_scales is not None:
@@ -426,13 +426,13 @@ def piecewise_interpolate_schedule(
     ...     interpolate_type='linear',
     ...     init_value=1.0,
     ...     boundaries_and_scales={100: 0.5, 200: 0.1})
-    >>> sched(0)
+    >>> print(sched(0))
     1.0
-    >>> sched(100)
+    >>> print(sched(100))
     0.5
-    >>> sched(150)
+    >>> print(sched(150))
     0.3
-    >>> sched(200)
+    >>> print(sched(200))
     0.1
   """
   if interpolate_type == 'linear':
