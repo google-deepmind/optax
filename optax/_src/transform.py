@@ -310,7 +310,7 @@ def scale_by_adam(
 def scale_by_adopt(
     b1: float = 0.9,
     b2: float = 0.999,
-    eps: float = 1e-8,
+    eps: float = 1e-6,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
     nesterov: bool = False,
