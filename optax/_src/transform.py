@@ -316,20 +316,25 @@ def scale_by_adopt(
     nesterov: bool = False,
     use_clipping: bool = True,
 ) -> base.GradientTransformation:
-  r"""Rescale updates according to the Adam algorithm.
+  r"""Rescale updates according to the ADOPT algorithm.
 
-  See :func:`optax.adam` for more details.
+  ADOPT (Modified Adam Can Converge with Any β2 with the Optimal Rate) is a variant
+  of Adam that can converge with any β2 value while maintaining the optimal rate.
+  
+  This implementation includes a clipping operation to improve stability, especially
+  in the early stages of training. The clipping helps avoid near-zero divisions when
+  some elements of the parameter gradient are near zero at initialization.
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate for the exponentially weighted average of squared grads.
     eps: Term added to the denominator to improve numerical stability.
-    eps_root: Term added to the denominator inside the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
-    nesterov: Whether to use Nesterov momentum. The variant of Adam with
-      Nesterov momentum is described in [Dozat 2016]
+    nesterov: Whether to use Nesterov momentum.
+    use_clipping: Whether to use gradient clipping to improve stability.
+      When enabled, the clipping value is set to step**0.25, which aligns
+      with the theory to ensure convergence.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
