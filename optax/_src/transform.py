@@ -309,7 +309,7 @@ def scale_by_adam(
 
 def scale_by_adopt(
     b1: float = 0.9,
-    b2: float = 0.999,
+    b2: float = 0.9999,
     eps: float = 1e-6,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
@@ -352,7 +352,7 @@ def scale_by_adopt(
     b2_ = jnp.where(state.count > 0, b2, 0)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2_, 2)
     if use_clipping:
-      clip_value = state.count * 0.25
+      clip_value = state.count ** 0.25
       mu_updates = jax.tree.map(lambda ud, nu: jnp.clip(ud / jnp.maximum(jnp.sqrt(nu), eps), -clip_value, clip_value), updates, state.nu)
       b1_ = b1
     else:
