@@ -352,15 +352,7 @@ def scale_by_adopt(
     else:
       mu_updates = jax.tree.map(lambda ud, nu: ud / jnp.maximum(jnp.sqrt(nu), eps), updates, nu)
     mu = otu.tree_update_moment(mu_updates, state.mu, b1, 1)
-    if nesterov:
-      mu_hat = jax.tree.map(
-          lambda m, g: b1 * m + (1 - b1) * g,
-          otu.tree_bias_correction(mu, b1, numerics.safe_increment(count_inc)),
-          otu.tree_bias_correction(mu_updates, b1, count_inc),
-      )
-    else:
-      mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
-    updates = mu_hat
+    updates = mu
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
