@@ -313,7 +313,6 @@ def scale_by_adopt(
     eps: float = 1e-8,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
-    nesterov: bool = False,
     use_clipping: bool = True,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Adam algorithm.
