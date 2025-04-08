@@ -211,59 +211,42 @@ class LinearAlgebraTest(chex.TestCase):
         pass
 
   @parameterized.product(
-    n=[24, 32],
-    d=[24, 32],
+    m=[10, 20],
+    n=[11, 21],
     seed=[0],
     dtype=[jnp.float32, jnp.bfloat16],
+    k=[(), (5,)]
   )
-  def test_nnls(self, n, d, seed, dtype):
+  def test_nnls(self, m, n, k, seed, dtype, tol=0.0):
     """Test non-negative least squares solver."""
 
     keys = random.split(random.key(seed), 2)
-    A = random.normal(keys[0], (n, d), dtype=dtype)  # pylint: disable=invalid-name
-    b = random.normal(keys[1], (n,), dtype=dtype)
+    A = random.normal(keys[0], (m, n), dtype=dtype)  # pylint: disable=invalid-name
+    b = random.normal(keys[1], (m, *k), dtype=dtype)
 
     ys = []
 
-    for iters in [0, 10, 20, 30]:
+    for iters in range(5):
 
       x = linear_algebra.nnls(A, b, iters=iters)
 
       with self.subTest('x has the correct dtype'):
         assert x.dtype == dtype
 
-      batch_shape = jnp.broadcast_shapes(A.shape[:-2], b.shape[:-1])
       with self.subTest('x has the correct shape'):
-        assert x.shape == batch_shape + A.shape[-1:]
+        assert x.shape == A.shape[-1:] + b.shape[1:]
 
       with self.subTest('x is non-negative'):
         assert (x >= 0).all()
 
-      def matvec(A, x):
-        # Replace with jax.numpy.matvec once Python 3.9 support is dropped.
-        return jnp.einsum("...ij,...j", A, x)
-
-      y = jnp.square(matvec(A, x) - b).sum(-1)
+      y = jnp.square(A @ x - b).sum(0)
       ys.append(y)
 
     ys = jnp.stack(ys)
+    diff = jnp.diff(ys, axis=0)
 
     with self.subTest('objective decreases with more iterations'):
-      assert (jnp.diff(ys, axis=0) <= 0).all()
-
-  @parameterized.product(
-    A_batch_shape=[(3, 2), (4, 3, 2)],
-    b_batch_shape=[(4, 3, 2)],
-    n=[2, 3],
-    d=[2, 3],
-  )
-  def test_nnls_shape(self, n, d, A_batch_shape, b_batch_shape):
-    A = jnp.zeros(A_batch_shape + (n, d))
-    b = jnp.zeros(b_batch_shape + (n,))
-    x = linear_algebra.nnls(A, b, 10**5)
-    batch_shape = jnp.broadcast_shapes(A.shape[:-2], b.shape[:-1])
-    assert x.shape == batch_shape + A.shape[-1:]
-    assert (x == 0).all()
+      assert (diff <= tol).all()
 
 
 if __name__ == '__main__':
