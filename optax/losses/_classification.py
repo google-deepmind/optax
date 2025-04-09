@@ -74,7 +74,7 @@ def sigmoid_binary_cross_entropy(
     <http://www.deeplearningbook.org/contents/prob.html>`_, 2016
   """
   chex.assert_type([logits], float)
-  labels = labels.astype(logits.dtype)
+  labels = jnp.astype(labels, logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   log_not_p = jax.nn.log_sigmoid(-logits)
@@ -837,7 +837,7 @@ def sigmoid_focal_loss(
   alpha = -1 if alpha is None else alpha
 
   chex.assert_type([logits], float)
-  labels = labels.astype(logits.dtype)
+  labels = jnp.astype(labels, logits.dtype)
   # see also the original paper's implementation at:
   # https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
   p = jax.nn.sigmoid(logits)
