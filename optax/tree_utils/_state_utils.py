@@ -347,7 +347,8 @@ def tree_get(
       >>> state = opt.init(params)
       >>> noise_state = optax.tree_utils.tree_get(state, 'AddNoiseState')
       >>> print(noise_state)
-      AddNoiseState(count=Array(0, dtype=int32), rng_key=Array([0, 0], dtype=uint32))
+      AddNoiseState(count=Array(0, dtype=int32), rng_key=Array((), dtype=key<fry>) overlaying:
+      [0 0])
 
     Differentiating between two values by the name of their named tuples.
 

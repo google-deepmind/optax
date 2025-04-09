@@ -61,7 +61,7 @@ def differentially_private_aggregate(
   """
   if key is None:
     raise ValueError(
-      "differentially_private_aggregate optimizer requires specifying key: " 
+      "differentially_private_aggregate optimizer requires specifying key: "
       "differentially_private_aggregate(..., key=jax.random.key(0))"
     )
   noise_std = l2_norm_clip * noise_multiplier
