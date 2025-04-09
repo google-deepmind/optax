@@ -268,7 +268,7 @@ def tree_batch_shape(
   Returns:
     a pytree with the leading batch dimensions added.
   """
-  return jax.tree.map(lambda x: jnp.broadcast_to(x, shape + x.shape), tree)
+  return jax.tree.map(lambda x: jnp.broadcast_to(x, (*shape, *jnp.shape(x))), tree)
 
 
 def tree_zeros_like(
