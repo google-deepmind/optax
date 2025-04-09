@@ -200,6 +200,9 @@ def dog(
     Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
 
   .. versionadded:: 0.2.3
+
+  .. warning::
+    The authors recommend using model averaging with this optimizer.
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
