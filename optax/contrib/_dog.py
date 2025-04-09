@@ -139,8 +139,12 @@ def dog(
   .. math::
 
     \begin{align*}
-      \eta_t &= \frac{\max\{r_\epsilon, \max_{i\le t}{\|x_i-x_0\|}\}}{
+      \eta_t &= \frac{\bar r_t}{
         \sqrt{\sum_{i\le t}{\|g_i\|^2+\epsilon}}}\\
+      \bar r_t & = \begin{cases}
+        \max_{i\le t}{\|x_i-x_0\|} & \text{if } t \ge 1 \\
+        r_\epsilon & \text{if } t = 0
+      \end{cases} \\
       x_{t+1} & = x_{t} - \eta_t\, g_t
     \end{align*}
 
