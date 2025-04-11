@@ -60,6 +60,115 @@ class Gumbel:
     return -inputs - jnp.exp(-inputs)
 
 
+class Laplace:
+  """Laplace distribution."""
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.laplace(seed, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return -jnp.abs(inputs)
+
+
+class Cauchy:
+  """Cauchy distribution."""
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.cauchy(seed, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return -jnp.log1p(jnp.square(inputs))
+
+
+class Logistic:
+  """Logistic distribution."""
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.logistic(seed, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return -2 * jnp.log(jnp.cosh(0.5 * inputs))
+
+
+class StudentT:
+  """Student's t distribution."""
+  def __init__(self, df):
+    self.df = df
+
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.t(seed, self.df, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return -0.5 * (self.df + 1) * jnp.log1p(jnp.square(inputs) / self.df)
+
+
+class ChiSquare:
+  """Chi square distribution."""
+  def __init__(self, df):
+    self.df = df
+
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.chisquare(seed, self.df, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return (0.5 * self.df - 1) * jnp.log(inputs) - 0.5 * inputs
+
+
+class GeneralizedNormal:
+  """Generalized normal distribution."""
+
+  def __init__(self, p):
+    self.p = p
+
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.generalized_normal(seed, self.p, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return -jnp.abs(inputs) ** self.p
+
+
+class Triangular:
+  """Triangular distribution."""
+
+  def sample(
+      self,
+      seed: chex.PRNGKey,
+      sample_shape: Shape,
+      dtype: chex.ArrayDType = float,
+  ) -> jax.Array:
+    return jax.random.triangular(seed, -1, 0, 1, sample_shape, dtype)
+
+  def log_prob(self, inputs: jax.Array) -> jax.Array:
+    return jnp.log1p(-jnp.abs(inputs))
+
+
 def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
   """Mean across a list of trees.
 
