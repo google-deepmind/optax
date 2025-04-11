@@ -139,15 +139,19 @@ def dog(
   .. math::
 
     \begin{align*}
-      \eta_t &= \frac{\max_{i\le t}{\|x_i-x_0\|}}{
-        \sqrt{\sum_{i\le t}{\|g_i\|^2+eps}}}\\
-      x_{t+1} & = x_{t} - \eta_t\, g_t,
+      \eta_t &= \frac{\bar r_t}{
+        \sqrt{\sum_{i\le t}{\|g_i\|^2+\epsilon}}}\\
+      \bar r_t & = \begin{cases}
+        \max_{i\le t}{\|x_i-x_0\|} & \text{if } t \ge 1 \\
+        r_\epsilon & \text{if } t = 0
+      \end{cases} \\
+      x_{t+1} & = x_{t} - \eta_t\, g_t
     \end{align*}
 
   Args:
     learning_rate: optional learning rate (potentially varying according to
       some predetermined scheduler).
-    reps_rel: value to use to compute the  initial distance
+    reps_rel: a small user-specified initial movement size parameter
       (r_epsilon in the paper). Namely, the first step size is given by:
       (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
       initial  weights of  the model (or the parameter group), and g_0 is the
@@ -200,6 +204,9 @@ def dog(
     Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
 
   .. versionadded:: 0.2.3
+
+  .. warning::
+    The authors recommend using model averaging with this optimizer.
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
