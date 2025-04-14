@@ -122,6 +122,9 @@ def adabelief(
   References:
     Zhuang, `AdaBelief Optimizer: Adapting Stepsizes by the Belief in Observed
     Gradients <https://arxiv.org/abs/2010.07468>`_, 2020
+
+  .. note::
+    The default epsilon values in the paper are ``eps=1e-8``, ``eps_root=0.``.
   """
   return combine.chain(
       transform.scale_by_belief(
