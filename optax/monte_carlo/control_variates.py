@@ -310,7 +310,7 @@ def control_variates_jacobians(
   # gradient.
   # The rng has to be the same as passed to the grad_estimator above so that we
   # obtain the same samples.
-  samples = dist_builder(*params).sample((num_samples,), key=rng)
+  samples = dist_builder(*params).sample((num_samples,), seed=rng)
   # If the CV has state, update it.
   control_variate_state = update_state_cv(
       params, samples, control_variate_state

@@ -18,7 +18,6 @@ from collections.abc import Callable
 import functools
 from typing import Any, Optional, Union
 
-import chex
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import clipping
@@ -26,7 +25,6 @@ from optax._src import combine
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
-from optax._src import utils
 from optax._src import wrappers
 
 
@@ -1282,7 +1280,7 @@ def noisy_sgd(
     learning_rate: base.ScalarOrSchedule,
     eta: float = 0.01,
     gamma: float = 0.55,
-    key: Optional[chex.PRNGKey | int] = None,
+    seed: int = 0,
 ) -> base.GradientTransformationExtraArgs:
   r"""A variant of SGD with added noise.
 
@@ -1313,7 +1311,7 @@ def noisy_sgd(
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time ``t``, the
       variance decays according to ``(1+t)**(-gamma)``.
-    key: a PRNG key used as the random key.
+    seed: Seed for the pseudo-random generation process.
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
@@ -1323,10 +1321,7 @@ def noisy_sgd(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.noisy_sgd(
-    ...   learning_rate=0.003,
-    ...   key=jax.random.key(0)
-    ... )
+    >>> solver = optax.noisy_sgd(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
@@ -1346,13 +1341,8 @@ def noisy_sgd(
     Neelakantan et al, `Adding Gradient Noise Improves Learning for Very Deep
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
-  if key is None:
-    raise ValueError(
-        'noisy_sgd optimizer requires specifying key: '
-        'noisy_sgd(..., key=jax.random.key(0))'
-    )
   return combine.chain(
-      transform.add_noise(eta, gamma, key=utils.to_random_key(key)),
+      transform.add_noise(eta, gamma, seed),
       transform.scale_by_learning_rate(learning_rate),
   )
 
