@@ -55,6 +55,12 @@ def differentially_private_aggregate(
     function expects per-example gradients as input (which are easy to obtain in
     JAX using `jax.vmap`). It can still be composed with other transformations
     as long as it is the first in the chain.
+
+  .. warning::
+    Generic gradient aggregation tools like :class:`optax.MultiSteps` or
+    :func:`optax.apply_every` won't work correctly with this transformation
+    since the whole point of this transformation is to aggregate gradients in a
+    specific way.
   """
   noise_std = l2_norm_clip * noise_multiplier
 
@@ -116,6 +122,12 @@ def dpsgd(
     This :class:`optax.GradientTransformation` expects input updates to have a
     batch dimension on the 0th axis. That is, this function expects per-example
     gradients as input (which are easy to obtain in JAX using `jax.vmap`).
+
+  .. warning::
+    Generic gradient aggregation tools like :class:`optax.MultiSteps` or
+    :func:`optax.apply_every` won't work correctly with this transformation
+    since the whole point of this transformation is to aggregate gradients in a
+    specific way.
   """
   return combine.chain(
       differentially_private_aggregate(
