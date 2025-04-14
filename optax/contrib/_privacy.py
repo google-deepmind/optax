@@ -16,11 +16,13 @@
 
 from typing import Any, NamedTuple, Optional
 
+import chex
 import jax
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
 from optax._src import transform
+from optax._src import utils
 
 
 class DifferentiallyPrivateAggregateState(NamedTuple):
@@ -33,14 +35,16 @@ class DifferentiallyPrivateAggregateState(NamedTuple):
 
 
 def differentially_private_aggregate(
-    l2_norm_clip: float, noise_multiplier: float, seed: int
+    l2_norm_clip: float,
+    noise_multiplier: float,
+    key: Optional[chex.PRNGKey | int] = None
 ) -> base.GradientTransformation:
   """Aggregates gradients based on the DPSGD algorithm.
 
   Args:
     l2_norm_clip: maximum L2 norm of the per-example gradients.
     noise_multiplier: ratio of standard deviation to the clipping norm.
-    seed: initial seed used for the jax.random.PRNGKey
+    key: a PRNG key used as the random key.
 
   Returns:
     A :class:`optax.GradientTransformation`.
@@ -62,11 +66,16 @@ def differentially_private_aggregate(
     since the whole point of this transformation is to aggregate gradients in a
     specific way.
   """
+  if key is None:
+    raise ValueError(
+        "differentially_private_aggregate optimizer requires specifying key: "
+        "differentially_private_aggregate(..., key=jax.random.key(0))"
+    )
   noise_std = l2_norm_clip * noise_multiplier
 
   def init_fn(params):
     del params
-    return DifferentiallyPrivateAggregateState(rng_key=jax.random.PRNGKey(seed))
+    return DifferentiallyPrivateAggregateState(rng_key=utils.to_random_key(key))
 
   def update_fn(updates, state, params=None):
     del params
@@ -91,7 +100,7 @@ def dpsgd(
     learning_rate: base.ScalarOrSchedule,
     l2_norm_clip: float,
     noise_multiplier: float,
-    seed: int,
+    key: Optional[chex.PRNGKey | int] = None,
     momentum: Optional[float] = None,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -106,7 +115,7 @@ def dpsgd(
     learning_rate: A fixed global scaling factor.
     l2_norm_clip: Maximum L2 norm of the per-example gradients.
     noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
+    key: a PRNG key used as the random key.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
@@ -129,11 +138,16 @@ def dpsgd(
     since the whole point of this transformation is to aggregate gradients in a
     specific way.
   """
+  if key is None:
+    raise ValueError(
+        "dpsgd optimizer requires specifying key: "
+        "dpsgd(..., key=jax.random.key(0))"
+    )
   return combine.chain(
       differentially_private_aggregate(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
-          seed=seed,
+          key=utils.to_random_key(key),
       ),
       (
           transform.trace(decay=momentum, nesterov=nesterov)

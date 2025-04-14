@@ -46,6 +46,15 @@ def canonicalize_dtype(
   return dtype
 
 
+def to_random_key(key_or_seed: chex.PRNGKey | int) -> chex.PRNGKey:
+  """Canonicalize a random key or an int representing a seed to a random key."""
+  if (isinstance(key_or_seed, jax.Array) and jnp.issubdtype(
+      key_or_seed.dtype, jax.dtypes.prng_key
+  )):
+    return key_or_seed
+  return jax.random.key(key_or_seed)
+
+
 @functools.partial(
     chex.warn_deprecated_function, replacement='optax.tree_utils.tree_cast'
 )
@@ -106,10 +115,10 @@ class MultiNormalDiagFromLogScale:
         self._mean.shape, self._scale.shape
     )
 
-  def sample(self, shape: Sequence[int], seed: chex.PRNGKey) -> chex.Array:
+  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> chex.Array:
     sample_shape = tuple(shape) + self._param_shape
     return (
-        jax.random.normal(seed, shape=sample_shape) * self._scale + self._mean
+        jax.random.normal(key, shape=sample_shape) * self._scale + self._mean
     )
 
   def log_prob(self, x: chex.Array) -> chex.Array:

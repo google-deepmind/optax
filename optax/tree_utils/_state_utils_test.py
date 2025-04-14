@@ -28,6 +28,7 @@ from optax._src import combine
 from optax._src import transform
 from optax.schedules import _inject
 from optax.schedules import _schedule
+from optax.tree_utils import _random
 from optax.tree_utils import _state_utils
 
 
@@ -417,7 +418,8 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test filtering for specific state'):
       opt = combine.chain(
-          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+          transform.add_noise(1.0, 0.9, key=jax.random.key(0)),
+          transform.scale_by_adam()
       )
       state = opt.init(params)
 
@@ -432,7 +434,8 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test extracting a state'):
       opt = combine.chain(
-          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+          transform.add_noise(1.0, 0.9, key=jax.random.key(0)),
+          transform.scale_by_adam()
       )
       state = opt.init(params)
       noise_state = _state_utils.tree_get(state, 'AddNoiseState')
@@ -440,7 +443,10 @@ class StateUtilsTest(absltest.TestCase):
           count=jnp.asarray(0),
           rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
       )
-      chex.assert_trees_all_equal(noise_state, expected_result)
+      chex.assert_trees_all_equal(
+          _random.tree_unwrap_random_key_data(noise_state),
+          _random.tree_unwrap_random_key_data(expected_result)
+      )
 
   def test_tree_set(self):
     params = jnp.array([1.0, 2.0, 3.0])
@@ -534,7 +540,8 @@ class StateUtilsTest(absltest.TestCase):
 
     with self.subTest('Test setting a specific state'):
       opt = combine.chain(
-          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+          transform.add_noise(1.0, 0.9, key=jax.random.key(0)),
+          transform.scale_by_adam()
       )
       state = opt.init(params)
 
@@ -556,11 +563,15 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(new_state, expected_result)
+      chex.assert_trees_all_equal(
+          _random.tree_unwrap_random_key_data(new_state),
+          _random.tree_unwrap_random_key_data(expected_result)
+      )
 
     with self.subTest('Test setting a state'):
       opt = combine.chain(
-          transform.add_noise(1.0, 0.9, 0), transform.scale_by_adam()
+          transform.add_noise(1.0, 0.9, key=jax.random.key(0)),
+          transform.scale_by_adam()
       )
       state = opt.init(params)
       new_noise_state = transform.AddNoiseState(
