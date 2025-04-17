@@ -38,15 +38,7 @@ pre-commit run -a
 # Install dependencies.
 python3 -m uv pip install --quiet --upgrade pip setuptools wheel
 python3 -m uv pip install --quiet --upgrade flake8 pytest-xdist pylint pylint-exit
-python3 -m uv pip install --quiet --editable ".[test, examples]"
-
-# Dp-accounting specifies exact minor versions as requirements which sometimes
-# become incompatible with other libraries optax needs. We therefore install
-# dependencies for dp-accounting manually.
-# TODO(b/239416992): Remove this workaround if dp-accounting switches to minimum
-# version requirements.
-python3 -m uv pip install --quiet --editable ".[dp-accounting]"
-python3 -m uv pip install --quiet --no-deps "dp-accounting>=0.1.1"
+python3 -m uv pip install --quiet --editable ".[test]"
 
 # Install the requested JAX version
 if [ -z "${JAX_VERSION-}" ]; then
@@ -89,16 +81,6 @@ cd "${REPO_DIR}"
 
 # Build Sphinx docs.
 python3 -m uv pip install --quiet --editable ".[docs]"
-# NOTE(vroulet) We have dependencies issues:
-# tensorflow > 2.13.1 requires ml-dtypes <= 0.3.2
-# but jax requires ml-dtypes >= 0.4.0
-# So the environment is solved with tensorflow == 2.13.1 which requires
-# typing_extensions < 4.6, which in turn prevents the import of TypeAliasType in
-# IPython. We solve it here by simply upgrading typing_extensions to avoid that
-# bug (which issues conflict warnings but runs fine).
-# A long term solution is probably to fully remove tensorflow from our
-# dependencies.
-python3 -m uv pip install --upgrade --verbose typing_extensions
 cd docs
 make html
 make doctest # run doctests

@@ -199,7 +199,9 @@ nb_execution_excludepatterns = [
     'cifar10_resnet.ipynb',
     'adversarial_training.ipynb',
     'reduce_on_plateau.ipynb',
-    'differentially_private_sgd.ipynb'
+    'differentially_private_sgd.ipynb',
+    'lookahead_mnist.ipynb',
+    'mlp_mnist.ipynb',
 ]
 
 # -- Options for katex ------------------------------------------------------

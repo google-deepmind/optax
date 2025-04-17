@@ -45,18 +45,9 @@ documentation = "https://optax.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
-    "dm-tree>=0.1.7",
     "flax>=0.5.3",
     "scipy>=1.7.1",
     "scikit-learn"
-]
-
-examples = [
-  "tensorflow-datasets>=4.2.0",
-  "tensorflow>=2.4.0",
-  "dp_accounting>=0.4",
-  "ipywidgets",
-  "flax",
 ]
 
 docs = [
@@ -69,18 +60,8 @@ docs = [
     "matplotlib>=3.5.0",
     "sphinx-gallery>=0.14.0",
     "sphinx-collections>=0.0.1",
-    "tensorflow>=2.4.0",
-    "tensorflow-datasets>=4.2.0",
     "flax",
     "sphinx_contributors",
-]
-
-dp-accounting = [
-    "absl-py>=1.0.0",
-    "attrs>=21.4.0",
-    "mpmath>=1.2.1",
-    "numpy>=1.21.4",
-    "scipy>=1.7.1"
 ]
 
 [tool.setuptools.packages.find]
