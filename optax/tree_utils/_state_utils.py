@@ -341,12 +341,14 @@ def tree_get(
 
       >>> params = jnp.array([1., 2., 3.])
       >>> opt = optax.chain(
-      ...     optax.add_noise(1.0, 0.9, 0), optax.scale_by_adam()
+      ...     optax.add_noise(1.0, 0.9, key=jax.random.key(0)),
+      ...     optax.scale_by_adam()
       ... )
       >>> state = opt.init(params)
       >>> noise_state = optax.tree_utils.tree_get(state, 'AddNoiseState')
       >>> print(noise_state)
-      AddNoiseState(count=Array(0, dtype=int32), rng_key=Array([0, 0], dtype=uint32))
+      AddNoiseState(count=Array(0, dtype=int32), rng_key=Array((), dtype=key<fry>) overlaying:
+      [0 0])
 
     Differentiating between two values by the name of their named tuples.
 
@@ -354,7 +356,8 @@ def tree_get(
       >>> import optax
       >>> params = jnp.array([1., 2., 3.])
       >>> opt = optax.chain(
-      ...   optax.add_noise(1.0, 0.9, 0), optax.scale_by_adam()
+      ...   optax.add_noise(1.0, 0.9, key=jax.random.key(0)),
+      ...   optax.scale_by_adam()
       ... )
       >>> state = opt.init(params)
       >>> filtering = (
