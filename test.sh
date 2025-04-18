@@ -69,7 +69,7 @@ python3 -m pip wheel --no-deps dist/optax-*.tar.gz --wheel-dir "${TEMP_DIR}"
 python3 -m pip install --quiet "${TEMP_DIR}/optax-"*.whl
 
 # Check types with pytype.
-python3 -m pip install --quiet pytype
+python3 -m pip install --quiet --upgrade pytype
 pytype "optax" -j auto --keep-going --disable import-error
 
 # Run tests using pytest.
