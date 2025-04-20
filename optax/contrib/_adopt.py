@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 import chex
 import jax
 import jax.numpy as jnp
@@ -15,6 +15,7 @@ def scale_by_adopt(
     b2: float = 0.9999,
     eps: float = 1e-6,
     mu_dtype: Optional[chex.ArrayDType] = None,
+    clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x ** 0.25,
     *,
     nesterov: bool = False,
     use_clipping: bool = True,
@@ -55,7 +56,7 @@ def scale_by_adopt(
     b2_ = jnp.where(state.count > 0, b2, 0)
     nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2_, 2)
     if use_clipping:
-      clip_value = state.count ** 0.25
+      clip_value = clip_value_fn(state.count)
       mu_updates = jax.tree.map(lambda ud, nu: jnp.clip(ud / jnp.maximum(jnp.sqrt(nu), eps), -clip_value, clip_value), updates, state.nu)
       b1_ = b1
     else:
@@ -90,6 +91,7 @@ def adopt(
     *,
     nesterov: bool = False,
     use_clipping: bool = True,
+    clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x ** 0.25,
 ) -> base.GradientTransformationExtraArgs:
   r"""ADOPT: Modified Adam optimizer that can converge with any beta2 value.
 
@@ -167,6 +169,7 @@ def adopt(
           mu_dtype=mu_dtype,
           nesterov=nesterov,
           use_clipping=use_clipping,
+          clip_value_fn=clip_value_fn,
       ),
       transform.scale_by_learning_rate(learning_rate),
   )
