@@ -71,7 +71,10 @@ def scale_by_adopt(
       )
     else:
       mu_ = mu
-    updates = jnp.where(state.count > 0, mu_, otu.tree_zeros_like(mu_, dtype=mu_dtype))
+    updates = jax.tree_util.tree_map(
+        lambda m: jnp.where(state.count > 0, m, jnp.zeros_like(m, dtype=mu_dtype)),
+        mu_
+    )
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, transform.ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
