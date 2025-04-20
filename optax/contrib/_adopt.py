@@ -39,6 +39,8 @@ def scale_by_adopt(
     use_clipping: Whether to use gradient clipping to improve stability.
       When enabled, the clipping value is set to step**0.25, which aligns
       with the theory to ensure convergence.
+    clip_value_fn: A function that takes a step index and returns a clipping value.
+      Default is :math:`x^{0.25}`
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -132,6 +134,8 @@ def adopt(
     nesterov: Whether to use Nesterov momentum.
     use_clipping: Whether to apply clipping to improve stability. Recommended
       to keep as True, especially for training from scratch.
+    clip_value_fn: A function that takes a step index and returns a clipping value.
+      Default is :math:`x^{0.25}`
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
