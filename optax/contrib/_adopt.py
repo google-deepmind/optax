@@ -139,7 +139,7 @@ def adopt(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.adopt(learning_rate=0.003)
+    >>> solver = optax.contrib.adopt(learning_rate=0.003)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
