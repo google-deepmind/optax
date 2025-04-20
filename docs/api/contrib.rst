@@ -9,6 +9,7 @@ Experimental features and algorithms that don't meet the
 .. autosummary::
     acprop
     ademamix
+    adopt
     simplified_ademamix
     cocob
     COCOBState
@@ -130,3 +131,8 @@ Sophia
 .. autoclass:: HutchinsonState
 .. autofunction:: sophia
 .. autoclass:: SophiaState
+
+ADOPT
+~~~~~~
+.. autofunction:: adopt
+.. autofunction:: scale_by_acprop

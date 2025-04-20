@@ -64,6 +64,10 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
         'opt_name': 'sophia',
         'opt_kwargs': {'learning_rate': 1e-2}
     },
+    {
+        'opt_name': 'adopt',
+        'opt_kwargs': {'learning_rate': 1e-2}
+    },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
   optimizer['wrapper_name'] = None
