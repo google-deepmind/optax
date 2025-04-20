@@ -101,7 +101,6 @@ from optax._src.transform import scale
 from optax._src.transform import scale_by_adadelta
 from optax._src.transform import scale_by_adam
 from optax._src.transform import scale_by_adamax
-from optax._src.transform import scale_by_adopt
 from optax._src.transform import scale_by_adan
 from optax._src.transform import scale_by_amsgrad
 from optax._src.transform import scale_by_belief
@@ -410,7 +409,6 @@ __all__ = (
     "scale_by_adadelta",
     "scale_by_adam",
     "scale_by_adamax",
-    "scale_by_adopt",
     "scale_by_adan",
     "scale_by_amsgrad",
     "scale_by_backtracking_linesearch",
