@@ -37,8 +37,7 @@ def scale_by_adopt(
       `None` then the `dtype` is inferred from `params` and `updates`.
     nesterov: Whether to use Nesterov momentum.
     use_clipping: Whether to use gradient clipping to improve stability.
-      When enabled, the clipping value is set to step**0.25, which aligns
-      with the theory to ensure convergence.
+      When enabled, the clipping value is determined by the clip_value_fn.
     clip_value_fn: A function that takes a step index and returns a clipping value.
       Default is :math:`x^{0.25}`
 
