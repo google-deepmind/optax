@@ -70,7 +70,7 @@ def scale_by_adopt(
           mu_updates,
       )
     else:
-      mu_ = mu  
+      mu_ = mu
     updates = jnp.where(state.count > 0, mu_, otu.tree_zeros_like(mu_, dtype=mu_dtype))
     mu = otu.tree_cast(mu, mu_dtype)
     return updates, transform.ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -90,14 +90,14 @@ def adopt(
 ) -> base.GradientTransformationExtraArgs:
   r"""ADOPT: Modified Adam optimizer that can converge with any beta2 value.
 
-  ADOPT (Adaptive Optimization with Provable Theoretical guarantees) is a modified 
-  version of Adam that ensures convergence with any β2 value while maintaining the 
-  optimal convergence rate. This implementation includes an optional clipping 
+  ADOPT (Adaptive Optimization with Provable Theoretical guarantees) is a modified
+  version of Adam that ensures convergence with any β2 value while maintaining the
+  optimal convergence rate. This implementation includes an optional clipping
   operation to improve stability, especially in early training stages.
 
-  The key difference from Adam is that ADOPT modifies the update rule to avoid 
-  potential instability issues, particularly when some gradient elements are near 
-  zero at initialization. This can happen when parameters (e.g., the last layer of 
+  The key difference from Adam is that ADOPT modifies the update rule to avoid
+  potential instability issues, particularly when some gradient elements are near
+  zero at initialization. This can happen when parameters (e.g., the last layer of
   a neural network) are initialized with zeros.
 
   Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
@@ -110,7 +110,7 @@ def adopt(
   :math:`S_0 := (m_0, v_0) = (0, 0)`, representing initial estimates for the
   first and second moments. At step :math:`t`, the ``update`` function computes:
 
-  With clipping enabled (default), ADOPT applies a clipping operation to improve 
+  With clipping enabled (default), ADOPT applies a clipping operation to improve
   stability, particularly in early training stages.
 
   Args:
@@ -153,7 +153,7 @@ def adopt(
     Objective function: 1.38E+01
 
   References:
-    Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any β2 with the 
+    Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any β2 with the
     Optimal Rate <https://arxiv.org/abs/2403.00855>`_, NeurIPS 2024
   """
   return combine.chain(
