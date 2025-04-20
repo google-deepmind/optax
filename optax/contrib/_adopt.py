@@ -157,7 +157,7 @@ def adopt(
     Optimal Rate <https://arxiv.org/abs/2403.00855>`_, NeurIPS 2024
   """
   return combine.chain(
-      transform.scale_by_adopt(
+      scale_by_adopt(
           b1=b1,
           b2=b2,
           eps=eps,
