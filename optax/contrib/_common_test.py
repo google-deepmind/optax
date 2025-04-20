@@ -1,4 +1,3 @@
-
 # Copyright 2023 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -339,7 +338,7 @@ class ContribTest(chex.TestCase):
     # Add here the hyperparameters that cannot be injected with
     # inject_hyperparams.
     static_args = []
-    for uninjectable_hparam in ['warmup_steps', 'num_betas']:
+    for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)
