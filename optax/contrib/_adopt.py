@@ -21,8 +21,8 @@ def scale_by_adopt(
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the ADOPT algorithm.
 
-  ADOPT (Modified Adam Can Converge with Any β2 with the Optimal Rate) is a variant
-  of Adam that can converge with any β2 value while maintaining the optimal rate.
+  ADOPT (Modified Adam Can Converge with Any beta2 with the Optimal Rate) is a variant
+  of Adam that can converge with any beta2 value while maintaining the optimal rate.
   
   This implementation includes a clipping operation to improve stability, especially
   in the early stages of training. The clipping helps avoid near-zero divisions when
@@ -91,7 +91,7 @@ def adopt(
   r"""ADOPT: Modified Adam optimizer that can converge with any beta2 value.
 
   ADOPT (Adaptive Optimization with Provable Theoretical guarantees) is a modified
-  version of Adam that ensures convergence with any β2 value while maintaining the
+  version of Adam that ensures convergence with any beta2 value while maintaining the
   optimal convergence rate. This implementation includes an optional clipping
   operation to improve stability, especially in early training stages.
 
@@ -153,7 +153,7 @@ def adopt(
     Objective function: 1.38E+01
 
   References:
-    Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any β2 with the
+    Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any beta2 with the
     Optimal Rate <https://arxiv.org/abs/2403.00855>`_, NeurIPS 2024
   """
   return combine.chain(
