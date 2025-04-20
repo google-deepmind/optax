@@ -15,10 +15,10 @@ def scale_by_adopt(
     b2: float = 0.9999,
     eps: float = 1e-6,
     mu_dtype: Optional[chex.ArrayDType] = None,
-    clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x ** 0.25,
     *,
     nesterov: bool = False,
     use_clipping: bool = True,
+    clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x ** 0.25,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the ADOPT algorithm.
 
