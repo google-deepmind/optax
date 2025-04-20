@@ -150,10 +150,10 @@ def adopt(
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.39E+01
-    Objective function: 1.38E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
+    Objective function: 1.40E+01
 
   References:
     Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any beta2 with the
