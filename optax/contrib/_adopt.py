@@ -65,11 +65,7 @@ def scale_by_adopt(
     mu = otu.tree_update_moment(mu_updates, state.mu, b1_, 1)
     count_inc = numerics.safe_increment(state.count)
     if nesterov:
-      mu_ = jax.tree.map(
-          lambda m, g: b1 * m + (1 - b1) * g,
-          mu,
-          mu_updates,
-      )
+      mu_ = otu.tree_update_moment(mu_updates, mu, b1_, 1)
     else:
       mu_ = mu
     updates = mu_
