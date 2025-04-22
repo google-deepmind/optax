@@ -24,13 +24,6 @@ def scale_by_adopt(
 
   .. seealso:: :func:`optax.contrib.adopt`
 
-  ADOPT (Modified Adam Can Converge with Any beta2 with the Optimal Rate) is a variant
-  of Adam that can converge with any beta2 value while maintaining the optimal rate.
-  
-  This implementation includes a clipping operation to improve stability, especially
-  in the early stages of training. The clipping helps avoid near-zero divisions when
-  some elements of the parameter gradient are near zero at initialization.
-
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate for the exponentially weighted average of squared grads.
