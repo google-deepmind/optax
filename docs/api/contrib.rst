@@ -135,4 +135,4 @@ Sophia
 ADOPT
 ~~~~~~
 .. autofunction:: adopt
-.. autofunction:: scale_by_acprop
+.. autofunction:: scale_by_adopt

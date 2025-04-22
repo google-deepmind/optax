@@ -22,6 +22,8 @@ def scale_by_adopt(
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the ADOPT algorithm.
 
+  .. seealso:: :func:`optax.contrib.adopt`
+
   ADOPT (Modified Adam Can Converge with Any beta2 with the Optimal Rate) is a variant
   of Adam that can converge with any beta2 value while maintaining the optimal rate.
   
@@ -86,27 +88,15 @@ def adopt(
     use_clipping: bool = True,
     clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x ** 0.25,
 ) -> base.GradientTransformationExtraArgs:
-  r"""ADOPT: Modified Adam optimizer that can converge with any beta2 value.
+  r"""ADOPT (Adaptive Optimization with Provable Theoretical guarantees)
 
-  ADOPT (Adaptive Optimization with Provable Theoretical guarantees) is a modified
-  version of Adam that ensures convergence with any beta2 value while maintaining the
-  optimal convergence rate. This implementation includes an optional clipping
-  operation to improve stability, especially in early training stages.
+  ADOPT is a modified version of Adam that may improve the robustness of Adam
+  with respect to the choice of beta2. This implementation includes an optional
+  clipping operation to improve stability, especially in early training stages.
 
   The key difference from Adam is that ADOPT modifies the update rule to avoid
   potential instability issues, particularly when some gradient elements are near
-  zero at initialization. This can happen when parameters (e.g., the last layer of
-  a neural network) are initialized with zeros.
-
-  Let :math:`\alpha_t` represent the learning rate and :math:`\beta_1, \beta_2`,
-  :math:`\varepsilon`, :math:`\bar{\varepsilon}` represent the arguments
-  ``b1``, ``b2``, ``eps`` and ``eps_root`` respectively. The learning rate is
-  indexed by :math:`t` since the learning rate may also be provided by a
-  schedule function.
-
-  The ``init`` function of this optimizer initializes an internal state
-  :math:`S_0 := (m_0, v_0) = (0, 0)`, representing initial estimates for the
-  first and second moments. At step :math:`t`, the ``update`` function computes:
+  zero at initialization.
 
   With clipping enabled (default), ADOPT applies a clipping operation to improve
   stability, particularly in early training stages.
