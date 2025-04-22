@@ -20,7 +20,7 @@ by Keller Jordan
 """
 
 
-from typing import NamedTuple, Optional, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 import chex
 import jax
@@ -206,6 +206,10 @@ def muon(
     ns_steps: int = 5,
     beta: float = 0.95,
     eps: float = 1e-8,
+    weight_decay: float = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
     mu_dtype: Optional[chex.ArrayDType] = None,
     *,
     nesterov: bool = True,
@@ -235,6 +239,15 @@ def muon(
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
     eps: Term added to the denominator to improve numerical stability.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip.
     mu_dtype: Data type of the momentum accumulator.
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
@@ -266,6 +279,7 @@ def muon(
                   nesterov=nesterov,
                   adaptive=adaptive,
               ),
+              transform.add_decayed_weights(weight_decay, weight_decay_mask),
               transform.scale_by_learning_rate(learning_rate),
           ),
           'adam': alias.adamw(
