@@ -101,8 +101,6 @@ def adopt(
     b2: Exponential decay rate to track the second moment of past gradients.
     eps: A small constant applied to denominator outside of the square root
       to avoid dividing by zero when rescaling.
-    eps_root: A small constant applied to denominator inside the square root,
-      to avoid dividing by zero when rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
     nesterov: Whether to use Nesterov momentum.
