@@ -5,10 +5,10 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "optax"
 dynamic = ["version"]
-description = "A gradient processing and optimisation library in JAX."
+description = "A gradient processing and optimization library in JAX."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Google DeepMind", email = "optax-dev@google.com"},
 ]
@@ -31,9 +31,10 @@ classifiers = [
 ]
 dependencies = [
   "absl-py>=0.7.1",
-  "chex>=0.1.7",
-  "jax>=0.1.55",
-  "jaxlib>=0.1.37",
+  "chex>=0.1.87",
+  # Keep jax, jaxlib versions in sync with .github/workflows/tests.yml
+  "jax>=0.4.27",
+  "jaxlib>=0.4.27",
   "numpy>=1.18.0",
 ]
 
@@ -44,15 +45,9 @@ documentation = "https://optax.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
-    "dm-tree>=0.1.7",
-    "flax>=0.5.3"
-]
-
-examples = [
-  "tensorflow-datasets>=4.2.0",
-  "tensorflow>=2.4.0",
-  "dp_accounting>=0.4",
-  "flax",
+    "flax>=0.5.3",
+    "scipy>=1.7.1",
+    "scikit-learn"
 ]
 
 docs = [
@@ -70,16 +65,61 @@ docs = [
     "orbax-checkpoint",
     "grain-nightly",
     "flax",
-]
-
-dp-accounting = [
-    "absl-py>=1.0.0",
-    "attrs>=21.4.0",
-    "mpmath>=1.2.1",
-    "numpy>=1.21.4",
-    "scipy>=1.7.1"
+    "sphinx_contributors",
 ]
 
 [tool.setuptools.packages.find]
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W291",  # whitespace at the end of the line
+]
+ignore = [
+    "E731",  # lambdas are allowed
+    "E501",  # don't check line lengths
+    "F401",  # allow unused imports
+    "E402",  # allow modules not at top of file
+    "E741",  # allow "l" as a variable name
+    "E703",  # allow semicolons (for jupyter notebooks)
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-indentation",
+    "unknown-option-value",
+    "invalid-name",
+    "missing-function-docstring",
+    "missing-class-docstring",
+    "missing-module-docstring",
+    "no-member",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "no-else-return",
+    "line-too-long",
+    "too-many-arguments",
+    "no-value-for-parameter",
+    "duplicate-code",
+    "unused-argument",
+    "too-few-public-methods",
+    "wrong-import-order",
+    "unused-import",
+    "wrong-import-position",
+    "unnecessary-lambda-assignment",
+    "too-many-lines",
+    "too-many-statements",
+    "deprecated-class",
+    "redefined-builtin",
+    "used-before-assignment",
+    "undefined-variable",
+    "protected-access",
+    "not-callable",
+    "redefined-outer-name",
+    "too-many-instance-attributes",
+    "missing-final-newline",
+    "too-many-public-methods",
+    "import-error",
+]

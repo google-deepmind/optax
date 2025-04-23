@@ -14,9 +14,10 @@
 # ==============================================================================
 """Asserts all public symbols are covered in the docs."""
 
+from collections.abc import Mapping
 import inspect
 import types
-from typing import Any, Mapping, Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
 import optax
 from sphinx import application
@@ -64,11 +65,11 @@ class OptaxCoverageCheck(builders.Builder):
   def get_outdated_docs(self) -> str:
     return "coverage_check"
 
-  def write(self, *ignored: Any) -> None:
+  def write(self, *ignored: Any) -> None:  # pylint: disable=overridden-final-method
     pass
 
   def finish(self) -> None:
-    documented_objects = frozenset(self.env.domaindata["py"]["objects"])
+    documented_objects = frozenset(self.env.domaindata["py"]["objects"])  # pytype: disable=attribute-error
     undocumented_objects = set(optax_public_symbols()) - documented_objects
     if undocumented_objects:
       undocumented_objects = tuple(sorted(undocumented_objects))
@@ -77,7 +78,13 @@ class OptaxCoverageCheck(builders.Builder):
           "forget to add an entry to `api.rst`?\n"
           f"Undocumented symbols: {undocumented_objects}")
 
+  def get_target_uri(self, docname, typ=None):
+    raise NotImplementedError
+
+  def write_doc(self, docname, doctree):
+    raise NotImplementedError
+
 
 def setup(app: application.Sphinx) -> Mapping[str, Any]:
   app.add_builder(OptaxCoverageCheck)
-  return dict(version=optax.__version__, parallel_read_safe=True)
+  return {"version": optax.__version__, "parallel_read_safe": True}

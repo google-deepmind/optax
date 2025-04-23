@@ -14,15 +14,18 @@
 # ==============================================================================
 """Utility functions for testing."""
 
+from collections.abc import Callable
+import contextlib
 import functools
 import inspect
 import operator
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
+from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
@@ -35,24 +38,24 @@ def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
 
 
 def canonicalize_dtype(
-    dtype: Optional[chex.ArrayDType]) -> Optional[chex.ArrayDType]:
+    dtype: Optional[chex.ArrayDType],
+) -> Optional[chex.ArrayDType]:
   """Canonicalise a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
   return dtype
 
 
+@functools.partial(
+    chex.warn_deprecated_function, replacement='optax.tree_utils.tree_cast'
+)
 def cast_tree(
     tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
 ) -> chex.ArrayTree:
-  """Cast tree to given dtype, skip if None."""
-  if dtype is not None:
-    return jax.tree_util.tree_map(lambda t: t.astype(dtype), tree)
-  else:
-    return tree
+  return otu.tree_cast(tree, dtype)
 
 
-def set_diags(a: chex.Array, new_diags: chex.Array) -> chex.Array:
+def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -146,7 +149,7 @@ def _scale_gradient_fwd(
 def _scale_gradient_bwd(
     scale: float, g: chex.ArrayTree
 ) -> tuple[chex.ArrayTree, None]:
-  return (jax.tree_util.tree_map(lambda g_: g_ * scale, g), None)
+  return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
@@ -165,10 +168,37 @@ def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
   # Special case scales of 1. and 0. for more efficiency.
   if scale == 1.0:
     return inputs
-  elif scale == 0.0:
+  if scale == 0.0:
     return jax.lax.stop_gradient(inputs)
-  else:
-    return _scale_gradient(inputs, scale)
+  return _scale_gradient(inputs, scale)
+
+
+@contextlib.contextmanager
+def x64_precision(enable_x64_precision: bool = True):
+  """Context manager to temporarily enable x64 precision.
+
+  Args:
+    enable_x64_precision: Whether to enable or disable x64 precision within the
+      context.
+
+  Yields:
+    None
+
+  Examples:
+    >>> from optax._src.utils import x64_precision
+    >>> with x64_precision(enable_x64_precision=True):
+    ...   print(jnp.float64(1.0).dtype.name)
+    float64
+    >>> with x64_precision(enable_x64_precision=False):
+    ...   print(jnp.float64(1.0).dtype.name)
+    float32
+  """
+  old_config = jax.config.jax_enable_x64
+  try:
+    jax.config.update('jax_enable_x64', enable_x64_precision)
+    yield
+  finally:
+    jax.config.update('jax_enable_x64', old_config)
 
 
 def _extract_fns_kwargs(
@@ -182,9 +212,19 @@ def _extract_fns_kwargs(
   dictionaries ``(fn_1_kwargs, ..., fn_n_kwargs), remaining_kwargs``. Each
   dictionary ``fn_i_kwargs`` correspond to a subset of ``{key: values}`` pairs
   from ``kwargs`` such that ``key`` is one possible argument of the function
-  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs 
+  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs
   ``{key: values}`` from ``kwargs`` whose ``key`` does not match any argument
   of any of the functions ``fns``.
+
+  Args:
+    fns: tuple of functions to feed kwargs to.
+    kwargs: dictionary of keyword variables to be fed to funs.
+
+  Returns:
+    (fn_1_kwargs, ..., fn_n_kwargs)
+      Keyword arguments for each function taken from kwargs.
+    remaining_kwargs
+      Keyword arguments present in kwargs but not in any of the input functions.
 
   Examples:
     >>> import optax
@@ -202,20 +242,8 @@ def _extract_fns_kwargs(
     ...  return fn1(a, **fn1_kwargs) + fn2(c, **fn2_kwargs)
     >>> print(super_fn(1., 2., b=3., d=4.))
     10.0
-
-  Args:
-    fns: tuple of functions to feed kwargs to.
-    kwargs: dictionary of keyword variables to be fed to funs.
-
-  Returns:
-    (fn_1_kwargs, ..., fn_n_kwargs)
-      Keyword arguments for each function taken from kwargs.
-    remaining_kwargs
-      Keyword arguments present in kwargs but not in any of the input functions.
   """
-  fns_arg_names = [
-      list(inspect.signature(fn).parameters.keys()) for fn in fns
-  ]
+  fns_arg_names = [list(inspect.signature(fn).parameters.keys()) for fn in fns]
   fns_kwargs = [
       {k: v for k, v in kwargs.items() if k in fn_arg_names}
       for fn_arg_names in fns_arg_names
@@ -224,69 +252,6 @@ def _extract_fns_kwargs(
   remaining_keys = [k for k in kwargs.keys() if k not in all_possible_arg_names]
   remaining_kwargs = {k: v for k, v in kwargs.items() if k in remaining_keys}
   return fns_kwargs, remaining_kwargs
-
-
-def _extract_from_state(
-    state: chex.ArrayTree,
-    key: str,
-) -> list[tuple[Any, str, list[int]]]:
-  r"""Extract values from state.
-
-  Search in a state (potentially a pytree with :class:`optax.OptState` leaves
-  returned by :func:`optax.chain`) for a specific ``key``. That key may appear
-  more than once in the state (see example below). So this function returns a
-  list of all values corresponding to the key with the name of the associated
-  state and the path to the state in the pytree of states.
-
-  Examples:
-    >>> import jax.numpy as jnp
-    >>> import optax
-    >>> params = jnp.array([1., 2., 3.])
-    >>> base_opt = optax.chain(
-    ...   optax.adam(learning_rate=1.),
-    ...   optax.adam(learning_rate=1.)
-    ... )
-    >>> solver = optax.chain(optax.adam(learning_rate=1.), base_opt)
-    >>> state = solver.init(params)
-    >>> values_found = _extract_from_state(state, 'count')
-    >>> print(len(values_found))
-    3
-    >>> count, state_name, path_to_state = values_found[0]
-    >>> print(count, state_name, path_to_state)
-    0 ScaleByAdamState [0, 0]
-    >>> state_with_entry = state
-    >>> for i in path_to_state:
-    ...   state_with_entry = state_with_entry[i]
-    >>> print(state_with_entry.__class__.__name__ == state_name)
-    True
-    >>> print(getattr(state_with_entry, 'count') == count)
-    True
-
-  Args:
-    state: state to search in. It can be an ``optax.OptState`` 
-      or a pytree of ``optax.OptState`` returned by, e.g.,
-      ``optax.chain(...).init(params)``.
-    key: keyword to search state for.
-
-  Returns:
-    values
-      list of tuples where each tuple is of the form (``value``, ``state_name``,
-      ``path_to_state``). Here ``value`` is one entry of the state that
-      corresponds to the ``key``, ``state_name`` is the name of the state where
-      this value has been found, and ``path_to_state`` is a sequence of indexes
-      that lead to the state where the value has been found (see example).
-  """
-  values_found = []
-  tree_flatten, _ = jax.tree_util.tree_flatten_with_path(state)
-  for path, val in tree_flatten:
-    if getattr(path[-1], 'name') == key:
-      path_to_state = [path[i].idx for i in range(len(path)-1)]
-      substate = state
-      for i in path_to_state:
-        substate = substate[i]
-      state_name = substate.__class__.__name__
-      values_found.append((val, state_name, path_to_state))
-  return values_found
 
 
 def value_and_grad_from_state(
@@ -298,6 +263,19 @@ def value_and_grad_from_state(
   require to compute the gradient and objective function at the candidate
   iterate. This objective value and gradient can be re-used in the next
   iteration to save some computations using this utility function.
+
+  Args:
+    value_fn: function returning a scalar (float or array of dimension 1),
+      amenable to differentiation in jax using :func:`jax.value_and_grad`.
+
+  Returns:
+    A callable akin to :func:`jax.value_and_grad` that fetches value
+    and grad from the state if present. If no value or grad are found or if
+    multiple value and grads are found this function raises an error. If a value
+    is found but is infinite or nan, the value and grad are computed using
+    :func:`jax.value_and_grad`. If the gradient found in the state is None,
+    raises an Error.
+
 
   Examples:
     >>> import optax
@@ -326,18 +304,6 @@ def value_and_grad_from_state(
     Objective function: 6.53E-01
     Objective function: 2.35E-01
     Objective function: 8.47E-02
-
-  Args:
-    value_fn: function returning a scalar (float or array of dimension 1),
-      amenable to differentiation in jax using :func:`jax.value_and_grad`.
-
-  Returns:
-    A callable akin to :func:`jax.value_and_grad` that fetches value
-    and grad from the state if present. If no value or grad are found or if
-    multiple value and grads are found this function raises an error. If a value
-    is found but is infinite or nan, the value and grad are computed using
-    :func:`jax.value_and_grad`. If the gradient found in the state is None,
-    raises an Error.
   """
 
   def _value_and_grad(
@@ -346,21 +312,14 @@ def value_and_grad_from_state(
       state: base.OptState,
       **fn_kwargs: dict[str, Any],
   ):
-    values_found = _extract_from_state(state, 'value')
-    grads_found = _extract_from_state(state, 'grad')
-    if len(values_found) > 1 or len(grads_found) > 1:
-      raise ValueError('Found multiple values or gradients.')
-    elif not values_found or not grads_found:
-      raise ValueError('Found no value or no gradient.')
-    else:
-      value = values_found[0][0]
-      grad = grads_found[0][0]
-    if grad is None:
+    value = otu.tree_get(state, 'value')
+    grad = otu.tree_get(state, 'grad')
+    if (value is None) or (grad is None):
       raise ValueError(
-          'Gradient is None. Make sure that the gradient is stored in the '
-          'state, e.g., using store_grad=True in the definition of, e.g. '
-          'optax.scale_by_backtracking_linesearch.'
-          )
+          'Value or gradient not found in the state. '
+          'Make sure that these values are stored in the state by the '
+          'optimizer.'
+      )
     value, grad = jax.lax.cond(
         (~jnp.isinf(value)) & (~jnp.isnan(value)),
         lambda *_: (value, grad),

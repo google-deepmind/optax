@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX Schedules.
+"""Hyper-parameters Schedules.
 
 Schedules may be used to anneal the value of a hyper-parameter over time; for
 instance, they may be used to anneal the learning rate used to update an agent's
@@ -36,5 +36,6 @@ piecewise_constant_schedule = schedules.piecewise_constant_schedule
 piecewise_interpolate_schedule = schedules.piecewise_interpolate_schedule
 polynomial_schedule = schedules.polynomial_schedule
 sgdr_schedule = schedules.sgdr_schedule
+warmup_constant_schedule = schedules.warmup_constant_schedule
 warmup_cosine_decay_schedule = schedules.warmup_cosine_decay_schedule
 warmup_exponential_decay_schedule = schedules.warmup_exponential_decay_schedule

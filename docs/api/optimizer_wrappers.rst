@@ -12,8 +12,6 @@ Optimizer Wrappers
     LookaheadState
     masked
     MaskedState
-    maybe_update
-    MaybeUpdateState
     MultiSteps
     MultiStepsState
     ShouldSkipUpdateFunction
@@ -22,42 +20,29 @@ Optimizer Wrappers
 
 
 Apply if finite
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. autofunction::  apply_if_finite
 .. autoclass::  ApplyIfFiniteState
-   :members:
 
 Flatten
 ~~~~~~~~
 .. autofunction:: flatten
 
 Lookahead
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~
 .. autofunction::  lookahead
 .. autoclass::  LookaheadParams
-   :members:
 .. autoclass::  LookaheadState
-   :members:
 
 Masked update
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autofunction::  masked
 .. autoclass::  MaskedState
-   :members:
-
-Maybe update
-~~~~~~~~~~~~~~
-.. autofunction:: maybe_update
-.. autoclass:: MaybeUpdateState
-   :members:
 
 Multi-step update
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 .. autoclass:: MultiSteps
-   :members:
 .. autoclass:: MultiStepsState
-   :members:
 .. autoclass:: ShouldSkipUpdateFunction
-   :members:
 .. autofunction:: skip_large_updates
 .. autofunction:: skip_not_finite

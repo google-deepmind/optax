@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for optax."""
+"""Tests for importing optax."""
 
 from absl.testing import absltest
 import optax
+from optax import transforms
 
 
 class OptaxTest(absltest.TestCase):
@@ -23,6 +24,7 @@ class OptaxTest(absltest.TestCase):
 
   def test_import(self):
     self.assertTrue(hasattr(optax, 'GradientTransformation'))
+    self.assertTrue(hasattr(transforms, 'partition'))
 
 
 if __name__ == '__main__':

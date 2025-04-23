@@ -11,6 +11,7 @@ _testing/
 docs/_autosummary
 docs/_collections
 docs/modules/generated
+docs/sg_execution_times.rst
 
 # Mac OS
 .DS_Store

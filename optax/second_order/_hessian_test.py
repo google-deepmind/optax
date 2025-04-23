@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `hessian.py`."""
+"""Tests for methods in `hessian.py`."""
 
 import functools
 
 from absl.testing import absltest
-
 import chex
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax.second_order import _hessian
 
 
@@ -53,7 +51,7 @@ class HessianTest(chex.TestCase):
         return x
 
     net = MLP()
-    self.parameters = net.init({'params': jax.random.PRNGKey(0)}, self.data)[
+    self.parameters = net.init({'params': jax.random.key(0)}, self.data)[
         'params'
     ]
 
@@ -74,12 +72,14 @@ class HessianTest(chex.TestCase):
       return jnp.diag(flat_hessian)
 
     self.hessian_diag = jax_hessian_diag(
-        self.loss_fn, self.parameters, self.data, self.labels)
+        self.loss_fn, self.parameters, self.data, self.labels
+    )
 
   @chex.all_variants
   def test_hessian_diag(self):
     hessian_diag_fn = self.variant(
-        functools.partial(_hessian.hessian_diag, self.loss_fn))
+        functools.partial(_hessian.hessian_diag, self.loss_fn)
+    )
     actual = hessian_diag_fn(self.parameters, self.data, self.labels)
     np.testing.assert_array_almost_equal(self.hessian_diag, actual, 5)
 

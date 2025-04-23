@@ -13,6 +13,10 @@ Transformations
     apply_every
     ApplyEvery
     bias_correction
+    conditionally_mask
+    conditionally_transform
+    ConditionallyMaskState
+    ConditionallyTransformState
     centralize
     clip
     clip_by_block_rms
@@ -28,6 +32,7 @@ Transformations
     identity
     keep_params_nonnegative
     NonNegativeParamsState
+    normalize_by_update_norm
     OptState
     Params
     per_example_global_norm_clip
@@ -36,6 +41,8 @@ Transformations
     ScaleState
     scale_by_adadelta
     ScaleByAdaDeltaState
+    scale_by_adan
+    ScaleByAdanState
     scale_by_adam
     scale_by_adamax
     ScaleByAdamState
@@ -47,6 +54,8 @@ Transformations
     ScaleByBeliefState
     scale_by_factored_rms
     FactoredState
+    scale_by_lbfgs
+    ScaleByLBFGSState
     scale_by_learning_rate
     scale_by_lion
     ScaleByLionState
@@ -55,6 +64,7 @@ Transformations
     scale_by_optimistic_gradient
     scale_by_param_block_norm
     scale_by_param_block_rms
+    scale_by_polyak
     scale_by_radam
     scale_by_rms
     ScaleByRmsState
@@ -64,6 +74,7 @@ Transformations
     ScaleByRssState
     scale_by_schedule
     ScaleByScheduleState
+    scale_by_sign
     scale_by_sm3
     ScaleBySM3State
     scale_by_stddev
@@ -71,6 +82,8 @@ Transformations
     scale_by_trust_ratio
     ScaleByTrustRatioState
     scale_by_yogi
+    scale_by_zoom_linesearch
+    ScaleByZoomLinesearchState
     set_to_zero
     stateless
     stateless_with_tree_map
@@ -85,31 +98,25 @@ Transformations
     with_extra_args_support
     zero_nans
     ZeroNansState
+    ZoomLinesearchInfo
 
 
 Types
 ~~~~~
 
 .. autoclass:: GradientTransformation
-    :members:
 
 .. autoclass:: GradientTransformationExtraArgs
-    :members:
 
 .. autoclass:: TransformInitFn
-    :members:
 
 .. autoclass:: TransformUpdateFn
-    :members:
 
 .. autoclass:: OptState
-    :members:
 
 .. autoclass:: Params
-    :members:
 
 .. autoclass:: Updates
-    :members:
 
 
 Transformations and states
@@ -117,39 +124,37 @@ Transformations and states
 
 .. autofunction:: adaptive_grad_clip
 .. autoclass:: AdaptiveGradClipState
-  :members:
 
 .. autofunction:: add_decayed_weights
 .. autoclass:: AddDecayedWeightsState
-    :members:
 
 .. autofunction:: add_noise
 .. autoclass:: AddNoiseState
-    :members:
 
 .. autofunction:: apply_every
 .. autoclass:: ApplyEvery
-    :members:
 
 .. autofunction:: bias_correction
 
 .. autofunction:: centralize
 
+.. autofunction:: conditionally_mask
+.. autoclass:: ConditionallyMaskState
+
+.. autofunction:: conditionally_transform
+.. autoclass:: ConditionallyTransformState
+
 .. autofunction:: clip
 .. autofunction:: clip_by_block_rms
 .. autoclass:: ClipState
-    :members:
 
 .. autofunction:: clip_by_global_norm
 .. autoclass:: ClipByGlobalNormState
-    :members:
 
 .. autofunction:: ema
 .. autoclass:: EmaState
-    :members:
 
 .. autoclass:: EmptyState
-    :members:
 
 .. autofunction:: global_norm
 
@@ -157,48 +162,47 @@ Transformations and states
 
 .. autofunction:: keep_params_nonnegative
 .. autoclass:: NonNegativeParamsState
-    :members:
+
+.. autofunction:: normalize_by_update_norm
 
 .. autofunction:: per_example_global_norm_clip
 .. autofunction:: per_example_layer_norm_clip
 
 .. autofunction:: scale
 .. autoclass:: ScaleState
-    :members:
 
 .. autofunction:: scale_by_adadelta
 .. autoclass:: ScaleByAdaDeltaState
-    :members:
+
+.. autofunction:: scale_by_adan
+.. autoclass:: ScaleByAdanState
 
 .. autofunction:: scale_by_adam
 .. autofunction:: scale_by_adamax
 .. autoclass:: ScaleByAdamState
-    :members:
 
 .. autofunction:: scale_by_amsgrad
 .. autoclass:: ScaleByAmsgradState
-    :members:
 
 .. autofunction:: scale_by_backtracking_linesearch
 .. autoclass:: ScaleByBacktrackingLinesearchState
 
 .. autofunction:: scale_by_belief
 .. autoclass:: ScaleByBeliefState
-    :members:
 
 .. autofunction:: scale_by_factored_rms
 .. autoclass:: FactoredState
-    :members:
+
+.. autofunction:: scale_by_lbfgs
+.. autoclass:: ScaleByLBFGSState
 
 .. autofunction:: scale_by_learning_rate
 
 .. autofunction:: scale_by_lion
 .. autoclass:: ScaleByLionState
-    :members:
 
 .. autofunction:: scale_by_novograd
 .. autoclass:: ScaleByNovogradState
-    :members:
 
 .. autofunction:: scale_by_optimistic_gradient
 
@@ -208,35 +212,35 @@ Transformations and states
 
 .. autofunction:: scale_by_radam
 
+.. autofunction:: scale_by_polyak
+
 .. autofunction:: scale_by_rms
 .. autoclass:: ScaleByRmsState
-    :members:
 
 .. autofunction:: scale_by_rprop
 .. autoclass:: ScaleByRpropState
-    :members:
 
 .. autofunction:: scale_by_rss
 .. autoclass:: ScaleByRssState
-    :members:
 
 .. autofunction:: scale_by_schedule
 .. autoclass:: ScaleByScheduleState
-    :members:
+
+.. autofunction:: scale_by_sign
 
 .. autofunction:: scale_by_sm3
 .. autoclass:: ScaleBySM3State
-    :members:
 
 .. autofunction:: scale_by_stddev
 .. autoclass:: ScaleByRStdDevState
-    :members:
 
 .. autofunction:: scale_by_trust_ratio
 .. autoclass:: ScaleByTrustRatioState
-    :members:
 
 .. autofunction:: scale_by_yogi
+
+.. autofunction:: scale_by_zoom_linesearch
+.. autoclass:: ScaleByZoomLinesearchState
 
 .. autofunction:: set_to_zero
 
@@ -245,7 +249,6 @@ Transformations and states
 
 .. autofunction:: trace
 .. autoclass:: TraceState
-    :members:
 
 .. autofunction:: update_infinity_moment
 .. autofunction:: update_moment
@@ -255,4 +258,5 @@ Transformations and states
 
 .. autofunction:: zero_nans
 .. autoclass:: ZeroNansState
-    :members:
+
+.. autoclass:: ZoomLinesearchInfo

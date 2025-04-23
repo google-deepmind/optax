@@ -1,0 +1,28 @@
+# Install the pre-commit hooks below with
+# 'pre-commit install'
+
+# Auto-update the version of the hooks with
+# 'pre-commit autoupdate'
+
+# Run the hooks on all files with
+# 'pre-commit run --all'
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  - id: check-ast
+  - id: check-merge-conflict
+  - id: check-toml
+  - id: check-yaml
+  - id: end-of-file-fixer
+    # only include python files
+    files: \.py
+  - id: debug-statements
+    # only include python files
+    files: \.py$
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.9.10
+  hooks:
+  - id: ruff

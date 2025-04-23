@@ -1,7 +1,7 @@
 Optimizer Schedules
 =====================
 
-.. currentmodule:: optax
+.. currentmodule:: optax.schedules
 
 .. autosummary::
     constant_schedule
@@ -15,6 +15,7 @@ Optimizer Schedules
     piecewise_interpolate_schedule
     polynomial_schedule
     sgdr_schedule
+    warmup_constant_schedule
     warmup_cosine_decay_schedule
     warmup_exponential_decay_schedule
     Schedule
@@ -23,7 +24,6 @@ Optimizer Schedules
 
 
 .. autoclass:: Schedule
-   :members:
 
 Constant schedule
 ~~~~~~~~~~~~~~~~~
@@ -46,7 +46,6 @@ Inject hyperparameters
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: inject_hyperparams
 .. autoclass:: InjectHyperparamsState
-   :members:
 
 Linear schedules
 ~~~~~~~~~~~~~~~~
@@ -68,6 +67,7 @@ Reduce on plateau
 
 Schedules with warm-up
 ~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: warmup_constant_schedule
 .. autofunction:: warmup_cosine_decay_schedule
 .. autofunction:: warmup_exponential_decay_schedule
 

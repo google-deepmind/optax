@@ -28,8 +28,9 @@ S. Mohamed, M. Rosca, M. Figurnov, A Mnih.
   Monte Carlo Gradient Estimation in Machine Learning. JMLR, 2020.
 """
 
+from collections.abc import Callable
 import math
-from typing import Any, Callable, Sequence
+from typing import Any, Sequence
 
 import chex
 import jax
@@ -39,12 +40,14 @@ from optax._src import base
 from optax._src import utils
 
 
+@chex.warn_deprecated_function
 def score_function_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
-    num_samples: int) -> Sequence[chex.Array]:
+    num_samples: int,
+) -> Sequence[chex.Array]:
   r"""Score function gradient estimation.
 
   Approximates:
@@ -59,8 +62,8 @@ def score_function_jacobians(
     function: Function f(x) for which to estimate grads_{params} E_dist f(x).
       The function takes in one argument (a sample from the distribution) and
       returns a floating point value.
-    params: A tuple of jnp arrays.
-      The parameters for which to construct the distribution.
+    params: A tuple of jnp arrays. The parameters for which to construct the
+      distribution.
     dist_builder: a constructor which builds a distribution given the input
       parameters specified by params. `dist_builder(params)` should return a
       valid distribution.
@@ -74,7 +77,11 @@ def score_function_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
+
   def surrogate(params):
     dist = dist_builder(*params)
     one_sample_surrogate_fn = lambda x: function(x) * dist.log_prob(x)
@@ -86,12 +93,14 @@ def score_function_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
+@chex.warn_deprecated_function
 def pathwise_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
-    num_samples: int) -> Sequence[chex.Array]:
+    num_samples: int,
+) -> Sequence[chex.Array]:
   r"""Pathwise gradient estimation.
 
   Approximates:
@@ -108,8 +117,8 @@ def pathwise_jacobians(
     function: Function f(x) for which to estimate grads_{params} E_dist f(x).
       The function takes in one argument (a sample from the distribution) and
       returns a floating point value.
-    params: A tuple of jnp arrays.
-      The parameters for which to construct the distribution.
+    params: A tuple of jnp arrays. The parameters for which to construct the
+      distribution.
     dist_builder: a constructor which builds a distribution given the input
       parameters specified by params. `dist_builder(params)` should return a
       valid distribution.
@@ -123,7 +132,11 @@ def pathwise_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
+
   def surrogate(params):
     # We vmap the function application over samples - this ensures that the
     # function we use does not have to be vectorized itself.
@@ -133,13 +146,15 @@ def pathwise_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
+@chex.warn_deprecated_function
 def measure_valued_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
-    coupling: bool = True) -> Sequence[chex.Array]:
+    coupling: bool = True,
+) -> Sequence[chex.Array]:
   r"""Measure valued gradient estimation.
 
   Approximates:
@@ -154,8 +169,8 @@ def measure_valued_jacobians(
     function: Function f(x) for which to estimate grads_{params} E_dist f(x).
       The function takes in one argument (a sample from the distribution) and
       returns a floating point value.
-    params: A tuple of jnp arrays.
-      The parameters for which to construct the distribution.
+    params: A tuple of jnp arrays. The parameters for which to construct the
+      distribution.
     dist_builder: a constructor which builds a distribution given the input
       parameters specified by params. `dist_builder(params)` should return a
       valid distribution.
@@ -171,30 +186,40 @@ def measure_valued_jacobians(
     The mean of this vector is the gradient wrt to parameters that can be used
       for learning. The entire jacobian vector can be used to assess estimator
       variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   if dist_builder is not utils.multi_normal:
     raise ValueError(
-        'Unsupported distribution builder for measure_valued_jacobians!')
+        'Unsupported distribution builder for measure_valued_jacobians!'
+    )
   dist = dist_builder(*params)
   # Need to apply chain rule for log scale grad (instead of scale grad).
   return [
       measure_valued_estimation_mean(
-          function, dist, rng, num_samples, coupling=coupling),
-      jnp.exp(dist.log_scale) * measure_valued_estimation_std(
-          function, dist, rng, num_samples, coupling=coupling)]
+          function, dist, rng, num_samples, coupling=coupling
+      ),
+      jnp.exp(dist.log_scale)
+      * measure_valued_estimation_std(
+          function, dist, rng, num_samples, coupling=coupling
+      ),
+  ]
 
 
+@chex.warn_deprecated_function
 def measure_valued_estimation_mean(
     function: Callable[[chex.Array], float],
     dist: Any,
     rng: chex.PRNGKey,
     num_samples: int,
-    coupling: bool = True) -> chex.Array:
+    coupling: bool = True,
+) -> chex.Array:
   """Measure valued grads of a Gaussian expectation of `function` wrt the mean.
 
   Args:
-    function: Function f(x) for which to estimate grads_{mean} E_dist f(x).
-      The function takes in one argument (a sample from the distribution) and
+    function: Function f(x) for which to estimate grads_{mean} E_dist f(x). The
+      function takes in one argument (a sample from the distribution) and
       returns a floating point value.
     dist: a distribution on which we can call `sample`.
     rng: a PRNGKey key.
@@ -207,6 +232,9 @@ def measure_valued_estimation_mean(
     obtained for each sample. The mean of this vector can be used to update
     the mean parameter. The entire vector can be used to assess estimator
     variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)
@@ -215,16 +243,18 @@ def measure_valued_estimation_mean(
 
   pos_rng, neg_rng = jax.random.split(rng)
   pos_sample = jax.random.weibull_min(
-      pos_rng, scale=math.sqrt(2.), concentration=2., shape=dist_samples.shape)
+      pos_rng, scale=math.sqrt(2.0), concentration=2.0, shape=dist_samples.shape
+  )
 
   if coupling:
     neg_sample = pos_sample
   else:
     neg_sample = jax.random.weibull_min(
         neg_rng,
-        scale=math.sqrt(2.),
-        concentration=2.,
-        shape=dist_samples.shape)
+        scale=math.sqrt(2.0),
+        concentration=2.0,
+        shape=dist_samples.shape,
+    )
 
   # N x D
   positive_diag = mean + std * pos_sample
@@ -250,17 +280,19 @@ def measure_valued_estimation_mean(
   return grads
 
 
+@chex.warn_deprecated_function
 def measure_valued_estimation_std(
     function: Callable[[chex.Array], float],
     dist: Any,
     rng: chex.PRNGKey,
     num_samples: int,
-    coupling: bool = True) -> chex.Array:
+    coupling: bool = True,
+) -> chex.Array:
   """Measure valued grads of a Gaussian expectation of `function` wrt the std.
 
   Args:
-    function: Function f(x) for which to estimate grads_{std} E_dist f(x).
-      The function takes in one argument (a sample from the distribution) and
+    function: Function f(x) for which to estimate grads_{std} E_dist f(x). The
+      function takes in one argument (a sample from the distribution) and
       returns a floating point value.
     dist: a distribution on which we can call `sample`.
     rng: a PRNGKey key.
@@ -273,6 +305,9 @@ def measure_valued_estimation_std(
     obtained for each sample. The mean of this vector can be used to update
     the scale parameter. The entire vector can be used to assess estimator
     variance.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)
@@ -283,7 +318,8 @@ def measure_valued_estimation_std(
 
   # The only difference between mean and std gradients is what we sample.
   pos_sample = jax.random.double_sided_maxwell(
-      pos_rng, loc=0.0, scale=1.0, shape=dist_samples.shape)
+      pos_rng, loc=0.0, scale=1.0, shape=dist_samples.shape
+  )
   if coupling:
     unif_rvs = jax.random.uniform(neg_rng, dist_samples.shape)
     neg_sample = unif_rvs * pos_sample
@@ -314,4 +350,3 @@ def measure_valued_estimation_std(
 
   chex.assert_shape(grads, (num_samples,) + std.shape)
   return grads
-

@@ -14,51 +14,51 @@
 # ==============================================================================
 r"""Implementation of control variates.
 
- We are interested in computing the gradient using control variates:
-  \nabla_{\theta} E_{p(x; \theta)} f(x)
-    = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta) + E_{p(x; \theta)}]
-    = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta)]
-        + \nabla_{\theta} E_{p(x; \theta)}]
-   = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta)]
-        + \nabla_{\theta} E_{p(x; \theta)}]
-  = \nabla_{\theta} \int {p(x; \theta)} (f(x) - h(x; \theta)) dx
-       + \nabla_{\theta} E_{p(x; \theta)}]
-  =  \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
-       + [E_{p(x; \theta)} \nabla_{\theta} (f(x) - h(x; \theta))
-       + \nabla_{\theta} E_{p(x; \theta)}]
-  =  \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
-       - [E_{p(x; \theta)} \nabla_{\theta} h(x; \theta)
-       + \nabla_{\theta} E_{p(x; \theta)}]
+We are interested in computing the gradient using control variates:
+\nabla_{\theta} E_{p(x; \theta)} f(x)
+  = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta) + E_{p(x; \theta)}]
+  = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta)]
+      + \nabla_{\theta} E_{p(x; \theta)}]
+ = \nabla_{\theta} [E_{p(x; \theta)} f(x) - h(x; \theta)]
+      + \nabla_{\theta} E_{p(x; \theta)}]
+= \nabla_{\theta} \int {p(x; \theta)} (f(x) - h(x; \theta)) dx
+     + \nabla_{\theta} E_{p(x; \theta)}]
+=  \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
+     + [E_{p(x; \theta)} \nabla_{\theta} (f(x) - h(x; \theta))
+     + \nabla_{\theta} E_{p(x; \theta)}]
+=  \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
+     - [E_{p(x; \theta)} \nabla_{\theta} h(x; \theta)
+     + \nabla_{\theta} E_{p(x; \theta)}]
 
-  The above computation is performed in `control_variates_jacobians`.
+The above computation is performed in `control_variates_jacobians`.
 
-  When adding a new control variate, one does not need to implement the jacobian
-  computation, but instead has to implement the forward computation.
+When adding a new control variate, one does not need to implement the jacobian
+computation, but instead has to implement the forward computation.
 
-  Each control variate implemented has to satisfy the following API:
-    * control_variate(function)
-        This returns a tuple of three functions:
-           * The first element of the tuple is a function which returns the
-                control variate value for a set of samples. It takes in as
-                arguments the parameters used to construct the distribution,
-                the distributional samples, and the state of the control variate
-                (if any). The return value of this function will have shape
-                 `num_samples`, where `num_samples` is the number of samples
-                 provided as input.
-           * The second is a function returns the expected value of the control
-              variate. The input arguments of this function are the parameters
-              of the distribution and the state of the control variate.
-           * The third is a function which updates the state of the control
-              variate, and returns the updated states.
+Each control variate implemented has to satisfy the following API:
+  * control_variate(function)
+      This returns a tuple of three functions:
+         * The first element of the tuple is a function which returns the
+            control variate value for a set of samples. It takes in as
+            arguments the parameters used to construct the distribution,
+            the distributional samples, and the state of the control variate
+            (if any). The return value of this function will have shape
+            `num_samples`, where `num_samples` is the number of samples
+            provided as input.
+         * The second is a function returns the expected value of the control
+            variate. The input arguments of this function are the parameters
+            of the distribution and the state of the control variate.
+         * The third is a function which updates the state of the control
+            variate, and returns the updated states.
 
-  For examples, see `control_delta_method` and `moving_avg_baseline`.
+For examples, see `control_delta_method` and `moving_avg_baseline`.
 """
-from typing import Any, Callable, Sequence
+from collections.abc import Callable
+from typing import Any, Sequence
 
 import chex
 import jax
 import jax.numpy as jnp
-
 from optax._src import base
 
 
@@ -69,9 +69,11 @@ UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
+@chex.warn_deprecated_function
 def control_delta_method(
-    function: Callable[[chex.Array], float]) -> ControlVariate:
-  """The control delta covariate method.
+    function: Callable[[chex.Array], float],
+) -> ControlVariate:
+  """The control delta covariant method.
 
   Control variate obtained by performing a second order Taylor expansion
     on the cost function f at the mean of the input distribution.
@@ -81,21 +83,23 @@ def control_delta_method(
   For details, see: https://icml.cc/2012/papers/687.pdf
 
   Args:
-    function: The function for which to compute the control variate.
-      The function takes in one argument (a sample from the distribution) and
+    function: The function for which to compute the control variate. The
+      function takes in one argument (a sample from the distribution) and
       returns a floating point value.
 
   Returns:
     A tuple of three functions, to compute the control variate, the
     expected value of the control variate, and to update the control variate
     state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
 
   def delta(
-      params: base.Params,
-      sample: chex.Array,
-      state: CvState = None) -> chex.Array:
-    """"Second order expansion of `function` at the mean of the input dist."""
+      params: base.Params, sample: chex.Array, state: CvState = None
+  ) -> chex.Array:
+    """Second order expansion of `function` at the mean of the input dist."""
     del state
     mean_dist = params[0]
     centered_sample = sample - mean_dist
@@ -106,13 +110,13 @@ def control_delta_method(
     assert hessians.ndim == 2
     control_variate = function(mean_dist)
     control_variate += jnp.dot(centered_sample, grads)
-    control_variate += jnp.dot(
-        jnp.dot(centered_sample, hessians), centered_sample) / 2.
+    control_variate += (
+        jnp.dot(jnp.dot(centered_sample, hessians), centered_sample) / 2.0
+    )
     return control_variate
 
-  def expected_value_delta(
-      params: base.Params, state: CvState) -> jax.Array:
-    """"Expected value of second order expansion of `function` at dist mean."""
+  def expected_value_delta(params: base.Params, state: CvState) -> jax.Array:
+    """Expected value of second order expansion of `function` at dist mean."""
     del state
     mean_dist = params[0]
     var_dist = jnp.square(jnp.exp(params[1]))
@@ -123,67 +127,71 @@ def control_delta_method(
     assert hess_diags.ndim == 1
 
     # Trace (Hessian * Sigma) and we use that Sigma is diagonal.
-    expected_second_order_term = jnp.sum(var_dist * hess_diags) / 2.
+    expected_second_order_term = jnp.sum(var_dist * hess_diags) / 2.0
 
     expected_control_variate = function(mean_dist)
     expected_control_variate += expected_second_order_term
     return expected_control_variate
 
   def update_state(
-      params: base.Params,
-      samples: chex.Array,
-      state: CvState = None) -> CvState:
-    """"No state kept, so no operation is done."""
+      params: base.Params, samples: chex.Array, state: CvState = None
+  ) -> CvState:
+    """No state kept, so no operation is done."""
     del params, samples
     return state
 
   return delta, expected_value_delta, update_state
 
 
+@chex.warn_deprecated_function
 def moving_avg_baseline(
     function: Callable[[chex.Array], float],
     decay: float = 0.99,
     zero_debias: bool = True,
-    use_decay_early_training_heuristic=True) -> ControlVariate:
+    use_decay_early_training_heuristic=True,
+) -> ControlVariate:
   """A moving average baseline.
 
   It has no effect on the pathwise or measure valued estimator.
 
   Args:
-    function: The function for which to compute the control variate.
-      The function takes in one argument (a sample from the distribution) and
+    function: The function for which to compute the control variate. The
+      function takes in one argument (a sample from the distribution) and
       returns a floating point value.
     decay: The decay rate for the moving average.
     zero_debias: Whether or not to use zero debiasing for the moving average.
     use_decay_early_training_heuristic: Whether or not to use a heuristic which
-      overrides the decay value early in training based on
-        min(decay, (1.0 + i) / (10.0 + i)). This stabilises training and was
-        adapted from the Tensorflow codebase.
+      overrides the decay value early in training based on min(decay, (1.0 + i)
+      / (10.0 + i)). This stabilizes training and was adapted from the
+      Tensorflow codebase.
 
   Returns:
     A tuple of three functions, to compute the control variate, the
     expected value of the control variate, and to update the control variate
     state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
+
   def moving_avg(
-      params: base.Params,
-      samples: chex.Array,
-      state: CvState = None) -> CvState:
-    """"Return the moving average."""
+      params: base.Params, samples: chex.Array, state: CvState = None
+  ) -> CvState:
+    """Return the moving average."""
     del params, samples
     return state[0]
 
   def expected_value_moving_avg(
-      params: base.Params, state: CvState) -> chex.Array:
-    """"Return the moving average."""
+      params: base.Params, state: CvState
+  ) -> chex.Array:
+    """Return the moving average."""
     del params
     return state[0]
 
   def update_state(
-      params: base.Params,
-      samples: chex.Array,
-      state: CvState = None) -> CvState:
-    """"Update the moving average."""
+      params: base.Params, samples: chex.Array, state: CvState = None
+  ) -> CvState:
+    """Update the moving average."""
     del params
     value, i = state
 
@@ -194,10 +202,11 @@ def moving_avg_baseline(
 
     updated_value = iteration_decay * value
     updated_value += (1 - iteration_decay) * jnp.mean(
-        jax.vmap(function)(samples))
+        jax.vmap(function)(samples)
+    )
 
     if zero_debias:
-      updated_value /= (jnp.ones([]) - jnp.power(iteration_decay, i + 1))
+      updated_value /= jnp.ones([]) - jnp.power(iteration_decay, i + 1)
 
     return (jax.lax.stop_gradient(updated_value), i + 1)
 
@@ -208,6 +217,7 @@ def _map(cv, params, samples, state):
   return jax.vmap(lambda x: cv(params, x, state))(samples)
 
 
+@chex.warn_deprecated_function
 def control_variates_jacobians(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[
@@ -225,14 +235,14 @@ def control_variates_jacobians(
   r"""Obtain jacobians using control variates.
 
   We will compute each term individually. The first term will use stochastic
-    gradient estimation. The second term will be computes using Monte
-    Carlo estimation and automatic differentiation to compute
-    \nabla_{\theta} h(x; \theta). The the third term will be computed using
-    automatic differentiation, as we restrict ourselves to control variates
-    which compute this expectation in closed form.
+  gradient estimation. The second term will be computes using Monte
+  Carlo estimation and automatic differentiation to compute
+  \nabla_{\theta} h(x; \theta). The the third term will be computed using
+  automatic differentiation, as we restrict ourselves to control variates
+  which compute this expectation in closed form.
 
   This function updates the state of the control variate (once), before
-    computing the control variate coefficients.
+  computing the control variate coefficients.
 
   Args:
     function: Function f(x) for which to estimate grads_{params} E_dist f(x).
@@ -244,9 +254,8 @@ def control_variates_jacobians(
       Note that not all control variates will reduce variance for all
       estimators. For example, the `moving_avg_baseline` will make no difference
       to the measure valued or pathwise estimators.
-    params: A tuple of jnp arrays.
-      The parameters for which to construct the distribution and for which we
-      want to compute the jacobians.
+    params: A tuple of jnp arrays. The parameters for which to construct the
+      distribution and for which we want to compute the jacobians.
     dist_builder: a constructor which builds a distribution given the input
       parameters specified by params. `dist_builder(params)` should return a
       valid distribution.
@@ -256,34 +265,45 @@ def control_variates_jacobians(
       variates which keep states (such as the moving average baselines).
     estimate_cv_coeffs: Boolean. Whether or not to estimate the optimal control
       variate coefficient via `estimate_control_variate_coefficients`.
-    estimate_cv_coeffs_num_samples: The number of samples to use to estimate
-      the optimal coefficient. These need to be new samples to ensure that the
+    estimate_cv_coeffs_num_samples: The number of samples to use to estimate the
+      optimal coefficient. These need to be new samples to ensure that the
       objective is unbiased.
 
   Returns:
     A tuple of size two:
-        * A tuple of size `params`, each element is `num_samples x param.shape`
-            jacobian vector containing the estimates of the gradients obtained
-            for each sample.
-          The mean of this vector is the gradient wrt to parameters that can be
-          used for learning. The entire jacobian vector can be used to assess
-          estimator variance.
-        * The updated CV state.
+
+    * A tuple of size `params`, each element is `num_samples x param.shape`
+      jacobian vector containing the estimates of the gradients obtained
+      for each sample.
+      The mean of this vector is the gradient wrt to parameters that can be
+      used for learning. The entire jacobian vector can be used to assess
+      estimator variance.
+    * The updated CV state.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate
-  data_dim = jax.tree_util.tree_leaves(params)[0].shape[0]
+  data_dim = jax.tree.leaves(params)[0].shape[0]
   if estimate_cv_coeffs:
     cv_coeffs = estimate_control_variate_coefficients(
-        function, control_variate_from_function, grad_estimator, params,
-        dist_builder, rng, estimate_cv_coeffs_num_samples,
-        control_variate_state)
+        function,
+        control_variate_from_function,
+        grad_estimator,
+        params,
+        dist_builder,
+        rng,
+        estimate_cv_coeffs_num_samples,
+        control_variate_state,
+    )
   else:
     cv_coeffs = [1.0] * len(params)
 
   # \int \nabla_{\theta} {p(x; \theta)} (f(x) - h(x; \theta)) dx
   function_jacobians = grad_estimator(
-      function, params, dist_builder, rng, num_samples)
+      function, params, dist_builder, rng, num_samples
+  )
 
   # Chain rule since CVs can also depend on parameters - for example, for the
   # pathwise gradient estimator they have in order to have an effect on
@@ -293,30 +313,39 @@ def control_variates_jacobians(
   samples = dist_builder(*params).sample((num_samples,), seed=rng)
   # If the CV has state, update it.
   control_variate_state = update_state_cv(
-      params, samples, control_variate_state)
+      params, samples, control_variate_state
+  )
 
   def samples_fn(x):
     return stochastic_cv(
-        jax.lax.stop_gradient(params), x, control_variate_state)
+        jax.lax.stop_gradient(params), x, control_variate_state
+    )
 
   cv_jacobians = grad_estimator(
-      samples_fn, params, dist_builder, rng, num_samples)
+      samples_fn, params, dist_builder, rng, num_samples
+  )
 
-  # The gradients of the stochastic covariate with respect to the parameters.
+  # The gradients of the stochastic covariant with respect to the parameters.
   def param_fn(x):
-    return jnp.mean(_map(
-        stochastic_cv, x,
-        jax.lax.stop_gradient(samples), control_variate_state))
+    return jnp.mean(
+        _map(
+            stochastic_cv,
+            x,
+            jax.lax.stop_gradient(samples),
+            control_variate_state,
+        )
+    )
 
   # [E_{p(x; \theta)} \nabla_{\theta} h(x; \theta)
   cv_param_grads = jax.grad(param_fn)(params)
   # The gradients of the closed form expectation of the control variate
   # with respect to the parameters: # \nabla_{\theta} E_{p(x; \theta)}].
   expected_value_grads = jax.grad(
-      lambda x: expected_value_cv(x, control_variate_state))(params)
+      lambda x: expected_value_cv(x, control_variate_state)
+  )(params)
 
   jacobians = []
-  for param_index, param in enumerate(jax.tree_util.tree_leaves(params)):
+  for param_index, param in enumerate(jax.tree.leaves(params)):
     chex.assert_shape(function_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_jacobians[param_index], (num_samples, data_dim))
     chex.assert_shape(cv_param_grads[param_index], (data_dim,))
@@ -337,6 +366,7 @@ def control_variates_jacobians(
   return jacobians, control_variate_state
 
 
+@chex.warn_deprecated_function
 def estimate_control_variate_coefficients(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[
@@ -372,9 +402,8 @@ def estimate_control_variate_coefficients(
       Note that not all control variates will reduce variance for all
       estimators. For example, the `moving_avg_baseline` will make no difference
       to the measure valued or pathwise estimators.
-    params: A tuple of jnp arrays.
-      The parameters for which to construct the distribution and for which we
-      want to compute the jacobians.
+    params: A tuple of jnp arrays. The parameters for which to construct the
+      distribution and for which we want to compute the jacobians.
     dist_builder: a constructor which builds a distribution given the input
       parameters specified by params. `dist_builder(params)` should return a
       valid distribution.
@@ -387,6 +416,9 @@ def estimate_control_variate_coefficients(
   Returns:
     A list of control variate coefficients (each a scalar), for each parameter
     in `params`.
+
+  .. deprecated:: 0.2.4
+    This function will be removed in 0.3.0
   """
   # Resample to avoid biased gradients.
   cv_rng, _ = jax.random.split(rng)
@@ -396,9 +428,14 @@ def estimate_control_variate_coefficients(
   # Samples have to be the same so we use the same rng.
   cv_jacobians = grad_estimator(
       lambda x: stochastic_cv(params, x, control_variate_state),
-      params, dist_builder, cv_rng, num_samples)
+      params,
+      dist_builder,
+      cv_rng,
+      num_samples,
+  )
   function_jacobians = grad_estimator(
-      function, params, dist_builder, cv_rng, num_samples)
+      function, params, dist_builder, cv_rng, num_samples
+  )
 
   def compute_coeff(param_cv_jacs, param_f_jacs):
     assert param_f_jacs.ndim == 2
@@ -418,5 +455,7 @@ def estimate_control_variate_coefficients(
     cv_coeff = jnp.sum(cov) / (jnp.sum(jnp.var(param_cv_jacs, axis=0)) + eps)
     return jax.lax.stop_gradient(cv_coeff)
 
-  return [compute_coeff(cv_jacobians[i], function_jacobians[i])
-          for i in range(len(params))]
+  return [
+      compute_coeff(cv_jacobians[i], function_jacobians[i])
+      for i in range(len(params))
+  ]

@@ -47,7 +47,8 @@ transformations such as :func:`jax.grad` or :func:`jax.value_and_grad`:
 [-0.755, 0.09, 0.665]
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import chex
 import jax

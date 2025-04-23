@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `lookahead.py`."""
+"""Tests for the lookahead optimizer in `lookahead.py`."""
 
 from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
@@ -32,11 +30,12 @@ from optax.tree_utils import _state_utils
 
 
 def _build_sgd():
-  return alias.sgd(1.)
+  return alias.sgd(1.0)
 
 
-class TestOptimizerState(NamedTuple):
+class OptimizerTestState(NamedTuple):
   """Fast optimizer state for the lookahead tests."""
+
   aggregate_grads: base.Params
   # Include a variable with non-zero initial value to check that it is reset
   # correctly by the lookahead optimizer.
@@ -47,18 +46,18 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   """Fast optimizer for the lookahead tests."""
 
   # Use SGD for simplicity but add non-trivial optimizer state so that the
-  # resetting behaviour of lookahead can be tested.
+  # resetting behavior of lookahead can be tested.
   def init_fn(params):
-    aggregate_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
-    return TestOptimizerState(aggregate_grads, is_reset=True)
+    aggregate_grads = jax.tree.map(jnp.zeros_like, params)
+    return OptimizerTestState(aggregate_grads, is_reset=True)
 
   def update_fn(updates, state, params):
     # The test optimizer does not use the parameters, but we check that they
     # have been passed correctly.
     chex.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
-    updates = jax.tree_util.tree_map(lambda u: step_size * u, updates)
-    return updates, TestOptimizerState(aggregate_grads, is_reset=False)
+    updates = jax.tree.map(lambda u: step_size * u, updates)
+    return updates, OptimizerTestState(aggregate_grads, is_reset=False)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -68,10 +67,11 @@ class LookaheadTest(chex.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.grads = {'x': np.array(2.), 'y': np.array(-2.)}
-    self.initial_params = {'x': np.array(3.), 'y': np.array(-3.)}
+    self.grads = {'x': np.array(2.0), 'y': np.array(-2.0)}
+    self.initial_params = {'x': np.array(3.0), 'y': np.array(-3.0)}
     self.synced_initial_params = lookahead.LookaheadParams.init_synced(
-        self.initial_params)
+        self.initial_params
+    )
 
   def loop(self, optimizer, num_steps, params):
     """Performs a given number of optimizer steps."""
@@ -94,10 +94,12 @@ class LookaheadTest(chex.TestCase):
     """Tests the lookahead optimizer in an analytically tractable setting."""
     sync_period = 3
     optimizer = lookahead.lookahead(
-        _test_optimizer(-0.5), sync_period=sync_period, slow_step_size=1 / 3)
+        _test_optimizer(-0.5), sync_period=sync_period, slow_step_size=1 / 3
+    )
 
-    final_params, _ = self.loop(optimizer, 2 * sync_period,
-                                self.synced_initial_params)
+    final_params, _ = self.loop(
+        optimizer, 2 * sync_period, self.synced_initial_params
+    )
     # x steps must be: 3 -> 2 -> 1 -> 2 (sync) -> 1 -> 0 -> 1 (sync).
     # Similarly for y (with sign flipped).
     correct_final_params = {'x': 1, 'y': -1}
@@ -113,7 +115,8 @@ class LookaheadTest(chex.TestCase):
         fast_optimizer,
         sync_period=sync_period,
         slow_step_size=0.5,
-        reset_state=reset_state)
+        reset_state=reset_state,
+    )
 
     _, opt_state = self.loop(optimizer, num_steps, self.synced_initial_params)
 
@@ -124,8 +127,9 @@ class LookaheadTest(chex.TestCase):
     if reset_state:
       correct_state = fast_optimizer.init(self.initial_params)
     else:
-      _, correct_state = self.loop(fast_optimizer, num_steps,
-                                   self.initial_params)
+      _, correct_state = self.loop(
+          fast_optimizer, num_steps, self.initial_params
+      )
 
     chex.assert_trees_all_close(fast_state, correct_state)
 
@@ -135,15 +139,18 @@ class LookaheadTest(chex.TestCase):
       [1, 0, {'x': np.array(3.), 'y': np.array(-3.)}],
       [1, 1, {'x': np.array(-1.), 'y': np.array(1.)}],
       [2, 1, {'x': np.array(-1.), 'y': np.array(1.)}])  # pyformat: disable
-  def test_lookahead_edge_cases(self, sync_period, slow_step_size,
-                                correct_result):
+  def test_lookahead_edge_cases(
+      self, sync_period, slow_step_size, correct_result
+  ):
     """Checks special cases of the lookahed optimizer parameters."""
     # These edge cases are important to check since users might use them as
     # simple ways of disabling lookahead in experiments.
     optimizer = lookahead.lookahead(
-        _test_optimizer(-1), sync_period, slow_step_size)
+        _test_optimizer(-1), sync_period, slow_step_size
+    )
     final_params, _ = self.loop(
-        optimizer, num_steps=2, params=self.synced_initial_params)
+        optimizer, num_steps=2, params=self.synced_initial_params
+    )
     chex.assert_trees_all_close(final_params.slow, correct_result)
 
 

@@ -14,7 +14,8 @@
 # ==============================================================================
 """Base interfaces and datatypes."""
 
-from typing import Any, Callable, NamedTuple, Optional, Protocol, runtime_checkable, Sequence, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Protocol, Sequence, Union, runtime_checkable
 
 import chex
 import jax
@@ -22,7 +23,8 @@ import jax.numpy as jnp
 
 NO_PARAMS_MSG = (
     'You are using a transformation that requires the current value of '
-    'parameters, but you are not passing `params` when calling `update`.')
+    'parameters, but you are not passing `params` when calling `update`.'
+)
 
 PyTree = Any
 Shape = Sequence[int]
@@ -40,9 +42,7 @@ ScalarOrSchedule = Union[float, jax.Array, Schedule]
 class StatefulSchedule(Protocol):
   """Base interface for stateful schedules."""
 
-  def init(
-      self
-  ) -> ScheduleState:
+  def init(self) -> ScheduleState:
     """Initialize the state of the stateful schedule."""
 
   def update(
@@ -84,7 +84,7 @@ class TransformUpdateFn(Protocol):
 
   The `update` step takes a tree of candidate parameter `updates` (e.g. their
   gradient with respect to some loss), an arbitrary structured `state`, and the
-  current `params` of the model being optimised. The `params` argument is
+  current `params` of the model being optimized. The `params` argument is
   optional, it must however be provided when using transformations that require
   access to the current values of the parameters.
 
@@ -93,11 +93,8 @@ class TransformUpdateFn(Protocol):
   """
 
   def __call__(
-      self,
-      updates: Updates,
-      state: OptState,
-      params: Optional[Params] = None
-    ) -> tuple[Updates, OptState]:
+      self, updates: Updates, state: OptState, params: Optional[Params] = None
+  ) -> tuple[Updates, OptState]:
     """The `update` function.
 
     Args:
@@ -124,14 +121,14 @@ class TransformUpdateExtraArgsFn(Protocol):
 
     For example, an update function that requires an additional loss parameter
     (which might be useful for implementing learning rate schedules that depend
-    on the current loss value) could be expressed as follows.
+    on the current loss value) could be expressed as follows:
 
     >>> def update(updates, state, params=None, *, loss, **extra_args):
-    >>>   del extra_args
-    >>>   # use loss value
+    ...   del extra_args
+    ...   # use loss value
 
-    Note that the loss value is keyword only, (it follows a `*` in the
-    signature of the function). This means users will get explicit errors if
+    Note that the loss value is keyword only, (it follows a ``*`` in the
+    signature of the function). This implies users will get explicit errors if
     they try to use this gradient transformation without providing the required
     argument.
 
@@ -144,35 +141,41 @@ class TransformUpdateExtraArgsFn(Protocol):
         arguments, ignoring those that are not needed for the current
         transformation. Transformations that require specific extra args should
         specify these using keyword-only arguments.
+
     Returns:
       Transformed updates, and an updated value for the state.
     """
 
 
 class GradientTransformation(NamedTuple):
+  # pylint: disable=line-too-long
   """A pair of pure functions implementing a gradient transformation.
+  
+  Prefer :class:`GradientTransformationExtraArgs` for new optimizers.
 
-  Optax optimizers are all implemented as _gradient transformations_.
+  Optax optimizers are all implemented as *gradient transformations*.
   A gradient transformation is defined to be a pair of pure functions, which
   are combined together in a `NamedTuple` so that they can be referred to by
   name.
 
   Note that an extended API is provided for users wishing to build optimizers
   that take additional arguments during the update step. For more details,
-  see ``GradientTransoformationExtraArgs``.
+  see :func:`optax.GradientTransformationExtraArgs`.
 
   Since gradient transformations do not contain any internal state, all stateful
   optimizer properties (such as the current step count when using optimizer
-  scheduels, or  momemtum values) are passed through optax gradient
-  transformations by using the optimizer _state_ pytree. Each time a gradient
+  schedules or  momentum values) are passed through optax gradient
+  transformations by using the optimizer *state* pytree. Each time a gradient
   transformation is applied, a new state is computed and returned, ready to be
   passed to the next call to the gradient transformation.
 
   Since gradient transformations are pure, idempotent functions, the only way
-  to change the behaviour of a gradient transformation between steps, is to
+  to change the behavior of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
-  optimizer state in order to control the behaviour of an optax gradient
-  transformation, see the meta-learning example in the optax documentation.
+  optimizer state in order to control the behavior of an optax gradient
+  transformation see the `meta-learning example
+  <https://optax.readthedocs.io/en/latest/_collections/examples/meta_learning.html>`_
+  in the optax documentation.
 
   Attributes:
     init: A pure function which, when called with an example instance of the
@@ -184,6 +187,7 @@ class GradientTransformation(NamedTuple):
       function), and optionally the current params. The update function then
       returns the computed gradient updates, and a new optimizer state.
   """
+  # pylint: disable=line-too-long
   init: TransformInitFn
   update: TransformUpdateFn
 
@@ -205,11 +209,18 @@ class GradientTransformationExtraArgs(GradientTransformation):
     update: Overrides the type signature of the update in the base type to
       accept extra arguments.
   """
+
   update: TransformUpdateExtraArgsFn
 
 
 class EmptyState(NamedTuple):
   """An empty state for the simplest stateless transformations."""
+
+
+def init_empty_state(params: Params) -> EmptyState:
+  """Init function for a :class:`GradientTransformation` with empty state."""
+  del params
+  return EmptyState()
 
 
 def identity() -> GradientTransformation:
@@ -222,17 +233,14 @@ def identity() -> GradientTransformation:
   to be left unchanged when the updates are applied to them.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
-
-  def init_fn(_):
-    return EmptyState()
 
   def update_fn(updates, state, params=None):
     del params
     return updates, state
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def set_to_zero() -> GradientTransformation:
@@ -252,18 +260,14 @@ def set_to_zero() -> GradientTransformation:
   parameters, unnecessary computations will in general be dropped.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
-
-  def init_fn(params):
-    del params
-    return EmptyState()
 
   def update_fn(updates, state, params=None):
     del params  # Unused by the zero transform.
-    return jax.tree_util.tree_map(jnp.zeros_like, updates), state
+    return jax.tree.map(jnp.zeros_like, updates), state
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def stateless(
@@ -275,21 +279,18 @@ def stateless(
   does not require saved state between iterations.
 
   Args:
-    f: Update function that takes in updates (e.g. gradients) and parameters
-      and returns updates. The parameters may be `None`.
+    f: Update function that takes in updates (e.g. gradients) and parameters and
+      returns updates. The parameters may be `None`.
 
   Returns:
-    An `optax.GradientTransformation`.
+    A :class:`optax.GradientTransformation`.
   """
-
-  def init_fn(_):
-    return EmptyState()
 
   def update_fn(updates, state, params=None):
     del state
     return f(updates, params), EmptyState()
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def stateless_with_tree_map(
@@ -299,7 +300,7 @@ def stateless_with_tree_map(
 
   This wrapper eliminates the boilerplate needed to create a transformation that
   does not require saved state between iterations, just like optax.stateless.
-  In addition, this function will apply the tree_map over update/params for you.
+  In addition, this function will apply the tree map over update/params for you.
 
   Args:
     f: Update function that takes in an update array (e.g. gradients) and
@@ -307,21 +308,18 @@ def stateless_with_tree_map(
       `None`.
 
   Returns:
-    An `optax.GradientTransformation`.
+    A :class:`optax.GradientTransformation`.
   """
-
-  def init_fn(_):
-    return EmptyState()
 
   def update_fn(updates, state, params=None):
     del state
     if params is not None:
-      return jax.tree_util.tree_map(f, updates, params), EmptyState()
+      return jax.tree.map(f, updates, params), EmptyState()
     else:
       f_ = lambda u: f(u, None)
-      return jax.tree_util.tree_map(f_, updates), EmptyState()
+      return jax.tree.map(f_, updates), EmptyState()
 
-  return GradientTransformation(init_fn, update_fn)
+  return GradientTransformation(init_empty_state, update_fn)
 
 
 def with_extra_args_support(

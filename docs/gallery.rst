@@ -2,7 +2,7 @@
 .. _gallery:
 
 🖼️ Example gallery
-=================
+==================
 
 .. toctree::
    :glob:
@@ -29,7 +29,7 @@
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Gradient Accumulation</div>
+      <div class="sphx-glr-thumbnail-title">Gradient Accumulation.</div>
     </div>
 
 
@@ -90,7 +90,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/flax_optax.png
     :alt:
 
   :doc:`_collections/examples/flax_example`
@@ -107,7 +107,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/lookahead.png
     :alt:
 
   :doc:`_collections/examples/lookahead_mnist`
@@ -124,7 +124,7 @@
 
 .. only:: html
 
-  .. image:: /images/favicon.svg
+  .. image:: /images/examples/mnist.png
     :alt:
 
   :doc:`_collections/examples/mlp_mnist`
@@ -150,11 +150,78 @@
       <div class="sphx-glr-thumbnail-title">Adversarial training of CNN on MNIST.</div>
     </div>
 
+
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Character-level Transformer on Tiny Shakespeare.">
+
+.. only:: html
+
+  .. image:: /images/examples/tiny_shakespeare.png
+     :alt: Character-level Transformer on Tiny Shakespeare
+
+  :doc:`_collections/examples/nanolm`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Character-level Transformer on Tiny Shakespeare.</div>
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="LBFGS and linesearch.">
+
+.. only:: html
+
+  .. image:: /images/examples/lbfgs.png
+    :alt:
+
+  :doc:`_collections/examples/lbfgs`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Using LBFGS and linesearch.</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Differentiable functions with perturbations">
+
+.. only:: html
+
+  .. image:: /images/examples/perturbations.png
+    :alt:
+
+  :doc:`_collections/examples/perturbations`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Differentiable functions with perturbations.</div>
+    </div>    
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Solving the linear assignment problem.">
+
+.. only:: html
+
+  .. image:: /images/examples/linear_assignment_problem.png
+    :alt:
+
+  :doc:`_collections/examples/linear_assignment_problem`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Solving the linear assignment problem.</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
 
 
 Contrib Examples
@@ -186,7 +253,7 @@ Examples that make use of the :doc:`api/contrib` module.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learing rate scheduler.">
+      <div class="sphx-glr-thumbcontainer" tooltip="Example usage of reduce_on_plateau learning rate scheduler.">
 
 .. only:: html
 
@@ -197,7 +264,7 @@ Examples that make use of the :doc:`api/contrib` module.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learing rate scheduler.</div>
+      <div class="sphx-glr-thumbnail-title">Example usage of reduce_on_plateau learning rate scheduler.</div>
     </div>
 
 
@@ -215,6 +282,22 @@ Examples that make use of the :doc:`api/contrib` module.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Sharpness-Aware Minimization (SAM).</div>
+    </div>
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="AdEMAMix.">
+
+.. only:: html
+
+  .. image:: /images/examples/contrib/ademamix_rosenbrock.png
+    :alt:
+
+  :doc:`_collections/examples/contrib/rosenbrock_ademamix`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">AdEMAMix.</div>
     </div>
 
 
