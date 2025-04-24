@@ -60,7 +60,7 @@ python3 -m uv pip uninstall optax
 python3 -m flake8 --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
-pylint .
+pylint optax
 
 # Build the package.
 python3 -m uv pip install --quiet build
