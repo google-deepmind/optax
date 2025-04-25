@@ -251,7 +251,7 @@ def set_to_zero() -> GradientTransformation:
   returned from this transformation are applied to the model parameters, the
   model parameters will remain unchanged.
 
-  This can be used in combination with `multi_transform` or `masked` to freeze
+  This can be used in combination with `partition` or `masked` to freeze
   (i.e. keep fixed) some parts of the tree of model parameters while applying
   gradient updates to other parts of the tree.
 
