@@ -24,6 +24,8 @@ from optax.contrib._ademamix import scale_by_simplified_ademamix
 from optax.contrib._ademamix import ScaleByAdemamixState
 from optax.contrib._ademamix import ScaleBySimplifiedAdEMAMixState
 from optax.contrib._ademamix import simplified_ademamix
+from optax.contrib._adopt import adopt
+from optax.contrib._adopt import scale_by_adopt
 from optax.contrib._cocob import cocob
 from optax.contrib._cocob import COCOBState
 from optax.contrib._cocob import scale_by_cocob

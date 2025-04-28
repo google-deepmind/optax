@@ -9,6 +9,7 @@ Experimental features and algorithms that don't meet the
 .. autosummary::
     acprop
     ademamix
+    adopt
     simplified_ademamix
     cocob
     COCOBState
@@ -54,6 +55,11 @@ Simplified AdEMAMix
 .. autofunction:: simplified_ademamix
 .. autofunction:: scale_by_simplified_ademamix
 .. autoclass:: ScaleBySimplifiedAdEMAMixState
+
+ADOPT
+~~~~~
+.. autofunction:: adopt
+.. autofunction:: scale_by_adopt
 
 Asynchronous-centering-Prop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

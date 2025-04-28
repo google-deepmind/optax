@@ -42,6 +42,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'simplified_ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'adopt', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'cocob', 'opt_kwargs': {}},
     {'opt_name': 'cocob', 'opt_kwargs': {'weight_decay': 1e-2}},
     {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
@@ -334,7 +335,7 @@ class ContribTest(chex.TestCase):
     # Add here the hyperparameters that cannot be injected with
     # inject_hyperparams.
     static_args = []
-    for uninjectable_hparam in ['warmup_steps', 'num_betas']:
+    for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)
