@@ -455,7 +455,7 @@ def estimate_control_variate_coefficients(
     cv_coeff = jnp.sum(cov) / (jnp.sum(jnp.var(param_cv_jacs, axis=0)) + eps)
     return jax.lax.stop_gradient(cv_coeff)
 
-  return [
+  return [  # pytype: disable=bad-return-type
       compute_coeff(cv_jacobians[i], function_jacobians[i])
       for i in range(len(params))
   ]
