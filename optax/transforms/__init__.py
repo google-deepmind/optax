@@ -55,6 +55,7 @@ from optax.transforms._layouts import flatten
 from optax.transforms._masking import masked
 from optax.transforms._masking import MaskedNode
 from optax.transforms._masking import MaskedState
+from optax.transforms._freezing import freeze, selective_transform
 
 
 __all__ = (
@@ -91,4 +92,6 @@ __all__ = (
     "TraceState",
     "zero_nans",
     "ZeroNansState",
+    "freeze",
+    "selective_transform",
 )
