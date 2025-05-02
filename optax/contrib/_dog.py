@@ -37,14 +37,14 @@ import optax.tree_utils as otu
 class DoGState(NamedTuple):
   """State for DoG optimizer."""
 
-  first_step: jax.Array  # bool
+  init_step: jax.Array  # bool
   init_params: chex.ArrayTree
   estim_dist: jax.Array
   sum_sq_norm_grads: jax.Array
 
 
 def scale_by_dog(
-    reps_rel: float = 1e-6,
+    init_step_length: float = 1e-6,
     eps: float = 1e-8,
     init_learning_rate: Optional[float] = None,
 ) -> base.GradientTransformation:
@@ -53,21 +53,15 @@ def scale_by_dog(
   See :func:`optax.contrib.dog` for more details.
 
   Args:
-    reps_rel: value to use to compute the  initial distance
-      (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
-      initial  weights of  the model (or the parameter group), and g_0 is the
-      gradient of the first step.
+    init_step_length: Initial step length (r_epsilon in the paper).
       As discussed in the paper, this value should be small enough to ensure
-      that the first update step will be small enough to not cause the model to
+      that the initial update step will be small enough to not cause the model to
       diverge.
       Suggested value is 1e-6, unless the model uses batch-normalization,
       in which case the suggested value is 1e-4.
     eps: epsilon used for numerical stability - added to the sum of squared
       norm of gradients.
-    init_learning_rate: if specified, this value will be used the the initial
-      learning rate (i.e. first step size) instead of the rule described above
-      with reps_rel.
+    init_learning_rate: if specified, use this as the learning rate for the initial step.
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
@@ -81,41 +75,28 @@ def scale_by_dog(
     # parameters and updates.
     params_dtype = otu.tree_dtype(params, 'lowest')
     return DoGState(
-        first_step=jnp.asarray(True),
-        init_params=otu.tree_zeros_like(params),
-        estim_dist=jnp.asarray(0.0, dtype=params_dtype),
+        init_step=jnp.asarray(True),
+        init_params=params,
+        estim_dist=jnp.asarray(init_step_length, dtype=params_dtype),
         sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
     )
 
   def update_fn(
       updates: base.Updates, state: DoGState, params: base.Params
   ) -> tuple[base.Updates, DoGState]:
-
-    # Reduces to norm of init_params for first step
     curr_distance = otu.tree_l2_norm(otu.tree_sub(state.init_params, params))
-    curr_distance = jnp.where(
-        state.first_step, reps_rel * (1 + curr_distance), curr_distance
-    )
-    init_params = jax.tree.map(
-        lambda p, ip: jnp.where(state.first_step, p, ip),
-        params,
-        state.init_params,
-    )
 
     estim_dist = jnp.maximum(state.estim_dist, curr_distance)
-    sq_norm_grads = otu.tree_l2_norm(updates, squared=True)
-    sum_sq_norm_grads = sq_norm_grads + state.sum_sq_norm_grads
+    sum_sq_norm_grads = state.sum_sq_norm_grads + otu.tree_l2_norm(updates, squared=True)
     learning_rate = estim_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
     if init_learning_rate is not None:
-      learning_rate = jnp.where(
-          state.first_step, init_learning_rate, learning_rate
-      )
+      learning_rate = jnp.where(state.init_step, init_learning_rate, learning_rate)
 
     new_updates = otu.tree_scale(learning_rate, updates)
     return new_updates, DoGState(
-        first_step=jnp.asarray(False),
-        init_params=init_params,
+        init_step=jnp.asarray(False),
+        init_params=state.init_params,
         estim_dist=estim_dist,
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
@@ -125,47 +106,39 @@ def scale_by_dog(
 
 def dog(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    reps_rel: float = 1e-6,
+    init_step_length: float = 1e-6,
     eps: float = 1e-8,
     init_learning_rate: Optional[float] = None,
     weight_decay: Optional[float] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
-  r"""Distance over Gradients optimizer.
+  r"""Distance over Gradients (DoG) optimizer.
 
-  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t`
+  DoG updates parameters :math:`x_t` with stochastic gradients :math:`g_t`
   according to the update rule:
 
   .. math::
 
     \begin{align*}
-      \eta_t &= \frac{\bar r_t}{
-        \sqrt{\sum_{i\le t}{\|g_i\|^2+\epsilon}}}\\
-      \bar r_t & = \begin{cases}
-        \max_{i\le t}{\|x_i-x_0\|} & \text{if } t \ge 1 \\
-        r_\epsilon & \text{if } t = 0
-      \end{cases} \\
+      r_t &= \| x_t - x_0 \| \\
+      \bar{r}_t &= \max \left\{ r_\epsilon, \max_{k \leq t} r_k \right\} \\
+      G_t &= \sum_{k \leq t} \|g_k\|^2 \\
+      \eta_t &= \frac{\bar{r}_t}{\sqrt{G_t + \epsilon}} \\
       x_{t+1} & = x_{t} - \eta_t\, g_t
     \end{align*}
 
   Args:
     learning_rate: optional learning rate (potentially varying according to
       some predetermined scheduler).
-    reps_rel: a small user-specified initial movement size parameter
-      (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
-      initial  weights of  the model (or the parameter group), and g_0 is the
-      gradient of the first step.
+    init_step_length: Initial step length (r_epsilon in the paper).
       As discussed in the paper, this value should be small enough to ensure
-      that the first update step will be small enough to not cause the model to
+      that the initial update step will be small enough to not cause the model to
       diverge.
       Suggested value is 1e-6, unless the model uses batch-normalization,
       in which case the suggested value is 1e-4.
     eps: epsilon used for numerical stability - added to the sum of squared
       norm of gradients.
-    init_learning_rate: if specified, this value will be used the the initial
-      learning rate (i.e. first step size) instead of the rule described above
-      with reps_rel.
+    init_learning_rate: if specified, use this as the learning rate for the initial step.
     weight_decay: Strength of the weight decay regularization.
     mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
@@ -212,7 +185,7 @@ def dog(
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),
-      scale_by_dog(reps_rel, eps, init_learning_rate),
+      scale_by_dog(init_step_length, eps, init_learning_rate),
       transform.scale_by_learning_rate(learning_rate),
   )
 
