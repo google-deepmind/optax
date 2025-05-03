@@ -75,6 +75,7 @@ _OPTIMIZERS_UNDER_TEST = (
     },
     {'opt_name': 'novograd', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'optimistic_adam', 'opt_kwargs': {'learning_rate': 2e-3}},
+    {'opt_name': 'optimistic_adam_v2', 'opt_kwargs': {'learning_rate': 2e-3}},
     {
         'opt_name': 'optimistic_gradient_descent',
         'opt_kwargs': {'learning_rate': 2e-3, 'alpha': 0.7, 'beta': 0.1},

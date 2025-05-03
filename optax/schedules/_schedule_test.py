@@ -14,11 +14,20 @@
 # ==============================================================================
 """Tests for methods in `schedule.py`."""
 
+import functools
+import inspect
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
+
+from optax._src import alias
+from optax._src import alias_test
+from optax._src import base
+from optax._src import update
 from optax.schedules import _schedule
 
 
@@ -700,6 +709,56 @@ class OneCycleTest(chex.TestCase):
     with self.assertRaises(ValueError):
       _schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.0)
 
+
+class ScheduleAsLearningRateTest(parameterized.TestCase):
+  @parameterized.product(alias_test._OPTIMIZERS_UNDER_TEST)
+  def test_optimization(self, opt_name, opt_kwargs):
+    opt_setup = getattr(alias, opt_name)
+
+    # check if the optimizer is annotated to accept a learning rate schedule
+    opt_setup_signature = inspect.signature(opt_setup)
+    lr_arg = opt_setup_signature.parameters.get('learning_rate', None)
+    if lr_arg is None or lr_arg.annotation not in (base.ScalarOrSchedule,
+                                                   base.Schedule):
+      self.skipTest('Optimizer doesn\'t accept a learning schedule.')
+
+    opt_kwargs_with_schedule = dict(
+        opt_kwargs, learning_rate=_schedule.constant_schedule(1e-3))
+    opt_kwargs_with_lr = dict(opt_kwargs, learning_rate=1e-3)
+
+    # setup the optimizer and run on a test function
+    opt_with_schedule = opt_setup(**opt_kwargs_with_schedule)
+    opt_with_lr = opt_setup(**opt_kwargs_with_lr)
+    initial_params, _, objective = alias_test._setup_parabola(jnp.float32)
+
+    @functools.partial(jax.jit, static_argnums=(0,))
+    def step(opt, params, state):
+      value, updates = jax.value_and_grad(objective)(params)
+      # Complex gradients need to be conjugated before being added to parameters
+      # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
+      updates = jax.tree.map(lambda x: x.conj(), updates)
+      if opt_name == 'polyak_sgd':
+        update_kwargs = {'value': value}
+      else:
+        update_kwargs = {}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params_with_schedule, params_with_lr = initial_params, initial_params
+    state_with_schedule = opt_with_schedule.init(params_with_schedule)
+    state_with_lr = opt_with_lr.init(params_with_lr)
+
+    with self.subTest('Test that optimizer accepts learning rate schedule as'
+                      ' learning_rate'):
+      for _ in range(10):
+        params_with_schedule, state_with_schedule = step(
+            opt_with_schedule, params_with_schedule, state_with_schedule)
+        params_with_lr, state_with_lr = step(
+            opt_with_lr, params_with_lr, state_with_lr)
+      # check if the constant learning rate schedule and the learning rate
+      # are equivalent
+      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 if __name__ == '__main__':
   absltest.main()

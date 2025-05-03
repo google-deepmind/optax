@@ -33,6 +33,7 @@ from optax._src import numerics
 from optax._src import update
 from optax._src import utils
 from optax.schedules import _inject
+from optax.schedules import _schedule
 from optax.transforms import _accumulation
 from optax.tree_utils import _state_utils
 from optax.tree_utils import _tree_math
@@ -495,6 +496,53 @@ class ContribTest(chex.TestCase):
           # pylint: disable=cell-var-from-loop
           state = jax.lax.cond(cond, lambda: state, lambda: new_state)
           # pylint: enable=cell-var-from-loop
+
+  @parameterized.product(_ALL_OPTIMIZERS_UNDER_TEST)
+  def test_optimizers_accept_learning_rate_schedule_if_type_annotated_as_such(
+      self, opt_name, opt_kwargs, wrapper_name, wrapper_kwargs):
+    del wrapper_kwargs
+    initial_params, _, obj_fn = _setup_parabola(jnp.float32)
+
+    opt_setup = _get_opt_factory(opt_name)
+
+    # check if the optimizer is annotated to accept a learning rate schedule
+    opt_setup_signature = inspect.signature(opt_setup)
+    lr_arg = opt_setup_signature.parameters.get('learning_rate', None)
+    if lr_arg is None or lr_arg.annotation not in (base.ScalarOrSchedule,
+                                                   base.Schedule):
+      self.skipTest('Optimizer doesn\'t accept a learning schedule.')
+    opt_kwargs_with_schedule = dict(
+        opt_kwargs, learning_rate=_schedule.constant_schedule(1e-3))
+    opt_kwargs_with_lr = dict(opt_kwargs, learning_rate=1e-3)
+
+    opt_with_schedule = opt_setup(**opt_kwargs_with_schedule)
+    opt_with_lr = opt_setup(**opt_kwargs_with_lr)
+
+    def step(opt, params, state):
+      value, updates = jax.value_and_grad(obj_fn)(params)
+      if (
+          opt_name in ['momo', 'momo_adam']
+          or wrapper_name == 'reduce_on_plateau'
+      ):
+        update_kwargs = {'value': value}
+      elif opt_name == 'sophia':
+        update_kwargs = {'obj_fn': obj_fn}
+      else:
+        update_kwargs = {}
+      updates, state = opt.update(updates, state, params, **update_kwargs)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params_with_schedule, params_with_lr = initial_params, initial_params
+    state_with_schedule = opt_with_schedule.init(params_with_schedule)
+    state_with_lr = opt_with_lr.init(params_with_lr)
+    with self.subTest('Test that optimization works'):
+      for _ in range(10):
+        params_with_schedule, state_with_schedule = step(
+            opt_with_schedule, params_with_schedule, state_with_schedule)
+        params_with_lr, state_with_lr = step(
+            opt_with_lr, params_with_lr, state_with_lr)
+      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 
 if __name__ == '__main__':
