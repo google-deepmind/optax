@@ -60,6 +60,10 @@ docs = [
     "matplotlib>=3.5.0",
     "sphinx-gallery>=0.14.0",
     "sphinx-collections>=0.0.1",
+    "tensorflow>=2.4.0",
+    "tensorflow-datasets>=4.2.0",
+    "orbax-checkpoint",
+    "grain-nightly",
     "flax",
     "sphinx_contributors",
 ]
