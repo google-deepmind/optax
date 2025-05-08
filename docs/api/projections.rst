@@ -9,7 +9,7 @@ The Euclidean projection onto a set :math:`\mathcal{C}` is:
 .. math::
 
     \text{proj}_{\mathcal{C}}(u) :=
-    \underset{v}{\text{argmin}} ~ ||u - v||^2_2 \textrm{ subject to } v \in \mathcal{C}.
+    \underset{v}{\text{argmin}} ~ \|u - v\|^2_2 \textrm{ subject to } v \in \mathcal{C}.
 
 For instance, here is an example how we can project parameters to the non-negative orthant::
 
