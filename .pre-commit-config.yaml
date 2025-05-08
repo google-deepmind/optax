@@ -22,6 +22,15 @@ repos:
     # only include python files
     files: \.py$
 
+- repo: local
+  hooks:
+  - id: check-license
+    name: Check license headers
+    entry: python ./.github/check_license_headers.py
+    language: python
+    pass_filenames: false  # only run this check once globally per repo
+    always_run: true
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.9.10
   hooks:
