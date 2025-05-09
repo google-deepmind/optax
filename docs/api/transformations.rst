@@ -163,6 +163,8 @@ Transformations and states
 .. autofunction:: keep_params_nonnegative
 .. autoclass:: NonNegativeParamsState
 
+.. autofunction:: masked
+
 .. autofunction:: normalize_by_update_norm
 
 .. autofunction:: per_example_global_norm_clip
@@ -260,3 +262,13 @@ Transformations and states
 .. autoclass:: ZeroNansState
 
 .. autoclass:: ZoomLinesearchInfo
+
+
+Utilites
+~~~~~~~~
+
+Freezing
+--------
+
+.. autofunction:: freeze
+.. autofunction:: selective_transform

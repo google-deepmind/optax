@@ -51,6 +51,8 @@ from optax.transforms._constraining import keep_params_nonnegative
 from optax.transforms._constraining import NonNegativeParamsState
 from optax.transforms._constraining import zero_nans
 from optax.transforms._constraining import ZeroNansState
+from optax.transforms._freezing import freeze
+from optax.transforms._freezing import selective_transform
 from optax.transforms._layouts import flatten
 from optax.transforms._masking import masked
 from optax.transforms._masking import MaskedNode
@@ -75,6 +77,7 @@ __all__ = (
     "ema",
     "EmaState",
     "flatten",
+    "freeze",
     "keep_params_nonnegative",
     "masked",
     "MaskedState",
@@ -84,6 +87,7 @@ __all__ = (
     "NonNegativeParamsState",
     "partition",
     "PartitionState",
+    "selective_transform",
     "ShouldSkipUpdateFunction",
     "skip_large_updates",
     "skip_not_finite",
