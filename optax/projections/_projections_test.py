@@ -15,6 +15,8 @@
 
 """Tests for methods in `optax.projections.py`."""
 
+from functools import partial  # pylint: disable=g-importing-member
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
@@ -45,9 +47,9 @@ class ProjectionsTest(parameterized.TestCase):
         'tree': tree,
     }
     self.fns = {
-        'l1': (proj.projection_l1_ball, otu.tree_l1_norm),
-        'l2': (proj.projection_l2_ball, otu.tree_l2_norm),
-        'linf': (proj.projection_linf_ball, otu.tree_linf_norm),
+        'l1': (proj.projection_l1_ball, partial(otu.tree_norm, ord=1)),
+        'l2': (proj.projection_l2_ball, otu.tree_norm),
+        'linf': (proj.projection_linf_ball, partial(otu.tree_norm, ord='inf')),
     }
 
   def test_projection_non_negative(self):
@@ -191,7 +193,7 @@ class ProjectionsTest(parameterized.TestCase):
   def test_projection_l1_sphere(self, data_key, scale):
     x = self.data[data_key]
     p = proj.projection_l1_sphere(x, scale)
-    np.testing.assert_almost_equal(otu.tree_l1_norm(p), scale, decimal=4)
+    np.testing.assert_almost_equal(otu.tree_norm(p, ord=1), scale, decimal=4)
 
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'], scale=[1.0, 3.21]
@@ -199,7 +201,7 @@ class ProjectionsTest(parameterized.TestCase):
   def test_projection_l2_sphere(self, data_key, scale):
     x = self.data[data_key]
     p = proj.projection_l2_sphere(x, scale)
-    np.testing.assert_almost_equal(otu.tree_l2_norm(p), scale, decimal=4)
+    np.testing.assert_almost_equal(otu.tree_norm(p), scale, decimal=4)
 
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'],

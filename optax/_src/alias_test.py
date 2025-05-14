@@ -432,7 +432,7 @@ def _run_opt(
 
   def stopping_criterion(carry):
     _, _, count, grad = carry
-    return (otu.tree_l2_norm(grad) >= tol) & (count < maxiter)
+    return (otu.tree_norm(grad) >= tol) & (count < maxiter)
 
   def step(carry):
     params, state, count, _ = carry
@@ -851,7 +851,7 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params, tol=1e-3)
 
     # Check optimality conditions.
-    self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
+    self.assertLessEqual(otu.tree_norm(jax.grad(fun)(sol)), 1e-2)
 
   @parameterized.product(scale_init_precond=[True, False])
   def test_binary_logreg(self, scale_init_precond):
@@ -873,7 +873,7 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params, tol=1e-6)
 
     # Check optimality conditions.
-    self.assertLessEqual(otu.tree_l2_norm(jax.grad(fun)(sol)), 1e-2)
+    self.assertLessEqual(otu.tree_norm(jax.grad(fun)(sol)), 1e-2)
 
     # Compare against sklearn.
     logreg = linear_model.LogisticRegression(

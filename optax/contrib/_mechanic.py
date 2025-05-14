@@ -172,8 +172,8 @@ def mechanize(
     # Add weight decay to raw gradients, note that this is orthogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
-    grad_norm = otu.tree_l2_norm(updates)
-    param_norm = otu.tree_l2_norm(params)
+    grad_norm = otu.tree_norm(updates)
+    param_norm = otu.tree_norm(params)
 
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi

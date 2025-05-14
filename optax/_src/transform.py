@@ -1444,7 +1444,7 @@ def scale_by_polyak(
     del params
     del extra_args  # complies with signature of GradientTransformationExtraArgs
                     # but ignores the extra_args
-    grad_sq_norm = otu.tree_l2_norm(updates, squared=True)
+    grad_sq_norm = otu.tree_norm(updates, squared=True)
     gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
     if variant == 'sps':
       pass
@@ -1710,13 +1710,13 @@ def scale_by_lbfgs(
     # buffer.
     if scale_init_precond:
       numerator = otu.tree_real(otu.tree_vdot(diff_updates, diff_params))
-      denominator = otu.tree_l2_norm(diff_updates, squared=True)
+      denominator = otu.tree_norm(diff_updates, squared=True)
       identity_scale = jnp.where(
           denominator > 0.0, numerator / denominator, 1.0
       )
       # For the very first step of the algorithm, we consider scaling by a
       # capped reciprocal of the gradient norm, see note in the docstring.
-      update_norm = otu.tree_l2_norm(jax.lax.stop_gradient(updates))
+      update_norm = otu.tree_norm(jax.lax.stop_gradient(updates))
       capped_inv_norm = jnp.minimum(1.0, 1.0 / update_norm)
       identity_scale = jnp.where(
           state.count > 0, identity_scale, capped_inv_norm
@@ -1786,7 +1786,7 @@ def normalize_by_update_norm(
       params: Optional[base.Params] = None,
   ) -> tuple[base.Updates, base.EmptyState]:
     del params
-    g_norm = (otu.tree_l2_norm(updates) + eps) / scale_factor
+    g_norm = (otu.tree_norm(updates) + eps) / scale_factor
     updates = jax.tree.map(lambda g: g / g_norm, updates)
     return updates, state
 

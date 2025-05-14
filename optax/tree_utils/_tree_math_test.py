@@ -172,14 +172,14 @@ class TreeUtilsTest(parameterized.TestCase):
 
   def test_tree_l2_norm(self):
     expected = jnp.sqrt(jnp.vdot(self.array_a, self.array_a).real)
-    got = tu.tree_l2_norm(self.array_a)
+    got = tu.tree_norm(self.array_a)
     np.testing.assert_allclose(expected, got)
 
     expected = jnp.sqrt(
         jnp.vdot(self.tree_a[0], self.tree_a[0]).real
         + jnp.vdot(self.tree_a[1], self.tree_a[1]).real
     )
-    got = tu.tree_l2_norm(self.tree_a)
+    got = tu.tree_norm(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
   @parameterized.parameters(
@@ -189,7 +189,7 @@ class TreeUtilsTest(parameterized.TestCase):
     tree = self.data[key]
     values, _ = flatten_util.ravel_pytree(tree)
     expected = jnp.sum(jnp.abs(values))
-    got = tu.tree_l1_norm(tree)
+    got = tu.tree_norm(tree, ord=1)
     np.testing.assert_allclose(expected, got, atol=1e-4)
 
   @parameterized.parameters(
@@ -199,7 +199,7 @@ class TreeUtilsTest(parameterized.TestCase):
     tree = self.data[key]
     values, _ = flatten_util.ravel_pytree(tree)
     expected = jnp.max(jnp.abs(values))
-    got = tu.tree_linf_norm(tree)
+    got = tu.tree_norm(tree, ord=jnp.inf)
     np.testing.assert_allclose(expected, got, atol=1e-4)
 
   def test_tree_zeros_like(self):

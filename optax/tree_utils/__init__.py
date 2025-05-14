@@ -14,6 +14,7 @@
 # ==============================================================================
 """The tree_utils sub-package."""
 
+import functools
 import typing
 
 # pylint: disable=g-importing-member
@@ -37,11 +38,9 @@ from optax.tree_utils._tree_math import tree_clip
 from optax.tree_utils._tree_math import tree_conj
 from optax.tree_utils._tree_math import tree_div
 from optax.tree_utils._tree_math import tree_full_like
-from optax.tree_utils._tree_math import tree_l1_norm
-from optax.tree_utils._tree_math import tree_l2_norm
-from optax.tree_utils._tree_math import tree_linf_norm
 from optax.tree_utils._tree_math import tree_max
 from optax.tree_utils._tree_math import tree_mul
+from optax.tree_utils._tree_math import tree_norm
 from optax.tree_utils._tree_math import tree_ones_like
 from optax.tree_utils._tree_math import tree_real
 from optax.tree_utils._tree_math import tree_scale
@@ -58,13 +57,30 @@ _deprecations = {
     # Added Mar 2025
     'tree_scalar_mul': (
         ('optax.tree_utils.tree_scalar_mul is deprecated: use'
-         ' optax.tree_utils.tree_scale(optax v0.2.5 or newer).'),
+         ' optax.tree_utils.tree_scale (optax v0.2.5 or newer).'),
         tree_scale,
     ),
     'tree_add_scalar_mul': (
         ('optax.tree_utils.tree_scalar_mul is deprecated: use'
-         ' optax.tree_utils.tree_scale(optax v0.2.5 or newer).'),
+         ' optax.tree_utils.tree_scale (optax v0.2.5 or newer).'),
         tree_add_scale,
+    ),
+    # Added May 2025
+    'tree_l1_norm': (
+        ('optax.tree_utils.tree_l1_norm is deprecated: use'
+         ' optax.tree_utils.tree_norm(..., ord=1) (optax v0.2.5 or newer).'),
+        functools.partial(tree_norm, ord=1),
+    ),
+    'tree_l2_norm': (
+        ('optax.tree_utils.tree_l2_norm is deprecated: use'
+         ' optax.tree_utils.tree_norm (optax v0.2.5 or newer).'),
+        functools.partial(tree_norm, ord=2),
+    ),
+    'tree_linf_norm': (
+        ('optax.tree_utils.tree_linf_norm is deprecated: use'
+         ' optax.tree_utils.tree_norm(..., ord=jnp.inf)'
+         ' (optax v0.2.5 or newer).'),
+        functools.partial(tree_norm, ord='inf'),
     ),
 }
 
@@ -73,6 +89,9 @@ _deprecations = {
 if typing.TYPE_CHECKING:
   tree_scalar_mul = tree_scale
   tree_add_scalar_mul = tree_add_scale
+  tree_l1_norm = functools.partial(tree_norm, ord=1)
+  tree_l2_norm = tree_norm
+  tree_linf_norm = functools.partial(tree_norm, ord='inf')
 
 else:
   from optax._src.deprecations import deprecation_getattr as _deprecation_getattr

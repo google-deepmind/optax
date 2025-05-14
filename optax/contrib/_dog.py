@@ -92,7 +92,7 @@ def scale_by_dog(
   ) -> tuple[base.Updates, DoGState]:
 
     # Reduces to norm of init_params for first step
-    curr_distance = otu.tree_l2_norm(otu.tree_sub(state.init_params, params))
+    curr_distance = otu.tree_norm(otu.tree_sub(state.init_params, params))
     curr_distance = jnp.where(
         state.first_step, reps_rel * (1 + curr_distance), curr_distance
     )
@@ -103,7 +103,7 @@ def scale_by_dog(
     )
 
     estim_dist = jnp.maximum(state.estim_dist, curr_distance)
-    sq_norm_grads = otu.tree_l2_norm(updates, squared=True)
+    sq_norm_grads = otu.tree_norm(updates, squared=True)
     sum_sq_norm_grads = sq_norm_grads + state.sum_sq_norm_grads
     learning_rate = estim_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
@@ -263,11 +263,11 @@ def scale_by_dowg(
   def update_fn(
       updates: base.Updates, state: DoWGState, params: base.Params
   ) -> tuple[base.Updates, DoWGState]:
-    curr_sq_dist = otu.tree_l2_norm(
+    curr_sq_dist = otu.tree_norm(
         otu.tree_sub(state.init_params, params), squared=True
     )
     estim_sq_dist = jnp.maximum(state.estim_sq_dist, curr_sq_dist)
-    step_sq_norm_grads = otu.tree_l2_norm(updates, squared=True)
+    step_sq_norm_grads = otu.tree_norm(updates, squared=True)
     weighted_sq_norm_grads = (
         estim_sq_dist * step_sq_norm_grads + state.weighted_sq_norm_grads
     )

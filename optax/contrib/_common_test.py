@@ -350,7 +350,7 @@ class ContribTest(chex.TestCase):
     else:
       update_kwargs = {}
     if opt_name == 'sophia':
-      obj_fn = lambda x: _tree_math.tree_l2_norm(x, squared=True)
+      obj_fn = lambda x: _tree_math.tree_norm(x, squared=True)
       update_fn = functools.partial(opt.update, obj_fn=obj_fn)
       inject_update_fn = functools.partial(opt_inject.update, obj_fn=obj_fn)
     else:

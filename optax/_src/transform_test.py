@@ -197,7 +197,7 @@ class TransformTest(parameterized.TestCase):
 
   def test_rms_match_adam(self):
     """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
-    fun = lambda x: otu.tree_l2_norm(x, squared=True)
+    fun = lambda x: otu.tree_norm(x, squared=True)
 
     rms = transform.scale_by_rms(
         decay=0.999, eps_in_sqrt=False, bias_correction=True

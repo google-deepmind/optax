@@ -212,15 +212,15 @@ def projection_l1_ball(tree: Any, scale: float = 1.0) -> Any:
       >>> import jax.numpy as jnp
       >>> from optax import tree_utils, projections
       >>> tree = {"w": jnp.array([2.5, 3.2]), "b": 0.5}
-      >>> print(tree_utils.tree_l1_norm(tree))
+      >>> print(tree_utils.tree_norm(tree, ord=1))
       6.2
       >>> new_tree = projections.projection_l1_ball(tree)
-      >>> print(tree_utils.tree_l1_norm(new_tree))
+      >>> print(tree_utils.tree_norm(new_tree, ord=1))
       1.0000002
 
   .. versionadded:: 0.2.4
   """
-  l1_norm = otu.tree_l1_norm(tree)
+  l1_norm = otu.tree_norm(tree, ord=1)
   return jax.lax.cond(
       l1_norm <= scale,
       lambda tree: tree,
@@ -249,7 +249,7 @@ def projection_l2_sphere(tree: Any, scale: float = 1.0) -> Any:
 
   .. versionadded:: 0.2.4
   """
-  factor = scale / otu.tree_l2_norm(tree)
+  factor = scale / otu.tree_norm(tree)
   return otu.tree_scale(factor, tree)
 
 
@@ -273,7 +273,7 @@ def projection_l2_ball(tree: Any, scale: float = 1.0) -> Any:
 
   .. versionadded:: 0.2.4
   """
-  l2_norm = otu.tree_l2_norm(tree)
+  l2_norm = otu.tree_norm(tree)
   factor = scale / l2_norm
   return jax.lax.cond(
       l2_norm <= scale,

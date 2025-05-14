@@ -138,7 +138,7 @@ def momo(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
     )
     gamma = bt * state.gamma + (1 - bt) * otu.tree_vdot(updates, params)
-    exp_avg_norm = otu.tree_l2_norm(exp_avg, squared=True)
+    exp_avg_norm = otu.tree_norm(exp_avg, squared=True)
     iprod = otu.tree_vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
     # Reset lower bound
