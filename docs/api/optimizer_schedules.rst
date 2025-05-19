@@ -28,15 +28,18 @@ Optimizer Schedules
 Constant schedule
 ~~~~~~~~~~~~~~~~~
 .. autofunction:: constant_schedule
+.. autofunction:: warmup_constant_schedule
 
 Cosine decay schedule
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: cosine_decay_schedule
 .. autofunction:: cosine_onecycle_schedule
+.. autofunction:: warmup_cosine_decay_schedule
 
 Exponential decay schedule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: exponential_decay
+.. autofunction:: warmup_exponential_decay_schedule
 
 Join schedules
 ~~~~~~~~~~~~~~
@@ -64,12 +67,6 @@ Polynomial schedules
 Reduce on plateau
 ~~~~~~~~~~~~~~~~~
 .. autofunction:: optax.contrib.reduce_on_plateau
-
-Schedules with warm-up
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: warmup_constant_schedule
-.. autofunction:: warmup_cosine_decay_schedule
-.. autofunction:: warmup_exponential_decay_schedule
 
 Warm restarts
 ~~~~~~~~~~~~~
