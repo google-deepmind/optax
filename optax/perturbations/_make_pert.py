@@ -27,19 +27,16 @@ from optax import tree_utils as otu
 from optax._src import base
 
 
-Shape = base.Shape
-
-
 class Normal:
   """Normal distribution."""
 
   def sample(
       self,
-      seed: chex.PRNGKey,
-      sample_shape: Shape,
-      dtype: chex.ArrayDType = float,
+      key: jax.typing.ArrayLike,
+      sample_shape: base.Shape,
+      dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:
-    return jax.random.normal(seed, sample_shape, dtype)
+    return jax.random.normal(key, sample_shape, dtype)
 
   def log_prob(self, inputs: jax.Array) -> jax.Array:
     return -0.5 * inputs**2
@@ -50,11 +47,11 @@ class Gumbel:
 
   def sample(
       self,
-      seed: chex.PRNGKey,
-      sample_shape: Shape,
-      dtype: chex.ArrayDType = float,
+      key: jax.typing.ArrayLike,
+      sample_shape: base.Shape,
+      dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:
-    return jax.random.gumbel(seed, sample_shape, dtype)
+    return jax.random.gumbel(key, sample_shape, dtype)
 
   def log_prob(self, inputs: jax.Array) -> jax.Array:
     return -inputs - jnp.exp(-inputs)
