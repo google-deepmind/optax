@@ -57,10 +57,10 @@ build the documentation locally as follows:
 
 ### Running doctest
 You can add examples illustrating how to use the functions in docstrings. For
-inspiration see the `Examples:` section of the code source of `adam` in 
+inspiration see the `Examples:` section of the code source of `adam` in
 `optax/_src/alias.py`.
 
-To test locally such examples, run 
+To test locally such examples, run
 `python -m doctest -v <path_to_your_file>.py`.
 
 (inclusion_criteria)=

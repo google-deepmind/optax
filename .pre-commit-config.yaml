@@ -16,11 +16,13 @@ repos:
   - id: check-toml
   - id: check-yaml
   - id: end-of-file-fixer
-    # only include python files
-    files: \.py
+    files: \.(py|md)$
+  - id: trailing-whitespace
+    files: \.(py|md|ipynb)$
   - id: debug-statements
-    # only include python files
-    files: \.py$
+    files: \.py$  # only include python files
+  - id: mixed-line-ending  # remove CR
+    args: [--fix=lf]
 
 - repo: local
   hooks:

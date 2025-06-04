@@ -29,7 +29,7 @@ from optax.transforms._masking import masked
 
 def freeze(mask: Union[bool, chex.ArrayTree]) -> base.GradientTransformation:
   """Create a transformation that zeros out gradient updates for `mask=True`.
-  
+
   This essentially freezes (i.e. holding constant) masked parameters.
 
   The mask must be static (i.e., not dependent on runtime values or updated
@@ -39,7 +39,7 @@ def freeze(mask: Union[bool, chex.ArrayTree]) -> base.GradientTransformation:
     * a PyTree of booleans matching the structure of the parameters, where
       each leaf indicates whether that specific parameter leaf should be
       frozen (True) or left unchanged (False).
-      
+
   Args:
     mask: A boolean prefix tree mask indicating which parameters to freeze.
 
