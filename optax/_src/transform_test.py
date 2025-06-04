@@ -129,7 +129,7 @@ class TransformTest(parameterized.TestCase):
 
       # Manually scale updates.
       def rescale(t):
-        return t * factor  # pylint:disable=cell-var-from-loop
+        return t * factor  # pylint:disable=cell-var-from-loop  # noqa: B023
 
       manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.

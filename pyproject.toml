@@ -73,6 +73,7 @@ select = [
     "F",
     "E",
     "W291",  # whitespace at the end of the line
+    "B023",  # pylint's cell-var-over-loop, closures capturing variables in loop
 ]
 ignore = [
     "E731",  # lambdas are allowed

@@ -493,7 +493,8 @@ class ContribTest(chex.TestCase):
           assert jax.tree.leaves(params)[0].dtype == dtype
           cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
           # pylint: disable=cell-var-from-loop
-          state = jax.lax.cond(cond, lambda: state, lambda: new_state)
+          state = jax.lax.cond(cond, lambda: state,  # noqa: B023
+                               lambda: new_state)    # noqa: B023
           # pylint: enable=cell-var-from-loop
 
   @parameterized.product(_ALL_OPTIMIZERS_UNDER_TEST)

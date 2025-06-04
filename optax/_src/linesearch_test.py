@@ -307,30 +307,25 @@ class BacktrackingLinesearchTest(chex.TestCase):
 
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+      confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+      kw=['slope_rtol', 'decrease_factor', 'increase_factor',
+          'max_learning_rate', 'atol', 'rtol']
   )
-  def test_dtype_stability(self, dtype):
+  def test_dtype_stability(self, dtype, confuse_dtype, kw):
     with utils.x64_precision(True):
-      for confuse_dtype in [jnp.float16, jnp.bfloat16, jnp.float32,
-                            jnp.float64]:
-        for kw in ['slope_rtol', 'decrease_factor', 'increase_factor',
-                   'max_learning_rate', 'atol', 'rtol']:
-          # pytype: disable=wrong-arg-types
-          opt = _linesearch.scale_by_backtracking_linesearch(
-              max_backtracking_steps=5,
-              **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
-          # pytype: enable=wrong-arg-types
-          x = jnp.array([1.0, 2.0], dtype=dtype)
-          state = opt.init(x)
-          # pylint: disable=cell-var-from-loop
-          value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
-          # TODO(rdyro): ensure optimizer updates dtype matches parameters
-          cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
-          jax.lax.cond(cond,
-                       lambda x: opt.update(x, state, x, value=1.0, grad=x,
-                                            value_fn=value_fn)[1],
-                       lambda x: state,
-                       x)
-          # pylint: enable=cell-var-from-loop
+      # pytype: disable=wrong-arg-types
+      opt = _linesearch.scale_by_backtracking_linesearch(
+          max_backtracking_steps=5,
+          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+      # pytype: enable=wrong-arg-types
+      x = jnp.array([1.0, 2.0], dtype=dtype)
+      state = opt.init(x)
+      value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
+      # TODO(rdyro): ensure optimizer updates dtype matches parameters
+      cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+      jax.lax.cond(cond, lambda x: opt.update(x, state, x, value=1.0, grad=x,
+                                              value_fn=value_fn)[1],
+                   lambda x: state, x)
 
 
 def _run_linesearch(
@@ -705,30 +700,25 @@ class ZoomLinesearchTest(chex.TestCase):
 
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+      confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+      kw=['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
+          'approx_dec_rtol', 'stepsize_precision']
   )
-  def test_dtype_stability(self, dtype):
+  def test_dtype_stability(self, dtype, confuse_dtype, kw):
     with utils.x64_precision(True):
-      for confuse_dtype in [jnp.float16, jnp.bfloat16, jnp.float32,
-                            jnp.float64]:
-        for kw in ['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
-                   'approx_dec_rtol', 'stepsize_precision']:
-          # pytype: disable=wrong-arg-types
-          opt = _linesearch.scale_by_zoom_linesearch(
-              max_linesearch_steps=5,
-              **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
-          # pytype: enable=wrong-arg-types
-          x = jnp.array([1.0, 2.0], dtype=dtype)
-          state = opt.init(x)
-          # pylint: disable=cell-var-from-loop
-          value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
-          # TODO(rdyro): ensure optimizer updates dtype matches parameters
-          cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
-          jax.lax.cond(cond,
-                       lambda x: opt.update(x, state, x, value=1.0, grad=x,
-                                            value_fn=value_fn)[1],
-                       lambda x: state,
-                       x)
-          # pylint: enable=cell-var-from-loop
+      # pytype: disable=wrong-arg-types
+      opt = _linesearch.scale_by_zoom_linesearch(
+          max_linesearch_steps=5,
+          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+      # pytype: enable=wrong-arg-types
+      x = jnp.array([1.0, 2.0], dtype=dtype)
+      state = opt.init(x)
+      value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
+      # TODO(rdyro): ensure optimizer updates dtype matches parameters
+      cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
+      jax.lax.cond(cond, lambda x: opt.update(x, state, x, value=1.0, grad=x,
+                                              value_fn=value_fn)[1],
+                   lambda x: state, x)
 
 
 if __name__ == '__main__':
