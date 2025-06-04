@@ -25,10 +25,10 @@ import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
+import optax.tree
 
 
 def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
@@ -56,12 +56,12 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
 
 
 @functools.partial(
-    chex.warn_deprecated_function, replacement='optax.tree_utils.tree_cast'
+    chex.warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
     tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
 ) -> chex.ArrayTree:
-  return otu.tree_cast(tree, dtype)
+  return optax.tree.cast(tree, dtype)
 
 
 def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
@@ -321,8 +321,8 @@ def value_and_grad_from_state(
       state: base.OptState,
       **fn_kwargs: dict[str, Any],
   ):
-    value = otu.tree_get(state, 'value')
-    grad = otu.tree_get(state, 'grad')
+    value = optax.tree.get(state, 'value')
+    grad = optax.tree.get(state, 'grad')
     if (value is None) or (grad is None):
       raise ValueError(
           'Value or gradient not found in the state. '

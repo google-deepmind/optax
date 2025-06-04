@@ -31,7 +31,7 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import combine
 from optax._src import transform
-import optax.tree_utils as otu
+import optax.tree
 
 
 class DoGState(NamedTuple):
@@ -79,10 +79,10 @@ def scale_by_dog(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, 'lowest')
     return DoGState(
         first_step=jnp.asarray(True),
-        init_params=otu.tree_zeros_like(params),
+        init_params=optax.tree.zeros_like(params),
         estim_dist=jnp.asarray(0.0, dtype=params_dtype),
         sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
     )
@@ -92,7 +92,7 @@ def scale_by_dog(
   ) -> tuple[base.Updates, DoGState]:
 
     # Reduces to norm of init_params for first step
-    curr_distance = otu.tree_norm(otu.tree_sub(state.init_params, params))
+    curr_distance = optax.tree.norm(optax.tree.sub(state.init_params, params))
     curr_distance = jnp.where(
         state.first_step, reps_rel * (1 + curr_distance), curr_distance
     )
@@ -103,7 +103,7 @@ def scale_by_dog(
     )
 
     estim_dist = jnp.maximum(state.estim_dist, curr_distance)
-    sq_norm_grads = otu.tree_norm(updates, squared=True)
+    sq_norm_grads = optax.tree.norm(updates, squared=True)
     sum_sq_norm_grads = sq_norm_grads + state.sum_sq_norm_grads
     learning_rate = estim_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
@@ -112,7 +112,7 @@ def scale_by_dog(
           state.first_step, init_learning_rate, learning_rate
       )
 
-    new_updates = otu.tree_scale(learning_rate, updates)
+    new_updates = optax.tree.scale(learning_rate, updates)
     return new_updates, DoGState(
         first_step=jnp.asarray(False),
         init_params=init_params,
@@ -249,7 +249,7 @@ def scale_by_dowg(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, 'lowest')
     if init_estim_sq_dist is None:
       init_estim_sq_dist_ = eps
     else:
@@ -263,17 +263,17 @@ def scale_by_dowg(
   def update_fn(
       updates: base.Updates, state: DoWGState, params: base.Params
   ) -> tuple[base.Updates, DoWGState]:
-    curr_sq_dist = otu.tree_norm(
-        otu.tree_sub(state.init_params, params), squared=True
+    curr_sq_dist = optax.tree.norm(
+        optax.tree.sub(state.init_params, params), squared=True
     )
     estim_sq_dist = jnp.maximum(state.estim_sq_dist, curr_sq_dist)
-    step_sq_norm_grads = otu.tree_norm(updates, squared=True)
+    step_sq_norm_grads = optax.tree.norm(updates, squared=True)
     weighted_sq_norm_grads = (
         estim_sq_dist * step_sq_norm_grads + state.weighted_sq_norm_grads
     )
     learning_rate = estim_sq_dist / (jnp.sqrt(weighted_sq_norm_grads) + eps)
 
-    new_updates = otu.tree_scale(learning_rate, updates)
+    new_updates = optax.tree.scale(learning_rate, updates)
     return new_updates, state._replace(
         estim_sq_dist=estim_sq_dist,
         weighted_sq_norm_grads=weighted_sq_norm_grads,

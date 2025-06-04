@@ -346,8 +346,8 @@ class AccumulationTest(chex.TestCase):
 
     # Utility for dtype comparison
     def compare_dtypes(tree1, tree2):
-      return jax.tree_util.tree_all(
-          jax.tree_util.tree_map(lambda x, y: x.dtype == y.dtype, tree1, tree2)
+      return jax.tree.all(
+          jax.tree.map(lambda x, y: x.dtype == y.dtype, tree1, tree2)
       )
 
     # Iterate over parameter and update dtypes

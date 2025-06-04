@@ -26,7 +26,7 @@ from optax._src import numerics
 from optax._src import transform
 from optax.schedules import _schedule
 from optax.transforms import _adding
-import optax.tree_utils as otu
+import optax.tree
 
 
 class ScheduleFreeState(NamedTuple):
@@ -137,14 +137,14 @@ def schedule_free(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, 'lowest')
     if state_dtype is not None:
-      z = otu.tree_cast(params, dtype=state_dtype)
+      z = optax.tree.cast(params, dtype=state_dtype)
     else:
       z = params
     # It's imporant to copy the params here so that z is a distinct array and
     # we can donate both z and the params to JITted functions.
-    z = jax.tree_util.tree_map(lambda t: t.copy(), z)
+    z = jax.tree.map(lambda t: t.copy(), z)
     return ScheduleFreeState(
         b1=jnp.asarray(b1, dtype=params_dtype),
         weight_sum=jnp.zeros([], dtype=params_dtype),

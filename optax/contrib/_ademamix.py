@@ -24,13 +24,13 @@ from typing import Any, Callable, NamedTuple, Optional, Union
 import chex
 import jax
 import jax.numpy as jnp
-import jax.tree_util as jtu
+
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
-import optax.tree_utils as otu
+import optax.tree
 
 
 class ScaleByAdemamixState(NamedTuple):
@@ -90,9 +90,9 @@ def scale_by_ademamix(
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params) -> ScaleByAdemamixState:
-    m1 = otu.tree_zeros_like(params, dtype=mu_dtype)  # fast EMA
-    m2 = otu.tree_zeros_like(params, dtype=mu_dtype)  # slow EMA
-    nu = otu.tree_zeros_like(params, dtype=mu_dtype)  # second moment estimate
+    m1 = optax.tree.zeros_like(params, dtype=mu_dtype)  # fast EMA
+    m2 = optax.tree.zeros_like(params, dtype=mu_dtype)  # slow EMA
+    nu = optax.tree.zeros_like(params, dtype=mu_dtype)  # second moment estimate
     return ScaleByAdemamixState(
         count=jnp.zeros([], jnp.int32),
         count_m2=jnp.zeros([], jnp.int32),
@@ -105,18 +105,18 @@ def scale_by_ademamix(
     del params
     c_b3 = b3(state.count_m2) if callable(b3) else b3
     c_alpha = alpha(state.count_m2) if callable(alpha) else alpha
-    m1 = otu.tree_update_moment(
+    m1 = optax.tree.update_moment(
         updates, state.m1, b1, order=1
     )  # m1 = b1 * m1 + (1-b1) * updates
-    m2 = otu.tree_update_moment(updates, state.m2, c_b3, order=1)
-    nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2, order=2)
+    m2 = optax.tree.update_moment(updates, state.m2, c_b3, order=1)
+    nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, order=2)
     count_inc = numerics.safe_int32_increment(state.count)
     count_m2_inc = numerics.safe_int32_increment(state.count_m2)
-    m1_hat = otu.tree_bias_correction(m1, b1, count_inc)
+    m1_hat = optax.tree.bias_correction(m1, b1, count_inc)
     # NOTE:  AdEMAMix does not perform bias correction on b2 to let
     # the slow EMA momentum buffer fill itself slowly.
-    nu_hat = otu.tree_bias_correction(nu, b2, count_inc)
-    updates = jtu.tree_map(
+    nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+    updates = jax.tree.map(
         lambda m1_, m2_, v_: (
             (m1_ + c_alpha * m2_) / (jnp.sqrt(v_ + eps_root) + eps)
         ),
@@ -285,7 +285,7 @@ class ScaleBySimplifiedAdEMAMixState(NamedTuple):
 
 
 def lerp(t, a, b):
-  return otu.tree_add_scalar_mul(a, t, otu.tree_sub(b, a))
+  return optax.tree.add_scale(a, t, optax.tree.sub(b, a))
 
 
 def scale_by_simplified_ademamix(
@@ -320,24 +320,24 @@ def scale_by_simplified_ademamix(
   def init_fn(params) -> ScaleBySimplifiedAdEMAMixState:
     return ScaleBySimplifiedAdEMAMixState(
         t=jnp.array(0),
-        m=otu.tree_zeros_like(params),
-        n=otu.tree_zeros_like(params),
+        m=optax.tree.zeros_like(params),
+        n=optax.tree.zeros_like(params),
     )
 
   def update_fn(updates, state, params=None):
     del params
     g = updates
-    m = otu.tree_add_scalar_mul(g, b1, state.m)
-    n = lerp(b2, otu.tree_mul(g, g), state.n)
+    m = optax.tree.add_scale(g, b1, state.m)
+    n = lerp(b2, optax.tree.mul(g, g), state.n)
 
     t = numerics.safe_increment(state.t)
 
-    n_hat = otu.tree_bias_correction(n, b2, t)
+    n_hat = optax.tree.bias_correction(n, b2, t)
 
-    u_num = otu.tree_add_scalar_mul(m, alpha, g)
+    u_num = optax.tree.add_scale(m, alpha, g)
     u_den = jax.tree.map(lambda n: jnp.sqrt(n + eps_root) + eps, n_hat)
 
-    u = otu.tree_div(u_num, u_den)
+    u = optax.tree.div(u_num, u_den)
 
     return u, ScaleBySimplifiedAdEMAMixState(t=t, m=m, n=n)
 

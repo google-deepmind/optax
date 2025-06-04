@@ -22,14 +22,14 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
+import optax.tree
 
 
 def _normalize_tree(x):
   # divide by the L2 norm of the tree weights.
-  return otu.tree_scale(1.0 / otu.tree_norm(x), x)
+  return optax.tree.scale(1.0 / optax.tree.norm(x), x)
 
 
 def global_norm(updates: base.PyTree) -> chex.Array:
@@ -41,10 +41,10 @@ def global_norm(updates: base.PyTree) -> chex.Array:
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
   normalized_eigvec, unnormalized_eigvec, eig, iter_num = loop_vars
-  residual = otu.tree_sub(
-      unnormalized_eigvec, otu.tree_scale(eig, normalized_eigvec)
+  residual = optax.tree.sub(
+      unnormalized_eigvec, optax.tree.scale(eig, normalized_eigvec)
   )
-  residual_norm = otu.tree_norm(residual)
+  residual_norm = optax.tree.norm(residual)
   converged = jnp.abs(residual_norm / eig) < error_tolerance
   return ~converged & (iter_num < num_iters)
 
@@ -131,7 +131,7 @@ def power_iteration(
     _, z, _, iter_num = loop_vars
     eigvec = _normalize_tree(z)
     z = mvp(eigvec)
-    eig = otu.tree_vdot(eigvec, z)
+    eig = optax.tree.vdot(eigvec, z)
     return eigvec, z, eig, iter_num + 1
 
   init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))

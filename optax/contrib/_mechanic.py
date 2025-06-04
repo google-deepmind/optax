@@ -33,7 +33,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-import optax.tree_utils as otu
+import optax.tree
 
 
 class MechanicState(NamedTuple):
@@ -113,7 +113,7 @@ def mechanize(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, 'lowest')
     r = jnp.zeros(
         [
             num_betas,
@@ -172,8 +172,8 @@ def mechanize(
     # Add weight decay to raw gradients, note that this is orthogonal to any
     # weight decay applied to inner_optimizer updates.
     s_sum = jnp.sum(state.s)
-    grad_norm = otu.tree_norm(updates)
-    param_norm = otu.tree_norm(params)
+    grad_norm = optax.tree.norm(updates)
+    param_norm = optax.tree.norm(params)
 
     def add_weight_decay(gi, pi):
       return gi + weight_decay * s_sum * grad_norm / (param_norm + eps) * pi
@@ -195,7 +195,7 @@ def mechanize(
     delta = jax.tree.map(lambda si, ui: si - ui, delta_prev, new_neg_updates)
 
     # Now we are ready to run the actual Mechanic algorithm.
-    h = otu.tree_vdot(updates, delta_prev)
+    h = optax.tree.vdot(updates, delta_prev)
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.

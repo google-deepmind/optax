@@ -21,10 +21,10 @@ https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 import chex
 import jax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import linear_algebra
 from optax._src import numerics
+import optax.tree
 
 
 def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
@@ -39,7 +39,7 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    return otu.tree_clip(updates, -max_delta, max_delta), state
+    return optax.tree.clip(updates, -max_delta, max_delta), state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
 

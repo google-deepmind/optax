@@ -24,7 +24,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-import optax.tree_utils as otu
+import optax.tree
 
 
 class DAdaptAdamWState(NamedTuple):
@@ -76,10 +76,10 @@ def dadapt_adamw(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
-    exp_avg = otu.tree_zeros_like(params)
-    exp_avg_sq = otu.tree_zeros_like(params)
-    grad_sum = otu.tree_zeros_like(params)
+    params_dtype = optax.tree.dtype(params, 'lowest')
+    exp_avg = optax.tree.zeros_like(params)
+    exp_avg_sq = optax.tree.zeros_like(params)
+    grad_sum = optax.tree.zeros_like(params)
     estim_lr = jnp.asarray(estim_lr0, dtype=params_dtype)
     numerator_weighted = jnp.zeros([], dtype=params_dtype)
     count = jnp.zeros([], jnp.int32)
@@ -110,7 +110,7 @@ def dadapt_adamw(
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )
-    numerator_acum = otu.tree_vdot(updates, s_weighted)
+    numerator_acum = optax.tree.vdot(updates, s_weighted)
     exp_avg = jax.tree.map(
         lambda ea, g: beta1 * ea + (1 - beta1) * dlr * g, state.exp_avg, updates
     )
@@ -122,7 +122,7 @@ def dadapt_adamw(
     grad_sum = jax.tree.map(
         lambda sk, g: sb2 * sk + (1 - sb2) * dlr * g, grad_sum, updates
     )
-    grad_sum_l1 = otu.tree_sum(jax.tree.map(jnp.abs, grad_sum))
+    grad_sum_l1 = optax.tree.sum(jax.tree.map(jnp.abs, grad_sum))
     numerator_weighted = (
         sb2 * numerator_weighted + (1 - sb2) * dlr * numerator_acum
     )

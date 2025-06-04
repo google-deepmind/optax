@@ -26,7 +26,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
 from optax._src import update
-from optax.tree_utils import _state_utils
+import optax.tree
 
 
 def _build_sgd():
@@ -81,7 +81,7 @@ class LookaheadTest(chex.TestCase):
     opt_state = self.variant(init_fn)(params)
 
     # A no-op change, to verify that tree map works.
-    opt_state = _state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
+    opt_state = optax.tree.map_params(init_fn, lambda v: v, opt_state)
 
     for _ in range(num_steps):
       updates, opt_state = step(self.grads, opt_state, params)
@@ -121,7 +121,7 @@ class LookaheadTest(chex.TestCase):
     _, opt_state = self.loop(optimizer, num_steps, self.synced_initial_params)
 
     # A no-op change, to verify that this does not break anything
-    opt_state = _state_utils.tree_map_params(optimizer, lambda v: v, opt_state)
+    opt_state = optax.tree.map_params(optimizer, lambda v: v, opt_state)
 
     fast_state = opt_state.fast_state
     if reset_state:

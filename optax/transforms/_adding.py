@@ -20,11 +20,11 @@ import warnings
 
 import jax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
 from optax._src import wrappers
+import optax.tree
 
 
 def add_decayed_weights(
@@ -143,10 +143,10 @@ def add_noise(
     standard_deviation = jnp.sqrt(eta / count_inc**gamma)
 
     rng_key, sample_key = jax.random.split(state.rng_key)
-    noise = otu.tree_random_like(
+    noise = optax.tree.random_like(
         sample_key, target_tree=updates, sampler=jax.random.normal
     )
-    updates = otu.tree_add_scale(
+    updates = optax.tree.add_scale(
         tree_x=updates, scalar=standard_deviation, tree_y=noise
     )
     return updates, AddNoiseState(count=count_inc, rng_key=rng_key)

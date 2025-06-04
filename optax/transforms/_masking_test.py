@@ -23,7 +23,7 @@ from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
-import jax.tree_util as jtu
+
 import numpy as np
 from optax._src import alias
 from optax._src import base
@@ -31,7 +31,7 @@ from optax._src import combine
 from optax._src import transform
 from optax._src import update
 from optax.transforms import _masking
-from optax.tree_utils import _state_utils
+import optax.tree
 
 
 def _build_sgd():
@@ -120,12 +120,12 @@ class MaskedTest(chex.TestCase):
     # masked optimizer state as it does on an unmasked optimizer state.
     with self.subTest('inner'):
       state = inner.init(params)
-      result = _state_utils.tree_map_params(inner, increment_dim_1, state)
+      result = optax.tree.map_params(inner, increment_dim_1, state)
       chex.assert_trees_all_equal(result, inner.init(expected))
 
     with self.subTest('masked'):
       state = masked.init(params)
-      result = _state_utils.tree_map_params(masked, increment_dim_1, state)
+      result = optax.tree.map_params(masked, increment_dim_1, state)
       chex.assert_trees_all_equal(result, masked.init(expected))
 
     with self.subTest('masked_with_extra_args'):
@@ -137,7 +137,7 @@ class MaskedTest(chex.TestCase):
       # Replace all non-masked parameters in the opt-state tree with the
       # sharding axis values given in the tree above. Everything else is set to
       # None.
-      new_state = _state_utils.tree_map_params(
+      new_state = optax.tree.map_params(
           masked,
           lambda p, axis: None if isinstance(p, _masking.MaskedNode) else axis,
           state,
@@ -188,7 +188,7 @@ class MaskedTest(chex.TestCase):
     state = self.variant(init_fn)(params)
 
     with self.subTest('tree_map_params'):
-      result = _state_utils.tree_map_params(init_fn, lambda v: v, state)
+      result = optax.tree.map_params(init_fn, lambda v: v, state)
       chex.assert_trees_all_equal_structs(result, state)
 
     updates, state = update_fn(input_updates, state, params)
@@ -369,7 +369,7 @@ class MaskedTest(chex.TestCase):
         return self.w.dot(x)
 
     # Make it a pytree by registering it as a pytree node
-    jtu.register_pytree_node(
+    jax.tree_util.register_pytree_node(
         _MaskCompatibleModule,
         lambda m: ((m.w,), None),
         lambda _, c: _MaskCompatibleModule(*c),

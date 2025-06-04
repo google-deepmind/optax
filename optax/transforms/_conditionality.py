@@ -20,9 +20,9 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
+import optax.tree
 
 
 class ConditionFn(Protocol):
@@ -164,7 +164,7 @@ def conditionally_mask(
       return inner.update(updates, state.inner_state, params, **extra_args)
 
     def reject_update(_):
-      return otu.tree_zeros_like(updates), state.inner_state
+      return optax.tree.zeros_like(updates), state.inner_state
 
     condition_kwargs = extra_args if forward_extra_args else {}
     updates, new_inner_state = lax.cond(
@@ -249,7 +249,7 @@ def apply_if_finite(
       return inner.update(updates, inner_state, params, **extra_args)
 
     def reject_update(_):
-      return otu.tree_zeros_like(updates), inner_state
+      return optax.tree.zeros_like(updates), inner_state
 
     updates, new_inner_state = lax.cond(
         jnp.logical_or(isfinite, notfinite_count > max_consecutive_errors),

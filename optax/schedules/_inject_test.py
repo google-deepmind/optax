@@ -31,7 +31,7 @@ from optax._src import transform
 from optax._src import wrappers
 from optax.schedules import _inject
 from optax.schedules import _schedule
-from optax.tree_utils import _state_utils
+import optax.tree
 
 
 class ExampleState(NamedTuple):
@@ -66,7 +66,7 @@ class InjectHyperparamsTest(chex.TestCase):
     state = self.variant(optim.init)(params)
 
     # A no-op change, to verify that tree map works.
-    state = _state_utils.tree_map_params(optim, lambda v: v, state)
+    state = optax.tree.map_params(optim, lambda v: v, state)
 
     update_fn = self.variant(optim.update)
     expected_step_size = [3.0] * 2 + [15.0] * 6 + [30.0] * 5 + [45.0] * 3

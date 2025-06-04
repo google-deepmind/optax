@@ -24,7 +24,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax import projections as proj
-import optax.tree_utils as otu
+import optax.tree
 
 
 def projection_simplex_jacobian(projection):
@@ -47,9 +47,10 @@ class ProjectionsTest(parameterized.TestCase):
         'tree': tree,
     }
     self.fns = {
-        'l1': (proj.projection_l1_ball, partial(otu.tree_norm, ord=1)),
-        'l2': (proj.projection_l2_ball, otu.tree_norm),
-        'linf': (proj.projection_linf_ball, partial(otu.tree_norm, ord='inf')),
+        'l1': (proj.projection_l1_ball, partial(optax.tree.norm, ord=1)),
+        'l2': (proj.projection_l2_ball, optax.tree.norm),
+        'linf': (proj.projection_linf_ball,
+                 partial(optax.tree.norm, ord='inf')),
     }
 
   def test_projection_non_negative(self):
@@ -134,7 +135,7 @@ class ProjectionsTest(parameterized.TestCase):
   def test_projection_simplex_pytree(self, scale):
     pytree = {'w': jnp.array([2.5, 3.2]), 'b': 0.5}
     new_pytree = proj.projection_simplex(pytree, scale)
-    np.testing.assert_almost_equal(otu.tree_sum(new_pytree), scale, decimal=4)
+    np.testing.assert_almost_equal(optax.tree.sum(new_pytree), scale, decimal=4)
 
   @parameterized.parameters(1.0, 0.8)
   def test_projection_simplex_edge_case(self, scale):
@@ -193,7 +194,7 @@ class ProjectionsTest(parameterized.TestCase):
   def test_projection_l1_sphere(self, data_key, scale):
     x = self.data[data_key]
     p = proj.projection_l1_sphere(x, scale)
-    np.testing.assert_almost_equal(otu.tree_norm(p, ord=1), scale, decimal=4)
+    np.testing.assert_almost_equal(optax.tree.norm(p, ord=1), scale, decimal=4)
 
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'], scale=[1.0, 3.21]
@@ -201,7 +202,7 @@ class ProjectionsTest(parameterized.TestCase):
   def test_projection_l2_sphere(self, data_key, scale):
     x = self.data[data_key]
     p = proj.projection_l2_sphere(x, scale)
-    np.testing.assert_almost_equal(otu.tree_norm(p), scale, decimal=4)
+    np.testing.assert_almost_equal(optax.tree.norm(p), scale, decimal=4)
 
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'],

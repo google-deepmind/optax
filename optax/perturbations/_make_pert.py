@@ -21,10 +21,9 @@ from typing import Any, Callable, Sequence
 
 import chex
 import jax
-from jax import tree_util as jtu
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
+import optax.tree
 
 
 class Normal:
@@ -68,14 +67,14 @@ def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
     the mean across the trees.
 
   Examples:
-    >>> optax.tree_utils.tree_reduce_mean_across(
+    >>> optax.tree.reduce_mean_across(
     ...   [{'first': [1, 2], 'last': 3},
     ...    {'first': [5, 6], 'last': 7}]
     ...   )
     {'first': [3, 4], 'last': 5}
   """
   mean_fun = lambda x: sum(x) / len(trees)
-  return jtu.tree_map(lambda *leaves: mean_fun(leaves), *trees)
+  return jax.tree.map(lambda *leaves: mean_fun(leaves), *trees)
 
 
 def _tree_vmap(
@@ -83,9 +82,9 @@ def _tree_vmap(
     trees: Sequence[chex.ArrayTree],
 ) -> chex.ArrayTree:
   """Applies a function to a list of trees, akin to a vmap."""
-  tree_def_in = jtu.tree_structure(trees[0])
-  has_in_structure = lambda x: jtu.tree_structure(x) == tree_def_in
-  return jtu.tree_map(fun, trees, is_leaf=has_in_structure)
+  tree_def_in = jax.tree.structure(trees[0])
+  has_in_structure = lambda x: jax.tree.structure(x) == tree_def_in
+  return jax.tree.map(fun, trees, is_leaf=has_in_structure)
 
 
 def make_perturbed_fun(
@@ -132,12 +131,12 @@ def make_perturbed_fun(
   ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
     # random noise Zs to be added to inputs
     samples = [
-        otu.tree_random_like(rng_, inputs, sampler=noise.sample)
+        optax.tree.random_like(rng_, inputs, sampler=noise.sample)
         for rng_ in jax.random.split(rng, num_samples)
     ]
     # creates [inputs + Z_1, ..., inputs + Z_num_samples]
     inputs_pert = _tree_vmap(
-        lambda z: otu.tree_add_scale(inputs, sigma, z), samples
+        lambda z: optax.tree.add_scale(inputs, sigma, z), samples
     )
     # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
     outputs_pert = _tree_vmap(fun, inputs_pert)
@@ -172,17 +171,17 @@ def make_perturbed_fun(
     array_sum_log_prob_func = lambda x: jnp.sum(noise.log_prob(x))
     array_grad_log_prob_func = jax.grad(array_sum_log_prob_func)
     # computes [grad log_prob(Z_1), ... , grad log_prob(Z_num_samples)]
-    tree_sum_log_probs = jtu.tree_map(array_grad_log_prob_func, samples)
-    fun_dot_prod = lambda z: jax.tree_util.tree_map(jnp.dot, z, tangent)
+    tree_sum_log_probs = jax.tree.map(array_grad_log_prob_func, samples)
+    fun_dot_prod = lambda z: jax.tree.map(jnp.dot, z, tangent)
     list_tree_dot_prods = _tree_vmap(fun_dot_prod, tree_sum_log_probs)
     # computes [<grad log_prob(Z_1), g>, .. , <grad log_prob(Z_num_samples), g>]
     list_dot_prods = _tree_vmap(
-        lambda x: jnp.sum(jtu.tree_reduce(operator.add, x)), list_tree_dot_prods
+        lambda x: jnp.sum(jax.tree.reduce(operator.add, x)), list_tree_dot_prods
     )
     # TODO(qberthet): implement with the jvp of the grad log prob.
     # computes 1/M * sum_i fun(inputs + sigma * Z_i) < - grad log_prob(Z_i), g>
     tangent_out = _tree_mean_across([
-        otu.tree_scale(-scalar_dot_prod, output)
+        optax.tree.scale(-scalar_dot_prod, output)
         for scalar_dot_prod, output in zip(list_dot_prods, outputs_pert)
     ])
     return tangent_out

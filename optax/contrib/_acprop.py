@@ -23,11 +23,11 @@ from typing import Any, Optional, Union
 
 import jax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
+import optax.tree
 
 
 def scale_by_acprop(
@@ -53,24 +53,25 @@ def scale_by_acprop(
   """
 
   def init_fn(params):
-    mu = otu.tree_zeros_like(params)  # First moment
-    s = otu.tree_zeros_like(params)  # Second Central moment
+    mu = optax.tree.zeros_like(params)  # First moment
+    s = optax.tree.zeros_like(params)  # Second Central moment
     return transform.ScaleByBeliefState(
         count=jnp.zeros([], jnp.int32), mu=mu, nu=s
     )
 
   def update_fn(updates, state, params=None):
     del params
-    mu = otu.tree_update_moment(updates, state.mu, b1, 1)
+    mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     prediction_error = jax.tree.map(lambda g, m: g - m, updates, state.mu)
-    nu = otu.tree_update_moment_per_elem_norm(prediction_error, state.nu, b2, 2)
+    nu = optax.tree.update_moment_per_elem_norm(prediction_error, state.nu, b2,
+                                                2)
     nu = jax.tree.map(lambda v: v + eps_root, nu)
     count_inc = numerics.safe_increment(state.count)
 
     # On initial step, avoid division by zero and force nu_hat to be 1.
     initial = state.count == 0
     t = jnp.where(initial, count_inc, state.count)
-    nu_hat = otu.tree_bias_correction(state.nu, b2, t)
+    nu_hat = optax.tree.bias_correction(state.nu, b2, t)
     nu_hat = jax.tree.map(lambda x: jnp.where(initial, 1, x), nu_hat)
 
     updates = jax.tree.map(

@@ -22,10 +22,10 @@ import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
+import optax.tree
 
 
 class TraceState(NamedTuple):
@@ -61,7 +61,7 @@ def trace(
 
   def init_fn(params):
     return TraceState(
-        trace=otu.tree_zeros_like(params, dtype=accumulator_dtype)
+        trace=optax.tree.zeros_like(params, dtype=accumulator_dtype)
     )
 
   def update_fn(updates, state, params=None):
@@ -74,7 +74,7 @@ def trace(
         is_leaf=lambda g: g is None,
     )
     updates = jax.tree.map(f, updates, new_trace) if nesterov else new_trace
-    new_trace = otu.tree_cast(new_trace, accumulator_dtype)
+    new_trace = optax.tree.cast(new_trace, accumulator_dtype)
     return updates, TraceState(trace=new_trace)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -113,18 +113,18 @@ def ema(
   def init_fn(params):
     return EmaState(
         count=jnp.zeros([], jnp.int32),
-        ema=otu.tree_zeros_like(params, dtype=accumulator_dtype),
+        ema=optax.tree.zeros_like(params, dtype=accumulator_dtype),
     )
 
   def update_fn(updates, state, params=None):
     del params
-    updates = new_ema = otu.tree_update_moment(
+    updates = new_ema = optax.tree.update_moment(
         updates, state.ema, decay, order=1
     )
     count_inc = numerics.safe_increment(state.count)
     if debias:
-      updates = otu.tree_bias_correction(new_ema, decay, count_inc)
-    state_ema = otu.tree_cast(new_ema, accumulator_dtype)
+      updates = optax.tree.bias_correction(new_ema, decay, count_inc)
+    state_ema = optax.tree.cast(new_ema, accumulator_dtype)
     return updates, EmaState(count=count_inc, ema=state_ema)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -317,7 +317,7 @@ class MultiSteps:
 
   def init(self, params: Any) -> MultiStepsState:
     """Builds and returns initial `MultiStepsState`."""
-    updates = otu.tree_zeros_like(params)
+    updates = optax.tree.zeros_like(params)
     gradient_step = jnp.zeros([], dtype=jnp.int32)
     _, skip_state = self._should_skip_update_fn(updates, gradient_step, params)
     init_state = MultiStepsState(
@@ -390,7 +390,7 @@ class MultiSteps:
       eval_fn = functools.partial(self._opt.update, **static_args)
       zero_updates, new_inner_state = jax.eval_shape(
           eval_fn, updates, state.inner_opt_state, params=params, **dyn_args)
-      zero_updates = otu.tree_zeros_like(zero_updates)
+      zero_updates = optax.tree.zeros_like(zero_updates)
 
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,

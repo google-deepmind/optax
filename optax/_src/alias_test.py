@@ -36,7 +36,7 @@ from optax._src import utils
 from optax.losses import _classification
 from optax.schedules import _inject
 from optax.transforms import _accumulation
-import optax.tree_utils as otu
+import optax.tree
 import scipy.optimize as scipy_optimize
 from sklearn import datasets
 from sklearn import linear_model
@@ -181,7 +181,7 @@ class AliasTest(chex.TestCase):
 
     with self.subTest('Test that tree_map_params works'):
       # A no-op change, to verify that tree map works.
-      state = otu.tree_map_params(opt, lambda v: v, state)
+      state = optax.tree.map_params(opt, lambda v: v, state)
 
     with self.subTest('Test that optimization works'):
       for _ in range(10000):
@@ -258,8 +258,8 @@ class AliasTest(chex.TestCase):
       chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
     with self.subTest('Equality of new optimizer states.'):
       chex.assert_trees_all_close(
-          otu.tree_unwrap_random_key_data(new_state_inject.inner_state),
-          otu.tree_unwrap_random_key_data(new_state),
+          optax.tree.unwrap_random_key_data(new_state_inject.inner_state),
+          optax.tree.unwrap_random_key_data(new_state),
           rtol=1e-4,
       )
 
@@ -287,7 +287,7 @@ class AliasTest(chex.TestCase):
         expected_dtype = params_dtype
       else:
         expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
-      attribute = otu.tree_get(state, attribute_name)
+      attribute = optax.tree.get(state, attribute_name)
       self.assertEqual(expected_dtype, attribute.dtype)
 
   # Not testing with `without_device=True` because without_device set the
@@ -301,12 +301,12 @@ class AliasTest(chex.TestCase):
     """Test that the optimizers return updates of same dtype as gradients."""
     # When debugging this test, note that operations like
     # x = 0.5**jnp.asarray(1, dtype=jnp.int32)
-    # (appearing in e.g. optax.tree_utils.tree_bias_correction)
+    # (appearing in e.g. optax.tree.bias_correction)
     # are promoted (strictly) to float32 when jitted
     # see https://github.com/jax-ml/jax/issues/23337
     # This may end up letting updates have a dtype different from params.
     # The solution is to fix the dtype of the result to the desired dtype
-    # (just as done in optax.tree_utils.tree_bias_correction).
+    # (just as done in optax.tree.bias_correction).
     dtype = jnp.dtype(dtype)
     opt_factory = getattr(alias, opt_name)
     opt = opt_factory(**opt_kwargs)
@@ -432,12 +432,12 @@ def _run_opt(
 
   def stopping_criterion(carry):
     _, _, count, grad = carry
-    return (otu.tree_norm(grad) >= tol) & (count < maxiter)
+    return (optax.tree.norm(grad) >= tol) & (count < maxiter)
 
   def step(carry):
     params, state, count, _ = carry
     value, grad = value_and_grad_fun(params)
-    grad = otu.tree_conj(grad)
+    grad = optax.tree.conj(grad)
     updates, state = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
@@ -816,7 +816,7 @@ class LBFGSTest(chex.TestCase):
       )
 
     def fun(x):
-      return otu.tree_sum(jax.tree.map(fun_, x))
+      return optax.tree.sum(jax.tree.map(fun_, x))
 
     key = jrd.key(0)
     init_array = jrd.normal(key, (2, 4))
@@ -851,7 +851,7 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params, tol=1e-3)
 
     # Check optimality conditions.
-    self.assertLessEqual(otu.tree_norm(jax.grad(fun)(sol)), 1e-2)
+    self.assertLessEqual(optax.tree.norm(jax.grad(fun)(sol)), 1e-2)
 
   @parameterized.product(scale_init_precond=[True, False])
   def test_binary_logreg(self, scale_init_precond):
@@ -873,7 +873,7 @@ class LBFGSTest(chex.TestCase):
     sol, _ = _run_opt(opt, fun, init_params, tol=1e-6)
 
     # Check optimality conditions.
-    self.assertLessEqual(otu.tree_norm(jax.grad(fun)(sol)), 1e-2)
+    self.assertLessEqual(optax.tree.norm(jax.grad(fun)(sol)), 1e-2)
 
     # Compare against sklearn.
     logreg = linear_model.LogisticRegression(

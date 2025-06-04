@@ -26,7 +26,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-import optax.tree_utils as otu
+import optax.tree
 
 
 class ReduceLROnPlateauState(NamedTuple):
@@ -100,7 +100,7 @@ def reduce_on_plateau(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, "lowest")
+    params_dtype = optax.tree.dtype(params, "lowest")
     return ReduceLROnPlateauState(
         best_value=jnp.asarray(float("inf")),
         plateau_count=jnp.asarray(0, jnp.int32),

@@ -34,7 +34,7 @@ from optax._src import combine
 from optax._src import linesearch as _linesearch
 from optax._src import update
 from optax._src import utils
-import optax.tree_utils as otu
+import optax.tree
 import scipy.optimize as scipy_optimize
 
 
@@ -93,7 +93,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     final_value = fun(final_params)
     final_lr = final_state[0]
 
-    slope = otu.tree_vdot(descent_dir, init_grad)
+    slope = optax.tree.vdot(descent_dir, init_grad)
     slope_rtol, atol, rtol = (
         opt_args['slope_rtol'],
         opt_args['atol'],
@@ -117,7 +117,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     state = opt.init(params)
 
     # At initialization the value is inf
-    value = otu.tree_get(state, 'value')
+    value = optax.tree.get(state, 'value')
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
@@ -127,7 +127,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     )
 
     # If the step worked the value in the state should not be inf after one step
-    value = otu.tree_get(state, 'value')
+    value = optax.tree.get(state, 'value')
     self.assertFalse(jnp.isinf(value))
 
   @parameterized.product(
@@ -343,7 +343,7 @@ def _run_linesearch(
   """Runs the linesearch, i.e., a single update of scale_by_zoom_linesearch."""
   init_state = opt.init(params)
   if stepsize_guess is not None:
-    init_state = otu.tree_set(init_state, learning_rate=stepsize_guess)
+    init_state = optax.tree.set(init_state, learning_rate=stepsize_guess)
 
   value, grad = jax.value_and_grad(fn)(params)
   updates, final_state = opt.update(
@@ -368,8 +368,8 @@ class ZoomLinesearchTest(chex.TestCase):
   ) -> None:
     # Check that the value and gradient stored in the state
     # match the value and gradient of the step done with the stepsize found
-    final_value = otu.tree_get(final_state, 'value')
-    final_grad = otu.tree_get(final_state, 'grad')
+    final_value = optax.tree.get(final_state, 'value')
+    final_grad = optax.tree.get(final_state, 'grad')
     chex.assert_trees_all_close(
         value_fn(final_params), final_value, atol=1e-5, rtol=1e-5
     )
@@ -390,16 +390,16 @@ class ZoomLinesearchTest(chex.TestCase):
     """Check decrease conditions."""
     value_init, grad_init = jax.value_and_grad(fun)(init_params)
     value_final, grad_final = jax.value_and_grad(fun)(final_params)
-    final_lr = otu.tree_get(final_state, 'learning_rate')
-    num_linesearch_steps = otu.tree_get(final_state, 'num_linesearch_steps')
+    final_lr = optax.tree.get(final_state, 'learning_rate')
+    num_linesearch_steps = optax.tree.get(final_state, 'num_linesearch_steps')
     if allow_failure:
       potentially_failed = (
           num_linesearch_steps > opt_args['max_linesearch_steps']
       )
     else:
       potentially_failed = False
-    slope_init = otu.tree_vdot(updates, grad_init)
-    slope_final = otu.tree_vdot(updates, grad_final)
+    slope_init = optax.tree.vdot(updates, grad_init)
+    slope_final = optax.tree.vdot(updates, grad_final)
     default_opt_args = {
         'slope_rtol': 1e-4,
         'curv_rtol': 0.9,
@@ -441,7 +441,7 @@ class ZoomLinesearchTest(chex.TestCase):
     state = opt.init(params)
 
     # At initialization the value is inf
-    value = otu.tree_get(state, 'value')
+    value = optax.tree.get(state, 'value')
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
@@ -451,7 +451,7 @@ class ZoomLinesearchTest(chex.TestCase):
     )
 
     # If the step worked the value in the state should not be inf after one step
-    value = otu.tree_get(state, 'value')
+    value = optax.tree.get(state, 'value')
     self.assertFalse(jnp.isinf(value))
 
   @absltest.skip('TODO(rdyro): need to match scipy linesearch algorithm')
@@ -511,8 +511,8 @@ class ZoomLinesearchTest(chex.TestCase):
           fn, init_params, init_updates, final_params, final_state, opt_args
       )
     with self.subTest('Check against scipy'):
-      stepsize = otu.tree_get(final_state, 'learning_rate')
-      final_value = otu.tree_get(final_state, 'value')
+      stepsize = optax.tree.get(final_state, 'learning_rate')
+      final_value = optax.tree.get(final_state, 'value')
       chex.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
       chex.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
 
@@ -544,7 +544,7 @@ class ZoomLinesearchTest(chex.TestCase):
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
       _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-      stepsize = otu.tree_get(state, 'learning_rate')
+      stepsize = optax.tree.get(state, 'learning_rate')
     # Check that we were not able to make a step or an infinitesimal one
     self.assertLess(stepsize, 1e-5)
     self.assertIn(_linesearch.FLAG_NOT_A_DESCENT_DIRECTION, stdout.getvalue())
@@ -577,7 +577,7 @@ class ZoomLinesearchTest(chex.TestCase):
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
       _, state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-    stepsize = otu.tree_get(state, 'learning_rate')
+    stepsize = optax.tree.get(state, 'learning_rate')
     # Check that we still made a step
     self.assertEqual(stepsize, 10.0)
     self.assertIn(_linesearch.FLAG_INTERVAL_NOT_FOUND, stdout.getvalue())
@@ -610,11 +610,11 @@ class ZoomLinesearchTest(chex.TestCase):
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
       _, final_state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-    stepsize = otu.tree_get(final_state, 'learning_rate')
+    stepsize = optax.tree.get(final_state, 'learning_rate')
     # Check that we still made a step
     self.assertEqual(stepsize, 16.0)
-    decrease_error = otu.tree_get(final_state, 'decrease_error')
-    curvature_error = otu.tree_get(final_state, 'curvature_error')
+    decrease_error = optax.tree.get(final_state, 'decrease_error')
+    curvature_error = optax.tree.get(final_state, 'curvature_error')
     success = (decrease_error <= 0.0) and (curvature_error <= 0.0)
     self.assertFalse(success)
     # Here the error should not be that we haven't had a descent direction
@@ -629,7 +629,7 @@ class ZoomLinesearchTest(chex.TestCase):
     final_params, final_state = _run_linesearch(
         opt, fn, w, u, stepsize_guess=1.0
     )
-    s = otu.tree_get(final_state, 'learning_rate')
+    s = optax.tree.get(final_state, 'learning_rate')
     self._check_linesearch_conditions(
         fn, w, u, final_params, final_state, {'curv_rtol': curv_rtol}
     )
@@ -677,7 +677,7 @@ class ZoomLinesearchTest(chex.TestCase):
         max_linesearch_steps=30, verbose=True
     )
     _, state = _run_linesearch(opt, fun_inf, w, u, stepsize_guess=1.0)
-    stepsize = otu.tree_get(state, 'learning_rate')
+    stepsize = optax.tree.get(state, 'learning_rate')
     self.assertGreater(stepsize, 0.0)
 
   def test_high_smaller_than_low(self):
@@ -698,8 +698,8 @@ class ZoomLinesearchTest(chex.TestCase):
 
     opt = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=20)
     _, final_state = _run_linesearch(opt, fn, w, u, stepsize_guess=1.0)
-    decrease_error = otu.tree_get(final_state, 'decrease_error')
-    curvature_error = otu.tree_get(final_state, 'curvature_error')
+    decrease_error = optax.tree.get(final_state, 'decrease_error')
+    curvature_error = optax.tree.get(final_state, 'curvature_error')
     success = (decrease_error <= 0.0) and (curvature_error <= 0.0)
     self.assertTrue(success)
 

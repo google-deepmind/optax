@@ -26,7 +26,7 @@ from jax import random
 import jax.numpy as jnp
 import numpy as np
 from optax._src import linear_algebra
-import optax.tree_utils as otu
+import optax.tree
 import scipy.stats
 
 
@@ -165,7 +165,7 @@ class LinearAlgebraTest(chex.TestCase):
       return jax.jvp(jax.grad(train_obj), (params,), (tangents_,))[1]
 
     eigval_power, eigvec_power = linear_algebra.power_iteration(
-        hessian_vector_product, v0=otu.tree_ones_like(params)
+        hessian_vector_product, v0=optax.tree.ones_like(params)
     )
 
     params_flat, unravel = jax.flatten_util.ravel_pytree(params)

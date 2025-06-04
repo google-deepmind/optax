@@ -35,8 +35,7 @@ from optax._src import utils
 from optax.schedules import _inject
 from optax.schedules import _schedule
 from optax.transforms import _accumulation
-from optax.tree_utils import _state_utils
-from optax.tree_utils import _tree_math
+import optax.tree
 
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
@@ -291,7 +290,7 @@ class ContribTest(chex.TestCase):
     state = opt.init(params)
     with self.subTest('Test that tree_map_params works'):
       # A no-op change, to verify that tree map works.
-      state = _state_utils.tree_map_params(opt, lambda v: v, state)
+      state = optax.tree.map_params(opt, lambda v: v, state)
 
     with self.subTest('Test that optimization works'):
 
@@ -350,7 +349,7 @@ class ContribTest(chex.TestCase):
     else:
       update_kwargs = {}
     if opt_name == 'sophia':
-      obj_fn = lambda x: _tree_math.tree_norm(x, squared=True)
+      obj_fn = lambda x: optax.tree.norm(x, squared=True)
       update_fn = functools.partial(opt.update, obj_fn=obj_fn)
       inject_update_fn = functools.partial(opt_inject.update, obj_fn=obj_fn)
     else:
@@ -389,12 +388,12 @@ class ContribTest(chex.TestCase):
     """Test that the optimizers return updates of same dtype as params."""
     # When debugging this test, note that operations like
     # x = 0.5**jnp.asarray(1, dtype=jnp.int32)
-    # (appearing in e.g. optax.tree_utils.tree_bias_correction)
+    # (appearing in e.g. optax.tree.bias_correction)
     # are promoted (strictly) to float32 when jitted
     # see https://github.com/jax-ml/jax/issues/23337
     # This may end up letting updates have a dtype different from params.
     # The solution is to fix the dtype of the result to the desired dtype
-    # (just as done in optax.tree_utils.tree_bias_correction).
+    # (just as done in optax.tree.bias_correction).
     # Otherwise, just make sure that all variables defined in the optimizer have
     # the same dtype as the parameters.
     dtype = jnp.dtype(dtype)

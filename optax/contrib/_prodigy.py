@@ -25,7 +25,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-import optax.tree_utils as otu
+import optax.tree
 
 
 class ProdigyState(NamedTuple):
@@ -91,10 +91,10 @@ def prodigy(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = otu.tree_dtype(params, 'lowest')
-    exp_avg = otu.tree_zeros_like(params)
-    exp_avg_sq = otu.tree_zeros_like(params)
-    grad_sum = otu.tree_zeros_like(params)
+    params_dtype = optax.tree.dtype(params, 'lowest')
+    exp_avg = optax.tree.zeros_like(params)
+    exp_avg_sq = optax.tree.zeros_like(params)
+    grad_sum = optax.tree.zeros_like(params)
     params0 = params
     estim_lr = jnp.asarray(estim_lr0, dtype=params_dtype)
     numerator_weighted = jnp.zeros((), dtype=params_dtype)
@@ -130,7 +130,7 @@ def prodigy(
     dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
-    numerator_acum = otu.tree_vdot(updates, param_diff)
+    numerator_acum = optax.tree.vdot(updates, param_diff)
     exp_avg = jax.tree.map(
         lambda ea, dgk: beta1 * ea + (1 - beta1) * dgk, state.exp_avg, dg
     )
@@ -149,7 +149,7 @@ def prodigy(
       )
     numerator_weighted = beta3 * numerator_weighted
     numerator_weighted += (estim_lr / estim_lr0) * dlr * numerator_acum
-    denominator = otu.tree_sum(jax.tree.map(jnp.abs, grad_sum))
+    denominator = optax.tree.sum(jax.tree.map(jnp.abs, grad_sum))
     lr_estimate = estim_lr_coef * numerator_weighted / denominator
     estim_lr = jnp.maximum(state.estim_lr, lr_estimate)
     p_update = jax.tree.map(

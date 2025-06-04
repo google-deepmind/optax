@@ -26,13 +26,13 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from optax import tree_utils as otu
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
+import optax.tree
 
 
 def orthogonalize_via_newton_schulz(
@@ -145,7 +145,7 @@ def scale_by_muon(
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = otu.tree_zeros_like(params, dtype=mu_dtype)  # First moment
+    mu = optax.tree.zeros_like(params, dtype=mu_dtype)  # First moment
     ns_coeffs_ = jnp.asarray(ns_coeffs)
     if ns_coeffs_.ndim > 2 or ns_coeffs_.shape[-1] != 3:
       raise ValueError(
@@ -159,18 +159,18 @@ def scale_by_muon(
 
   def update_fn(updates, state, params=None):
     del params
-    mu = otu.tree_update_moment(updates, state.mu, beta, 1)
+    mu = optax.tree.update_moment(updates, state.mu, beta, 1)
     count_inc = numerics.safe_increment(state.count)
     if nesterov:
       mu_hat = jax.tree.map(
           lambda m, g: beta * m + (1 - beta) * g,
-          otu.tree_bias_correction(
+          optax.tree.bias_correction(
               mu, beta, numerics.safe_increment(count_inc)
           ),
-          otu.tree_bias_correction(updates, beta, count_inc),
+          optax.tree.bias_correction(updates, beta, count_inc),
       )
     else:
-      mu_hat = otu.tree_bias_correction(mu, beta, count_inc)
+      mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x: orthogonalize_via_newton_schulz(
@@ -188,7 +188,7 @@ def scale_by_muon(
         lambda x: jnp.sqrt(jnp.maximum(1, x.shape[-1] / x.shape[-2])) * x,
         updates,
     )
-    mu = otu.tree_cast(mu, mu_dtype)
+    mu = optax.tree.cast(mu, mu_dtype)
     return updates, MuonState(
         count=count_inc,
         mu=mu,

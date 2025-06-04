@@ -23,7 +23,7 @@ from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
-import optax.tree_utils as otu
+import optax.tree
 
 
 def scale_by_adopt(
@@ -59,8 +59,8 @@ def scale_by_adopt(
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
-    mu = otu.tree_zeros_like(params, dtype=mu_dtype)  # First moment
-    nu = otu.tree_zeros_like(params)  # Second moment
+    mu = optax.tree.zeros_like(params, dtype=mu_dtype)  # First moment
+    nu = optax.tree.zeros_like(params)  # Second moment
     return transform.ScaleByAdamState(
         count=jnp.zeros([], jnp.int32), mu=mu, nu=nu
     )
@@ -69,7 +69,7 @@ def scale_by_adopt(
     del params
     b2_ = jnp.where(state.count > 0, b2, 0)
     b1_ = jnp.where(state.count > 0, b1, 1)
-    nu = otu.tree_update_moment_per_elem_norm(updates, state.nu, b2_, 2)
+    nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2_, 2)
     if use_clipping:
       clip_value = clip_value_fn(state.count)
       mu_updates = jax.tree.map(
@@ -83,14 +83,14 @@ def scale_by_adopt(
       mu_updates = jax.tree.map(
           lambda ud, nu: ud / jnp.maximum(jnp.sqrt(nu), eps), updates, state.nu
       )
-    mu = otu.tree_update_moment(mu_updates, state.mu, b1_, 1)
+    mu = optax.tree.update_moment(mu_updates, state.mu, b1_, 1)
     count_inc = numerics.safe_increment(state.count)
     if nesterov:
-      mu_ = otu.tree_update_moment(mu_updates, mu, b1_, 1)
+      mu_ = optax.tree.update_moment(mu_updates, mu, b1_, 1)
     else:
       mu_ = mu
     updates = mu_
-    mu = otu.tree_cast(mu, mu_dtype)
+    mu = optax.tree.cast(mu, mu_dtype)
     return updates, transform.ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)

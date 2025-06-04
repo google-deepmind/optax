@@ -26,13 +26,13 @@ from typing import Any, Callable, NamedTuple, Optional, Union
 
 import jax
 import jax.numpy as jnp
-from optax import tree_utils as otu
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
 from optax.transforms import _adding
+import optax.tree
 
 
 class HutchinsonState(NamedTuple):
@@ -66,13 +66,14 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
       raise ValueError("obj_fn must be provided to hutchinson update function.")
     del updates
     key, subkey = jax.random.split(state.key)
-    random_signs = otu.tree_random_like(
+    random_signs = optax.tree.random_like(
         subkey,
         params,
         jax.random.rademacher,
         dtype=jnp.float32,
     )
-    random_signs = otu.tree_cast(random_signs, otu.tree_dtype(params, "lowest"))
+    random_signs = optax.tree.cast(random_signs,
+                                   optax.tree.dtype(params, "lowest"))
     hvp = jax.jvp(jax.grad(obj_fn), (params,), (random_signs,))[1]
     product = jax.tree.map(lambda h, r: h * r, hvp, random_signs)
     return product, HutchinsonState(key=key)
@@ -137,8 +138,8 @@ def scale_by_sophia(
   def init_fn(params):
     return SophiaState(
         count=jnp.zeros([], jnp.int32),
-        mu=otu.tree_zeros_like(params, dtype=mu_dtype),
-        nu=otu.tree_zeros_like(params),
+        mu=optax.tree.zeros_like(params, dtype=mu_dtype),
+        nu=optax.tree.zeros_like(params),
         hessian_fn_state=hessian_diagonal_fn.init(params),
     )
 
@@ -150,8 +151,8 @@ def scale_by_sophia(
     grads = updates
 
     # Sophia update
-    mu = otu.tree_update_moment(updates, state.mu, b1, 1)
-    mu_hat = otu.tree_bias_correction(mu, b1, count_inc)
+    mu = optax.tree.update_moment(updates, state.mu, b1, 1)
+    mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     updates = jax.tree.map(
         lambda m, h: m / jnp.maximum(gamma * h, eps), mu_hat, state.nu
     )
@@ -180,7 +181,7 @@ def scale_by_sophia(
       )
 
       # ema of hessian diagonal
-      nu = otu.tree_update_moment(hessian_diag, nu, b2, 1)
+      nu = optax.tree.update_moment(hessian_diag, nu, b2, 1)
 
       return hess_fn_state, nu
 
@@ -193,7 +194,7 @@ def scale_by_sophia(
     )
 
     # Cast momentum back to mu_dtype
-    mu = otu.tree_cast(mu, mu_dtype)
+    mu = optax.tree.cast(mu, mu_dtype)
 
     state = SophiaState(
         count=count_inc,

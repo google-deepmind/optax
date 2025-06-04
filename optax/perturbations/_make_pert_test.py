@@ -15,16 +15,16 @@
 
 """Tests for optax.perturbations, checking values and gradients."""
 
+from functools import partial  # pylint: disable=g-importing-member
 import operator
 
 from absl.testing import absltest
 import chex
 import jax
-from jax import tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
-from optax import tree_utils as otu
 from optax.perturbations import _make_pert
+import optax.tree
 
 
 def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
@@ -35,7 +35,7 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
 
 
 def argmax_tree(x):
-  return jtu.tree_map(one_hot_argmax, x)
+  return jax.tree.map(one_hot_argmax, x)
 
 
 class MakePertTest(absltest.TestCase):
@@ -92,7 +92,7 @@ class MakePertTest(absltest.TestCase):
     )
     expected = pert_argmax_fun(self.array_a_jax, self.rng_jax)
     softmax_fun = lambda x: jax.nn.softmax(x / self.sigma)
-    got = jtu.tree_map(softmax_fun, self.array_a_jax)
+    got = jax.tree.map(softmax_fun, self.array_a_jax)
     np.testing.assert_array_almost_equal(expected, got, decimal=1)
     pert_argmax_fun_small = _make_pert.make_perturbed_fun(
         argmax_tree, self.num_samples_small, self.sigma_small
@@ -113,7 +113,7 @@ class MakePertTest(absltest.TestCase):
     chex.assert_trees_all_equal_shapes(expect_hessian, got_hessian)
     chex.assert_trees_all_close(expected_grad, got_grad, atol=6e-2)
     expected_dict = pert_argmax_fun(self.tree_a_dict_jax, self.rng_jax)
-    got_dict = jtu.tree_map(softmax_fun, self.tree_a_dict_jax)
+    got_dict = jax.tree.map(softmax_fun, self.tree_a_dict_jax)
     chex.assert_trees_all_close(expected_dict, got_dict, atol=6e-2)
 
   def test_values_on_tree(self):
@@ -130,26 +130,25 @@ class MakePertTest(absltest.TestCase):
       return x
 
     def apply_element_tree(tree):
-      apply_tree = jtu.Partial(apply_both, tree)
-      leaves, _ = jtu.tree_flatten(tree)
-      return_tree = jtu.tree_map(apply_tree, self.element_tree)
+      leaves, _ = jax.tree.flatten(tree)
+      return_tree = jax.tree.map(partial(apply_both, tree), self.element_tree)
       return_tree.append(sum(jnp.sum(leaf) for leaf in leaves))
       return return_tree
 
     tree_out = apply_element_tree(self.example_tree)
-    tree_noise = otu.tree_random_like(
+    tree_noise = optax.tree.random_like(
         self.rng_jax, self.example_tree, sampler=_make_pert.Normal().sample
     )
     tree_out_noisy = apply_element_tree(
-        otu.tree_add_scale(self.example_tree, 1e-4, tree_noise)
+        optax.tree.add_scale(self.example_tree, 1e-4, tree_noise)
     )
     chex.assert_trees_all_close(tree_out, tree_out_noisy, rtol=1e-4)
 
     def loss(tree):
       pred = apply_element_tree(tree)
       pred_true = apply_element_tree(self.example_tree)
-      tree_loss = jtu.tree_map(lambda x, y: (x - y) ** 2, pred, pred_true)
-      list_loss = jtu.tree_reduce(operator.add, tree_loss)
+      tree_loss = jax.tree.map(lambda x, y: (x - y) ** 2, pred, pred_true)
+      list_loss = jax.tree.reduce(operator.add, tree_loss)
       return _make_pert._tree_mean_across(list_loss)
 
     loss_pert = _make_pert.make_perturbed_fun(
@@ -158,7 +157,7 @@ class MakePertTest(absltest.TestCase):
     rngs = jax.random.split(self.rng_jax, 3)
     low_loss = loss_pert(self.example_tree, rngs[0])
     high_loss = loss_pert(
-        otu.tree_random_like(rngs[1], self.example_tree), rngs[1]
+        optax.tree.random_like(rngs[1], self.example_tree), rngs[1]
     )
     np.testing.assert_array_less(low_loss, high_loss)
 

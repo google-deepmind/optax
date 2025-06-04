@@ -24,7 +24,7 @@ import numpy as np
 from optax._src import base
 from optax._src import update
 from optax.contrib import _mechanic
-from optax.tree_utils import _state_utils
+import optax.tree
 
 
 class OptimizerTestState(NamedTuple):
@@ -68,7 +68,7 @@ class MechanicTest(chex.TestCase):
     opt_state = self.variant(init_fn)(params)
 
     # A no-op change, to verify that tree map works.
-    opt_state = _state_utils.tree_map_params(init_fn, lambda v: v, opt_state)
+    opt_state = optax.tree.map_params(init_fn, lambda v: v, opt_state)
 
     for _ in range(num_steps):
       updates, opt_state = step(self.grads, opt_state, params)
