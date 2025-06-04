@@ -24,6 +24,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 import optax.tree
+import functools
 
 
 class Normal:
@@ -56,37 +57,6 @@ class Gumbel:
     return -inputs - jnp.exp(-inputs)
 
 
-def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
-  """Mean across a list of trees.
-
-  Args:
-    trees: List or tuple of pytrees with the same structure.
-
-  Returns:
-    a pytree with the same structure as each tree in ``trees`` with leaves being
-    the mean across the trees.
-
-  Examples:
-    >>> optax.tree.reduce_mean_across(
-    ...   [{'first': [1, 2], 'last': 3},
-    ...    {'first': [5, 6], 'last': 7}]
-    ...   )
-    {'first': [3, 4], 'last': 5}
-  """
-  mean_fun = lambda x: sum(x) / len(trees)
-  return jax.tree.map(lambda *leaves: mean_fun(leaves), *trees)
-
-
-def _tree_vmap(
-    fun: Callable[[chex.ArrayTree], chex.ArrayTree],
-    trees: Sequence[chex.ArrayTree],
-) -> chex.ArrayTree:
-  """Applies a function to a list of trees, akin to a vmap."""
-  tree_def_in = jax.tree.structure(trees[0])
-  has_in_structure = lambda x: jax.tree.structure(x) == tree_def_in
-  return jax.tree.map(fun, trees, is_leaf=has_in_structure)
-
-
 def make_perturbed_fun(
     fun: Callable[[chex.ArrayTree], chex.ArrayTree],
     num_samples: int = 1000,
@@ -116,7 +86,8 @@ def make_perturbed_fun(
 
   Returns:
     A function with the same signature (plus an additional rng in the input)
-    that can be automatically differentiated.
+    that can be automatically differentiated. Second order differentiation is
+    currently not implemented.
 
   References:
     Berthet et al., `Learning with Differentiable Perturbed Optimizers
@@ -130,32 +101,31 @@ def make_perturbed_fun(
       inputs: chex.ArrayTree, rng: chex.PRNGKey
   ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
     # random noise Zs to be added to inputs
-    samples = [
-        optax.tree.random_like(rng_, inputs, sampler=noise.sample)
-        for rng_ in jax.random.split(rng, num_samples)
-    ]
+    samples = jax.vmap(lambda rng_: optax.tree.random_like(rng_, inputs, sampler=noise.sample))(
+        jax.random.split(rng, num_samples))
+
     # creates [inputs + Z_1, ..., inputs + Z_num_samples]
-    inputs_pert = _tree_vmap(
-        lambda z: optax.tree.add_scale(inputs, sigma, z), samples
-    )
+    inputs_pert = jax.vmap(lambda z: optax.tree.add_scale(inputs, sigma, z))(samples)
+
     # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
-    outputs_pert = _tree_vmap(fun, inputs_pert)
+    outputs_pert = jax.vmap(fun)(inputs_pert)
     return outputs_pert, samples
 
-  @jax.custom_jvp
-  def fun_perturb(inputs: chex.ArrayTree, rng: chex.PRNGKey) -> chex.ArrayTree:
-    outputs_pert, _ = _compute_residuals(inputs, rng)
+  @functools.partial(jax.custom_jvp,nondiff_argnums=(1,))
+  def fun_perturb(primal_in: chex.ArrayTree, rng: chex.PRNGKey) -> chex.ArrayTree:
+    outputs_pert, _ = _compute_residuals(primal_in, rng)
     # averages the perturbed outputs
-    return _tree_mean_across(outputs_pert)
+    return jax.tree.map(lambda x: jnp.mean(x, axis=0), outputs_pert)
 
+  @fun_perturb.defjvp
   def fun_perturb_jvp(
-      tangent: chex.ArrayTree, _: Any, inputs: chex.ArrayTree, rng: chex.PRNGKey
+          rng: chex.PRNGKey, primal_in: chex.ArrayTree, tangent_in: chex.ArrayTree
   ) -> chex.ArrayTree:
     """Computes the jacobian vector product.
 
     Following the method in [Berthet et al. 2020], for a vector `g`, we have
     Jac(fun_perturb)(inputs) * g =
-    - E[fun(inputs + sigma * Z) * <grad log_prob(Z), g>].
+    -1/sigma * E[fun(inputs + sigma * Z) * <grad log_prob(Z), g>].
     This implements a Monte-Carlo estimate
 
     Args:
@@ -167,25 +137,22 @@ def make_perturbed_fun(
     Returns:
       The jacobian vector product.
     """
-    outputs_pert, samples = _compute_residuals(inputs, rng)
-    array_sum_log_prob_func = lambda x: jnp.sum(noise.log_prob(x))
-    array_grad_log_prob_func = jax.grad(array_sum_log_prob_func)
-    # computes [grad log_prob(Z_1), ... , grad log_prob(Z_num_samples)]
-    tree_sum_log_probs = jax.tree.map(array_grad_log_prob_func, samples)
-    fun_dot_prod = lambda z: jax.tree.map(jnp.dot, z, tangent)
-    list_tree_dot_prods = _tree_vmap(fun_dot_prod, tree_sum_log_probs)
-    # computes [<grad log_prob(Z_1), g>, .. , <grad log_prob(Z_num_samples), g>]
-    list_dot_prods = _tree_vmap(
-        lambda x: jnp.sum(jax.tree.reduce(operator.add, x)), list_tree_dot_prods
-    )
-    # TODO(qberthet): implement with the jvp of the grad log prob.
-    # computes 1/M * sum_i fun(inputs + sigma * Z_i) < - grad log_prob(Z_i), g>
-    tangent_out = _tree_mean_across([
-        optax.tree.scale(-scalar_dot_prod, output)
-        for scalar_dot_prod, output in zip(list_dot_prods, outputs_pert)
-    ])
-    return tangent_out
+    assert len(primal_in) == 1 and len(tangent_in) == 1
+    primal_in = primal_in[0]
+    tangent_in = tangent_in[0]
 
-  fun_perturb.defjvps(fun_perturb_jvp, None)
+    outputs_pert, samples = _compute_residuals(primal_in, rng)
+    primal_out = jax.tree.map(lambda x: jnp.mean(x, axis=0), outputs_pert)
+
+    tree_log_prob_func = lambda sample: optax.tree.sum(jax.tree.map(noise.log_prob, sample))
+    @functools.partial(jax.vmap,in_axes=(0,0))
+    def sample_tangent_out(output_pert, sample):
+      _, grad_inner_prod = jax.jvp(tree_log_prob_func, (sample,), (tangent_in,))
+      return jax.tree.map(lambda x: x * grad_inner_prod, output_pert)
+
+    tangent_out_samples = sample_tangent_out(outputs_pert, samples)
+    tangent_out = jax.tree.map(lambda x: -1/sigma * jnp.mean(x, axis=0), tangent_out_samples)
+
+    return primal_out, tangent_out
 
   return fun_perturb
