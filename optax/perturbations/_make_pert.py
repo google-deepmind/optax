@@ -85,9 +85,14 @@ def make_perturbed_fun(
       :class:optax.perturbations.Gumbel. Default is Gumbel distribution.
 
   Returns:
-    A function with the same signature (plus an additional rng in the input)
-    that can be automatically differentiated. Second order differentiation is
-    currently not implemented.
+    A function with the same signature (plus an additional rng in the input) so
+    that it and its first derivative are implemented as Monte-Carlo estimates
+    over values of fun only, not the derivative of fun. The result is therefore
+    suitable to differentiate even if fun is not.
+
+    Order n derivatives of the result are evaluated as Monte-Carlo estimates
+    over the the order n-1 derivatives of fun. It is therefore suitable to take
+    n derivatives of the result if fun is n-1 times differentiable.
 
   References:
     Berthet et al., `Learning with Differentiable Perturbed Optimizers

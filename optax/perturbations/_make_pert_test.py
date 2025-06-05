@@ -37,9 +37,20 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   flat_one_hot = jax.nn.one_hot(jnp.argmax(inputs_flat), inputs_flat.shape[0])
   return jnp.reshape(flat_one_hot, inputs.shape)
 
-
 def argmax_tree(x):
   return jax.tree.map(one_hot_argmax, x)
+
+def simple_make_perturbed_fun(f, num_samples=1000, sigma=0.1, noise=_make_pert.Gumbel()):
+  # Monte Carlo estimate of E[f(x + σ Z)] where Z ~ noise
+  # only works for differentiable f
+  def g(x, rng):
+    zs_shape = optax.tree.batch_shape(x, (num_samples,))
+    zs = optax.tree.random_like(rng, zs_shape, noise.sample)
+    xs = optax.tree.add_scale(x, sigma, zs)
+    ys = jax.vmap(f)(xs)
+    ys_mean = jax.tree.map(lambda leaf: jnp.mean(leaf, 0), ys)
+    return ys_mean
+  return g
 
 class MakePertTest(parameterized.TestCase):
 
@@ -47,8 +58,7 @@ class MakePertTest(parameterized.TestCase):
   def test_pert_argmax(self,xtype,sigma,seed):
     """Test that make_perturbed_fun matches theoretical expression of gradient.
 
-    Applies to the case of an argmax. Includes a test for the gradients and the
-    Hessian of a scalar loss.
+    Applies to the case of an argmax. Includes a test for the jacobian and gradients.
 
     This test is probabilistic, and can fail with low probability. If this
     happens, try increasing num_samples or loosening the tolerances of the
@@ -191,6 +201,60 @@ class MakePertTest(parameterized.TestCase):
     got = jax.jacobian(pert_linear_fun)(x,rng)
     chex.assert_trees_all_equal_shapes(got, expected)
     chex.assert_trees_all_close(got, expected, atol=1e-1)
+
+
+  @parameterized.product(sigma=[0.1,0.5,1.0], noise=[_make_pert.Gumbel(), _make_pert.Normal()], seed=_TEST_SEEDS)
+  def test_pert_differentiable(self,sigma,noise,seed):
+    """In the differentiable function case, test that the jacobian of the
+    peturbed function agrees with the direct Monte-Carlo estimate over the
+    derivative.
+
+    This test is probabilistic, and can fail with low probability. If this
+    happens, try increasing num_samples or loosening the tolerances of the
+    assertions.
+    """
+    num_samples = 1_000_000
+
+    def f(x):
+      # a differentiable test function
+      x0, x1, x2 = x
+      y0 = x0 * x1**2 * jnp.sin(x2 * x1 - x0) + jnp.cos(x0**3)
+      y1 = x2 + x0 * jnp.sin(x1)
+      return jnp.stack([y0, y1])
+
+    f1 = _make_pert.make_perturbed_fun(
+        f,
+        num_samples=num_samples,
+        sigma=sigma,
+        noise=noise,
+    )
+    f2 = simple_make_perturbed_fun(
+        f,
+        num_samples=num_samples,
+        sigma=sigma,
+        noise=noise,
+    )
+
+    x = jnp.array([0.3, 0.4, 0.5])
+    rng = jax.random.key(seed)
+    j1 = jax.jacobian(f1)(x, rng)
+    j2 = jax.jacobian(f2)(x, rng)
+    chex.assert_trees_all_close(j1, j2, atol=2e-1)
+
+  def test_fun_derivative_not_used(self):
+    """Test that the derivative of the perturbed function does not need the derivative of f
+    """
+    @jax.custom_jvp
+    def f(x):
+        return x
+
+    @f.defjvp
+    def assert_unused(primal_in, tangent_in):
+        assert False
+
+    rng = jax.random.key(0)
+    fp = _make_pert.make_perturbed_fun(f, 10)
+    jax.grad(fp)(jnp.array(0.0), rng)
 
   def test_nonflat_shape(self):
     """Test that https://github.com/google-deepmind/optax/issues/1309 is fixed
