@@ -98,24 +98,24 @@ def make_perturbed_fun(
   """
 
   def _compute_residuals(
-      inputs: chex.ArrayTree, rng: chex.PRNGKey
+      primal_in: chex.ArrayTree, rng: chex.PRNGKey
   ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
     # random noise Zs to be added to inputs
-    samples = jax.vmap(lambda rng_: optax.tree.random_like(rng_, inputs, sampler=noise.sample))(
-        jax.random.split(rng, num_samples))
+    samples = optax.tree.random_like(rng,
+        optax.tree.batch_shape(primal_in, (num_samples,)), sampler=noise.sample)
 
     # creates [inputs + Z_1, ..., inputs + Z_num_samples]
-    inputs_pert = jax.vmap(lambda z: optax.tree.add_scale(inputs, sigma, z))(samples)
+    primal_in_samples = jax.vmap(lambda z: optax.tree.add_scale(primal_in, sigma, z))(samples)
 
     # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
-    outputs_pert = jax.vmap(fun)(inputs_pert)
-    return outputs_pert, samples
+    primal_out_samples = jax.vmap(fun)(primal_in_samples)
+    return primal_out_samples, samples
 
   @functools.partial(jax.custom_jvp,nondiff_argnums=(1,))
   def fun_perturb(primal_in: chex.ArrayTree, rng: chex.PRNGKey) -> chex.ArrayTree:
-    outputs_pert, _ = _compute_residuals(primal_in, rng)
-    # averages the perturbed outputs
-    return jax.tree.map(lambda x: jnp.mean(x, axis=0), outputs_pert)
+    primal_out_samples, _ = _compute_residuals(primal_in, rng)
+    # average the perturbed outputs
+    return jax.tree.map(lambda x: jnp.mean(x, axis=0), primal_out_samples)
 
   @fun_perturb.defjvp
   def fun_perturb_jvp(
