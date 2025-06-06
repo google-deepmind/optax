@@ -89,12 +89,15 @@ def make_perturbed_fun(
     suitable to differentiate even if fun is not.
 
   Example:
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> from optax.perturbations import make_perturbed_fun
     >>> key = jax.random.key(0)
     >>> x = jnp.array([0.0, 0.0, 0.0])
     >>> f = lambda x: jnp.sum(jnp.maximum(x, 0.0))
-    >>> fp = _make_pert.make_perturbed_fun(f, 1_000, 0.1)
+    >>> fn = make_perturbed_fun(f, 1_000, 0.1)
     >>> with jnp.printoptions(precision=2):
-    ...   print(jax.grad(fp, argnums=1)(key, x))
+    ...   print(jax.grad(fn, argnums=1)(key, x))
     [0.63 0.59 0.63]
 
   References:
