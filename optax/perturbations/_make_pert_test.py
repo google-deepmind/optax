@@ -19,12 +19,18 @@ from functools import partial  # pylint: disable=g-importing-member
 import operator
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from optax.perturbations import _make_pert
 import optax.tree
+
+# pylint: disable=g-doc-args
+
+_TEST_SEEDS = [0, 17]
 
 
 def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
@@ -38,89 +44,108 @@ def argmax_tree(x):
   return jax.tree.map(one_hot_argmax, x)
 
 
-class MakePertTest(absltest.TestCase):
+def simple_make_perturbed_fun(f, num_samples=1000, sigma=0.1,
+                              noise=_make_pert.Gumbel()):
+  # a simplified Monte Carlo estimate of E[f(x + σ Z)] where Z ~ noise
+  # this simplified reference only works for differentiable f
+  @jax.jit
+  def g(key, x):
+    zs_shape = optax.tree.batch_shape(x, (num_samples,))
+    zs = optax.tree.random_like(key, zs_shape, noise.sample)
+    xs = optax.tree.add_scale(x, sigma, zs)
+    ys = jax.vmap(f)(xs)
+    ys_mean = jax.tree.map(lambda leaf: jnp.mean(leaf, 0), ys)
+    return ys_mean
+  return g
 
-  def setUp(self):
-    super().setUp()
-    rng = np.random.RandomState(0)
 
-    self.rng_jax = jax.random.key(0)
-    self.num_samples = 1_000
-    self.num_samples_small = 1_000
-    self.sigma = 0.5
-    self.sigma_small = 1.0
+# this tests includes long compilation time, so sharply limit the test cases
+class MakePertTest(parameterized.TestCase):
+  @parameterized.product(xtype=['tree'], sigma=[2.0], seed=_TEST_SEEDS)
+  def test_pert_argmax(self, xtype, sigma, seed):
+    """Test that make_perturbed_fun matches theoretical expression of gradient.
 
-    self.tree_a = (rng.randn(20, 10), rng.randn(20))
+    Applies to the case of an argmax. Includes a test for the jacobian and
+    gradients.
 
-    self.tree_a_dict_jax = (
-        jnp.array((1.0, 4.0, 5.0)),
-        {'k1': jnp.array((1.0, 2.0)), 'k2': jnp.array((1.0, 1.0))},
-        jnp.array((1.0, 2.0)),
-    )
-    self.array_a = rng.randn(20)
+    This test is probabilistic, and can fail with low probability. If this
+    happens, try increasing num_samples or loosening the tolerances of the
+    assertions.
+    """
 
-    self.array_a_jax = jnp.array(self.array_a)
-    self.array_small_jax = jnp.array([1.0, 2.0, 3.0, 4.0])
+    num_samples = 1_000_000
+
+    key = jax.random.key(seed)
+    if xtype == 'tree':
+      key, key1, key2, key3, key4 = jax.random.split(key, 5)
+      x = (jax.random.normal(key1, (4,)), {'k1': jax.random.normal(key2, (3,)),
+                                           'k2': jax.random.normal(key3, (2,))},
+           jax.random.normal(key4, (2,)))
+    else:
+      key, key1 = jax.random.split(key)
+      x = jax.random.normal(key1, (20,))
+
+    # pert_argmax_fun and its jacobian should be an unbiased estimator of
+    # softmax_fun and its jacobian
+    pert_argmax_fun = jax.jit(_make_pert.make_perturbed_fun(
+        argmax_tree, num_samples, sigma))
+    softmax_fun = lambda x: jax.tree.map(lambda z: jax.nn.softmax(z / sigma), x)
+
+    expected = softmax_fun(x)
+    got = pert_argmax_fun(key, x)
+    chex.assert_trees_all_equal_shapes(got, expected)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
+
+    expected = jax.jacobian(softmax_fun)(x)
+    got = jax.jacobian(pert_argmax_fun, argnums=1)(key, x)
+    chex.assert_trees_all_equal_shapes(got, expected)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
+
+    # test gradients for losses
+
+    @jax.jit
+    def pert_loss(key, inputs):
+      pert_argmax = pert_argmax_fun(key, inputs)
+      return optax.tree.sum(jax.tree.map(lambda x: x**2 + jnp.cos(x),
+                                         pert_argmax))
+
+    @jax.jit
+    def exact_loss(inputs):
+      softmax = softmax_fun(inputs)
+      return optax.tree.sum(jax.tree.map(lambda x: x**2 + jnp.cos(x), softmax))
+
+    expected = jax.grad(exact_loss)(x)
+    got = jax.grad(pert_loss, argnums=1)(key, x)
+    chex.assert_trees_all_equal_shapes(got, expected)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
+
+    # Do not check the hessian, as the second order derivative is currently not
+    # implemented with Monte-Carlo methods, and there is no reason to expect
+    # correct values
+
+  @parameterized.product(seed=_TEST_SEEDS)
+  def test_values_on_tree(self, seed):
+    """Test that the perturbations are well applied for functions on trees.
+
+    Checks that small perturbations on the inputs have small effects on values
+    """
+    key = jax.random.key(seed)
 
     weight_shapes = [(13, 4), (8, 13)]
     biases_shapes = [(13,), (8,)]
 
     example_tree = []
-
     for i in range(2):
       example_tree.append({
           'weights': jnp.ones(weight_shapes[i]),
           'biases': jnp.ones(biases_shapes[i]),
       })
 
-    self.example_tree = example_tree
-    self.element = jnp.array([1.0, 2.0, 3.0, 4.0])
-
-    self.element_tree = [
-        self.element,
-        {'a': jnp.ones_like(self.element), 'b': jnp.zeros_like(self.element)},
+    element = jnp.array([1.0, 2.0, 3.0, 4.0])
+    element_tree = [
+        element,
+        {'a': jnp.ones_like(element), 'b': jnp.zeros_like(element)},
     ]
-
-  def test_pert_close_array(self):
-    """Test that make_perturbed_fun matches theoretical expression of gradient.
-
-    Applies to the case of an argmax. Includes a test for the gradients and the
-    Hessian of a scalar loss.
-    """
-    pert_argmax_fun = _make_pert.make_perturbed_fun(
-        argmax_tree, self.num_samples, self.sigma
-    )
-    expected = pert_argmax_fun(self.array_a_jax, self.rng_jax)
-    softmax_fun = lambda x: jax.nn.softmax(x / self.sigma)
-    got = jax.tree.map(softmax_fun, self.array_a_jax)
-    np.testing.assert_array_almost_equal(expected, got, decimal=1)
-    pert_argmax_fun_small = _make_pert.make_perturbed_fun(
-        argmax_tree, self.num_samples_small, self.sigma_small
-    )
-
-    def pert_loss(inputs, rng):
-      pert_softmax = pert_argmax_fun_small(inputs, rng)
-      return jnp.sum(pert_softmax**2 + jnp.cos(pert_softmax))
-
-    def exact_loss(inputs):
-      softmax = jax.nn.softmax(inputs / self.sigma_small)
-      return jnp.sum(softmax**2 + jnp.cos(softmax))
-
-    got_grad = jax.grad(exact_loss)(self.array_small_jax)
-    expected_grad = jax.grad(pert_loss)(self.array_small_jax, self.rng_jax)
-    expect_hessian = jax.hessian(pert_loss)(self.array_small_jax, self.rng_jax)
-    got_hessian = jax.hessian(exact_loss)(self.array_small_jax)
-    chex.assert_trees_all_equal_shapes(expect_hessian, got_hessian)
-    chex.assert_trees_all_close(expected_grad, got_grad, atol=6e-2)
-    expected_dict = pert_argmax_fun(self.tree_a_dict_jax, self.rng_jax)
-    got_dict = jax.tree.map(softmax_fun, self.tree_a_dict_jax)
-    chex.assert_trees_all_close(expected_dict, got_dict, atol=6e-2)
-
-  def test_values_on_tree(self):
-    """Test that the perturbations are well applied for functions on trees.
-
-    Checks that small perturbations on the inputs have small effects on values
-    """
 
     def apply_both(tree, element):
       x = element
@@ -131,35 +156,119 @@ class MakePertTest(absltest.TestCase):
 
     def apply_element_tree(tree):
       leaves, _ = jax.tree.flatten(tree)
-      return_tree = jax.tree.map(partial(apply_both, tree), self.element_tree)
+      return_tree = jax.tree.map(partial(apply_both, tree), element_tree)
       return_tree.append(sum(jnp.sum(leaf) for leaf in leaves))
       return return_tree
 
-    tree_out = apply_element_tree(self.example_tree)
-    tree_noise = optax.tree.random_like(
-        self.rng_jax, self.example_tree, sampler=_make_pert.Normal().sample
-    )
-    tree_out_noisy = apply_element_tree(
-        optax.tree.add_scale(self.example_tree, 1e-4, tree_noise)
-    )
-    chex.assert_trees_all_close(tree_out, tree_out_noisy, rtol=1e-4)
-
+    @jax.jit
     def loss(tree):
       pred = apply_element_tree(tree)
-      pred_true = apply_element_tree(self.example_tree)
+      pred_true = apply_element_tree(example_tree)
       tree_loss = jax.tree.map(lambda x, y: (x - y) ** 2, pred, pred_true)
       list_loss = jax.tree.reduce(operator.add, tree_loss)
-      return _make_pert._tree_mean_across(list_loss)
+      return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
-    loss_pert = _make_pert.make_perturbed_fun(
+    loss_pert = jax.jit(_make_pert.make_perturbed_fun(
         loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
-    )
-    rngs = jax.random.split(self.rng_jax, 3)
-    low_loss = loss_pert(self.example_tree, rngs[0])
-    high_loss = loss_pert(
-        optax.tree.random_like(rngs[1], self.example_tree), rngs[1]
-    )
+    ))
+    keys = jax.random.split(key, 3)
+    low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types
+    high_loss = loss_pert(keys[2],
+                          optax.tree.random_like(keys[1], example_tree))
     np.testing.assert_array_less(low_loss, high_loss)
+
+  # pylint: disable=invalid-name
+  @parameterized.product(Ashape=[(3, 2)], sigma=[0.25], seed=_TEST_SEEDS)
+  def test_pert_linear_function(self, Ashape, sigma, seed):
+    """Ensure peturbed function and its derivative is accurate for a linear function.
+
+    This test is probabilistic, and can fail with low probability. If this
+    happens, try increasing num_samples or loosening the tolerances of the
+    assertions.
+    """
+
+    num_samples = 1_000_000
+
+    key = jax.random.key(seed)
+    m, n = Ashape
+    key, key1, key2, key3 = jax.random.split(key, 4)
+    A = jax.random.normal(key1, (m, n))  # pylint: disable=invalid-name
+    b = jax.random.normal(key2, (m,))
+    x = jax.random.normal(key3, (n,))
+
+    # pert_linear_fun and its jacobian should be an unbiased estimator of
+    # linear_fun and its jacobian
+    linear_fun = lambda x: A @ x + b
+    pert_linear_fun = jax.jit(_make_pert.make_perturbed_fun(
+        linear_fun, num_samples, sigma, _make_pert.Normal()))
+
+    expected = linear_fun(x)
+    got = pert_linear_fun(key, x)
+    chex.assert_trees_all_equal_shapes(got, expected)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
+
+    expected = jax.jacobian(linear_fun)(x)
+    got = jax.jacobian(pert_linear_fun, argnums=1)(key, x)
+    chex.assert_trees_all_equal_shapes(got, expected)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
+  # pylint: enable=invalid-name
+
+  @parameterized.product(sigma=[0.1, 1.0],
+                         noise=[_make_pert.Gumbel(), _make_pert.Normal()],
+                         seed=_TEST_SEEDS[:1])
+  def test_pert_differentiable(self, sigma, noise, seed):
+    """Ensure the perturbed function jacobian matches for a differentiable function.
+
+    In the differentiable function case, test that the jacobian of the
+    peturbed function agrees with the direct Monte-Carlo estimate over the
+    derivative.
+
+    This test is probabilistic, and can fail with low probability. If this
+    happens, try increasing num_samples or loosening the tolerances of the
+    assertions.
+    """
+    num_samples = 1_000_000
+
+    @jax.jit
+    def f(x):
+      # a differentiable test function
+      x0, x1, x2 = x
+      y0 = x0 * x1**2 * jnp.sin(x2 * x1 - x0) + jnp.cos(x0**3)
+      y1 = x2 + x0 * jnp.sin(x1)
+      return jnp.stack([y0, y1])
+
+    f1 = jax.jit(_make_pert.make_perturbed_fun(
+        f, num_samples=num_samples, sigma=sigma, noise=noise))
+    f2 = simple_make_perturbed_fun(f, num_samples=num_samples, sigma=sigma,
+                                   noise=noise)
+    x = jnp.array([0.3, 0.4, 0.5])
+    key = jax.random.key(seed)
+    j1 = jax.jacobian(f1, argnums=1)(key, x)
+    j2 = jax.jacobian(f2, argnums=1)(key, x)
+    chex.assert_trees_all_close(j1, j2, atol=2e-1)
+
+  def test_fun_derivative_not_used(self):
+    """Ensure the perturbed function derivative doesn't need the derivative of f."""
+    @jax.custom_jvp
+    def f(x):
+      return x
+
+    @f.defjvp
+    def _assert_unused(primal_in, tangent_in):
+      del primal_in, tangent_in
+      assert False
+
+    key = jax.random.key(0)
+    fp = _make_pert.make_perturbed_fun(f, 10)
+    jax.grad(fp, argnums=1)(key, jnp.array(0.0))
+
+  def test_nonflat_shape(self):
+    """Ensure https://github.com/google-deepmind/optax/issues/1309 is fixed."""
+    key = jax.random.key(0)
+    x = jax.numpy.ones((1, 2))
+    f = lambda x: x[0, 0]
+    fp = _make_pert.make_perturbed_fun(f, 10)
+    jax.grad(fp, argnums=1)(key, x)
 
 
 if __name__ == '__main__':

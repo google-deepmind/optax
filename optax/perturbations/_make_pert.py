@@ -16,8 +16,7 @@
 """Creates a differentiable approximation of a function with perturbations."""
 
 
-import operator
-from typing import Any, Callable, Sequence
+from typing import Callable
 
 import chex
 import jax
@@ -56,37 +55,6 @@ class Gumbel:
     return -inputs - jnp.exp(-inputs)
 
 
-def _tree_mean_across(trees: Sequence[chex.ArrayTree]) -> chex.ArrayTree:
-  """Mean across a list of trees.
-
-  Args:
-    trees: List or tuple of pytrees with the same structure.
-
-  Returns:
-    a pytree with the same structure as each tree in ``trees`` with leaves being
-    the mean across the trees.
-
-  Examples:
-    >>> optax.tree.reduce_mean_across(
-    ...   [{'first': [1, 2], 'last': 3},
-    ...    {'first': [5, 6], 'last': 7}]
-    ...   )
-    {'first': [3, 4], 'last': 5}
-  """
-  mean_fun = lambda x: sum(x) / len(trees)
-  return jax.tree.map(lambda *leaves: mean_fun(leaves), *trees)
-
-
-def _tree_vmap(
-    fun: Callable[[chex.ArrayTree], chex.ArrayTree],
-    trees: Sequence[chex.ArrayTree],
-) -> chex.ArrayTree:
-  """Applies a function to a list of trees, akin to a vmap."""
-  tree_def_in = jax.tree.structure(trees[0])
-  has_in_structure = lambda x: jax.tree.structure(x) == tree_def_in
-  return jax.tree.map(fun, trees, is_leaf=has_in_structure)
-
-
 def make_perturbed_fun(
     fun: Callable[[chex.ArrayTree], chex.ArrayTree],
     num_samples: int = 1000,
@@ -115,8 +83,19 @@ def make_perturbed_fun(
       :class:optax.perturbations.Gumbel. Default is Gumbel distribution.
 
   Returns:
-    A function with the same signature (plus an additional rng in the input)
-    that can be automatically differentiated.
+    A function with the same signature (preceded by a random key in the input)
+    so that it and its first derivative are implemented as Monte-Carlo estimates
+    over values of fun only, not the derivative of fun. The result is therefore
+    suitable to differentiate even if fun is not.
+
+  Example:
+    >>> key = jax.random.key(0)
+    >>> x = jnp.array([0.0, 0.0, 0.0])
+    >>> f = lambda x: jnp.sum(jnp.maximum(x, 0.0))
+    >>> fp = _make_pert.make_perturbed_fun(f, 1_000, 0.1)
+    >>> with jnp.printoptions(precision=2):
+    ...   print(jax.grad(fp, argnums=1)(key, x))
+    [0.63 0.59 0.63]
 
   References:
     Berthet et al., `Learning with Differentiable Perturbed Optimizers
@@ -126,66 +105,72 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """
 
-  def _compute_residuals(
-      inputs: chex.ArrayTree, rng: chex.PRNGKey
-  ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
-    # random noise Zs to be added to inputs
-    samples = [
-        optax.tree.random_like(rng_, inputs, sampler=noise.sample)
-        for rng_ in jax.random.split(rng, num_samples)
-    ]
-    # creates [inputs + Z_1, ..., inputs + Z_num_samples]
-    inputs_pert = _tree_vmap(
-        lambda z: optax.tree.add_scale(inputs, sigma, z), samples
-    )
+  def _compute_residuals(key: chex.PRNGKey, primal_in: chex.ArrayTree
+                         ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
+
+    if not all(isinstance(x, jax.Array) for x in jax.tree.leaves(primal_in)):
+      raise ValueError('All leaves of primal_in must be jax.Array, got: '
+                       f'{jax.tree.map(type, primal_in)}')
+
+    # construct sample using optax.tree.random_like with added batch dimension
+    # but without explicitly realizing the batched `_like` primals.
+    samples = optax.tree.random_like(  # random noise Zs to be added to inputs
+        key, jax.tree.map(lambda x: jax.ShapeDtypeStruct(
+            (num_samples,) + x.shape, x.dtype), primal_in),
+        sampler=noise.sample)
+
     # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
-    outputs_pert = _tree_vmap(fun, inputs_pert)
-    return outputs_pert, samples
+    primal_out_samples = jax.vmap(
+        lambda sample: fun(optax.tree.add_scale(primal_in, sigma, sample)))(
+            samples)
+    return primal_out_samples, samples
 
   @jax.custom_jvp
-  def fun_perturb(inputs: chex.ArrayTree, rng: chex.PRNGKey) -> chex.ArrayTree:
-    outputs_pert, _ = _compute_residuals(inputs, rng)
-    # averages the perturbed outputs
-    return _tree_mean_across(outputs_pert)
+  def fun_perturb(key: chex.PRNGKey,
+                  primal_in: chex.ArrayTree) -> chex.ArrayTree:
+    primal_out_samples, _ = _compute_residuals(key, primal_in)
+    # average the perturbed outputs
+    return jax.tree.map(lambda x: jnp.mean(x, axis=0), primal_out_samples)
 
-  def fun_perturb_jvp(
-      tangent: chex.ArrayTree, _: Any, inputs: chex.ArrayTree, rng: chex.PRNGKey
-  ) -> chex.ArrayTree:
+  @fun_perturb.defjvp  # pytype: disable=wrong-arg-types
+  def _fun_perturb_jvp(primal_in: chex.ArrayTree,
+                       tangent_in: chex.ArrayTree) -> chex.ArrayTree:
     """Computes the jacobian vector product.
 
     Following the method in [Berthet et al. 2020], for a vector `g`, we have
     Jac(fun_perturb)(inputs) * g =
-    - E[fun(inputs + sigma * Z) * <grad log_prob(Z), g>].
+    -1/sigma * E[fun(inputs + sigma * Z) * <grad log_prob(Z), g>].
     This implements a Monte-Carlo estimate
 
     Args:
-      tangent: the tangent in the jacobian vector product.
-      _: not used.
-      inputs: the inputs to the function.
-      rng: the random number generator key.
+      primal_in: forwad function inputs
+      tangent_in: the tangent in the jacobian vector product.
 
     Returns:
       The jacobian vector product.
     """
-    outputs_pert, samples = _compute_residuals(inputs, rng)
-    array_sum_log_prob_func = lambda x: jnp.sum(noise.log_prob(x))
-    array_grad_log_prob_func = jax.grad(array_sum_log_prob_func)
-    # computes [grad log_prob(Z_1), ... , grad log_prob(Z_num_samples)]
-    tree_sum_log_probs = jax.tree.map(array_grad_log_prob_func, samples)
-    fun_dot_prod = lambda z: jax.tree.map(jnp.dot, z, tangent)
-    list_tree_dot_prods = _tree_vmap(fun_dot_prod, tree_sum_log_probs)
-    # computes [<grad log_prob(Z_1), g>, .. , <grad log_prob(Z_num_samples), g>]
-    list_dot_prods = _tree_vmap(
-        lambda x: jnp.sum(jax.tree.reduce(operator.add, x)), list_tree_dot_prods
-    )
-    # TODO(qberthet): implement with the jvp of the grad log prob.
-    # computes 1/M * sum_i fun(inputs + sigma * Z_i) < - grad log_prob(Z_i), g>
-    tangent_out = _tree_mean_across([
-        optax.tree.scale(-scalar_dot_prod, output)
-        for scalar_dot_prod, output in zip(list_dot_prods, outputs_pert)
-    ])
-    return tangent_out
+    assert len(primal_in) == 2 and len(tangent_in) == 2
+    key, primal_in = primal_in
+    key_tangent_in, tangent_in = tangent_in
+    del key_tangent_in
 
-  fun_perturb.defjvps(fun_perturb_jvp, None)
+    outputs_pert, samples = _compute_residuals(key, primal_in)
+    primal_out = jax.tree.map(lambda x: jnp.mean(x, axis=0), outputs_pert)
+
+    tree_log_prob_func = lambda sample: optax.tree.sum(
+        jax.tree.map(noise.log_prob, sample))
+
+    broadcast_tangent_in = optax.tree.batch_shape(tangent_in, (num_samples,))
+    _, grad_inner_prod = jax.jvp(
+        jax.vmap(tree_log_prob_func), (samples,), (broadcast_tangent_in,))
+
+    tangent_out_samples = jax.tree.map(
+        lambda x: x * jnp.expand_dims(grad_inner_prod, axis=range(1, x.ndim)),
+        outputs_pert)
+
+    tangent_out = jax.tree.map(lambda x: -1 / sigma * jnp.mean(x, axis=0),
+                               tangent_out_samples)
+
+    return primal_out, tangent_out
 
   return fun_perturb
