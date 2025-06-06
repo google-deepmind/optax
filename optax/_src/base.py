@@ -169,7 +169,7 @@ class GradientTransformation(NamedTuple):
   transformation is applied, a new state is computed and returned, ready to be
   passed to the next call to the gradient transformation.
 
-  Since gradient transformations are pure, idempotent functions, the only way
+  Since gradient transformations are pure functions, the only way
   to change the behavior of a gradient transformation between steps, is to
   change the values in the optimizer state. To see an example of mutating the
   optimizer state in order to control the behavior of an optax gradient
