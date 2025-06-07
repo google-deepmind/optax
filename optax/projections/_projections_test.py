@@ -229,6 +229,16 @@ class ProjectionsTest(parameterized.TestCase):
       p = proj_fun(x, small_radius)
       np.testing.assert_almost_equal(norm_fun(p), small_radius, decimal=4)
 
+  def test_projection_l2_ball_grad_at_zero(self):
+    grad = jax.grad(proj.projection_l2_ball)(0.0)
+    assert not jnp.isnan(grad)
+    assert grad == 1.0
+
+  def test_projection_l1_ball_grad_at_zero(self):
+    grad = jax.grad(proj.projection_l1_ball)(0.0)
+    assert not jnp.isnan(grad)
+    assert grad == 1.0
+
 
 if __name__ == '__main__':
   absltest.main()
