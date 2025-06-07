@@ -60,6 +60,7 @@ def make_perturbed_fun(
     num_samples: int = 1000,
     sigma: float = 0.1,
     noise=Gumbel(),
+    use_baseline=True,
 ) -> Callable[[chex.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
   r"""Yields a differentiable approximation of a function, using stochastic perturbations.
 
@@ -87,6 +88,8 @@ def make_perturbed_fun(
     sigma: a float, the scale of the random perturbation.
     noise: a distribution object that implements ``sample`` and ``log_prob`` methods,
       like :class:`optax.perturbations.Gumbel` (which is the default).
+    use_baseline: Use the value of the function at the unperturbed input as a baseline
+      for variance reduction.
 
   Returns:
     A new function with the same signature as the original function, but with a leading
@@ -131,21 +134,31 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """
 
-  def stoch_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
-    z = optax.tree.random_like(key, x, sampler=noise.sample)
-    y = optax.tree.add_scale(x, sigma, z)
-    y = jax.lax.stop_gradient(y)
-    z = jax.tree.map(lambda x, y: (y - x) / sigma, x, y)
-    lp_z = optax.tree.sum(jax.tree.map(noise.log_prob, z))
-    output = optax.tree.scale(_magicbox(lp_z), fun(y))
-    return output
+  def perturbed_fun(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
 
-  def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+    def f(key):
+      z = optax.tree.random_like(key, x, sampler=noise.sample)
+      y = optax.tree.add_scale(x, sigma, z)
+      y = jax.lax.stop_gradient(y)
+      z = jax.tree.map(lambda x, y: (y - x) / sigma, x, y)
+      lp_z = optax.tree.sum(jax.tree.map(noise.log_prob, z))
+      box = _magicbox(lp_z)
+      output = optax.tree.scale(box, fun(y))
+      if use_baseline:
+        output = optax.tree.add_scale(output, 1 - box, baseline)
+      return output
+
+    if use_baseline:
+      baseline = fun(jax.lax.stop_gradient(x))
+    else:
+      baseline = None
+
     keys = jax.random.split(key, num_samples)
-    outputs = jax.vmap(stoch_estimator, (0, None))(keys, x)
-    return jax.tree.map(lambda x: jnp.mean(x, 0), outputs)
+    outputs = jax.vmap(f)(keys)
+    mean = jax.tree.map(lambda x: x.mean(0), outputs)
+    return mean
 
-  return mc_estimator
+  return perturbed_fun
 
 
 def _magicbox(x):
