@@ -88,8 +88,6 @@ def make_perturbed_fun(
     sigma: a float, the scale of the random perturbation.
     noise: a distribution object that implements ``sample`` and ``log_prob`` methods,
       like :class:`optax.perturbations.Gumbel` (which is the default).
-    use_baseline: Use the value of the function at the unperturbed input as a baseline
-      for variance reduction.
 
   Returns:
     A new function with the same signature as the original function, but with a leading
@@ -134,31 +132,27 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """
 
-  def perturbed_fun(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+  def stoch_estimator(key: chex.PRNGKey, x: chex.ArrayTree,
+    baseline: chex.ArrayTree) -> chex.ArrayTree:
+    sample = optax.tree.random_like(key, x, sampler=noise.sample)
+    shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
+    shifted_sample = jax.lax.stop_gradient(shifted_sample)
+    sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
 
-    def f(key):
-      z = optax.tree.random_like(key, x, sampler=noise.sample)
-      y = optax.tree.add_scale(x, sigma, z)
-      y = jax.lax.stop_gradient(y)
-      z = jax.tree.map(lambda x, y: (y - x) / sigma, x, y)
-      lp_z = optax.tree.sum(jax.tree.map(noise.log_prob, z))
-      box = _magicbox(lp_z)
-      output = optax.tree.scale(box, fun(y))
-      if use_baseline:
-        output = optax.tree.add_scale(output, 1 - box, baseline)
-      return output
+    log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
+    box = _magicbox(log_prob_sample)
+    out = optax.tree.scale(box, fun(shifted_sample))
+    out = optax.tree.add_scale(out, 1 - box, baseline)
+    return out
 
-    if use_baseline:
-      baseline = fun(jax.lax.stop_gradient(x))
-    else:
-      baseline = None
+  def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+    baseline = fun(jax.lax.stop_gradient(x))
+    out = jax.vmap(stoch_estimator, in_axes=(0, None, None), out_axes=0)(
+        jax.random.split(key, num_samples), x, baseline
+    )
+    return jax.tree.map(lambda x: jnp.mean(x, axis=0), out)
 
-    keys = jax.random.split(key, num_samples)
-    outputs = jax.vmap(f)(keys)
-    mean = jax.tree.map(lambda x: x.mean(0), outputs)
-    return mean
-
-  return perturbed_fun
+  return mc_estimator
 
 
 def _magicbox(x):
