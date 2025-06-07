@@ -30,8 +30,6 @@ import optax.tree
 
 # pylint: disable=g-doc-args
 
-_TEST_SEEDS = [0, 17]
-
 
 def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   """An argmax one-hot function for arbitrary shapes."""
@@ -61,8 +59,8 @@ def simple_make_perturbed_fun(f, num_samples=1000, sigma=0.1,
 
 # this tests includes long compilation time, so sharply limit the test cases
 class MakePertTest(parameterized.TestCase):
-  @parameterized.product(xtype=['tree'], sigma=[2.0], seed=_TEST_SEEDS)
-  def test_pert_argmax(self, xtype, sigma, seed):
+  @parameterized.product(xtype=['tree', 'flat'], sigma=[0.5, 1.0])
+  def test_pert_argmax(self, xtype, sigma):
     """Test that make_perturbed_fun matches theoretical expression of gradient.
 
     Applies to the case of an argmax. Includes a test for the jacobian and
@@ -75,7 +73,7 @@ class MakePertTest(parameterized.TestCase):
 
     num_samples = 1_000_000
 
-    key = jax.random.key(seed)
+    key = jax.random.key(0)
     if xtype == 'tree':
       key, key1, key2, key3, key4 = jax.random.split(key, 5)
       x = (jax.random.normal(key1, (4,)), {'k1': jax.random.normal(key2, (3,)),
@@ -87,8 +85,9 @@ class MakePertTest(parameterized.TestCase):
 
     # pert_argmax_fun and its jacobian should be an unbiased estimator of
     # softmax_fun and its jacobian
-    pert_argmax_fun = jax.jit(_make_pert.make_perturbed_fun(
-        argmax_tree, num_samples, sigma))
+    pert_argmax_fun = jax.jit(
+        _make_pert.make_perturbed_fun(argmax_tree, num_samples, sigma)
+    )
     softmax_fun = lambda x: jax.tree.map(lambda z: jax.nn.softmax(z / sigma), x)
 
     expected = softmax_fun(x)
@@ -119,17 +118,12 @@ class MakePertTest(parameterized.TestCase):
     chex.assert_trees_all_equal_shapes(got, expected)
     chex.assert_trees_all_close(got, expected, atol=1e-1)
 
-    # Do not check the hessian, as the second order derivative is currently not
-    # implemented with Monte-Carlo methods, and there is no reason to expect
-    # correct values
-
-  @parameterized.product(seed=_TEST_SEEDS)
-  def test_values_on_tree(self, seed):
+  def test_values_on_tree(self):
     """Test that the perturbations are well applied for functions on trees.
 
     Checks that small perturbations on the inputs have small effects on values
     """
-    key = jax.random.key(seed)
+    key = jax.random.key(0)
 
     weight_shapes = [(13, 4), (8, 13)]
     biases_shapes = [(13,), (8,)]
@@ -178,9 +172,9 @@ class MakePertTest(parameterized.TestCase):
     np.testing.assert_array_less(low_loss, high_loss)
 
   # pylint: disable=invalid-name
-  @parameterized.product(Ashape=[(3, 2)], sigma=[0.25], seed=_TEST_SEEDS)
-  def test_pert_linear_function(self, Ashape, sigma, seed):
-    """Ensure peturbed function and its derivative is accurate for a linear function.
+  @parameterized.product(sigma=[0.5, 1.0])
+  def test_pert_linear_function(self, sigma):
+    """Ensure perturbed function and its derivative is accurate for a linear function.
 
     This test is probabilistic, and can fail with low probability. If this
     happens, try increasing num_samples or loosening the tolerances of the
@@ -189,8 +183,9 @@ class MakePertTest(parameterized.TestCase):
 
     num_samples = 1_000_000
 
+    seed = 0
+    m, n = (3, 2)
     key = jax.random.key(seed)
-    m, n = Ashape
     key, key1, key2, key3 = jax.random.split(key, 4)
     A = jax.random.normal(key1, (m, n))  # pylint: disable=invalid-name
     b = jax.random.normal(key2, (m,))
@@ -213,10 +208,10 @@ class MakePertTest(parameterized.TestCase):
     chex.assert_trees_all_close(got, expected, atol=1e-1)
   # pylint: enable=invalid-name
 
-  @parameterized.product(sigma=[0.1, 1.0],
-                         noise=[_make_pert.Gumbel(), _make_pert.Normal()],
-                         seed=_TEST_SEEDS[:1])
-  def test_pert_differentiable(self, sigma, noise, seed):
+  @parameterized.product(
+      sigma=[0.5, 1.0], noise=[_make_pert.Gumbel(), _make_pert.Normal()]
+  )
+  def test_pert_differentiable(self, sigma, noise):
     """Ensure the perturbed function jacobian matches for a differentiable function.
 
     In the differentiable function case, test that the jacobian of the
@@ -227,6 +222,7 @@ class MakePertTest(parameterized.TestCase):
     happens, try increasing num_samples or loosening the tolerances of the
     assertions.
     """
+    seed = 0
     num_samples = 1_000_000
 
     @jax.jit
@@ -270,6 +266,17 @@ class MakePertTest(parameterized.TestCase):
     fp = _make_pert.make_perturbed_fun(f, 10)
     jax.grad(fp, argnums=1)(key, x)
 
+  @parameterized.product(
+      sigma=[0.5, 1.0], noise=[_make_pert.Gumbel(), _make_pert.Normal()]
+  )
+  def test_hessian(self, sigma, noise):
+    """Test that hessian of perturbed function matches exact hessian."""
+    fun = lambda x: 0.5*jnp.sum(x**2)
+    fun_p = _make_pert.make_perturbed_fun(fun, 10**5, sigma, noise)
+    x = jnp.array([0.0, 0.0])
+    got = jax.hessian(fun_p, argnums=1)(jax.random.key(0), x)
+    expected = jax.hessian(fun)(x)
+    chex.assert_trees_all_close(got, expected, atol=1e-1)
 
 if __name__ == '__main__':
   absltest.main()

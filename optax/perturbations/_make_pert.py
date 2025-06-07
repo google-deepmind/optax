@@ -60,18 +60,22 @@ def make_perturbed_fun(
     num_samples: int = 1000,
     sigma: float = 0.1,
     noise=Gumbel(),
-) -> Callable[[chex.ArrayTree, chex.PRNGKey], chex.ArrayTree]:
+) -> Callable[[chex.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
   r"""Turns a function into a differentiable approximation, with perturbations.
 
-  For a function :math:`f` (``fun``), it creates a proxy :math:`f_\sigma`
-  defined by
+  For a function :math:`f` (``fun``), a differentiable proxy of :math:`f` is its
+  smoothing by perturbation, :math:`f_\sigma`, defined by
 
   .. math::
 
     f_\sigma(x) = E[f(x +\sigma Z)]
 
-  for :math:`Z` a random variable sample from the noise sampler. This implements
-  a Monte-Carlo estimate.
+  for :math:`Z` a random variable sample from the noise sampler.
+
+  :func:`optax.make_perturbed_fun` returns a Monte-Carlo estimate of
+  :math:`f_\sigma` and any derivative of :math:`f_\sigma`
+  computed through jax (like :func:`jax.grad` but higher derivatives are ok too)
+  will return a Monte-Carlo estimate of that derivative.
 
   Args:
     fun: The function to transform into a differentiable function. Signature
@@ -98,82 +102,55 @@ def make_perturbed_fun(
     >>> fn = make_perturbed_fun(f, 1_000, 0.1)
     >>> with jnp.printoptions(precision=2):
     ...   print(jax.grad(fn, argnums=1)(key, x))
-    [0.63 0.59 0.63]
+    [0.69 0.72 0.58]
+
+  .. note::
+    For the curious reader, the function :math:`f_\sigma` can equivalently be
+    written as
+
+    .. math::
+
+      f_\sigma(x) = E_{y\sim p_{x, \sigma}}[f(y)]
+
+    where :math:`p_{x, \sigma}` is the probability density function of the
+    random variable x +\sigma Z.
+
+    The gradient can then be obtained by the score function estimator, a.k.a.
+    REINFORCE. We implement the score function estimator through the "magic
+    box" operator introduced by Foerster et al, 2018, so that the returned
+    function provides stochastic estimators of any order derivatives by simply
+    using jax auto-diff system.
 
   References:
     Berthet et al., `Learning with Differentiable Perturbed Optimizers
     <https://arxiv.org/abs/2002.08676>`_, 2020
 
+    Foerster et al., `DiCE: The Infinitely Differentiable Monte Carlo Estimator
+    <https://arxiv.org/abs/1802.05098>`_, 2018
+
   .. seealso::
     * :doc:`../_collections/examples/perturbations` example.
   """
 
-  def _compute_residuals(key: chex.PRNGKey, primal_in: chex.ArrayTree
-                         ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
+  def stoch_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+    sample = optax.tree.random_like(key, x, sampler=noise.sample)
+    shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
+    shifted_sample = jax.lax.stop_gradient(shifted_sample)
+    sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
 
-    if not all(isinstance(x, jax.Array) for x in jax.tree.leaves(primal_in)):
-      raise ValueError('All leaves of primal_in must be jax.Array, got: '
-                       f'{jax.tree.map(type, primal_in)}')
+    log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
+    out = optax.tree.scale(_magicbox(log_prob_sample), fun(shifted_sample))
+    return out
 
-    # construct sample using optax.tree.random_like with added batch dimension
-    # but without explicitly realizing the batched `_like` primals.
-    samples = optax.tree.random_like(  # random noise Zs to be added to inputs
-        key, jax.tree.map(lambda x: jax.ShapeDtypeStruct(
-            (num_samples,) + x.shape, x.dtype), primal_in),
-        sampler=noise.sample)
+  def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+    out = jax.vmap(stoch_estimator, in_axes=(0, None), out_axes=0)(
+        jax.random.split(key, num_samples), x
+    )
+    return jax.tree.map(lambda x: jnp.mean(x, axis=0), out)
 
-    # applies fun: [fun(inputs + Z_1), ..., fun(inputs + Z_num_samples)]
-    primal_out_samples = jax.vmap(
-        lambda sample: fun(optax.tree.add_scale(primal_in, sigma, sample)))(
-            samples)
-    return primal_out_samples, samples
+  return mc_estimator
 
-  @jax.custom_jvp
-  def fun_perturb(key: chex.PRNGKey,
-                  primal_in: chex.ArrayTree) -> chex.ArrayTree:
-    primal_out_samples, _ = _compute_residuals(key, primal_in)
-    # average the perturbed outputs
-    return jax.tree.map(lambda x: jnp.mean(x, axis=0), primal_out_samples)
 
-  @fun_perturb.defjvp  # pytype: disable=wrong-arg-types
-  def _fun_perturb_jvp(primal_in: chex.ArrayTree,
-                       tangent_in: chex.ArrayTree) -> chex.ArrayTree:
-    """Computes the jacobian vector product.
-
-    Following the method in [Berthet et al. 2020], for a vector `g`, we have
-    Jac(fun_perturb)(inputs) * g =
-    -1/sigma * E[fun(inputs + sigma * Z) * <grad log_prob(Z), g>].
-    This implements a Monte-Carlo estimate
-
-    Args:
-      primal_in: forwad function inputs
-      tangent_in: the tangent in the jacobian vector product.
-
-    Returns:
-      The jacobian vector product.
-    """
-    assert len(primal_in) == 2 and len(tangent_in) == 2
-    key, primal_in = primal_in
-    key_tangent_in, tangent_in = tangent_in
-    del key_tangent_in
-
-    outputs_pert, samples = _compute_residuals(key, primal_in)
-    primal_out = jax.tree.map(lambda x: jnp.mean(x, axis=0), outputs_pert)
-
-    tree_log_prob_func = lambda sample: optax.tree.sum(
-        jax.tree.map(noise.log_prob, sample))
-
-    broadcast_tangent_in = optax.tree.batch_shape(tangent_in, (num_samples,))
-    _, grad_inner_prod = jax.jvp(
-        jax.vmap(tree_log_prob_func), (samples,), (broadcast_tangent_in,))
-
-    tangent_out_samples = jax.tree.map(
-        lambda x: x * jnp.expand_dims(grad_inner_prod, axis=range(1, x.ndim)),
-        outputs_pert)
-
-    tangent_out = jax.tree.map(lambda x: -1 / sigma * jnp.mean(x, axis=0),
-                               tangent_out_samples)
-
-    return primal_out, tangent_out
-
-  return fun_perturb
+def _magicbox(x):
+  """MagicBox operator."""
+  return jnp.exp(x - jax.lax.stop_gradient(x))
