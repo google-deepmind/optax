@@ -88,6 +88,8 @@ def make_perturbed_fun(
     sigma: a float, the scale of the random perturbation.
     noise: a distribution object that implements ``sample`` and ``log_prob`` methods,
       like :class:`optax.perturbations.Gumbel` (which is the default).
+    use_baseline: Use the value of the function at the unperturbed input as a baseline
+      for variance reduction (default is true).
 
   Returns:
     A new function with the same signature as the original function, but with a leading
@@ -142,11 +144,15 @@ def make_perturbed_fun(
     log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
     box = _magicbox(log_prob_sample)
     out = optax.tree.scale(box, fun(shifted_sample))
-    out = optax.tree.add_scale(out, 1 - box, baseline)
+    if use_baseline:
+      out = optax.tree.add_scale(out, 1 - box, baseline)
     return out
 
   def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
-    baseline = fun(jax.lax.stop_gradient(x))
+    if use_baseline:
+      baseline = fun(jax.lax.stop_gradient(x))
+    else:
+      baseline = None
     out = jax.vmap(stoch_estimator, in_axes=(0, None, None), out_axes=0)(
         jax.random.split(key, num_samples), x, baseline
     )
