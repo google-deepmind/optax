@@ -122,6 +122,9 @@ Tree
     tree_vdot
     tree_where
     tree_zeros_like
+    tree_neg
+    tree_size
+    tree_min
 
 NamedTupleKey
 ~~~~~~~~~~~~~
