@@ -423,7 +423,7 @@ def simplified_ademamix(
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     b1: Exponential decay rate to track the EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
-    alpha: Mixing coefficient for the curren tgradient and EMA.
+    alpha: Mixing coefficient for the current gradient and EMA.
     eps: A small constant applied to denominator outside of the square root
       (as in the Adam paper) to avoid dividing by zero when rescaling.
     eps_root: A small constant applied to denominator inside the square root (as
