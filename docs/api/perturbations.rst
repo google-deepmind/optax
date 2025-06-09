@@ -4,8 +4,8 @@ Perturbations
 .. currentmodule:: optax.perturbations
 
 .. autosummary::
-    Gumbel
     make_perturbed_fun
+    Gumbel
     Normal
 
 
