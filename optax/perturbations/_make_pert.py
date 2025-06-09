@@ -31,7 +31,7 @@ class Normal:
   def sample(
       self,
       key: jax.typing.ArrayLike,
-      sample_shape: base.Shape,
+      sample_shape: base.Shape = (),
       dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:
     return jax.random.normal(key, sample_shape, dtype)
@@ -46,7 +46,7 @@ class Gumbel:
   def sample(
       self,
       key: jax.typing.ArrayLike,
-      sample_shape: base.Shape,
+      sample_shape: base.Shape = (),
       dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:
     return jax.random.gumbel(key, sample_shape, dtype)
@@ -60,37 +60,42 @@ def make_perturbed_fun(
     num_samples: int = 1000,
     sigma: float = 0.1,
     noise=Gumbel(),
+    use_baseline=True,
 ) -> Callable[[chex.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
-  r"""Turns a function into a differentiable approximation, with perturbations.
+  r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
-  For a function :math:`f` (``fun``), a differentiable proxy of :math:`f` is its
-  smoothing by perturbation, :math:`f_\sigma`, defined by
+  Let :math:`f` be a function, :math:`\sigma` be a scalar, :math:`\mu` be a
+  noise distribution, and
 
   .. math::
+    f_\sigma(x) = \mathbb{E}_{z \sim \mu} f(x + \sigma z)
 
-    f_\sigma(x) = E[f(x +\sigma Z)]
+  Given certain conditions on :math:`\mu`, :math:`f_\sigma` is a smoothed,
+  differentiable approximation of :math:`f`, even if :math:`f` itself is not
+  differentiable.
 
-  for :math:`Z` a random variable sample from the noise sampler.
-
-  :func:`optax.make_perturbed_fun` returns a Monte-Carlo estimate of
-  :math:`f_\sigma` and any derivative of :math:`f_\sigma`
-  computed through jax (like :func:`jax.grad` but higher derivatives are ok too)
-  will return a Monte-Carlo estimate of that derivative.
+  :func:`optax.perturbations.make_perturbed_fun` yields a stochastic function
+  whose values and arbitrary-order derivatives (when computed through `JAX's
+  automatic differentiation
+  <https://docs.jax.dev/en/latest/automatic-differentiation.html>`_
+  system) are unbiased Monte-Carlo estimates of the corresponding values and
+  derivatives of :math:`f_\sigma`. These estimates are computed using only
+  values (not derivatives) of :math:`f`, at stochastic perturbations of the
+  input. Thus :math:`f` itself does not have to be differentiable.
 
   Args:
-    fun: The function to transform into a differentiable function. Signature
-      currently supported is from pytree to pytree, whose leaves are jax arrays.
+    fun: The function to transform into a differentiable function. The signature
+      currently supported is from pytree to pytree, whose leaves are JAX arrays.
     num_samples: an int, the number of perturbed outputs to average over.
     sigma: a float, the scale of the random perturbation.
-    noise: a distribution object that must implement a sample function and a
-      log-pdf of the desired distribution, similar to
-      :class:optax.perturbations.Gumbel. Default is Gumbel distribution.
+    noise: a distribution object that implements ``sample`` and ``log_prob``
+      methods, like :class:`optax.perturbations.Gumbel` (which is the default).
+    use_baseline: Use the value of the function at the unperturbed input as a
+      baseline for variance reduction.
 
   Returns:
-    A function with the same signature (preceded by a random key in the input)
-    so that it and its first derivative are implemented as Monte-Carlo estimates
-    over values of fun only, not the derivative of fun. The result is therefore
-    suitable to differentiate even if fun is not.
+    A new function with the same signature as the original function, but with a
+    leading random PRNG key argument.
 
   Example:
     >>> import jax
@@ -105,21 +110,20 @@ def make_perturbed_fun(
     [0.69 0.72 0.58]
 
   .. note::
-    For the curious reader, the function :math:`f_\sigma` can equivalently be
-    written as
+    For the curious reader, :math:`f_\sigma` can also be expressed as
 
     .. math::
+      f_\sigma(x) = \mathbb{E}_{y \sim \nu(x, \sigma)} f(y)
 
-      f_\sigma(x) = E_{y\sim p_{x, \sigma}}[f(y)]
-
-    where :math:`p_{x, \sigma}` is the probability density function of the
-    random variable x +\sigma Z.
+    where :math:`\nu(x, \sigma)` is the probability distribution of the random
+    variable :math:`x + \sigma z`.
 
     The gradient can then be obtained by the score function estimator, a.k.a.
     REINFORCE. We implement the score function estimator through the "magic
     box" operator introduced by Foerster et al, 2018, so that the returned
-    function provides stochastic estimators of any order derivatives by simply
-    using jax auto-diff system.
+    function provides stochastic estimates of derivatives of any order by simply
+    using `JAX's automatic differentiation
+    <https://docs.jax.dev/en/latest/automatic-differentiation.html>`_ system.
 
   References:
     Berthet et al., `Learning with Differentiable Perturbed Optimizers
@@ -132,19 +136,30 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """
 
-  def stoch_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
-    sample = optax.tree.random_like(key, x, sampler=noise.sample)
-    shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
-    shifted_sample = jax.lax.stop_gradient(shifted_sample)
-    sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
-
-    log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
-    out = optax.tree.scale(_magicbox(log_prob_sample), fun(shifted_sample))
-    return out
-
   def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
-    out = jax.vmap(stoch_estimator, in_axes=(0, None), out_axes=0)(
-        jax.random.split(key, num_samples), x
+
+    def stoch_estimator(
+        key: chex.PRNGKey, x: chex.ArrayTree, baseline: chex.ArrayTree
+    ) -> chex.ArrayTree:
+      sample = optax.tree.random_like(key, x, sampler=noise.sample)
+      shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
+      shifted_sample = jax.lax.stop_gradient(shifted_sample)
+      sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
+
+      log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
+      box = _magicbox(log_prob_sample)
+      out = optax.tree.scale(box, fun(shifted_sample))
+      if use_baseline:
+        out = optax.tree.add_scale(out, 1 - box, baseline)
+      return out
+
+    if use_baseline:
+      baseline = fun(jax.lax.stop_gradient(x))
+    else:
+      baseline = None
+
+    out = jax.vmap(stoch_estimator, in_axes=(0, None, None), out_axes=0)(
+        jax.random.split(key, num_samples), x, baseline
     )
     return jax.tree.map(lambda x: jnp.mean(x, axis=0), out)
 
