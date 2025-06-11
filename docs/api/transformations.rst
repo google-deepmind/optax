@@ -264,11 +264,14 @@ Transformations and states
 .. autoclass:: ZoomLinesearchInfo
 
 
-Utilites
-~~~~~~~~
-
 Freezing
 --------
+
+.. currentmodule:: optax.transforms
+
+.. autosummary::
+    freeze
+    selective_transform
 
 .. autofunction:: freeze
 .. autofunction:: selective_transform
