@@ -265,13 +265,7 @@ Transformations and states
 
 
 Freezing
---------
-
-.. currentmodule:: optax.transforms
-
-.. autosummary::
-    freeze
-    selective_transform
+~~~~~~~~
 
 .. autofunction:: freeze
 .. autofunction:: selective_transform

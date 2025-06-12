@@ -56,7 +56,7 @@ def freeze(mask: Union[bool, chex.ArrayTree]) -> base.GradientTransformation:
     `mask==True`, and leaves other gradients intact.
 
   .. seealso::
-    :func:`optax.transforms.selective_transform` : For partitioning updates
+    :func:`optax.selective_transform` : For partitioning updates
     so only un-frozen parameters are optimized.
   """
   return masked(base.set_to_zero(), mask)
@@ -93,7 +93,7 @@ def selective_transform(
       - `set_to_zero()` if its mask is True (“freeze”).
 
   .. seealso::
-    :func:`optax.transforms.freeze` : For simply zeroing out gradients
+    :func:`optax.freeze` : For simply zeroing out gradients
     according to a mask.
   """
 
