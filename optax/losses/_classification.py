@@ -251,7 +251,8 @@ def softmax_cross_entropy(
     labels: One-hot encoded labels, with shape `[batch_size, num_classes]`. Each
       row represents the true class distribution for a single example.
     axis: Axis or axes along which to compute.
-    where: Elements to include in the computation.
+    where: Elements to include in the computation of shape ``[batch_size]`` or
+      logits.shape.
 
   Returns:
     Cross-entropy between each prediction and the corresponding target
@@ -286,6 +287,8 @@ def softmax_cross_entropy(
     Added ``axis`` and ``where`` arguments.
   """
   chex.assert_type([logits], float)
+  if where is not None and where.ndim != logits.ndim:
+    where = jnp.expand_dims(where, axis)
   log_probs = jax.nn.log_softmax(logits, axis, where)
   return -(labels * log_probs).sum(axis, where=where)
 
@@ -321,7 +324,8 @@ def softmax_cross_entropy_with_integer_labels(
       then ``num_classes`` must match the total number of elements in ``axis``
       dimensions and a label is interpreted as a flat index in a ``logits``
       slice of shape ``logits[axis]``.
-    where: Elements to include in the computation.
+    where: Elements to include in the computation of shape ``[batch_size]``
+      or logits.shape.
 
   Returns:
     Cross-entropy between each prediction and the corresponding target
@@ -369,6 +373,8 @@ def softmax_cross_entropy_with_integer_labels(
   """
   chex.assert_type([logits], float)
   chex.assert_type([labels], int)
+  if where is not None and where.ndim != logits.ndim:
+    where = jnp.expand_dims(where, axis)
   if isinstance(axis, int):
     axis = canonicalize_axis(axis, logits.ndim)
   elif isinstance(axis, tuple):
@@ -388,15 +394,14 @@ def softmax_cross_entropy_with_integer_labels(
   # This is like jnp.take_along_axis(jax.nn.log_softmax(...), ...) except that
   # we avoid subtracting the normalizer from all values, just from the values
   # for the correct labels.
-  logits_max = jnp.max(
-      logits, axis, keepdims=True, where=where, initial=-jnp.inf
-  )
-  logits -= jax.lax.stop_gradient(logits_max)
   label_logits = jnp.take_along_axis(
       logits, jnp.expand_dims(labels, axis), axis=axis
   ).take(0, axis=axis)
-  log_normalizers = jnp.log(jnp.sum(jnp.exp(logits), axis=axis, where=where))
-  return log_normalizers - label_logits
+  log_normalizers = jax.nn.logsumexp(logits, axis=axis, where=where)
+  out = log_normalizers - label_logits
+  if where is not None:
+    out = jnp.where(jnp.squeeze(where, axis), out, 0.0)
+  return out
 
 
 @functools.partial(

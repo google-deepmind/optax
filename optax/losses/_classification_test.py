@@ -31,27 +31,10 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ys = np.array(
-        [
-            [10.0, 1.0, -2.0],
-            [1.0, 4.0, 0.2],
-        ],
-        dtype=np.float32,
-    )
-    self.ts = np.array(
-        [
-            [0.0, 1.0, 0.0],
-            [1.0, 0.0, 0.0],
-        ],
-        dtype=np.float32,
-    )
-    self.exp = np.array(
-        [
-            9.00013,
-            3.0696733,
-        ],
-        dtype=np.float32,
-    )
+    self.ys = np.array([[10.0, 1.0, -2.0], [1.0, 4.0, 0.2]], dtype=np.float32)
+    self.ts = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]], dtype=np.float32)
+    self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
+    self.mask = np.array([True, False])
 
   @chex.all_variants
   def test_scalar(self):
@@ -80,6 +63,11 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         (self.ys[:2], self.ts[:2]),
         order=1,
     )
+    # check if the gradients are finite when a mask is present
+    loss_fn = lambda *args, **kw: jnp.sum(
+        _classification.softmax_cross_entropy(*args, **kw))
+    gs = jax.grad(loss_fn)(self.ys, labels=self.ts, where=self.mask)
+    self.assertTrue(jnp.all(jnp.isfinite(gs)))
 
   @parameterized.parameters({'size': 5}, {'size': 10})
   def test_mask(self, size):
@@ -189,6 +177,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     super().setUp()
     self.ys = np.array([[10.0, 1.0, -2.0], [1.0, 4.0, 0.2]], dtype=np.float32)
     self.ts = np.array([1, 0], dtype=np.int32)
+    self.mask = np.array([True, False])
 
   @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_scalar(self):
@@ -228,6 +217,11 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
         (self.ys,),
         order=1,
     )
+    # check if the gradients are finite when a mask is present
+    loss_fn = lambda *args, **kw: jnp.sum(
+        _classification.softmax_cross_entropy_with_integer_labels(*args, **kw))
+    gs = jax.grad(loss_fn)(self.ys, labels=self.ts, where=self.mask)
+    self.assertTrue(jnp.all(jnp.isfinite(gs)))
 
   @parameterized.parameters(
       {'axis': 0, 'shape': [4, 5, 6]},
