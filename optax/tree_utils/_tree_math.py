@@ -24,6 +24,30 @@ import jax.numpy as jnp
 from optax._src import numerics
 
 
+def tree_size(tree: Any) -> int:
+  r"""Total size of a pytree.
+
+  Args:
+    tree: pytree
+
+  Returns:
+    the total size of the pytree.
+  """
+  return sum(leaf.size for leaf in jax.tree.leaves(tree))
+
+
+def tree_neg(tree: Any) -> Any:
+  r"""Negate a pytree.
+
+  Args:
+    tree: pytree
+
+  Returns:
+    the negated pytree.
+  """
+  return jax.tree.map(operator.neg, tree)
+
+
 def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
   r"""Add two (or more) pytrees.
 
@@ -181,6 +205,20 @@ def tree_max(tree: Any) -> chex.Numeric:
   maxes = jax.tree.map(jnp.max, tree)
   # initializer=-jnp.inf should work but pytype wants a jax.Array.
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
+
+
+def tree_min(tree: Any) -> chex.Numeric:
+  """Compute the min of all the elements in a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  mins = jax.tree.map(jnp.min, tree)
+  # initializer=jnp.inf should work but pytype wants a jax.Array.
+  return jax.tree.reduce(jnp.minimum, mins, initializer=jnp.array(jnp.inf))
 
 
 def tree_conj(tree: Any) -> Any:
