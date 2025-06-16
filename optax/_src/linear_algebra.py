@@ -265,7 +265,7 @@ def matrix_inverse_pth_root(
         _iter_condition, _iter_body, init_state
     )
     error = jnp.max(jnp.abs(mat_m - identity))
-    is_converged = jnp.asarray(convergence, old_mat_h.dtype)
+    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
     resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
   return resultant_mat_h, error
