@@ -76,86 +76,86 @@ class ClippingTest(absltest.TestCase):
 
   def test_adaptive_grad_clip_with_axis(self):
     """Test adaptive_grad_clip with custom axis parameter for high-dimensional tensors."""
-    
+
     # Test case 1: 5D Conv3D kernel (H, W, D, in_channels, out_channels)
     conv3d_grad = jnp.ones((2, 2, 2, 3, 4)) * 2.0  # Shape: (2,2,2,3,4)
     conv3d_param = jnp.ones((2, 2, 2, 3, 4))
-    
+
     # Test case 2: Regular 2D weight matrix for comparison
     linear_grad = jnp.ones((5, 6)) * 3.0
     linear_param = jnp.ones((5, 6))
-    
+
     # For Conv3D, we want to compute norms over spatial dimensions (0,1,2)
     # This gives us per-channel-pair norms of shape (1,1,1,3,4)
     agc_conv3d = _clipping.adaptive_grad_clip(clipping=0.5, axis=(0, 1, 2))
-    
+
     # For linear layer, use default behavior (should work with 2D)
     agc_linear = _clipping.adaptive_grad_clip(clipping=0.5)
-    
+
     # Test Conv3D clipping
     clipped_conv3d, _ = agc_conv3d.update([conv3d_grad], None, [conv3d_param])
     clipped_conv3d = clipped_conv3d[0]
-    
+
     # Test linear layer clipping
     clipped_linear, _ = agc_linear.update([linear_grad], None, [linear_param])
     clipped_linear = clipped_linear[0]
-    
+
     # Verify shapes are preserved
     self.assertEqual(clipped_conv3d.shape, conv3d_grad.shape)
     self.assertEqual(clipped_linear.shape, linear_grad.shape)
-    
+
     # Verify AGC constraint: ||clipped_grad|| <= clipping * ||param|| (unit-wise)
     conv3d_grad_norm = _clipping.unitwise_norm(clipped_conv3d, axis=(0, 1, 2))
     conv3d_param_norm = _clipping.unitwise_norm(conv3d_param, axis=(0, 1, 2))
-    
+
     linear_grad_norm = _clipping.unitwise_norm(clipped_linear)
     linear_param_norm = _clipping.unitwise_norm(linear_param)
-    
+
     # Check AGC constraint (with small tolerance for numerical precision)
     max_allowed_conv3d = 0.5 * conv3d_param_norm + 1e-6
     max_allowed_linear = 0.5 * linear_param_norm + 1e-6
-    
+
     self.assertTrue(jnp.all(conv3d_grad_norm <= max_allowed_conv3d))
     self.assertTrue(jnp.all(linear_grad_norm <= max_allowed_linear))
-    
+
     # Test that without clipping needed, gradients are unchanged
     small_conv3d_grad = jnp.ones((2, 2, 2, 3, 4)) * 0.1  # Small gradient
     small_conv3d_param = jnp.ones((2, 2, 2, 3, 4))
-    
+
     agc_no_clip = _clipping.adaptive_grad_clip(clipping=2.0, axis=(0, 1, 2))
     unclipped, _ = agc_no_clip.update([small_conv3d_grad], None, [small_conv3d_param])
-    
+
     # Should be nearly unchanged since clipping=2.0 is large
     chex.assert_trees_all_close(unclipped[0], small_conv3d_grad, rtol=1e-6)
 
   def test_unitwise_norm_with_axis(self):
     """Test unitwise_norm function with custom axis parameter."""
-    
+
     # Test 5D tensor
     x = jnp.arange(2*2*2*3*4).reshape(2, 2, 2, 3, 4).astype(jnp.float32)
-    
+
     # Test different axis configurations
     norm_spatial = _clipping.unitwise_norm(x, axis=(0, 1, 2))  # Over spatial dims
     norm_channels = _clipping.unitwise_norm(x, axis=(3, 4))     # Over channel dims
     norm_last = _clipping.unitwise_norm(x, axis=-1)             # Over last dim only
-    
+
     # Verify shapes
     self.assertEqual(norm_spatial.shape, x.shape)  # Should broadcast back
     self.assertEqual(norm_channels.shape, x.shape)
     self.assertEqual(norm_last.shape, x.shape)
-    
+
     # Test that default behavior still works for supported shapes
     x_2d = jnp.array([[1., 2.], [3., 4.]])
     norm_default = _clipping.unitwise_norm(x_2d)
     norm_explicit = _clipping.unitwise_norm(x_2d, axis=None)
-    
+
     chex.assert_trees_all_close(norm_default, norm_explicit)
-    
+
     # Test error case: unsupported shape without axis
     x_6d = jnp.ones((2, 2, 2, 2, 2, 2))
     with self.assertRaises(ValueError):
       _clipping.unitwise_norm(x_6d)  # Should fail without axis
-    
+
     # But should work with axis specified
     norm_6d = _clipping.unitwise_norm(x_6d, axis=(0, 1, 2))
     self.assertEqual(norm_6d.shape, x_6d.shape)
