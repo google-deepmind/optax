@@ -96,7 +96,7 @@ class ClippingTest(absltest.TestCase):
     clipped_conv3d, _ = agc_conv3d.update([conv3d_grad], None, [conv3d_param])
     clipped_conv3d = clipped_conv3d[0]
     
-    # Test linear layer clipping  
+    # Test linear layer clipping
     clipped_linear, _ = agc_linear.update([linear_grad], None, [linear_param])
     clipped_linear = clipped_linear[0]
     
@@ -156,7 +156,7 @@ class ClippingTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       _clipping.unitwise_norm(x_6d)  # Should fail without axis
     
-    # But should work with axis specified  
+    # But should work with axis specified
     norm_6d = _clipping.unitwise_norm(x_6d, axis=(0, 1, 2))
     self.assertEqual(norm_6d.shape, x_6d.shape)
 
