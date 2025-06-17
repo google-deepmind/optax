@@ -132,6 +132,9 @@ def make_perturbed_fun(
     Foerster et al., `DiCE: The Infinitely Differentiable Monte Carlo Estimator
     <https://arxiv.org/abs/1802.05098>`_, 2018
 
+    Salimans et al., `Evolution Strategies as a Scalable Alternative to
+    Reinforcement Learning <https://arxiv.org/abs/1703.03864>`_, 2017
+
   .. seealso::
     * :doc:`../_collections/examples/perturbations` example.
   """
