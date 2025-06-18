@@ -110,6 +110,7 @@ Tree
     tree_norm
     tree_map_params
     tree_max
+    tree_min
     tree_mul
     tree_ones_like
     tree_random_like
@@ -117,6 +118,7 @@ Tree
     tree_split_key_like
     tree_scale
     tree_set
+    tree_size
     tree_sub
     tree_sum
     tree_vdot
@@ -183,6 +185,10 @@ Tree max
 ~~~~~~~~
 .. autofunction:: tree_max
 
+Tree min
+~~~~~~~~
+.. autofunction:: tree_min
+
 Tree multiply
 ~~~~~~~~~~~~~
 .. autofunction:: tree_mul
@@ -210,6 +216,10 @@ Tree scalar multiply
 Set values in a tree
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_set
+
+Tree size
+~~~~~~~~~
+.. autofunction:: tree_size
 
 Tree subtract
 ~~~~~~~~~~~~~
