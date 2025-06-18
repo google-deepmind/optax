@@ -110,6 +110,8 @@ Tree
     tree_norm
     tree_map_params
     tree_max
+    tree_min
+    tree_size
     tree_mul
     tree_ones_like
     tree_random_like

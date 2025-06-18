@@ -183,6 +183,32 @@ def tree_max(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
 
 
+def tree_min(tree: Any) -> chex.Numeric:
+  """Compute the min of all the elements in a pytree.
+
+  Args:
+    tree: pytree.
+
+  Returns:
+    a scalar value.
+  """
+  mins = jax.tree.map(jnp.min, tree)
+  # initializer=jnp.inf should work but pytype wants a jax.Array.
+  return jax.tree.reduce(jnp.minimum, mins, initializer=jnp.array(jnp.inf))
+
+
+def tree_size(tree: Any) -> int:
+  r"""Total size of a pytree.
+
+  Args:
+    tree: pytree
+
+  Returns:
+    the total size of the pytree.
+  """
+  return sum(jnp.size(leaf) for leaf in jax.tree.leaves(tree))
+
+
 def tree_conj(tree: Any) -> Any:
   """Compute the conjugate of a pytree.
 

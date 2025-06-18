@@ -39,6 +39,8 @@ from optax.tree_utils._tree_math import tree_conj
 from optax.tree_utils._tree_math import tree_div
 from optax.tree_utils._tree_math import tree_full_like
 from optax.tree_utils._tree_math import tree_max
+from optax.tree_utils._tree_math import tree_min
+from optax.tree_utils._tree_math import tree_size
 from optax.tree_utils._tree_math import tree_mul
 from optax.tree_utils._tree_math import tree_norm
 from optax.tree_utils._tree_math import tree_ones_like

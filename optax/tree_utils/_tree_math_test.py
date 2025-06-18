@@ -152,6 +152,26 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_max(tree)
     np.testing.assert_allclose(expected, got)
 
+  @parameterized.parameters(
+      'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
+  )
+  def test_tree_min(self, key):
+    tree = self.data[key]
+    values, _ = flatten_util.ravel_pytree(tree)
+    expected = jnp.min(values)
+    got = tu.tree_min(tree)
+    np.testing.assert_allclose(expected, got)
+
+  @parameterized.parameters(
+      'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
+  )
+  def test_tree_size(self, key):
+    tree = self.data[key]
+    values, _ = flatten_util.ravel_pytree(tree)
+    expected = jnp.size(values)
+    got = tu.tree_size(tree)
+    np.testing.assert_allclose(expected, got)
+
   def test_tree_conj(self):
     expected = jnp.conj(self.array_a)
     got = tu.tree_conj(self.array_a)
