@@ -848,7 +848,11 @@ def sigmoid_focal_loss(
   p = jax.nn.sigmoid(logits)
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
   p_t = p * labels + (1 - p) * (1 - labels)
-  loss = ce_loss * ((1 - p_t) ** gamma)
+  # Ensure numerical stability for gradient computation when gamma < 1.
+  # When p_t approaches 1 (extreme logits), (1 - p_t) approaches 0, causing
+  # instability in gradients of (1 - p_t)^gamma for gamma < 1.
+  modulation_factor = jnp.maximum(1 - p_t, jnp.finfo(logits.dtype).eps)
+  loss = ce_loss * (modulation_factor ** gamma)
 
   weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
 

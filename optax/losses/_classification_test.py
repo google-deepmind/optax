@@ -1069,6 +1069,44 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     assert all(ce_loss[self.ts == 0] > 0)
     assert all(focal_loss[self.ts == 0] == 0)
 
+  @chex.all_variants
+  def test_extreme_logits_finite_gradients(self):
+    """Test that extreme logits with gamma < 1 produce finite gradients."""
+    # Test cases that previously caused NaN gradients
+    extreme_logits = jnp.array([25.0, -25.0, 50.0, -50.0])
+    labels = jnp.array([1.0, 0.0, 1.0, 0.0])
+    
+    # Test gamma values in (0, 1) range
+    for gamma in [0.1, 0.5, 0.9]:
+      def loss_fn(logits):
+        return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
+            logits, labels, gamma=gamma
+        ))
+      
+      # Compute loss and gradients
+      loss_value = loss_fn(extreme_logits)
+      gradients = jax.grad(loss_fn)(extreme_logits)
+      
+      # Verify that both loss and gradients are finite
+      self.assertTrue(jnp.isfinite(loss_value),
+                      f"Loss should be finite for gamma={gamma}, got {loss_value}")
+      self.assertTrue(jnp.all(jnp.isfinite(gradients)),
+                      f"Gradients should be finite for gamma={gamma}, got {gradients}")
+      
+    # Also test with alpha weighting
+    def alpha_loss_fn(logits):
+      return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
+          logits, labels, gamma=0.5, alpha=0.25
+      ))
+    
+    alpha_loss = alpha_loss_fn(extreme_logits)
+    alpha_gradients = jax.grad(alpha_loss_fn)(extreme_logits)
+    
+    self.assertTrue(jnp.isfinite(alpha_loss),
+                    f"Loss should be finite with alpha, got {alpha_loss}")
+    self.assertTrue(jnp.all(jnp.isfinite(alpha_gradients)),
+                    f"Gradients should be finite with alpha, got {alpha_gradients}")
+
 
 if __name__ == '__main__':
   absltest.main()
