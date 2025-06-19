@@ -1854,7 +1854,7 @@ def add_decayed_weights_by_schedule(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    
+
     current_weight_decay = weight_decay_schedule(state.count)
     # Ensure current_weight_decay is a JAX scalar float
     # Use a type from updates or params to ensure compatibility, if available

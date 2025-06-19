@@ -247,18 +247,18 @@ class TransformTest(parameterized.TestCase):
       # Compute expected updates
       if mask is None:
         expected_updates = jax.tree.map(
-            lambda g, p: g + current_wd * p, initial_updates, params
+            lambda g, p, wd=current_wd: g + wd * p, initial_updates, params
         )
       else:
         # mask is already a PyTree with the correct structure or a callable.
         # The mask itself should be used for expected_updates calculation.
         expected_updates = jax.tree.map(
-            lambda g, p, m: g + current_wd * p if m else g,
+            lambda g, p, m, wd=current_wd: g + wd * p if m else g,
             initial_updates,
             params,
             mask, # Use mask directly
         )
-      
+
       # Apply transformation
       updates, state = update_fn(initial_updates, state, params)
       chex.assert_tree_all_finite((params, updates, state))

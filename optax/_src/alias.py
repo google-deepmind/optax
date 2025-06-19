@@ -1140,13 +1140,13 @@ def fromage(
       return jnp.asarray(mult_intermediate, dtype=lr_val_dtype)
 
     scaled_lr_fn = lambda count: learning_rate(count) * mult_fn_scheduled(count)
-    
+
     def decay_fn(count):
       mult_val = mult_fn_scheduled(count)
       mult_val_dtype = getattr(mult_val, 'dtype', jnp.result_type(mult_val))
       one_val = jnp.array(1.0, dtype=mult_val_dtype)
       return mult_val - one_val
-    
+
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(scaled_lr_fn),
@@ -1158,10 +1158,10 @@ def fromage(
     one_scalar = jnp.array(1.0, dtype=lr_dtype)
     mult_scalar_intermediate = one_scalar / jnp.sqrt(one_scalar + learning_rate**2)
     mult_scalar = jnp.asarray(mult_scalar_intermediate, dtype=lr_dtype)
-    
+
     decay_val_scalar = mult_scalar - one_scalar
     constant_decay_schedule = lambda count: decay_val_scalar
-    
+
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(learning_rate * mult_scalar),

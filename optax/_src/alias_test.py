@@ -417,16 +417,16 @@ class AliasTest(chex.TestCase):
       ('schedule_lr', lambda count: 0.001 * (count + 1), True),
   ])
   def test_fromage_with_schedule(self, learning_rate, is_schedule):
-    initial_params = (jnp.array([1.0, 2.0], dtype=jnp.float32), 
+    initial_params = (jnp.array([1.0, 2.0], dtype=jnp.float32),
                       jnp.array([3.0, 4.0], dtype=jnp.float32))
-    per_step_updates = (jnp.array([0.01, 0.02], dtype=jnp.float32), 
+    per_step_updates = (jnp.array([0.01, 0.02], dtype=jnp.float32),
                         jnp.array([0.03, 0.04], dtype=jnp.float32))
     min_norm = 1e-6
 
     opt = alias.fromage(learning_rate=learning_rate, min_norm=min_norm)
-    
+
     if is_schedule:
-      if isinstance(learning_rate, type(lambda:0)) and learning_rate.__name__ == "<lambda>": 
+      if isinstance(learning_rate, type(lambda:0)) and learning_rate.__name__ == "<lambda>":
         concrete_lr_schedule_fn = lambda count: 0.001 * (jnp.asarray(count, dtype=jnp.int32) + 1)
         opt = alias.fromage(learning_rate=concrete_lr_schedule_fn, min_norm=min_norm)
 
@@ -437,20 +437,20 @@ class AliasTest(chex.TestCase):
       return new_params, new_state, new_updates
 
     params = initial_params
-    state = self.variant(opt.init)(params) 
+    state = self.variant(opt.init)(params)
     chex.assert_tree_all_finite(state)
 
     for i in range(3):
       params, state, actual_updates = self.variant(step_fn)(params, state, per_step_updates)
       chex.assert_tree_all_finite((params, state, actual_updates))
       self.assertEqual(actual_updates[0].dtype, jnp.float32)
-      
+
       if is_schedule:
         # For a chain of transformations, the state is a tuple of individual states.
-        # fromage chain: scale_by_trust_ratio (stateless), 
-        #                scale_by_learning_rate (becomes ScaleByScheduleState), 
+        # fromage chain: scale_by_trust_ratio (stateless),
+        #                scale_by_learning_rate (becomes ScaleByScheduleState),
         #                add_decayed_weights_by_schedule (AddDecayedWeightsByScheduleState)
-        if len(state) == 3: 
+        if len(state) == 3:
           # state[0] is for scale_by_trust_ratio (e.g., EmptyState)
           scale_by_lr_state = state[1]
           add_decayed_weights_state = state[2]
