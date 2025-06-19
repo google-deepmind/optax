@@ -220,6 +220,53 @@ class TransformTest(parameterized.TestCase):
 
     chex.assert_trees_all_close(adam_params, rms_params)
 
+  @chex.all_variants
+  @parameterized.named_parameters([
+      ('no_mask', None),
+      ('with_mask', (True, False)),
+  ])
+  def test_add_decayed_weights_by_schedule(self, mask):
+    # Define a simple schedule for weight decay
+    def schedule_fn(count):
+      return 0.1 * (count + 1)
+
+    params = self.init_params
+    initial_updates = self.per_step_updates
+
+    tx = transform.add_decayed_weights_by_schedule(
+        weight_decay_schedule=schedule_fn, mask=mask
+    )
+    init_fn = self.variant(tx.init)
+    update_fn = self.variant(tx.update)
+
+    state = init_fn(params)
+    chex.assert_tree_all_finite(state)
+
+    for step in range(3):
+      current_wd = schedule_fn(step)
+      # Compute expected updates
+      if mask is None:
+        expected_updates = jax.tree.map(
+            lambda g, p: g + current_wd * p, initial_updates, params
+        )
+      else:
+        # mask is already a PyTree with the correct structure or a callable.
+        # The mask itself should be used for expected_updates calculation.
+        expected_updates = jax.tree.map(
+            lambda g, p, m: g + current_wd * p if m else g,
+            initial_updates,
+            params,
+            mask, # Use mask directly
+        )
+      
+      # Apply transformation
+      updates, state = update_fn(initial_updates, state, params)
+      chex.assert_tree_all_finite((params, updates, state))
+      jax.tree.map(
+          lambda *args: chex.assert_equal_shape(args), params, updates
+      )
+      chex.assert_trees_all_close(updates, expected_updates, atol=1e-6, rtol=1e-5)
+
 
 if __name__ == '__main__':
   absltest.main()
