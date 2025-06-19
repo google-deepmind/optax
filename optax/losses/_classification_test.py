@@ -35,6 +35,7 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     self.ts = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]], dtype=np.float32)
     self.exp = np.array([9.00013, 3.0696733], dtype=np.float32)
     self.mask = np.array([True, False])
+    self.per_logit_mask = np.array([[1, 0, 0], [0, 0, 0]]).astype(bool)
 
   @chex.all_variants
   def test_scalar(self):
@@ -55,6 +56,13 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
         self.exp,
         atol=1e-4,
     )
+
+  def test_per_logit_mask(self):
+    """Tests for a full batch."""
+    where = self.per_logit_mask
+    out = _classification.softmax_cross_entropy(self.ys, self.ts, where=where)
+    # Check that outputs where all logits are masked are 0.0.
+    np.testing.assert_array_equal(jnp.where(jnp.any(where, -1), 0.0, out), 0)
 
   def test_gradient(self):
     """Tests gradient ok."""
@@ -178,6 +186,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     self.ys = np.array([[10.0, 1.0, -2.0], [1.0, 4.0, 0.2]], dtype=np.float32)
     self.ts = np.array([1, 0], dtype=np.int32)
     self.mask = np.array([True, False])
+    self.per_logit_mask = np.array([[1, 0, 0], [0, 0, 0]]).astype(bool)
 
   @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_scalar(self):
@@ -222,6 +231,14 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
         _classification.softmax_cross_entropy_with_integer_labels(*args, **kw))
     gs = jax.grad(loss_fn)(self.ys, labels=self.ts, where=self.mask)
     self.assertTrue(jnp.all(jnp.isfinite(gs)))
+
+  def test_per_logit_mask(self):
+    """Tests for a full batch."""
+    where = self.per_logit_mask
+    out = _classification.softmax_cross_entropy_with_integer_labels(
+        self.ys, self.ts, where=where)
+    # Check that outputs where all logits are masked are 0.0.
+    np.testing.assert_array_equal(jnp.where(jnp.any(where, -1), 0.0, out), 0)
 
   @parameterized.parameters(
       {'axis': 0, 'shape': [4, 5, 6]},

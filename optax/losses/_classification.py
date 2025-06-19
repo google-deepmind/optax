@@ -400,7 +400,7 @@ def softmax_cross_entropy_with_integer_labels(
   log_normalizers = jax.nn.logsumexp(logits, axis=axis, where=where)
   out = log_normalizers - label_logits
   if where is not None:
-    out = jnp.where(jnp.squeeze(where, axis), out, 0.0)
+    out = jnp.where(jnp.any(where, axis), out, 0.0)
   return out
 
 
