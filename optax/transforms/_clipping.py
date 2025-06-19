@@ -244,15 +244,23 @@ def per_example_layer_norm_clip(
 
 
 def unitwise_norm(x: chex.Array, axis: Optional[Union[int, tuple[int, ...]]] = None) -> chex.Array:
-  """Computes norms of each output unit separately.
+  """Computes the L2 norm of each unit separately.
+
+  A "unit" is a slice of `x` along the dimensions specified by `axis`. If `axis`
+  is ``None``, the reduction axes are inferred from `x`'s rank based on
+  common layer conventions:
+    - Rank-1: The whole vector.
+    - Rank-2: Axis 0 (e.g., for linear layers).
+    - Rank-3 or 4: Axes (0, 1, 2) (e.g., for multi-head attention or convolutions).
 
   Args:
-    x: Input array to compute norms for.
-    axis: Axis or axes along which to compute the norm. If None, uses default
-      behavior based on input dimensions.
+    x: Input array for which to compute unit-wise norms.
+    axis: Axis or axes to normalize over. If ``None``, defaults are
+      inferred from the input's rank.
 
   Returns:
-    Array of the same shape as x with unit-wise norms.
+    Array with the same shape as `x`, where each unit is replaced by its
+    L2 norm.
   """
   if axis is not None:
     # Use provided axes for reduction
