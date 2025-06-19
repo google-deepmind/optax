@@ -820,6 +820,9 @@ def sigmoid_focal_loss(
   Use this loss function if classes are not mutually exclusive.
   See `sigmoid_binary_cross_entropy` for more information.
 
+  Note: (1 - p_t) is clamped to epsilon to guarantee finite derivatives
+  for all gamma > 0, ensuring numerical stability with extreme logit values.
+
   Args:
     logits: Array of floats. The predictions for each example. The predictions
       for each example.
