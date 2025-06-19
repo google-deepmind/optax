@@ -1078,9 +1078,9 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     
     # Test gamma values in (0, 1) range
     for gamma in [0.1, 0.5, 0.9]:
-      def loss_fn(logits):
+      def loss_fn(logits, test_gamma=gamma):
         return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
-            logits, labels, gamma=gamma
+            logits, labels, gamma=test_gamma
         ))
       
       # Compute loss and gradients
