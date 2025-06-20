@@ -24,10 +24,12 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
+from optax._src import constraints
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import utils
+from optax import tree_utils
 from optax._src import wrappers
 
 
@@ -2733,7 +2735,6 @@ class _LBFGSBExternal:
         self.max_line_search_steps = max_line_search_steps
 
         # Build the L-BFGS transform chain using the working approach
-        from optax._src import constraints
 
         transforms = []
 
@@ -2768,7 +2769,6 @@ class _LBFGSBExternal:
         )
         if bounds_provided:
             # Use native Optax projection for box constraints
-            from optax._src import constraints
             params = constraints._clip_to_bounds(
                 params, self.lower_bounds, self.upper_bounds
             )
@@ -2785,24 +2785,22 @@ class _LBFGSBExternal:
         direction = updates  # This is the search direction (descent direction)
 
         # Check if direction is nearly zero (convergence) using native tree norm
-        from optax.tree_utils import tree_norm
-        direction_norm = tree_norm(direction)
+        direction_norm = tree_utils.tree_norm(direction)
 
         # Use JAX where instead of if statement for JIT compatibility
         converged = direction_norm < 1e-12
 
         # 2) Perform Armijo line search
-        alpha, new_params = self._armijo_line_search(
+        _, new_params = self._armijo_line_search(
             params, direction, grad, loss_fn, loss_fn(params)
         )
 
         # 3) Compute actual updates taken using native tree operations
-        from optax.tree_utils import tree_sub, tree_zeros_like, tree_where
-        actual_updates = tree_sub(new_params, params)
-        zero_updates = tree_zeros_like(params)
+        actual_updates = tree_utils.tree_sub(new_params, params)
+        zero_updates = tree_utils.tree_zeros_like(params)
 
         # Return zero updates if converged, otherwise return actual updates
-        final_updates = tree_where(converged, zero_updates, actual_updates)
+        final_updates = tree_utils.tree_where(converged, zero_updates, actual_updates)
 
         return final_updates, new_opt_state
 
@@ -2810,14 +2808,12 @@ class _LBFGSBExternal:
         """Armijo line search with bound constraints."""
 
         # Directional derivative (should be negative for descent) using native vdot
-        from optax.tree_utils import tree_vdot
-        directional_deriv = tree_vdot(grad, direction)
+        directional_deriv = tree_utils.tree_vdot(grad, direction)
 
         # Use JAX where instead of if for descent direction check
         not_descent = directional_deriv >= 0
-        from optax.tree_utils import tree_scale, tree_add
-        tiny_step = tree_scale(1e-8, direction)
-        tiny_new_params = tree_add(params, tiny_step)
+        tiny_step = tree_utils.tree_scale(1e-8, direction)
+        tiny_new_params = tree_utils.tree_add(params, tiny_step)
 
         # Start with full step
         alpha = 1.0
@@ -2829,15 +2825,13 @@ class _LBFGSBExternal:
 
         def body_fn(val):
             i, alpha = val
-            from optax.tree_utils import tree_add_scale
-            new_params = tree_add_scale(params, alpha, direction)
+            new_params = tree_utils.tree_add_scale(params, alpha, direction)
 
             # Apply bounds clipping if needed - evaluated at trace time
             bounds_provided = (
                 self.lower_bounds is not None or self.upper_bounds is not None
             )
             if bounds_provided:
-                from optax._src import constraints
                 new_params = constraints._clip_to_bounds(
                     new_params, self.lower_bounds, self.upper_bounds
                 )
@@ -2850,21 +2844,18 @@ class _LBFGSBExternal:
         _, final_alpha = jax.lax.while_loop(cond_fn, body_fn, (0, alpha))
 
         # Compute final parameters
-        from optax.tree_utils import tree_add_scale
-        new_params = tree_add_scale(params, final_alpha, direction)
+        new_params = tree_utils.tree_add_scale(params, final_alpha, direction)
         bounds_provided = (
             self.lower_bounds is not None or self.upper_bounds is not None
         )
         if bounds_provided:
-            from optax._src import constraints
             new_params = constraints._clip_to_bounds(
                 new_params, self.lower_bounds, self.upper_bounds
             )
 
         # Return tiny step if not descent direction, otherwise return line search result
-        from optax.tree_utils import tree_where
         final_alpha = jnp.where(not_descent, 1e-8, final_alpha)
-        final_new_params = tree_where(not_descent, tiny_new_params, new_params)
+        final_new_params = tree_utils.tree_where(not_descent, tiny_new_params, new_params)
 
         return final_alpha, final_new_params
 

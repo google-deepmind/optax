@@ -1,7 +1,8 @@
 import jax
 import jax.numpy as jnp
 from typing import Optional, NamedTuple, Any
-import optax
+from optax._src import base
+from optax import tree_utils
 
 
 class _EmptyState(NamedTuple):
@@ -16,8 +17,8 @@ def _clip_to_bounds(params, lower_bounds, upper_bounds):
     if lower_bounds is None and upper_bounds is None:
         return params
 
-    # Use optax.tree.clip for efficient clipping
-    return optax.tree.clip(params, lower_bounds, upper_bounds)
+    # Use tree_utils.tree_clip for efficient clipping
+    return tree_utils.tree_clip(params, lower_bounds, upper_bounds)
 
 
 def _clip_leaf(param, lower, upper):
@@ -34,7 +35,7 @@ def _clip_leaf(param, lower, upper):
 def project_params_to_bounds(
     lower_bounds: Optional[ScalarOrTree],
     upper_bounds: Optional[ScalarOrTree]
-) -> optax.GradientTransformation:
+) -> base.GradientTransformation:
     """
     Projects parameters into the box constraints [lower_bounds, upper_bounds].
 
@@ -56,14 +57,14 @@ def project_params_to_bounds(
         deltas = jax.tree_util.tree_map(lambda c, p: c - p, clipped, params)
         return deltas, state
 
-    return optax.GradientTransformation(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
 
 
 def project_gradients_at_bounds(
     lower_bounds: Optional[ScalarOrTree],
     upper_bounds: Optional[ScalarOrTree],
     tolerance: float = 1e-8
-) -> optax.GradientTransformation:
+) -> base.GradientTransformation:
     """
     Zeroes gradients at active box constraints.
 
@@ -99,13 +100,13 @@ def project_gradients_at_bounds(
             proj_grad, updates, params, lower_bounds, upper_bounds)
         return new_updates, state
 
-    return optax.GradientTransformation(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
 
 
 def final_clip_params(
     lower_bounds: Optional[ScalarOrTree],
     upper_bounds: Optional[ScalarOrTree]
-) -> optax.GradientTransformation:
+) -> base.GradientTransformation:
     """
     Clips parameters to the feasible region after applying updates.
 
@@ -127,6 +128,4 @@ def final_clip_params(
             lambda clipped_param, param: clipped_param - param, clipped, params)
         return new_updates, state
 
-    return optax.GradientTransformation(init_fn, update_fn)
-
-    return optax.GradientTransformation(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
