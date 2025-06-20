@@ -209,8 +209,8 @@ def analyze_numerical_breakdown():
 
             grad = jax.grad(grad_fn)(test_logits)
 
-            if not (jnp.all(jnp.isfinite(loss)) and
-                    jnp.all(jnp.isfinite(grad))):
+            if not (jnp.all(jnp.isfinite(loss))
+                    and jnp.all(jnp.isfinite(grad))):
                 breakdown_logit = logit_val
                 break
         except Exception:
@@ -235,8 +235,8 @@ def analyze_numerical_breakdown():
         print(f"Log-space at breakdown point - Loss: "
               f"{loss_logspace_at_break[0]:.6f}, "
               f"Gradient: {grad_logspace_at_break[0]:.6f}")
-        stable = (jnp.all(jnp.isfinite(loss_logspace_at_break)) and
-                  jnp.all(jnp.isfinite(grad_logspace_at_break)))
+        stable = (jnp.all(jnp.isfinite(loss_logspace_at_break))
+                  and jnp.all(jnp.isfinite(grad_logspace_at_break)))
         print(f"Log-space remains stable: {stable}")
     else:
         print("Original implementation didn't break in tested range!")
@@ -363,8 +363,8 @@ def analyze_numerical_breakdown():
                         x, jnp.array([1.0]), gamma=gamma_val)[0]
 
                 grad = jax.grad(grad_fn_orig_test)(jnp.array([logit]))
-                stable = (jnp.all(jnp.isfinite(loss)) and
-                          jnp.all(jnp.isfinite(grad)))
+                stable = (jnp.all(jnp.isfinite(loss))
+                          and jnp.all(jnp.isfinite(grad)))
                 stability_original[i, j] = 1 if stable else 0
             except Exception:
                 stability_original[i, j] = 0
@@ -379,8 +379,8 @@ def analyze_numerical_breakdown():
                         x, jnp.array([1.0]), gamma=gamma_val)[0]
 
                 grad = jax.grad(grad_fn_log_test)(jnp.array([logit]))
-                stable = (jnp.all(jnp.isfinite(loss)) and
-                          jnp.all(jnp.isfinite(grad)))
+                stable = (jnp.all(jnp.isfinite(loss))
+                          and jnp.all(jnp.isfinite(grad)))
                 stability_logspace[i, j] = 1 if stable else 0
             except Exception:
                 stability_logspace[i, j] = 0
