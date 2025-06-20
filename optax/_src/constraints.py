@@ -9,6 +9,15 @@ class _EmptyState(NamedTuple):
 ScalarOrTree = Any  # PyTree of scalars or arrays
 
 
+def _clip_to_bounds(params, lower_bounds, upper_bounds):
+    """Clip parameters to box bounds using native tree operations."""
+    if lower_bounds is None and upper_bounds is None:
+        return params
+    
+    # Use optax.tree.clip for efficient clipping
+    return optax.tree.clip(params, lower_bounds, upper_bounds)
+
+
 def _clip_leaf(p, l, u):
     """Clip a single leaf to bounds."""
     if l is None and u is None:
@@ -74,7 +83,7 @@ def project_gradients_at_bounds(
             else:
                 at_lower = jnp.zeros_like(g, dtype=bool)
             
-            # Check upper bound constraint  
+            # Check upper bound constraint
             if u is not None:
                 at_upper = (p >= u - tolerance) & (g < 0)
             else:
