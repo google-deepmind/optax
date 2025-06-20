@@ -23,7 +23,7 @@ def test_simple_quadratic():
     for i in range(10):
         grad = jax.grad(objective)(x)
         updates, opt_state = solver.update(
-            grad, opt_state, x, 
+            grad, opt_state, x,
             value=objective(x), grad=grad, value_fn=objective
         )
         x = optax.apply_updates(x, updates)

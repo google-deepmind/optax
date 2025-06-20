@@ -2697,13 +2697,13 @@ def lbfgs(
     base_scaling = transform.scale_by_learning_rate(learning_rate)
   if linesearch is None:
     linesearch = base.identity()
-    return combine.chain(
-        transform.scale_by_lbfgs(
-            memory_size=memory_size, scale_init_precond=scale_init_precond
-        ),
-        base_scaling,
-        linesearch,
-    )
+  return combine.chain(
+      transform.scale_by_lbfgs(
+          memory_size=memory_size, scale_init_precond=scale_init_precond
+      ),
+      base_scaling,
+      linesearch,
+  )
 
 
 class _LBFGSBExternal:
@@ -2761,23 +2761,15 @@ class _LBFGSBExternal:
 
     def init(self, params):
         """Initialize optimizer state."""
-        # Ensure initial feasibility by clipping params to bounds
-        def _clip_leaf(p, lower, upper):
-            if lower is None and upper is None:
-                return p
-            if lower is None:
-                return jnp.minimum(p, upper)
-            if upper is None:
-                return jnp.maximum(p, lower)
-            return jnp.clip(p, lower, upper)
-
         # Only clip if bounds are provided - evaluated at trace time, not runtime
         bounds_provided = (
             self.lower_bounds is not None or self.upper_bounds is not None
         )
         if bounds_provided:
-            params = jax.tree_util.tree_map(
-                _clip_leaf, params, self.lower_bounds, self.upper_bounds
+            # Use native Optax projection for box constraints
+            from optax._src import constraints
+            params = constraints._clip_to_bounds(
+                params, self.lower_bounds, self.upper_bounds
             )
 
         return self.lbfgs_core.init(params)
@@ -2791,10 +2783,9 @@ class _LBFGSBExternal:
         )
         direction = updates  # This is the search direction (descent direction)
 
-        # Check if direction is nearly zero (convergence) - JAX compatible
-        direction_norm = jnp.linalg.norm(jnp.concatenate([
-            jnp.ravel(leaf) for leaf in jax.tree_util.tree_leaves(direction)
-        ]))
+        # Check if direction is nearly zero (convergence) using native tree norm
+        from optax.tree_utils import tree_norm
+        direction_norm = tree_norm(direction)
 
         # Use JAX where instead of if statement for JIT compatibility
         converged = direction_norm < 1e-12
@@ -2804,37 +2795,28 @@ class _LBFGSBExternal:
             params, direction, grad, loss_fn, loss_fn(params)
         )
 
-        # 3) Compute actual updates taken
-        actual_updates = jax.tree_util.tree_map(
-            lambda n, p: n - p, new_params, params
-        )
-        zero_updates = jax.tree_util.tree_map(jnp.zeros_like, params)
+        # 3) Compute actual updates taken using native tree operations
+        from optax.tree_utils import tree_sub, tree_zeros_like, tree_where
+        actual_updates = tree_sub(new_params, params)
+        zero_updates = tree_zeros_like(params)
 
         # Return zero updates if converged, otherwise return actual updates
-        final_updates = jax.tree_util.tree_map(
-            lambda actual, zero: jnp.where(converged, zero, actual),
-            actual_updates, zero_updates
-        )
+        final_updates = tree_where(converged, zero_updates, actual_updates)
 
         return final_updates, new_opt_state
 
     def _armijo_line_search(self, params, direction, grad, loss_fn, f0):
         """Armijo line search with bound constraints."""
 
-        # Directional derivative (should be negative for descent)
-        directional_deriv = jnp.sum(jnp.array([
-            jnp.sum(g * d) for g, d in zip(
-                jax.tree_util.tree_leaves(grad),
-                jax.tree_util.tree_leaves(direction)
-            )
-        ]))
+        # Directional derivative (should be negative for descent) using native vdot
+        from optax.tree_utils import tree_vdot
+        directional_deriv = tree_vdot(grad, direction)
 
         # Use JAX where instead of if for descent direction check
         not_descent = directional_deriv >= 0
-        tiny_step = jax.tree_util.tree_map(lambda p: p * 1e-8, direction)
-        tiny_new_params = jax.tree_util.tree_map(
-            lambda p, d: p + d, params, tiny_step
-        )
+        from optax.tree_utils import tree_scale, tree_add
+        tiny_step = tree_scale(1e-8, direction)
+        tiny_new_params = tree_add(params, tiny_step)
 
         # Start with full step
         alpha = 1.0
@@ -2846,25 +2828,17 @@ class _LBFGSBExternal:
 
         def body_fn(val):
             i, alpha = val
-            new_params = jax.tree_util.tree_map(
-                lambda p, d: p + alpha * d, params, direction
-            )
+            from optax.tree_utils import tree_add_scale
+            new_params = tree_add_scale(params, alpha, direction)
 
             # Apply bounds clipping if needed - evaluated at trace time
             bounds_provided = (
                 self.lower_bounds is not None or self.upper_bounds is not None
             )
             if bounds_provided:
-                def _clip_leaf(p, lower, upper):
-                    if lower is None and upper is None:
-                        return p
-                    if lower is None:
-                        return jnp.minimum(p, upper)
-                    if upper is None:
-                        return jnp.maximum(p, lower)
-                    return jnp.clip(p, lower, upper)
-                new_params = jax.tree_util.tree_map(
-                    _clip_leaf, new_params, self.lower_bounds, self.upper_bounds
+                from optax._src import constraints
+                new_params = constraints._clip_to_bounds(
+                    new_params, self.lower_bounds, self.upper_bounds
                 )
 
             f1 = loss_fn(new_params)
@@ -2875,31 +2849,21 @@ class _LBFGSBExternal:
         _, final_alpha = jax.lax.while_loop(cond_fn, body_fn, (0, alpha))
 
         # Compute final parameters
-        new_params = jax.tree_util.tree_map(
-            lambda p, d: p + final_alpha * d, params, direction
-        )
+        from optax.tree_utils import tree_add_scale
+        new_params = tree_add_scale(params, final_alpha, direction)
         bounds_provided = (
             self.lower_bounds is not None or self.upper_bounds is not None
         )
         if bounds_provided:
-            def _clip_leaf(p, lower, upper):
-                if lower is None and upper is None:
-                    return p
-                if lower is None:
-                    return jnp.minimum(p, upper)
-                if upper is None:
-                    return jnp.maximum(p, lower)
-                return jnp.clip(p, lower, upper)
-            new_params = jax.tree_util.tree_map(
-                _clip_leaf, new_params, self.lower_bounds, self.upper_bounds
+            from optax._src import constraints
+            new_params = constraints._clip_to_bounds(
+                new_params, self.lower_bounds, self.upper_bounds
             )
 
         # Return tiny step if not descent direction, otherwise return line search result
+        from optax.tree_utils import tree_where
         final_alpha = jnp.where(not_descent, 1e-8, final_alpha)
-        final_new_params = jax.tree_util.tree_map(
-            lambda tiny, normal: jnp.where(not_descent, tiny, normal),
-            tiny_new_params, new_params
-        )
+        final_new_params = tree_where(not_descent, tiny_new_params, new_params)
 
         return final_alpha, final_new_params
 
