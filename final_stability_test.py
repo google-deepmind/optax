@@ -408,11 +408,11 @@ def analyze_numerical_breakdown():
     print("=" * 80)
     print("SUMMARY")
     print("=" * 80)
-    print("✅ Log-space implementation fixes all numerical instabilities")
-    print("❌ Original implementation fails catastrophically for "
+    print("PASS: Log-space implementation fixes all numerical instabilities")
+    print("FAIL: Original implementation fails catastrophically for "
           "overconfident correct predictions")
-    print("🔬 Key improvements:")
-    print("   - Stable loss computation across full logit range (-∞ to +∞)")
+    print("Key improvements:")
+    print("   - Stable loss computation across full logit range (-inf to +inf)")
     print("   - Finite gradients for optimization")
     print("   - Well-conditioned Hessians")
     print("   - Handles symmetric instability: extreme positive (label=1) "
