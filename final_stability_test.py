@@ -203,9 +203,9 @@ def analyze_numerical_breakdown():
             loss = original_sigmoid_focal_loss(
                 test_logits, test_labels, gamma=gamma)
 
-            def grad_fn(x):
+            def grad_fn(x, labels=test_labels, g=gamma):
                 return jnp.mean(original_sigmoid_focal_loss(
-                    x, test_labels, gamma=gamma))
+                    x, labels, gamma=g))
 
             grad = jax.grad(grad_fn)(test_logits)
 
@@ -358,9 +358,9 @@ def analyze_numerical_breakdown():
                 loss = original_sigmoid_focal_loss(
                     jnp.array([logit]), jnp.array([1.0]), gamma=g)
 
-                def grad_fn_orig_test(x):
+                def grad_fn_orig_test(x, gamma_val=g):
                     return original_sigmoid_focal_loss(
-                        x, jnp.array([1.0]), gamma=g)[0]
+                        x, jnp.array([1.0]), gamma=gamma_val)[0]
 
                 grad = jax.grad(grad_fn_orig_test)(jnp.array([logit]))
                 stable = (jnp.all(jnp.isfinite(loss)) and
@@ -374,9 +374,9 @@ def analyze_numerical_breakdown():
                 loss = sigmoid_focal_loss(
                     jnp.array([logit]), jnp.array([1.0]), gamma=g)
 
-                def grad_fn_log_test(x):
+                def grad_fn_log_test(x, gamma_val=g):
                     return sigmoid_focal_loss(
-                        x, jnp.array([1.0]), gamma=g)[0]
+                        x, jnp.array([1.0]), gamma=gamma_val)[0]
 
                 grad = jax.grad(grad_fn_log_test)(jnp.array([logit]))
                 stable = (jnp.all(jnp.isfinite(loss)) and
