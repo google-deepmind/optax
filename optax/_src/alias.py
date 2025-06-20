@@ -153,8 +153,8 @@ def adadelta(
   Adadelta is a stochastic gradient descent method that adapts learning rates
   based on a moving window of gradient updates. Adadelta is a modification of
   Adagrad.
-  It addresses the diminishing learning rates problem in Adagrad by maintaining running averages of squared
-  gradients.
+  It addresses the diminishing learning rates problem in Adagrad by maintaining
+  running averages of squared gradients.
 
   The weight update :math:`\Delta w_t` for this optimizer is given as follows:
 
@@ -162,7 +162,8 @@ def adadelta(
       \begin{align*}
 
       &E[g^2]_t = \rho \cdot E[g^2]_{t-1} + (1-\rho) \cdot g_t^2 \\
-      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \cdot g_t
+      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{
+        \sqrt{E[g^2]_t + \epsilon}} \cdot g_t
 
       \end{align*}
 
