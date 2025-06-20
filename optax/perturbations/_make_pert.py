@@ -137,7 +137,7 @@ def make_perturbed_fun(
 
   .. seealso::
     * :doc:`../_collections/examples/perturbations` example.
-  """
+  """  # noqa: E501
 
   def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
 

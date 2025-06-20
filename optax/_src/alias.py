@@ -214,7 +214,7 @@ def adadelta(
   References:
     Zeiler, `Adadelta: An Adaptive Learning Rate Optimizer
     <https://arxiv.org/pdf/1212.5701.pdf>`_, 2012
-  """
+  """  # noqa: E501
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_adadelta(rho=rho, eps=eps),
