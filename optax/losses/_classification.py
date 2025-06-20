@@ -872,28 +872,28 @@ def sigmoid_focal_loss(
   alpha = -1 if alpha is None else alpha
   chex.assert_type([logits], float)
   labels = jnp.astype(labels, logits.dtype)
-  
+
   # Cross-entropy loss
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
-  
+
   # Compute log(1-p_t) using logsumexp unconditionally
   log_p = jax.nn.log_sigmoid(logits)
   log_q = jax.nn.log_sigmoid(-logits)
-  
+
   log_one_minus_p_t = jax.scipy.special.logsumexp(
       jnp.stack([log_p, log_q], axis=-1),
       axis=-1,
       b=jnp.stack([1 - labels, labels], axis=-1)
   )
-  
+
   # Gradient stability clamping
   eps = jnp.finfo(logits.dtype).eps
   log_one_minus_p_t_safe = jnp.maximum(log_one_minus_p_t, jnp.log(eps))
-  
+
   # Focal weight and final loss
   focal_weight = jnp.exp(gamma * log_one_minus_p_t_safe)
   loss = ce_loss * focal_weight
-  
+
   # Alpha weighting
   weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
   return jnp.where(alpha >= 0, weighted, loss)
