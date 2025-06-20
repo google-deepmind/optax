@@ -48,8 +48,8 @@ This is the simple drop-in SAM optimizer from the paper.
 # pytype: skip-file
 
 from collections.abc import Callable
-from typing import Optional
-import chex
+from typing import NamedTuple, Optional
+
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -81,8 +81,7 @@ def normalize() -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-@chex.dataclass
-class SAMState:
+class SAMState(NamedTuple):
   """State of `GradientTransformation` returned by `sam`.
 
   Attributes:
