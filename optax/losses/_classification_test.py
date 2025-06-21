@@ -1006,14 +1006,14 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     # Test with various inputs to ensure consistency
     test_logits = jnp.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 0.5]])
     test_labels = jnp.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]])
-    
+
     focal_loss = self.variant(_classification.sigmoid_focal_loss)(
         test_logits, test_labels, gamma=0.0
     )
     binary_ce_loss = _classification.sigmoid_binary_cross_entropy(
         test_logits, test_labels
     )
-    
+
     np.testing.assert_allclose(
         focal_loss,
         binary_ce_loss,
