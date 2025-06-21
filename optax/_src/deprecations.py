@@ -29,7 +29,7 @@ import warnings
 #   ),
 # }
 #
-# from optax._src.deprecations import deprecation_getattr as _deprecation_getattr  # pylint: disable=line-too-long
+# from optax._src.deprecations import deprecation_getattr as _deprecation_getattr  # pylint: disable=line-too-long  # noqa: E501
 # __getattr__ = _deprecation_getattr(__name__, _deprecations)
 # del _deprecation_getattr
 

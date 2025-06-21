@@ -368,7 +368,7 @@ def cosine_decay_schedule(
   References:
     Loshchilov et al., `SGDR: Stochastic Gradient Descent with Warm Restarts
     <https://arxiv.org/abs/1608.03983>`_, 2017
-  """
+  """  # noqa: E501
   if not decay_steps > 0:
     raise ValueError(
         'The cosine_decay_schedule requires positive decay_steps, got'
