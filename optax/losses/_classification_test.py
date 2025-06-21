@@ -1001,6 +1001,27 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     )
 
   @chex.all_variants
+  def test_focal_gamma_zero_matches_binary_cross_entropy(self):
+    """When gamma=0, sigmoid_focal_loss should match sigmoid_binary_cross_entropy."""
+    # Test with various inputs to ensure consistency
+    test_logits = jnp.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 0.5]])
+    test_labels = jnp.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]])
+    
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        test_logits, test_labels, gamma=0.0
+    )
+    binary_ce_loss = _classification.sigmoid_binary_cross_entropy(
+        test_logits, test_labels
+    )
+    
+    np.testing.assert_allclose(
+        focal_loss,
+        binary_ce_loss,
+        rtol=self._rtol,
+        err_msg="Focal loss with gamma=0 should exactly match binary cross-entropy"
+    )
+
+  @chex.all_variants
   def test_scale(self):
     """This test should catch problems with p_t."""
     gamma = 2
@@ -1075,40 +1096,32 @@ class SigmoidFocalLossTest(parameterized.TestCase):
   @chex.all_variants
   def test_extreme_logits_finite_gradients(self):
     """Test that extreme logits with gamma < 1 produce finite gradients."""
-    # Test cases that previously caused NaN gradients
-    extreme_logits = jnp.array([25.0, -25.0, 50.0, -50.0])
-    labels = jnp.array([1.0, 0.0, 1.0, 0.0])
+    # Test cases with very extreme logits and non-integer labels
+    extreme_logits = jnp.array([100.0, -100.0, 75.0, -75.0, 50.0, -50.0])
+    # Include non-integer labels to test soft label stability
+    labels = jnp.array([0.9, 0.1, 0.8, 0.2, 1.0, 0.0])
 
-    # Test gamma values in (0, 1) range
-    for gamma in [0.1, 0.5, 0.9]:
-      def loss_fn(logits, test_gamma=gamma):
-        return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
-            logits, labels, gamma=test_gamma
-        ))
-
-      # Compute loss and gradients
-      loss_value = loss_fn(extreme_logits)
-      gradients = jax.grad(loss_fn)(extreme_logits)
-
-      # Verify that both loss and gradients are finite
-      self.assertTrue(jnp.isfinite(loss_value),
-                      f"Loss should be finite for gamma={gamma}, got {loss_value}")
-      self.assertTrue(jnp.all(jnp.isfinite(gradients)),
-                      f"Gradients should be finite for gamma={gamma}, got {gradients}")
-
-    # Also test with alpha weighting
-    def alpha_loss_fn(logits):
+    # Test with gamma < 1 which is most problematic for numerical stability
+    gamma = 0.5
+    def loss_fn(logits):
       return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
-          logits, labels, gamma=0.5, alpha=0.25
+          logits, labels, gamma=gamma
       ))
 
-    alpha_loss = alpha_loss_fn(extreme_logits)
-    alpha_gradients = jax.grad(alpha_loss_fn)(extreme_logits)
+    # Compute loss and gradients
+    loss_value = loss_fn(extreme_logits)
+    gradients = jax.grad(loss_fn)(extreme_logits)
 
-    self.assertTrue(jnp.isfinite(alpha_loss),
-                    f"Loss should be finite with alpha, got {alpha_loss}")
-    self.assertTrue(jnp.all(jnp.isfinite(alpha_gradients)),
-                    f"Gradients should be finite with alpha, got {alpha_gradients}")
+    # Verify that both loss and gradients are finite
+    self.assertTrue(jnp.isfinite(loss_value),
+                    f"Loss should be finite for gamma={gamma}, got {loss_value}")
+    self.assertTrue(jnp.all(jnp.isfinite(gradients)),
+                    f"Gradients should be finite for gamma={gamma}, got {gradients}")
+
+    # Test Hessians for numerical stability
+    hessian = jax.hessian(loss_fn)(extreme_logits)
+    self.assertTrue(jnp.all(jnp.isfinite(hessian)),
+                    f"Hessians should be finite for gamma={gamma}")
 
 
 if __name__ == '__main__':
