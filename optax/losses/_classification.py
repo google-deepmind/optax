@@ -815,7 +815,7 @@ def sigmoid_focal_loss(
     alpha: Optional[float] = None,
     gamma: float = 2.0,
 ) -> chex.Array:
-  """Sigmoid focal loss with numerical stability improvements.
+  r"""Sigmoid focal loss with numerical stability improvements.
 
   The focal loss is a dynamically scaled cross entropy loss, where the scaling
   factor decays to zero as confidence in the correct class increases. This
@@ -823,29 +823,29 @@ def sigmoid_focal_loss(
   hard examples.
 
   This implementation uses log-space computation for the focal weight
-  :math:`(1-p_t)^\\gamma` to ensure numerical stability, especially for
-  :math:`\\gamma < 2` and extreme logit values.
+  :math:`(1-p_t)^\gamma` to ensure numerical stability, especially for
+  :math:`\gamma < 2` and extreme logit values.
 
   The loss is defined as:
 
   .. math::
-    FL(p_t) = -\\alpha_t (1-p_t)^\\gamma \\log(p_t)
+    FL(p_t) = -\alpha_t (1-p_t)^\gamma \log(p_t)
 
   where :math:`p_t` is the predicted probability of the correct class:
 
   .. math::
-    p_t = \\begin{cases}
-      p & \\text{if } y = 1 \\\\
-      1-p & \\text{if } y = 0
-    \\end{cases}
+    p_t = \begin{cases}
+      p & \text{if } y = 1 \\
+      1-p & \text{if } y = 0
+    \end{cases}
 
-  and :math:`\\alpha_t` is the weighting factor:
+  and :math:`\alpha_t` is the weighting factor:
 
   .. math::
-    \\alpha_t = \\begin{cases}
-      \\alpha & \\text{if } y = 1 \\\\
-      1-\\alpha & \\text{if } y = 0
-    \\end{cases}
+    \alpha_t = \begin{cases}
+      \alpha & \text{if } y = 1 \\
+      1-\alpha & \text{if } y = 0
+    \end{cases}
 
   Args:
     logits: Array of unnormalized log probabilities, with shape `[..., ]`.
@@ -869,7 +869,6 @@ def sigmoid_focal_loss(
     Added numerical stability improvements using log-space computation.
     Added support for continuous labels in `[0, 1]`.
   """
-  alpha = -1 if alpha is None else alpha
   chex.assert_type([logits], float)
   labels = jnp.astype(labels, logits.dtype)
 
@@ -895,8 +894,11 @@ def sigmoid_focal_loss(
   loss = ce_loss * focal_weight
 
   # Alpha weighting
-  weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
-  return jnp.where(alpha >= 0, weighted, loss)
+  if alpha is None:
+      return loss
+  else:
+      weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
+      return weighted
 
 
 def _multiclass_sparsemax_loss(
