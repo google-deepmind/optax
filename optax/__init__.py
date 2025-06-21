@@ -147,8 +147,10 @@ from optax._src.utils import value_and_grad_from_state
 
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
 # Deprecated modules
-from optax.contrib import differentially_private_aggregate as _deprecated_differentially_private_aggregate
-from optax.contrib import DifferentiallyPrivateAggregateState as _deprecated_DifferentiallyPrivateAggregateState
+from optax.contrib import (differentially_private_aggregate
+                           as _deprecated_differentially_private_aggregate)
+from optax.contrib import (DifferentiallyPrivateAggregateState
+                           as _deprecated_DifferentiallyPrivateAggregateState)
 from optax.contrib import dpsgd as _deprecated_dpsgd
 
 
@@ -286,7 +288,8 @@ if _typing.TYPE_CHECKING:
   # pylint: enable=reimported
 
 else:
-  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
+  from optax._src.deprecations import (deprecation_getattr
+                                       as _deprecation_getattr)
 
   __getattr__ = _deprecation_getattr(__name__, _deprecations)
   del _deprecation_getattr

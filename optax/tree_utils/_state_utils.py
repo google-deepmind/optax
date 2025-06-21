@@ -244,7 +244,7 @@ def tree_get_all_with_path(
     :func:`optax.tree_utils.tree_set`
 
   .. versionadded:: 0.2.2
-  """
+  """  # noqa: E501
   # pylint: enable=line-too-long
   found_values_with_path = _tree_get_all_with_path(tree, key)
   if filtering:
@@ -364,7 +364,7 @@ def tree_get(
     :func:`optax.tree_utils.tree_set`
 
   .. versionadded:: 0.2.2
-  """
+  """  # noqa: E501
   # pylint: enable=line-too-long
   found_values_with_path = tree_get_all_with_path(
       tree, key, filtering=filtering
@@ -453,7 +453,7 @@ def tree_set(
     :func:`optax.tree_utils.tree_get`
 
   .. versionadded:: 0.2.2
-  """
+  """  # noqa: E501
   # pylint: enable=line-too-long
 
   # First check if the keys are present in the tree

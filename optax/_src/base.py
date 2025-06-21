@@ -15,7 +15,8 @@
 """Base interfaces and datatypes."""
 
 from collections.abc import Callable
-from typing import Any, NamedTuple, Optional, Protocol, Sequence, Union, runtime_checkable
+from typing import (Any, NamedTuple, Optional, Protocol, Sequence, Union,
+                    runtime_checkable)
 
 import chex
 import jax
@@ -186,7 +187,7 @@ class GradientTransformation(NamedTuple):
       previous optimizer state (which may have been initialized using the init
       function), and optionally the current params. The update function then
       returns the computed gradient updates, and a new optimizer state.
-  """
+  """  # noqa: E501
   # pylint: disable=line-too-long
   init: TransformInitFn
   update: TransformUpdateFn

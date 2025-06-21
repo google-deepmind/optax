@@ -1,0 +1,19 @@
+# The pyproject.toml is here to override ruff linter checks in this directory
+# changes from base pyproject.toml:
+#   - allow E501 line too long
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W291",  # whitespace at the end of the line
+    "B023",  # pylint's cell-var-over-loop, closures capturing variables in loop
+]
+ignore = [
+    "E731",  # lambdas are allowed
+    "F401",  # allow unused imports
+    "E501",  # allow line-too-long in notebooks
+    "E402",  # allow modules not at top of file
+    "E741",  # allow "l" as a variable name
+    "E703",  # allow semicolons (for jupyter notebooks)
+]
