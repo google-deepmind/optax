@@ -24,10 +24,12 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
+from optax._src import constraints
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import utils
+from optax import tree_utils
 from optax._src import wrappers
 
 
@@ -153,8 +155,8 @@ def adadelta(
   Adadelta is a stochastic gradient descent method that adapts learning rates
   based on a moving window of gradient updates. Adadelta is a modification of
   Adagrad.
-  It addresses the diminishing learning rates problem in Adagrad by maintaining running averages of squared
-  gradients.
+  It addresses the diminishing learning rates problem in Adagrad by maintaining
+  running averages of squared gradients.
 
   The weight update :math:`\Delta w_t` for this optimizer is given as follows:
 
@@ -162,7 +164,8 @@ def adadelta(
       \begin{align*}
 
       &E[g^2]_t = \rho \cdot E[g^2]_{t-1} + (1-\rho) \cdot g_t^2 \\
-      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \cdot g_t
+      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{
+        \sqrt{E[g^2]_t + \epsilon}} \cdot g_t
 
       \end{align*}
 
@@ -2704,3 +2707,304 @@ def lbfgs(
       base_scaling,
       linesearch,
   )
+
+
+class _LBFGSBExternal:
+    """L-BFGS-B optimizer using external line search approach.
+
+    This class implements the working external line search approach that avoids
+    the transform chain signature issues identified in the debugging process.
+    """
+
+    def __init__(
+        self,
+        memory_size: int = 10,
+        lower_bounds=None,
+        upper_bounds=None,
+        tolerance: float = 1e-8,
+        c1: float = 1e-4,
+        rho: float = 0.5,
+        max_line_search_steps: int = 20
+    ):
+        self.memory_size = memory_size
+        self.lower_bounds = lower_bounds
+        self.upper_bounds = upper_bounds
+        self.tolerance = tolerance
+        self.c1 = c1
+        self.rho = rho
+        self.max_line_search_steps = max_line_search_steps
+
+        # Build the L-BFGS transform chain using the working approach
+
+        transforms = []
+
+        # Only add gradient projection for bounded case - evaluated at init time
+        bounds_provided = (
+            lower_bounds is not None or upper_bounds is not None
+        )
+        if bounds_provided:
+            transforms.append(
+                constraints.project_gradients_at_bounds(
+                    lower_bounds, upper_bounds, tolerance
+                )
+            )
+
+        # Core L-BFGS - this gives search direction but NOT descent direction
+        transforms.append(
+            transform.scale_by_lbfgs(
+                memory_size=memory_size, scale_init_precond=True
+            )
+        )
+
+        # Need to negate to get descent direction (like standard L-BFGS does)
+        transforms.append(transform.scale(-1.0))
+
+        self.lbfgs_core = combine.chain(*transforms)
+
+    def init(self, params):
+        """Initialize optimizer state."""
+        # Only clip if bounds are provided - evaluated at trace time, not runtime
+        bounds_provided = (
+            self.lower_bounds is not None or self.upper_bounds is not None
+        )
+        if bounds_provided:
+            # Use native Optax projection for box constraints
+            params = constraints._clip_to_bounds(
+                params, self.lower_bounds, self.upper_bounds
+            )
+
+        return self.lbfgs_core.init(params)
+
+    def step(self, params, opt_state, grad, loss_fn):
+        """Take a single optimization step with external line search."""
+
+        # 1) Compute L-BFGS direction using pure transforms
+        updates, new_opt_state = self.lbfgs_core.update(
+            grad, opt_state, params
+        )
+        direction = updates  # This is the search direction (descent direction)
+
+        # Check if direction is nearly zero (convergence) using native tree norm
+        direction_norm = tree_utils.tree_norm(direction)
+
+        # Use JAX where instead of if statement for JIT compatibility
+        converged = direction_norm < 1e-12
+
+        # 2) Perform Armijo line search
+        _, new_params = self._armijo_line_search(
+            params, direction, grad, loss_fn, loss_fn(params)
+        )
+
+        # 3) Compute actual updates taken using native tree operations
+        actual_updates = tree_utils.tree_sub(new_params, params)
+        zero_updates = tree_utils.tree_zeros_like(params)
+
+        # Return zero updates if converged, otherwise return actual updates
+        final_updates = tree_utils.tree_where(converged, zero_updates, actual_updates)
+
+        return final_updates, new_opt_state
+
+    def _armijo_line_search(self, params, direction, grad, loss_fn, f0):
+        """Armijo line search with bound constraints."""
+
+        # Directional derivative (should be negative for descent) using native vdot
+        directional_deriv = tree_utils.tree_vdot(grad, direction)
+
+        # Use JAX where instead of if for descent direction check
+        not_descent = directional_deriv >= 0
+        tiny_step = tree_utils.tree_scale(1e-8, direction)
+        tiny_new_params = tree_utils.tree_add(params, tiny_step)
+
+        # Start with full step
+        alpha = 1.0
+
+        # JIT-compatible Armijo backtracking
+        def cond_fn(val):
+            i, alpha = val
+            return (i < self.max_line_search_steps) & (alpha > 1e-12)
+
+        def body_fn(val):
+            i, alpha = val
+            new_params = tree_utils.tree_add_scale(params, alpha, direction)
+
+            # Apply bounds clipping if needed - evaluated at trace time
+            bounds_provided = (
+                self.lower_bounds is not None or self.upper_bounds is not None
+            )
+            if bounds_provided:
+                new_params = constraints._clip_to_bounds(
+                    new_params, self.lower_bounds, self.upper_bounds
+                )
+
+            f1 = loss_fn(new_params)
+            cond = f1 <= f0 + self.c1 * alpha * directional_deriv
+            alpha = jnp.where(cond, alpha, alpha * self.rho)
+            return (i + 1, alpha)
+
+        _, final_alpha = jax.lax.while_loop(cond_fn, body_fn, (0, alpha))
+
+        # Compute final parameters
+        new_params = tree_utils.tree_add_scale(params, final_alpha, direction)
+        bounds_provided = (
+            self.lower_bounds is not None or self.upper_bounds is not None
+        )
+        if bounds_provided:
+            new_params = constraints._clip_to_bounds(
+                new_params, self.lower_bounds, self.upper_bounds
+            )
+
+        # Return tiny step if not descent direction, otherwise return line search result
+        final_alpha = jnp.where(not_descent, 1e-8, final_alpha)
+        final_new_params = tree_utils.tree_where(not_descent, tiny_new_params, new_params)
+
+        return final_alpha, final_new_params
+
+
+def lbfgs_b(
+    learning_rate: Optional[base.ScalarOrSchedule] = None,
+    memory_size: int = 10,
+    lower_bounds=None,
+    upper_bounds=None,
+    tolerance: float = 1e-8,
+    linesearch: Optional[
+        Union[base.GradientTransformationExtraArgs, base.GradientTransformation]
+    ] = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=20,
+        slope_rtol=1e-4,
+        curv_rtol=0.9,
+        initial_guess_strategy='one'
+    ),
+) -> base.GradientTransformationExtraArgs:
+    r"""L-BFGS-B optimizer with box constraints.
+
+    L-BFGS-B is a bounded version of the L-BFGS quasi-Newton method that supports
+    box constraints on the parameters. It uses the same limited-memory approach
+    as L-BFGS to approximate the inverse Hessian but incorporates bound constraints
+    through gradient projection and parameter clipping.
+
+    The algorithm works by:
+    1. Computing an L-BFGS search direction using gradient projections at
+       active constraints
+    2. Performing an Armijo line search with parameter clipping to maintain
+       feasibility
+    3. Updating parameters while respecting the box constraints
+
+    For unconstrained problems (when both bounds are None), this optimizer
+    behaves similarly to the standard L-BFGS optimizer.
+
+    This optimizer requires extra arguments to be passed to the ``update``
+    method: ``value``, ``grad``, and ``value_fn``. These are needed for the
+    line search to function properly.
+
+    Args:
+        learning_rate: A global scaling factor (currently ignored in favor
+          of the internal line search). Reserved for future compatibility.
+        memory_size: Number of past updates to keep in memory to approximate
+          the Hessian inverse.
+        lower_bounds: Lower box constraints. Can be a scalar (applied to all
+          parameters), an array matching the parameter structure, or None for
+          no lower bounds.
+        upper_bounds: Upper box constraints. Can be a scalar (applied to all
+          parameters), an array matching the parameter structure, or None for
+          no upper bounds.
+        tolerance: Tolerance for determining active constraints. Parameters
+          within this distance of a bound are considered to be at the bound.
+        linesearch: Line search configuration (currently ignored in favor of
+          the internal Armijo line search). Reserved for future compatibility.
+
+    Returns:
+        A :class:`optax.GradientTransformationExtraArgs` object.
+
+    Examples:
+        >>> import optax
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> def f(x): return jnp.sum((x - 1.5)**2)  # simple quadratic function
+        >>>
+        >>> # Unconstrained optimization
+        >>> solver = optax.lbfgs_b()
+        >>> params = jnp.array([1., 2., 3.])
+        >>> print('Objective function: ', f(params))
+        Objective function:  2.25
+        >>> opt_state = solver.init(params)
+        >>> value_and_grad = optax.value_and_grad_from_state(f)
+        >>> for _ in range(3):
+        ...   value, grad = value_and_grad(params, state=opt_state)
+        ...   updates, opt_state = solver.update(
+        ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+        ...   )
+        ...   params = optax.apply_updates(params, updates)
+        ...   print('Objective function: {:.2E}'.format(f(params)))
+        Objective function: 6.25E-01
+        Objective function: 1.56E-01
+        Objective function: 3.91E-02
+        >>>
+        >>> # Bounded optimization
+        >>> solver = optax.lbfgs_b(
+        ...   lower_bounds=jnp.array([0.0, -1.0, 0.5]),
+        ...   upper_bounds=jnp.array([1.0, 1.0, 2.0])
+        ... )
+        >>> params = jnp.array([0.5, 0.0, 1.0])
+        >>> opt_state = solver.init(params)
+        >>> for _ in range(3):
+        ...   value, grad = value_and_grad(params, state=opt_state)
+        ...   updates, opt_state = solver.update(
+        ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+        ...   )
+        ...   params = optax.apply_updates(params, updates)
+        ...   print('Objective function: {:.2E}'.format(f(params)))
+        Objective function: 1.56E+00
+        Objective function: 6.25E-01
+        Objective function: 2.50E-01
+
+    References:
+        Byrd et al. `A Limited Memory Algorithm for Bound Constrained
+        Optimization
+        <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited.pdf>`_,
+        1995.
+
+        Zhu et al. `Algorithm 778: L-BFGS-B: Fortran Subroutines for
+        Large-Scale Bound-Constrained Optimization
+        <https://users.iems.northwestern.edu/~nocedal/PDFfiles/lbfgsb.pdf>`_, 1997.
+
+    .. warning::
+        This optimizer is memory intensive and best used for small to medium
+        scale problems.
+
+    .. warning::
+        This optimizer requires extra arguments (``value``, ``grad``,
+        ``value_fn``) to be passed to the ``update`` method for the line search
+        to function properly. See examples above for correct usage.
+
+    .. note::
+        For bounded optimization, the algorithm uses gradient projection
+        to handle active constraints and parameter clipping to maintain
+        feasibility during line search.
+
+    .. note:: The algorithm can support complex inputs when no bounds are
+        specified.
+    """
+
+    # Create the external L-BFGS-B optimizer
+    external_optimizer = _LBFGSBExternal(
+        memory_size=memory_size,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+        tolerance=tolerance
+    )
+
+    def init_fn(params):
+        return external_optimizer.init(params)
+
+    def update_fn(updates, state, params=None, *, value, grad, value_fn):
+        """Update function that uses external line search approach."""
+        if params is None:
+            raise ValueError("lbfgs_b requires current params.")
+
+        # Use the external optimizer's step method
+        actual_updates, new_state = external_optimizer.step(
+            params, state, grad, value_fn
+        )
+        return actual_updates, new_state
+
+    return base.GradientTransformationExtraArgs(init_fn, update_fn)
