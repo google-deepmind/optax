@@ -161,9 +161,8 @@ def scale_by_sophia(
           lambda x, y: x + y,
           jax.tree.map(lambda u: jnp.sum(jnp.abs(u) < clip_threshold), updates),
       )
-      total_tree_size = sum(x.size for x in jax.tree.leaves(updates))
       if verbose:
-        win_rate = sum_not_clipped / total_tree_size
+        win_rate = sum_not_clipped / optax.tree.size(updates)
         jax.lax.cond(
             count_inc % print_win_rate_every_n_steps == 0,
             lambda: jax.debug.print("Sophia optimizer win rate: {}", win_rate),
