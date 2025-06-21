@@ -426,8 +426,12 @@ class AliasTest(chex.TestCase):
     opt = alias.fromage(learning_rate=learning_rate, min_norm=min_norm)
 
     if is_schedule:
-      if isinstance(learning_rate, type(lambda:0)) and learning_rate.__name__ == "<lambda>":
-        concrete_lr_schedule_fn = lambda count: 0.001 * (jnp.asarray(count, dtype=jnp.int32) + 1)
+      is_lambda = (
+          isinstance(learning_rate, type(lambda: 0)) and
+          learning_rate.__name__ == "<lambda>")
+      if is_lambda:
+        concrete_lr_schedule_fn = (
+            lambda count: 0.001 * (jnp.asarray(count, dtype=jnp.int32) + 1))
         opt = alias.fromage(learning_rate=concrete_lr_schedule_fn, min_norm=min_norm)
 
     @jax.jit
@@ -441,15 +445,18 @@ class AliasTest(chex.TestCase):
     chex.assert_tree_all_finite(state)
 
     for i in range(3):
-      params, state, actual_updates = self.variant(step_fn)(params, state, per_step_updates)
+      params, state, actual_updates = self.variant(step_fn)(
+          params, state, per_step_updates)
       chex.assert_tree_all_finite((params, state, actual_updates))
       self.assertEqual(actual_updates[0].dtype, jnp.float32)
 
       if is_schedule:
-        # For a chain of transformations, the state is a tuple of individual states.
+        # For a chain of transformations, the state is a tuple of individual
+        # states.
         # fromage chain: scale_by_trust_ratio (stateless),
         #                scale_by_learning_rate (becomes ScaleByScheduleState),
-        #                add_decayed_weights_by_schedule (AddDecayedWeightsByScheduleState)
+        #                add_decayed_weights_by_schedule
+        #                (AddDecayedWeightsByScheduleState)
         if len(state) == 3:
           # state[0] is for scale_by_trust_ratio (e.g., EmptyState)
           scale_by_lr_state = state[1]

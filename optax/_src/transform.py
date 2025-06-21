@@ -1832,7 +1832,9 @@ class AddDecayedWeightsByScheduleState(NamedTuple):
 
 def add_decayed_weights_by_schedule(
     weight_decay_schedule: base.Schedule,
-    mask: Optional[Union[chex.ArrayTree, Callable[[base.Params], chex.ArrayTree]]] = None
+    mask: Optional[
+        Union[chex.ArrayTree, Callable[[base.Params], chex.ArrayTree]]
+    ] = None,
 ) -> base.GradientTransformation:
   """Add parameter scaled by weight decay schedule.
 
@@ -1883,13 +1885,14 @@ def add_decayed_weights_by_schedule(
       # _update_leaf function should respect it if it were part of a map_masked.
       # Let's simplify: the mask is applied by the `wrappers.masked` utility,
       # so the core `update_fn` here should not re-implement masking logic.
-      # The logic for applying mask is handled by `optax.wrappers.masked`
-      # which should wrap the transformation returned by this function if mask is not None.
-      # So, this `update_fn` will always assume it acts on all elements,
+      # The logic for applying mask is handled by `optax.wrappers.masked` which
+      # should wrap the transformation returned by this function if mask is not
+      # None. So, this `update_fn` will always assume it acts on all elements,
       # and the `add_decayed_weights_by_schedule` factory function will wrap it.
       updates = jax.tree_util.tree_map(_update_leaf, updates, params)
 
-    return updates, AddDecayedWeightsByScheduleState(count=numerics.safe_increment(state.count))
+    return updates, AddDecayedWeightsByScheduleState(
+        count=numerics.safe_increment(state.count))
 
   # Core transformation without masking logic inside update_fn
   core_transform = base.GradientTransformation(init_fn, update_fn)
