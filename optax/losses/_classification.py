@@ -885,12 +885,8 @@ def sigmoid_focal_loss(
       b=jnp.stack([1 - labels, labels], axis=-1)
   )
 
-  # Gradient stability clamping
-  eps = jnp.finfo(logits.dtype).eps
-  log_one_minus_p_t_safe = jnp.maximum(log_one_minus_p_t, jnp.log(eps))
-
   # Focal weight and final loss
-  focal_weight = jnp.exp(gamma * log_one_minus_p_t_safe)
+  focal_weight = jnp.exp(gamma * log_one_minus_p_t)
   loss = ce_loss * focal_weight
 
   # Alpha weighting
