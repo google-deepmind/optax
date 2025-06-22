@@ -18,6 +18,8 @@ Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
 
+from typing import Optional, Union
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -148,8 +150,8 @@ def per_example_global_norm_clip(
 
   if not _check_arrays_have_batch_dim(grads):
     raise ValueError(
-        'Unlike other transforms, `per_example_global_norm_clip` expects'
-        ' `grads` to have a batch dimension in the 0th axis.'
+        "Unlike other transforms, `per_example_global_norm_clip` expects"
+        " `grads` to have a batch dimension in the 0th axis."
     )
 
   global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
@@ -214,9 +216,9 @@ def per_example_layer_norm_clip(
 
   if not _check_arrays_have_batch_dim(grads):
     raise ValueError(
-        'Unlike other transforms, `per_example_layer_norm_clip` expects'
-        ' `grads` to have a batch dimension in the 0th axis; got shapes:'
-        f' {jax.tree.map(jnp.shape, grads)}.'
+        "Unlike other transforms, `per_example_layer_norm_clip` expects"
+        " `grads` to have a batch dimension in the 0th axis; got shapes:"
+        f" {jax.tree.map(jnp.shape, grads)}."
     )
 
   # Compute per-layer clip norms, based on whether we are using uniform
@@ -230,7 +232,8 @@ def per_example_layer_norm_clip(
   else:
     total_params = jax.tree.reduce(lambda x, g: x + g[0].size, grads, 0)
     layer_clip_norms = jax.tree.map(
-        lambda g: global_l2_norm_clip * (g[0].size / total_params) ** 0.5, grads
+        lambda g: global_l2_norm_clip * (g[0].size / total_params) ** 0.5,
+        grads,
     )
 
   result = jax.tree.map(per_example_global_norm_clip, grads, layer_clip_norms)
@@ -241,9 +244,31 @@ def per_example_layer_norm_clip(
   )
 
 
-def unitwise_norm(x: chex.Array) -> chex.Array:
-  """Computes norms of each output unit separately."""
-  if jnp.squeeze(x).ndim <= 1:  # Scalars and vectors
+def unitwise_norm(
+    x: chex.Array, axis: Optional[Union[int, tuple[int, ...]]] = None
+) -> chex.Array:
+  """Computes the L2 norm of each unit separately.
+
+  A "unit" is a slice of `x` along the dimensions specified by `axis`. If `axis`
+  is ``None``, the reduction axes are inferred from `x`'s rank based on
+  common layer conventions:
+    - Rank-1: The whole vector.
+    - Rank-2: Axis 0 (e.g., for linear layers).
+    - Rank-3 or 4: Axes (0, 1, 2) (e.g., for multi-head attention or convolutions).
+
+  Args:
+    x: Input array for which to compute unit-wise norms.
+    axis: Axis or axes to normalize over. If ``None``, defaults are
+      inferred from the input's rank.
+
+  Returns:
+    Array with the same shape as `x`, where each unit is replaced by its
+    L2 norm.
+  """
+  if axis is not None:
+    # Use provided axes for reduction
+    squared_norm = jnp.sum(numerics.abs_sq(x), axis=axis, keepdims=True)
+  elif jnp.squeeze(x).ndim <= 1:  # Scalars and vectors
     squared_norm = jnp.sum(numerics.abs_sq(x), keepdims=True)
   # Note that this assumes parameters with a shape of length 3 are multihead
   # linear parameters--if you wish to apply AGC to 1D convs, you may need
@@ -254,7 +279,8 @@ def unitwise_norm(x: chex.Array) -> chex.Array:
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2), keepdims=True)
   else:
     raise ValueError(
-        f'Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}.'
+        f"Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}. "
+        "Use axis parameter to specify reduction axes for other shapes."
     )
   chex.assert_is_broadcastable(squared_norm.shape, x.shape)
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)
@@ -275,13 +301,18 @@ def unitwise_clip(
 
 
 def adaptive_grad_clip(
-    clipping: float, eps: float = 1e-3
+    clipping: float,
+    eps: float = 1e-3,
+    axis: Optional[Union[int, tuple[int, ...]]] = None,
 ) -> base.GradientTransformation:
   """Clips updates to be at most ``clipping * parameter_norm``, unit-wise.
 
   Args:
     clipping: The maximum allowed ratio of update norm to parameter norm.
     eps: An epsilon term to prevent clipping of zero-initialized params.
+    axis: Axis or axes along which to compute the unit-wise norm. If None, uses
+      default behavior based on input dimensions. This is useful for custom
+      parameter shapes like Conv3D (ndim=5).
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -294,7 +325,9 @@ def adaptive_grad_clip(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
-    g_norm, p_norm = jax.tree.map(unitwise_norm, (updates, params))
+    g_norm, p_norm = jax.tree.map(
+        lambda x: unitwise_norm(x, axis=axis), (updates, params)
+    )
     # Maximum allowable norm.
     max_norm = jax.tree.map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
