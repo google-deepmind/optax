@@ -21,6 +21,7 @@ from typing import Optional, Union
 import chex
 import jax
 import jax.numpy as jnp
+import jax.scipy.special
 from optax import projections
 
 
@@ -814,47 +815,86 @@ def sigmoid_focal_loss(
     alpha: Optional[float] = None,
     gamma: float = 2.0,
 ) -> chex.Array:
-  """Sigmoid focal loss.
+  r"""Sigmoid focal loss with numerical stability improvements.
 
-  The focal loss is a re-weighted cross entropy for unbalanced problems.
-  Use this loss function if classes are not mutually exclusive.
-  See `sigmoid_binary_cross_entropy` for more information.
+  The focal loss is a dynamically scaled cross entropy loss, where the scaling
+  factor decays to zero as confidence in the correct class increases. This
+  addresses class imbalance by down-weighting easy examples and focusing on
+  hard examples.
+
+  This implementation uses log-space computation for the focal weight
+  :math:`(1-p_t)^\gamma` to ensure numerical stability, especially for
+  :math:`\gamma < 2` and extreme logit values.
+
+  The loss is defined as:
+
+  .. math::
+    FL(p_t) = -\alpha_t (1-p_t)^\gamma \log(p_t)
+
+  where :math:`p_t` is the predicted probability of the correct class:
+
+  .. math::
+    p_t = \begin{cases}
+      p & \text{if } y = 1 \\
+      1-p & \text{if } y = 0
+    \end{cases}
+
+  and :math:`\alpha_t` is the weighting factor:
+
+  .. math::
+    \alpha_t = \begin{cases}
+      \alpha & \text{if } y = 1 \\
+      1-\alpha & \text{if } y = 0
+    \end{cases}
 
   Args:
-    logits: Array of floats. The predictions for each example. The predictions
-      for each example.
-    labels: Array of floats. Labels and logits must have the same shape. The
-      label array must contain the binary classification labels for each element
-      in the data set (0 for the out-of-class and 1 for in-class).
-    alpha: (optional) Weighting factor in range (0,1) to balance positive vs
-      negative examples. Default None (no weighting).
-    gamma: Exponent of the modulating factor (1 - p_t). Balances easy vs hard
-      examples.
+    logits: Array of unnormalized log probabilities, with shape `[..., ]`.
+      The predictions for each example.
+    labels: Array of labels with shape broadcastable to `logits`. Can be:
+      - Binary labels `{0, 1}` for binary classification
+      - Continuous labels `[0, 1]` for soft targets or label smoothing
+    alpha: (optional) Weighting factor in range `(0, 1)` to balance positive vs
+      negative examples. Default `None` (no weighting).
+    gamma: Exponent of the modulating factor `(1 - p_t)`. Higher values focus
+      more on hard examples. Default `2.0`.
 
   Returns:
-    A loss value array with a shape identical to the logits and target
-    arrays.
+    Focal loss values with shape identical to `logits`.
 
   References:
-    Lin et al. `Focal Loss for Dense Object Detection
+    Lin et al, `Focal Loss for Dense Object Detection
     <https://arxiv.org/abs/1708.02002>`_, 2017
-  """
-  alpha = -1 if alpha is None else alpha
 
+  .. versionchanged:: 0.2.5
+    Added numerical stability improvements using log-space computation.
+    Added support for continuous labels in `[0, 1]`.
+  """
   chex.assert_type([logits], float)
   labels = jnp.astype(labels, logits.dtype)
-  # see also the original paper's implementation at:
-  # https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
-  p = jax.nn.sigmoid(logits)
+
+  # Cross-entropy loss
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
-  p_t = p * labels + (1 - p) * (1 - labels)
-  loss = ce_loss * ((1 - p_t) ** gamma)
 
-  weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
+  # Compute log(1-p_t) using logsumexp unconditionally
+  log_p = jax.nn.log_sigmoid(logits)
+  log_q = jax.nn.log_sigmoid(-logits)
 
-  loss = jnp.where(alpha >= 0, weighted, loss)
+  log_one_minus_p_t = jax.scipy.special.logsumexp(
+      jnp.stack([log_p, log_q], axis=-1),
+      axis=-1,
+      b=jnp.stack([1 - labels, labels], axis=-1)
+  )
 
-  return loss
+  # Focal weight and final loss
+  focal_weight = jnp.exp(gamma * log_one_minus_p_t)
+  loss = ce_loss * focal_weight
+
+  # Alpha weighting
+  if alpha is None:
+      return loss
+  else:
+      weighted = (alpha * labels + (1 - alpha) * (1 - labels)) * loss
+      return weighted
 
 
 def _multiclass_sparsemax_loss(
