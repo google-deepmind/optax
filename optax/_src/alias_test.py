@@ -28,6 +28,7 @@ import jax.random as jrd
 import numpy as np
 from optax._src import alias
 from optax._src import base
+from optax._src import constraints
 from optax._src import linesearch as _linesearch
 from optax._src import numerics
 from optax._src import transform
@@ -1081,6 +1082,212 @@ class LBFGSTest(chex.TestCase):
         for _ in range(2):
           params, state = step(params, state)
           assert jax.tree.leaves(params)[0].dtype == dtype
+
+
+class LBFGSBTest(chex.TestCase):
+  """Test class for L-BFGS-B optimizer with bound constraints."""
+
+  def test_unconstrained_optimization(self):
+    """Test L-BFGS-B on unconstrained optimization problems."""
+    problem = _get_problem('rosenbrock')
+    fun, init_params = problem['fun'], problem['init']
+
+    # Test without bounds
+    opt = alias.lbfgs_b(memory_size=5)
+    sol, _ = _run_opt(opt, fun, init_params, maxiter=50, tol=1e-6)
+
+    # Check that we found a reasonable solution
+    self.assertLess(fun(sol), 1e-1)
+    self.assertLess(optax.tree.norm(jax.grad(fun)(sol)), 1.0)
+
+  @parameterized.product(
+      problem_name=['rosenbrock', 'himmelblau', 'matyas'],
+      memory_size=[3, 5, 10]
+  )
+  def test_bound_constrained_optimization(self, problem_name: str, memory_size: int):
+    """Test L-BFGS-B with various bound constraints."""
+    problem = _get_problem(problem_name)
+    fun, init_params = problem['fun'], problem['init']
+
+    # Set reasonable bounds for the test problems
+    if problem_name == 'rosenbrock':
+      lower_bounds = jnp.array([-2.0, -2.0])
+      upper_bounds = jnp.array([2.0, 2.0])
+    elif problem_name == 'himmelblau':
+      lower_bounds = jnp.array([-5.0, -5.0])
+      upper_bounds = jnp.array([5.0, 5.0])
+    else:  # matyas
+      lower_bounds = jnp.array([-10.0, -10.0])
+      upper_bounds = jnp.array([10.0, 10.0])
+
+    opt = alias.lbfgs_b(
+        memory_size=memory_size,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds
+    )
+
+    sol, _ = _run_opt(opt, fun, init_params, maxiter=30, tol=1e-4)
+
+    # Check that solution respects bounds
+    self.assertTrue(jnp.all(sol >= lower_bounds - 1e-6))
+    self.assertTrue(jnp.all(sol <= upper_bounds + 1e-6))
+
+    # Check that we found a reasonable solution
+    self.assertLess(optax.tree.norm(jax.grad(fun)(sol)), 4.0)
+
+  def test_box_constraints_with_projection(self):
+    """Test that parameters are properly projected to satisfy box constraints."""
+    def quadratic(x):
+      return jnp.sum((x - 2.0) ** 2)
+
+    init_params = jnp.array([5.0, 5.0])  # Start outside bounds
+    lower_bounds = jnp.array([0.0, 0.0])
+    upper_bounds = jnp.array([1.0, 1.0])
+
+    opt = alias.lbfgs_b(
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds
+    )
+
+    sol, _ = _run_opt(opt, quadratic, init_params, maxiter=20, tol=1e-6)
+
+    # Solution should be at the upper bound since unconstrained minimum is at [2,2]
+    expected_sol = upper_bounds
+    chex.assert_trees_all_close(sol, expected_sol, atol=1e-3)
+
+    # Check bounds are satisfied
+    self.assertTrue(jnp.all(sol >= lower_bounds - 1e-6))
+    self.assertTrue(jnp.all(sol <= upper_bounds + 1e-6))
+
+  def test_single_sided_bounds(self):
+    """Test L-BFGS-B with only lower or upper bounds."""
+    def quadratic(x):
+      return jnp.sum((x + 1.0) ** 2)  # Minimum at [-1, -1]
+
+    init_params = jnp.array([2.0, 2.0])
+
+    # Test with only lower bounds
+    lower_bounds = jnp.array([0.0, 0.0])
+    opt_lower = alias.lbfgs_b(lower_bounds=lower_bounds)
+
+    sol_lower, _ = _run_opt(opt_lower, quadratic, init_params, maxiter=20, tol=1e-6)
+
+    # Solution should be at lower bound
+    expected_sol_lower = lower_bounds
+    chex.assert_trees_all_close(sol_lower, expected_sol_lower, atol=1e-3)
+    self.assertTrue(jnp.all(sol_lower >= lower_bounds - 1e-6))
+
+  def test_handling_pytrees(self):
+    """Test that L-BFGS-B works with PyTree parameters."""
+    def fun_(x):
+      return jnp.sum(
+          100.0 * (x[..., 1:] - x[..., :-1] ** 2.0) ** 2.0
+          + (1 - x[..., :-1]) ** 2.0
+      )
+
+    def fun(x):
+      return optax.tree.sum(jax.tree.map(fun_, x))
+
+    key = jrd.key(0)
+    init_array = jrd.normal(key, (2, 4))
+    init_tree = (init_array[0], init_array[1])
+
+    # Define bounds as PyTree
+    lower_bounds = (-2.0 * jnp.ones_like(init_array[0]),
+                   -2.0 * jnp.ones_like(init_array[1]))
+    upper_bounds = (2.0 * jnp.ones_like(init_array[0]),
+                   2.0 * jnp.ones_like(init_array[1]))
+
+    opt = alias.lbfgs_b(lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+    sol_tree, _ = _run_opt(opt, fun, init_tree, maxiter=5, tol=1e-4)
+
+    # Check that solution respects bounds structure
+    self.assertTrue(jnp.all(sol_tree[0] >= lower_bounds[0] - 1e-6))
+    self.assertTrue(jnp.all(sol_tree[0] <= upper_bounds[0] + 1e-6))
+    self.assertTrue(jnp.all(sol_tree[1] >= lower_bounds[1] - 1e-6))
+    self.assertTrue(jnp.all(sol_tree[1] <= upper_bounds[1] + 1e-6))
+
+  def test_binary_logreg_with_bounds(self):
+    """Test L-BFGS-B on binary logistic regression with parameter bounds."""
+    inputs, labels = datasets.make_classification(
+        n_samples=20, n_features=3, n_classes=2, n_informative=2,
+        n_redundant=0, n_clusters_per_class=1, random_state=42
+    )
+    data = (inputs, labels)
+
+    def fun(weights):
+      inputs, labels = data
+      logits = jnp.dot(inputs, weights)
+      losses = jax.tree.map(
+          lambda z, y: jax.nn.softplus(jnp.where(y, -z, z)), logits, labels
+      )
+      return jnp.mean(losses)
+
+    init_params = jnp.zeros(inputs.shape[1])
+
+    # Add bounds to prevent overfitting
+    lower_bounds = -5.0 * jnp.ones_like(init_params)
+    upper_bounds = 5.0 * jnp.ones_like(init_params)
+
+    opt = alias.lbfgs_b(
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds
+    )
+    sol, _ = _run_opt(opt, fun, init_params, maxiter=20, tol=1e-6)
+
+    # Check bounds are satisfied
+    self.assertTrue(jnp.all(sol >= lower_bounds - 1e-6))
+    self.assertTrue(jnp.all(sol <= upper_bounds + 1e-6))
+
+    # Check optimality conditions
+    self.assertLess(optax.tree.norm(jax.grad(fun)(sol)), 1e-1)
+
+  def test_tolerance_parameter(self):
+    """Test that tolerance parameter affects convergence."""
+    def quadratic(x):
+      return jnp.sum(x ** 2)
+
+    init_params = jnp.array([1.0, 1.0])
+    lower_bounds = jnp.array([-10.0, -10.0])
+    upper_bounds = jnp.array([10.0, 10.0])
+
+    # Test with different tolerance values
+    for tolerance in [1e-4, 1e-8]:
+      opt = alias.lbfgs_b(
+          lower_bounds=lower_bounds,
+          upper_bounds=upper_bounds,
+          tolerance=tolerance
+      )
+
+      sol, _ = _run_opt(opt, quadratic, init_params, maxiter=20, tol=tolerance*10)
+
+      # Check that we get reasonable convergence
+      self.assertLess(jnp.sum(sol ** 2), 1e-2)
+
+  def test_memory_size_parameter(self):
+    """Test that different memory sizes work correctly."""
+    problem = _get_problem('rosenbrock')
+    fun, init_params = problem['fun'], problem['init']
+
+    lower_bounds = -2.0 * jnp.ones_like(init_params)
+    upper_bounds = 2.0 * jnp.ones_like(init_params)
+
+    # Test with different memory sizes
+    for memory_size in [1, 5, 15]:
+      opt = alias.lbfgs_b(
+          memory_size=memory_size,
+          lower_bounds=lower_bounds,
+          upper_bounds=upper_bounds
+      )
+
+      sol, _ = _run_opt(opt, fun, init_params, maxiter=25, tol=1e-4)
+
+      # Check bounds are satisfied
+      self.assertTrue(jnp.all(sol >= lower_bounds - 1e-6))
+      self.assertTrue(jnp.all(sol <= upper_bounds + 1e-6))
+
+      # Check we found a reasonable solution
+      self.assertLess(fun(sol), 1.0)
 
 
 if __name__ == '__main__':

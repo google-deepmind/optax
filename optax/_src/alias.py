@@ -16,19 +16,23 @@
 
 from collections.abc import Callable
 import functools
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Tuple
 import warnings
 
 import jax
 import jax.numpy as jnp
+from jax import lax
 from optax._src import base
 from optax._src import clipping
 from optax._src import combine
+from optax._src import constraints
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import utils
+from optax import projections
 from optax._src import wrappers
+
 
 
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
@@ -153,8 +157,8 @@ def adadelta(
   Adadelta is a stochastic gradient descent method that adapts learning rates
   based on a moving window of gradient updates. Adadelta is a modification of
   Adagrad.
-  It addresses the diminishing learning rates problem in Adagrad by maintaining running averages of squared
-  gradients.
+  It addresses the diminishing learning rates problem in Adagrad by maintaining
+  running averages of squared gradients.
 
   The weight update :math:`\Delta w_t` for this optimizer is given as follows:
 
@@ -162,7 +166,8 @@ def adadelta(
       \begin{align*}
 
       &E[g^2]_t = \rho \cdot E[g^2]_{t-1} + (1-\rho) \cdot g_t^2 \\
-      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \cdot g_t
+      &\Delta w_t = -\frac{\sqrt{E[\Delta w^2]_{t-1} + \epsilon}}{
+        \sqrt{E[g^2]_t + \epsilon}} \cdot g_t
 
       \end{align*}
 
@@ -2704,3 +2709,132 @@ def lbfgs(
       base_scaling,
       linesearch,
   )
+
+
+def lbfgs_b(
+    memory_size: int = 10,
+    lower_bounds=None,
+    upper_bounds=None,
+    learning_rate: float = 1.0,
+    max_line_search_steps: int = 20,
+    weight_decay: float = 0.0,
+    weight_decay_mask: MaskOrFn = None,
+    clip_norm: Optional[float] = None,
+    tolerance: float = 1e-12,
+) -> base.GradientTransformationExtraArgs:
+    r"""L-BFGS-B optimizer.
+
+      L-BFGS-B is a quasi-Newton method that multiplies the update (gradient)
+      with an approximation of the inverse Hessian, subject to box constraints.
+      This algorithm extends L-BFGS by incorporating bound constraints on the
+      parameters. L-BFGS-B is a limited-memory variant of the constrained BFGS
+      algorithm that handles box constraints of the form
+      :math:`l_i \leq x_i \leq u_i` for each parameter :math:`x_i`.
+
+      The algorithm uses a two-stage approach:
+
+      1. **Generalized Cauchy Point (GCP)**: For the first iteration, it computes
+        the GCP by minimizing a quadratic model along the projected gradient path.
+      2. **Constrained L-BFGS**: For subsequent iterations, it uses the L-BFGS
+        two-loop recursion with projection onto the feasible region.
+
+      The approximation of the inverse Hessian follows the same limited-memory
+      formula as standard L-BFGS, using only :math:`m` (``memory_size``) past
+      differences of parameters/gradients. The key difference is that all iterates
+      are projected onto the box constraints :math:`[l, u]` to maintain feasibility.
+
+      The algorithm performs the following steps at each iteration:
+
+      1. Compute search direction :math:`d_k` (GCP for :math:`k=0`, L-BFGS otherwise)
+      2. Perform line search to find step size :math:`\alpha_k` satisfying
+         Wolfe conditions
+      3. Update parameters: :math:`x_{k+1} = \text{proj}_{[l,u]}(x_k + \alpha_k d_k)`
+      4. Update limited memory with correction pair :math:`\{s_k, y_k\}`
+
+      Args:
+        memory_size: number of past updates to keep in memory to approximate the
+          Hessian inverse.
+        lower_bounds: pytree of lower bounds :math:`l` for box constraints
+          :math:`x \in [l, u]`. Can be None for unconstrained parameters.
+        upper_bounds: pytree of upper bounds :math:`u` for box constraints
+          :math:`x \in [l, u]`. Can be None for unconstrained parameters.
+        learning_rate: initial/maximum step size scale for the line search.
+        max_line_search_steps: maximum number of iterations in the line search.
+        weight_decay: L2 regularization coefficient applied to the gradients.
+        weight_decay_mask: pytree mask for selectively applying weight decay to
+          specific parameters.
+        clip_norm: global norm threshold for gradient clipping. If None, no
+          clipping is applied.
+        tolerance: convergence tolerance for the step norm. When the step norm
+          falls below this threshold, the update is zeroed out.
+
+      Returns:
+        A :class:`optax.GradientTransformationExtraArgs` object.
+
+      Example:
+        >>> import optax
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> def f(x): return jnp.sum(x ** 2)
+        >>> solver = optax.lbfgs_b(
+        ...     lower_bounds=jnp.array([-1.0, -1.0]),
+        ...     upper_bounds=jnp.array([1.0, 1.0])
+        ... )
+        >>> params = jnp.array([2., -3.])
+        >>> print('Objective function: ', f(params))
+        Objective function:  13.0
+        >>> opt_state = solver.init(params)
+        >>> value_and_grad = optax.value_and_grad_from_state(f)
+        >>> for _ in range(3):
+        ...   value, grad = value_and_grad(params, state=opt_state)
+        ...   updates, opt_state = solver.update(
+        ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+        ...   )
+        ...   params = optax.apply_updates(params, updates)
+        ...   print('Objective function: {:.2E}'.format(f(params)))
+        Objective function: 1.25E+00
+        Objective function: 6.25E-02
+        Objective function: 3.91E-03
+
+      References:
+        Byrd et al., `A Limited Memory Algorithm for Bound Constrained Optimization
+        <https://epubs.siam.org/doi/10.1137/0916069>`_, SIAM Journal on Scientific
+        Computing, 1995.
+
+      .. warning::
+        This optimizer is memory intensive and best used for small to medium
+        scale problems.
+
+      .. warning::
+        This optimizer requires access to the objective function and works best
+        in deterministic settings. Use :func:`optax.value_and_grad_from_state`
+        for efficient gradient computation that can be recycled by the linesearch.
+
+      .. note::
+        The algorithm automatically handles the transition between the Generalized
+        Cauchy Point computation (first iteration) and standard L-BFGS updates
+        (subsequent iterations) as described in the Byrd et al. reference.
+
+      .. note:: The algorithm can support complex inputs.
+      """
+
+    transforms = []
+
+    if clip_norm is not None:
+        transforms.append(clipping.clip_by_global_norm(clip_norm))
+
+    if weight_decay > 0:
+        transforms.append(transform.add_decayed_weights(
+            weight_decay, mask=weight_decay_mask))
+
+    transforms.append(constraints.lbfgs_transform(
+        memory_size=memory_size,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+        learning_rate=learning_rate,
+        max_line_search_steps=max_line_search_steps,
+        tolerance=tolerance,
+    ))
+
+    # Chain all transforms together
+    return combine.chain(*transforms)
