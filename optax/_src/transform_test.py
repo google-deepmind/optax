@@ -16,9 +16,12 @@
 
 """Tests of gradient transformations."""
 
+from collections.abc import Callable # For Python 3.9+
+# from typing import Callable # For older Python, but collections.abc is preferred
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
+from optax._src import base # Import base for EmptyState
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -222,19 +225,29 @@ class TransformTest(parameterized.TestCase):
 
   @chex.all_variants
   @parameterized.named_parameters([
-      ('no_mask', None),
-      ('with_mask', (True, False)),
+      ('scalar_no_mask', 0.1, None),
+      ('scalar_with_mask', 0.1, (True, False)),
+      ('schedule_no_mask', lambda count: 0.1 * (count + 1), None),
+      ('schedule_with_mask', lambda count: 0.1 * (count + 1), (True, False)),
   ])
-  def test_add_decayed_weights_by_schedule(self, mask):
-    # Define a simple schedule for weight decay
-    def schedule_fn(count):
-      return 0.1 * (count + 1)
-
+  def test_add_decayed_weights(self, weight_decay_value_or_schedule, mask):
     params = self.init_params
     initial_updates = self.per_step_updates
 
-    tx = transform.add_decayed_weights_by_schedule(
-        weight_decay_schedule=schedule_fn, mask=mask
+    # If it's a schedule, ensure it's jit-friendly if it's a lambda
+    is_lambda_schedule = (
+        callable(weight_decay_value_or_schedule) and
+        weight_decay_value_or_schedule.__name__ == '<lambda>')
+    if is_lambda_schedule:
+      # Re-define schedule_fn here for clarity in test, or pass a top-level one
+      def schedule_fn(count):
+        return 0.1 * (jnp.asarray(count, dtype=jnp.int32) + 1)
+      current_weight_decay_source = schedule_fn
+    else:
+      current_weight_decay_source = weight_decay_value_or_schedule
+
+    tx = transform.add_decayed_weights(
+        weight_decay=current_weight_decay_source, mask=mask
     )
     init_fn = self.variant(tx.init)
     update_fn = self.variant(tx.update)
@@ -243,29 +256,64 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite(state)
 
     for step in range(3):
-      current_wd = schedule_fn(step)
+      if callable(current_weight_decay_source):
+        current_wd = current_weight_decay_source(step)
+        # Verify state for schedule
+        is_direct_schedule_state = isinstance(
+            state, transform.ScaleByScheduleState)
+        is_masked_schedule_state = (
+            isinstance(state, tuple) and
+            any(isinstance(s, transform.ScaleByScheduleState) for s in state))
+        if is_direct_schedule_state or is_masked_schedule_state: # masked state
+
+          actual_state_for_count = state
+          # Check if state is a MaskedState tuple and extract inner state
+          is_masked_tuple = (
+              isinstance(state, tuple) and len(state) == 2 and
+              isinstance(state[0], transform.ScaleByScheduleState))
+          if is_masked_tuple: # MaskedState
+             actual_state_for_count = state[0]
+
+          if hasattr(actual_state_for_count, 'count'):
+            self.assertEqual(actual_state_for_count.count, step)
+      else:
+        current_wd = current_weight_decay_source
+        # Verify state for scalar (should be EmptyState or similar
+        # for non-masked/masked)
+        if mask is None:
+          self.assertIsInstance(state, base.EmptyState)
+        else:
+          # MaskedState(inner_state=EmptyState, mask=...)
+          self.assertIsInstance(state, tuple)
+          self.assertIsInstance(state[0], base.EmptyState)
+
+
       # Compute expected updates
       if mask is None:
         expected_updates = jax.tree.map(
             lambda g, p, wd=current_wd: g + wd * p, initial_updates, params
         )
       else:
-        # mask is already a PyTree with the correct structure or a callable.
-        # The mask itself should be used for expected_updates calculation.
+        # Ensure mask is a PyTree if it's a tuple for tree_map
+        mask_pytree = mask
+        if isinstance(mask, Callable): # If mask is a callable
+            mask_pytree = mask(params)
+
         expected_updates = jax.tree.map(
             lambda g, p, m, wd=current_wd: g + wd * p if m else g,
             initial_updates,
             params,
-            mask, # Use mask directly
+            mask_pytree,
         )
 
       # Apply transformation
-      updates, state = update_fn(initial_updates, state, params)
-      chex.assert_tree_all_finite((params, updates, state))
+      updates, new_state = update_fn(initial_updates, state, params)
+      chex.assert_tree_all_finite((params, updates, new_state))
       jax.tree.map(
           lambda *args: chex.assert_equal_shape(args), params, updates
       )
       chex.assert_trees_all_close(updates, expected_updates, atol=1e-6, rtol=1e-5)
+      state = new_state # Update state for next iteration
 
 
 if __name__ == '__main__':

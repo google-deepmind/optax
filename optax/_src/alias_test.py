@@ -451,20 +451,33 @@ class AliasTest(chex.TestCase):
       self.assertEqual(actual_updates[0].dtype, jnp.float32)
 
       if is_schedule:
-        # For a chain of transformations, the state is a tuple of individual
-        # states.
-        # fromage chain: scale_by_trust_ratio (stateless),
-        #                scale_by_learning_rate (becomes ScaleByScheduleState),
-        #                add_decayed_weights_by_schedule
-        #                (AddDecayedWeightsByScheduleState)
-        if len(state) == 3:
-          # state[0] is for scale_by_trust_ratio (e.g., EmptyState)
+        # For a chain of transformations, the state is a tuple of individual states.
+        # Expected states in the chain for fromage:
+        # 1. scale_by_trust_ratio: base.EmptyState
+        # 2. scale_by_learning_rate: transform.ScaleByScheduleState
+        #    if LR is schedule, else base.EmptyState
+        # 3. add_decayed_weights: transform.ScaleByScheduleState
+        #    if LR is schedule (due to decay_fn), else base.EmptyState
+        if len(state) == 3: # Chain always has 3 components
+          trust_ratio_state = state[0]
           scale_by_lr_state = state[1]
           add_decayed_weights_state = state[2]
-          if hasattr(scale_by_lr_state, 'count'):
-            self.assertEqual(scale_by_lr_state.count, i + 1)
-          if hasattr(add_decayed_weights_state, 'count'):
-            self.assertEqual(add_decayed_weights_state.count, i + 1)
+
+          self.assertIsInstance(trust_ratio_state, base.EmptyState)
+
+          if is_schedule:
+            self.assertIsInstance(scale_by_lr_state, transform.ScaleByScheduleState)
+            if hasattr(scale_by_lr_state, 'count'):
+              self.assertEqual(scale_by_lr_state.count, i + 1)
+
+            self.assertIsInstance(
+                add_decayed_weights_state,
+                transform.ScaleByScheduleState)
+            if hasattr(add_decayed_weights_state, 'count'):
+              self.assertEqual(add_decayed_weights_state.count, i + 1)
+          else: # Scalar learning rate
+            self.assertIsInstance(scale_by_lr_state, base.EmptyState)
+            self.assertIsInstance(add_decayed_weights_state, base.EmptyState)
 
 
 ##########################

@@ -1150,7 +1150,8 @@ def fromage(
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(scaled_lr_fn),
-        transform.add_decayed_weights_by_schedule(decay_fn),
+        # Use enhanced add_decayed_weights
+        transform.add_decayed_weights(decay_fn),
     )
   else:
     # learning_rate is a scalar
@@ -1160,12 +1161,13 @@ def fromage(
     mult_scalar = jnp.asarray(mult_scalar_intermediate, dtype=lr_dtype)
 
     decay_val_scalar = mult_scalar - one_scalar
-    constant_decay_schedule = lambda count: decay_val_scalar
+    # No longer need constant_decay_schedule, pass scalar directly
 
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(learning_rate * mult_scalar),
-        transform.add_decayed_weights_by_schedule(constant_decay_schedule),
+        transform.add_decayed_weights(decay_val_scalar),
+        # Use enhanced add_decayed_weights
     )
 
 

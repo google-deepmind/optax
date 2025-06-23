@@ -24,11 +24,10 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
-from optax._src import wrappers # Add import for wrappers
+from optax._src import wrappers # Consolidated import
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
-
 
 abs_sq = numerics.abs_sq
 
@@ -1819,84 +1818,76 @@ ema = _accumulation.ema
 EmaState = _accumulation.EmaState
 add_noise = _adding.add_noise
 AddNoiseState = _adding.AddNoiseState
-add_decayed_weights = _adding.add_decayed_weights
-AddDecayedWeightsState = base.EmptyState
+# add_decayed_weights = _adding.add_decayed_weights # This line will be removed
+# AddDecayedWeightsState = base.EmptyState # This may change or be reused
 ScaleState = base.EmptyState
 ScaleByTrustRatioState = base.EmptyState
 
 
-class AddDecayedWeightsByScheduleState(NamedTuple):
-  """State for add_decayed_weights_by_schedule."""
-  count: chex.Array
+# The AddDecayedWeightsByScheduleState and add_decayed_weights_by_schedule
+# function will be removed.
 
-
-def add_decayed_weights_by_schedule(
-    weight_decay_schedule: base.Schedule,
+def add_decayed_weights(
+    weight_decay: base.ScalarOrSchedule,
     mask: Optional[
         Union[chex.ArrayTree, Callable[[base.Params], chex.ArrayTree]]
     ] = None,
 ) -> base.GradientTransformation:
-  """Add parameter scaled by weight decay schedule.
+  """Add parameter scaled by weight decay.
 
   Args:
-    weight_decay_schedule: A function that takes an update count as input and
-      proposes the weight_decay to multiply the parameters by.
-    mask: A tree with same structure as (or a prefix of) the params PyTree,
-      or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the transformation to, and `False` for those you want to skip.
+    weight_decay: A scalar or a schedule for the weight decay rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree, or a
+      Callable that returns such a pytree given the params/updates. The leaves
+      should be booleans, `True` for leaves/subtrees you want to apply the
+      transformation to, and `False` for those you want to skip.
 
   Returns:
     A `GradientTransformation` object.
   """
+
   def init_fn(params):
-    del params
-    return AddDecayedWeightsByScheduleState(count=jnp.zeros([], jnp.int32))
+    del params # Unused.
+    if callable(weight_decay):
+      # Reuse ScaleByScheduleState if it only contains a count
+      return ScaleByScheduleState(count=jnp.zeros([], jnp.int32))
+    # If weight_decay is a scalar, it's stateless.
+    return base.EmptyState()
 
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    current_weight_decay = weight_decay_schedule(state.count)
-    # Ensure current_weight_decay is a JAX scalar float
-    # Use a type from updates or params to ensure compatibility, if available
-    # Fallback to float32 if params/updates are not available for dtype inference
-    # (though params is checked for None above)
-    example_leaf = jax.tree_util.tree_leaves(params)[0]
-    current_weight_decay = jnp.asarray(current_weight_decay, dtype=example_leaf.dtype)
+    new_state = state
+    if callable(weight_decay):
+      if not isinstance(state, ScaleByScheduleState):
+        # This case should ideally not happen if init_fn is correct
+        raise ValueError(
+            "State mismatch: expected ScaleByScheduleState for scheduled "
+            "weight_decay."
+        )
+      current_wd_val = weight_decay(state.count)
+      new_state = ScaleByScheduleState(
+          count=numerics.safe_increment(state.count)
+      )
+    else:
+      current_wd_val = weight_decay
+      # new_state remains EmptyState if state is EmptyState
 
     def _update_leaf(g, p):
       if g is None or p is None:
         return g
-      return g + current_weight_decay * p
+      # Ensure wd_val is of the same dtype as p before multiplication
+      wd_val_casted = jnp.asarray(current_wd_val, dtype=p.dtype)
+      return g + wd_val_casted * p
 
-    if mask is None:
-      updates = jax.tree_util.tree_map(_update_leaf, updates, params)
-    else:
-      # This part was problematic.
-      # The correct way to handle masking is to wrap the transformation.
-      # However, we are already inside the update_fn.
-      # We should follow the pattern in `optax.transforms._adding.add_decayed_weights`:
-      # The masking should be applied when the transform is created.
-      # So, the `add_decayed_weights_by_schedule` function itself should handle this.
-      # The current `update_fn` should assume it's operating on all params or
-      # that the mask has been handled by a wrapper.
-      # For this specific implementation, if a mask is passed, it implies the
-      # _update_leaf function should respect it if it were part of a map_masked.
-      # Let's simplify: the mask is applied by the `wrappers.masked` utility,
-      # so the core `update_fn` here should not re-implement masking logic.
-      # The logic for applying mask is handled by `optax.wrappers.masked` which
-      # should wrap the transformation returned by this function if mask is not
-      # None. So, this `update_fn` will always assume it acts on all elements,
-      # and the `add_decayed_weights_by_schedule` factory function will wrap it.
-      updates = jax.tree_util.tree_map(_update_leaf, updates, params)
+    updates = jax.tree_util.tree_map(_update_leaf, updates, params)
+    return updates, new_state
 
-    return updates, AddDecayedWeightsByScheduleState(
-        count=numerics.safe_increment(state.count))
-
-  # Core transformation without masking logic inside update_fn
+  # The core transformation logic
   core_transform = base.GradientTransformation(init_fn, update_fn)
 
+  # Apply masking if provided. Masked wrapper handles state correctly.
   if mask is not None:
     return wrappers.masked(core_transform, mask)
   return core_transform
