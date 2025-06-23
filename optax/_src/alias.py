@@ -1084,7 +1084,7 @@ def amsgrad(
 
 
 def fromage(
-    learning_rate: float, min_norm: float = 1e-6
+    learning_rate: base.ScalarOrSchedule, min_norm: float = 1e-6
 ) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
@@ -1129,12 +1129,46 @@ def fromage(
     Bernstein et al, `On the distance between two neural networks and the
     stability of learning <https://arxiv.org/abs/2002.03432>`_, 2020
   """
-  mult = 1 / jnp.sqrt(1 + learning_rate**2)
-  return combine.chain(
-      transform.scale_by_trust_ratio(min_norm),
-      transform.scale_by_learning_rate(learning_rate * mult),
-      transform.add_decayed_weights((mult - 1)),
-  )
+  if callable(learning_rate):
+    # learning_rate is a schedule
+    # learning_rate is a schedule
+    def mult_fn_scheduled(count):
+      lr_val = learning_rate(count)
+      lr_val_dtype = getattr(lr_val, 'dtype', jnp.result_type(lr_val))
+      one_val = jnp.array(1.0, dtype=lr_val_dtype)
+      mult_intermediate = one_val / jnp.sqrt(one_val + lr_val**2)
+      return jnp.asarray(mult_intermediate, dtype=lr_val_dtype)
+
+    scaled_lr_fn = lambda count: learning_rate(count) * mult_fn_scheduled(count)
+
+    def decay_fn(count):
+      mult_val = mult_fn_scheduled(count)
+      mult_val_dtype = getattr(mult_val, 'dtype', jnp.result_type(mult_val))
+      one_val = jnp.array(1.0, dtype=mult_val_dtype)
+      return mult_val - one_val
+
+    return combine.chain(
+        transform.scale_by_trust_ratio(min_norm),
+        transform.scale_by_learning_rate(scaled_lr_fn),
+        # Use enhanced add_decayed_weights
+        transform.add_decayed_weights(decay_fn),
+    )
+  else:
+    # learning_rate is a scalar
+    lr_dtype = getattr(learning_rate, 'dtype', jnp.result_type(learning_rate))
+    one_scalar = jnp.array(1.0, dtype=lr_dtype)
+    mult_scalar_intermediate = one_scalar / jnp.sqrt(one_scalar + learning_rate**2)
+    mult_scalar = jnp.asarray(mult_scalar_intermediate, dtype=lr_dtype)
+
+    decay_val_scalar = mult_scalar - one_scalar
+    # No longer need constant_decay_schedule, pass scalar directly
+
+    return combine.chain(
+        transform.scale_by_trust_ratio(min_norm),
+        transform.scale_by_learning_rate(learning_rate * mult_scalar),
+        transform.add_decayed_weights(decay_val_scalar),
+        # Use enhanced add_decayed_weights
+    )
 
 
 def lars(

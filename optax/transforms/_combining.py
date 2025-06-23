@@ -18,6 +18,7 @@ from collections.abc import Callable, Hashable, Mapping
 from typing import NamedTuple, Union
 
 import jax
+import jax.numpy as jnp
 from optax._src import base
 from optax._src import wrappers
 
@@ -67,7 +68,7 @@ def chain(
       >>> state = chained_transform.init(0.5)
       >>> extra_args = {"value": 1.0}
       >>> updates, new_state = chained_transform.update(
-      ...     0.7, state, 0.7, **extra_args  # extra args for all transforms
+      ...     jnp.array(0.7), state, jnp.array(0.7), **extra_args
       ... )
   """
 
@@ -131,7 +132,7 @@ def named_chain(
     >>> state = chained_transform.init(0.5)
     >>> extra_args = {"value": 1.0}
     >>> updates, new_state = chained_transform.update(
-    ...     0.7, state, 0.7, **extra_args  # extra args for all transforms
+    ...     jnp.array(0.7), state, jnp.array(0.7), **extra_args
     ... )
     >>> tuple(new_state.keys()) == ("scale", "sgd")
     True

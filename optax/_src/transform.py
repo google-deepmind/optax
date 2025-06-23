@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Optional, Union, Callable
 
 import chex
 import jax
@@ -24,10 +24,10 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
+from optax._src import wrappers # Consolidated import
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
-
 
 abs_sq = numerics.abs_sq
 
@@ -248,7 +248,7 @@ def scale_by_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jnp.dtype] = None,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -322,7 +322,7 @@ def scale_by_amsgrad(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jnp.dtype] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -417,7 +417,7 @@ class ScaleByLionState(NamedTuple):
 def scale_by_lion(
     b1: float = 0.9,
     b2: float = 0.99,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jnp.dtype] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
 
@@ -464,7 +464,9 @@ def scale(step_size: float) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    updates = jax.tree.map(lambda g: step_size * g, updates)
+    updates = jax.tree.map(
+        lambda g: jnp.asarray(step_size, dtype=g.dtype) * g if g is not None else None,
+        updates)
     return updates, state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
@@ -1208,7 +1210,7 @@ def scale_by_novograd(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jnp.dtype] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
 
@@ -1334,7 +1336,7 @@ class ScaleByDistanceOverGradientsState(NamedTuple):
 
 
 def scale_by_distance_over_gradients(
-    reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0
+    reps_rel=1e-6, eps=1e-8, param_dtype: jnp.dtype = jnp.float32, global_scale=1.0
 ) -> base.GradientTransformation:
   """Distance-over-gradients learning rate-free optimizer.
 
@@ -1805,7 +1807,7 @@ def normalize_by_update_norm(
     chex.warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree, dtype: Optional[jnp.dtype]
 ) -> chex.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
@@ -1816,7 +1818,76 @@ ema = _accumulation.ema
 EmaState = _accumulation.EmaState
 add_noise = _adding.add_noise
 AddNoiseState = _adding.AddNoiseState
-add_decayed_weights = _adding.add_decayed_weights
-AddDecayedWeightsState = base.EmptyState
+# add_decayed_weights = _adding.add_decayed_weights # This line will be removed
+# AddDecayedWeightsState = base.EmptyState # This may change or be reused
 ScaleState = base.EmptyState
 ScaleByTrustRatioState = base.EmptyState
+
+
+# The AddDecayedWeightsByScheduleState and add_decayed_weights_by_schedule
+# function will be removed.
+
+def add_decayed_weights(
+    weight_decay: base.ScalarOrSchedule,
+    mask: Optional[
+        Union[chex.ArrayTree, Callable[[base.Params], chex.ArrayTree]]
+    ] = None,
+) -> base.GradientTransformation:
+  """Add parameter scaled by weight decay.
+
+  Args:
+    weight_decay: A scalar or a schedule for the weight decay rate.
+    mask: A tree with same structure as (or a prefix of) the params PyTree, or a
+      Callable that returns such a pytree given the params/updates. The leaves
+      should be booleans, `True` for leaves/subtrees you want to apply the
+      transformation to, and `False` for those you want to skip.
+
+  Returns:
+    A `GradientTransformation` object.
+  """
+
+  def init_fn(params):
+    del params # Unused.
+    if callable(weight_decay):
+      # Reuse ScaleByScheduleState if it only contains a count
+      return ScaleByScheduleState(count=jnp.zeros([], jnp.int32))
+    # If weight_decay is a scalar, it's stateless.
+    return base.EmptyState()
+
+  def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(base.NO_PARAMS_MSG)
+
+    new_state = state
+    if callable(weight_decay):
+      if not isinstance(state, ScaleByScheduleState):
+        # This case should ideally not happen if init_fn is correct
+        raise ValueError(
+            "State mismatch: expected ScaleByScheduleState for scheduled "
+            "weight_decay."
+        )
+      current_wd_val = weight_decay(state.count)
+      new_state = ScaleByScheduleState(
+          count=numerics.safe_increment(state.count)
+      )
+    else:
+      current_wd_val = weight_decay
+      # new_state remains EmptyState if state is EmptyState
+
+    def _update_leaf(g, p):
+      if g is None or p is None:
+        return g
+      # Ensure wd_val is of the same dtype as p before multiplication
+      wd_val_casted = jnp.asarray(current_wd_val, dtype=p.dtype)
+      return g + wd_val_casted * p
+
+    updates = jax.tree_util.tree_map(_update_leaf, updates, params)
+    return updates, new_state
+
+  # The core transformation logic
+  core_transform = base.GradientTransformation(init_fn, update_fn)
+
+  # Apply masking if provided. Masked wrapper handles state correctly.
+  if mask is not None:
+    return wrappers.masked(core_transform, mask)
+  return core_transform
