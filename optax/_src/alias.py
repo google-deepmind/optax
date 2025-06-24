@@ -27,6 +27,7 @@ from optax._src import combine
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
+from optax._src.transform import _fromage_core_transform
 from optax._src import utils
 from optax._src import wrappers
 
@@ -1084,7 +1085,7 @@ def amsgrad(
 
 
 def fromage(
-    learning_rate: float, min_norm: float = 1e-6
+    learning_rate: base.ScalarOrSchedule, min_norm: float = 1e-6
 ) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
@@ -1129,11 +1130,11 @@ def fromage(
     Bernstein et al, `On the distance between two neural networks and the
     stability of learning <https://arxiv.org/abs/2002.03432>`_, 2020
   """
-  mult = 1 / jnp.sqrt(1 + learning_rate**2)
+  # Fromage always uses the same chain structure, with _fromage_core_transform
+  # handling both scalar and scheduled learning rates internally.
   return combine.chain(
       transform.scale_by_trust_ratio(min_norm),
-      transform.scale_by_learning_rate(learning_rate * mult),
-      transform.add_decayed_weights((mult - 1)),
+      transform._fromage_core_transform(learning_rate_or_schedule=learning_rate)
   )
 
 

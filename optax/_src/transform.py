@@ -1809,6 +1809,76 @@ def cast_tree(
 ) -> chex.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
+class _FromageCoreState(NamedTuple):
+  """State for the core Fromage transformation (handles scalar/schedule LR)."""
+  count: chex.Array
+
+
+def _fromage_core_transform(
+    learning_rate_or_schedule: base.ScalarOrSchedule,
+) -> base.GradientTransformation:
+  """Core Fromage logic transform; handles scalar or scheduled learning rate."""
+
+  is_schedule = callable(learning_rate_or_schedule)
+
+  def init_fn(params):
+    del params  # Unused.
+    return _FromageCoreState(count=jnp.zeros([], jnp.int32))
+
+  def update_fn(updates, state, params):
+    if params is None:
+      raise ValueError(
+          "Params must be provided to _fromage_core_transform.")
+
+    if is_schedule:
+      # learning_rate_or_schedule is a schedule captured from the outer scope.
+      lr_val = learning_rate_or_schedule(state.count)
+    else:
+      # learning_rate_or_schedule is a scalar captured from the outer scope.
+      lr_val = learning_rate_or_schedule
+    # Determine target dtype from updates for casting intermediate scalars
+    first_update_leaf = jax.tree_util.tree_leaves(updates)[0]
+    if first_update_leaf is None: # Should ideally not happen with valid updates
+        # Fallback dtype if updates are empty or all None for some reason
+        # This case might need more robust handling or indicate an upstream issue
+        target_dtype = jnp.float32
+    else:
+        target_dtype = first_update_leaf.dtype
+
+    lr_val = jnp.asarray(lr_val, dtype=target_dtype)
+    mult_val = 1 / jnp.sqrt(1 + lr_val**2) # mult_val will also be target_dtype
+
+    current_lr_scale_factor = lr_val * mult_val
+    # current_lr_scale_factor is already target_dtype
+
+    scaled_updates = jax.tree.map(
+        lambda g: -current_lr_scale_factor * g if g is not None else None,
+        updates,
+        is_leaf=lambda x: x is None)
+
+    current_decay_val = mult_val - 1
+    # current_decay_val is already target_dtype
+
+    weight_decay_term = jax.tree.map(
+        lambda p: current_decay_val * p if p is not None else None,
+        params,
+        is_leaf=lambda x: x is None)
+
+    def _add_safe(su, wdt):
+      if su is not None and wdt is not None:
+        return su + wdt
+      return su if su is not None else wdt
+
+    final_updates = jax.tree.map(
+        _add_safe,
+        scaled_updates,
+        weight_decay_term,
+        is_leaf=lambda x: x is None)
+
+    return final_updates, _FromageCoreState(
+        count=numerics.safe_increment(state.count))
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 trace = _accumulation.trace
 TraceState = _accumulation.TraceState

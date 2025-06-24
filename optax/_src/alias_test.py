@@ -27,6 +27,7 @@ import jax.numpy as jnp
 import jax.random as jrd
 import numpy as np
 from optax._src import alias
+from optax import warmup_cosine_decay_schedule
 from optax._src import base
 from optax._src import linesearch as _linesearch
 from optax._src import numerics
@@ -46,6 +47,19 @@ from sklearn import linear_model
 # COMMON TESTS
 ##############
 
+# Helper to provide stable names for schedule functions in parameterized tests
+class ScheduleWrapper:
+  def __init__(self, schedule_fn, name):
+    self._schedule_fn = schedule_fn
+    self.__name__ = name  # Often used by test generators for names
+    self._name = name     # For a custom repr if needed
+
+  def __call__(self, count):
+    return self._schedule_fn(count)
+
+  def __repr__(self):
+    # Provide a stable representation that doesn't depend on memory address
+    return f"<ScheduleWrapper name='{self._name}'>"
 
 _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1e-2}},
@@ -61,6 +75,20 @@ _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'adan', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'amsgrad', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'fromage', 'opt_kwargs': {'learning_rate': 5e-3}},
+    {'opt_name': 'fromage', 'opt_kwargs': {
+        'learning_rate': ScheduleWrapper(
+            warmup_cosine_decay_schedule(
+                init_value=0.0,
+                peak_value=2e-2,
+                warmup_steps=500,
+                decay_steps=9500,
+                end_value=1e-4,
+            ),
+            name='fromage_warmup_cosine_decay'
+        ),
+        # Adjusted min_norm for fromage schedule test
+        'min_norm': 1e-5,
+    }},
     {'opt_name': 'lamb', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'lars', 'opt_kwargs': {'learning_rate': 1.0}},
     {
