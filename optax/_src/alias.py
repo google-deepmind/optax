@@ -1084,7 +1084,7 @@ def amsgrad(
 
 
 def fromage(
-    learning_rate: float, min_norm: float = 1e-6
+    learning_rate: base.ScalarOrSchedule, min_norm: float = 1e-6
 ) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
@@ -1129,12 +1129,21 @@ def fromage(
     Bernstein et al, `On the distance between two neural networks and the
     stability of learning <https://arxiv.org/abs/2002.03432>`_, 2020
   """
-  mult = 1 / jnp.sqrt(1 + learning_rate**2)
-  return combine.chain(
-      transform.scale_by_trust_ratio(min_norm),
-      transform.scale_by_learning_rate(learning_rate * mult),
-      transform.add_decayed_weights((mult - 1)),
-  )
+  if callable(learning_rate):
+    mult_lr = lambda count: 1 / jnp.sqrt(1 + learning_rate(count)**2)
+    return combine.chain(
+        transform.scale_by_trust_ratio(min_norm),
+        transform.scale_by_learning_rate(
+            lambda c: mult_lr(c) * learning_rate(c)),
+        transform.add_decayed_weights(lambda c: mult_lr(c) - 1),
+    )
+  else:
+    mult = 1 / jnp.sqrt(1 + learning_rate**2)
+    return combine.chain(
+        transform.scale_by_trust_ratio(min_norm),
+        transform.scale_by_learning_rate(learning_rate * mult),
+        transform.add_decayed_weights((mult - 1)),
+    )
 
 
 def lars(

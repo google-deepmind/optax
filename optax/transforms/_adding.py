@@ -18,6 +18,7 @@ from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union
 import warnings
 
+import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -27,8 +28,13 @@ from optax._src import wrappers
 import optax.tree
 
 
+class WeightDecaySchedule(NamedTuple):
+  """Maintains count for weight decay scheduling."""
+  count: chex.Array  # shape=(), dtype=jnp.int32
+
+
 def add_decayed_weights(
-    weight_decay: Union[float, jax.Array] = 0.0,
+    weight_decay: Union[float, jax.Array, base.ScalarOrSchedule] = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
@@ -44,11 +50,16 @@ def add_decayed_weights(
     A :class:`optax.GradientTransformation` object.
   """
 
+  def init_fn(params):
+    del params
+    return WeightDecaySchedule(count=jnp.zeros([], jnp.int32))
+
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    s = weight_decay(state.count) if callable(weight_decay) else weight_decay
     updates = jax.tree.map(
-        lambda g, p: None if g is None else g + weight_decay * p,
+        lambda g, p: None if g is None else g + s * p,
         updates,
         params,
         is_leaf=lambda x: x is None,
@@ -59,9 +70,9 @@ def add_decayed_weights(
   # E.g. it is common to skip weight decay on bias units and batch stats.
   if mask is not None:
     return wrappers.masked(
-        base.GradientTransformation(base.init_empty_state, update_fn), mask
+        base.GradientTransformation(init_fn, update_fn), mask
     )
-  return base.GradientTransformation(base.init_empty_state, update_fn)
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 class AddNoiseState(NamedTuple):
