@@ -96,7 +96,9 @@ if typing.TYPE_CHECKING:
   tree_linf_norm = functools.partial(tree_norm, ord='inf')
 
 else:
-  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr
+  # pylint: disable=line-too-long
+  from optax._src.deprecations import deprecation_getattr as _deprecation_getattr  # noqa: E501
+  # pylint: enable=line-too-long
 
   __getattr__ = _deprecation_getattr(__name__, _deprecations)
   del _deprecation_getattr

@@ -2,6 +2,9 @@
 # changes from base pyproject.toml:
 #   - allow E501 line too long
 
+[tool.ruff]
+line-length = 80
+
 [tool.ruff.lint]
 select = [
     "F",
