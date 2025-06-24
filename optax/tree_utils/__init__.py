@@ -54,6 +54,7 @@ from optax.tree_utils._tree_math import tree_update_moment_per_elem_norm
 from optax.tree_utils._tree_math import tree_vdot
 from optax.tree_utils._tree_math import tree_where
 from optax.tree_utils._tree_math import tree_zeros_like
+from optax.tree_utils._tree_math import tree_allclose
 
 _deprecations = {
     # Added Mar 2025
