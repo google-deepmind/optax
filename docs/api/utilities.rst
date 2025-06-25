@@ -97,6 +97,7 @@ Tree
     NamedTupleKey
     tree_add
     tree_add_scale
+    tree_allclose
     tree_batch_shape
     tree_cast
     tree_cast_like
@@ -136,6 +137,10 @@ Tree add
 Tree add and scalar multiply
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_add_scale
+
+Tree all close
+~~~~~~~~~~~~~~
+.. autofunction:: tree_allclose
 
 Tree batch reshaping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

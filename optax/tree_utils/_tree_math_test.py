@@ -172,6 +172,11 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_size(tree)
     np.testing.assert_allclose(expected, got)
 
+  def test_tree_allclose(self):
+    assert tu.tree_allclose(1, 1)
+    assert tu.tree_allclose(1, 1 + 1e-7)
+    assert not tu.tree_allclose(1, 2)
+
   def test_tree_conj(self):
     expected = jnp.conj(self.array_a)
     got = tu.tree_conj(self.array_a)

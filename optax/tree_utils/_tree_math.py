@@ -426,3 +426,32 @@ def tree_where(condition, tree_x, tree_y):
     tree_x or tree_y depending on condition.
   """
   return jax.tree.map(lambda x, y: jnp.where(condition, x, y), tree_x, tree_y)
+
+
+def tree_allclose(
+    a: Any,
+    b: Any,
+    rtol: jax.typing.ArrayLike = 1e-05,
+    atol: jax.typing.ArrayLike = 1e-08,
+    equal_nan: bool = False
+):
+  """Check whether two trees are element-wise approximately equal within a tolerance.
+
+  See :func:`jax.numpy.allclose` for the equivalent on arrays.
+
+  Args:
+    a: a tree
+    b: a tree
+    rtol: relative tolerance used for approximate equality
+    atol: absolute tolerance used for approximate equality
+    equal_nan: boolean indicating whether NaNs are treated as equal
+
+  Returns:
+    a boolean value.
+  """
+  def f(a, b):
+    return jnp.allclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
+  tree = jax.tree.map(f, a, b)
+  leaves = jax.tree.leaves(tree)
+  result = functools.reduce(operator.and_, leaves, True)
+  return result

@@ -33,6 +33,7 @@ map_params = _state_utils.tree_map_params
 set = _state_utils.tree_set  # pylint: disable=redefined-builtin
 add = _tree_math.tree_add
 add_scale = _tree_math.tree_add_scale
+allclose = _tree_math.tree_allclose
 batch_shape = _tree_math.tree_batch_shape
 bias_correction = _tree_math.tree_bias_correction
 clip = _tree_math.tree_clip
