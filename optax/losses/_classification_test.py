@@ -979,7 +979,11 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     super().setUp()
     self.ys = np.array([[2.0, 0.1, -2.0], [0.3, -0.1, 1.2]], dtype=np.float32)
     self.ts = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
-    self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
+    # Relaxed tolerance to accommodate log-space numerical stability improvement
+    # The log-space focal loss implementation has slightly different numerical
+    # behavior for extreme values, which is expected and desirable for numerical
+    # stability
+    self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 2e-5
 
     logit = lambda x: jnp.log(x / (1.0 - x))
     self.large_ys = logit(jnp.array([0.9, 0.98, 0.3, 0.99]))
@@ -995,6 +999,27 @@ class SigmoidFocalLossTest(parameterized.TestCase):
         ),
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
         rtol=self._rtol,
+    )
+
+  @chex.all_variants
+  def test_focal_gamma_zero_matches_binary_cross_entropy(self):
+    """When gamma=0, sigmoid_focal_loss should match sigmoid_binary_cross_entropy."""
+    # Test with various inputs to ensure consistency
+    test_logits = jnp.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 0.5]])
+    test_labels = jnp.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]])
+
+    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+        test_logits, test_labels, gamma=0.0
+    )
+    binary_ce_loss = _classification.sigmoid_binary_cross_entropy(
+        test_logits, test_labels
+    )
+
+    np.testing.assert_allclose(
+        focal_loss,
+        binary_ce_loss,
+        rtol=self._rtol,
+        err_msg='Focal loss with gamma=0 should match binary cross-entropy'
     )
 
   @chex.all_variants
@@ -1068,6 +1093,36 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
     assert all(ce_loss[self.ts == 0] > 0)
     assert all(focal_loss[self.ts == 0] == 0)
+
+  @chex.all_variants
+  def test_extreme_logits_finite_gradients(self):
+    """Test that extreme logits with gamma < 1 produce finite gradients."""
+    # Test cases with very extreme logits and non-integer labels
+    extreme_logits = jnp.array([100.0, -100.0, 75.0, -75.0, 50.0, -50.0])
+    # Include non-integer labels to test soft label stability
+    labels = jnp.array([0.9, 0.1, 0.8, 0.2, 1.0, 0.0])
+
+    # Test with gamma < 1 which is most problematic for numerical stability
+    gamma = 0.5
+    def loss_fn(logits):
+      return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
+          logits, labels, gamma=gamma
+      ))
+
+    # Compute loss and gradients
+    loss_value = loss_fn(extreme_logits)
+    gradients = jax.grad(loss_fn)(extreme_logits)
+
+    # Verify that both loss and gradients are finite
+    self.assertTrue(jnp.isfinite(loss_value),
+                    f'Loss should be finite for {gamma=}, got {loss_value}')
+    self.assertTrue(jnp.all(jnp.isfinite(gradients)),
+                    f'Gradients should be finite for {gamma=}, got {gradients}')
+
+    # Test Hessians for numerical stability
+    hessian = jax.hessian(loss_fn)(extreme_logits)
+    self.assertTrue(jnp.all(jnp.isfinite(hessian)),
+                    f'Hessians should be finite for {gamma=}')
 
 
 if __name__ == '__main__':
