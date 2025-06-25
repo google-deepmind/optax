@@ -448,7 +448,7 @@ def tree_allclose(
 
   Returns:
     a boolean value.
-  """
+  """  # noqa: E501
   def f(a, b):
     return jnp.allclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
   tree = jax.tree.map(f, a, b)
