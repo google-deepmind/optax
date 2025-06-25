@@ -172,6 +172,13 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_size(tree)
     np.testing.assert_allclose(expected, got)
 
+  @parameterized.product(
+    n=[1, 10, 100, 1000],
+    dtype=[jnp.int16, jnp.int32, jnp.float16, jnp.float32],
+  )
+  def test_tree_bytes(self, n, dtype):
+    assert tu.tree_bytes(jnp.ones(n, dtype)) == n * dtype.dtype.itemsize
+
   def test_tree_conj(self):
     expected = jnp.conj(self.array_a)
     got = tu.tree_conj(self.array_a)

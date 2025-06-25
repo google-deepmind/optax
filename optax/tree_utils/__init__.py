@@ -46,6 +46,7 @@ from optax.tree_utils._tree_math import tree_ones_like
 from optax.tree_utils._tree_math import tree_real
 from optax.tree_utils._tree_math import tree_scale
 from optax.tree_utils._tree_math import tree_size
+from optax.tree_utils._tree_math import tree_bytes
 from optax.tree_utils._tree_math import tree_sub
 from optax.tree_utils._tree_math import tree_sum
 from optax.tree_utils._tree_math import tree_update_infinity_moment

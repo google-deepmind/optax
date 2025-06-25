@@ -209,6 +209,23 @@ def tree_size(tree: Any) -> int:
   return sum(jnp.size(leaf) for leaf in jax.tree.leaves(tree))
 
 
+def tree_bytes(tree: Any) -> int:
+  r"""Total number of bytes in a pytree.
+
+  Args:
+    tree: pytree
+
+  Returns:
+    the total size of the pytree in bytes.
+
+  .. warning::
+    It is assumed that every leaf's dtype has an integer byte size.
+    Fractional byte sizes may yield an incorrect result.
+    For example, ``int4`` might be only half a byte on device.
+  """
+  return sum(jnp.asarray(leaf).nbytes for leaf in jax.tree.leaves(tree))
+
+
 def tree_conj(tree: Any) -> Any:
   """Compute the conjugate of a pytree.
 
