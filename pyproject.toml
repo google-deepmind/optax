@@ -68,6 +68,9 @@ docs = [
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
 
+[tool.ruff]
+line-length = 80
+
 [tool.ruff.lint]
 select = [
     "F",

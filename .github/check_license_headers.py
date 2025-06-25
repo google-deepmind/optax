@@ -28,7 +28,7 @@ logger.setLevel("DEBUG")
 # pylint: disable=line-too-long
 LICENSE_PATTERN = (
     "(# (pylint|coding).*\n)*"
-    "# Copyright 20[0-9][0-9] DeepMind Technologies Limited. All Rights Reserved.\n"
+    "# Copyright 20[0-9][0-9] DeepMind Technologies Limited. All Rights Reserved.\n"  # noqa: E501
     "#\n"
     "# Licensed under the Apache License, Version 2.0 \\(the \"License\"\\);\n"
     "# you may not use this file except in compliance with the License.\n"
@@ -38,10 +38,10 @@ LICENSE_PATTERN = (
     "#\n"
     "# Unless required by applicable law or agreed to in writing, software\n"
     "# distributed under the License is distributed on an \"AS IS\" BASIS,\n"
-    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"  # noqa: E501
     "# See the License for the specific language governing permissions and\n"
     "# limitations under the License.\n"
-    "# ==============================================================================\n"
+    "# ==============================================================================\n"  # noqa: E501
     ".*"
 )
 # pylint: enable=line-too-long

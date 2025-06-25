@@ -19,6 +19,8 @@
 from optax.monte_carlo.control_variates import control_delta_method
 from optax.monte_carlo.control_variates import control_variates_jacobians
 from optax.monte_carlo.control_variates import moving_avg_baseline
-from optax.monte_carlo.stochastic_gradient_estimators import measure_valued_jacobians
+# pylint: disable=line-too-long
+from optax.monte_carlo.stochastic_gradient_estimators import measure_valued_jacobians  # noqa: E501
 from optax.monte_carlo.stochastic_gradient_estimators import pathwise_jacobians
-from optax.monte_carlo.stochastic_gradient_estimators import score_function_jacobians
+from optax.monte_carlo.stochastic_gradient_estimators import score_function_jacobians  # noqa: E501
+# pylint: enable=line-too-long

@@ -166,7 +166,7 @@ class MakePertTest(parameterized.TestCase):
         loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
     ))
     keys = jax.random.split(key, 3)
-    low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types
+    low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types # noqa: E501
     high_loss = loss_pert(keys[2],
                           optax.tree.random_like(keys[1], example_tree))
     np.testing.assert_array_less(low_loss, high_loss)
@@ -179,7 +179,7 @@ class MakePertTest(parameterized.TestCase):
     This test is probabilistic, and can fail with low probability. If this
     happens, try increasing num_samples or loosening the tolerances of the
     assertions.
-    """
+    """  # noqa: E501
 
     num_samples = 1_000_000
 
@@ -221,7 +221,7 @@ class MakePertTest(parameterized.TestCase):
     This test is probabilistic, and can fail with low probability. If this
     happens, try increasing num_samples or loosening the tolerances of the
     assertions.
-    """
+    """  # noqa: E501
     seed = 0
     num_samples = 1_000_000
 
@@ -244,7 +244,9 @@ class MakePertTest(parameterized.TestCase):
     chex.assert_trees_all_close(j1, j2, atol=2e-1)
 
   def test_fun_derivative_not_used(self):
-    """Ensure the perturbed function derivative doesn't need the derivative of f."""
+    # pylint: disable=line-too-long
+    """Ensure the perturbed function derivative doesn't need the derivative of f."""  # noqa: E501
+    # pylint: enable=line-too-long
     @jax.custom_jvp
     def f(x):
       return x

@@ -447,7 +447,7 @@ def simplified_ademamix(
     See the related functions :func:`optax.adam`, :func:`optax.nadamw`, as well
     as the example
     :doc:`../../_collections/examples/contrib/rosenbrock_ademamix`.
-  """
+  """  # noqa: E501
   return combine.chain(
       scale_by_simplified_ademamix(
           b1=b1,

@@ -31,7 +31,9 @@ from optax.losses._classification import safe_softmax_cross_entropy
 from optax.losses._classification import sigmoid_binary_cross_entropy
 from optax.losses._classification import sigmoid_focal_loss
 from optax.losses._classification import softmax_cross_entropy
-from optax.losses._classification import softmax_cross_entropy_with_integer_labels
+# pylint: disable=line-too-long
+from optax.losses._classification import softmax_cross_entropy_with_integer_labels  # noqa: E501
+# pylint: enable=line-too-long
 from optax.losses._classification import sparsemax_loss
 from optax.losses._fenchel_young import make_fenchel_young_loss
 from optax.losses._ranking import ranking_softmax_loss
