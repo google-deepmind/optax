@@ -82,7 +82,7 @@ class StateUtilsTest(absltest.TestCase):
     """Test we can map over params also for optimizer states using dicts."""
     opt = combine.chain(
         _scale_by_adam_with_dicts(),
-        transform.add_decayed_weights(1e-3),
+        transform.scale(1e-3),  # any empty state transform
     )
 
     params = _fake_params()
