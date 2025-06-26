@@ -18,7 +18,9 @@
 # pylint: disable=g-importing-member
 
 from optax.projections._projections import projection_box
+from optax.projections._projections import projection_halfspace
 from optax.projections._projections import projection_hypercube
+from optax.projections._projections import projection_hyperplane
 from optax.projections._projections import projection_l1_ball
 from optax.projections._projections import projection_l1_sphere
 from optax.projections._projections import projection_l2_ball
@@ -26,3 +28,4 @@ from optax.projections._projections import projection_l2_sphere
 from optax.projections._projections import projection_linf_ball
 from optax.projections._projections import projection_non_negative
 from optax.projections._projections import projection_simplex
+from optax.projections._projections import projection_vector

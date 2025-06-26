@@ -294,3 +294,73 @@ def projection_linf_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   lower = optax.tree.full_like(tree, -scale)
   upper = optax.tree.full_like(tree, scale)
   return projection_box(tree, lower=lower, upper=upper)
+
+
+def projection_vector(x: Any, a: Any) -> Any:
+  r"""Projection onto a vector.
+
+  Projects a tree ``x`` onto the vector defined by a tree ``a``:
+
+  .. math::
+
+    \operatorname{proj}_a x = \frac{\langle x, a \rangle}{\langle a, a \rangle}
+    a
+
+  Args:
+    x: tree to project.
+    a: tree onto which to project. Must have the same structure as ``x``.
+
+  Returns:
+    tree with the same structure as ``x``.
+  """
+  scalar = optax.tree.vdot(x, a) / optax.tree.vdot(a, a)
+  return optax.tree.scale(scalar, a)
+
+
+def projection_hyperplane(x: Any, a: Any, b: chex.Numeric) -> Any:
+  r"""Projection onto a hyperplane.
+
+  Projects a tree ``x`` onto the hyperplane defined by a tree ``a`` and scalar
+  ``b``.
+
+  .. math::
+
+    \operatorname{argmin}_y \|x - y\|_2^2 \quad \text{subject to} \quad
+    \langle a, y \rangle = b
+
+  Args:
+    x: tree to project.
+    a: tree defining hyperplane onto which to project. Must have the same
+      structure as ``x``.
+    b: scalar defining hyperplane onto which to project.
+
+  Returns:
+    tree with the same structure as ``x``.
+  """
+  scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
+  return optax.tree.add_scale(x, scalar, a)
+
+
+def projection_halfspace(x: Any, a: Any, b: chex.Numeric) -> Any:
+  r"""Projection onto a halfspace.
+
+  Projects a tree ``x`` onto the halfspace defined by a tree ``a`` and scalar
+  ``b``.
+
+  .. math::
+
+    \operatorname{argmin}_y \|x - y\|_2^2 \quad \text{subject to} \quad
+    \langle a, y \rangle \leq b
+
+  Args:
+    x: tree to project.
+    a: tree defining halfspace onto which to project. Must have the same
+      structure as ``x``.
+    b: scalar defining halfspace onto which to project.
+
+  Returns:
+    tree with the same structure as ``x``.
+  """
+  scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
+  scalar = jnp.clip(scalar, max=0)
+  return optax.tree.add_scale(x, scalar, a)

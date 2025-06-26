@@ -116,11 +116,9 @@ def tree_add_scale(
   """
   scalar = jnp.asarray(scalar)
   return jax.tree.map(
-      lambda x, y: None if x is None else x + scalar.astype(x.dtype) * y,
-      tree_x,
-      tree_y,
-      is_leaf=lambda x: x is None,
-  )
+      lambda x, y: (None if x is None else
+                    (x + jnp.astype(scalar, jnp.asarray(x).dtype) * y)),
+      tree_x, tree_y, is_leaf=lambda x: x is None)
 
 
 _vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
