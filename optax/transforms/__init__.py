@@ -32,6 +32,7 @@ from optax.transforms._clipping import adaptive_grad_clip
 from optax.transforms._clipping import clip
 from optax.transforms._clipping import clip_by_block_rms
 from optax.transforms._clipping import clip_by_global_norm
+from optax.transforms._clipping import ClipByGlobalNormState
 from optax.transforms._clipping import per_example_global_norm_clip
 from optax.transforms._clipping import per_example_layer_norm_clip
 from optax.transforms._clipping import unitwise_clip
@@ -70,6 +71,7 @@ __all__ = (
     "clip_by_block_rms",
     "clip_by_global_norm",
     "clip",
+    "ClipByGlobalNormState",
     "conditionally_mask",
     "ConditionallyMaskState",
     "conditionally_transform",

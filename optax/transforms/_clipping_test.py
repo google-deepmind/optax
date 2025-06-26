@@ -67,11 +67,18 @@ class ClippingTest(absltest.TestCase):
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
     for i in range(1, STEPS + 1):
+      global_norm_before_clipping = linear_algebra.global_norm(updates)
       clipper = _clipping.clip_by_global_norm(1.0 / i)
       # Check that the clipper actually works and global norm is <= max_norm
-      updates, _ = clipper.update(updates, None)
+      clipper_state = clipper.init(updates)
+      updates, clipper_state = clipper.update(updates, clipper_state)
       self.assertAlmostEqual(
           linear_algebra.global_norm(updates), 1.0 / i, places=6
+      )
+      self.assertAlmostEqual(
+          clipper_state.global_norm_before_clipping,
+          global_norm_before_clipping,
+          places=6,
       )
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)

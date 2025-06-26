@@ -18,7 +18,7 @@ Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
 
-from typing import Optional, Union
+from typing import NamedTuple, Optional, Union
 
 import chex
 import jax
@@ -74,6 +74,13 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
+class ClipByGlobalNormState(NamedTuple):
+  """Exposes computed global norm before clipping."""
+
+  # scalar.
+  global_norm_before_clipping: jax.Array | None = None
+
+
 def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   """Clips updates using their global norm.
 
@@ -102,9 +109,18 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
 
     updates = jax.tree.map(clip_fn, updates)
-    return updates, state
+    next_state = state
+    if state is not None and state.global_norm_before_clipping is not None:
+      next_state = ClipByGlobalNormState(global_norm_before_clipping=g_norm)
+    return updates, next_state
 
-  return base.GradientTransformation(base.init_empty_state, update_fn)
+  def init_fn(params):
+    del params
+    return ClipByGlobalNormState(
+        global_norm_before_clipping=jnp.zeros(shape=(), dtype=jnp.float32)
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def _check_arrays_have_batch_dim(grads: chex.ArrayTree) -> bool:
