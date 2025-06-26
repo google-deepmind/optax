@@ -1003,7 +1003,7 @@ class SigmoidFocalLossTest(parameterized.TestCase):
 
   @chex.all_variants
   def test_focal_gamma_zero_matches_binary_cross_entropy(self):
-    """When gamma=0, sigmoid_focal_loss should match sigmoid_binary_cross_entropy."""
+    """sigmoid_focal_loss == sigmoid_binary_cross_entropy for gamma=0."""
     # Test with various inputs to ensure consistency
     test_logits = jnp.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 0.5]])
     test_labels = jnp.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]])
