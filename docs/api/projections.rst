@@ -40,6 +40,9 @@ Available projections
     projection_linf_ball
     projection_non_negative
     projection_simplex
+    projection_vector
+    projection_hyperplane
+    projection_halfspace
 
 Projection onto a box
 ~~~~~~~~~~~~~~~~~~~~~
@@ -76,3 +79,15 @@ Projection onto the non-negative orthant
 Projection onto a simplex
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_simplex
+
+Projection onto a vector
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_vector
+
+Projection onto a hyperplane
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_hyperplane
+
+Projection onto a halfspace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_halfspace

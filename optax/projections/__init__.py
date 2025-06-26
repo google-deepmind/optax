@@ -26,3 +26,6 @@ from optax.projections._projections import projection_l2_sphere
 from optax.projections._projections import projection_linf_ball
 from optax.projections._projections import projection_non_negative
 from optax.projections._projections import projection_simplex
+from optax.projections._projections import projection_vector
+from optax.projections._projections import projection_hyperplane
+from optax.projections._projections import projection_halfspace
