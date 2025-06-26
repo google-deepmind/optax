@@ -239,6 +239,37 @@ class ProjectionsTest(parameterized.TestCase):
     assert not jnp.isnan(grad)
     assert grad == 1.0
 
+  def test_projection_vector(self):
+    x = (1.0, 2.0)
+    a = (3.0, 4.0)
+    y_actual = proj.projection_vector(x, a)
+    y_expected = (33 / 25, 44 / 25)
+    assert optax.tree.allclose(y_actual, y_expected)
+
+  def test_projection_hyperplane(self):
+    x = (1.0, 2.0)
+    a = (3.0, 4.0)
+    b = 5.0
+    y_actual = proj.projection_hyperplane(x, a, b)
+    y_expected = (7 / 25, 26 / 25)
+    assert optax.tree.allclose(y_actual, y_expected)
+
+  def test_projection_halfspace_1(self):
+    x = (1.0, 2.0)
+    a = (3.0, 4.0)
+    b = 5.0
+    y_actual = proj.projection_halfspace(x, a, b)
+    y_expected = (7 / 25, 26 / 25)
+    assert optax.tree.allclose(y_actual, y_expected)
+
+  def test_projection_halfspace_2(self):
+    x = (1.0, -2.0)
+    a = (3.0, 4.0)
+    b = 5.0
+    y_actual = proj.projection_halfspace(x, a, b)
+    y_expected = x
+    assert optax.tree.allclose(y_actual, y_expected)
+
 
 if __name__ == '__main__':
   absltest.main()
