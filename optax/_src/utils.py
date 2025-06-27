@@ -345,4 +345,3 @@ def value_and_grad_from_state(
 # TODO(b/183800387): remove legacy aliases.
 safe_norm = numerics.safe_norm
 safe_int32_increment = numerics.safe_int32_increment
-global_norm = linear_algebra.global_norm
