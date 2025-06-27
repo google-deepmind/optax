@@ -151,7 +151,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
     numerical issues.
   """
   vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
-  return jax.tree.reduce(operator.add, vdots, initializer=0)
+  return tree_sum(vdots)
 
 
 def tree_sum(tree: Any) -> chex.Numeric:
