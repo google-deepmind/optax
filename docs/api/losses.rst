@@ -4,11 +4,13 @@ Losses
 .. currentmodule:: optax.losses
 
 .. autosummary::
+    binary_dice_loss
     convex_kl_divergence
     cosine_distance
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
+    dice_loss
     hinge_loss
     huber_loss
     kl_divergence
@@ -16,6 +18,7 @@ Losses
     l2_loss
     log_cosh
     make_fenchel_young_loss
+    multiclass_generalized_dice_loss
     multiclass_hinge_loss
     multiclass_perceptron_loss
     multiclass_sparsemax_loss
@@ -33,6 +36,7 @@ Losses
     squared_error
     triplet_margin_loss
 
+
 Convex Kullback Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: convex_kl_divergence
@@ -49,6 +53,12 @@ Connectionist temporal classification loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: ctc_loss
 .. autofunction:: ctc_loss_with_forward_probs
+
+Dice loss
+~~~~~~~~~
+.. autofunction:: dice_loss
+.. autofunction:: multiclass_generalized_dice_loss
+.. autofunction:: binary_dice_loss
 
 Fenchel Young loss
 ~~~~~~~~~~~~~~~~~~
