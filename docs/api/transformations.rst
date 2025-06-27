@@ -85,6 +85,8 @@ Transformations
     scale_by_zoom_linesearch
     ScaleByZoomLinesearchState
     set_to_zero
+    snapshot
+    SnapshotState
     stateless
     stateless_with_tree_map
     trace
@@ -248,6 +250,9 @@ Transformations and states
 
 .. autofunction:: stateless
 .. autofunction:: stateless_with_tree_map
+
+.. autofunction:: snapshot
+.. autoclass:: SnapshotState
 
 .. autofunction:: trace
 .. autoclass:: TraceState

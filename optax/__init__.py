@@ -201,6 +201,8 @@ MultiStepsState = transforms.MultiStepsState
 ShouldSkipUpdateFunction = transforms.ShouldSkipUpdateFunction
 skip_large_updates = transforms.skip_large_updates
 skip_not_finite = transforms.skip_not_finite
+snapshot = transforms.snapshot
+SnapshotState = transforms.SnapshotState
 
 # TODO(mtthss): remove tree_utils aliases after updates.
 tree_map_params = tree_utils.tree_map_params
