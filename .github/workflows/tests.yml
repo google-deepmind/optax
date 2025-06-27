@@ -102,7 +102,7 @@ jobs:
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
   doctests:
     needs: [pre-commit, flake8, pylint, ruff-lint]  # do not run doctests if linting fails
-    name: "Doctests on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+    name: "Doctests"
     runs-on: "${{ matrix.os }}"
     strategy:
       matrix:
