@@ -23,7 +23,7 @@ References:
 """
 
 from collections.abc import Callable
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union, Literal
 
 import chex
 import jax
@@ -37,86 +37,82 @@ import optax.tree
 class DoGState(NamedTuple):
   """State for DoG optimizer."""
 
-  first_step: jax.Array  # bool
+  is_init_step: jax.Array  # bool
   init_params: chex.ArrayTree
-  estim_dist: jax.Array
+  max_dist: jax.Array
   sum_sq_norm_grads: jax.Array
 
 
 def scale_by_dog(
-    reps_rel: float = 1e-6,
+    init_step: tuple[Literal["distance", "learning_rate", "heuristic"], float],
     eps: float = 1e-8,
-    init_learning_rate: Optional[float] = None,
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
 
   See :func:`optax.contrib.dog` for more details.
 
   Args:
-    reps_rel: value to use to compute the  initial distance
-      (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
-      initial  weights of  the model (or the parameter group), and g_0 is the
-      gradient of the first step.
-      As discussed in the paper, this value should be small enough to ensure
-      that the first update step will be small enough to not cause the model to
-      diverge.
-      Suggested value is 1e-6, unless the model uses batch-normalization,
-      in which case the suggested value is 1e-4.
-    eps: epsilon used for numerical stability - added to the sum of squared
-      norm of gradients.
-    init_learning_rate: if specified, this value will be used the the initial
-      learning rate (i.e. first step size) instead of the rule described above
-      with reps_rel.
+    init_step: Initial step specification.
+    eps: Epsilon used for numerical stability.
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
 
   .. versionadded:: 0.2.3
+
+  .. warning::
+    The authors recommend using model averaging with this optimizer.
+
+    This optimizer's ``init`` function should receive the actual parameters (not
+    just dummy parameters) when the ``heuristic`` initial step is used.
   """
+
+  init_step_type, init_step_value = init_step
 
   def init_fn(params: base.Params) -> DoGState:
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = optax.tree.dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, "lowest")
+
+    if init_step_type == "distance":
+      r_epsilon = init_step_value
+    elif init_step_type == "heuristic":
+      r_epsilon = init_step_value * (1 + optax.tree.norm(params))
+    elif init_step_type == "learning_rate":
+      r_epsilon = 0.0
+    else:
+      raise ValueError(
+          f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
+      )
+
     return DoGState(
-        first_step=jnp.asarray(True),
-        init_params=optax.tree.zeros_like(params),
-        estim_dist=jnp.asarray(0.0, dtype=params_dtype),
+        is_init_step=jnp.asarray(True),
+        init_params=params,
+        max_dist=jnp.asarray(r_epsilon, dtype=params_dtype),
         sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
     )
 
   def update_fn(
       updates: base.Updates, state: DoGState, params: base.Params
   ) -> tuple[base.Updates, DoGState]:
-
-    # Reduces to norm of init_params for first step
-    curr_distance = optax.tree.norm(optax.tree.sub(state.init_params, params))
-    curr_distance = jnp.where(
-        state.first_step, reps_rel * (1 + curr_distance), curr_distance
+    dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
+    max_dist = jnp.maximum(state.max_dist, dist)
+    sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
+        updates, squared=True
     )
-    init_params = jax.tree.map(
-        lambda p, ip: jnp.where(state.first_step, p, ip),
-        params,
-        state.init_params,
-    )
+    learning_rate = max_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
-    estim_dist = jnp.maximum(state.estim_dist, curr_distance)
-    sq_norm_grads = optax.tree.norm(updates, squared=True)
-    sum_sq_norm_grads = sq_norm_grads + state.sum_sq_norm_grads
-    learning_rate = estim_dist / jnp.sqrt(sum_sq_norm_grads + eps)
-
-    if init_learning_rate is not None:
+    if init_step_type == "learning_rate":
       learning_rate = jnp.where(
-          state.first_step, init_learning_rate, learning_rate
+          state.is_init_step, init_step_value, learning_rate
       )
 
     new_updates = optax.tree.scale(learning_rate, updates)
     return new_updates, DoGState(
-        first_step=jnp.asarray(False),
-        init_params=init_params,
-        estim_dist=estim_dist,
+        is_init_step=jnp.asarray(False),
+        init_params=state.init_params,
+        max_dist=max_dist,
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
 
@@ -125,47 +121,47 @@ def scale_by_dog(
 
 def dog(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    reps_rel: float = 1e-6,
+    init_step: tuple[
+        Literal["distance", "learning_rate", "heuristic"], float
+    ] = ("heuristic", 1e-6),
     eps: float = 1e-8,
-    init_learning_rate: Optional[float] = None,
     weight_decay: Optional[float] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
-  r"""Distance over Gradients optimizer.
+  r"""Distance over Gradients (DoG) optimizer.
 
-  DoG updates parameters :math:`w_t` with stochastic gradients :math:`g_t`
+  DoG updates parameters :math:`x_t` with stochastic gradients :math:`g_t`
   according to the update rule:
 
   .. math::
 
     \begin{align*}
-      \eta_t &= \frac{\bar r_t}{
-        \sqrt{\sum_{i\le t}{\|g_i\|^2+\epsilon}}}\\
-      \bar r_t & = \begin{cases}
-        \max_{i\le t}{\|x_i-x_0\|} & \text{if } t \ge 1 \\
-        r_\epsilon & \text{if } t = 0
-      \end{cases} \\
+      r_t &= \| x_t - x_0 \| \\
+      \bar{r}_t &= \max_{k \leq t} r_k \\
+      G_t &= \sum_{k \leq t} \|g_k\|^2 \\
+      \eta_t &= \frac{\bar{r}_t}{\sqrt{G_t + \epsilon}} \\
       x_{t+1} & = x_{t} - \eta_t\, g_t
     \end{align*}
 
   Args:
     learning_rate: optional learning rate (potentially varying according to
       some predetermined scheduler).
-    reps_rel: a small user-specified initial movement size parameter
-      (r_epsilon in the paper). Namely, the first step size is given by:
-      (reps_rel * (1+\|x_0\|)) / (\|g_0\|^2 + eps)^{1/2}  where x_0 are the
-      initial  weights of  the model (or the parameter group), and g_0 is the
-      gradient of the first step.
-      As discussed in the paper, this value should be small enough to ensure
-      that the first update step will be small enough to not cause the model to
+    init_step: Initial step specification. Consists of a pair ``(tag, value)``,
+      where ``value`` is a float and ``tag`` is a string, which must be one of
+      ``distance``, ``learning_rate``, or ``heuristic``.
+      ``distance`` sets the initial distance :math:`r_0` (:math:`r_\epsilon` in
+      the paper) to the given value.
+      ``learning_rate`` sets the initial learning rate :math:`\eta_0` to the
+      given value.
+      ``heuristic`` sets  :math:`r_0 = \alpha (1 + \|x_0\|)`, where
+      :math:`\alpha` is the given value. The suggested value of :math:`\alpha`
+      is 1e-6, unless the model uses batch normalization, in which case the
+      suggested value is 1e-4.
+      As discussed in the paper, the value should be small enough to ensure that
+      the initial update step will be small enough to not cause the model to
       diverge.
-      Suggested value is 1e-6, unless the model uses batch-normalization,
-      in which case the suggested value is 1e-4.
     eps: epsilon used for numerical stability - added to the sum of squared
       norm of gradients.
-    init_learning_rate: if specified, this value will be used the the initial
-      learning rate (i.e. first step size) instead of the rule described above
-      with reps_rel.
     weight_decay: Strength of the weight decay regularization.
     mask: A tree with same structure as (or a prefix of) the params PyTree,
       or a Callable that returns such a pytree given the params/updates.
@@ -207,12 +203,15 @@ def dog(
 
   .. warning::
     The authors recommend using model averaging with this optimizer.
+
+    This optimizer's ``init`` function should receive the actual parameters (not
+    just dummy parameters) when the ``heuristic`` initial step is used.
   """
   return combine.chain(
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),
-      scale_by_dog(reps_rel, eps, init_learning_rate),
+      scale_by_dog(init_step, eps),
       transform.scale_by_learning_rate(learning_rate),
   )
 
@@ -249,7 +248,7 @@ def scale_by_dowg(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = optax.tree.dtype(params, 'lowest')
+    params_dtype = optax.tree.dtype(params, "lowest")
     if init_estim_sq_dist is None:
       init_estim_sq_dist_ = eps
     else:
