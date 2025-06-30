@@ -83,7 +83,7 @@ _deprecations = {
         ('optax.tree_utils.tree_linf_norm is deprecated: use'
          ' optax.tree_utils.tree_norm(..., ord=jnp.inf)'
          ' (optax v0.2.5 or newer).'),
-        functools.partial(tree_norm, ord='inf'),
+        functools.partial(tree_norm, ord=float('inf')),
     ),
 }
 
@@ -94,7 +94,7 @@ if typing.TYPE_CHECKING:
   tree_add_scalar_mul = tree_add_scale
   tree_l1_norm = functools.partial(tree_norm, ord=1)
   tree_l2_norm = tree_norm
-  tree_linf_norm = functools.partial(tree_norm, ord='inf')
+  tree_linf_norm = functools.partial(tree_norm, ord=float('inf'))
 
 else:
   # pylint: disable=line-too-long

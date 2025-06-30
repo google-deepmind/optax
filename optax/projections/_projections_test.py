@@ -50,7 +50,7 @@ class ProjectionsTest(parameterized.TestCase):
         'l1': (proj.projection_l1_ball, partial(optax.tree.norm, ord=1)),
         'l2': (proj.projection_l2_ball, optax.tree.norm),
         'linf': (proj.projection_linf_ball,
-                 partial(optax.tree.norm, ord='inf')),
+                 partial(optax.tree.norm, ord=float('inf'))),
     }
 
   def test_projection_non_negative(self):
