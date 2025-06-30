@@ -93,7 +93,7 @@ def control_delta_method(
     state.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
 
   def delta(
@@ -171,7 +171,7 @@ def moving_avg_baseline(
     state.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
 
   def moving_avg(
@@ -281,7 +281,7 @@ def control_variates_jacobians(
     * The updated CV state.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
   control_variate = control_variate_from_function(function)
   stochastic_cv, expected_value_cv, update_state_cv = control_variate
@@ -418,7 +418,7 @@ def estimate_control_variate_coefficients(
     in `params`.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
   # Resample to avoid biased gradients.
   cv_rng, _ = jax.random.split(rng)

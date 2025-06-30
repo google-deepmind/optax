@@ -134,14 +134,14 @@ def add_noise(
 
   if seed is not None:
     warnings.warn(
-        '"seed" is deprecated and will be removed in optax 0.3.0, use "key".',
+        '"seed" is deprecated and will be removed in optax 0.2.7, use "key".',
         DeprecationWarning,
     )
     if key is not None:
       raise ValueError('Only one of seed or key can be specified.')
     key = jax.random.key(seed)
   if key is None:
-    warnings.warn('Specifying a key will be required in optax 0.3.0.')
+    warnings.warn('Specifying a key will be required in optax 0.2.7.')
     key = jax.random.key(0)
   key = utils.canonicalize_key(key)
 

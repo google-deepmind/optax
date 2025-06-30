@@ -79,7 +79,7 @@ def score_function_jacobians(
       variance.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
 
   def surrogate(params):
@@ -134,7 +134,7 @@ def pathwise_jacobians(
       variance.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
 
   def surrogate(params):
@@ -188,7 +188,7 @@ def measure_valued_jacobians(
       variance.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
   if dist_builder is not utils.multi_normal:
     raise ValueError(
@@ -234,7 +234,7 @@ def measure_valued_estimation_mean(
     variance.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)
@@ -307,7 +307,7 @@ def measure_valued_estimation_std(
     variance.
 
   .. deprecated:: 0.2.4
-    This function will be removed in 0.3.0
+    This function will be removed in 0.2.7
   """
   mean, log_std = dist.params
   std = jnp.exp(log_std)
