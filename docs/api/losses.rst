@@ -32,6 +32,10 @@ Losses
     sparsemax_loss
     squared_error
     triplet_margin_loss
+    dice_loss
+    multiclass_generalized_dice_loss
+    binary_dice_loss
+
 
 Convex Kullback Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,3 +124,9 @@ Sparsemax
 Triplet margin loss
 ~~~~~~~~~~~~~~~~~~~
 .. autofunction:: triplet_margin_loss
+
+Dice loss
+~~~~~~~~~
+.. autofunction:: dice_loss
+.. autofunction:: multiclass_generalized_dice_loss
+.. autofunction:: binary_dice_loss
