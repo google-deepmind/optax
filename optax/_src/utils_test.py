@@ -26,6 +26,7 @@ from optax._src import linesearch
 from optax._src import transform
 from optax._src import update
 from optax._src import utils
+import optax.tree
 
 
 def _shape_to_tuple(shape):
@@ -40,8 +41,7 @@ class ScaleGradientTest(parameterized.TestCase):
   def test_scale_gradient_pytree(self, scale):
     def fn(inputs):
       outputs = utils.scale_gradient(inputs, scale)
-      outputs = jax.tree.map(lambda x: x**2, outputs)
-      return sum(jax.tree.leaves(outputs))
+      return optax.tree.norm(outputs, squared=True)
 
     inputs = {'a': -1.0, 'b': {'c': (2.0,), 'd': 0.0}}
 
@@ -50,7 +50,7 @@ class ScaleGradientTest(parameterized.TestCase):
     jax.tree.map(lambda i, g: self.assertEqual(g, 2 * i * scale), inputs, grads)
     self.assertEqual(
         fn(inputs),
-        sum(jax.tree.leaves(jax.tree.map(lambda x: x**2, inputs))),
+        optax.tree.norm(inputs, squared=True),
     )
 
 
