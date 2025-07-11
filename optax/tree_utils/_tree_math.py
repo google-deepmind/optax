@@ -176,9 +176,13 @@ def tree_max(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  maxes = jax.tree.map(jnp.max, tree)
-  # initializer=-jnp.inf should work but pytype wants a jax.Array.
-  return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
+  def f(array):
+    if jnp.size(array) == 0:
+      return None
+    else:
+      return jnp.max(array)
+  maxes = jax.tree.map(f, tree)
+  return jax.tree.reduce(jnp.maximum, maxes, initializer=-float("inf"))
 
 
 def tree_min(tree: Any) -> chex.Numeric:
@@ -190,9 +194,13 @@ def tree_min(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  mins = jax.tree.map(jnp.min, tree)
-  # initializer=jnp.inf should work but pytype wants a jax.Array.
-  return jax.tree.reduce(jnp.minimum, mins, initializer=jnp.array(jnp.inf))
+  def f(array):
+    if jnp.size(array) == 0:
+      return None
+    else:
+      return jnp.min(array)
+  mins = jax.tree.map(f, tree)
+  return jax.tree.reduce(jnp.minimum, mins, initializer=float("inf"))
 
 
 def tree_size(tree: Any) -> int:

@@ -162,6 +162,12 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_min(tree)
     np.testing.assert_allclose(expected, got)
 
+  def test_tree_min_empty(self):
+    tree = [jnp.ones([2, 3]), jnp.zeros([4, 0, 5])]
+    got = tu.tree_min(tree)
+    expected = 1.0
+    assert expected == got
+
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
   )
