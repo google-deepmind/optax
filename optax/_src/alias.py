@@ -1668,7 +1668,7 @@ def optimistic_adam(
     :doc:`../_collections/examples/ogda_example`
   """
   warnings.warn('`optimistic_adam` is deprecated, please use'
-                ' `optimistic_adam_new` instead.', category=DeprecationWarning)
+                ' `optimistic_adam_v2` instead.', category=DeprecationWarning)
   if callable(learning_rate):
     raise ValueError('This version of `optimistic_adam` does not support'
                      ' learning rate schedules but `optimistic_adam_v2` does.')
@@ -1706,6 +1706,10 @@ def optimistic_adam_v2(
   This is an optimistic version of the Adam optimizer. It addresses the issue
   of limit cycling behavior in training Generative Adversarial Networks and
   other saddle-point min-max problems.
+
+  The "_v2" suffix refers to the re-worked version of the interface (not the
+  algorithm) and will eventually replace the interface of the current
+  :func:`optimistic_adam` function.
 
   The algorithm is as follows. First, we define the following parameters:
 
@@ -1765,7 +1769,7 @@ def optimistic_adam_v2(
     >>> from jax import numpy as jnp, lax
     >>> def f(x, y):
     ...  return x * y  # simple bilinear function
-    >>> opt = optax.optimistic_adam_new(1e-2, 1.0)
+    >>> opt = optax.optimistic_adam_v2(1e-2, 1.0)
     >>> def step(state, _):
     ...  params, opt_state = state
     ...  distance = jnp.hypot(*params)

@@ -24,7 +24,7 @@ Optimizers
     noisy_sgd
     novograd
     optimistic_gradient_descent
-    optimistic_adam
+    optimistic_adam_v2
     polyak_sgd
     radam
     rmsprop
