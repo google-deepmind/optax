@@ -61,7 +61,7 @@ Power iteration
 .. autofunction:: power_iteration
 
 Non-negative least squares
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: nnls
 
 
