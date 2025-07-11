@@ -120,6 +120,7 @@ Tree
     tree_scale
     tree_set
     tree_size
+    tree_bits
     tree_sub
     tree_sum
     tree_vdot
@@ -225,6 +226,10 @@ Set values in a tree
 Tree size
 ~~~~~~~~~
 .. autofunction:: tree_size
+
+Tree bits
+~~~~~~~~~
+.. autofunction:: tree_bits
 
 Tree subtract
 ~~~~~~~~~~~~~
