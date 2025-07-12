@@ -150,6 +150,10 @@ Tree cast
 ~~~~~~~~~
 .. autofunction:: tree_cast
 
+Tree cast like
+~~~~~~~~~~~~~~
+.. autofunction:: tree_cast_like
+
 Tree clip
 ~~~~~~~~~
 .. autofunction:: tree_clip
