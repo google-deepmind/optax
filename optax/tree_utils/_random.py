@@ -69,7 +69,11 @@ def tree_random_like(
   """
   keys_tree = tree_split_key_like(rng_key, target_tree)
   return jax.tree.map(
-      lambda leaf, key: sampler(key, leaf.shape, dtype or leaf.dtype),
+      lambda leaf, key: sampler(
+          key,
+          jax.numpy.shape(leaf),
+          dtype or jax.numpy.asarray(leaf).dtype,
+      ),
       target_tree,
       keys_tree,
   )
