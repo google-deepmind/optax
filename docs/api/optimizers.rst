@@ -116,7 +116,7 @@ Optimistic GD
 
 Optimistic Adam
 ~~~~~~~~~~~~~~~
-.. autofunction:: optimistic_adam
+.. autofunction:: optimistic_adam_v2
 
 Polyak step-size SGD
 ~~~~~~~~~~~~~~~~~~~~

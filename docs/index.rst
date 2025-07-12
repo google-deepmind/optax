@@ -64,7 +64,6 @@ for instructions on installing JAX.
    api/perturbations
    api/projections
    api/losses
-   api/control_variates
    api/stochastic_gradient_estimators
    api/utilities
    api/contrib

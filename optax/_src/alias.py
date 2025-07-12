@@ -1769,7 +1769,7 @@ def optimistic_adam_v2(
     >>> from jax import numpy as jnp, lax
     >>> def f(x, y):
     ...  return x * y  # simple bilinear function
-    >>> opt = optax.optimistic_adam_v2(1e-2, 1.0)
+    >>> opt = optax.optimistic_adam_v2(1.0, alpha=1e-2, beta=1.0)
     >>> def step(state, _):
     ...  params, opt_state = state
     ...  distance = jnp.hypot(*params)
