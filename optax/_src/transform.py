@@ -1543,8 +1543,9 @@ def _precondition_by_lbfgs(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
     alpha = rhos[idx] * optax.tree.real(optax.tree.vdot(dwi, vec))
-    vec = optax.tree.add_scale(vec, -alpha, dui)
-    return vec, alpha
+    vec_new = optax.tree.add_scale(vec, -alpha, dui)
+    vec_new = optax.tree.cast_like(vec_new, vec)
+    return vec_new, alpha
 
   precond_updates, alphas = jax.lax.scan(
       right_product, updates, indices, reverse=True
@@ -1558,8 +1559,9 @@ def _precondition_by_lbfgs(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
     beta = rhos[idx] * optax.tree.real(optax.tree.vdot(dui, vec))
-    vec = optax.tree.add_scale(vec, alpha - beta, dwi)
-    return vec, beta
+    vec_new = optax.tree.add_scale(vec, alpha - beta, dwi)
+    vec_new = optax.tree.cast_like(vec_new, vec)
+    return vec_new, beta
 
   precond_updates, _ = jax.lax.scan(
       left_product, precond_updates, (indices, alphas)

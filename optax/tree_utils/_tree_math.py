@@ -116,8 +116,7 @@ def tree_add_scale(
   """
   scalar = jnp.asarray(scalar)
   return jax.tree.map(
-      lambda x, y: (None if x is None else
-                    (x + jnp.astype(scalar, jnp.asarray(x).dtype) * y)),
+      lambda x, y: (None if x is None else (x + scalar * y)),
       tree_x, tree_y, is_leaf=lambda x: x is None)
 
 

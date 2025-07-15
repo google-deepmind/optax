@@ -118,6 +118,11 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_add_scale(self.tree_a, 0.5, self.tree_b)
     chex.assert_trees_all_close(expected, got)
 
+  def test_tree_add_scale_dtype(self):
+    got = tu.tree_add_scale(3, 0.1, 2)
+    expected = 3 + 0.1 * 2
+    chex.assert_trees_all_close(expected, got)
+
   def test_tree_vdot(self):
     expected = jnp.vdot(self.array_a, self.array_b)
     got = tu.tree_vdot(self.array_a, self.array_b)
