@@ -297,3 +297,151 @@ def muon(
           lambda x: 'muon' if x.ndim == 2 else 'adam', params
       ),
   )
+
+
+class MuonClipState(NamedTuple):
+  eta: list[jax.Array] | None = None
+
+
+def scale_by_clip_muon() -> base.GradientTransformationExtraArgs:
+  """
+  Rescale ("clip") the weight after gradient updates by a factor of eta_bar from
+  a factor of eta.
+
+  Optax uses additive updates and the weight is assumed stored scale, the update
+  is:
+
+  g = d(eta * W)  # gradient of the scaled parameter
+  eta * W + updates = eta_bar * W_bar = eta_bar * (W + d(W))
+
+  updates = (eta_bar - eta) * W + eta_bar * d(W)
+
+  updates = (eta_bar - eta) * W + eta_bar / eta * d(eta * W)
+  """
+
+  def init_fn(params):
+    del params
+    return MuonClipState()
+
+  def update_fn(updates, state, params=None, eta_bar=None):
+    assert eta_bar is not None
+    flat_updates, update_struct = jax.tree.flatten(updates)
+    flat_params = jax.tree.leaves(params)
+    if len(flat_updates) != len(flat_params) != len(eta_bar):
+      raise ValueError("In MuonClip, the length of updates, params, eta_bar and"
+                       f" eta must be equal, but got {len(flat_updates)=},"
+                       f" {len(flat_params)=}, {len(eta_bar)=}.")
+    if state.eta is None:
+      state.eta = eta_bar
+    if len(state.eta_bar) != len(eta_bar):
+      raise ValueError("In MuonClip, the length of eta_bar and eta must be"
+                       f" equal, but got {len(eta_bar)=}, {len(state.eta)=}.")
+    eps = jnp.finfo(flat_params[0]).eps if len(flat_params) else 1e-7
+
+    updates = [
+      (eta_bar - eta) * param + eta_bar / jnp.maximum(eta, eps) * update
+      for eta_bar, eta, param, update in zip(eta_bar, state.eta, flat_params,
+                                             flat_updates)]
+    return (
+      jax.tree.unflatten(updates, update_struct), MuonClipState(eta=eta_bar)
+    )
+
+  return base.GradientTransformationExtraArgs(init_fn, update_fn)
+
+
+def _example_qk_proj_param_label_fn(params: base.Params):
+    params_with_paths, treedef = jax.tree.flatten_with_path(params)
+
+    def mask_fn(path_param):
+        path, param = path_param
+        str_path = "/".join(map(str, path))
+        if param.ndim == 2 and "q_proj" in str_path:
+            return "muon_clip"
+        elif param.ndim == 2:
+            return "muon"
+        else:
+            return "adam"
+
+    return jax.tree.unflatten(treedef, jax.tree.map(mask_fn, params_with_paths))
+
+
+def muon_clip(
+    learning_rate: base.ScalarOrSchedule,
+    ns_coeffs: Union[
+        tuple[float, float, float],
+        tuple[tuple[float, float, float], ...],
+    ] = (3.4445, -4.7750, 2.0315),
+    ns_steps: int = 5,
+    beta: float = 0.95,
+    eps: float = 1e-8,
+    weight_decay: float = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
+    mu_dtype: Optional[chex.ArrayDType] = None,
+    *,
+    nesterov: bool = True,
+    adaptive: bool = False,
+    adam_b1: float = 0.9,
+    adam_b2: float = 0.999,
+    adam_eps_root: float = 0.0,
+    adam_weight_decay: float = 0.0,
+    qk_proj_param_label_fn: Callable[[base.Params], Any]
+) -> base.GradientTransformation:
+  r"""MuonClip: Muon Optimizer with q_proj and k_proj clipping.
+
+  TODO
+  """
+
+  def param_label_fn(params: base.Params) -> Any:
+    mask = qk_proj_param_label_fn(params)
+    labels = set(jax.tree.leaves(mask))
+    if not all(label in {"muon", "muon_clip", "adam"} for label in labels):
+      raise ValueError(
+          "qk_proj_param_label_fn must return a mask with labels in "
+          f"{'muon', 'muon_clip', 'adam'}, but got {set(labels)=}."
+      )
+    return mask
+
+  return combine.partition(
+      transforms={
+          'muon_noclip': combine.chain(
+              scale_by_muon(
+                  ns_coeffs=ns_coeffs,
+                  ns_steps=ns_steps,
+                  beta=beta,
+                  eps=eps,
+                  mu_dtype=mu_dtype,
+                  nesterov=nesterov,
+                  adaptive=adaptive,
+              ),
+              transform.add_decayed_weights(weight_decay, weight_decay_mask),
+              transform.scale_by_learning_rate(learning_rate),
+          ),
+          'muon_clip': combine.chain(
+              scale_by_muon(
+                  ns_coeffs=ns_coeffs,
+                  ns_steps=ns_steps,
+                  beta=beta,
+                  eps=eps,
+                  mu_dtype=mu_dtype,
+                  nesterov=nesterov,
+                  adaptive=adaptive,
+              ),
+              transform.add_decayed_weights(weight_decay, weight_decay_mask),
+              transform.scale_by_learning_rate(learning_rate),
+              scale_by_clip_muon(),
+          ),
+          'adam': alias.adamw(
+              learning_rate=learning_rate,
+              b1=adam_b1,
+              b2=adam_b2,
+              eps=eps,
+              eps_root=adam_eps_root,
+              weight_decay=adam_weight_decay,
+              mu_dtype=mu_dtype,
+              nesterov=nesterov,
+          ),
+      },
+      param_labels=param_label_fn,
+  )
