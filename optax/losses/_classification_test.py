@@ -648,7 +648,7 @@ class PerceptronTest(parameterized.TestCase):
     signed_label = jnp.array(2.0 * label - 1.0)
     score = jnp.array(10.0)
 
-    def reference_impl(label, logit) -> float:
+    def reference_impl(label, logit):
       return jax.nn.relu(-logit * (2.0 * label - 1.0))
 
     expected = reference_impl(label, score)
@@ -660,7 +660,7 @@ class PerceptronTest(parameterized.TestCase):
     signed_labels = jnp.array(2.0 * labels - 1.0)
     scores = jnp.array([10.0, 20.0])
 
-    def reference_impl(label, logit) -> float:
+    def reference_impl(label, logit):
       return jax.nn.relu(-logit * (2.0 * label - 1.0))
 
     expected = jax.vmap(reference_impl)(labels, scores)
