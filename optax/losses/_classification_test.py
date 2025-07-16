@@ -649,7 +649,7 @@ class PerceptronTest(parameterized.TestCase):
     score = jnp.array(10.0)
 
     def reference_impl(label, logit) -> float:
-      return jax.nn.relu(-logit * (2.0 * label - 1.0))
+      return jax.nn.relu(-logit * (2.0 * label - 1.0))  # pytype: disable=bad-return-type  # jax-nn-types
 
     expected = reference_impl(label, score)
     result = _classification.perceptron_loss(score, signed_label)
@@ -661,7 +661,7 @@ class PerceptronTest(parameterized.TestCase):
     scores = jnp.array([10.0, 20.0])
 
     def reference_impl(label, logit) -> float:
-      return jax.nn.relu(-logit * (2.0 * label - 1.0))
+      return jax.nn.relu(-logit * (2.0 * label - 1.0))  # pytype: disable=bad-return-type  # jax-nn-types
 
     expected = jax.vmap(reference_impl)(labels, scores)
     # no need to vmap the optax loss. leading dimensions automatically handled.
