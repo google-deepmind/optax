@@ -15,7 +15,8 @@
 """Utilities to generate random pytrees."""
 
 from collections.abc import Callable
-from typing import Optional
+import inspect
+from typing import Optional, Union
 
 import chex
 import jax
@@ -41,9 +42,10 @@ def tree_split_key_like(
 def tree_random_like(
     rng_key: chex.PRNGKey,
     target_tree: chex.ArrayTree,
-    sampler: Callable[
-        [chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array
-    ] = jax.random.normal,
+    sampler: Union[
+        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array],
+        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType,
+                  jax.sharding.Sharding], chex.Array]] = jax.random.normal,
     dtype: Optional[chex.ArrayDType] = None,
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.
@@ -68,8 +70,15 @@ def tree_random_like(
   .. versionadded:: 0.2.1
   """
   keys_tree = tree_split_key_like(rng_key, target_tree)
+  sampler_ = sampler
+  if "out_sharding" not in inspect.signature(sampler).parameters:
+    sampler_ = lambda key, shape, dtype, *, out_sharding: sampler(  # pylint: disable=unnecessary-lambda
+        key, shape, dtype)  # pytype: disable=wrong-arg-count
   return jax.tree.map(
-      lambda leaf, key: sampler(key, leaf.shape, dtype or leaf.dtype),
+      # pytype: disable=wrong-keyword-args
+      lambda leaf, key: sampler_(key, leaf.shape, dtype or leaf.dtype,
+                                 out_sharding=jax.typeof(leaf).sharding),
+      # pytype: enable=wrong-keyword-args
       target_tree,
       keys_tree,
   )
