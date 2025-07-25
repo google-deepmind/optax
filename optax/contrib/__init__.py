@@ -33,6 +33,9 @@ from optax.contrib._complex_valued import split_real_and_imaginary
 from optax.contrib._complex_valued import SplitRealAndImaginaryState
 from optax.contrib._dadapt_adamw import dadapt_adamw
 from optax.contrib._dadapt_adamw import DAdaptAdamWState
+from optax.contrib._dion import dion
+from optax.contrib._dion import scale_by_dion
+from optax.contrib._dion import ScaleByDionState
 from optax.contrib._dog import dog
 from optax.contrib._dog import DoGState
 from optax.contrib._dog import dowg
