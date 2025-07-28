@@ -266,10 +266,7 @@ def projection_l2_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   .. versionadded:: 0.2.4
   """
   squared_norm = optax.tree.norm(tree, squared=True)
-  positive = squared_norm > 0
-  valid_squared_norm = jnp.where(positive, squared_norm, 1.)
-  norm = jnp.where(positive, jnp.sqrt(valid_squared_norm), 0.)
-  factor = scale / jnp.maximum(norm, scale)
+  factor = scale / jnp.sqrt(jnp.maximum(squared_norm, scale**2))
   return optax.tree.scale(factor, tree)
 
 
