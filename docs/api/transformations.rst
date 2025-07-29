@@ -30,6 +30,7 @@ Transformations
     GradientTransformation
     GradientTransformationExtraArgs
     identity
+    init_empty_state
     keep_params_nonnegative
     NonNegativeParamsState
     normalize_by_update_norm

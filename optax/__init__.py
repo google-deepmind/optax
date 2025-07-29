@@ -65,6 +65,7 @@ from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
 from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
+from optax._src.base import init_empty_state
 from optax._src.base import OptState
 from optax._src.base import Params
 from optax._src.base import ScalarOrSchedule
