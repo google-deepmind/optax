@@ -14,6 +14,7 @@
 # ==============================================================================
 """Flexibly compose gradient transformations."""
 
+import collections
 from collections.abc import Callable, Hashable, Mapping
 from typing import NamedTuple, Union
 
@@ -149,13 +150,16 @@ def named_chain(
   ]
 
   def init_fn(params):
-    states = {}
+    # Explicitly use an ordered dict, to preserve the order of the
+    # transformations. This is useful for inspecting the state because pytree
+    # traversal canonicalizes (sorts) the keys in regular dicts.
+    states = collections.OrderedDict()
     for name, tx in transforms:
       states[name] = tx.init(params)
     return states
 
   def update_fn(updates, state, params=None, **extra_args):
-    new_state = {}
+    new_state = collections.OrderedDict()
     for name, tx in transforms:
       updates, new_state[name] = tx.update(
           updates, state[name], params, **extra_args
