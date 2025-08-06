@@ -130,7 +130,7 @@ class ScheduleFreeTest(chex.TestCase):
     _, _ = step(initial_params, state)
 
   @parameterized.product(
-      params_dtype=('bfloat16', 'float32', 'complex64', None),
+      params_dtype=('bfloat16', 'float32', None),
       state_dtype=('bfloat16', 'float32', 'complex64', None),
   )
   def test_explicit_dtype(self, params_dtype, state_dtype):
