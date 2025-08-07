@@ -207,6 +207,37 @@ def tree_size(tree: Any) -> int:
   return sum(jnp.size(leaf) for leaf in jax.tree.leaves(tree))
 
 
+def _get_bits(dtype):
+  if jnp.issubdtype(dtype, jnp.integer):
+    return jnp.iinfo(dtype).bits
+  elif jnp.issubdtype(dtype, jnp.floating):
+    return jnp.finfo(dtype).bits
+  elif dtype is bool:
+    return 1
+  else:
+    raise NotImplementedError(f"_get_bits not implemented for {dtype=}")
+
+
+def tree_bits(tree: Any) -> int:
+  r"""Total number of bits in a pytree.
+
+  Args:
+    tree: pytree
+
+  Returns:
+    the total size of the pytree in bits.
+
+  .. warning::
+    It is assumed that every leaf's dtype has an integer byte size.
+    Fractional byte sizes may yield an incorrect result.
+    For example, ``int4`` might be only half a byte on device.
+  """
+  return sum(
+      _get_bits(jnp.asarray(leaf).dtype) * jnp.size(leaf)
+      for leaf in jax.tree.leaves(tree)
+  )
+
+
 def tree_conj(tree: Any) -> Any:
   """Compute the conjugate of a pytree.
 

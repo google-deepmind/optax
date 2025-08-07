@@ -177,6 +177,39 @@ class TreeUtilsTest(parameterized.TestCase):
     assert tu.tree_allclose(1, 1 + 1e-7)
     assert not tu.tree_allclose(1, 2)
 
+  @parameterized.product(
+    size=[1, 10, 100, 1000],
+    dtype=[
+        jnp.int4,
+        jnp.int8,
+        jnp.int16,
+        jnp.int32,
+        jnp.uint4,
+        jnp.uint8,
+        jnp.uint16,
+        jnp.uint32,
+        jnp.float16,
+        jnp.float32,
+        jnp.bfloat16,
+    ],
+  )
+  def test_tree_bits(self, size, dtype):
+    tree = jnp.zeros(size, dtype)
+    bits = {
+      jnp.int4: 4,
+      jnp.int8: 8,
+      jnp.int16: 16,
+      jnp.int32: 32,
+      jnp.uint4: 4,
+      jnp.uint8: 8,
+      jnp.uint16: 16,
+      jnp.uint32: 32,
+      jnp.float16: 16,
+      jnp.float32: 32,
+      jnp.bfloat16: 16,
+    }[dtype]
+    assert tu.tree_bits(tree) == bits * size
+
   def test_tree_conj(self):
     expected = jnp.conj(self.array_a)
     got = tu.tree_conj(self.array_a)
