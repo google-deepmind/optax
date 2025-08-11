@@ -44,6 +44,7 @@ from optax._src.alias import fromage
 from optax._src.alias import lamb
 from optax._src.alias import lars
 from optax._src.alias import lbfgs
+from optax._src.alias import lbfgs_ls
 from optax._src.alias import lion
 from optax._src.alias import MaskOrFn
 from optax._src.alias import nadam
@@ -373,6 +374,7 @@ __all__ = (
     "lamb",
     "lars",
     "lbfgs",
+    "lbfgs_ls",
     "lion",
     "linear_onecycle_schedule",
     "linear_schedule",
