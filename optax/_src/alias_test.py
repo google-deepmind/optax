@@ -1163,7 +1163,7 @@ class LBFGSLSTest(chex.TestCase):
     updates, _ = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
-    new_params = optax.apply_updates(params, updates)
+    new_params = update.apply_updates(params, updates)
 
     # Should produce reasonable updates
     chex.assert_tree_all_finite(updates)
