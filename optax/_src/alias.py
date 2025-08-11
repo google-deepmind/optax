@@ -2790,7 +2790,7 @@ def lbfgs_ls(
       slope_rtol=1e-4,
       curv_rtol=0.9
   )
-  
+
   return combine.chain(
       transform.scale_by_lbfgs(
           memory_size=memory_size, scale_init_precond=scale_init_precond

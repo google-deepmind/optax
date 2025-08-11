@@ -1113,13 +1113,13 @@ class LBFGSLSTest(chex.TestCase):
 
     # Test on same initial parameters
     init_params = jnp.array([1.0, 2.0, 3.0])
-    
+
     # Run both optimizers
     manual_sol, _ = _run_opt(manual_opt, fun, init_params, maxiter=10, tol=1e-6)
     convenience_sol, _ = _run_opt(
         convenience_opt, fun, init_params, maxiter=10, tol=1e-6
     )
-    
+
     # Results should be very close
     chex.assert_trees_all_close(
         manual_sol, convenience_sol, atol=1e-5, rtol=1e-5
@@ -1157,14 +1157,14 @@ class LBFGSLSTest(chex.TestCase):
     opt = alias.lbfgs_ls()
     params = jnp.array([1.0, 2.0, 3.0])
     state = opt.init(params)
-    
+
     # Should work with standard update pattern
     value, grad = jax.value_and_grad(fun)(params)
     updates, new_state = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
     new_params = optax.apply_updates(params, updates)
-    
+
     # Should produce reasonable updates
     chex.assert_tree_all_finite(updates)
     chex.assert_tree_all_finite(new_params)
