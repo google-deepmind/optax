@@ -1087,12 +1087,12 @@ class LBFGSLSTest(chex.TestCase):
   """Tests for the lbfgs_ls function."""
 
   def test_lbfgs_ls_equivalent_to_manual_config(self):
-    """Test that lbfgs_ls produces the same results as manually configured lbfgs."""
+    """Test that lbfgs_ls produces the same results as manual config."""
     # Test on a simple quadratic function
     def fun(x):
       return jnp.sum(x ** 2)
 
-               # Manual configuration with Stan GLM defaults from apply_lbfgs.hpp
+               # Manual configuration with Stan GLM defaults
     manual_linesearch = _linesearch.scale_by_zoom_linesearch(
         max_linesearch_steps=20,
         initial_guess_strategy="one",
@@ -1116,10 +1116,14 @@ class LBFGSLSTest(chex.TestCase):
     
     # Run both optimizers
     manual_sol, _ = _run_opt(manual_opt, fun, init_params, maxiter=10, tol=1e-6)
-    convenience_sol, _ = _run_opt(convenience_opt, fun, init_params, maxiter=10, tol=1e-6)
+    convenience_sol, _ = _run_opt(
+        convenience_opt, fun, init_params, maxiter=10, tol=1e-6
+    )
     
     # Results should be very close
-    chex.assert_trees_all_close(manual_sol, convenience_sol, atol=1e-5, rtol=1e-5)
+    chex.assert_trees_all_close(
+        manual_sol, convenience_sol, atol=1e-5, rtol=1e-5
+    )
 
   @parameterized.product(
       problem_name=[
@@ -1140,7 +1144,9 @@ class LBFGSLSTest(chex.TestCase):
 
     # Check that we reach a reasonable minimum
     final_value = jnp_fun(optax_sol)
-    chex.assert_trees_all_close(final_value, problem['minimum'], atol=tol, rtol=tol)
+    chex.assert_trees_all_close(
+        final_value, problem['minimum'], atol=tol, rtol=tol
+    )
 
   def test_lbfgs_ls_api_consistency(self):
     """Test that lbfgs_ls has a consistent API with other optimizers."""
