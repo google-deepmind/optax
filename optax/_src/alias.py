@@ -2726,8 +2726,9 @@ def lbfgs_ls(
   r"""L-BFGS optimizer with linesearch using Stan library defaults.
 
   This is a convenience function that combines L-BFGS with a zoom linesearch
-  using default parameters from the Stan library's GLM implementation. It provides
-  a simpler API compared to manually configuring `optax.lbfgs` with linesearch.
+  using default parameters from the Stan library's GLM implementation. It
+  provides a simpler API compared to manually configuring `optax.lbfgs` with
+  linesearch.
 
   The linesearch ensures sufficient decrease and small curvature using the
   zoom method with the following default parameters:
@@ -2767,9 +2768,9 @@ def lbfgs_ls(
     Objective function: 7.46E-14
 
   References:
-  https://github.com/stan-dev/stan/issues/3229: slope_rtol=1e-4 and curv_rtol=0.9
-  match Stan's strong-Wolfe constants c1=1e-4 and c2=0.9. The behavior of the
-  WolfeLineSearch used by Stan's optimizer.
+  https://github.com/stan-dev/stan/issues/3229: slope_rtol=1e-4 and
+  curv_rtol=0.9 match Stan's strong-Wolfe constants c1=1e-4 and c2=0.9. The
+  behavior of the WolfeLineSearch used by Stan's optimizer.
 
   .. note::
     This function is equivalent to calling `optax.lbfgs` with the following
