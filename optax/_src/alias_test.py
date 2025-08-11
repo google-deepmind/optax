@@ -1160,7 +1160,7 @@ class LBFGSLSTest(chex.TestCase):
 
     # Should work with standard update pattern
     value, grad = jax.value_and_grad(fun)(params)
-    updates, new_state = opt.update(
+    updates, _ = opt.update(
         grad, state, params, value=value, grad=grad, value_fn=fun
     )
     new_params = optax.apply_updates(params, updates)
