@@ -1083,16 +1083,23 @@ class LBFGSTest(chex.TestCase):
           assert jax.tree.leaves(params)[0].dtype == dtype
 
 
-class LBFGSLSTest(chex.TestCase):
-  """Tests for the lbfgs_ls function."""
+class LBFGSDefaultTest(chex.TestCase):
+  """Tests for the default lbfgs function with Stan library defaults."""
 
-  def test_lbfgs_ls_equivalent_to_manual_config(self):
-    """Test that lbfgs_ls produces the same results as manual config."""
+  def test_lbfgs_default_has_linesearch_state(self):
+    """Verify that lbfgs() includes a zoom linesearch state by default."""
+    opt = alias.lbfgs()
+    params = jnp.array([1.0, 2.0])
+    state = opt.init(params)
+    self.assertIsInstance(state[-1], _linesearch.ScaleByZoomLinesearchState)
+
+  def test_lbfgs_default_equivalent_to_stan_config(self):
+    """Test that lbfgs default produces the same results as Stan config."""
     # Test on a simple quadratic function
     def fun(x):
       return jnp.sum(x ** 2)
 
-               # Manual configuration with Stan GLM defaults
+    # Manual configuration with Stan GLM defaults
     manual_linesearch = _linesearch.scale_by_zoom_linesearch(
         max_linesearch_steps=20,
         initial_guess_strategy="one",
@@ -1105,8 +1112,8 @@ class LBFGSLSTest(chex.TestCase):
         linesearch=manual_linesearch
     )
 
-    # Using the new convenience function
-    convenience_opt = alias.lbfgs_ls(
+    # Using the default function (should now use Stan defaults)
+    default_opt = alias.lbfgs(
         memory_size=10,
         scale_init_precond=True
     )
@@ -1116,13 +1123,13 @@ class LBFGSLSTest(chex.TestCase):
 
     # Run both optimizers
     manual_sol, _ = _run_opt(manual_opt, fun, init_params, maxiter=10, tol=1e-6)
-    convenience_sol, _ = _run_opt(
-        convenience_opt, fun, init_params, maxiter=10, tol=1e-6
+    default_sol, _ = _run_opt(
+        default_opt, fun, init_params, maxiter=10, tol=1e-6
     )
 
     # Results should be very close
     chex.assert_trees_all_close(
-        manual_sol, convenience_sol, atol=1e-5, rtol=1e-5
+        manual_sol, default_sol, atol=1e-5, rtol=1e-5
     )
 
   @parameterized.product(
@@ -1132,14 +1139,14 @@ class LBFGSLSTest(chex.TestCase):
           'matyas',
       ],
   )
-  def test_lbfgs_ls_on_standard_problems(self, problem_name: str):
-    """Test lbfgs_ls on standard optimization problems."""
+  def test_lbfgs_default_on_standard_problems(self, problem_name: str):
+    """Test lbfgs default on standard optimization problems."""
     tol = 1e-5
     problem = _get_problem(problem_name)
     init_params = problem['init']
     jnp_fun = problem['fun']
 
-    opt = alias.lbfgs_ls()
+    opt = alias.lbfgs()
     optax_sol, _ = _run_opt(opt, jnp_fun, init_params, maxiter=500, tol=tol)
 
     # Check that we reach a reasonable minimum
@@ -1148,13 +1155,13 @@ class LBFGSLSTest(chex.TestCase):
         final_value, problem['minimum'], atol=tol, rtol=tol
     )
 
-  def test_lbfgs_ls_api_consistency(self):
-    """Test that lbfgs_ls has a consistent API with other optimizers."""
+  def test_lbfgs_api_consistency(self):
+    """Test that lbfgs has a consistent API with other optimizers."""
     def fun(x):
       return jnp.sum(x ** 2)
 
     # Should be callable like other optimizers
-    opt = alias.lbfgs_ls()
+    opt = alias.lbfgs()
     params = jnp.array([1.0, 2.0, 3.0])
     state = opt.init(params)
 

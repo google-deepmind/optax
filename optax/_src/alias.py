@@ -2584,7 +2584,10 @@ def lbfgs(
     linesearch: Optional[
         Union[base.GradientTransformationExtraArgs, base.GradientTransformation]
     ] = _linesearch.scale_by_zoom_linesearch(
-        max_linesearch_steps=20, initial_guess_strategy='one'
+        max_linesearch_steps=20,
+        initial_guess_strategy='one',
+        slope_rtol=1e-4,
+        curv_rtol=0.9,
     ),
 ) -> base.GradientTransformationExtraArgs:
   r"""L-BFGS optimizer.
@@ -2702,6 +2705,14 @@ def lbfgs(
     1 at the first iteration. The choice of :math:`\gamma_0` is not detailed in
     the references above, so this is a heuristic choice.
 
+  .. note::
+    The default linesearch uses Stan library defaults from the GLM
+    implementation:
+    - max_linesearch_steps=20
+    - initial_guess_strategy="one"
+    - slope_rtol=1e-4 (matches Stan's strong-Wolfe constant c1=1e-4)
+    - curv_rtol=0.9 (matches Stan's strong-Wolfe constant c2=0.9)
+
   .. note:: The algorithm can support complex inputs.
   """
   if learning_rate is None:
@@ -2719,82 +2730,4 @@ def lbfgs(
   )
 
 
-def lbfgs_ls(
-    memory_size: int = 10,
-    scale_init_precond: bool = True,
-) -> base.GradientTransformationExtraArgs:
-  r"""L-BFGS optimizer with linesearch using Stan library defaults.
 
-  This is a convenience function that combines L-BFGS with a zoom linesearch
-  using default parameters from the Stan library's GLM implementation. It
-  provides a simpler API compared to manually configuring `optax.lbfgs` with
-  linesearch.
-
-  The linesearch ensures sufficient decrease and small curvature using the
-  zoom method with the following default parameters:
-  - max_linesearch_steps=20
-  - initial_guess_strategy="one"
-  - slope_rtol=1e-4
-  - curv_rtol=0.9
-
-  Args:
-    memory_size: number of past updates to keep in memory to approximate the
-      Hessian inverse.
-    scale_init_precond: whether to use a scaled identity as the initial
-      preconditioner.
-
-  Returns:
-    A :class:`optax.GradientTransformationExtraArgs` object.
-
-  Example:
-    >>> import optax
-    >>> import jax
-    >>> import jax.numpy as jnp
-    >>> def f(x): return jnp.sum(x ** 2)
-    >>> solver = optax.lbfgs_ls()
-    >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params))
-    Objective function:  14.0
-    >>> opt_state = solver.init(params)
-    >>> value_and_grad = optax.value_and_grad_from_state(f)
-    >>> for _ in range(2):
-    ...   value, grad = value_and_grad(params, state=opt_state)
-    ...   updates, opt_state = solver.update(
-    ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
-    ...   )
-    ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 7.52E+00
-    Objective function: 7.46E-14
-
-  References:
-  https://github.com/stan-dev/stan/issues/3229: slope_rtol=1e-4 and
-  curv_rtol=0.9 match Stan's strong-Wolfe constants c1=1e-4 and c2=0.9. The
-  behavior of the WolfeLineSearch used by Stan's optimizer.
-
-  .. note::
-    This function is equivalent to calling `optax.lbfgs` with the following
-    linesearch configuration:
-    ```python
-    linesearch = optax.scale_by_zoom_linesearch(
-        max_linesearch_steps=20,
-        initial_guess_strategy="one",
-        slope_rtol=1e-4,
-        curv_rtol=0.9
-    )
-    ```
-  """
-  linesearch = _linesearch.scale_by_zoom_linesearch(
-      max_linesearch_steps=20,
-      initial_guess_strategy="one",
-      slope_rtol=1e-4,
-      curv_rtol=0.9
-  )
-
-  return combine.chain(
-      transform.scale_by_lbfgs(
-          memory_size=memory_size, scale_init_precond=scale_init_precond
-      ),
-      transform.scale(-1.0),  # No learning rate, handled by linesearch
-      linesearch,
-  )

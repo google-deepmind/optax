@@ -93,7 +93,7 @@ LBFGS
 
 LBFGS with Linesearch
 ~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: lbfgs_ls
+
 
 Lion
 ~~~~
