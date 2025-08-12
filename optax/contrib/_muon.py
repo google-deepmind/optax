@@ -218,6 +218,7 @@ def muon(
     adam_b2: float = 0.999,
     adam_eps_root: float = 0.0,
     adam_weight_decay: float = 0.0,
+    muon_weight_mask: Callable[[base.Params], Any] | base.Params | None = None,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -256,6 +257,9 @@ def muon(
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
     adam_weight_decay: Weight decay factor for Adam.
+    muon_weight_mask: A True/False mask indicating which parameters to
+      scale by Muon (vs Adam) or a callable returning such a mask given the
+      params. If 'None', all params with ndim == 2 are scaled by Muon.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -267,6 +271,22 @@ def muon(
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
     <https://arxiv.org/abs/2409.20325>`_, 2024
   """
+  if muon_weight_mask is None:
+    param_labels = lambda params: jax.tree.map(
+        lambda x: 'muon' if x.ndim == 2 else 'adam', params
+    )
+  elif callable(muon_weight_mask):
+    # mask comes first since it can be a prefix tree
+    # no-op map over parameters to ensure same structure as params
+    param_labels = lambda params: jax.tree.map(
+        lambda m, x: 'muon' if m else 'adam', muon_weight_mask(params), params
+    )
+  else:
+    # mask comes first since it can be a prefix tree
+    # no-op map over parameters to ensure same structure as params
+    param_labels = lambda params: jax.tree.map(
+        lambda m, x: 'muon' if m else 'adam', muon_weight_mask, params
+    )
   return combine.partition(
       transforms={
           'muon': combine.chain(
@@ -293,7 +313,5 @@ def muon(
               nesterov=nesterov,
           ),
       },
-      param_labels=lambda params: jax.tree.map(
-          lambda x: 'muon' if x.ndim == 2 else 'adam', params
-      ),
+      param_labels=param_labels,
   )
