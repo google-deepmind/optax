@@ -2728,6 +2728,3 @@ def lbfgs(
       base_scaling,
       linesearch,
   )
-
-
-
