@@ -18,7 +18,6 @@ Optimizers
     lamb
     lars
     lbfgs
-    lbfgs_ls
     lion
     nadam
     nadamw
@@ -90,9 +89,6 @@ Lars
 LBFGS
 ~~~~~
 .. autofunction:: lbfgs
-
-LBFGS with Linesearch
-~~~~~~~~~~~~~~~~~~~~~
 
 
 Lion
