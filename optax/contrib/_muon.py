@@ -20,6 +20,7 @@ by Keller Jordan
 """
 
 
+import math
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 import chex
@@ -32,7 +33,62 @@ from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
+from optax.transforms import _masking
 import optax.tree
+
+ReshapeFn = Callable[[jax.Array], jax.Array]
+
+
+class MuonWeightSpec(NamedTuple):
+  reduction_axes: tuple[int, ...] | int
+  output_axes: tuple[int, ...] | int
+
+is_weight_spec = lambda x: isinstance(x, MuonWeightSpec)
+
+
+def _normalize_axes(x: jax.Array, spec: MuonWeightSpec
+                    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+  """Normalize the axes in a muon spec to two tuples of non-negative ints."""
+  if not isinstance(spec.reduction_axes, (list, tuple)):
+    spec = spec._replace(reduction_axes=(spec.reduction_axes,))
+  reduction_axes = tuple(ax % x.ndim for ax in spec.reduction_axes)
+
+  if not isinstance(spec.output_axes, (list, tuple)):
+    spec = spec._replace(output_axes=(spec.output_axes,))
+  output_axes = tuple(ax % x.ndim for ax in spec.output_axes)
+  return reduction_axes, output_axes
+
+
+def _compute_muon_reshape(x: jax.Array, spec: MuonWeightSpec
+                          ) -> tuple[ReshapeFn, ReshapeFn]:
+  """Compute the reshape and inverse functions for an array from a spec."""
+  if spec is None:
+    return x
+  reduction_axes, output_axes = _normalize_axes(x, spec)
+  if set(reduction_axes) & set(output_axes):
+    raise ValueError(
+        'Reduction axes and output axes must be disjoint, got '
+        f'{reduction_axes} and {output_axes}')
+  batch_axes = tuple(sorted(set(range(x.ndim)) - set(reduction_axes)
+                            - set(output_axes)))
+  transpose = batch_axes + output_axes + reduction_axes
+  inv_transpose = tuple(sorted(range(x.ndim), key=lambda i: transpose[i]))
+  axes2shape = lambda axes: tuple(x.shape[ax] for ax in axes)
+  flat_shape = (math.prod(axes2shape(batch_axes)),
+                math.prod(axes2shape(output_axes)),
+                math.prod(axes2shape(reduction_axes)))
+  unflat_shape = (axes2shape(batch_axes) + axes2shape(output_axes)
+                  + axes2shape(reduction_axes))
+
+  reshape_fn = lambda x: x.transpose(transpose).reshape(flat_shape)
+  inverse_fn = lambda x: x.reshape(unflat_shape).transpose(inv_transpose)
+  return reshape_fn, inverse_fn
+
+
+def _shape_factor(x: jax.Array, spec: MuonWeightSpec) -> float:
+  reduction_axes, output_axes = _normalize_axes(x, spec)
+  return math.prod(x.shape[ax] for ax in output_axes) / math.prod(
+      x.shape[ax] for ax in reduction_axes)
 
 
 def orthogonalize_via_newton_schulz(
@@ -40,6 +96,7 @@ def orthogonalize_via_newton_schulz(
     ns_coeffs: jax.Array,
     ns_steps: int = 5,
     eps: float = 1e-8,
+    spec: MuonWeightSpec | _masking.MaskedNode | None = None,
 ) -> jax.Array:
   r"""Orthogonalize via Newton-Schulz iteration.
 
@@ -59,38 +116,50 @@ def orthogonalize_via_newton_schulz(
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a 2D array.
     eps: Term added to denominators to improve numerical stability.
+    spec: Optional spec for reshaping the matrix before and after the
+      orthogonalization. Allows supporting non-2D parameters.
 
   Returns:
     The orthogonalized matrix.
   """
-  if x.ndim != 2:
-    raise ValueError(f'Input must have shape (m, n), got {x.shape}')
+  if x.ndim != 2 and not isinstance(spec, MuonWeightSpec):
+    raise ValueError(f'Input must have shape (m, n), got {x.shape} or the spec'
+                     f' must be provided. Got spec {spec}')
   if ns_coeffs.ndim > 2 or ns_coeffs.shape[-1] != 3:
     raise ValueError(
         'Newton-Schulz coefficients must have shape (3,) or (n, 3), '
         f'got {ns_coeffs.shape}'
     )
-  def newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
-    a = x @ x.T
-    b = coeffs[1] * a + coeffs[2] * a @ a
-    return coeffs[0] * x + b @ x
-  transposed = False
-  if x.shape[0] > x.shape[1]:
-    x = x.T
-    transposed = True
-  x /= jnp.linalg.norm(x) + eps  # Ensure spectral norm is at most 1
-  ns_coeffs = ns_coeffs.astype(x.dtype)
-  if ns_coeffs.ndim == 1:
-    x = jax.lax.fori_loop(
-        0, ns_steps, lambda _, x: newton_schulz_iterator(x, ns_coeffs), x
-    )
+
+  def _orthogonalize(x):
+    def newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
+      a = x @ x.T
+      b = coeffs[1] * a + coeffs[2] * a @ a
+      return coeffs[0] * x + b @ x
+
+    transposed = False
+    if x.shape[0] > x.shape[1]:
+      x = x.T
+      transposed = True
+
+    x /= jnp.linalg.norm(x) + eps  # Ensure spectral norm is at most 1
+    ns_coeffs_ = ns_coeffs.astype(x.dtype)
+    if ns_coeffs_.ndim == 1:
+      x = jax.lax.fori_loop(
+          0, ns_steps, lambda _, x: newton_schulz_iterator(x, ns_coeffs_), x)
+    else:
+      x, _ = jax.lax.scan(
+          lambda x, abc: (newton_schulz_iterator(x, abc), None), x, ns_coeffs_
+      )
+    if transposed:
+      x = x.T
+    return x
+
+  if spec is None:
+    return _orthogonalize(x)
   else:
-    x, _ = jax.lax.scan(
-        lambda x, abc: (newton_schulz_iterator(x, abc), None), x, ns_coeffs
-    )
-  if transposed:
-    x = x.T
-  return x
+    reshape_fn, inverse_fn = _compute_muon_reshape(x, spec)
+    return inverse_fn(jax.vmap(_orthogonalize)(reshape_fn(x)))
 
 
 class MuonState(NamedTuple):
@@ -112,6 +181,7 @@ def scale_by_muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
+    weight_specs: base.Params | None = None,  # a tree of MuonWeightSpec
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
 
@@ -131,6 +201,8 @@ def scale_by_muon(
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
       original updates. See <https://arxiv.org/abs/2409.20325>
+    weight_specs: Optional tree of `MuonWeightSpec`s, specifying how to reshape
+      the parameters before and after the orthogonalization.
 
   Returns:
     A `GradientTransformation` object.
@@ -172,21 +244,29 @@ def scale_by_muon(
     else:
       mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
     # Apply Newton-schulz orthogonalization.
-    updates = jax.tree.map(
-        lambda x: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, eps
-        ),
-        mu_hat,
-    )
+    if weight_specs is not None:
+      updates = jax.tree.map(
+          lambda x, spec: orthogonalize_via_newton_schulz(x, state.ns_coeffs,
+                                                          ns_steps, eps, spec),
+          mu_hat, weight_specs, is_leaf=is_weight_spec)
+    else:
+      updates = jax.tree.map(lambda x: orthogonalize_via_newton_schulz(
+          x, state.ns_coeffs, ns_steps, eps), mu_hat)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
       updates = jax.tree.map(
-          lambda x, y: jnp.einsum('ij,ij,ab->ab', x, y, y), mu_hat, updates
+          # lambda x, y: jnp.einsum('ij,ij,ab->ab', x, y, y), mu_hat, updates
+          lambda x, y: jnp.sum(x * y) * y, mu_hat, updates
       )
+    if weight_specs is not None:
+      factors = jax.tree.map(_shape_factor, updates, weight_specs,
+                             is_leaf=is_weight_spec)
+    else:
+      factors = jax.tree.map(lambda x: x.shape[-1] / x.shape[-2], updates)
     updates = jax.tree.map(
-        lambda x: jnp.sqrt(jnp.maximum(1, x.shape[-1] / x.shape[-2])) * x,
-        updates,
+        lambda x, factor: jnp.sqrt(jnp.maximum(1, factor)) * x,
+        updates, factors
     )
     mu = optax.tree.cast(mu, mu_dtype)
     return updates, MuonState(
@@ -218,6 +298,8 @@ def muon(
     adam_b2: float = 0.999,
     adam_eps_root: float = 0.0,
     adam_weight_decay: float = 0.0,
+    muon_weight_mask: base.Params | None = None,
+    muon_weight_specs: base.Params | None = None,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -256,6 +338,11 @@ def muon(
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
     adam_weight_decay: Weight decay factor for Adam.
+    muon_weight_mask: A True/False mask indicating which parameters to
+      scale by Muon (vs Adam) or a callable returning such a mask given the
+      params. If 'None', all params with ndim == 2 are scaled by Muon.
+    muon_weight_specs: A tree of `MuonWeightSpec`s, specifying how to reshape
+      the parameters for orthogonalization.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -267,6 +354,22 @@ def muon(
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
     <https://arxiv.org/abs/2409.20325>`_, 2024
   """
+  if muon_weight_mask is None:
+    param_labels = lambda params: jax.tree.map(
+        lambda x: 'muon' if x.ndim == 2 else 'adam', params
+    )
+  else:
+    # mask comes first since it can be a prefix tree
+    param_labels = lambda params: jax.tree.map(
+        lambda m, x: 'muon' if m else 'adam', muon_weight_mask,
+        params)
+  if muon_weight_specs is not None:
+    # normalize the specs for combine.partition
+    # insert MaskedNode() where muon state will be masked out
+    muon_weight_specs = jax.tree.map(
+        lambda m, spec: spec if m else _masking.MaskedNode(), muon_weight_mask,
+        muon_weight_specs, is_leaf=lambda x: x is None or is_weight_spec(x))
+
   return combine.partition(
       transforms={
           'muon': combine.chain(
@@ -278,6 +381,7 @@ def muon(
                   mu_dtype=mu_dtype,
                   nesterov=nesterov,
                   adaptive=adaptive,
+                  weight_specs=muon_weight_specs,
               ),
               transform.add_decayed_weights(weight_decay, weight_decay_mask),
               transform.scale_by_learning_rate(learning_rate),
@@ -293,7 +397,5 @@ def muon(
               nesterov=nesterov,
           ),
       },
-      param_labels=lambda params: jax.tree.map(
-          lambda x: 'muon' if x.ndim == 2 else 'adam', params
-      ),
+      param_labels=param_labels,
   )
