@@ -32,11 +32,11 @@ for example)
 - Additional notes, warnings
 
 The docs need to be in
-[reStructuredText format](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/index.html)!
+[reStructuredText format](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html)!
 For example references should be written like
 ```Doe et al `Yet another optimizer <link to optimizer>`_, 2042)```
 (so not in markdown format), same for
-[notes and warnings](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/notes_warnings.html).
+notes and warnings.
 
 A longer description, references and additional notes may be optional. But
 examples are generally not, they are the best piece of documentation.
