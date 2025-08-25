@@ -44,6 +44,7 @@ from optax.contrib._momo import momo_adam
 from optax.contrib._momo import MomoAdamState
 from optax.contrib._momo import MomoState
 from optax.contrib._muon import muon
+from optax.contrib._muon import MuonDimensionNumbers
 from optax.contrib._muon import MuonState
 from optax.contrib._muon import scale_by_muon
 from optax.contrib._privacy import differentially_private_aggregate
