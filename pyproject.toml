@@ -122,3 +122,12 @@ disable = [
     "too-many-public-methods",
     "import-error",
 ]
+
+# We include pyink to allow external contributors to optionally, but easily,
+# pass google internal formatting checks.
+[tool.pyink]
+pyink = true  # false would mean black is used directly without pyink features
+pyink-use-majority-quotes = true
+pyink-indentation = 2
+line-length = 80
+include = '\.pyi?$'
