@@ -127,24 +127,16 @@ def dice_loss(
       )
 
   # Convert logits to probabilities
+  probs = predictions
   if apply_softmax:
     probs = (
         jax.nn.sigmoid(predictions)
         if predictions.shape[-1] == 1
         else jax.nn.softmax(predictions, axis=-1)
     )
-  else:
-    probs = predictions
 
-  # Determine which axes to sum over for computing the loss
-  if axis is None:
-    # Default behavior: sum over all spatial dimensions (except first/last)
-    axis = tuple(range(1, probs.ndim - 1))
-  elif isinstance(axis, int):
-    axis = (axis,)
-
-  # Ensure axis is a tuple of non-negative integers
-  axis = tuple(ax % probs.ndim for ax in axis)
+  # Default behavior: sum over all spatial dimensions (except first/last)
+  axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis
 
   # Compute intersection and sums over specified axes
   intersection = jnp.sum(probs * targets, axis=axis)
