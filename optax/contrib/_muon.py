@@ -120,6 +120,11 @@ def _shape_factor(x: jax.Array, dim_nums: MuonDimensionNumbers) -> float:
 
 
 def _newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
+  # Implements Newton-Schulz step f(X) = c_0 X + c_1 (XX^T)X + c_2 (XX^T)^2X,
+  # with quintic form f(X) = c_0 X + (c_1 A + c_2 AA)X, where A = XX^T.
+  # The NS step has the property f(X) = f(X^T)^T. That is, we can get equivalent
+  # result by tranposing input and output. In particular, we may tranpose X
+  # when rows > cols for effciency.
   a = x @ x.T
   b = coeffs[1] * a + coeffs[2] * a @ a
   return coeffs[0] * x + b @ x
