@@ -76,7 +76,7 @@ def scale_by_ano(
     # First-order moment: m_k = b1 * m_{k-1} + (1 - b1) * g_k
     mu = optax.tree.update_moment(g, state.mu, b1_dynamic, 1)
 
-    # Second moment with sign-based update (Torch version):
+    # Second moment with sign-based update:
     # v_k = b2 * v_{k-1} + (1 - b2) * sign(g_k^2 - v_{k-1}) * g_k^2
     def _update_v(g_t, v_prev):
       g2 = jnp.square(g_t)
