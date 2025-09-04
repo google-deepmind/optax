@@ -64,35 +64,48 @@ def scale_by_ano(
     g = updates
     count_inc = numerics.safe_increment(state.count)
 
-    # Apply logarithmic schedule for b1 if enabled
+    # Compute scalar b1 schedule (float32 host scalar), then cast per-leaf.
     if logarithmic_schedule:
-      # beta1 = 1 - 1 / log(max(2, k))
       step = count_inc.astype(jnp.float32)
-      max_step = jnp.maximum(2.0, step)
-      b1_dynamic = 1.0 - 1.0 / jnp.log(max_step)
+      max_step = jnp.maximum(jnp.asarray(2.0, dtype=step.dtype), step)
+      b1_dynamic_scalar = 1.0 - 1.0 / jnp.log(max_step)
     else:
-      b1_dynamic = b1
+      b1_dynamic_scalar = jnp.asarray(b1, dtype=jnp.float32)
 
-    # First-order moment: m_k = b1 * m_{k-1} + (1 - b1) * g_k
-    mu = optax.tree.update_moment(g, state.mu, b1_dynamic, 1)
+    # First moment: m_t = b1 * m_{t-1} + (1 - b1) * g_t
+    # Cast b1 per-leaf to avoid promotion.
+    def _update_mu(g_t, m_prev):
+      b1_t = jnp.asarray(b1_dynamic_scalar, dtype=m_prev.dtype)
+      one = jnp.asarray(1.0, dtype=m_prev.dtype)
+      return b1_t * m_prev + (one - b1_t) * g_t
 
-    # Second moment with sign-based update:
-    # v_k = b2 * v_{k-1} + (1 - b2) * sign(g_k^2 - v_{k-1}) * g_k^2
+    mu = jax.tree.map(_update_mu, g, state.mu)
+
+    # Second moment with sign-based EMA (formula preserved):
+    # v_t = b2 * v_{t-1} + (1 - b2) * sign(g_t^2 - v_{t-1}) * g_t^2
+    # Cast b2 and (1-b2) per-leaf to avoid promotion.
     def _update_v(g_t, v_prev):
-      g2 = jnp.square(g_t)
+      g2 = jnp.square(g_t).astype(v_prev.dtype)
+      b2_t = jnp.asarray(b2, dtype=v_prev.dtype)
+      one_minus_b2_t = jnp.asarray(1.0 - b2, dtype=v_prev.dtype)
       sign_term = jnp.sign(g2 - v_prev)
-      return b2 * v_prev + (1.0 - b2) * sign_term * g2
+      return b2_t * v_prev + one_minus_b2_t * sign_term * g2
 
     nu = jax.tree.map(_update_v, g, state.nu)
 
-    # Bias correction for second moment
-    bias_correction2 = 1.0 - b2 ** count_inc
+    # Bias correction for second moment (scalar), cast per-leaf at use-site.
+    bias_correction2_scalar = (
+      1.0 - jnp.asarray(b2, dtype=jnp.float32) ** count_inc
+    )
 
-    # Direction: |g| * sign(m) / sqrt(v_hat + eps)
+    # Direction: |g| * sign(m) / sqrt(v_hat + eps), all in leaf dtype.
     def _direction(g_t, m_t, v_t):
-      v_hat = v_t / bias_correction2
-      denom = jnp.sqrt(v_hat + eps)
-      return jnp.abs(g_t) * jnp.sign(m_t) / denom
+      bc2 = jnp.asarray(bias_correction2_scalar, dtype=v_t.dtype)
+      v_hat = v_t / bc2
+      eps_t = jnp.asarray(eps, dtype=v_t.dtype)
+      denom = jnp.sqrt(v_hat + eps_t)
+      sgn = jnp.sign(m_t).astype(g_t.dtype)
+      return jnp.abs(g_t) * sgn / denom
 
     direction = jax.tree.map(_direction, g, mu, nu)
     mu = optax.tree.cast(mu, mu_dtype)
@@ -143,29 +156,23 @@ def ano(
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.39E+01
+    Objective function: 1.38E+01
 
   References:
     Kegreisz, `Ano: Faster is Better in Noisy Landscapes
     <https://github.com/Adrienkgz/ano-optimizer>`_.
   """
-  chain_transforms = [
-      scale_by_ano(
+  return combine.chain(
+    scale_by_ano(
           b1=b1,
           b2=b2,
           eps=eps,
           logarithmic_schedule=logarithmic_schedule,
           mu_dtype=mu_dtype,
       ),
-  ]
-
-  # Add decoupled weight decay if specified
-  if weight_decay > 0.0:
-    chain_transforms.append(transform.add_decayed_weights(weight_decay))
-
-  chain_transforms.append(transform.scale_by_learning_rate(learning_rate))
-
-  return combine.chain(*chain_transforms)
+      transform.add_decayed_weights(weight_decay),
+      transform.scale_by_learning_rate(learning_rate)
+    )
