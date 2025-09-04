@@ -62,6 +62,7 @@ docs = [
     "sphinx-collections>=0.0.1",
     "flax",
     "sphinx_contributors",
+    "setuptools",
 ]
 
 [tool.setuptools.packages.find]
