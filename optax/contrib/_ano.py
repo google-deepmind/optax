@@ -27,9 +27,10 @@ import optax.tree
 
 
 def scale_by_ano(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-6,
+    b1: float = 0.92,
+    b2: float = 0.99,
+    eps: float = 1e-8,
+    logarithmic_schedule: bool = False,
     mu_dtype: Optional[chex.ArrayDType] = None,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the ANO algorithm.
@@ -38,6 +39,8 @@ def scale_by_ano(
     b1: Decay rate for the exponentially weighted average of grads.
     b2: Decay rate parameter used in the sign-based second-moment update.
     eps: Term added to the denominator to improve numerical stability.
+    logarithmic_schedule: If True, use logarithmic
+      schedule for b1: 1-1/log(max(2,k)).
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
@@ -59,25 +62,39 @@ def scale_by_ano(
   def update_fn(updates, state, params=None):
     del params
     g = updates
+    count_inc = numerics.safe_increment(state.count)
+
+    # Apply logarithmic schedule for b1 if enabled
+    if logarithmic_schedule:
+      # beta1 = 1 - 1 / log(max(2, k))
+      step = count_inc.astype(jnp.float32)
+      max_step = jnp.maximum(2.0, step)
+      b1_dynamic = 1.0 - 1.0 / jnp.log(max_step)
+    else:
+      b1_dynamic = b1
 
     # First-order moment: m_k = b1 * m_{k-1} + (1 - b1) * g_k
-    mu = optax.tree.update_moment(g, state.mu, b1, 1)
+    mu = optax.tree.update_moment(g, state.mu, b1_dynamic, 1)
 
-    # Second moment with sign-based update:
-    # v_k = v_{k-1} − (1 − b2) · sign(v_{k-1} − g_k^2) · g_k^2
+    # Second moment with sign-based update (Torch version):
+    # v_k = b2 * v_{k-1} + (1 - b2) * sign(g_k^2 - v_{k-1}) * g_k^2
     def _update_v(g_t, v_prev):
       g2 = jnp.square(g_t)
-      return v_prev - (1.0 - b2) * jnp.sign(v_prev - g2) * g2
+      sign_term = jnp.sign(g2 - v_prev)
+      return b2 * v_prev + (1.0 - b2) * sign_term * g2
 
     nu = jax.tree.map(_update_v, g, state.nu)
 
-    # Direction: |g| * sign(m) / (sqrt(v) + eps)
+    # Bias correction for second moment
+    bias_correction2 = 1.0 - b2 ** count_inc
+
+    # Direction: |g| * sign(m) / sqrt(v_hat + eps)
     def _direction(g_t, m_t, v_t):
-      denom = jnp.sqrt(v_t) + eps
+      v_hat = v_t / bias_correction2
+      denom = jnp.sqrt(v_hat + eps)
       return jnp.abs(g_t) * jnp.sign(m_t) / denom
 
     direction = jax.tree.map(_direction, g, mu, nu)
-    count_inc = numerics.safe_increment(state.count)
     mu = optax.tree.cast(mu, mu_dtype)
     return direction, transform.ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
@@ -86,9 +103,11 @@ def scale_by_ano(
 
 def ano(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-6,
+    b1: float = 0.92,
+    b2: float = 0.99,
+    eps: float = 1e-8,
+    weight_decay: float = 0.0,
+    logarithmic_schedule: bool = False,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""ANO optimizer.
@@ -101,7 +120,10 @@ def ano(
       iterations with a scheduler.
     b1: First-moment decay β1.
     b2: Parameter for second-moment update β2.
-    eps: Small constant ε added outside the square root.
+    eps: Small constant ε added inside the square root.
+    weight_decay: Decoupled weight decay coefficient.
+    logarithmic_schedule: If True, use logarithmic
+      schedule for b1: 1-1/log(max(2,k)).
     mu_dtype: Optional dtype for the first order accumulator m.
 
   Returns:
@@ -130,12 +152,20 @@ def ano(
     Kegreisz, `Ano: Faster is Better in Noisy Landscapes
     <https://github.com/Adrienkgz/ano-optimizer>`_.
   """
-  return combine.chain(
+  chain_transforms = [
       scale_by_ano(
           b1=b1,
           b2=b2,
           eps=eps,
+          logarithmic_schedule=logarithmic_schedule,
           mu_dtype=mu_dtype,
       ),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+  ]
+
+  # Add decoupled weight decay if specified
+  if weight_decay > 0.0:
+    chain_transforms.append(transform.add_decayed_weights(weight_decay))
+
+  chain_transforms.append(transform.scale_by_learning_rate(learning_rate))
+
+  return combine.chain(*chain_transforms)
