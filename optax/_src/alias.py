@@ -1514,12 +1514,23 @@ def optimistic_gradient_descent(
     alpha: base.ScalarOrSchedule = 1.0,
     beta: base.ScalarOrSchedule = 1.0,
 ) -> base.GradientTransformationExtraArgs:
-  """An Optimistic Gradient Descent optimizer.
+  r"""An Optimistic Gradient Descent optimizer.
 
   Optimistic gradient descent is an approximation of extra-gradient methods
   which require multiple gradient calls to compute the next update. It has
   strong formal guarantees for last-iterate convergence in min-max games, for
   which standard gradient descent can oscillate or even diverge.
+
+  At step :math:`t`, the parameters :math:`w_t` are updated according to the
+  current gradient :math:`g_t` as well as the previous gradient :math:`g_{t-1}`,
+  scaled by the learning rate :math:`\eta_t`:
+
+  .. math::
+
+    \begin{align*}
+      u_t &= (\alpha_t + \beta_t) g_t - \beta_t g_{t-1} \\
+      w_{t+1} &= w_t - \eta_t u_t
+    \end{align*}
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -1554,7 +1565,7 @@ def optimistic_gradient_descent(
   References:
     Mokhtari et al, `A Unified Analysis of Extra-gradient and
     Optimistic Gradient Methods for Saddle Point Problems: Proximal
-    Point Approach <https://arxiv.org/abs/1901.08511v2>`_, 2019
+    Point Approach <https://arxiv.org/abs/1901.08511>`_, 2019
 
   .. seealso::
     :doc:`../_collections/examples/ogda_example`
