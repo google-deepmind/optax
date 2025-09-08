@@ -163,7 +163,7 @@ def ano(
 
   References:
     Kegreisz, `Ano: Faster is Better in Noisy Landscapes
-    <https://github.com/Adrienkgz/ano-optimizer>`_.
+    <https://zenodo.org/records/16933383>`_.
   """
   return combine.chain(
     scale_by_ano(
