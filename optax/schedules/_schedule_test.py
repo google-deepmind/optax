@@ -484,9 +484,76 @@ class CosineDecayTest(chex.TestCase):
 class WarmupCosineDecayTest(chex.TestCase):
 
   @chex.all_variants
+  @parameterized.named_parameters(
+      ('with end value', 10, 0.5, 1e-4),
+      ('without end value', 5, 3, 0.0),
+  )
+  def test_limits(self, init_value, peak_value, end_value):
+    """Check cosine schedule decay for the entire training schedule."""
+    schedule_fn = self.variant(
+        _schedule.warmup_cosine_decay_schedule(
+            init_value=init_value,
+            peak_value=peak_value,
+            warmup_steps=100,
+            decay_steps=1000,
+            end_value=end_value,
+        )
+    )
+
+    np.testing.assert_allclose(init_value, schedule_fn(0))
+    np.testing.assert_allclose(peak_value, schedule_fn(100))
+    np.testing.assert_allclose(end_value, schedule_fn(1000), rtol=1e-3)
+
+  @chex.all_variants
+  def test_with_exponent(self):
+    """Check that we get correct results when running with exponent on."""
+    schedule_fn = self.variant(
+        _schedule.warmup_cosine_decay_schedule(
+            init_value=0.2,
+            peak_value=1.21,
+            end_value=-3.0,
+            warmup_steps=50,
+            decay_steps=100,
+            exponent=2,
+        )
+    )
+    output = schedule_fn(np.array([0, 10, 50, 75, 100]))
+    np.testing.assert_allclose(
+        output,
+        np.array([
+            0.20000004768371582,
+            0.4020000100135803,
+            1.2100000381469727,
+            -1.947500228881836,
+            -3.000000238418579,
+        ]),
+        rtol=1e-6,
+        atol=1e-8,
+    )
+
+  @chex.all_variants
+  def test_zero_peak_value(self):
+    """Check that we get correct results when running with zero peak value."""
+    schedule_fn = self.variant(
+        _schedule.warmup_cosine_decay_schedule(
+            init_value=0.2,
+            peak_value=0,
+            end_value=-3.0,
+            warmup_steps=50,
+            decay_steps=100,
+            exponent=2,
+        )
+    )
+    output = schedule_fn(np.array([0, 10, 50, 75, 100]))
+    np.testing.assert_allclose(
+        output, np.array([0.2, 0.16, 0.0, 0.0, 0.0]), rtol=1e-6, atol=1e-8
+    )
+
+  @chex.all_variants
   def test_monotonicity_and_exponent_ordering(self):
     init, peak, end = 0.0, 1.0, 0.1
     warmup_steps, decay_steps = 5, 25
+
     base = self.variant(_schedule.warmup_cosine_decay_schedule(
         init_value=init, peak_value=peak,
         warmup_steps=warmup_steps, decay_steps=decay_steps,
@@ -495,16 +562,27 @@ class WarmupCosineDecayTest(chex.TestCase):
         init_value=init, peak_value=peak,
         warmup_steps=warmup_steps, decay_steps=decay_steps,
         end_value=end, exponent=2.0))
+
     steps = np.arange(decay_steps + 1)
-    vals, vals2 = base(steps), steep(steps)
-    for t in range(warmup_steps):
-      self.assertLess(float(vals[t]), float(vals[t + 1]))
-    self.assertAlmostEqual(float(vals[warmup_steps]), peak, places=6)
-    for t in range(warmup_steps, decay_steps):
-      self.assertGreaterEqual(float(vals[t]), float(vals[t + 1]))
-    self.assertAlmostEqual(float(vals[-1]), end, places=6)
-    for t in range(warmup_steps, decay_steps + 1):
-      self.assertLessEqual(float(vals2[t]), float(vals[t]) + 1e-12)
+    vals = base(steps)
+    vals2 = steep(steps)
+
+    with self.subTest("warmup increases"):
+      for t in range(warmup_steps):
+        self.assertLess(float(vals[t]), float(vals[t + 1]))
+
+    with self.subTest("peak at boundary"):
+      self.assertAlmostEqual(float(vals[warmup_steps]), peak, places=6)
+
+    with self.subTest("cosine decay nonincreasing and end value"):
+      for t in range(warmup_steps, decay_steps):
+        self.assertGreaterEqual(float(vals[t]), float(vals[t + 1]))
+      self.assertAlmostEqual(float(vals[-1]), end, places=6)
+
+    with self.subTest("exponent ordering (p=2 ≤ p=1)"):
+      for t in range(warmup_steps, decay_steps + 1):
+        self.assertLessEqual(float(vals2[t]), float(vals[t]) + 1e-12)
+
 
   def test_raises_when_decay_equals_warmup(self):
     with self.assertRaises(ValueError):
@@ -512,7 +590,7 @@ class WarmupCosineDecayTest(chex.TestCase):
           init_value=0.2, peak_value=1.2,
           warmup_steps=10, decay_steps=10, end_value=0.0)
 
-#ee
+
 class SGDRTest(chex.TestCase):
 
   @chex.all_variants
