@@ -19,8 +19,8 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from optax._src import linear_algebra
 from optax.transforms import _clipping
+import optax.tree
 
 
 STEPS = 50
@@ -70,9 +70,7 @@ class ClippingTest(absltest.TestCase):
       clipper = _clipping.clip_by_global_norm(1.0 / i)
       # Check that the clipper actually works and global norm is <= max_norm
       updates, _ = clipper.update(updates, None)
-      self.assertAlmostEqual(
-          linear_algebra.global_norm(updates), 1.0 / i, places=6
-      )
+      self.assertAlmostEqual(optax.tree.norm(updates), 1.0 / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
       chex.assert_trees_all_close(updates, updates_step)
