@@ -1078,10 +1078,10 @@ def amsgrad(
   """
   return combine.chain(
       transform.scale_by_amsgrad(
-          b1=b1, 
-          b2=b2, 
-          eps=eps, 
-          eps_root=eps_root, 
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
           mu_dtype=mu_dtype,
           bias_correction_v=bias_correction_v
       ),
