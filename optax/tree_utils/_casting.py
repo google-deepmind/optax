@@ -127,7 +127,7 @@ def tree_dtype(
     >>> # -> will throw an error because int32 and uint32
     >>> # cannot be promoted to one another.
     >>> optax.tree_utils.tree_dtype(tree, 'promote')
-    dtype('int64')
+    dtype('int32')
 
   .. seealso:: :func:`jax.numpy.promote_types`,
     `Type promotion semantics in JAX
