@@ -465,7 +465,7 @@ def piecewise_interpolate_schedule(
 
   bounds = np.stack((0,) + boundaries)
   values = np.cumprod(np.stack((init_value,) + scales))
-  interval_sizes = bounds[1:] - bounds[:-1]
+  interval_sizes = np.maximum(bounds[1:] - bounds[:-1], 1)
 
   def schedule(count):
     indicator = (bounds[:-1] <= count) & (count < bounds[1:])

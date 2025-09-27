@@ -654,6 +654,14 @@ class PiecewiseInterpolateTest(chex.TestCase):
     with self.assertRaises(ValueError):
       _schedule.piecewise_interpolate_schedule('linear', 13.0, {5: -3})
 
+  def test_zero_interval_size(self):
+    sched = _schedule.piecewise_interpolate_schedule(
+        'linear', 13.0, {0: 2.0, 5: 3.0}
+    )
+    self.assertTrue(all(jnp.isfinite(sched(i)) for i in range(6)))
+    self.assertAlmostEqual(sched(0), 26.0)  # 13.0 * 2.0
+    self.assertAlmostEqual(sched(5), 78.0)  # 26.0 * 3.0
+
 
 class OneCycleTest(chex.TestCase):
 
