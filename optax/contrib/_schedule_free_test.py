@@ -134,6 +134,10 @@ class ScheduleFreeTest(chex.TestCase):
       state_dtype=('bfloat16', 'float32', 'complex64', None),
   )
   def test_explicit_dtype(self, params_dtype, state_dtype):
+    if (jnp.issubdtype(params_dtype, jnp.complexfloating) and
+        not jnp.issubdtype(state_dtype, jnp.complexfloating)):
+      self.skipTest('Complex params with non-complex state are not supported.')
+
     base_opt = alias.sgd(learning_rate=1.0, momentum=0.0)
     opt = _schedule_free.schedule_free(
         base_opt, learning_rate=1.0, state_dtype=state_dtype
