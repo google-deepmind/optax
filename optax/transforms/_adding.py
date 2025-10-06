@@ -60,6 +60,15 @@ def add_decayed_weights(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    if callable(weight_decay):
+      new_state = WeightDecaySchedule(numerics.safe_increment(state.count))
+    else:
+      new_state = state
+
+    # If weight decay is a zero constant, we can skip the update.
+    if isinstance(weight_decay, (int, float)) and weight_decay == 0.0:
+      return updates, new_state
+
     s = weight_decay(state.count) if callable(weight_decay) else weight_decay
     updates = jax.tree.map(
         lambda g, p: None if g is None else g + s * p,
@@ -67,7 +76,7 @@ def add_decayed_weights(
         params,
         is_leaf=lambda x: x is None,
     )
-    return updates, state
+    return updates, new_state
 
   # If mask is not `None`, apply mask to the gradient transformation.
   # E.g. it is common to skip weight decay on bias units and batch stats.

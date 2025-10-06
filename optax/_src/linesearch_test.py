@@ -293,10 +293,12 @@ class BacktrackingLinesearchTest(chex.TestCase):
     update_fn = functools.partial(solver.update, value_fn=fn)
     update_fn = jax.jit(update_fn)
 
+    value_and_grad_fn = jax.jit(jax.value_and_grad(fn))
+
     params = init_params
     for _ in range(num_passes):
       x, y = next(xs_iter), next(ys_iter)
-      value, grad = jax.value_and_grad(fn)(params, x, y)
+      value, grad = value_and_grad_fn(params, x, y)
       updates, state = update_fn(
           grad, state, params, value=value, grad=grad, x=x, y=y
       )
@@ -308,15 +310,15 @@ class BacktrackingLinesearchTest(chex.TestCase):
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
       confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
-      kw=['slope_rtol', 'decrease_factor', 'increase_factor',
-          'max_learning_rate', 'atol', 'rtol']
   )
-  def test_dtype_stability(self, dtype, confuse_dtype, kw):
+  def test_dtype_stability(self, dtype, confuse_dtype):
+    kw = ['slope_rtol', 'decrease_factor', 'increase_factor',
+          'max_learning_rate', 'atol', 'rtol']
     with utils.x64_precision(True):
       # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_backtracking_linesearch(
           max_backtracking_steps=5,
-          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+          **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
       # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)
@@ -701,15 +703,15 @@ class ZoomLinesearchTest(chex.TestCase):
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
       confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
-      kw=['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
-          'approx_dec_rtol', 'stepsize_precision']
   )
-  def test_dtype_stability(self, dtype, confuse_dtype, kw):
+  def test_dtype_stability(self, dtype, confuse_dtype):
+    kw = ['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
+          'approx_dec_rtol', 'stepsize_precision']
     with utils.x64_precision(True):
       # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_zoom_linesearch(
           max_linesearch_steps=5,
-          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+          **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
       # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)

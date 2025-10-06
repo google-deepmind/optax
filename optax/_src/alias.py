@@ -145,7 +145,7 @@ def adadelta(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     rho: float = 0.9,
     eps: float = 1e-6,
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
     weight_decay_mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Adadelta optimizer.
@@ -231,7 +231,7 @@ def adafactor(
     clipping_threshold: Optional[float] = 1.0,
     momentum: Optional[float] = None,
     dtype_momentum: Any = jnp.float32,
-    weight_decay_rate: Optional[float] = None,
+    weight_decay_rate: Optional[Union[float, base.ScalarOrSchedule]] = None,
     eps: float = 1e-30,
     factored: bool = True,
     weight_decay_mask: MaskOrFn = None,
@@ -603,7 +603,7 @@ def adamw(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-4,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     *,
     nesterov: bool = False,
@@ -814,7 +814,7 @@ def adan(
     b3: float = 0.99,
     eps: float = 1e-8,
     eps_root: float = 1e-8,
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The ADAptive Nesterov momentum algorithm (Adan).
@@ -930,7 +930,7 @@ def lion(
     b1: float = 0.9,
     b2: float = 0.99,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-3,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-3,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Lion optimizer.
@@ -1148,7 +1148,7 @@ def fromage(
 
 def lars(
     learning_rate: base.ScalarOrSchedule,
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
     weight_decay_mask: MaskOrFn = True,
     trust_coefficient: float = 0.001,
     eps: float = 0.0,
@@ -1225,7 +1225,7 @@ def lamb(
     b2: float = 0.999,
     eps: float = 1e-6,
     eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
     mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   """The LAMB optimizer.
@@ -1445,7 +1445,7 @@ def novograd(
     b2: float = 0.25,
     eps: float = 1e-6,
     eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """NovoGrad optimizer.
 
@@ -2356,7 +2356,7 @@ def adamaxw(
     b1: float = 0.9,
     b2: float = 0.999,
     eps: float = 1e-8,
-    weight_decay: float = 1e-4,
+    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Adamax with weight decay regularization.
