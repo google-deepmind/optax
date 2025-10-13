@@ -32,6 +32,9 @@ Transformations
     identity
     init_empty_state
     keep_params_nonnegative
+    measure_with_ema
+    monitor
+    MonitorState
     NonNegativeParamsState
     normalize_by_update_norm
     OptState
