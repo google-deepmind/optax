@@ -39,6 +39,9 @@ import optax.tree
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
 
+_DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
+
+
 class MuonDimensionNumbers(NamedTuple):
   """Specification for which weight axes participate in matrix projection.
 
@@ -206,7 +209,7 @@ def scale_by_muon(
     ns_coeffs: Union[
         tuple[float, float, float],
         tuple[tuple[float, float, float], ...],
-    ] = (3.4445, -4.7750, 2.0315),
+    ] = _DEFAULT_NS_COEFFS,
     ns_steps: int = 5,
     beta: float = 0.95,
     eps: float = 1e-8,
@@ -317,7 +320,7 @@ def muon(
     ns_coeffs: Union[
         tuple[float, float, float],
         tuple[tuple[float, float, float], ...],
-    ] = (3.4445, -4.7750, 2.0315),
+    ] = _DEFAULT_NS_COEFFS,
     ns_steps: int = 5,
     beta: float = 0.95,
     eps: float = 1e-8,
