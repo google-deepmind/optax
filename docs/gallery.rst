@@ -300,6 +300,21 @@ Examples that make use of the :doc:`api/contrib` module.
       <div class="sphx-glr-thumbnail-title">AdEMAMix.</div>
     </div>
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Aggregators.">
+
+.. only:: html
+
+  .. image:: /images/favicon.svg
+     :alt: Aggregators.
+
+  :doc:`_collections/examples/aggregators`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Aggregators.</div>
+    </div>
 
 .. raw:: html
 
