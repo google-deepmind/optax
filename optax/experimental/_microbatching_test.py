@@ -13,10 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
+import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax.numpy as jnp
 import numpy as np
@@ -101,6 +101,7 @@ class MicrobatchingTest(parameterized.TestCase):
         argnums=(1,),
         microbatch_size=2,
         accumulator=accumulator,
+        argnames=('batch_kwarg2',),
     )
     expected_answer = fun(nonbatch_arg, batch_arg1, batch_kwarg2=batch_kwarg2)
     actual_answer = microbatched_fun(
@@ -157,6 +158,41 @@ class MicrobatchingTest(parameterized.TestCase):
     )
     answer = microbatched_fun(nonbatch_arg, batch_arg1, batch_arg2)
     self.assertEqual(answer.dtype, arg_dtype)
+
+  def test_early_stopping_concat(self):
+    x = jnp.arange(12).astype(jnp.float32) + 1
+
+    output = microbatching.microbatch(
+        lambda x: x,
+        argnums=0,
+        accumulator=microbatching.AccumulationType.CONCAT,
+        microbatch_size=3,
+        num_real_microbatches=2,
+    )(x)
+
+    chex.assert_trees_all_close(jnp.sum(output != 0), 6)
+
+  @parameterized.parameters(
+      microbatching.AccumulationType.SUM,
+      microbatching.AccumulationType.MEAN,
+      microbatching.AccumulationType.RUNNING_MEAN,
+      microbatching.AccumulationType.CONCAT,
+  )
+  def test_in_axes_invariant(self, acc):
+
+    arg_axis0 = jnp.array(np.random.normal(size=(10, 4, 5)))
+    arg_axis1 = jnp.transpose(arg_axis0, axes=(1, 0, 2))
+    self.assertEqual(arg_axis1.shape, (4, 10, 5))
+    fun_axis0 = functools.partial(jnp.einsum, 'bij,bkj->ik')
+    fun_axis1 = functools.partial(jnp.einsum, 'ibj,kbj->ik')
+
+    result0 = microbatching.microbatch(
+        fun_axis0, argnums=(0, 1), microbatch_size=2, in_axes=0, accumulator=acc
+    )(arg_axis0, arg_axis0)
+    result1 = microbatching.microbatch(
+        fun_axis1, argnums=(0, 1), microbatch_size=2, in_axes=1, accumulator=acc
+    )(arg_axis1, arg_axis1)
+    chex.assert_trees_all_close(result0, result1)
 
 
 if __name__ == '__main__':
