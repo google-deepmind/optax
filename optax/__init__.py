@@ -21,6 +21,7 @@ import typing as _typing
 
 from optax import assignment
 from optax import contrib
+from optax import experimental
 from optax import losses
 from optax import monte_carlo
 from optax import perturbations
