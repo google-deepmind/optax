@@ -368,6 +368,7 @@ __all__ = (
     "huber_loss",
     "identity",
     "incremental_update",
+    "init_empty_state",
     "inject_hyperparams",
     "InjectHyperparamsState",
     "join_schedules",
@@ -388,6 +389,9 @@ __all__ = (
     "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
+    "measure_with_ema",
+    "monitor",
+    "MonitorState",
     "multi_normal",
     "multi_transform",  # for backwards compatibility
     "MultiSteps",
