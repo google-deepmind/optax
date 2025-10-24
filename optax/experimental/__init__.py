@@ -15,5 +15,6 @@
 
 """Experimental optax modules."""
 
+from . import _aggregating as aggregating
 from . import _microbatching as microbatching
 from ._microbatching import microbatch  # pylint: disable=g-importing-member
