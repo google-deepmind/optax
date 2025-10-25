@@ -1,8 +1,8 @@
 🔧 Contrib
 ===============
 
-Experimental features and algorithms that don't meet the
-:ref:`inclusion_criteria`.
+Algorithms or wrappers that don't meet (yet) the :ref:`inclusion_criteria` or
+are not supported by the main library.
 
 .. currentmodule:: optax.contrib
 
