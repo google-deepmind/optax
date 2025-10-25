@@ -30,6 +30,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import linesearch as _linesearch
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 from optax._src import utils
@@ -184,8 +185,14 @@ class AliasTest(chex.TestCase):
       state = optax.tree.map_params(opt, lambda v: v, state)
 
     with self.subTest('Test that optimization works'):
-      for _ in range(10000):
-        params, state = step(params, state)
+      for it in range(10000):
+        if it == 1:
+          with test_utils.log_compilations() as compilation_logs:
+            params, state = step(params, state)
+          self.assertEmpty(compilation_logs,
+                           'Optimizer recompiles on second call to "update".')
+        else:
+          params, state = step(params, state)
 
       if (opt_name in ('adadelta', 'adafactor')
           and opt_kwargs.get('learning_rate') is None):
@@ -194,6 +201,16 @@ class AliasTest(chex.TestCase):
             ' optimization in practice.'
         )
       chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+
+    with self.subTest('Test that the optimizer doesn\'t recompile on 2nd call'):
+      params = initial_params
+      state = opt.init(params)
+      params, state = step(params, state)
+      with test_utils.log_compilations() as compilation_logs:
+        _ = step(params, state)
+      self.assertEmpty(
+          compilation_logs, 'Optimizer recompiles on second call to "update".'
+      )
 
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_accept_extra_args(self, opt_name, opt_kwargs):

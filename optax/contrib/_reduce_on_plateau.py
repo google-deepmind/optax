@@ -100,14 +100,15 @@ def reduce_on_plateau(
     # Define state parameters with the lowest dtype of the parameters to avoid
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
-    params_dtype = optax.tree.dtype(params, "lowest")
+    lowest_params_dtype = optax.tree.dtype(params, "lowest")
+    highest_params_dtype = optax.tree.dtype(params, "highest")
     return ReduceLROnPlateauState(
-        best_value=jnp.asarray(float("inf")),
+        best_value=jnp.asarray(float("inf"), dtype=highest_params_dtype),
         plateau_count=jnp.asarray(0, jnp.int32),
-        scale=jnp.asarray(1.0, dtype=params_dtype),
+        scale=jnp.asarray(1.0, dtype=lowest_params_dtype),
         cooldown_count=jnp.asarray(0, jnp.int32),
         count=jnp.asarray(0, jnp.int32),
-        avg_value=jnp.asarray(0.0),
+        avg_value=jnp.asarray(0.0, highest_params_dtype),
     )
 
   def _update_scale(state):
@@ -116,7 +117,9 @@ def reduce_on_plateau(
     has_improved = jnp.where(
         avg_value < (1 - rtol) * state.best_value - atol, 1, 0
     )
-    new_best_value = jnp.where(has_improved, avg_value, state.best_value)
+    new_best_value: jax.Array = jnp.where(
+        has_improved, avg_value.astype(state.best_value.dtype), state.best_value
+    )
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_increment(state.plateau_count)
     )
@@ -152,11 +155,11 @@ def reduce_on_plateau(
     )
     new_state = ReduceLROnPlateauState(
         plateau_count=new_plateau_count,
-        best_value=new_best_value,
+        best_value=new_best_value.astype(state.best_value.dtype),
         scale=new_scale,
         cooldown_count=new_cooldown_count,
         count=jnp.asarray(0, dtype=jnp.int32),
-        avg_value=jnp.asarray(0.0),
+        avg_value=jnp.asarray(0.0, avg_value.dtype),
     )
     return new_state
 
@@ -175,7 +178,9 @@ def reduce_on_plateau(
     new_avg_value = (
         count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
     ) / new_count
-    new_state = state._replace(avg_value=new_avg_value, count=new_count)
+    new_state = state._replace(
+        avg_value=new_avg_value.astype(state.avg_value.dtype), count=new_count
+    )
 
     new_state = jax.lax.cond(
         new_count == accumulation_size, _update_scale, lambda x: x, new_state

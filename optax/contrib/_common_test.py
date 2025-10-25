@@ -30,6 +30,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import update
 from optax._src import utils
 from optax.schedules import _inject
@@ -244,6 +245,16 @@ class ContribTest(chex.TestCase):
     with self.subTest('Test that update works with extra args'):
       for _ in range(2):
         params, state = step(params, state)
+
+    with self.subTest('Test that the optimizer doesn\'t recompile on 2nd call'):
+      params = initial_params
+      state = opt.init(params)
+      params, state = step(params, state)
+      with test_utils.log_compilations() as compilation_logs:
+        _ = step(params, state)
+      self.assertEmpty(
+          compilation_logs, 'Optimizer recompiles on second call to "update".'
+      )
 
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,

@@ -319,7 +319,7 @@ def scale_by_simplified_ademamix(
 
   def init_fn(params) -> ScaleBySimplifiedAdEMAMixState:
     return ScaleBySimplifiedAdEMAMixState(
-        t=jnp.array(0),
+        t=jnp.array(0, jnp.int32),
         m=optax.tree.zeros_like(params),
         n=optax.tree.zeros_like(params),
     )
