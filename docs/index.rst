@@ -67,6 +67,7 @@ for instructions on installing JAX.
    api/stochastic_gradient_estimators
    api/utilities
    api/contrib
+   api/experimental
 
 
 Support

@@ -203,7 +203,6 @@ def _canonicalize(
     num_microbatches: int
 ) -> Accumulator:
   """Canonicalizes a PyTree of Accumulators/AccumulationTypes."""
-  print('checkpoint', num_microbatches)
   def fun(acc):
     if isinstance(acc, Accumulator):
       return acc
@@ -224,43 +223,49 @@ def _canonicalize(
 _DEFAULT = AccumulationType.SUM
 
 
-# pylint: disable=g-bare-generic
 def microbatch(
-    fun: Callable,
+    fun: Callable[..., Any],
     argnums: int | Sequence[int],
     microbatch_size: int | None,
     accumulator: Accumulator | AccumulationType | AccumulatorTree = _DEFAULT,
     num_real_microbatches: int | None = None,
-) -> Callable:
+) -> Callable[..., Any]:
   """A general microbatching transformation.
 
-  Conceptually, given `fun`, this function returns a new function that does
+  Conceptually, given ``fun``, this function returns a new function that does
   something like the following (for the case of SUM accumulator):
-  ```
-  def microbatched_fun(full_batch):
-    accumulator = 0
-    for microbatch in full_batch:
-      accumulator += fun(microbatch)
-    return accumulator
-  ```
-  where under the hood the `for` is implemented via a `lax.fori_loop` and hence
-  forced to be sequential.
 
-  This function is useful when evaluating `fun` on the full input batch exceeds
-  available device memory. By splitting the batch into smaller microbatches and
-  processing them sequentially, peak memory usage can be significantly reduced.
-  Because the function is evaluated on smaller batches, this transformation
-  requires knowledge of how the individual microbatch results should be combined
-  back together (SUM, MEAN, or CONCAT). See the accumulator argument for
-  more details.
+  .. code-block:: python
+
+    def microbatched_fun(full_batch):
+      accumulator = 0
+      for microbatch in full_batch:
+        accumulator += fun(microbatch)
+      return accumulator
+
+  where under the hood the ``for`` is implemented via a ``lax.fori_loop`` and
+  hence forced to be sequential.
+
+  This function is useful when evaluating ``fun`` on the full input batch
+  exceeds available device memory. By splitting the batch into smaller
+  microbatches and processing them sequentially, peak memory usage can be
+  significantly reduced. Because the function is evaluated on smaller batches,
+  this transformation requires knowledge of how the individual microbatch
+  results should be combined back together (SUM, MEAN, or CONCAT). See the
+  accumulator argument for more details.
 
   Example Usage:
+    >>> import jax.numpy as jnp
+    >>> from optax.experimental import microbatching
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
     >>> data = jnp.array([1, 2, 3, 4])
     >>> fun(data)
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
-    >>> strategy = (AccumulationType.CONCAT, AccumulationType.SUM)
-    >>> microbatched_fun = microbatch(
+    >>> strategy = (
+    ...    microbatching.AccumulationType.CONCAT,
+    ...    microbatching.AccumulationType.SUM
+    ... )
+    >>> microbatched_fun = microbatching.microbatch(
     ...    fun, argnums=0, microbatch_size=2, accumulator=strategy
     ... )
     >>> microbatched_fun(data)
@@ -269,15 +274,15 @@ def microbatch(
   Args:
       fun: An arbitrary function. All kwargs are assumed to have a batch axis.
       argnums: A sequence of argument indices that have a batch axis. All
-        kwargs are assumed to have a batch axis, similar to `jax.vmap`.
+        kwargs are assumed to have a batch axis, similar to ``jax.vmap``.
       microbatch_size: The number of rows in the overall batch used in each
         microbatch. Smaller values reduce memory overhead, but require more
         sequential computation. This must evenly divide the batch axis size of
         the batch arguments.
       accumulator: Specifies how to combine results from each microbatch; can be
-        a single `Accumulator`, a pytree matching the structure of `fun`'s
-        output, with `Accumulator` values at the leaves, or anything in between
-        (i.e., a PyTree prefix of `fun`'s output`).
+        a single ``Accumulator``, a pytree matching the structure of ``fun``'s
+        output, with ``Accumulator`` values at the leaves, or anything in
+        between (i.e., a PyTree prefix of ``fun``'s output`).
       num_real_microbatches: Optional number of microbatches that are actually
         executed. If specified, microbatching will terminate early after this
         many steps. Can be helpful to handle variable batch sizes without
@@ -285,7 +290,7 @@ def microbatch(
 
   Returns:
       A new function that evaluates fun sequentially num_microbatches times on
-        subsets of data. Consumes the same args and kwargs as `fun`.
+        subsets of data. Consumes the same args and kwargs as ``fun``.
   """
   if microbatch_size is None:
     return fun
