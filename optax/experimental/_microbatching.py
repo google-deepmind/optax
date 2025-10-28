@@ -15,8 +15,6 @@
 
 """Module providing a general `microbatch` transformation."""
 
-from __future__ import annotations
-
 import dataclasses
 import enum
 import functools
@@ -61,8 +59,7 @@ class Accumulator:
   aggregate: Callable[[chex.ArrayTree], chex.ArrayTree]
 
 
-# pylint: disable=g-bare-generic
-def _with_floating_check(fn: Callable) -> Callable:
+def _with_floating_check(fn: Callable[..., Any]) -> Callable[..., Any]:
   def wrapper(*args, **kwargs):
     dtypes, _ = jax.tree.flatten(jax.tree.map(jnp.dtype, (args, kwargs)))
     if not all(jnp.issubdtype(dtype, jnp.floating) for dtype in dtypes):
