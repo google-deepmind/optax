@@ -27,7 +27,6 @@ from optax._src import combine
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
-from optax._src import utils
 from optax._src import wrappers
 
 
@@ -1130,14 +1129,14 @@ def fromage(
     stability of learning <https://arxiv.org/abs/2002.03432>`_, 2020
   """
   if not callable(learning_rate):
-    mult = 1 / jnp.sqrt(1 + learning_rate**2)
+    mult = 1 / (1 + learning_rate**2)**0.5
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(learning_rate * mult),
         transform.add_decayed_weights((mult - 1)),
     )
   else:
-    mult_lr = lambda count: 1 / jnp.sqrt(1 + learning_rate(count)**2)
+    mult_lr = lambda count: 1 / (1 + learning_rate(count)**2)**0.5
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(
@@ -1356,21 +1355,8 @@ def noisy_sgd(
     Neelakantan et al, `Adding Gradient Noise Improves Learning for Very Deep
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
-  if seed is not None:
-    warnings.warn(
-        '"seed" is deprecated and will be removed in optax 0.2.7, use "key".',
-        DeprecationWarning,
-    )
-    if key is not None:
-      raise ValueError('Only one of seed or key can be specified.')
-    key = jax.random.key(seed)
-  if key is None:
-    warnings.warn('Specifying a key will be required in optax 0.2.7.')
-    key = jax.random.key(0)
-  key = utils.canonicalize_key(key)
-
   return combine.chain(
-      transform.add_noise(eta, gamma, key),
+      transform.add_noise(eta, gamma, key, seed=seed),
       transform.scale_by_learning_rate(learning_rate),
   )
 

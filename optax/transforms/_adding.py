@@ -148,16 +148,15 @@ def add_noise(
     )
     if key is not None:
       raise ValueError('Only one of seed or key can be specified.')
-    key = jax.random.key(seed)
+    key = seed
   if key is None:
     warnings.warn('Specifying a key will be required in optax 0.2.7.')
-    key = jax.random.key(0)
-  key = utils.canonicalize_key(key)
+    key = 0
 
   def init_fn(params):
     del params
     return AddNoiseState(
-        count=jnp.zeros([], jnp.int32), rng_key=key
+        count=jnp.zeros([], jnp.int32), rng_key=utils.canonicalize_key(key)
     )
 
   def update_fn(updates, state, params=None):

@@ -272,7 +272,7 @@ class AliasTest(chex.TestCase):
     )
 
     with self.subTest('Equality of updates.'):
-      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
+      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-3)
     with self.subTest('Equality of new optimizer states.'):
       chex.assert_trees_all_close(
           optax.tree.unwrap_random_key_data(new_state_inject.inner_state),

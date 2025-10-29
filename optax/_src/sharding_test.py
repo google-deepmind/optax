@@ -27,7 +27,6 @@ import optax
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
 
-# We should be able to instantiate an optax optimizer before jax is initialized.
 # TODO(mckennar): resolve issues with commented-out optimizers below.
 OPTIMIZERS = {
     'adam': optax.adam(1.0),
@@ -43,13 +42,13 @@ OPTIMIZERS = {
     'adan': optax.adan(1.0),
     'adamaxw': optax.adamaxw(1.0),
     'amsgrad': optax.amsgrad(1.0),
-    # 'fromage': optax.fromage(1.0),
+    'fromage': optax.fromage(1.0),
     'lamb': optax.lamb(1.0),
     'lars': optax.lars(1.0),
     'lion': optax.lion(1.0),
     'nadam': optax.nadam(1.0),
     'nadamw': optax.nadamw(1.0),
-    # 'noisy_sgd': optax.noisy_sgd(1.0),
+    'noisy_sgd': optax.noisy_sgd(1.0),
     'novograd': optax.novograd(1.0),
     'optimistic_gradient_descent': optax.optimistic_gradient_descent(1.0),
     'radam': optax.radam(1.0),
