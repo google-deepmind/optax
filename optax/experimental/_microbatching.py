@@ -74,18 +74,33 @@ def _identity(value: Any) -> Any:
   return value
 
 
-def reshape_batch_axis(pytree: Any, microbatch_size: int):
-  """Reshape pytree leaves to shape (num_microbatches, microbatch_size, ...)."""
-  # If data is sharded along the 0th axis, using column-major order is important
-  # to ensure that each microbatch is sharded in the same manner.
-  # For example, if the data was sharded across 2 devices, each device would
-  # handle one of the examples in each microbatch.
-  # [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] --> [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]]
+def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0):
+  """Reshape batch axis of pytree leaves for use with microbatching.
 
-  return jax.tree.map(
-      lambda x: x.reshape(-1, microbatch_size, *x.shape[1:], order='F'),
-      pytree,
-  )
+  This function reshapes the batch axis of each leaf into a shape
+  (num_microbatches, microbatch_size) appearing at the same axis as the original
+  batch axis. The reshape is done using a column-major order, so any sharding
+  along the batch axis should be preserved in the new `microbatch_size` axis,
+  while the new `num_microbatches` axis will generally be replicated.
+
+  Args:
+    tree: A pytree of jax.Arrays, each having a batch axis.
+    microbatch_size: The size of sub-batches used for each microbatch.
+    axis: The axis to reshape.
+
+  Returns:
+    A pytree of reshaped jax.Arrays.
+  """
+
+  def leaf_fn(x):
+    shape = x.shape
+    batch_size = shape[axis]
+    if batch_size % microbatch_size != 0:
+      raise ValueError(f'{batch_size=} not divisible by {microbatch_size=}')
+    new_shape = shape[:axis] + (-1, microbatch_size) + shape[axis + 1:]
+    return x.reshape(new_shape, order='F')
+
+  return jax.tree.map(leaf_fn, tree)
 
 
 def _lift(accumulator: Accumulator) -> Accumulator:
@@ -127,13 +142,14 @@ def _compose(accumulators: AccumulatorTree) -> Accumulator:
 
   def aggregate(values):
     return jax.tree.map(
-        lambda acc, val: acc.accumulate(val), accumulators, values
+        lambda acc, val: acc.aggregate(val), accumulators, values
     )
 
   return Accumulator(init, update, finalize, aggregate)
 
 
 def _sum() -> Accumulator:
+  """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
           init=_identity,
@@ -145,6 +161,7 @@ def _sum() -> Accumulator:
 
 
 def _mean(num_microbatches: int) -> Accumulator:
+  """An Accumulator that computes the mean of microbatched outputs."""
   return _lift(
       Accumulator(
           init=_with_floating_check(_identity),
@@ -156,6 +173,7 @@ def _mean(num_microbatches: int) -> Accumulator:
 
 
 def _running_mean() -> Accumulator:
+  """An Accumulator that computes the running mean of microbatched outputs."""
   def update(carry, value, index):
     p = index / (index + 1)
     new_state = carry * p + value * (1 - p)
@@ -172,8 +190,11 @@ def _running_mean() -> Accumulator:
 
 
 def _concat(num_microbatches: int) -> Accumulator:
+  """An Accumulator that concatenates microbatched outputs along the axis 0."""
   def init(value):
-    return jnp.broadcast_to(value, (num_microbatches,) + value.shape)
+    shape = (num_microbatches,) + value.shape
+    zeros = jnp.broadcast_to(jnp.zeros_like(value), shape)
+    return zeros.at[0].set(value)
 
   def update(carry, value, index):
     return carry.at[index].set(value)
@@ -217,14 +238,49 @@ def _canonicalize(
   return _compose(jax.tree.map(fun, tree))
 
 
-_DEFAULT = AccumulationType.SUM
+def _reshape_all_args(
+    microbatch_size: int,
+    argnums: Sequence[int],
+    argnames: Sequence[str],
+    in_axes: Sequence[int],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any]
+) -> tuple[tuple[Any, ...], dict[str, Any], int]:
+  """Reshapes all batch arguments to have a microbatch axis."""
+  new_args = list(args)
+  new_kwargs = dict(kwargs)
+  batch_args = [args[i] for i in argnums] + [kwargs[i] for i in argnames]
+
+  batch_sizes = jax.tree.flatten(jax.tree.map(
+      lambda ax, subtree: jax.tree.map(lambda x: x.shape[ax], subtree),
+      tuple(in_axes), tuple(batch_args)
+  ))[0]
+
+  if len(set(batch_sizes)) > 1:
+    raise ValueError(
+        'Batch Arguments must have the same shape along the batch axis, found'
+        f' multiple batch sizes: {batch_sizes}'
+    )
+
+  for i, ax in zip(argnums, in_axes):
+    new_args[i] = reshape_batch_axis(args[i], microbatch_size, ax)
+
+  for name, ax in zip(argnames, in_axes[len(argnums) :]):
+    new_kwargs[name] = reshape_batch_axis(kwargs[name], microbatch_size, ax)
+
+  return tuple(new_args), new_kwargs, tuple(batch_sizes)[0]
 
 
 def microbatch(
     fun: Callable[..., Any],
     argnums: int | Sequence[int],
     microbatch_size: int | None,
-    accumulator: Accumulator | AccumulationType | AccumulatorTree = _DEFAULT,
+    accumulator: (
+        Accumulator | AccumulationType | AccumulatorTree
+    ) = AccumulationType.SUM,
+    *,
+    argnames: str | Sequence[str] = (),
+    in_axes: int | Sequence[int] = 0,
     num_real_microbatches: int | None = None,
 ) -> Callable[..., Any]:
   """A general microbatching transformation.
@@ -269,17 +325,21 @@ def microbatch(
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
 
   Args:
-      fun: An arbitrary function. All kwargs are assumed to have a batch axis.
-      argnums: A sequence of argument indices that have a batch axis. All
-        kwargs are assumed to have a batch axis, similar to ``jax.vmap``.
+      fun: An arbitrary function.
+      argnums: A sequence of argument indices that have a batch axis.
       microbatch_size: The number of rows in the overall batch used in each
         microbatch. Smaller values reduce memory overhead, but require more
         sequential computation. This must evenly divide the batch axis size of
         the batch arguments.
       accumulator: Specifies how to combine results from each microbatch; can be
-        a single ``Accumulator``, a pytree matching the structure of ``fun``'s
-        output, with ``Accumulator`` values at the leaves, or anything in
-        between (i.e., a PyTree prefix of ``fun``'s output`).
+        a single `Accumulator`, a pytree matching the structure of `fun`'s
+        output, with `Accumulator` values at the leaves, or anything in between
+        (i.e., a PyTree prefix of `fun`'s output`).
+      argnames: A sequence of keyword argument names that have a batch axis.
+      in_axes: An integer or sequence of integers indicating the batch axis
+        index for each argument in `argnums` and `argnames` should be aligned
+        with the list `argnums + argnames`. The default value of 0 assumes
+        that all arguments have a batch axis on the 0th dimension of the array.
       num_real_microbatches: Optional number of microbatches that are actually
         executed. If specified, microbatching will terminate early after this
         many steps. Can be helpful to handle variable batch sizes without
@@ -295,31 +355,38 @@ def microbatch(
   if isinstance(argnums, int):
     argnums = (argnums,)
 
+  if isinstance(argnames, str):
+    argnames = (argnames,)
+
+  if isinstance(in_axes, int):
+    in_axes = (in_axes,) * (len(argnums) + len(argnames))
+
   def microbatched_fun(*args, **kwargs):
-    batch_args = [args[i] for i in argnums]
-    batch_size = jax.tree.leaves(batch_args)[0].shape[0]
-    if batch_size % microbatch_size != 0:
-      raise ValueError(f'{batch_size=} not divisible by {microbatch_size=}')
+    reshaped_args, reshaped_kwargs, batch_size = _reshape_all_args(
+        microbatch_size, argnums, argnames, in_axes, args, kwargs
+    )
     num_microbatches = batch_size // microbatch_size
     accumulator_ = _canonicalize(accumulator, num_microbatches)
 
-    reshaped_batch_args = reshape_batch_axis(batch_args, microbatch_size)
-    reshaped_kwargs = reshape_batch_axis(kwargs, microbatch_size)
-
     def f(index):
-      fetch = lambda arg: jax.tree.map(lambda x: x[index], arg)
-      inputs = list(args)
-      for i, arg in zip(argnums, reshaped_batch_args):
-        inputs[i] = fetch(arg)
-      input_kwargs = {k: fetch(kwarg) for k, kwarg in reshaped_kwargs.items()}
-      return fun(*inputs, **input_kwargs)
+      input_args = list(reshaped_args)
+      input_kwargs = dict(reshaped_kwargs)
+      for i, ax in zip(argnums, in_axes):
+        input_args[i] = jax.tree.map(
+            functools.partial(jnp.take, indices=index, axis=ax), input_args[i]
+        )
+      for i, ax in zip(argnames, in_axes[len(argnums) :]):
+        input_kwargs[i] = jax.tree.map(
+            functools.partial(jnp.take, indices=index, axis=ax), input_kwargs[i]
+        )
+      return fun(*input_args, **input_kwargs)
 
     def body_fun(index, carry):
       return accumulator_.update(carry, f(index), index)
 
     loop_bound = num_real_microbatches or num_microbatches
     answer = jax.lax.fori_loop(
-        1, loop_bound, body_fun, accumulator_.init(f(0))
+        1, loop_bound, body_fun, accumulator_.init(f(0)),
     )
 
     return accumulator_.finalize(answer)
