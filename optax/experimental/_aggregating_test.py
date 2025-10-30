@@ -31,6 +31,7 @@ def _train(
     batch_size: int = 4,
     dim: int = 4,
     num_classes: int = 2,
+    metrics_ema_decay: float = 0.0,
 ):
   """Synthetic training with the given optimizer."""
   microbatch_size = batch_size // accumulation_steps
@@ -55,23 +56,54 @@ def _train(
 
   @jax.jit
   def train_step(params, state, batch):
+    mean_grads = None
+    var_grads = None
     if isinstance(opt, aggregating.Aggregator):
       losses, grads = jax.vmap(jax.value_and_grad(loss_fun), (None, 0))(
           params, batch
       )
       loss = jnp.mean(losses)
+      if accumulation_steps == 1:
+        mean_grads = jax.tree.map(lambda g: jnp.mean(g, axis=0), grads)
+        var_grads = jax.tree.map(lambda g: jnp.var(g, axis=0, ddof=1), grads)
     else:
       loss, grads = jax.value_and_grad(loss_fun)(params, batch)
     updates, state = opt.update(grads, state)
     params = update.apply_updates(params, updates)
-    return params, state, loss
+    return params, state, loss, mean_grads, var_grads
 
   state = opt.init(params)
   metrics = {}
-  for batch in data_iterator(data_key):
+  true_mean_grads_ema = jnp.zeros_like(params)
+  true_var_grads_ema = jnp.zeros_like(params)
+  for i, batch in enumerate(data_iterator(data_key)):
     full_batch_loss = loss_fun(params, full_data)
-    params, state, loss = train_step(params, state, batch)
+    params, state, loss, true_mean_grads, true_var_grads = train_step(
+        params, state, batch
+    )
     step_metrics = {'loss': loss, 'full_batch_loss': full_batch_loss}
+    if isinstance(opt, aggregating.Aggregator) and (accumulation_steps == 1):
+      true_mean_grads_ema, true_var_grads_ema = jax.tree.map(
+          lambda x, y: (1.0 - metrics_ema_decay) * x + metrics_ema_decay * y,
+          (true_mean_grads, true_var_grads),
+          (true_mean_grads_ema, true_var_grads_ema),
+      )
+      unbiased_true_mean_grads_ema = true_mean_grads_ema / (
+          1 - metrics_ema_decay ** (i + 1)
+      )
+      unbiased_true_var_grads_ema = true_var_grads_ema / (
+          1 - metrics_ema_decay ** (i + 1)
+      )
+      step_metrics['true_mean_grads_ema'] = unbiased_true_mean_grads_ema
+      step_metrics['true_var_grads_ema'] = unbiased_true_var_grads_ema
+    try:
+      mean_grads_ema, var_grads_ema = (
+          aggregating.get_unbiased_mean_and_variance_ema(state)
+      )
+      step_metrics['mean_grads_ema'] = mean_grads_ema
+      step_metrics['var_grads_ema'] = var_grads_ema
+    except ValueError:
+      pass
     if not metrics:
       for key in step_metrics:
         metrics[key] = []
@@ -133,6 +165,64 @@ class AggregatorsTest(parameterized.TestCase):
       chex.assert_trees_all_close(
           std_metrics['full_batch_loss'],
           agg_acc_metrics['full_batch_loss'][::2],
+      )
+
+  @parameterized.product(ema_decay=[0.0, 0.9])
+  def test_mean_variance_ema_match_standard(self, ema_decay: float = 0.99):
+    base_opt = alias.sgd(learning_rate=0.1)
+    std_params, std_metrics = _train(base_opt)
+
+    opt = aggregating.add_mean_variance_to_opt(base_opt, ema_decay)
+    mean_var_agg_params, mean_var_agg_metrics = _train(
+        opt, metrics_ema_decay=ema_decay
+    )
+
+    device_type = jax.devices()[0].platform
+    rtol = 5 * 1e-3 if device_type == 'tpu' else 1e-5
+    with self.subTest(
+        'mean variance ema with aggregation training matches standard'
+    ):
+      chex.assert_trees_all_close(std_params, mean_var_agg_params, rtol=rtol)
+      chex.assert_trees_all_close(
+          std_metrics['full_batch_loss'],
+          mean_var_agg_metrics['full_batch_loss'],
+          rtol=rtol,
+      )
+    with self.subTest('monitored mean grads ema matches true mean grads ema'):
+      chex.assert_trees_all_close(
+          mean_var_agg_metrics['true_mean_grads_ema'],
+          mean_var_agg_metrics['mean_grads_ema'],
+          rtol=rtol,
+      )
+    with self.subTest('monitored var grads ema matches true var grads ema'):
+      chex.assert_trees_all_close(
+          mean_var_agg_metrics['true_var_grads_ema'],
+          mean_var_agg_metrics['var_grads_ema'],
+          rtol=rtol,
+      )
+
+    opt = aggregating.add_mean_variance_to_opt(
+        base_opt, ema_decay, accumulation_steps=2
+    )
+    mean_var_acc_params, mean_var_acc_metrics = _train(
+        opt, accumulation_steps=2
+    )
+    with self.subTest(
+        'mean variance ema with accumulation training matches standard'
+    ):
+      chex.assert_trees_all_close(std_params, mean_var_acc_params, rtol=rtol)
+      chex.assert_trees_all_close(
+          std_metrics['full_batch_loss'],
+          mean_var_acc_metrics['full_batch_loss'][::2],
+          rtol=rtol,
+      )
+
+    with self.subTest(
+        'var grads ema with accumulation matches var grads ema with aggregation'
+    ):
+      chex.assert_trees_all_close(
+          mean_var_agg_metrics['var_grads_ema'],
+          mean_var_acc_metrics['var_grads_ema'][1::2],
       )
 
 
