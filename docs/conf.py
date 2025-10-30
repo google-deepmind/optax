@@ -92,7 +92,7 @@ extensions = [
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.collections',
+    'sphinx_collections',
     'sphinx_contributors'
 ]
 
