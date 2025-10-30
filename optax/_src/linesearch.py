@@ -254,7 +254,8 @@ def scale_by_backtracking_linesearch(
     else:
       grad = None
     # base output type on params type, except only real part if complex
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), dtype=jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).real.dtype
     return ScaleByBacktrackingLinesearchState(
         learning_rate=jnp.array(1.0, dtype=val_dtype),
         value=jnp.array(jnp.inf, dtype=val_dtype),
@@ -1210,7 +1211,8 @@ def zoom_linesearch(
       raise ValueError(
           f"Unknown initial guess strategy: {initial_guess_strategy}"
       )
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).dtype
     slope = optax.tree.real(optax.tree.vdot(updates, grad))
     return ZoomLinesearchState(
         count=jnp.asarray(0),
@@ -1538,7 +1540,8 @@ def scale_by_zoom_linesearch(
 
   def init_fn(params: base.Params) -> ScaleByZoomLinesearchState:
     """Initializes state of scale_by_zoom_linesearch."""
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).dtype
     return ScaleByZoomLinesearchState(
         learning_rate=jnp.asarray(1.0, dtype=val_dtype),
         value=jnp.asarray(jnp.inf, dtype=val_dtype),

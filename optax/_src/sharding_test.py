@@ -36,7 +36,8 @@ OPTIMIZERS = {
     'adagrad': optax.adagrad(1.0),
     'adamw': optax.adamw(1.0),
     'rmsprop': optax.rmsprop(1.0),
-    # 'lbfgs': optax.lbfgs(1.0),
+    # TODO(mckennar): try to incorporate linesearch into the test.
+    'lbfgs': optax.lbfgs(1.0, linesearch=None),
     'adadelta': optax.adadelta(1.0),
     # 'adafactor': optax.adafactor(),
     'adan': optax.adan(1.0),
