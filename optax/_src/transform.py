@@ -1118,6 +1118,15 @@ def centralize() -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
+def _zeros_like_axis(x, axis: int) -> jax.Array:
+  """Returns an array of zeros like the given axis of `x`."""
+  # The logic here is unusual to circumvent sharding-in-types limitations.
+  # We use jax.eval_shape to get the shape/sharding of the given axis of `x`.
+  axes = tuple(i for i in range(x.ndim) if i != axis)
+  target = jax.eval_shape(functools.partial(jnp.sum, axis=axes), x)
+  return jnp.zeros_like(target)
+
+
 class ScaleBySM3State(NamedTuple):
   """State for the SM3 algorithm."""
 
@@ -1142,7 +1151,7 @@ def scale_by_sm3(
   """
 
   def zeros_for_dim(p):
-    return [jnp.zeros([s], dtype=p.dtype) for s in p.shape]
+    return [_zeros_like_axis(p, i) for i in range(p.ndim)]
 
   def init_fn(params):
     _reject_complex(params)

@@ -27,7 +27,6 @@ import optax
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
 
-# TODO(mckennar): resolve issues with commented-out optimizers below.
 OPTIMIZERS = {
     'adam': optax.adam(1.0),
     'sgd': optax.sgd(1.0),
@@ -39,7 +38,8 @@ OPTIMIZERS = {
     # TODO(mckennar): try to incorporate linesearch into the test.
     'lbfgs': optax.lbfgs(1.0, linesearch=None),
     'adadelta': optax.adadelta(1.0),
-    # 'adafactor': optax.adafactor(),
+    'adafactor': optax.adafactor(),
+    'adafactor2': optax.adafactor(min_dim_size_to_factor=1),
     'adan': optax.adan(1.0),
     'adamaxw': optax.adamaxw(1.0),
     'amsgrad': optax.amsgrad(1.0),
@@ -53,7 +53,7 @@ OPTIMIZERS = {
     'novograd': optax.novograd(1.0),
     'optimistic_gradient_descent': optax.optimistic_gradient_descent(1.0),
     'radam': optax.radam(1.0),
-    # 'sm3': optax.sm3(1.0),
+    'sm3': optax.sm3(1.0),
     'yogi': optax.yogi(1.0),
 }
 

@@ -57,6 +57,15 @@ def _factored_dims(
   return int(sorted_dims[-2]), int(sorted_dims[-1])
 
 
+def _zeros_like_no_axis(x, axis: int) -> jax.Array:
+  """Returns an array of zeros like x, with the given axis of `x` removed."""
+  # The logic here is unusual to circumvent sharding-in-types limitations.
+  # We use jax.eval_shape to get the shape/sharding of an array with the given
+  # axis removed.
+  target = jax.eval_shape(lambda x: jnp.sum(x, axis=axis), x)
+  return jnp.zeros_like(target)
+
+
 @dataclasses.dataclass
 class _UpdateResult:
   """Opaque container that is not traversed by jax.tree.map."""
@@ -134,19 +143,17 @@ def scale_by_factored_rms(
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
-        vr_shape = np.delete(shape, d0)
-        vc_shape = np.delete(shape, d1)
         return _UpdateResult(
             update=jnp.zeros((1,), dtype=dtype),
-            v_row=jnp.zeros(vr_shape, dtype=dtype),
-            v_col=jnp.zeros(vc_shape, dtype=dtype),
+            v_row=_zeros_like_no_axis(param, d0),
+            v_col=_zeros_like_no_axis(param, d1),
             v=jnp.zeros((1,), dtype=dtype),
         )
       return _UpdateResult(
           update=jnp.zeros((1,), dtype=dtype),
           v_row=jnp.zeros((1,), dtype=dtype),
           v_col=jnp.zeros((1,), dtype=dtype),
-          v=jnp.zeros(param.shape, dtype=dtype),
+          v=jnp.zeros_like(param),
       )
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree.map(_init, params))
