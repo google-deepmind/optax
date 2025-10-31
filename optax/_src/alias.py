@@ -1027,6 +1027,7 @@ def amsgrad(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     mu_dtype: Optional[Any] = None,
+    bias_correction_v: bool = True
 ) -> base.GradientTransformationExtraArgs:
   """The AMSGrad optimizer.
 
@@ -1076,7 +1077,12 @@ def amsgrad(
   """
   return combine.chain(
       transform.scale_by_amsgrad(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          bias_correction_v=bias_correction_v
       ),
       transform.scale_by_learning_rate(learning_rate),
   )
