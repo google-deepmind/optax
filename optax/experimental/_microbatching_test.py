@@ -13,10 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
+import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import chex
 import jax.numpy as jnp
 import numpy as np
@@ -101,6 +101,7 @@ class MicrobatchingTest(parameterized.TestCase):
         argnums=(1,),
         microbatch_size=2,
         accumulator=accumulator,
+        argnames=('batch_kwarg2',),
     )
     expected_answer = fun(nonbatch_arg, batch_arg1, batch_kwarg2=batch_kwarg2)
     actual_answer = microbatched_fun(
@@ -157,6 +158,90 @@ class MicrobatchingTest(parameterized.TestCase):
     )
     answer = microbatched_fun(nonbatch_arg, batch_arg1, batch_arg2)
     self.assertEqual(answer.dtype, arg_dtype)
+
+  def test_early_stopping_concat(self):
+    x = jnp.arange(12).astype(jnp.float32) + 1
+
+    output = microbatching.microbatch(
+        lambda x: x,
+        argnums=0,
+        accumulator=microbatching.AccumulationType.CONCAT,
+        microbatch_size=3,
+        num_real_microbatches=2,
+    )(x)
+
+    chex.assert_trees_all_close(jnp.sum(output != 0), 6)
+
+  @parameterized.parameters(
+      microbatching.AccumulationType.SUM,
+      microbatching.AccumulationType.MEAN,
+      microbatching.AccumulationType.RUNNING_MEAN,
+      microbatching.AccumulationType.CONCAT,
+  )
+  def test_in_axes_invariant(self, acc):
+
+    arg_axis0 = jnp.array(np.random.normal(size=(10, 4, 5)))
+    arg_axis1 = jnp.transpose(arg_axis0, axes=(1, 0, 2))
+    self.assertEqual(arg_axis1.shape, (4, 10, 5))
+    fun_axis0 = functools.partial(jnp.einsum, 'bij,bkj->ik')
+    fun_axis1 = functools.partial(jnp.einsum, 'ibj,kbj->ik')
+
+    result0 = microbatching.microbatch(
+        fun_axis0, argnums=(0, 1), microbatch_size=2, in_axes=0, accumulator=acc
+    )(arg_axis0, arg_axis0)
+    result1 = microbatching.microbatch(
+        fun_axis1, argnums=(0, 1), microbatch_size=2, in_axes=1, accumulator=acc
+    )(arg_axis1, arg_axis1)
+    chex.assert_trees_all_close(result0, result1)
+
+  @parameterized.parameters(
+      microbatching.AccumulationType.SUM,
+      microbatching.AccumulationType.MEAN,
+      microbatching.AccumulationType.RUNNING_MEAN,
+      microbatching.AccumulationType.CONCAT,
+  )
+  def test_in_axes_with_argnames(self, acc):
+
+    arg0 = jnp.array(np.random.normal(size=(10, 4, 5)))
+    arg1 = jnp.transpose(arg0, axes=(1, 0, 2))
+    self.assertEqual(arg1.shape, (4, 10, 5))
+
+    def fun(a, b):
+      return jnp.einsum('bij,kbj->ik', a, b)
+
+    mfun = functools.partial(
+        microbatching.microbatch, fun, microbatch_size=2, accumulator=acc
+    )
+
+    ans0 = mfun(argnums=(0, 1), in_axes=(0, 1))(arg0, arg1)
+    ans1 = mfun(argnums=(1, 0), in_axes=(1, 0))(arg0, arg1)
+    ans2 = mfun(argnums=(), argnames=('a', 'b'), in_axes=(0, 1))(a=arg0, b=arg1)
+    ans3 = mfun(argnums=(), argnames=('a', 'b'), in_axes=(0, 1))(b=arg1, a=arg0)
+    ans4 = mfun(argnums=(), argnames=('b', 'a'), in_axes=(1, 0))(a=arg0, b=arg1)
+    ans5 = mfun(argnums=(), argnames=('b', 'a'), in_axes=(1, 0))(b=arg1, a=arg0)
+    ans6 = mfun(argnums=0, argnames='b', in_axes=(0, 1))(arg0, b=arg1)
+
+    chex.assert_trees_all_close(ans0, ans1, ans2, ans3, ans4, ans5, ans6)
+
+  def test_argnums_argnames_invariant(self):
+    def fun(a, b, c, *, d, e, f):
+      return jnp.sum(a + b + c + d + e + f)
+
+    output1 = microbatching.microbatch(
+        fun, argnums=(0, 1), microbatch_size=2,
+    )(jnp.ones(16), jnp.ones(16), 1, d=2, e=3, f=4)
+
+    output2 = microbatching.microbatch(
+        fun, argnums=0, argnames='b', microbatch_size=2,
+    )(jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
+
+    chex.assert_trees_all_close(output1, output2)
+
+    output3 = microbatching.microbatch(
+        fun, argnums=(), argnames=('b', 'a'), microbatch_size=2,
+    )(a=jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
+
+    chex.assert_trees_all_close(output1, output3)
 
 
 if __name__ == '__main__':
