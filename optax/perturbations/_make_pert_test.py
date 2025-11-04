@@ -16,7 +16,6 @@
 """Tests for optax.perturbations, checking values and gradients."""
 
 from functools import partial  # pylint: disable=g-importing-member
-import operator
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -159,7 +158,7 @@ class MakePertTest(parameterized.TestCase):
       pred = apply_element_tree(tree)
       pred_true = apply_element_tree(example_tree)
       tree_loss = jax.tree.map(lambda x, y: (x - y) ** 2, pred, pred_true)
-      list_loss = jax.tree.reduce(operator.add, tree_loss)
+      list_loss = optax.tree.sum(tree_loss)
       return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
     loss_pert = jax.jit(_make_pert.make_perturbed_fun(

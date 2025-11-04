@@ -20,6 +20,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax.contrib import _privacy
+import optax.tree
 
 
 class DifferentiallyPrivateAggregateTest(chex.TestCase):
@@ -64,12 +65,8 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
     state = dp_agg.init(self.params)
     update_fn = self.variant(dp_agg.update)
 
-    # Shape of the three arrays below is (self.batch_size, )
-    norms = [
-        jnp.linalg.norm(g.reshape(self.batch_size, -1), axis=1)
-        for g in jax.tree.leaves(self.per_eg_grads)
-    ]
-    global_norms = jnp.linalg.norm(jnp.stack(norms), axis=0)
+    global_norms = jax.vmap(optax.tree.norm)(self.per_eg_grads)
+
     divisors = jnp.maximum(global_norms / l2_norm_clip, 1.0)
     # Since the values of all the parameters are the same within each example,
     # we can easily compute what the values should be:
