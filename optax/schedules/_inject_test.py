@@ -231,43 +231,6 @@ class InjectHyperparamsTest(chex.TestCase):
     self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
     self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
 
-  @chex.all_variants
-  @parameterized.named_parameters(
-      ('bf16hyp', jnp.bfloat16),
-      ('f32hyp', jnp.float32),
-  )
-  def test_hyperparam_default_dtype(self, param_dtype):
-    """Tests that hyperparam dtype override works as desired."""
-    params = [
-        jnp.ones((1, 2), dtype=param_dtype),
-        jnp.ones(2, dtype=param_dtype),
-        jnp.ones((1, 1, 1), dtype=param_dtype),
-    ]
-    with self.subTest('Hyperparam as a float follow param dtype'):
-      optim = _inject.inject_hyperparams(transform.scale_by_adam)(
-          b1=0.9, b2=0.95
-      )
-      state = self.variant(optim.init)(params)
-      self.assertEqual(state.hyperparams['b1'].dtype, param_dtype)
-      self.assertEqual(state.hyperparams['b2'].dtype, param_dtype)
-
-    with self.subTest('Hyperparam as a weak jax array follow param dtype'):
-      optim = _inject.inject_hyperparams(transform.scale_by_adam)(
-          b1=jnp.asarray(0.9), b2=jnp.asarray(0.95)
-      )
-      state = self.variant(optim.init)(params)
-      self.assertEqual(state.hyperparams['b1'].dtype, param_dtype)
-      self.assertEqual(state.hyperparams['b2'].dtype, param_dtype)
-
-    with self.subTest('Hyperparam as a strong dtype jax array retain dtype'):
-      optim = _inject.inject_hyperparams(transform.scale_by_adam)(
-          b1=jnp.array(0.9, dtype=jnp.float32),
-          b2=jnp.asarray(0.95, dtype=jnp.bfloat16)
-      )
-      state = self.variant(optim.init)(params)
-      self.assertEqual(state.hyperparams['b1'].dtype, jnp.float32)
-      self.assertEqual(state.hyperparams['b2'].dtype, jnp.bfloat16)
-
   @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):

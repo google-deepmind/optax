@@ -26,19 +26,13 @@ import jax.numpy as jnp
 import numpy as np
 from optax._src import base
 from optax._src import numerics
-import optax.tree
 
 
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
-  # if the x is already a strong dtype jax.Array, return unchanged
-  if isinstance(x, jax.Array) and not getattr(x, 'weak_type', False):
-    return x
-  # if x is of floating point type, cast to the specified dtype
   current_dtype = x.dtype if hasattr(x, 'dtype') else type(x)
   if jax.dtypes.issubdtype(current_dtype, jnp.floating):
     return jnp.asarray(x, dtype=dtype)
-  # otherwise, pass through unchanged
   return x
 
 
@@ -157,9 +151,12 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      dtype = hyperparam_dtype
-      if dtype is None:
-        dtype = optax.tree.dtype(params)
+      if hyperparam_dtype is None:
+        dtype = getattr(
+            next(iter(jax.tree.leaves(params)), None), 'dtype', None
+        )
+      else:
+        dtype = hyperparam_dtype
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -177,9 +174,12 @@ def inject_hyperparams(
       )
 
     def update_fn(updates, state, params=None, **extra_args):
-      dtype = hyperparam_dtype
-      if dtype is None:
-        dtype = optax.tree.dtype(params)
+      if hyperparam_dtype is None:
+        dtype = getattr(
+            next(iter(jax.tree.leaves(updates)), None), 'dtype', None
+        )
+      else:
+        dtype = hyperparam_dtype
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
       }
