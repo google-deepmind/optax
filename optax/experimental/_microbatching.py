@@ -91,16 +91,33 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0):
   Returns:
     A pytree of reshaped jax.Arrays.
   """
+  def reshape_leaf(x):
+    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis+1:]
+    if jax.__version__ < '0.7.0':
+      return x.reshape(new_shape, order='F')
 
-  def leaf_fn(x):
-    shape = x.shape
-    batch_size = shape[axis]
-    if batch_size % microbatch_size != 0:
-      raise ValueError(f'{batch_size=} not divisible by {microbatch_size=}')
-    new_shape = shape[:axis] + (-1, microbatch_size) + shape[axis + 1:]
-    return x.reshape(new_shape, order='F')
+    sharding = jax.typeof(x).sharding
+    if not sharding.mesh.are_all_axes_explicit:
+      return x.reshape(new_shape, order='F')
 
-  return jax.tree.map(leaf_fn, tree)
+    assert jax.__version__ >= '0.8.1', (
+        'microbatching with explicit sharding requires jax version >= 0.8.1.'
+    )
+    spec = sharding.spec
+    if len(spec) < axis:  # The batch axis is not sharded.
+      new_spec = spec
+    else:
+      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis+1:])
+    out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
+
+    local_shape = sharding.shard_shape(x.shape)
+    nshards = x.shape[axis] // local_shape[axis]
+    if microbatch_size % nshards != 0:
+      raise ValueError(f'{nshards=} must evenly divide {microbatch_size=}.')
+
+    return x.reshape(new_shape, order='F', out_sharding=out_sharding)
+
+  return jax.tree.map(reshape_leaf, tree)
 
 
 def _lift(accumulator: Accumulator) -> Accumulator:
@@ -189,8 +206,25 @@ def _running_mean() -> Accumulator:
   )
 
 
+def _get_out_sharding(x):
+  """Compute the desired sharding of x.reshape(-1, *x.shape[2:], order='F')."""
+  # We use dict because jax doesn't have out_sharding in older jax versions.
+  if  jax.__version__ < '0.7.0':
+    return {}
+  sharding = jax.typeof(x).sharding
+  if sharding.mesh.are_all_axes_explicit:
+    if sharding.spec:
+      # The first axis is not sharded, so we simply drop it.
+      spec = jax.sharding.PartitionSpec(*sharding.spec[1:])
+    else:
+      spec = jax.sharding.PartitionSpec()
+    return {'out_sharding': jax.sharding.NamedSharding(sharding.mesh, spec)}
+  return {}
+
+
 def _concat(num_microbatches: int) -> Accumulator:
   """An Accumulator that concatenates microbatched outputs along the axis 0."""
+
   def init(value):
     shape = (num_microbatches,) + value.shape
     zeros = jnp.broadcast_to(jnp.zeros_like(value), shape)
@@ -200,7 +234,8 @@ def _concat(num_microbatches: int) -> Accumulator:
     return carry.at[index].set(value)
 
   def finalize(carry):
-    return carry.reshape(-1, *carry.shape[2:], order='F')
+    kwargs = _get_out_sharding(carry)
+    return carry.reshape(-1, *carry.shape[2:], order='F', **kwargs)
 
   return _lift(Accumulator(init, update, finalize, _identity))
 
@@ -258,9 +293,12 @@ def _reshape_all_args(
 
   if len(set(batch_sizes)) > 1:
     raise ValueError(
-        'Batch Arguments must have the same shape along the batch axis, found'
-        f' multiple batch sizes: {batch_sizes}'
+        f'Batch Arguments must have equal-size batch axes, found {batch_sizes}.'
     )
+
+  batch_size = list(batch_sizes)[0]
+  if batch_size % microbatch_size != 0:
+    raise ValueError(f'{batch_size=} must be divisible by {microbatch_size=}.')
 
   for i, ax in zip(argnums, in_axes):
     new_args[i] = reshape_batch_axis(args[i], microbatch_size, ax)

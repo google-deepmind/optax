@@ -139,7 +139,7 @@ class MicrobatchingTest(parameterized.TestCase):
         microbatch_size=3,
         accumulator=accumulator,
     )
-    with self.assertRaisesRegex(ValueError, 'not divisible'):
+    with self.assertRaisesRegex(ValueError, 'divisible'):
       _ = microbatched_fun(nonbatch_arg, batch_arg1, batch_arg2)
 
   @parameterized.product(

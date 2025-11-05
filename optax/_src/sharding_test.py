@@ -23,6 +23,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import optax
+from optax.experimental import _microbatching as microbatching
 
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
@@ -108,6 +109,38 @@ class ShardingTest(parameterized.TestCase):
       type2 = jax.tree.map(jax.typeof, state2)
       type3 = jax.tree.map(jax.typeof, state3)
       chex.assert_trees_all_equal(type2, type3)
+
+  @parameterized.named_parameters(
+      ('replicated', jax.sharding.PartitionSpec()),
+      ('sharded', jax.sharding.PartitionSpec('x'))
+  )
+  def test_microbatch_with_explicit_sharding(self, spec):
+    if jax.__version__ < '0.8.1':
+      self.skipTest('Skipping sharding-in-types test.')
+    mesh = jax.make_mesh(
+        (8,), ('x',), axis_types=(jax.sharding.AxisType.Explicit,)
+    )
+    with jax.set_mesh(mesh):
+      sharding = jax.sharding.NamedSharding(mesh, spec)
+
+      fun = lambda x: (x + 1, jnp.sum(3 * x))
+      data = jnp.arange(16, out_sharding=sharding)
+
+      strategy = (
+          microbatching.AccumulationType.CONCAT,
+          microbatching.AccumulationType.SUM,
+      )
+      microbatched_fun = microbatching.microbatch(
+          fun, argnums=0, microbatch_size=8, accumulator=strategy
+      )
+
+      actual = microbatched_fun(data)
+      expected = fun(data)
+
+      chex.assert_trees_all_equal(
+          jax.tree.map(jax.typeof, actual), jax.tree.map(jax.typeof, expected)
+      )
+      chex.assert_trees_all_equal(actual, expected)
 
 
 if __name__ == '__main__':
