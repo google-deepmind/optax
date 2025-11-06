@@ -60,6 +60,7 @@ from optax._src.alias import rmsprop
 from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sign_sgd
+from optax._src.alias import signum
 from optax._src.alias import sm3
 from optax._src.alias import yogi
 from optax._src.base import EmptyState
@@ -476,6 +477,7 @@ __all__ = (
     "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
     "sign_sgd",
+    "signum",
     "skip_large_updates",
     "skip_not_finite",
     "sm3",
