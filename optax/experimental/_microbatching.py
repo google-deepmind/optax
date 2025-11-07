@@ -50,7 +50,7 @@ class Accumulator:
     finalize: A function f(carry, num_microbatches) that returns the final
       result from the final state.
     aggregate: A function f(per_microbatch_value) that aggregates
-      per-microbatch values into a single value.
+      per-microbatch values into a single value. Used by `gvmap`.
   """
 
   init: Callable[[chex.ArrayTree], chex.ArrayTree]
@@ -179,6 +179,8 @@ def _sum() -> Accumulator:
 
 def _mean(num_microbatches: int) -> Accumulator:
   """An Accumulator that computes the mean of microbatched outputs."""
+  if num_microbatches <= 0:
+    raise ValueError(f'{num_microbatches=} must be positive.')
   return _lift(
       Accumulator(
           init=_with_floating_check(_identity),
@@ -224,6 +226,8 @@ def _get_out_sharding(x):
 
 def _concat(num_microbatches: int) -> Accumulator:
   """An Accumulator that concatenates microbatched outputs along the axis 0."""
+  if num_microbatches <= 0:
+    raise ValueError(f'{num_microbatches=} must be positive.')
 
   def init(value):
     shape = (num_microbatches,) + value.shape
@@ -253,9 +257,10 @@ class AccumulationType(enum.Enum):
 # advance, so we offer an enum-based API for specifying accumulation strategies.
 def _canonicalize(
     tree: Accumulator | AccumulationType | AccumulatorTree,
-    num_microbatches: int
+    num_microbatches: int | None,
 ) -> Accumulator:
   """Canonicalizes a PyTree of Accumulators/AccumulationTypes."""
+
   def fun(acc):
     if isinstance(acc, Accumulator):
       return acc
@@ -319,7 +324,8 @@ def microbatch(
     *,
     argnames: str | Sequence[str] = (),
     in_axes: int | Sequence[int] = 0,
-    num_real_microbatches: int | None = None,
+    # TODO(mckennar): Document this option via notebook or doctest.
+    num_real_microbatches: int | jax.Array | None = None,
 ) -> Callable[..., Any]:
   """A general microbatching transformation.
 
@@ -430,3 +436,81 @@ def microbatch(
     return accumulator_.finalize(answer)
 
   return microbatched_fun
+
+
+Function: TypeAlias = Callable[..., Any]
+VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
+
+
+# TODO(mckennar): Create a notebook demonstrating useful use-cases.
+def gvmap(
+    fun: Function,
+    in_axes: int | Sequence[int] = 0,
+    out_axes: Any = 0,
+    *,
+    microbatch_size: int | None = None,
+    vmap_fn: VmapFn = jax.vmap,
+    accumulator: (
+        Accumulator | AccumulationType | AccumulatorTree
+    ) = AccumulationType.CONCAT,
+) -> Function:
+  """A generalized version of jax.vmap that supports microbatching.
+
+  Because this function incorporates microbatching, you can vmap over
+  arrays with much larger batch axis sizes than jax.vmap without running
+  out of memory. This function generalizes vmap by introducing new keyword
+  arguments `microbatch_size` and `accumulator` to control microbatching
+  behavior. It specializes vmap by imposing stricter requirements on `in_axes`
+  and `out_axes`.
+
+  Example Usage:
+    >>> from optax.experimental import microbatching
+    >>> import jax.numpy as jnp
+    >>> microbatching.gvmap(lambda x: x**2)(jnp.arange(8))
+    >>> Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
+
+  Args:
+    fun: Function to be mapped over additional axes.
+    in_axes: Array axis to map over.  See jax.vmap for more details.
+    out_axes: Unsupported by optax.vmap, must be set to 0.
+    microbatch_size: The number of rows in the overall batch used in each
+      microbatch. Smaller values reduces memory overhead, but require more
+      sequential computation. This must evenly divide the batch axis size of
+      the batch arguments.
+    vmap_fn: A function with the same signature as jax.vmap.  Can be used to
+      e.g., pass in kwargs to vmap.
+    accumulator: Specifies what to do with the vmapped outputs.  The default
+      value (CONCAT) returns each output with a batch axis, matching the
+      behavior of jax.vmap. Reductions over the batch axis are also possible,
+      including MEAN and SUM, and can be used when the the full output with a
+      batch axis is not needed and is too large to fit in memory. This
+      accumulator can be any PyTree prefix of the outputs of `fun` to apply
+      different reductions to different sub-trees.
+
+  Returns:
+    A new function with the same args and kwargs having an additional
+    batch axis (according to in_axes).
+  """
+
+  if out_axes != 0:
+    raise NotImplementedError('out_axis != 0 is not currently supported')
+
+  if isinstance(in_axes, int):
+    in_axes = (in_axes,)
+
+  def vmap_reduce_fn(*args, **kwargs):
+    output = vmap_fn(fun, in_axes, out_axes)(*args, **kwargs)
+    microbatch_size_ = jax.tree.leaves(output)[0].shape[0]
+
+    # We are only relying on the `aggregate` attribute of the accumulator, which
+    # does not require knowledge of the number of microbatches.
+    temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
+    return temporary_accumulator.aggregate(output)
+
+  return microbatch(
+      vmap_reduce_fn,
+      argnums=tuple(x[0] for x in enumerate(in_axes) if x[1] is not None),
+      microbatch_size=microbatch_size,
+      accumulator=accumulator,
+      in_axes=tuple(ax for ax in in_axes if ax is not None),
+  )

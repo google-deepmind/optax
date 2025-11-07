@@ -18,6 +18,7 @@ import functools
 from absl.testing import absltest
 from absl.testing import parameterized
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.experimental import _microbatching as microbatching
@@ -242,6 +243,16 @@ class MicrobatchingTest(parameterized.TestCase):
     )(a=jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
     chex.assert_trees_all_close(output1, output3)
+
+  def test_vmap(self):
+    x = jnp.arange(2*4*8).reshape(2, 4, 8)
+    custom_vmap = microbatching.gvmap(
+        jnp.sum,
+        in_axes=1,
+        microbatch_size=2,
+    )
+    normal_vmap = jax.vmap(jnp.sum, in_axes=1)
+    chex.assert_trees_all_close(normal_vmap(x), custom_vmap(x), atol=1e-6)
 
 
 if __name__ == '__main__':
