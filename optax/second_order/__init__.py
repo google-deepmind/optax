@@ -16,6 +16,6 @@
 
 # pylint: disable=g-importing-member
 
-from optax.second_order._fisher import fisher_diag
-from optax.second_order._hessian import hessian_diag
-from optax.second_order._hessian import hvp
+from optax.second_order._deprecated import fisher_diag
+from optax.second_order._deprecated import hessian_diag
+from optax.second_order._deprecated import hvp
