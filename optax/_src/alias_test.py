@@ -91,6 +91,7 @@ _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'rprop', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
     {'opt_name': 'sign_sgd', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'signum', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'yogi', 'opt_kwargs': {'learning_rate': 1e-1}},
 )
@@ -149,12 +150,13 @@ class AliasTest(chex.TestCase):
         'adan',
         'polyak_sgd',
         'sign_sgd',
+        'signum',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
       )
 
-    if opt_name in ('sign_sgd',) and target is _setup_rosenbrock:
+    if opt_name in ('sign_sgd', 'signum') and target is _setup_rosenbrock:
       raise absltest.SkipTest(
           f'{opt_name} requires learning rate scheduling to solve the'
           ' Rosenbrockfunction'
@@ -350,7 +352,7 @@ class AliasTest(chex.TestCase):
     if opt_name in (
         'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent',
         'optimistic_adam', 'lion', 'rprop', 'adadelta', 'adan', 'polyak_sgd',
-        'sign_sgd') and jnp.iscomplexobj(dtype):
+        'sign_sgd', 'signum') and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
       )
