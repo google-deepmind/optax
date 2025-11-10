@@ -16,7 +16,6 @@
 
 from typing import Any, NamedTuple, Callable
 
-import chex
 from optax._src import base
 from optax.transforms import _accumulation
 from optax.transforms import _combining
@@ -27,7 +26,7 @@ class SnapshotState(NamedTuple):
 
 
 def snapshot(
-    measure_name: str, measure: Callable[[base.Updates], chex.ArrayTree]
+    measure_name: str, measure: Callable[[base.Updates], base.ArrayTree]
 ) -> base.GradientTransformation:
   """Takes a snapshot of updates and stores it in the state.
 
@@ -83,7 +82,7 @@ def snapshot(
 
 
 class MonitorState(NamedTuple):
-  measurements: dict[str, chex.ArrayTree]
+  measurements: dict[str, base.ArrayTree]
   measure_states: tuple[base.OptState, ...]
 
 
@@ -91,7 +90,7 @@ def monitor(
     measures: dict[
         str,
         base.GradientTransformationExtraArgs
-        | Callable[[base.Updates], chex.ArrayTree],
+        | Callable[[base.Updates], base.ArrayTree],
     ],
 ):
   """Monitors stateful measurements of updates in a chain.
@@ -177,7 +176,7 @@ def monitor(
 
 
 def measure_with_ema(
-    measure: Callable[[base.Updates], chex.ArrayTree],
+    measure: Callable[[base.Updates], base.ArrayTree],
     decay: float,
     debias: bool = True,
     accumulator_dtype: Any | None = None

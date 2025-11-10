@@ -56,10 +56,10 @@ import jax.numpy as jnp
 
 
 def _safe_reduce(
-    a: chex.Array,
-    where: Optional[chex.Array] = None,
-    reduce_fn: Optional[Callable[..., chex.Array]] = None,
-) -> chex.Array:
+    a: jax.typing.ArrayLike,
+    where: Optional[jax.typing.ArrayLike] = None,
+    reduce_fn: Optional[Callable[..., jax.typing.ArrayLike]] = None,
+) -> jax.Array:
   """Reduces the values of given array while preventing NaN in the output.
 
   For :func:`jax.numpy.mean` reduction, this additionally prevents ``NaN`` in
@@ -107,13 +107,13 @@ def _safe_reduce(
 
 
 def ranking_softmax_loss(
-    logits: chex.Array,
-    labels: chex.Array,
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     *,
-    where: Optional[chex.Array] = None,
-    weights: Optional[chex.Array] = None,
-    reduce_fn: Optional[Callable[..., chex.Array]] = jnp.mean
-) -> chex.Array:
+    where: Optional[jax.typing.ArrayLike] = None,
+    weights: Optional[jax.typing.ArrayLike] = None,
+    reduce_fn: Optional[Callable[..., jax.typing.ArrayLike]] = jnp.mean
+) -> jax.Array:
   r"""Ranking softmax loss.
 
   Definition:

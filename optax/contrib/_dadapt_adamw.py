@@ -19,7 +19,6 @@ D-Adaptation" (https://arxiv.org/abs/2301.07733) by Aaron Defazio and Konstantin
 Mishchenko (ICML 2023 Outstanding Paper award).
 """
 from typing import NamedTuple, Optional
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -35,9 +34,9 @@ class DAdaptAdamWState(NamedTuple):
   # Exponential moving average of the sum of gradients.
   grad_sum: base.Updates  # shape=(), dtype=jnp.float32.
   # Distance to solution estimate.
-  estim_lr: chex.Array  # shape=(), dtype=jnp.float32.
-  numerator_weighted: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def dadapt_adamw(

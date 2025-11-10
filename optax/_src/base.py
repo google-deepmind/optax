@@ -15,8 +15,8 @@
 """Base interfaces and datatypes."""
 
 from collections.abc import Callable
-from typing import (Any, NamedTuple, Optional, Protocol, Sequence, Union,
-                    runtime_checkable)
+from typing import (Any, Iterable, Mapping, NamedTuple, Optional, Protocol,
+                    Sequence, Union, runtime_checkable)
 
 import chex
 import jax
@@ -29,9 +29,11 @@ NO_PARAMS_MSG = (
 
 PyTree = Any
 Shape = Sequence[int]
+ArrayTree = Union[
+    jax.typing.ArrayLike, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 
-OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
-Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
+OptState = ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
+Params = ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
 Schedule = Callable[[chex.Numeric], chex.Numeric]
@@ -295,7 +297,8 @@ def stateless(
 
 
 def stateless_with_tree_map(
-    f: Callable[[chex.Array, Optional[chex.Array]], chex.Array],
+    f: Callable[[jax.typing.ArrayLike, Optional[jax.typing.ArrayLike]],
+                jax.typing.ArrayLike],
 ) -> GradientTransformation:
   """Creates a stateless transformation from an update-like function for arrays.
 

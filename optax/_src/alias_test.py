@@ -442,11 +442,11 @@ class AliasTest(chex.TestCase):
 
 def _run_opt(
     opt: base.GradientTransformationExtraArgs,
-    fun: Callable[[chex.ArrayTree], jnp.ndarray],
-    init_params: chex.ArrayTree,
+    fun: Callable[[base.ArrayTree], jnp.ndarray],
+    init_params: base.ArrayTree,
     maxiter: int = 500,
     tol: float = 1e-3,
-) -> tuple[chex.ArrayTree, base.OptState]:
+) -> tuple[base.ArrayTree, base.OptState]:
   """Run LBFGS solver by iterative calls to grad transform and apply_updates."""
   value_and_grad_fun = jax.value_and_grad(fun)
 

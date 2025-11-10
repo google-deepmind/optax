@@ -43,12 +43,12 @@ from optax._src.deprecations import warn_deprecated_function  # pylint: disable=
 
 @warn_deprecated_function
 def score_function_jacobians(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
-) -> Sequence[chex.Array]:
+) -> Sequence[jax.Array]:
   r"""Score function gradient estimation.
 
   Approximates:
@@ -96,12 +96,12 @@ def score_function_jacobians(
 
 @warn_deprecated_function
 def pathwise_jacobians(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
-) -> Sequence[chex.Array]:
+) -> Sequence[jax.Array]:
   r"""Pathwise gradient estimation.
 
   Approximates:
@@ -149,13 +149,13 @@ def pathwise_jacobians(
 
 @warn_deprecated_function
 def measure_valued_jacobians(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     params: base.Params,
     dist_builder: Callable[..., Any],
     rng: chex.PRNGKey,
     num_samples: int,
     coupling: bool = True,
-) -> Sequence[chex.Array]:
+) -> Sequence[jax.Array]:
   r"""Measure valued gradient estimation.
 
   Approximates:
@@ -210,12 +210,12 @@ def measure_valued_jacobians(
 
 @warn_deprecated_function
 def measure_valued_estimation_mean(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     dist: Any,
     rng: chex.PRNGKey,
     num_samples: int,
     coupling: bool = True,
-) -> chex.Array:
+) -> jax.Array:
   """Measure valued grads of a Gaussian expectation of `function` wrt the mean.
 
   Args:
@@ -283,12 +283,12 @@ def measure_valued_estimation_mean(
 
 @warn_deprecated_function
 def measure_valued_estimation_std(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     dist: Any,
     rng: chex.PRNGKey,
     num_samples: int,
     coupling: bool = True,
-) -> chex.Array:
+) -> jax.Array:
   """Measure valued grads of a Gaussian expectation of `function` wrt the std.
 
   Args:

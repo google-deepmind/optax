@@ -31,7 +31,7 @@ from optax._src.deprecations import warn_deprecated_function  # pylint: disable=
 import optax.tree
 
 
-def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
+def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
@@ -59,12 +59,12 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
-) -> chex.ArrayTree:
+    tree: base.ArrayTree, dtype: Optional[chex.ArrayDType]
+) -> base.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
 
-def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
+def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -107,64 +107,65 @@ def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
 class MultiNormalDiagFromLogScale:
   """MultiNormalDiag which directly exposes its input parameters."""
 
-  def __init__(self, loc: chex.Array, log_scale: chex.Array):
-    self._log_scale = log_scale
+  def __init__(
+      self, loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike):
+    self._log_scale = jnp.asarray(log_scale)
     self._scale = jnp.exp(log_scale)
-    self._mean = loc
+    self._mean = jnp.asarray(loc)
     self._param_shape = jax.lax.broadcast_shapes(
         self._mean.shape, self._scale.shape
     )
 
-  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> chex.Array:
+  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> jax.Array:
     sample_shape = tuple(shape) + self._param_shape
     return (
         jax.random.normal(key, shape=sample_shape) * self._scale + self._mean
     )
 
-  def log_prob(self, x: chex.Array) -> chex.Array:
+  def log_prob(self, x: jax.typing.ArrayLike) -> jax.Array:
     log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
     # Sum over parameter axes.
     sum_axis = [-(i + 1) for i in range(len(self._param_shape))]
     return jnp.sum(log_prob, axis=sum_axis)
 
   @property
-  def log_scale(self) -> chex.Array:
+  def log_scale(self) -> jax.Array:
     return self._log_scale
 
   @property
-  def params(self) -> Sequence[chex.Array]:
+  def params(self) -> Sequence[jax.Array]:
     return [self._mean, self._log_scale]
 
 
 def multi_normal(
-    loc: chex.Array, log_scale: chex.Array
+    loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike
 ) -> MultiNormalDiagFromLogScale:
   return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def _scale_gradient(inputs: base.ArrayTree, scale: float) -> base.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
 def _scale_gradient_fwd(
-    inputs: chex.ArrayTree, scale: float
-) -> tuple[chex.ArrayTree, float]:
+    inputs: base.ArrayTree, scale: float
+) -> tuple[base.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(
-    scale: float, g: chex.ArrayTree
-) -> tuple[chex.ArrayTree, None]:
+    scale: float, g: base.ArrayTree
+) -> tuple[base.ArrayTree, None]:
   return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
-def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def scale_gradient(inputs: base.ArrayTree, scale: float) -> base.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:

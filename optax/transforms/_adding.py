@@ -18,7 +18,6 @@ from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union
 import warnings
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -30,7 +29,7 @@ import optax.tree
 
 class WeightDecaySchedule(NamedTuple):
   """Maintains count for weight decay scheduling."""
-  count: chex.Array  # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
 
 
 def add_decayed_weights(

@@ -92,7 +92,7 @@ def projection_hypercube(tree: Any, scale: Any = 1) -> Any:
 
 
 @jax.custom_jvp
-def _projection_unit_simplex(values: chex.Array) -> chex.Array:
+def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   """Projection onto the unit simplex."""
   s = 1
   n_features = values.shape[0]
@@ -106,8 +106,8 @@ def _projection_unit_simplex(values: chex.Array) -> chex.Array:
 
 @_projection_unit_simplex.defjvp
 def _projection_unit_simplex_jvp(
-    primals: list[chex.Array], tangents: list[chex.Array]
-) -> tuple[chex.Array, chex.Array]:
+    primals: list[jax.typing.ArrayLike], tangents: list[jax.typing.ArrayLike]
+) -> tuple[jax.Array, jax.Array]:
   (values,) = primals
   (values_dot,) = tangents
   primal_out = _projection_unit_simplex(values)
