@@ -54,7 +54,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import update
-from optax._src import utils
+import optax.tree
 
 # As a helper for SAM we need a gradient normalizing transformation.
 
@@ -74,7 +74,7 @@ def normalize() -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = utils.global_norm(updates)
+    g_norm = optax.tree.norm(updates)
     updates = jax.tree.map(lambda g: g / g_norm, updates)
     return updates, state
 

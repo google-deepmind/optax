@@ -17,13 +17,13 @@
 from collections.abc import Callable
 import functools
 from typing import Optional, Union
+import warnings
 
 import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
 from optax._src import base
-from optax._src import numerics
 import optax.tree
 
 
@@ -33,10 +33,20 @@ def _normalize_tree(x):
 
 
 def global_norm(updates: base.PyTree) -> chex.Array:
-  """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(
-      sum(jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates))
+  """Compute the global norm across a nested structure of tensors.
+
+  .. warning::
+    Deprecated in favor of :func:`optax.tree.norm`.
+  Args:
+    updates: A nested structure of tensors.
+  Returns:
+    The global L2 norm of the updates.
+  """
+  warnings.warn(
+      'optax.global_norm is deprecated in favor of optax.tree.norm',
+      DeprecationWarning
   )
+  return optax.tree.norm(updates)
 
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):

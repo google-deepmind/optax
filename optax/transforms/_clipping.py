@@ -24,7 +24,6 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
-from optax._src import linear_algebra
 from optax._src import numerics
 import optax.tree
 
@@ -90,7 +89,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = linear_algebra.global_norm(updates)
+    g_norm = optax.tree.norm(updates)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analyzed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
@@ -154,7 +153,7 @@ def per_example_global_norm_clip(
         " `grads` to have a batch dimension in the 0th axis."
     )
 
-  global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
+  global_grad_norms = jax.vmap(optax.tree.norm)(grads)
   multipliers = jnp.nan_to_num(
       jnp.minimum(l2_norm_clip / global_grad_norms, 1.0), nan=1.0
   )

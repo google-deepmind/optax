@@ -53,7 +53,7 @@ class LinearAlgebraTest(chex.TestCase):
     }
     np.testing.assert_array_equal(
         jnp.sqrt(jnp.sum(flat_updates**2)),
-        linear_algebra.global_norm(nested_updates),
+        optax.tree.norm(nested_updates),
     )
 
   def test_power_iteration_cond_fun(self, dim=6):

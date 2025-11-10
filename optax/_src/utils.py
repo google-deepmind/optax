@@ -26,7 +26,6 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 from optax._src import base
-from optax._src import linear_algebra
 from optax._src import numerics
 import optax.tree
 
@@ -345,4 +344,3 @@ def value_and_grad_from_state(
 # TODO(b/183800387): remove legacy aliases.
 safe_norm = numerics.safe_norm
 safe_int32_increment = numerics.safe_int32_increment
-global_norm = linear_algebra.global_norm
