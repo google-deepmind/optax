@@ -17,7 +17,6 @@
 import functools
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 from jax import nn
 import jax.numpy as jnp
@@ -1504,15 +1503,15 @@ class ScaleByLBFGSState(NamedTuple):
   count: jax.typing.ArrayLike
   params: base.Params
   updates: base.Params
-  diff_params_memory: chex.ArrayTree
-  diff_updates_memory: chex.ArrayTree
+  diff_params_memory: base.ArrayTree
+  diff_updates_memory: base.ArrayTree
   weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
-    diff_params_memory: chex.ArrayTree,
-    diff_updates_memory: chex.ArrayTree,
+    diff_params_memory: base.ArrayTree,
+    diff_updates_memory: base.ArrayTree,
     weights_memory: jax.typing.ArrayLike,
     identity_scale: jax.typing.ArrayLike,  # float
     memory_idx: jax.typing.ArrayLike,  # int
@@ -1822,8 +1821,8 @@ def normalize_by_update_norm(
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
+    tree: base.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
+) -> base.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
 

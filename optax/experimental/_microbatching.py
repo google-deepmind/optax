@@ -20,9 +20,9 @@ import enum
 import functools
 from typing import Any, Callable, Sequence, TypeAlias
 
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import base
 
 
 AccumulatorTree: TypeAlias = Any
@@ -53,10 +53,10 @@ class Accumulator:
       per-microbatch values into a single value. Used by `gvmap`.
   """
 
-  init: Callable[[chex.ArrayTree], chex.ArrayTree]
-  update: Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
-  finalize: Callable[[chex.ArrayTree], chex.ArrayTree]
-  aggregate: Callable[[chex.ArrayTree], chex.ArrayTree]
+  init: Callable[[base.ArrayTree], base.ArrayTree]
+  update: Callable[[base.ArrayTree, base.ArrayTree, int], base.ArrayTree]
+  finalize: Callable[[base.ArrayTree], base.ArrayTree]
+  aggregate: Callable[[base.ArrayTree], base.ArrayTree]
 
 
 def _with_floating_check(fn: Callable[..., Any]) -> Callable[..., Any]:

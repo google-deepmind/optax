@@ -135,7 +135,7 @@ def triplet_margin_loss(
   """Returns the triplet loss for a batch of embeddings.
 
   Examples:
-    >>> import jax.numpy as jnp, optax, chex
+    >>> import jax.numpy as jnp, optax
     >>> jnp.set_printoptions(precision=4)
     >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
     >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
