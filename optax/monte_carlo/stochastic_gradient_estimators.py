@@ -38,9 +38,10 @@ import jax.numpy as jnp
 import numpy as np
 from optax._src import base
 from optax._src import utils
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def score_function_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -93,7 +94,7 @@ def score_function_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def pathwise_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -146,7 +147,7 @@ def pathwise_jacobians(
   return jax.jacfwd(surrogate)(params)
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def measure_valued_jacobians(
     function: Callable[[chex.Array], float],
     params: base.Params,
@@ -207,7 +208,7 @@ def measure_valued_jacobians(
   ]
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def measure_valued_estimation_mean(
     function: Callable[[chex.Array], float],
     dist: Any,
@@ -280,7 +281,7 @@ def measure_valued_estimation_mean(
   return grads
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def measure_valued_estimation_std(
     function: Callable[[chex.Array], float],
     dist: Any,

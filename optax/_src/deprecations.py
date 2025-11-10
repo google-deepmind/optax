@@ -75,7 +75,7 @@ def warn_deprecated_function(
     The wrapped function.
 
   Example usage:
-  >>> @functools.partial(chex.warn_deprecated_function, replacement='g')
+  >>> @functools.partial(warn_deprecated_function, replacement='g')
   ... def f(a, b):
   ...   return a + b
   """

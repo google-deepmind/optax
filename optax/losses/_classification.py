@@ -23,6 +23,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.special
 from optax import projections
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 
 
 def canonicalize_axis(axis, ndim):
@@ -83,7 +84,7 @@ def sigmoid_binary_cross_entropy(
 
 
 @functools.partial(
-    chex.warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
+    warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
 )
 def binary_logistic_loss(logits, labels):
   return sigmoid_binary_cross_entropy(logits, labels)
@@ -147,7 +148,7 @@ def sparsemax_loss(
   return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
 
 
-@functools.partial(chex.warn_deprecated_function, replacement='sparsemax_loss')
+@functools.partial(warn_deprecated_function, replacement='sparsemax_loss')
 def binary_sparsemax_loss(logits, labels):
   return sparsemax_loss(logits, labels)
 
@@ -406,7 +407,7 @@ def softmax_cross_entropy_with_integer_labels(
 
 
 @functools.partial(
-    chex.warn_deprecated_function,
+    warn_deprecated_function,
     replacement='softmax_cross_entropy_with_integer_labels',
 )
 def multiclass_logistic_loss(logits, labels):

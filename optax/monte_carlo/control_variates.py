@@ -60,6 +60,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 
 
 CvState = Any
@@ -69,7 +70,7 @@ UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
 ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def control_delta_method(
     function: Callable[[chex.Array], float],
 ) -> ControlVariate:
@@ -143,7 +144,7 @@ def control_delta_method(
   return delta, expected_value_delta, update_state
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def moving_avg_baseline(
     function: Callable[[chex.Array], float],
     decay: float = 0.99,
@@ -217,7 +218,7 @@ def _map(cv, params, samples, state):
   return jax.vmap(lambda x: cv(params, x, state))(samples)
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def control_variates_jacobians(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[
@@ -366,7 +367,7 @@ def control_variates_jacobians(
   return jacobians, control_variate_state
 
 
-@chex.warn_deprecated_function
+@warn_deprecated_function
 def estimate_control_variate_coefficients(
     function: Callable[[chex.Array], float],
     control_variate_from_function: Callable[

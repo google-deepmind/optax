@@ -24,6 +24,7 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
@@ -1813,7 +1814,7 @@ def normalize_by_update_norm(
 
 
 @functools.partial(
-    chex.warn_deprecated_function, replacement='optax.tree.cast'
+    warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
     tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
