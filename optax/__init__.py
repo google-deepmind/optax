@@ -89,6 +89,7 @@ from optax._src.linesearch import scale_by_backtracking_linesearch
 from optax._src.linesearch import scale_by_zoom_linesearch
 from optax._src.linesearch import ScaleByBacktrackingLinesearchState
 from optax._src.linesearch import ScaleByZoomLinesearchState
+from optax._src.linesearch import value_and_grad_from_state
 from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
@@ -146,7 +147,6 @@ from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
-from optax._src.utils import value_and_grad_from_state
 
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
 # Deprecated modules
