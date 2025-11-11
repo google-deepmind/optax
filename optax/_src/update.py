@@ -80,7 +80,7 @@ def incremental_update(
 def periodic_update(
     new_tensors: base.Params,
     old_tensors: base.Params,
-    steps: chex.Array,
+    steps: jax.typing.ArrayLike,
     update_period: int,
 ) -> base.Params:
   """Periodically update all parameters with new values.

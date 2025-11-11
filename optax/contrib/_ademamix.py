@@ -45,8 +45,8 @@ class ScaleByAdemamixState(NamedTuple):
     nu: estimate of the second moment
   """
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  count_m2: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count_m2: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   m1: base.Updates
   m2: base.Updates
   nu: base.Updates
@@ -279,7 +279,7 @@ class ScaleBySimplifiedAdEMAMixState(NamedTuple):
     n: second moment estimate
   """
 
-  t: chex.Array
+  t: jax.typing.ArrayLike
   m: base.Updates
   n: base.Updates
 

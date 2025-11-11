@@ -20,11 +20,12 @@ from typing import Optional, TypeVar
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import base
 
 T = TypeVar('T')
 
 
-def tree_cast_like(tree: T, other_tree: chex.ArrayTree) -> T:
+def tree_cast_like(tree: T, other_tree: base.ArrayTree) -> T:
   """Cast tree to dtypes of other_tree.
 
   Args:
@@ -49,8 +50,8 @@ def tree_cast_like(tree: T, other_tree: chex.ArrayTree) -> T:
 
 
 def tree_cast(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
-) -> chex.ArrayTree:
+    tree: base.ArrayTree, dtype: Optional[chex.ArrayDType]
+) -> base.ArrayTree:
   """Cast tree to given dtype, skip if None.
 
   Args:
@@ -75,7 +76,7 @@ def tree_cast(
 
 
 def tree_dtype(
-    tree: chex.ArrayTree, mixed_dtype_handler: Optional[str] = None
+    tree: base.ArrayTree, mixed_dtype_handler: Optional[str] = None
 ) -> chex.ArrayDType:
   """Fetch dtype of tree.
 
@@ -166,7 +167,7 @@ def tree_dtype(
 
 
 def _tree_assert_all_dtypes_equal(
-    tree: chex.ArrayTree, dtype: chex.ArrayDType
+    tree: base.ArrayTree, dtype: chex.ArrayDType
 ) -> None:
   """Checks that all leaves of the tree have the given dtype.
 

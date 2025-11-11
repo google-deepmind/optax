@@ -22,7 +22,6 @@ Michael Eickenberg, Aaron Defazio and Robert M. Gower.
 
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -35,10 +34,10 @@ class MomoState(NamedTuple):
   """State of the `GradientTransformation` returned by `momo`."""
 
   exp_avg: base.Updates
-  barf: chex.Array  # shape=(), dtype=jnp.float32.
-  gamma: chex.Array  # shape=(), dtype=jnp.float32.
-  lb: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def momo(
@@ -188,10 +187,10 @@ class MomoAdamState(NamedTuple):
 
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
-  barf: chex.Array  # shape=(), dtype=jnp.float32.
-  gamma: chex.Array  # shape=(), dtype=jnp.float32.
-  lb: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def momo_adam(

@@ -64,15 +64,16 @@ from optax._src.deprecations import warn_deprecated_function  # pylint: disable=
 
 
 CvState = Any
-ComputeCv = Callable[[base.Params, chex.Array, CvState], chex.Array]
+ComputeCv = Callable[[base.Params, jax.typing.ArrayLike, CvState],
+                     jax.typing.ArrayLike]
 CvExpectedValue = Callable[[base.Params, CvState], CvState]
-UpdateCvState = Callable[[base.Params, chex.Array, CvState], CvState]
+UpdateCvState = Callable[[base.Params, jax.typing.ArrayLike, CvState], CvState]
 ControlVariate = tuple[ComputeCv, CvExpectedValue, UpdateCvState]
 
 
 @warn_deprecated_function
 def control_delta_method(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
 ) -> ControlVariate:
   """The control delta covariant method.
 
@@ -98,8 +99,8 @@ def control_delta_method(
   """
 
   def delta(
-      params: base.Params, sample: chex.Array, state: CvState = None
-  ) -> chex.Array:
+      params: base.Params, sample: jax.typing.ArrayLike, state: CvState = None
+  ) -> jax.Array:
     """Second order expansion of `function` at the mean of the input dist."""
     del state
     mean_dist = params[0]
@@ -135,7 +136,7 @@ def control_delta_method(
     return expected_control_variate
 
   def update_state(
-      params: base.Params, samples: chex.Array, state: CvState = None
+      params: base.Params, samples: jax.typing.ArrayLike, state: CvState = None
   ) -> CvState:
     """No state kept, so no operation is done."""
     del params, samples
@@ -146,7 +147,7 @@ def control_delta_method(
 
 @warn_deprecated_function
 def moving_avg_baseline(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     decay: float = 0.99,
     zero_debias: bool = True,
     use_decay_early_training_heuristic=True,
@@ -176,7 +177,7 @@ def moving_avg_baseline(
   """
 
   def moving_avg(
-      params: base.Params, samples: chex.Array, state: CvState = None
+      params: base.Params, samples: jax.typing.ArrayLike, state: CvState = None
   ) -> CvState:
     """Return the moving average."""
     del params, samples
@@ -184,13 +185,13 @@ def moving_avg_baseline(
 
   def expected_value_moving_avg(
       params: base.Params, state: CvState
-  ) -> chex.Array:
+  ) -> jax.typing.ArrayLike:
     """Return the moving average."""
     del params
     return state[0]
 
   def update_state(
-      params: base.Params, samples: chex.Array, state: CvState = None
+      params: base.Params, samples: jax.typing.ArrayLike, state: CvState = None
   ) -> CvState:
     """Update the moving average."""
     del params
@@ -220,9 +221,9 @@ def _map(cv, params, samples, state):
 
 @warn_deprecated_function
 def control_variates_jacobians(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     control_variate_from_function: Callable[
-        [Callable[[chex.Array], float]], ControlVariate
+        [Callable[[jax.typing.ArrayLike], float]], ControlVariate
     ],
     grad_estimator: Callable[..., jnp.ndarray],
     params: base.Params,
@@ -232,7 +233,7 @@ def control_variates_jacobians(
     control_variate_state: CvState = None,
     estimate_cv_coeffs: bool = False,
     estimate_cv_coeffs_num_samples: int = 20,
-) -> tuple[Sequence[chex.Array], CvState]:
+) -> tuple[Sequence[jax.typing.ArrayLike], CvState]:
   r"""Obtain jacobians using control variates.
 
   We will compute each term individually. The first term will use stochastic
@@ -369,9 +370,9 @@ def control_variates_jacobians(
 
 @warn_deprecated_function
 def estimate_control_variate_coefficients(
-    function: Callable[[chex.Array], float],
+    function: Callable[[jax.typing.ArrayLike], float],
     control_variate_from_function: Callable[
-        [Callable[[chex.Array], float]], ControlVariate
+        [Callable[[jax.typing.ArrayLike], float]], ControlVariate
     ],
     grad_estimator: Callable[..., jnp.ndarray],
     params: base.Params,

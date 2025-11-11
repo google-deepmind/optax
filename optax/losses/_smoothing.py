@@ -15,11 +15,12 @@
 """Smoothing functions."""
 
 import chex
+from jax import typing
 import jax.numpy as jnp
 
 
 def smooth_labels(
-    labels: chex.Array,
+    labels: typing.ArrayLike,
     alpha: float,
 ) -> jnp.ndarray:
   """Apply label smoothing.

@@ -41,8 +41,8 @@ class FakeShardSpec:
 class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
-  count: chex.Array
-  params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
+  count: jax.typing.ArrayLike
+  params: TypedDict('Params', {'mu': base.ArrayTree, 'nu': base.ArrayTree})
 
 
 def _scale_by_adam_with_dicts():
@@ -136,7 +136,7 @@ class StateUtilsTest(absltest.TestCase):
     @chex.dataclass
     class Foo:
       count: int
-      v: chex.ArrayTree
+      v: base.ArrayTree
 
     def init(params):
       return Foo(count=0, v=params)
