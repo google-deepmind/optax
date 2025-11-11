@@ -215,7 +215,7 @@ def _setup_mixed_tensor_target(dtype):
   return initial_params, final_params, obj_fn
 
 
-class ContribTest(chex.TestCase):
+class ContribTest(parameterized.TestCase):
 
   @parameterized.product(_ALL_OPTIMIZERS_UNDER_TEST, wrap=[True, False])
   def test_optimizers_accept_extra_args(
@@ -317,7 +317,6 @@ class ContribTest(chex.TestCase):
         params = contrib.schedule_free_eval_params(state, params)
       chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
-  @chex.all_variants
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs, wrapper_name=None, wrapper_kwargs=None
@@ -368,13 +367,13 @@ class ContribTest(chex.TestCase):
       update_fn = opt.update
       inject_update_fn = opt_inject.update
 
-    state = self.variant(opt.init)(params)
-    updates, new_state = self.variant(update_fn)(
+    state = jax.jit(opt.init)(params)
+    updates, new_state = jax.jit(update_fn)(
         grads, state, params, **update_kwargs
     )
 
-    state_inject = self.variant(opt_inject.init)(params)
-    updates_inject, new_state_inject = self.variant(inject_update_fn)(
+    state_inject = jax.jit(opt_inject.init)(params)
+    updates_inject, new_state_inject = jax.jit(inject_update_fn)(
         grads, state_inject, params, **update_kwargs
     )
 
@@ -385,12 +384,6 @@ class ContribTest(chex.TestCase):
           new_state_inject.inner_state, new_state, rtol=1e-5, atol=1e-5
       )
 
-  # Not testing with `without_device=True` because without_device set the
-  # variables to the host which appears to convert then the dtype, so we
-  # lose control of the dtype and the test fails.
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(
       _MAIN_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
   )
@@ -416,7 +409,7 @@ class ContribTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name in ['momo', 'momo_adam'] or wrapper_name == 'reduce_on_plateau':
       update_kwargs = {'value': value}
     else:
@@ -425,12 +418,9 @@ class ContribTest(chex.TestCase):
       update_fn = functools.partial(opt.update, obj_fn=fun)
     else:
       update_fn = opt.update
-    updates, _ = self.variant(update_fn)(grads, state, params, **update_kwargs)
+    updates, _ = jax.jit(update_fn)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, params.dtype)
 
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(
       _MAIN_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
   )
@@ -456,12 +446,12 @@ class ContribTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name in ['momo', 'momo_adam'] or wrapper_name == 'reduce_on_plateau':
       update_kwargs = {'value': value}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    updates, _ = jax.jit(opt.update)(grads, state, params, **update_kwargs)
     chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
   @parameterized.product(

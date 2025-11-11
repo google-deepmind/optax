@@ -10,3 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - CHANGELOG.md file added to track notable changes.
+- Test classes now inherit from `absl.TestCase` or `parameterized.TestCase`
+instead of `chex.TestCase` as part of our effort to remove the `chex`
+dependency. This means that Chex test variants (with/without `jit`, with/without
+`device_put`, with `pmap`) are no longer tested. We decided it was sufficient to
+use `jit` throughout the tests. There is already test coverage on both CPU and
+accelerators, and `pmap` is deprecated.

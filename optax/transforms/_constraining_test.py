@@ -16,6 +16,7 @@
 
 from absl.testing import absltest
 import chex
+import jax
 import jax.numpy as jnp
 from optax._src import combine
 from optax._src import transform
@@ -28,7 +29,7 @@ STEPS = 50
 LR = 1e-2
 
 
-class ConstraintsTest(chex.TestCase):
+class ConstraintsTest(absltest.TestCase):
 
   def test_keep_params_nonnegative(self):
     grads = (
@@ -81,13 +82,12 @@ class ConstraintsTest(chex.TestCase):
         ),
     )
 
-  @chex.all_variants
   def test_zero_nans(self):
     params = (jnp.zeros([3]), jnp.zeros([3]), jnp.zeros([3]))
 
     opt = _constraining.zero_nans()
-    opt_state = self.variant(opt.init)(params)
-    update_fn = self.variant(opt.update)
+    opt_state = jax.jit(opt.init)(params)
+    update_fn = jax.jit(opt.update)
 
     chex.assert_trees_all_close(
         opt_state, _constraining.ZeroNansState((jnp.array(False),) * 3)

@@ -37,22 +37,20 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
     self.mask = np.array([True, False])
     self.per_logit_mask = np.array([[1, 0, 0], [0, 0, 0]]).astype(bool)
 
-  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_classification.softmax_cross_entropy)(
+        jax.jit(_classification.softmax_cross_entropy)(
             self.ys[0], self.ts[0]
         ),
         self.exp[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_classification.softmax_cross_entropy)(self.ys, self.ts),
+        jax.jit(_classification.softmax_cross_entropy)(self.ys, self.ts),
         self.exp,
         atol=1e-4,
     )
@@ -137,22 +135,20 @@ class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
         dtype=np.float32,
     )
 
-  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_classification.safe_softmax_cross_entropy)(
+        jax.jit(_classification.safe_softmax_cross_entropy)(
             self.ys[0], self.ts[0]
         ),
         self.exp[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_classification.safe_softmax_cross_entropy)(
+        jax.jit(_classification.safe_softmax_cross_entropy)(
             self.ys, self.ts
         ),
         self.exp,
@@ -188,28 +184,26 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     self.mask = np.array([True, False])
     self.per_logit_mask = np.array([[1, 0, 0], [0, 0, 0]]).astype(bool)
 
-  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_scalar(self):
     """Tests for a scalar."""
     exp = _classification.softmax_cross_entropy(
         self.ys[0], jax.nn.one_hot(self.ts[0], 3)
     )
     np.testing.assert_allclose(
-        self.variant(_classification.softmax_cross_entropy_with_integer_labels)(
+        jax.jit(_classification.softmax_cross_entropy_with_integer_labels)(
             self.ys[0], self.ts[0]
         ),
         exp,
         rtol=1e-6,
     )
 
-  @chex.all_variants
   def test_consistent_with_softmax_cross_entropy_batched(self):
     """Tests for a full batch."""
     exp = _classification.softmax_cross_entropy(
         self.ys, jax.nn.one_hot(self.ts, 3)
     )
     np.testing.assert_allclose(
-        self.variant(_classification.softmax_cross_entropy_with_integer_labels)(
+        jax.jit(_classification.softmax_cross_entropy_with_integer_labels)(
             self.ys, self.ts
         ),
         exp,
@@ -368,7 +362,6 @@ class PolyLossTest(parameterized.TestCase):
     # all expected values are computed using tf version of `poly1_cross_entropy`
     # see page 10 here https://arxiv.org/pdf/2204.12511.pdf for more
 
-  @chex.all_variants
   @parameterized.parameters(
       {'eps': 2, 'expected': 4.5317},
       {'eps': 1, 'expected': 3.7153},
@@ -381,14 +374,13 @@ class PolyLossTest(parameterized.TestCase):
   )
   def test_scalar(self, eps, expected):
     np.testing.assert_allclose(
-        self.variant(_classification.poly_loss_cross_entropy)(
+        jax.jit(_classification.poly_loss_cross_entropy)(
             self.logits, self.labels, epsilon=eps
         ),
         expected,
         atol=1e-4,
     )
 
-  @chex.all_variants
   @parameterized.parameters(
       {'eps': 2, 'expected': np.array([0.4823, 1.2567])},
       {'eps': 1, 'expected': np.array([0.3261, 1.0407])},
@@ -400,14 +392,13 @@ class PolyLossTest(parameterized.TestCase):
   )
   def test_batched(self, eps, expected):
     np.testing.assert_allclose(
-        self.variant(_classification.poly_loss_cross_entropy)(
+        jax.jit(_classification.poly_loss_cross_entropy)(
             self.batched_logits, self.batched_labels, epsilon=eps
         ),
         expected,
         atol=1e-4,
     )
 
-  @chex.all_variants
   @parameterized.parameters(
       {
           'logits': np.array(
@@ -434,10 +425,10 @@ class PolyLossTest(parameterized.TestCase):
   )
   def test_equals_to_cross_entropy_when_eps0(self, logits, labels):
     np.testing.assert_allclose(
-        self.variant(_classification.poly_loss_cross_entropy)(
+        jax.jit(_classification.poly_loss_cross_entropy)(
             logits, labels, epsilon=0.0
         ),
-        self.variant(_classification.softmax_cross_entropy)(logits, labels),
+        jax.jit(_classification.softmax_cross_entropy)(logits, labels),
         atol=1e-4,
     )
 
@@ -596,20 +587,18 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
     # Computed convex kullback-leibler divergence of P from Q.
     self.exp = np.array([0.88757247, 0.859308])
 
-  @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(_classification.convex_kl_divergence)(
+        jax.jit(_classification.convex_kl_divergence)(
             self.log_ps[0], self.qs[0]
         ),
         self.exp[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(_classification.convex_kl_divergence)(
+        jax.jit(_classification.convex_kl_divergence)(
             self.log_ps, self.qs
         ),
         self.exp,
@@ -706,18 +695,16 @@ class KLDivergenceTest(parameterized.TestCase):
     # Computed kullback-leibler divergence of P from Q.
     self.exp = np.array([0.8875577, 0.7592807])
 
-  @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(_classification.kl_divergence)(self.log_ps[0], self.qs[0]),
+        jax.jit(_classification.kl_divergence)(self.log_ps[0], self.qs[0]),
         self.exp[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(_classification.kl_divergence)(self.log_ps, self.qs),
+        jax.jit(_classification.kl_divergence)(self.log_ps, self.qs),
         self.exp,
         atol=1e-4,
     )
@@ -762,20 +749,18 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
     # Computed kullback-leibler divergence of P from Q.
     self.exp = np.array([0.8875625, 0.7187435584901326])
 
-  @chex.all_variants
   def test_scalar(self):
     np.testing.assert_allclose(
-        self.variant(_classification.kl_divergence_with_log_targets)(
+        jax.jit(_classification.kl_divergence_with_log_targets)(
             self.log_ps[0], self.qs[0]
         ),
         self.exp[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(_classification.kl_divergence_with_log_targets)(
+        jax.jit(_classification.kl_divergence_with_log_targets)(
             self.log_ps, self.qs
         ),
         self.exp,
@@ -836,7 +821,6 @@ class CTCTest(parameterized.TestCase):
     np.random.seed(1234)
     self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
 
-  @chex.all_variants
   def test_with_one_to_one_alignment(self):
     # when inputsteps and outputsteps are equal, no blank will be allowed.
     batchsize = 8
@@ -855,7 +839,7 @@ class CTCTest(parameterized.TestCase):
         while labels[n, t] == labels[n, t - 1]:
           labels[n, t] = np.random.uniform(1, nclasses)
 
-    results = self.variant(_classification.ctc_loss_with_forward_probs)(
+    results = jax.jit(_classification.ctc_loss_with_forward_probs)(
         logits, np.zeros(logits.shape[:2]), labels, np.zeros(labels.shape)
     )
     (per_seq_loss, logalpha_blank, logalpha_emit) = results
@@ -887,7 +871,6 @@ class CTCTest(parameterized.TestCase):
           logalpha_blank[-1, b, steps], -per_seq_loss[b], rtol=self._rtol
       )
 
-  @chex.all_variants
   def test_with_one_to_one_alignment_and_paddings(self):
     batch_size = 5
     nclasses = 13
@@ -905,11 +888,11 @@ class CTCTest(parameterized.TestCase):
     lengths = np.random.randint(3, 6, size=(batch_size,))
     paddings = _lengths_to_paddings(lengths, steps)
 
-    actual_loss = self.variant(_classification.ctc_loss)(
+    actual_loss = jax.jit(_classification.ctc_loss)(
         logits, paddings, labels, paddings
     )
 
-    value_and_grad = self.variant(jax.value_and_grad(_average_ctc_loss))
+    value_and_grad = jax.jit(jax.value_and_grad(_average_ctc_loss))
     unused_avg_loss, actual_gradients = value_and_grad(
         logits, paddings, labels, paddings
     )
@@ -929,7 +912,6 @@ class CTCTest(parameterized.TestCase):
           expected_gradients, actual_gradients[n], rtol=self._rtol
       )
 
-  @chex.all_variants
   def test_repeat_with_one_to_one_alignment(self):
     # test if it can correctly handle the same-label repetition.
     nclasses = 5
@@ -959,7 +941,7 @@ class CTCTest(parameterized.TestCase):
     logits = np.random.randn(batch_size, logit_steps, nclasses)
     logit_paddings = _lengths_to_paddings(logit_lengths, logit_steps)
 
-    per_seq_loss = self.variant(_classification.ctc_loss)(
+    per_seq_loss = jax.jit(_classification.ctc_loss)(
         logits, logit_paddings, labels, label_paddings
     )
 
@@ -990,25 +972,23 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     self.small_ys = logit(jnp.array([0.1, 0.02, 0.09, 0.15]))
     self.ones_ts = jnp.array([1.0, 1.0, 1.0, 1.0])
 
-  @chex.all_variants
   def test_focal_equals_ce(self):
     """If gamma == 0 and alpha == 0 we expect a CE loss."""
     np.testing.assert_allclose(
-        self.variant(_classification.sigmoid_focal_loss)(
+        jax.jit(_classification.sigmoid_focal_loss)(
             self.ys, self.ts, gamma=0.0
         ),
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts),
         rtol=self._rtol,
     )
 
-  @chex.all_variants
   def test_focal_gamma_zero_matches_binary_cross_entropy(self):
     """sigmoid_focal_loss == sigmoid_binary_cross_entropy for gamma=0."""
     # Test with various inputs to ensure consistency
     test_logits = jnp.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 0.5]])
     test_labels = jnp.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]])
 
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         test_logits, test_labels, gamma=0.0
     )
     binary_ce_loss = _classification.sigmoid_binary_cross_entropy(
@@ -1022,11 +1002,10 @@ class SigmoidFocalLossTest(parameterized.TestCase):
         err_msg='Focal loss with gamma=0 should match binary cross-entropy'
     )
 
-  @chex.all_variants
   def test_scale(self):
     """This test should catch problems with p_t."""
     gamma = 2
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         self.ys, self.ts, gamma=gamma
     )
     p = jax.nn.sigmoid(self.ys)
@@ -1036,10 +1015,9 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     focal_scale = focal_loss / ce_loss
     np.testing.assert_allclose(focal_scale, scale, rtol=self._rtol)
 
-  @chex.all_variants
   def test_large_logit_fl_less_than_ce(self):
     """If gamma == 2 and alpha == 0.5, the impact of large logits is reduced."""
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         self.large_ys, self.ones_ts, gamma=2, alpha=0.5
     )
     ce_loss = _classification.sigmoid_binary_cross_entropy(
@@ -1049,10 +1027,9 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     expected_ratio = 2.0 / ((1.0 - jax.nn.sigmoid(self.large_ys)) ** 2)
     np.testing.assert_allclose(loss_ratio, expected_ratio, rtol=self._rtol)
 
-  @chex.all_variants
   def test_small_logit_fl_less_than_ce(self):
     """If gamma == 2, small logits retain their weight."""
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         self.small_ys, self.ones_ts, gamma=2
     )
     ce_loss = _classification.sigmoid_binary_cross_entropy(
@@ -1062,11 +1039,10 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     expected_ratio = 1.0 / ((1.0 - jax.nn.sigmoid(self.small_ys)) ** 2)
     np.testing.assert_allclose(loss_ratio, expected_ratio, rtol=self._rtol)
 
-  @chex.all_variants
   def test_alpha_one(self):
     """Test if re-weighting with alpha=1 is ok."""
     np.testing.assert_allclose(
-        self.variant(_classification.sigmoid_focal_loss)(
+        jax.jit(_classification.sigmoid_focal_loss)(
             self.ys, self.ts, gamma=0.0, alpha=1
         ),
         _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
@@ -1074,27 +1050,24 @@ class SigmoidFocalLossTest(parameterized.TestCase):
         rtol=self._rtol,
     )
 
-  @chex.all_variants
   def test_ignore_positive(self):
     """If alpha == 0 positive examples do not matter."""
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         self.ys, self.ts, alpha=0
     )
     ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
     assert all(ce_loss[self.ts == 1] > 0)
     assert all(focal_loss[self.ts == 1] == 0)
 
-  @chex.all_variants
   def test_ignore_negative(self):
     """If alpha == 1 negative examples do not matter."""
-    focal_loss = self.variant(_classification.sigmoid_focal_loss)(
+    focal_loss = jax.jit(_classification.sigmoid_focal_loss)(
         self.ys, self.ts, alpha=1
     )
     ce_loss = _classification.sigmoid_binary_cross_entropy(self.ys, self.ts)
     assert all(ce_loss[self.ts == 0] > 0)
     assert all(focal_loss[self.ts == 0] == 0)
 
-  @chex.all_variants
   def test_extreme_logits_finite_gradients(self):
     """Test that extreme logits with gamma < 1 produce finite gradients."""
     # Test cases with very extreme logits and non-integer labels
@@ -1105,7 +1078,7 @@ class SigmoidFocalLossTest(parameterized.TestCase):
     # Test with gamma < 1 which is most problematic for numerical stability
     gamma = 0.5
     def loss_fn(logits):
-      return jnp.sum(self.variant(_classification.sigmoid_focal_loss)(
+      return jnp.sum(jax.jit(_classification.sigmoid_focal_loss)(
           logits, labels, gamma=gamma
       ))
 

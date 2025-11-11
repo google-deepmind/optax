@@ -83,7 +83,7 @@ def get_problem(name: str):
   return problems[name]
 
 
-class BacktrackingLinesearchTest(chex.TestCase):
+class BacktrackingLinesearchTest(parameterized.TestCase):
 
   def _check_decrease_conditions(
       self, fun, init_params, descent_dir, final_params, final_state, opt_args
@@ -105,9 +105,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     )
     self.assertTrue(sufficient_decrease)
 
-  @chex.all_variants()
-  def test_linesearch_with_jax_variants(self):
-    """Test backtracking linesearch with jax variants (jit etc...)."""
+  def test_linesearch_update(self):
     fun = lambda x: jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
@@ -121,7 +119,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
-    update_fn = self.variant(update_fn)
+    update_fn = jax.jit(update_fn)
     _, state = update_fn(
         updates, state, params, value=fun(params), grad=jax.grad(fun)(params)
     )
@@ -206,13 +204,6 @@ class BacktrackingLinesearchTest(chex.TestCase):
       params = update.apply_updates(params, updates)
     chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
 
-  @chex.variants(
-      with_jit=True,
-      without_jit=True,
-      with_pmap=False,
-      with_device=True,
-      without_device=True,
-  )
   def test_recycling_value_and_grad(self):
     # A vmap or a pmap makes the cond in value_and_state_from_grad
     # become a select and in that case this code cannot be optimal.
@@ -256,7 +247,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
       params = update.apply_updates(params, updates)
       return params, state
 
-    step = self.variant(step_)
+    step = jax.jit(step_)
     params = init_params
     state = init_state
     for iter_num in range(max_iter):
@@ -355,7 +346,7 @@ def _run_linesearch(
   return final_params, final_state
 
 
-class ZoomLinesearchTest(chex.TestCase):
+class ZoomLinesearchTest(parameterized.TestCase):
 
   def _check_value_and_grad_in_zoom_state(
       self,
@@ -426,9 +417,7 @@ class ZoomLinesearchTest(chex.TestCase):
           f'Small curvature error: {small_curvature_error}',
       )
 
-  @chex.all_variants()
-  def test_linesearch_with_jax_variants(self):
-    """Test zoom linesearch with jax variants (jit etc...)."""
+  def test_linesearch_update(self):
     fun = lambda x: jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
@@ -442,7 +431,7 @@ class ZoomLinesearchTest(chex.TestCase):
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
-    update_fn = self.variant(update_fn)
+    update_fn = jax.jit(update_fn)
     _, state = update_fn(
         updates, state, params, value=fun(params), grad=jax.grad(fun)(params)
     )

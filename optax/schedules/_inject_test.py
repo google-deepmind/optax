@@ -51,10 +51,9 @@ class ExampleStatefulSchedule(base.StatefulSchedule):
     return state.total
 
 
-class InjectHyperparamsTest(chex.TestCase):
+class InjectHyperparamsTest(parameterized.TestCase):
   """Tests for the inject_hyperparams wrapper."""
 
-  @chex.all_variants
   def test_updates(self):
     optim = _inject.inject_hyperparams(transform.scale)(  # stateless
         step_size=_schedule.piecewise_constant_schedule(
@@ -63,12 +62,12 @@ class InjectHyperparamsTest(chex.TestCase):
     )
 
     params = [jnp.zeros([], dtype=jnp.float32)]
-    state = self.variant(optim.init)(params)
+    state = jax.jit(optim.init)(params)
 
     # A no-op change, to verify that tree map works.
     state = optax.tree.map_params(optim, lambda v: v, state)
 
-    update_fn = self.variant(optim.update)
+    update_fn = jax.jit(optim.update)
     expected_step_size = [3.0] * 2 + [15.0] * 6 + [30.0] * 5 + [45.0] * 3
 
     grads = [jnp.ones([], dtype=jnp.float32)]
@@ -76,7 +75,6 @@ class InjectHyperparamsTest(chex.TestCase):
       updates, state = update_fn(grads, state, params=params)
       np.testing.assert_almost_equal(updates[0], expected_step_size[i + 1])
 
-  @chex.all_variants
   def test_hyperparams_state(self):
     optim = _inject.inject_hyperparams(transform.trace)(  # stateful
         decay=_schedule.piecewise_constant_schedule(0.8, {3: 0.5, 9: 1.25}),
@@ -84,8 +82,8 @@ class InjectHyperparamsTest(chex.TestCase):
     )
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
-    state = self.variant(optim.init)(params)
-    update_fn = self.variant(optim.update)
+    state = jax.jit(optim.init)(params)
+    update_fn = jax.jit(optim.update)
 
     expected_mom = [0.8] * 4 + [0.4] * 6 + [0.5] * 2
     grads = jax.tree.map(jnp.ones_like, params)
@@ -97,13 +95,12 @@ class InjectHyperparamsTest(chex.TestCase):
 
     np.testing.assert_almost_equal(state.hyperparams['decay'], expected_mom[-1])
 
-  @chex.all_variants
   def test_constant_hyperparams(self):
     optim = _inject.inject_hyperparams(transform.scale_by_adam)(b1=0.0, b2=0.0)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
-    state = self.variant(optim.init)(params)
-    update_fn = self.variant(optim.update)
+    state = jax.jit(optim.init)(params)
+    update_fn = jax.jit(optim.update)
 
     grads = jax.tree.map(jnp.ones_like, params)
     for _ in range(5):
@@ -115,12 +112,11 @@ class InjectHyperparamsTest(chex.TestCase):
       assert 'eps' in state.hyperparams
       chex.assert_trees_all_close(updates, grads)
 
-  @chex.all_variants
   def test_overriding_hyperparam(self):
     optim = _inject.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
     params = jnp.zeros((3, 5, 7))
-    state = self.variant(optim.init)(params)
-    update_fn = self.variant(optim.update)
+    state = jax.jit(optim.init)(params)
+    update_fn = jax.jit(optim.update)
 
     grads = jnp.ones_like(params)
     for i in range(5):
@@ -128,7 +124,6 @@ class InjectHyperparamsTest(chex.TestCase):
       updates, state = update_fn(grads, state)
       assert np.isclose(jnp.linalg.norm(updates.ravel()), i)
 
-  @chex.all_variants
   @parameterized.named_parameters(('string', 'mask'), ('list', ['mask']))
   def test_static_args(self, static_args):
     @functools.partial(_inject.inject_hyperparams, static_args=static_args)
@@ -140,8 +135,8 @@ class InjectHyperparamsTest(chex.TestCase):
     )
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
     grads = params
-    state = self.variant(optim.init)(params)
-    updates, state = self.variant(optim.update)(grads, state)
+    state = jax.jit(optim.init)(params)
+    updates, state = jax.jit(optim.update)(grads, state)
     expected_updates = jax.tree.map(
         lambda x: -0.1 * x if x.ndim > 1 else x, grads
     )
@@ -149,7 +144,6 @@ class InjectHyperparamsTest(chex.TestCase):
     assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
     chex.assert_trees_all_close(updates, expected_updates)
 
-  @chex.all_variants
   @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
   def test_numeric_static_args(self, static_args):
     optim = _inject.inject_hyperparams(
@@ -158,12 +152,11 @@ class InjectHyperparamsTest(chex.TestCase):
 
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
     grads = params
-    state = self.variant(optim.init)(params)
-    _, state = self.variant(optim.update)(grads, state)
+    state = jax.jit(optim.init)(params)
+    _, state = jax.jit(optim.update)(grads, state)
 
     assert not set(state.hyperparams.keys()).intersection(set(static_args))
 
-  @chex.all_variants
   def test_prng_key_not_hyperparameter(self):
     """Check that random.key can be handled by :func:``inject_hyperparams``."""
 
@@ -197,11 +190,10 @@ class InjectHyperparamsTest(chex.TestCase):
 
     params = [jnp.ones((1, 2)), jnp.ones(2), jnp.ones((1, 1, 1))]
     grads = params
-    state = self.variant(optim.init)(params)
-    _, state = self.variant(optim.update)(grads, state)
+    state = jax.jit(optim.init)(params)
+    _, state = jax.jit(optim.update)(grads, state)
     del state
 
-  @chex.all_variants
   @parameterized.named_parameters(
       ('bf16hyp f32param bf16grad', jnp.bfloat16, jnp.float32, jnp.bfloat16),
       ('bf16hyp f32param f32_grads', jnp.bfloat16, jnp.float32, jnp.float32),
@@ -221,12 +213,12 @@ class InjectHyperparamsTest(chex.TestCase):
         jnp.ones((1, 1, 1), dtype=param_dtype),
     ]
     grads = jax.tree.map(lambda x: x.astype(grad_dtype), params)
-    state = self.variant(optim.init)(params)
+    state = jax.jit(optim.init)(params)
     # Check that the hyperparams are overridden
     self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
     self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
 
-    _, state = self.variant(optim.update)(grads, state)
+    _, state = jax.jit(optim.update)(grads, state)
 
     self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
     self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
@@ -236,18 +228,17 @@ class InjectHyperparamsTest(chex.TestCase):
     with self.assertRaises(ValueError):
       _inject.inject_hyperparams(transform.scale, static_args=static_args)
 
-  @chex.all_variants
   def test_inject_hyperparams_starts_with_step_count_zero(self):
     """Checks that inject_hyperparams uses step count 0 in the first update."""
     # See also: https://github.com/deepmind/optax/issues/415.
     opt = _inject.inject_hyperparams(transform.scale)(lambda count: count)
     params = jnp.zeros(3)
     grads = jnp.array([-1, 0, 1])
-    updates, _ = self.variant(opt.update)(grads, opt.init(params))
+    updates, _ = jax.jit(opt.update)(grads, opt.init(params))
     np.testing.assert_array_equal(updates, np.zeros(3))
 
 
-class StatefulTest(chex.TestCase):
+class StatefulTest(absltest.TestCase):
 
   def test_wrap_stateless_schedule(self):
     my_schedule = _schedule.linear_schedule(1.0, 1.0, 10)
@@ -266,7 +257,6 @@ class StatefulTest(chex.TestCase):
       state = my_wrapped_schedule.update(state, **extra_args)
       np.testing.assert_allclose(count, state, atol=0.0)
 
-  @chex.all_variants
   def test_inject_stateful_hyperparams(self):
     grads = (
         jnp.ones((3,), dtype=jnp.float32),
@@ -278,13 +268,13 @@ class StatefulTest(chex.TestCase):
     tx = _inject.inject_hyperparams(transform.scale)(
         step_size=my_stateful_schedule
     )
-    state = self.variant(tx.init)(params)
+    state = jax.jit(tx.init)(params)
 
     extra_args = {'addendum': 0.3 * jnp.ones((), dtype=jnp.float32)}
-    _, state = self.variant(tx.update)(
+    _, state = jax.jit(tx.update)(
         grads, state, params=params, **extra_args
     )
-    _, state = self.variant(tx.update)(
+    _, state = jax.jit(tx.update)(
         grads, state, params=params, **extra_args
     )
 

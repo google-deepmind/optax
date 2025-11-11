@@ -48,7 +48,7 @@ def get_variable(type_var: str):
   raise ValueError(f'Invalid type_var {type_var}')
 
 
-class RandomTest(chex.TestCase):
+class RandomTest(parameterized.TestCase):
 
   def test_tree_split_key_like(self):
     rng_key = jrd.key(0)

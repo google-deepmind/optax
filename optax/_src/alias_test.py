@@ -130,7 +130,7 @@ def _setup_rosenbrock(dtype):
   return initial_params, final_params, objective
 
 
-class AliasTest(chex.TestCase):
+class AliasTest(parameterized.TestCase):
 
   @parameterized.product(
       _OPTIMIZERS_UNDER_TEST,
@@ -237,7 +237,6 @@ class AliasTest(chex.TestCase):
       for _ in range(2):
         params, state = step(params, state)
 
-  @chex.all_variants
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs
@@ -259,17 +258,17 @@ class AliasTest(chex.TestCase):
     params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': jnp.array(0.0)}
     else:
       update_kwargs = {}
-    updates, new_state = self.variant(opt.update)(
+    updates, new_state = jax.jit(opt.update)(
         grads, state, params, **update_kwargs
     )
 
-    state_inject = self.variant(opt_inject.init)(params)
-    updates_inject, new_state_inject = self.variant(opt_inject.update)(
+    state_inject = jax.jit(opt_inject.init)(params)
+    updates_inject, new_state_inject = jax.jit(opt_inject.update)(
         grads, state_inject, params, **update_kwargs
     )
 
@@ -309,12 +308,6 @@ class AliasTest(chex.TestCase):
       attribute = optax.tree.get(state, attribute_name)
       self.assertEqual(expected_dtype, attribute.dtype)
 
-  # Not testing with `without_device=True` because without_device set the
-  # variables to the host which appears to convert then the dtype, so we
-  # lose control of the dtype and the test fails.
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
   def test_preserve_dtype(self, opt_name, opt_kwargs, dtype):
     """Test that the optimizers return updates of same dtype as gradients."""
@@ -333,12 +326,12 @@ class AliasTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': fun(params)}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    updates, _ = jax.jit(opt.update)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, grads.dtype)
 
   @parameterized.product(
@@ -398,9 +391,6 @@ class AliasTest(chex.TestCase):
                                lambda: new_state)    # noqa: B023
           # pylint: enable=cell-var-from-loop
 
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
   def test_gradient_accumulation(self, opt_name, opt_kwargs, dtype):
     """Test that the optimizers can safely be used with optax.MultiSteps."""
@@ -414,7 +404,7 @@ class AliasTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': fun(params)}
     elif opt_name == 'lbfgs':
@@ -426,7 +416,7 @@ class AliasTest(chex.TestCase):
         k: v for k, v in update_kwargs.items() if not isinstance(v, jax.Array)}
     dyn_kwargs = {
         k: v for k, v in update_kwargs.items() if isinstance(v, jax.Array)}
-    updates, _ = self.variant(functools.partial(opt.update, **static_kwargs))(
+    updates, _ = jax.jit(functools.partial(opt.update, **static_kwargs))(
         grads, state, params, **dyn_kwargs)
     chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
@@ -687,7 +677,7 @@ def _get_problem(
   return problems[name]
 
 
-class LBFGSTest(chex.TestCase):
+class LBFGSTest(parameterized.TestCase):
 
   def test_plain_preconditioning(self):
     key = jrd.key(0)

@@ -38,7 +38,7 @@ def _setup_parabola(dtype):
   return initial_params, final_params, get_updates
 
 
-class ScheduleFreeTest(chex.TestCase):
+class ScheduleFreeTest(parameterized.TestCase):
 
   def test_learning_rate_zero(self):
     base_opt = alias.sgd(learning_rate=0.0, momentum=0.0)

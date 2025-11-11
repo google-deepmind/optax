@@ -31,12 +31,11 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   return jnp.reshape(flat_one_hot, inputs.shape)
 
 
-class FenchelYoungTest(chex.TestCase):
+class FenchelYoungTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_fenchel_young_reg(self):
     # Checks the behavior of the Fenchel-Young loss.
-    fy_loss = self.variant(_fenchel_young.make_fenchel_young_loss(logsumexp))
+    fy_loss = jax.jit(_fenchel_young.make_fenchel_young_loss(logsumexp))
     rng = jax.random.key(0)
     rngs = jax.random.split(rng, 2)
     theta_true = jax.random.uniform(rngs[0], (8, 5))

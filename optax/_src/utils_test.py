@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -115,7 +114,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     self.assertEqual(probs.shape, ())
 
 
-class HelpersTest(chex.TestCase):
+class HelpersTest(parameterized.TestCase):
 
   @parameterized.parameters([
       (1, 1),
@@ -214,20 +213,13 @@ class HelpersTest(chex.TestCase):
     canonical = utils.canonicalize_dtype(dtype)
     self.assertIs(canonical, expected_dtype)
 
-  @chex.variants(
-      with_jit=True,
-      without_jit=True,
-      with_pmap=False,
-      with_device=True,
-      without_device=True,
-  )
   def test_value_and_grad_from_state(self):
     def fn(x):
       return jnp.sum(x**2)
 
     value_and_grad_ = utils.value_and_grad_from_state(fn)
 
-    value_and_grad = self.variant(value_and_grad_)
+    value_and_grad = jax.jit(value_and_grad_)
 
     params = jnp.array([1.0, 2.0, 3.0])
 
@@ -263,7 +255,7 @@ class HelpersTest(chex.TestCase):
       return 1.0
 
     false_value_and_grad_ = utils.value_and_grad_from_state(false_fn)
-    false_value_and_grad = self.variant(false_value_and_grad_)
+    false_value_and_grad = jax.jit(false_value_and_grad_)
 
     # At the second step we should not evaluate the function
     # so in this case it should not return the output of false_fn

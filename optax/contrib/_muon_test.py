@@ -42,7 +42,7 @@ def get_updates(params, muon_weight_dimension_numbers=UNSPECIFIED):
   return updates, state
 
 
-class MuonTest(chex.TestCase):
+class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       {

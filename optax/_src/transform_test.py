@@ -38,7 +38,6 @@ class TransformTest(parameterized.TestCase):
     self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
     self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
-  @chex.all_variants
   @parameterized.named_parameters([
       ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
@@ -58,8 +57,8 @@ class TransformTest(parameterized.TestCase):
     params = self.init_params
 
     scaler = scaler_constr()
-    init_fn = self.variant(scaler.init)
-    transform_fn = self.variant(scaler.update)
+    init_fn = jax.jit(scaler.init)
+    transform_fn = jax.jit(scaler.update)
 
     state = init_fn(params)
     chex.assert_tree_all_finite(state)
@@ -74,7 +73,6 @@ class TransformTest(parameterized.TestCase):
     chex.assert_tree_all_finite((params, updates, state))
     jax.tree.map(lambda *args: chex.assert_equal_shape(args), params, updates)
 
-  @chex.all_variants
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
@@ -93,7 +91,7 @@ class TransformTest(parameterized.TestCase):
         transform.scale(-LR),
     )
     state_sgd_apply_every = sgd_apply_every.init(optax_sgd_apply_every_params)
-    transform_fn = self.variant(sgd_apply_every.update)
+    transform_fn = jax.jit(sgd_apply_every.update)
 
     for i in range(STEPS):
       # Apply a step of sgd

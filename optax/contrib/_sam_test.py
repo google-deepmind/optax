@@ -47,7 +47,7 @@ def _setup_parabola(dtype):
   return initial_params, final_params, get_updates
 
 
-class SAMTest(chex.TestCase):
+class SAMTest(parameterized.TestCase):
 
   @parameterized.product(
       _BASE_OPTIMIZERS_UNDER_TEST,

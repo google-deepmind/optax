@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -35,7 +34,7 @@ ALL_MODULES = [
     ('scale_by_rss', transform.scale_by_rss, {}),
     ('scale_by_rms', transform.scale_by_rms, {}),
     ('scale_by_stddev', transform.scale_by_stddev, {}),
-    ('adam', transform.scale_by_adam, {}),
+    ('scale_by_adam', transform.scale_by_adam, {}),
     ('scale', transform.scale, {'step_size': 3.0}),
     (
         'add_decayed_weights',
@@ -69,7 +68,6 @@ class Float64Test(parameterized.TestCase):
     tree2_types = jax.tree.map(lambda t: t.dtype, tree2)
     self.assertEqual(tree1_types, tree2_types)
 
-  @chex.all_variants
   @parameterized.named_parameters(ALL_MODULES)
   def test_mixed_dtype_input_outputs(self, transform_constr, transform_kwargs):
     jax.config.update('jax_enable_x64', True)
@@ -82,8 +80,8 @@ class Float64Test(parameterized.TestCase):
         jnp.array([33.0, 42.0], dtype=jnp.float64),
     )
     scaler = transform_constr(**transform_kwargs)
-    init_fn = self.variant(scaler.init)
-    update_fn = self.variant(scaler.update)
+    init_fn = jax.jit(scaler.init)
+    update_fn = jax.jit(scaler.update)
 
     initial_state = init_fn(initial_params)
     updates, new_state = update_fn(
