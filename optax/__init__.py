@@ -23,7 +23,6 @@ from optax import assignment
 from optax import contrib
 from optax import experimental
 from optax import losses
-from optax import monte_carlo
 from optax import perturbations
 from optax import projections
 from optax import schedules
@@ -285,6 +284,11 @@ _deprecations = {
             " or newer)."
         ),
         _deprecated_dpsgd,
+    ),
+    # Added Nov 2025
+    "monte_carlo": (
+        "optax.monte_carlo is deprecated. (optax v0.2.7 or newer).",
+        None,
     ),
 }
 # pylint: disable=g-import-not-at-top

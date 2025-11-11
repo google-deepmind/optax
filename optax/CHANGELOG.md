@@ -16,3 +16,7 @@ dependency. This means that Chex test variants (with/without `jit`, with/without
 `device_put`, with `pmap`) are no longer tested. We decided it was sufficient to
 use `jit` throughout the tests. There is already test coverage on both CPU and
 accelerators, and `pmap` is deprecated.
+
+### Removed
+
+- Stochastic gradient estimators à la Reinforce with control variates methods. See monte_carlo folder in optax 0.1.8 if you are interested.
