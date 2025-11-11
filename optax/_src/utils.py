@@ -27,7 +27,6 @@ import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 from optax._src import base
 from optax._src import numerics
-from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 import optax.tree
 
 
@@ -53,15 +52,6 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
   )):
     return key_or_seed
   return jax.random.key(key_or_seed)
-
-
-@functools.partial(
-    warn_deprecated_function, replacement='optax.tree.cast'
-)
-def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
-) -> chex.ArrayTree:
-  return optax.tree.cast(tree, dtype)
 
 
 def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
