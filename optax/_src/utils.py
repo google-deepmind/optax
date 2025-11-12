@@ -32,7 +32,7 @@ from optax._src.deprecations import warn_deprecated_function  # pylint: disable=
 import optax.tree
 
 
-def tile_second_to_last_dim(a: chex.Array) -> chex.Array:
+def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
@@ -93,7 +93,7 @@ def check_rank(array: jax.typing.ArrayLike, rank: int):
     )
 
 
-def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
+def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -136,37 +136,38 @@ def set_diags(a: jax.Array, new_diags: chex.Array) -> chex.Array:
 class MultiNormalDiagFromLogScale:
   """MultiNormalDiag which directly exposes its input parameters."""
 
-  def __init__(self, loc: chex.Array, log_scale: chex.Array):
-    self._log_scale = log_scale
+  def __init__(
+      self, loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike):
+    self._log_scale = jnp.asarray(log_scale)
     self._scale = jnp.exp(log_scale)
-    self._mean = loc
+    self._mean = jnp.asarray(loc)
     self._param_shape = jax.lax.broadcast_shapes(
         self._mean.shape, self._scale.shape
     )
 
-  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> chex.Array:
+  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> jax.Array:
     sample_shape = tuple(shape) + self._param_shape
     return (
         jax.random.normal(key, shape=sample_shape) * self._scale + self._mean
     )
 
-  def log_prob(self, x: chex.Array) -> chex.Array:
+  def log_prob(self, x: jax.typing.ArrayLike) -> jax.Array:
     log_prob = multivariate_normal.logpdf(x, loc=self._mean, scale=self._scale)
     # Sum over parameter axes.
     sum_axis = [-(i + 1) for i in range(len(self._param_shape))]
     return jnp.sum(log_prob, axis=sum_axis)
 
   @property
-  def log_scale(self) -> chex.Array:
+  def log_scale(self) -> jax.Array:
     return self._log_scale
 
   @property
-  def params(self) -> Sequence[chex.Array]:
+  def params(self) -> Sequence[jax.Array]:
     return [self._mean, self._log_scale]
 
 
 def multi_normal(
-    loc: chex.Array, log_scale: chex.Array
+    loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike
 ) -> MultiNormalDiagFromLogScale:
   return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
 

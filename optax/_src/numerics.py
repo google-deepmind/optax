@@ -21,6 +21,7 @@ https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 from typing import Optional, Union
 
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -28,7 +29,7 @@ import numpy as np
 # TODO(jscholz) Promote these functions to jax core lib?
 
 
-def abs_sq(x: chex.Array) -> chex.Array:
+def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
   """Returns the squared absolute value of a (maybe complex) array.
 
   For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
@@ -46,12 +47,12 @@ def abs_sq(x: chex.Array) -> chex.Array:
 
 
 def safe_norm(
-    x: chex.Array,
+    x: jax.typing.ArrayLike,
     min_norm: chex.Numeric,
     ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
     axis: Union[None, tuple[int, ...], int] = None,
     keepdims: bool = False,
-) -> chex.Array:
+) -> jax.Array:
   """Returns jnp.maximum(jnp.linalg.norm(x), min_norm) with correct gradients.
 
   The gradients of `jnp.maximum(jnp.linalg.norm(x), min_norm)` at 0.0 is `NaN`,
@@ -83,7 +84,8 @@ def safe_norm(
   return jnp.where(norm <= min_norm, min_norm, masked_norm)
 
 
-def safe_root_mean_squares(x: chex.Array, min_rms: chex.Numeric) -> chex.Array:
+def safe_root_mean_squares(
+    x: jax.typing.ArrayLike, min_rms: chex.Numeric) -> jax.Array:
   """Returns `maximum(sqrt(mean(abs_sq(x))), min_norm)` with correct grads.
 
   The gradients of `maximum(sqrt(mean(abs_sq(x))), min_norm)` at 0.0

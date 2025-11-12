@@ -32,7 +32,7 @@ def _normalize_tree(x):
   return optax.tree.scale(1.0 / optax.tree.norm(x), x)
 
 
-def global_norm(updates: base.PyTree) -> chex.Array:
+def global_norm(updates: base.PyTree) -> jax.Array:
   """Compute the global norm across a nested structure of tensors.
 
   .. warning::
@@ -60,7 +60,8 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 
 def power_iteration(
-    matrix: Union[chex.Array, Callable[[chex.ArrayTree], chex.ArrayTree]],
+    matrix: Union[
+        jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
     *,
     v0: Optional[chex.ArrayTree] = None,
     num_iters: int = 100,
@@ -153,7 +154,7 @@ def power_iteration(
 
 
 def matrix_inverse_pth_root(
-    matrix: chex.Array,
+    matrix: jax.typing.ArrayLike,
     p: int,
     num_iters: int = 100,
     ridge_epsilon: float = 1e-6,

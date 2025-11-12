@@ -16,23 +16,22 @@
 
 from typing import Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import utils
 
 
 def dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
-    class_weights: Optional[chex.Array] = None,
+    class_weights: Optional[jax.typing.ArrayLike] = None,
     smooth: float = 1.0,
     apply_softmax: bool = True,
     reduction: str = "mean",
     ignore_background: bool = False,
-    axis: Optional[chex.Array] = None,
-) -> chex.Array:
+    axis: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   r"""Computes the Dice Loss for multi-class segmentation.
 
   Computes the Soft Dice Loss for segmentation tasks. Works for both binary
@@ -173,13 +172,13 @@ def dice_loss(
 
 
 def multiclass_generalized_dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
     smooth: float = 1.0,
     apply_softmax: bool = True,
     ignore_background: bool = False,
-) -> chex.Array:
+) -> jax.Array:
   """Computes Multiclass Generalized Dice Loss with automatic class weighting.
 
   Computes Generalized Dice Loss where class weights are automatically
@@ -228,12 +227,12 @@ def multiclass_generalized_dice_loss(
 
 
 def binary_dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
     smooth: float = 1.0,
     apply_sigmoid: bool = True,
-) -> chex.Array:
+) -> jax.Array:
   """Binary Dice Loss convenience function.
 
   Args:

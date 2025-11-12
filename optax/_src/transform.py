@@ -89,7 +89,7 @@ class ScaleByRmsState(NamedTuple):
 class ScaleByRmsWithCountState(NamedTuple):
   """State for exponential root mean-squared (RMS)-normalized updates."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   nu: base.Updates
 
 
@@ -163,7 +163,7 @@ class ScaleByRStdDevState(NamedTuple):
 class ScaleByRStdDevWithCountState(NamedTuple):
   """State for centered exponential moving average of squares of updates."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -239,7 +239,7 @@ def scale_by_stddev(
 class ScaleByAdamState(NamedTuple):
   """State for the Adam algorithm."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -312,7 +312,7 @@ def scale_by_adam(
 class ScaleByAmsgradState(NamedTuple):
   """State for the AMSGrad algorithm."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
   nu_max: base.Updates
@@ -411,7 +411,7 @@ def scale_by_adamax(
 class ScaleByLionState(NamedTuple):
   """State for the Lion algorithm."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
 
 
@@ -576,7 +576,7 @@ class ScaleByAdanState(NamedTuple):
   v: base.Updates
   n: base.Updates
   g: base.Updates
-  t: chex.Array
+  t: jax.typing.ArrayLike
 
 
 def scale_by_adan(
@@ -652,7 +652,7 @@ def scale_by_adan(
 class ScaleByBeliefState(NamedTuple):
   """State for the rescaling by AdaBelief algorithm."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -937,7 +937,7 @@ def scale_by_sign() -> base.GradientTransformation:
 class ScaleByScheduleState(NamedTuple):
   """Maintains count for scale scheduling."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
 
 
 def scale_by_learning_rate(
@@ -1043,7 +1043,7 @@ def scale_by_trust_ratio(
 class ApplyEvery(NamedTuple):
   """Contains a counter and a gradient accumulator."""
 
-  count: chex.Array
+  count: jax.typing.ArrayLike
   grad_acc: base.Updates
 
 
@@ -1207,7 +1207,7 @@ def scale_by_sm3(
 class ScaleByNovogradState(NamedTuple):
   """State for Novograd."""
 
-  count: chex.Array
+  count: jax.typing.ArrayLike
   mu: base.Updates
   nu: base.Updates
 
@@ -1287,7 +1287,7 @@ def scale_by_novograd(
 
 
 class ScaleByOptimisticGradientState(NamedTuple):
-  is_initial_step: chex.Array
+  is_initial_step: jax.typing.ArrayLike
   previous_gradient: base.Updates
 
 
@@ -1501,14 +1501,14 @@ class ScaleByLBFGSState(NamedTuple):
   updates: base.Params
   diff_params_memory: chex.ArrayTree
   diff_updates_memory: chex.ArrayTree
-  weights_memory: chex.Array
+  weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
     diff_params_memory: chex.ArrayTree,
     diff_updates_memory: chex.ArrayTree,
-    weights_memory: chex.Array,
+    weights_memory: jax.typing.ArrayLike,
     identity_scale: Union[float, jax.Array],
     memory_idx: Union[int, jax.Array],
 ) -> base.Updates:

@@ -92,8 +92,8 @@ def binary_logistic_loss(logits, labels):
 
 
 def hinge_loss(
-    predictor_outputs: chex.Array, targets: chex.Array
-) -> chex.Array:
+    predictor_outputs: jax.typing.ArrayLike, targets: jax.typing.ArrayLike
+) -> jax.Array:
   """Computes the hinge loss for binary classification.
 
   Args:
@@ -126,9 +126,9 @@ def perceptron_loss(
 
 
 def sparsemax_loss(
-    logits: chex.Array,
-    labels: chex.Array,
-) -> chex.Array:
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Binary sparsemax loss.
 
   This loss is zero if and only if `jax.nn.sparse_sigmoid(logits) == labels`.
@@ -155,7 +155,8 @@ def binary_sparsemax_loss(logits, labels):
 
 
 @jax.custom_jvp
-def weighted_logsoftmax(x: chex.Array, weights: chex.Array) -> chex.Array:
+def weighted_logsoftmax(
+    x: jax.typing.ArrayLike, weights: jax.typing.ArrayLike) -> jax.Array:
   r"""Weighted logsoftmax.
 
   Computes
@@ -201,9 +202,9 @@ weighted_logsoftmax.defjvp(_weighted_logsoftmax_jvp)
 
 
 def safe_softmax_cross_entropy(
-    logits: chex.Array,
-    labels: chex.Array,
-) -> chex.Array:
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Computes the softmax cross entropy between sets of logits and labels.
 
   Contrarily to :func:`optax.softmax_cross_entropy` this function handles
@@ -225,11 +226,11 @@ def safe_softmax_cross_entropy(
 
 
 def softmax_cross_entropy(
-    logits: chex.Array,
-    labels: chex.Array,
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes the softmax cross entropy between sets of logits and labels.
 
   This loss function is commonly used for multi-class classification tasks. It
@@ -297,11 +298,11 @@ def softmax_cross_entropy(
 
 
 def softmax_cross_entropy_with_integer_labels(
-    logits: chex.Array,
-    labels: chex.Array,
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     axis: Union[int, tuple[int, ...]] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes softmax cross entropy between the logits and integer labels.
 
   This loss is useful for classification problems with integer labels that are
@@ -419,9 +420,9 @@ _dot_last_dim = jnp.vectorize(jnp.dot, signature='(n),(n)->()')
 
 
 def multiclass_hinge_loss(
-    scores: chex.Array,
-    labels: chex.Array,
-) -> chex.Array:
+    scores: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Multiclass hinge loss.
 
   Args:
@@ -443,9 +444,9 @@ def multiclass_hinge_loss(
 
 
 def multiclass_perceptron_loss(
-    scores: chex.Array,
-    labels: chex.Array,
-) -> chex.Array:
+    scores: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Multiclass perceptron loss.
 
   Args:
@@ -467,12 +468,12 @@ def multiclass_perceptron_loss(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def poly_loss_cross_entropy(
-    logits: chex.Array,
-    labels: chex.Array,
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     epsilon: float = 2.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes PolyLoss between logits and labels.
 
   The PolyLoss is a loss function that decomposes commonly
@@ -526,11 +527,11 @@ def poly_loss_cross_entropy(
 
 
 def kl_divergence(
-    log_predictions: chex.Array,
-    targets: chex.Array,
+    log_predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Measures the information gain achieved if target probability distribution
@@ -564,11 +565,11 @@ def kl_divergence(
 
 
 def kl_divergence_with_log_targets(
-    log_predictions: chex.Array,
-    log_targets: chex.Array,
+    log_predictions: jax.typing.ArrayLike,
+    log_targets: jax.typing.ArrayLike,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
   Version of kl_div_loss where targets are given in log-space.
@@ -595,11 +596,11 @@ def kl_divergence_with_log_targets(
 
 
 def convex_kl_divergence(
-    log_predictions: chex.Array,
-    targets: chex.Array,
+    log_predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   """Computes a convex version of the Kullback-Leibler divergence loss.
 
   Measures the information gain achieved if target probability distribution
@@ -632,13 +633,13 @@ def convex_kl_divergence(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss_with_forward_probs(
-    logits: chex.Array,
-    logit_paddings: chex.Array,
-    labels: chex.Array,
-    label_paddings: chex.Array,
+    logits: jax.typing.ArrayLike,
+    logit_paddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+    label_paddings: jax.typing.ArrayLike,
     blank_id: int = 0,
     log_epsilon: float = -1e5,
-) -> tuple[chex.Array, chex.Array, chex.Array]:
+) -> tuple[jax.Array, jax.Array, jax.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
   The CTC loss is a loss function based on log-likelihoods of the model that
@@ -773,13 +774,13 @@ def ctc_loss_with_forward_probs(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss(
-    logits: chex.Array,
-    logit_paddings: chex.Array,
-    labels: chex.Array,
-    label_paddings: chex.Array,
+    logits: jax.typing.ArrayLike,
+    logit_paddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+    label_paddings: jax.typing.ArrayLike,
     blank_id: int = 0,
     log_epsilon: float = -1e5,
-) -> chex.Array:
+) -> jax.Array:
   """Computes CTC loss.
 
   See docstring for ``ctc_loss_with_forward_probs`` for details.
@@ -819,11 +820,11 @@ def ctc_loss(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def sigmoid_focal_loss(
-    logits: chex.Array,
-    labels: chex.Array,
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     alpha: Optional[float] = None,
     gamma: float = 2.0,
-) -> chex.Array:
+) -> jax.Array:
   r"""Sigmoid focal loss with numerical stability improvements.
 
   The focal loss is a dynamically scaled cross entropy loss, where the scaling
@@ -906,8 +907,8 @@ def sigmoid_focal_loss(
 
 
 def _multiclass_sparsemax_loss(
-    scores: chex.Array, label: chex.Array
-) -> chex.Array:
+    scores: jax.typing.ArrayLike, label: jax.typing.ArrayLike
+) -> jax.Array:
   scores = jnp.asarray(scores)
   proba = projections.projection_simplex(scores)
   # Fenchel conjugate of the Gini negentropy, defined by:
@@ -919,9 +920,9 @@ def _multiclass_sparsemax_loss(
 
 
 def multiclass_sparsemax_loss(
-    scores: chex.Array,
-    labels: chex.Array,
-) -> chex.Array:
+    scores: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Multiclass sparsemax loss.
 
   Args:

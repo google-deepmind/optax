@@ -14,13 +14,13 @@
 # ==============================================================================
 """Smoothing functions."""
 
-import chex
+from jax import typing
 import jax.numpy as jnp
 from optax._src import utils
 
 
 def smooth_labels(
-    labels: chex.Array,
+    labels: typing.ArrayLike,
     alpha: float,
 ) -> jnp.ndarray:
   """Apply label smoothing.

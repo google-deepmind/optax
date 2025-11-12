@@ -21,7 +21,6 @@ will not be reduced.
 """
 from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -32,12 +31,12 @@ import optax.tree
 class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
-  scale: chex.Array
-  best_value: chex.Array
-  plateau_count: chex.Array  # shape=(), dtype=jnp.int32
-  cooldown_count: chex.Array  # shape=(), dtype=jnp.int32
-  count: chex.Array  # shape=(), dtype=jnp.int32
-  avg_value: chex.Array
+  scale: jax.typing.ArrayLike
+  best_value: jax.typing.ArrayLike
+  plateau_count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  cooldown_count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  avg_value: jax.typing.ArrayLike
 
 
 def reduce_on_plateau(

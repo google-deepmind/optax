@@ -18,14 +18,15 @@ import functools
 from typing import Optional, Union
 
 import chex
+import jax
 import jax.numpy as jnp
 from optax._src import utils
 
 
 def squared_error(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the squared error for a set of predictions.
 
   Mean Squared Error can be computed as squared_error(a, b).mean().
@@ -52,9 +53,9 @@ def squared_error(
 
 
 def l2_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the L2 loss for a set of predictions.
 
   Args:
@@ -69,15 +70,16 @@ def l2_loss(
     the 0.5 term is standard in "Pattern Recognition and Machine Learning"
     by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
   """
+  predictions = jnp.asarray(predictions)
   return 0.5 * squared_error(predictions, targets)
 
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def huber_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
     delta: float = 1.0,
-) -> chex.Array:
+) -> jax.Array:
   """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
 
   If gradient descent is applied to the `huber loss`, it is equivalent to
@@ -107,9 +109,9 @@ def huber_loss(
 
 
 def log_cosh(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the log-cosh loss for a set of predictions.
 
   log(cosh(x)) is approximately `(x**2) / 2` for small x and `abs(x) - log(2)`
@@ -135,12 +137,12 @@ def log_cosh(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_similarity(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes the cosine similarity between targets and predictions.
 
   The cosine **similarity** is a measure of similarity between vectors defined
@@ -185,12 +187,12 @@ def cosine_similarity(
 
 @functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_distance(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes the cosine distance between targets and predictions.
 
   The cosine **distance**, implemented here, measures the **dissimilarity**

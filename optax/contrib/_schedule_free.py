@@ -16,7 +16,6 @@
 
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -32,10 +31,10 @@ import optax.tree
 class ScheduleFreeState(NamedTuple):
   """State for schedule_free."""
 
-  b1: chex.Array
-  weight_sum: chex.Array
-  step_count: chex.Array
-  max_lr: chex.Array
+  b1: jax.typing.ArrayLike
+  weight_sum: jax.typing.ArrayLike
+  step_count: jax.typing.ArrayLike
+  max_lr: jax.typing.ArrayLike
   base_optimizer_state: base.OptState
   z: base.Params
 

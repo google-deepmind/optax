@@ -295,7 +295,8 @@ def stateless(
 
 
 def stateless_with_tree_map(
-    f: Callable[[chex.Array, Optional[chex.Array]], chex.Array],
+    f: Callable[[jax.typing.ArrayLike, Optional[jax.typing.ArrayLike]],
+                jax.typing.ArrayLike],
 ) -> GradientTransformation:
   """Creates a stateless transformation from an update-like function for arrays.
 

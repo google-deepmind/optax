@@ -20,7 +20,6 @@ Konstantin Mishchenko and Aaron Defazio. A new variant of D-Adapt Adam that
 adapts the learning rate faster.
 """
 from typing import NamedTuple, Optional
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -38,9 +37,9 @@ class ProdigyState(NamedTuple):
   # Initial point.
   params0: base.Updates
   # Distance to solution estimate.
-  estim_lr: chex.Array  # shape=(), dtype=jnp.float32.
-  numerator_weighted: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=int32.
+  estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=int32.
 
 
 def prodigy(

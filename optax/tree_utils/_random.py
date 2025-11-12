@@ -43,9 +43,11 @@ def tree_random_like(
     rng_key: chex.PRNGKey,
     target_tree: chex.ArrayTree,
     sampler: Union[
-        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array],
-        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType,
-                  jax.sharding.Sharding], chex.Array]] = jax.random.normal,
+        Callable[
+            [chex.PRNGKey, chex.Shape, chex.ArrayDType], jax.typing.ArrayLike],
+        Callable[
+            [chex.PRNGKey, chex.Shape, chex.ArrayDType, jax.sharding.Sharding],
+            jax.typing.ArrayLike]] = jax.random.normal,
     dtype: Optional[chex.ArrayDType] = None,
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.

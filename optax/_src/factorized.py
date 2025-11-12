@@ -26,7 +26,7 @@ from optax._src import base
 from optax._src import numerics
 
 
-def _decay_rate_pow(i: int, exponent: float = 0.8) -> chex.Array:
+def _decay_rate_pow(i: int, exponent: float = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
   return 1.0 - t ** (-exponent)
@@ -70,16 +70,16 @@ def _zeros_like_no_axis(x, axis: int) -> jax.Array:
 class _UpdateResult:
   """Opaque container that is not traversed by jax.tree.map."""
 
-  update: chex.Array  # the update to apply to params
-  v_row: chex.Array  # used for factored params.
-  v_col: chex.Array  # used for factored params.
-  v: chex.Array  # used for params where factoring is skipped.
+  update: jax.typing.ArrayLike  # the update to apply to params
+  v_row: jax.typing.ArrayLike  # used for factored params.
+  v_col: jax.typing.ArrayLike  # used for factored params.
+  v: jax.typing.ArrayLike  # used for params where factoring is skipped.
 
 
 class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
 
-  count: chex.Array  # number of update steps.
+  count: jax.typing.ArrayLike  # number of update steps.
   v_row: chex.ArrayTree  # Tree of factored params.
   v_col: chex.ArrayTree  # Tree of factored params.
   v: chex.ArrayTree  # Tree for params where factoring is skipped.
@@ -91,7 +91,8 @@ def scale_by_factored_rms(
     step_offset: int = 0,
     min_dim_size_to_factor: int = 128,
     epsilon: float = 1e-30,
-    decay_rate_fn: Callable[[int, float], chex.Array] = _decay_rate_pow,
+    decay_rate_fn: Callable[
+        [int, float], jax.typing.ArrayLike] = _decay_rate_pow,
 ):
   """Scaling by a factored estimate of the gradient rms (as in Adafactor).
 
@@ -126,7 +127,7 @@ def scale_by_factored_rms(
     <https://arxiv.org/abs/2106.04560>`_, 2021
   """
 
-  def _to_state(count: chex.Array, result_tree):
+  def _to_state(count: jax.typing.ArrayLike, result_tree):
     """Maps from a tree of (factored) values to separate trees of values."""
     return FactoredState(
         count=count,

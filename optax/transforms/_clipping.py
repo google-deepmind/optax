@@ -245,8 +245,8 @@ def per_example_layer_norm_clip(
 
 
 def unitwise_norm(
-    x: chex.Array, axis: Optional[Union[int, tuple[int, ...]]] = None
-) -> chex.Array:
+    x: jax.typing.ArrayLike, axis: Optional[Union[int, tuple[int, ...]]] = None
+) -> jax.Array:
   """Computes the L2 norm of each unit separately.
 
   A "unit" is a slice of `x` along the dimensions specified by `axis`. If `axis`
@@ -287,11 +287,11 @@ def unitwise_norm(
 
 
 def unitwise_clip(
-    g_norm: chex.Array,
-    max_norm: chex.Array,
-    grad: chex.Array,
+    g_norm: jax.typing.ArrayLike,
+    max_norm: jax.typing.ArrayLike,
+    grad: jax.typing.ArrayLike,
     div_eps: float = 1e-6,
-) -> chex.Array:
+) -> jax.Array:
   """Applies gradient clipping unit-wise."""
   # This little max(., div_eps) is distinct from the normal eps and just
   # prevents division by zero. It technically should be impossible to engage.

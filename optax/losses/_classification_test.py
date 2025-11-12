@@ -18,7 +18,6 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import jax.test_util as jaxtest
@@ -796,7 +795,8 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
-def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
+def _lengths_to_paddings(
+    lengths: jax.typing.ArrayLike, maxlength: int) -> np.ndarray:
   indices = jnp.arange(maxlength).reshape((1,) * lengths.ndim + (maxlength,))
   lengths = jnp.expand_dims(lengths, axis=-1)
   elem_valid = indices < lengths
@@ -804,11 +804,11 @@ def _lengths_to_paddings(lengths: chex.Array, maxlength: int) -> chex.Array:
 
 
 def _average_ctc_loss(
-    logprobs: chex.Array,
-    logprob_paddings: chex.Array,
-    labels: chex.Array,
-    label_paddings: chex.Array,
-) -> chex.Array:
+    logprobs: jax.typing.ArrayLike,
+    logprob_paddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+    label_paddings: jax.typing.ArrayLike,
+) -> jax.Array:
   return jnp.average(
       _classification.ctc_loss(
           logprobs, logprob_paddings, labels, label_paddings

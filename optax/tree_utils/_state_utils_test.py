@@ -42,7 +42,7 @@ class FakeShardSpec:
 class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
-  count: chex.Array
+  count: jax.typing.ArrayLike
   params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
 
 
