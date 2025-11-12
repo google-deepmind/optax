@@ -333,7 +333,7 @@ class DiceLossTest(parameterized.TestCase):
         self.key, 0.5, (2, 16, 16, 2)
     )  # Wrong classes
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(ValueError):
       _segmentation.dice_loss(predictions, targets)
 
   def test_jit_compilation(self):

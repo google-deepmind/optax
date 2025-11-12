@@ -46,7 +46,7 @@ def squared_error(
   utils.check_subdtype(predictions, jnp.floating)
   if targets is not None:
     # Avoid broadcasting logic for "-" operator.
-    chex.assert_equal_shape((predictions, targets))
+    utils.check_shapes_equal(predictions, targets)
   errors = predictions - targets if targets is not None else predictions
   return errors**2
 

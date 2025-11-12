@@ -121,7 +121,7 @@ def perceptron_loss(
   References:
     `Perceptron <https://en.wikipedia.org/wiki/Perceptron>`_, Wikipedia
   """
-  chex.assert_equal_shape([predictor_outputs, targets])
+  utils.check_shapes_equal(predictor_outputs, targets)
   return jnp.maximum(0, -predictor_outputs * targets)
 
 
@@ -692,13 +692,17 @@ def ctc_loss_with_forward_probs(
     <https://dl.acm.org/doi/abs/10.1145/1143844.1143891>`_, 2006
   """
 
-  chex.assert_rank(logits, 3)
-  chex.assert_rank(labels, 2)
+  utils.check_rank(logits, 3)
+  utils.check_rank(labels, 2)
+  utils.check_shapes_equal(labels, label_paddings)
+  utils.check_shapes_equal(logits[..., 0], logit_paddings)
   batchsize, unused_maxinputlen, num_classes = logits.shape
   batchsize_of_labels, maxlabellen = labels.shape
-  chex.assert_equal(batchsize, batchsize_of_labels)
-  chex.assert_equal(labels.shape, label_paddings.shape)
-  chex.assert_equal(logits.shape[:2], logit_paddings.shape)
+  if batchsize_of_labels != batchsize:
+    raise ValueError(
+        f'Expected `labels` to have batch size {batchsize}, got'
+        f' {batchsize_of_labels}.'
+    )
 
   logprobs = jax.nn.log_softmax(logits)
   labellens = maxlabellen - jnp.sum(label_paddings, axis=1).astype(jnp.int32)

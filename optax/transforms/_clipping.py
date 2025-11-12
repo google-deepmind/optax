@@ -25,6 +25,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
+from optax._src import utils
 import optax.tree
 
 
@@ -95,7 +96,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
     # g_norm = jnp.maximum(max_norm, g_norm)
     # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
-    chex.assert_shape(trigger, ())  # A scalar.
+    utils.check_rank(trigger, 0)  # A scalar.
 
     def clip_fn(t):
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
@@ -282,7 +283,6 @@ def unitwise_norm(
         f"Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}. "
         "Use axis parameter to specify reduction axes for other shapes."
     )
-  chex.assert_is_broadcastable(squared_norm.shape, x.shape)
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)
 
 
@@ -296,7 +296,8 @@ def unitwise_clip(
   # This little max(., div_eps) is distinct from the normal eps and just
   # prevents division by zero. It technically should be impossible to engage.
   clipped_grad = grad * (max_norm / jnp.maximum(g_norm, div_eps))
-  chex.assert_equal_shape((g_norm, max_norm, grad, clipped_grad))
+  utils.check_shapes_equal(g_norm, max_norm)
+  utils.check_shapes_equal(g_norm, grad)
   return jnp.where(g_norm < max_norm, grad, clipped_grad)
 
 

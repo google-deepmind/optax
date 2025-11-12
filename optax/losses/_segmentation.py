@@ -19,6 +19,7 @@ from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import utils
 
 
 def dice_loss(
@@ -111,8 +112,7 @@ def dice_loss(
     predictions = predictions[..., None]
   if targets.ndim == predictions.ndim - 1:
     targets = targets[..., None]
-
-  chex.assert_equal_shape([predictions, targets])
+  utils.check_shapes_equal(predictions, targets)
 
   # Input validation for probability distributions
   if not apply_softmax:
@@ -149,8 +149,7 @@ def dice_loss(
 
   # Apply class weights if provided
   if class_weights is not None:
-    num_classes = probs.shape[-1]
-    chex.assert_shape(class_weights, (num_classes,))
+    utils.check_rank(class_weights, 1)
     dice_l = dice_l * class_weights
 
   # Handle background class ignoring
@@ -202,7 +201,7 @@ def multiclass_generalized_dice_loss(
       Sudre et al. "Generalised Dice overlap as a deep learning loss function
       for highly unbalanced segmentations" (2017).
   """
-  chex.assert_equal_shape([predictions, targets])
+  utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
   class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))

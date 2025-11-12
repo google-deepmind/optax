@@ -25,6 +25,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
+import numpy as np
 from optax._src import base
 from optax._src import numerics
 from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
@@ -71,6 +72,24 @@ def check_subdtype(array: jax.typing.ArrayLike, subdtype: jax.typing.DTypeLike):
     raise TypeError(
         f'Expected the input to have a dtype that is a subdtype of {subdtype}, '
         f'got {dtype} instead'
+    )
+
+
+def check_shapes_equal(a: jax.typing.ArrayLike, b: jax.typing.ArrayLike):
+  """Check that `a` and `b` have the same shape."""
+  a_shape = a.shape if hasattr(a, 'shape') else np.asarray(a).shape
+  b_shape = b.shape if hasattr(b, 'shape') else np.asarray(b).shape
+  if a_shape != b_shape:
+    raise ValueError(f'Shape mismatch: got {a_shape} and {b_shape}.')
+
+
+def check_rank(array: jax.typing.ArrayLike, rank: int):
+  """Check that `array` has the specified rank."""
+  shape = array.shape if hasattr(array, 'shape') else np.asarray(array).shape
+  array_rank = len(shape)
+  if array_rank != rank:
+    raise ValueError(
+        f'Expected the input to have rank {rank}, got {array_rank} instead'
     )
 
 

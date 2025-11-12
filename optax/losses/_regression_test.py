@@ -43,7 +43,7 @@ class SquaredErrorTest(parameterized.TestCase):
     )
 
   def test_shape_mismatch(self):
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(ValueError):
       _ = jax.jit(_regression.squared_error)(
           self.ys, jnp.expand_dims(self.ts, axis=-1)
       )
@@ -69,7 +69,7 @@ class L2LossTest(parameterized.TestCase):
     )
 
   def test_shape_mismatch(self):
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(ValueError):
       _ = jax.jit(_regression.l2_loss)(
           self.ys, jnp.expand_dims(self.ts, axis=-1)
       )
