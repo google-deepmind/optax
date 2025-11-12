@@ -16,6 +16,8 @@
 
 from collections.abc import Callable
 import functools
+import inspect
+import operator
 from typing import Any, NamedTuple, Optional, Union
 
 import chex
@@ -23,8 +25,11 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-from optax._src import utils
 import optax.tree
+
+################################################################################
+# Backtracking linesearch
+################################################################################
 
 
 class BacktrackingLinesearchInfo(NamedTuple):
@@ -33,10 +38,11 @@ class BacktrackingLinesearchInfo(NamedTuple):
   Attributes:
     num_linesearch_steps: number of linesearch steps.
     decrease_error: error of the decrease criterion at the end of the
-      linesearch. A positive value indicates that
-      the linesearch failed to find a stepsize that ensures a sufficient
-      decrease. A null value indicates it succeeded in finding such a stepsize.
+      linesearch. A positive value indicates that the linesearch failed to find
+      a stepsize that ensures a sufficient decrease. A null value indicates it
+      succeeded in finding such a stepsize.
   """
+
   num_linesearch_steps: Union[int, chex.Numeric]
   decrease_error: Union[float, chex.Numeric]
 
@@ -316,7 +322,7 @@ def scale_by_backtracking_linesearch(
         to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
-    (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
+    (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
     del remaining_kwargs
@@ -401,7 +407,7 @@ def scale_by_backtracking_linesearch(
     # If the decrease error is infinite, we avoid making any step (which would
     # result in nan or infinite values): we set the learning rate to 0.
     new_learning_rate = jnp.where(
-        jnp.isinf(search_state.decrease_error), 0., search_state.learning_rate
+        jnp.isinf(search_state.decrease_error), 0.0, search_state.learning_rate
     )
 
     if verbose:
@@ -434,7 +440,7 @@ def scale_by_backtracking_linesearch(
         learning_rate=new_learning_rate,
         value=new_value,
         grad=new_grad,
-        info=info
+        info=info,
     )
 
     return new_updates, optax.tree.cast_like(new_state, other_tree=state)
@@ -442,85 +448,29 @@ def scale_by_backtracking_linesearch(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-def _cond_print(condition, message, **kwargs):
-  """Prints message if condition is true."""
-  jax.lax.cond(
-      condition,
-      lambda _: jax.debug.print(message, **kwargs, ordered=True),
-      lambda _: None,
-      None,
-  )
+################################################################################
+# Zoom linesearch
+################################################################################
 
-
-# pylint: disable=invalid-name
-def _cubicmin(a, fa, fpa, b, fb, c, fc):
-  """Cubic interpolation.
-
-  Finds a critical point of a cubic polynomial
-  p(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D, that goes through
-  the points (a,fa), (b,fb), and (c,fc) with derivative at a of fpa.
-  May return NaN (if radical<0), in that case, the point will be ignored.
-  Adapted from scipy.optimize._linesearch.py.
-
-  Args:
-    a: scalar
-    fa: value of a function f at a
-    fpa: slope of a function f at a
-    b: scalar
-    fb: value of a function f at b
-    c: scalar
-    fc: value of a function f at c
-
-  Returns:
-    xmin: point at which p'(xmin) = 0
-  """
-  C = fpa
-  db = b - a
-  dc = c - a
-  denom = (db * dc) ** 2 * (db - dc)
-  d1 = jnp.array([[dc**2, -(db**2)], [-(dc**3), db**3]])
-  A, B = (
-      jnp.dot(
-          d1,
-          jnp.array([fb - fa - C * db, fc - fa - C * dc]),
-          precision=jax.lax.Precision.HIGHEST,
-      )
-      / denom
-  )
-
-  radical = B * B - 3.0 * A * C
-  xmin = a + (-B + jnp.sqrt(radical)) / (3.0 * A)
-
-  return xmin
-
-
-def _quadmin(a, fa, fpa, b, fb):
-  """Quadratic interpolation.
-
-  Finds a critical point of a quadratic polynomial
-  p(x) = B*(x-a)^2 + C*(x-a) + D, that goes through
-  the points (a,fa), (b,fb) with derivative at a of fpa.
-  Adapted from scipy.optimize._linesearch.py.
-
-  Args:
-    a: scalar
-    fa: value of a function f at a
-    fpa: slope of a function f at a
-    b: scalar
-    fb: value of a function f at b
-
-  Returns:
-    xmin: point at which p'(xmin) = 0
-  """
-  D = fa
-  C = fpa
-  db = b - a
-  B = (fb - D - C * db) / (db**2)
-  xmin = a - C / (2.0 * B)
-  return xmin
-
-
-# pylint: enable=invalid-name
+# Flags to print errors, used for debugging, tested
+FLAG_INTERVAL_NOT_FOUND = (
+    "No interval satisfying curvature condition. "
+    "Consider increasing maximal possible stepsize of the linesearch."
+)
+FLAG_INTERVAL_TOO_SMALL = (
+    "Length of searched interval has been reduced below threshold."
+)
+FLAG_CURVATURE_COND_NOT_SATISFIED = (
+    "Returning stepsize with sufficient decrease "
+    "but curvature condition not satisfied."
+)
+FLAG_NO_STEPSIZE_FOUND = (
+    "Linesearch failed, no stepsize satisfying sufficient decrease found."
+)
+FLAG_NOT_A_DESCENT_DIRECTION = (
+    "The linesearch failed because the provided direction "
+    "is not a descent direction. "
+)
 
 
 class ZoomLinesearchState(NamedTuple):
@@ -704,8 +654,9 @@ def zoom_linesearch(
     """
     step = optax.tree.add_scale(params, stepsize, updates)
     value_step, grad_step = value_and_grad_fn(step, **fn_kwargs)
-    slope_step = optax.tree.real(optax.tree.vdot(optax.tree.conj(grad_step),
-                                                 updates))
+    slope_step = optax.tree.real(
+        optax.tree.vdot(optax.tree.conj(grad_step), updates)
+    )
     return step, value_step, grad_step, slope_step
 
   def _compute_decrease_error(
@@ -1588,7 +1539,7 @@ def scale_by_zoom_linesearch(
         to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
-    (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
+    (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
     del remaining_kwargs
@@ -1628,22 +1579,218 @@ def scale_by_zoom_linesearch(
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-# Flags to print errors, used for debugging, tested
-FLAG_INTERVAL_NOT_FOUND = (
-    "No interval satisfying curvature condition. "
-    "Consider increasing maximal possible stepsize of the linesearch."
-)
-FLAG_INTERVAL_TOO_SMALL = (
-    "Length of searched interval has been reduced below threshold."
-)
-FLAG_CURVATURE_COND_NOT_SATISFIED = (
-    "Returning stepsize with sufficient decrease "
-    "but curvature condition not satisfied."
-)
-FLAG_NO_STEPSIZE_FOUND = (
-    "Linesearch failed, no stepsize satisfying sufficient decrease found."
-)
-FLAG_NOT_A_DESCENT_DIRECTION = (
-    "The linesearch failed because the provided direction "
-    "is not a descent direction. "
-)
+################################################################################
+# Utility functions for linesearches
+################################################################################
+
+
+def value_and_grad_from_state(
+    value_fn: Callable[..., Union[jax.Array, float]],
+) -> Callable[..., tuple[Union[float, jax.Array], base.Updates]]:
+  r"""Alternative to ``jax.value_and_grad`` that fetches value, grad from state.
+
+  Line-search methods such as :func:`optax.scale_by_backtracking_linesearch`
+  require to compute the gradient and objective function at the candidate
+  iterate. This objective value and gradient can be re-used in the next
+  iteration to save some computations using this utility function.
+
+  Args:
+    value_fn: function returning a scalar (float or array of dimension 1),
+      amenable to differentiation in jax using :func:`jax.value_and_grad`.
+
+  Returns:
+    A callable akin to :func:`jax.value_and_grad` that fetches value
+    and grad from the state if present. If no value or grad are found or if
+    multiple value and grads are found this function raises an error. If a value
+    is found but is infinite or nan, the value and grad are computed using
+    :func:`jax.value_and_grad`. If the gradient found in the state is None,
+    raises an Error.
+
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> def fn(x): return jnp.sum(x ** 2)
+    >>> solver = optax.chain(
+    ...     optax.sgd(learning_rate=1.),
+    ...     optax.scale_by_backtracking_linesearch(
+    ...         max_backtracking_steps=15, store_grad=True
+    ...     )
+    ... )
+    >>> value_and_grad = optax.value_and_grad_from_state(fn)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: {:.2E}'.format(fn(params)))
+    Objective function: 1.40E+01
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...   value, grad = value_and_grad(params, state=opt_state)
+    ...   updates, opt_state = solver.update(
+    ...       grad, opt_state, params, value=value, grad=grad, value_fn=fn
+    ...   )
+    ...   params = optax.apply_updates(params, updates)
+    ...   print('Objective function: {:.2E}'.format(fn(params)))
+    Objective function: 5.04E+00
+    Objective function: 1.81E+00
+    Objective function: 6.53E-01
+    Objective function: 2.35E-01
+    Objective function: 8.47E-02
+  """
+
+  def _value_and_grad(
+      params: base.Params,
+      *fn_args: Any,
+      state: base.OptState,
+      **fn_kwargs: dict[str, Any],
+  ):
+    value = optax.tree.get(state, "value")
+    grad = optax.tree.get(state, "grad")
+    if (value is None) or (grad is None):
+      raise ValueError(
+          "Value or gradient not found in the state. "
+          "Make sure that these values are stored in the state by the "
+          "optimizer."
+      )
+    value, grad = jax.lax.cond(
+        (~jnp.isinf(value)) & (~jnp.isnan(value)),
+        lambda *_: (value, grad),
+        lambda p, a, kwa: jax.value_and_grad(value_fn)(p, *a, **kwa),
+        params,
+        fn_args,
+        fn_kwargs,
+    )
+    return value, grad
+
+  return _value_and_grad
+
+
+def _extract_fns_kwargs(
+    fns: tuple[Callable[..., Any], ...],
+    kwargs: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+  """Split ``kwargs`` into sub_kwargs to be fed to each function in ``fns``.
+
+  Given a dictionary of arguments ``kwargs`` and a list of functions
+  ``fns = (fn_1, ..., fn_n)``, this utility splits the ``kwargs`` in several
+  dictionaries ``(fn_1_kwargs, ..., fn_n_kwargs), remaining_kwargs``. Each
+  dictionary ``fn_i_kwargs`` correspond to a subset of ``{key: values}`` pairs
+  from ``kwargs`` such that ``key`` is one possible argument of the function
+  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs
+  ``{key: values}`` from ``kwargs`` whose ``key`` does not match any argument
+  of any of the functions ``fns``.
+
+  Args:
+    fns: tuple of functions to feed kwargs to.
+    kwargs: dictionary of keyword variables to be fed to funs.
+
+  Returns:
+    (fn_1_kwargs, ..., fn_n_kwargs)
+      Keyword arguments for each function taken from kwargs.
+    remaining_kwargs
+      Keyword arguments present in kwargs but not in any of the input functions.
+
+  Examples:
+    >>> def fn1(a, b): return a+b
+    >>> def fn2(c, d): return c+d
+    >>> kwargs = {'b':1., 'd':2., 'e':3.}
+    >>> fns_kwargs, remaining_kwargs = _extract_fns_kwargs((fn1, fn2), kwargs)
+    >>> print(fns_kwargs)
+    [{'b': 1.0}, {'d': 2.0}]
+    >>> print(remaining_kwargs)
+    {'e': 3.0}
+    >>> # Possible usage
+    >>> def super_fn(a, c, **kwargs):
+    ...  (fn1_kwargs, fn2_kwargs), _ = _extract_fns_kwargs((fn1, fn2), kwargs)
+    ...  return fn1(a, **fn1_kwargs) + fn2(c, **fn2_kwargs)
+    >>> print(super_fn(1., 2., b=3., d=4.))
+    10.0
+  """
+  fns_arg_names = [list(inspect.signature(fn).parameters.keys()) for fn in fns]
+  fns_kwargs = [
+      {k: v for k, v in kwargs.items() if k in fn_arg_names}
+      for fn_arg_names in fns_arg_names
+  ]
+  all_possible_arg_names = functools.reduce(operator.add, fns_arg_names)
+  remaining_keys = [k for k in kwargs.keys() if k not in all_possible_arg_names]
+  remaining_kwargs = {k: v for k, v in kwargs.items() if k in remaining_keys}
+  return fns_kwargs, remaining_kwargs
+
+
+def _cond_print(condition, message, **kwargs):
+  """Prints message if condition is true."""
+  jax.lax.cond(
+      condition,
+      lambda _: jax.debug.print(message, **kwargs, ordered=True),
+      lambda _: None,
+      None,
+  )
+
+
+# pylint: disable=invalid-name
+def _cubicmin(a, fa, fpa, b, fb, c, fc):
+  """Cubic interpolation.
+
+  Finds a critical point of a cubic polynomial
+  p(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D, that goes through
+  the points (a,fa), (b,fb), and (c,fc) with derivative at a of fpa.
+  May return NaN (if radical<0), in that case, the point will be ignored.
+  Adapted from scipy.optimize._linesearch.py.
+
+  Args:
+    a: scalar
+    fa: value of a function f at a
+    fpa: slope of a function f at a
+    b: scalar
+    fb: value of a function f at b
+    c: scalar
+    fc: value of a function f at c
+
+  Returns:
+    xmin: point at which p'(xmin) = 0
+  """
+  C = fpa
+  db = b - a
+  dc = c - a
+  denom = (db * dc) ** 2 * (db - dc)
+  d1 = jnp.array([[dc**2, -(db**2)], [-(dc**3), db**3]])
+  A, B = (
+      jnp.dot(
+          d1,
+          jnp.array([fb - fa - C * db, fc - fa - C * dc]),
+          precision=jax.lax.Precision.HIGHEST,
+      )
+      / denom
+  )
+
+  radical = B * B - 3.0 * A * C
+  xmin = a + (-B + jnp.sqrt(radical)) / (3.0 * A)
+
+  return xmin
+
+
+def _quadmin(a, fa, fpa, b, fb):
+  """Quadratic interpolation.
+
+  Finds a critical point of a quadratic polynomial
+  p(x) = B*(x-a)^2 + C*(x-a) + D, that goes through
+  the points (a,fa), (b,fb) with derivative at a of fpa.
+  Adapted from scipy.optimize._linesearch.py.
+
+  Args:
+    a: scalar
+    fa: value of a function f at a
+    fpa: slope of a function f at a
+    b: scalar
+    fb: value of a function f at b
+
+  Returns:
+    xmin: point at which p'(xmin) = 0
+  """
+  D = fa
+  C = fpa
+  db = b - a
+  B = (fb - D - C * db) / (db**2)
+  xmin = a - C / (2.0 * B)
+  return xmin
+
+
+# pylint: enable=invalid-name

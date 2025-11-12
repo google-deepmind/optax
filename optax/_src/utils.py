@@ -14,19 +14,15 @@
 # ==============================================================================
 """Utility functions for testing."""
 
-from collections.abc import Callable
 import contextlib
 import functools
-import inspect
-import operator
-from typing import Any, Optional, Sequence, Union
+from typing import Optional, Sequence
 
 import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 import numpy as np
-from optax._src import base
 from optax._src import numerics
 from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 import optax.tree
@@ -238,138 +234,6 @@ def x64_precision(enable_x64_precision: bool = True):
     yield
   finally:
     jax.config.update('jax_enable_x64', old_config)
-
-
-def _extract_fns_kwargs(
-    fns: tuple[Callable[..., Any], ...],
-    kwargs: dict[str, Any],
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-  """Split ``kwargs`` into sub_kwargs to be fed to each function in ``fns``.
-
-  Given a dictionary of arguments ``kwargs`` and a list of functions
-  ``fns = (fn_1, ..., fn_n)``, this utility splits the ``kwargs`` in several
-  dictionaries ``(fn_1_kwargs, ..., fn_n_kwargs), remaining_kwargs``. Each
-  dictionary ``fn_i_kwargs`` correspond to a subset of ``{key: values}`` pairs
-  from ``kwargs`` such that ``key`` is one possible argument of the function
-  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs
-  ``{key: values}`` from ``kwargs`` whose ``key`` does not match any argument
-  of any of the functions ``fns``.
-
-  Args:
-    fns: tuple of functions to feed kwargs to.
-    kwargs: dictionary of keyword variables to be fed to funs.
-
-  Returns:
-    (fn_1_kwargs, ..., fn_n_kwargs)
-      Keyword arguments for each function taken from kwargs.
-    remaining_kwargs
-      Keyword arguments present in kwargs but not in any of the input functions.
-
-  Examples:
-    >>> import optax
-    >>> def fn1(a, b): return a+b
-    >>> def fn2(c, d): return c+d
-    >>> kwargs = {'b':1., 'd':2., 'e':3.}
-    >>> fns_kwargs, remaining_kwargs = _extract_fns_kwargs((fn1, fn2), kwargs)
-    >>> print(fns_kwargs)
-    [{'b': 1.0}, {'d': 2.0}]
-    >>> print(remaining_kwargs)
-    {'e': 3.0}
-    >>> # Possible usage
-    >>> def super_fn(a, c, **kwargs):
-    ...  (fn1_kwargs, fn2_kwargs), _ = _extract_fns_kwargs((fn1, fn2), kwargs)
-    ...  return fn1(a, **fn1_kwargs) + fn2(c, **fn2_kwargs)
-    >>> print(super_fn(1., 2., b=3., d=4.))
-    10.0
-  """
-  fns_arg_names = [list(inspect.signature(fn).parameters.keys()) for fn in fns]
-  fns_kwargs = [
-      {k: v for k, v in kwargs.items() if k in fn_arg_names}
-      for fn_arg_names in fns_arg_names
-  ]
-  all_possible_arg_names = functools.reduce(operator.add, fns_arg_names)
-  remaining_keys = [k for k in kwargs.keys() if k not in all_possible_arg_names]
-  remaining_kwargs = {k: v for k, v in kwargs.items() if k in remaining_keys}
-  return fns_kwargs, remaining_kwargs
-
-
-def value_and_grad_from_state(
-    value_fn: Callable[..., Union[jax.Array, float]],
-) -> Callable[..., tuple[Union[float, jax.Array], base.Updates]]:
-  r"""Alternative to ``jax.value_and_grad`` that fetches value, grad from state.
-
-  Line-search methods such as :func:`optax.scale_by_backtracking_linesearch`
-  require to compute the gradient and objective function at the candidate
-  iterate. This objective value and gradient can be re-used in the next
-  iteration to save some computations using this utility function.
-
-  Args:
-    value_fn: function returning a scalar (float or array of dimension 1),
-      amenable to differentiation in jax using :func:`jax.value_and_grad`.
-
-  Returns:
-    A callable akin to :func:`jax.value_and_grad` that fetches value
-    and grad from the state if present. If no value or grad are found or if
-    multiple value and grads are found this function raises an error. If a value
-    is found but is infinite or nan, the value and grad are computed using
-    :func:`jax.value_and_grad`. If the gradient found in the state is None,
-    raises an Error.
-
-
-  Examples:
-    >>> import optax
-    >>> import jax.numpy as jnp
-    >>> def fn(x): return jnp.sum(x ** 2)
-    >>> solver = optax.chain(
-    ...     optax.sgd(learning_rate=1.),
-    ...     optax.scale_by_backtracking_linesearch(
-    ...         max_backtracking_steps=15, store_grad=True
-    ...     )
-    ... )
-    >>> value_and_grad = optax.value_and_grad_from_state(fn)
-    >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: {:.2E}'.format(fn(params)))
-    Objective function: 1.40E+01
-    >>> opt_state = solver.init(params)
-    >>> for _ in range(5):
-    ...   value, grad = value_and_grad(params, state=opt_state)
-    ...   updates, opt_state = solver.update(
-    ...       grad, opt_state, params, value=value, grad=grad, value_fn=fn
-    ...   )
-    ...   params = optax.apply_updates(params, updates)
-    ...   print('Objective function: {:.2E}'.format(fn(params)))
-    Objective function: 5.04E+00
-    Objective function: 1.81E+00
-    Objective function: 6.53E-01
-    Objective function: 2.35E-01
-    Objective function: 8.47E-02
-  """
-
-  def _value_and_grad(
-      params: base.Params,
-      *fn_args: Any,
-      state: base.OptState,
-      **fn_kwargs: dict[str, Any],
-  ):
-    value = optax.tree.get(state, 'value')
-    grad = optax.tree.get(state, 'grad')
-    if (value is None) or (grad is None):
-      raise ValueError(
-          'Value or gradient not found in the state. '
-          'Make sure that these values are stored in the state by the '
-          'optimizer.'
-      )
-    value, grad = jax.lax.cond(
-        (~jnp.isinf(value)) & (~jnp.isnan(value)),
-        lambda *_: (value, grad),
-        lambda p, a, kwa: jax.value_and_grad(value_fn)(p, *a, **kwa),
-        params,
-        fn_args,
-        fn_kwargs,
-    )
-    return value, grad
-
-  return _value_and_grad
 
 
 # TODO(b/183800387): remove legacy aliases.
