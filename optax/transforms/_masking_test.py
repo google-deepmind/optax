@@ -20,7 +20,6 @@ from typing import cast
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -160,9 +159,9 @@ class MaskedTest(parameterized.TestCase):
       # Required to make pytype happy
       new_state = cast(_masking.MaskedState, new_state)
 
-      chex.assert_equal(None, new_state.inner_state['count'])
-      chex.assert_equal(sharded_params, new_state.inner_state['params'])
-      chex.assert_equal(sharded_params, new_state.inner_state['params_copy'])
+      self.assertIsNone(new_state.inner_state['count'])
+      self.assertEqual(sharded_params, new_state.inner_state['params'])
+      self.assertEqual(sharded_params, new_state.inner_state['params_copy'])
 
   @parameterized.named_parameters(
       ('sgd', _build_sgd, False),
@@ -189,7 +188,7 @@ class MaskedTest(parameterized.TestCase):
 
     with self.subTest('tree_map_params'):
       result = optax.tree.map_params(init_fn, lambda v: v, state)
-      chex.assert_trees_all_equal_structs(result, state)
+      test_utils.assert_trees_all_equal_structs(result, state)
 
     updates, state = update_fn(input_updates, state, params)
     test_utils.assert_trees_all_close(updates, correct_updates)
@@ -349,7 +348,7 @@ class MaskedTest(parameterized.TestCase):
         'a': [jnp.zeros(1), (jnp.zeros(2), _masking.MaskedNode())],
         'b': _masking.MaskedNode(),
     }
-    chex.assert_trees_all_equal_structs(trace, expected_trace)
+    test_utils.assert_trees_all_equal_structs(trace, expected_trace)
 
   def test_mask_compatible_callable_pytree(self):
     """Test if mask is compatible with callable pytrees a la equinox."""

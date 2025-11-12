@@ -18,7 +18,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -62,7 +61,7 @@ class TransformTest(parameterized.TestCase):
     transform_fn = jax.jit(scaler.update)
 
     state = init_fn(params)
-    chex.assert_tree_all_finite(state)
+    test_utils.assert_tree_all_finite(state)
 
     if scaler_constr.__name__ == 'scale_by_polyak':
       extra_args = {'value': jnp.array(0.0)}
@@ -71,8 +70,8 @@ class TransformTest(parameterized.TestCase):
     updates, state = transform_fn(
         self.per_step_updates, state, params, **extra_args
     )
-    chex.assert_tree_all_finite((params, updates, state))
-    jax.tree.map(lambda *args: chex.assert_equal_shape(args), params, updates)
+    test_utils.assert_tree_all_finite((params, updates, state))
+    test_utils.assert_trees_all_equal_shapes(params, updates)
 
   def test_apply_every(self):
     # The frequency of the application of sgd

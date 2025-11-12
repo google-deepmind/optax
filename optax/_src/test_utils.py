@@ -74,3 +74,41 @@ def assert_trees_all_equal(actual, desired, err_msg=None):
     )
   for x, y in zip(flat_a, flat_d):
     np.testing.assert_array_equal(x, y, err_msg=err_msg)
+
+
+def assert_trees_all_equal_structs(actual, desired):
+  """Asserts that two pytrees have the same structure."""
+  if (jax.tree_util.tree_structure(actual) !=
+      jax.tree_util.tree_structure(desired)):
+    raise AssertionError(
+        f"Trees have different structures:\n{actual}\n{desired}"
+    )
+
+
+def assert_tree_all_finite(actual, err_msg=None):
+  """Asserts that all arrays in a pytree are finite."""
+  for x in jax.tree_util.tree_leaves(actual):
+    if not np.all(np.isfinite(x)):
+      raise AssertionError(f"Array {x} is not finite. {err_msg}")
+
+
+def assert_trees_all_equal_shapes(actual, desired, err_msg=None):
+  """Asserts that two pytrees of arrays have the same shapes."""
+  assert_trees_all_equal_structs(actual, desired)
+  for x, y in zip(jax.tree_util.tree_leaves(actual),
+                  jax.tree_util.tree_leaves(desired)):
+    if x.shape != y.shape:
+      raise AssertionError(
+          f"Shapes are not equal: {x.shape} != {y.shape}. {err_msg}"
+      )
+
+
+def assert_trees_all_equal_dtypes(actual, desired, err_msg=None):
+  """Asserts that two pytrees of arrays have the same dtypes."""
+  assert_trees_all_equal_structs(actual, desired)
+  for x, y in zip(jax.tree_util.tree_leaves(actual),
+                  jax.tree_util.tree_leaves(desired)):
+    if x.dtype != y.dtype:
+      raise AssertionError(
+          f"Dtypes are not equal: {x.dtype} != {y.dtype}. {err_msg}"
+      )

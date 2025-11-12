@@ -17,7 +17,6 @@
 import functools
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -111,8 +110,8 @@ class ScheduleFreeTest(parameterized.TestCase):
     params = jnp.ones((), dtype=jnp.float32)
     state = opt.init(params)
     eval_params = _schedule_free.schedule_free_eval_params(state, params)
-    chex.assert_equal_shape([params, eval_params])
-    chex.assert_trees_all_equal_dtypes(params, eval_params)
+    test_utils.assert_trees_all_equal_shapes(params, eval_params)
+    test_utils.assert_trees_all_equal_dtypes(params, eval_params)
 
   def test_buffer_donation(self):
     # Check that you can donate the params and optimizer state when doing a JIT

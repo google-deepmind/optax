@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import factorized
@@ -39,11 +38,11 @@ class FactorizedTest(parameterized.TestCase):
     transform_fn = jax.jit(scaler.update)
 
     state = init_fn(params)
-    chex.assert_tree_all_finite(state)
+    test_utils.assert_tree_all_finite(state)
 
     updates, state = transform_fn(self.per_step_updates, state, params)
-    chex.assert_tree_all_finite((params, updates, state))
-    chex.assert_trees_all_equal_shapes(params, updates)
+    test_utils.assert_tree_all_finite((params, updates, state))
+    test_utils.assert_trees_all_equal_shapes(params, updates)
 
   @parameterized.product(
       factorized_dims=(True, False), dtype=('bfloat16', 'float32')

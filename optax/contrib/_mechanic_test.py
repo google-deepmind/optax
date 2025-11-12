@@ -17,7 +17,6 @@
 from typing import NamedTuple
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -46,7 +45,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   def update_fn(updates, state, params):
     # The test optimizer does not use the parameters, but we check that they
     # have been passed correctly.
-    chex.assert_trees_all_equal_shapes(updates, params)
+    test_utils.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree.map(lambda u: step_size * u, updates)
     return updates, OptimizerTestState(aggregate_grads)
@@ -65,7 +64,6 @@ class MechanicTest(absltest.TestCase):
            ) -> tuple[base.Params, _mechanic.MechanicState]:
     """Performs a given number of optimizer steps."""
     init_fn, update_fn = optimizer
-    # Use the chex variant to check various function versions (jit, pmap, etc).
     step = jax.jit(update_fn)
     opt_state = jax.jit(init_fn)(params)
 
@@ -103,7 +101,7 @@ class MechanicTest(absltest.TestCase):
     test_utils.assert_trees_all_close(expected_v, final_state.v)
     test_utils.assert_trees_all_close(expected_s, final_state.s)
     test_utils.assert_trees_all_close(final_params, params)
-    chex.assert_tree_all_finite((final_params, final_state))
+    test_utils.assert_tree_all_finite((final_params, final_state))
 
 
 if __name__ == '__main__':

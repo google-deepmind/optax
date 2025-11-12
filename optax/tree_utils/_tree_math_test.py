@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
@@ -306,9 +305,9 @@ class TreeUtilsTest(parameterized.TestCase):
     m = jnp.logspace(-10, 10, num=21, dtype=jnp.bfloat16)  # 1e-10 ... 1e10
     for decay in (0.9, 0.99, 0.999, 0.9995):
       for count in (1, 10, 100, 1000):
-        chex.assert_tree_all_finite(
+        test_utils.assert_tree_all_finite(
             tu.tree_bias_correction(m, decay, count),
-            custom_message=f'failed with decay={decay}, count={count}',
+            err_msg=f'failed with decay={decay}, count={count}',
         )
 
   def test_empty_tree_reduce(self):
