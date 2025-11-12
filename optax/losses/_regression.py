@@ -19,6 +19,7 @@ from typing import Optional, Union
 
 import chex
 import jax.numpy as jnp
+from optax._src import utils
 
 
 def squared_error(
@@ -42,7 +43,7 @@ def squared_error(
     "Pattern Recognition and Machine Learning" by Bishop, but not
     "The Elements of Statistical Learning" by Tibshirani.
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
   if targets is not None:
     # Avoid broadcasting logic for "-" operator.
     chex.assert_equal_shape((predictions, targets))
@@ -94,7 +95,7 @@ def huber_loss(
   References:
     `Huber loss <https://en.wikipedia.org/wiki/Huber_loss>`_, Wikipedia.
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
   errors = (predictions - targets) if (targets is not None) else predictions
   # 0.5 * err^2                  if |err| <= d
   # 0.5 * d^2 + d * (|err| - d)  if |err| > d
@@ -126,7 +127,7 @@ def log_cosh(
     Chen et al, `Log Hyperbolic Cosine Loss Improves Variational Auto-Encoder
     <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
@@ -163,7 +164,8 @@ def cosine_similarity(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([predictions, targets], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  utils.check_subdtype(targets, jnp.floating)
   a = predictions
   b = targets
 
@@ -212,7 +214,8 @@ def cosine_distance(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([predictions, targets], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  utils.check_subdtype(targets, jnp.floating)
   # cosine distance = 1 - cosine similarity.
   return 1.0 - cosine_similarity(
       predictions, targets, epsilon=epsilon, axis=axis, where=where

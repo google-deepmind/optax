@@ -17,6 +17,7 @@
 import chex
 from jax import lax
 import jax.numpy as jnp
+from optax._src import utils
 from optax.losses import _regression
 
 
@@ -75,7 +76,7 @@ def ntxent(
 
   .. versionadded:: 0.2.3
   """
-  chex.assert_type([embeddings], float)
+  utils.check_subdtype(embeddings, jnp.floating)
   if labels.shape[0] != embeddings.shape[0]:
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
@@ -165,7 +166,9 @@ def triplet_margin_loss(
       <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`
       _, 2016
   """
-  chex.assert_type([anchors, positives, negatives], float)
+  utils.check_subdtype(anchors, jnp.floating)
+  utils.check_subdtype(positives, jnp.floating)
+  utils.check_subdtype(negatives, jnp.floating)
   positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree)
                                 .sum(axis) + eps, 1/norm_degree)
   negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree)

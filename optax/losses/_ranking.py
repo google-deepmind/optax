@@ -53,6 +53,7 @@ from typing import Optional
 import chex
 import jax
 import jax.numpy as jnp
+from optax._src import utils
 
 
 def _safe_reduce(
@@ -138,7 +139,7 @@ def ranking_softmax_loss(
   Returns:
     The ranking softmax loss.
   """
-  chex.assert_type([logits], float)
+  utils.check_subdtype(logits, jnp.floating)
   labels = labels.astype(logits.dtype)
 
   # Applies mask so that masked elements do not count towards the loss.

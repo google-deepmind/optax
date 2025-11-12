@@ -23,6 +23,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.special
 from optax import projections
+from optax._src import utils
 from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 
 
@@ -75,7 +76,7 @@ def sigmoid_binary_cross_entropy(
     Goodfellow et al, `Deep Learning
     <http://www.deeplearningbook.org/contents/prob.html>`_, 2016
   """
-  chex.assert_type([logits], float)
+  utils.check_subdtype(logits, jnp.floating)
   labels = jnp.astype(labels, logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
@@ -219,7 +220,7 @@ def safe_softmax_cross_entropy(
     cross entropy between each prediction and the corresponding target
     distributions, with shape `[...]`.
   """
-  chex.assert_type([logits], float)
+  utils.check_subdtype(logits, jnp.floating)
   return -jnp.sum(weighted_logsoftmax(logits, labels), axis=-1)
 
 
@@ -288,7 +289,7 @@ def softmax_cross_entropy(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([logits], float)
+  utils.check_subdtype(logits, jnp.floating)
   if where is not None and where.ndim != logits.ndim:
     where = jnp.expand_dims(where, axis)
   log_probs = jax.nn.log_softmax(logits, axis, where)
@@ -373,8 +374,8 @@ def softmax_cross_entropy_with_integer_labels(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([logits], float)
-  chex.assert_type([labels], int)
+  utils.check_subdtype(logits, jnp.floating)
+  utils.check_subdtype(labels, jnp.integer)
   if where is not None and where.ndim != logits.ndim:
     where = jnp.expand_dims(where, axis)
   if isinstance(axis, int):
@@ -514,7 +515,8 @@ def poly_loss_cross_entropy(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([logits, labels], float)
+  utils.check_subdtype(logits, jnp.floating)
+  utils.check_subdtype(labels, jnp.floating)
   p = jax.nn.softmax(logits, axis=axis, where=where)
   one_minus_pt = jnp.sum(labels * (1 - p), axis=axis, where=where)
   cross_entropy = softmax_cross_entropy(
@@ -553,7 +555,8 @@ def kl_divergence(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([log_predictions, targets], float)
+  utils.check_subdtype(log_predictions, jnp.floating)
+  utils.check_subdtype(targets, jnp.floating)
   loss = targets * (
       jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
   )
@@ -585,7 +588,8 @@ def kl_divergence_with_log_targets(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([log_predictions, log_targets], float)
+  utils.check_subdtype(log_predictions, jnp.floating)
+  utils.check_subdtype(log_targets, jnp.floating)
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=axis, where=where)
 
@@ -870,7 +874,7 @@ def sigmoid_focal_loss(
     Added numerical stability improvements using log-space computation.
     Added support for continuous labels in `[0, 1]`.
   """
-  chex.assert_type([logits], float)
+  utils.check_subdtype(logits, jnp.floating)
   labels = jnp.astype(labels, logits.dtype)
 
   # Cross-entropy loss
