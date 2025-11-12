@@ -21,6 +21,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import flax.linen as nn
 import jax
+from jax import flatten_util
 from jax import random
 import jax.numpy as jnp
 import numpy as np
@@ -164,8 +165,8 @@ class LinearAlgebraTest(parameterized.TestCase):
         hessian_vector_product, v0=optax.tree.ones_like(params)
     )
 
-    params_flat, unravel = jax.flatten_util.ravel_pytree(params)
-    eigvec_power_flat, _ = jax.flatten_util.ravel_pytree(eigvec_power)
+    params_flat, unravel = flatten_util.ravel_pytree(params)
+    eigvec_power_flat, _ = flatten_util.ravel_pytree(eigvec_power)
 
     def train_obj_flat(params_flat_):
       params_ = unravel(params_flat_)
