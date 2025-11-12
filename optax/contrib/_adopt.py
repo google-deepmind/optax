@@ -15,7 +15,6 @@
 """ADOPT (Adaptive Optimization with Provable Theoretical guarantees)."""
 
 from typing import Any, Callable, Optional
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -30,7 +29,7 @@ def scale_by_adopt(
     b1: float = 0.9,
     b2: float = 0.9999,
     eps: float = 1e-6,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = False,
     use_clipping: bool = True,

@@ -21,7 +21,6 @@ Pierre Ablin and David Grangier.
 """
 
 from typing import Any, Callable, NamedTuple, Optional, Union
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -59,7 +58,7 @@ def scale_by_ademamix(
     alpha: base.ScalarOrSchedule = 6.0,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Scale updates according to the Ademamix algorithm.
 

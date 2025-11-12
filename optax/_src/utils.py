@@ -39,8 +39,8 @@ def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
 
 
 def canonicalize_dtype(
-    dtype: Optional[chex.ArrayDType],
-) -> Optional[chex.ArrayDType]:
+    dtype: Optional[jax.typing.DTypeLike],
+) -> Optional[jax.typing.DTypeLike]:
   """Canonicalise a dtype, skip if None."""
   if dtype is not None:
     return jax.dtypes.canonicalize_dtype(dtype)
@@ -60,7 +60,7 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
 ) -> chex.ArrayTree:
   return optax.tree.cast(tree, dtype)
 

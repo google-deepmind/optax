@@ -72,7 +72,7 @@ class RandomTest(parameterized.TestCase):
   def test_tree_random_like(
       self,
       sampler: Callable[
-          [chex.PRNGKey, chex.Shape, chex.ArrayDType], jax.Array
+          [chex.PRNGKey, chex.Shape, jax.typing.DTypeLike], jax.Array
       ],
       dtype: str,
       type_var: str,

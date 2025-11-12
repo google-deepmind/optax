@@ -24,7 +24,6 @@ import functools
 import math
 from typing import Any, Callable, NamedTuple, Optional, Union, Sequence
 
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -283,7 +282,7 @@ def scale_by_muon(
     ns_steps: int = 5,
     beta: float = 0.95,
     eps: float = 1e-8,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = True,
     adaptive: bool = False,
@@ -393,7 +392,7 @@ def muon(
     weight_decay_mask: Optional[
         Union[Any, Callable[[base.Params], Any]]
     ] = None,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = True,
     adaptive: bool = False,

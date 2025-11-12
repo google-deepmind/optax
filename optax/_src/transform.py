@@ -249,7 +249,7 @@ def scale_by_adam(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -323,7 +323,7 @@ def scale_by_amsgrad(
     b2: float = 0.999,
     eps: float = 1e-8,
     eps_root: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -418,7 +418,7 @@ class ScaleByLionState(NamedTuple):
 def scale_by_lion(
     b1: float = 0.9,
     b2: float = 0.99,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
 
@@ -1218,7 +1218,7 @@ def scale_by_novograd(
     eps: float = 1e-8,
     eps_root: float = 0.0,
     weight_decay: float = 0.0,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
 
@@ -1817,7 +1817,7 @@ def normalize_by_update_norm(
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
 ) -> chex.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
