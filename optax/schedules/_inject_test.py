@@ -27,6 +27,7 @@ import numpy as np
 
 from optax._src import base
 from optax._src import clipping
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import wrappers
 from optax.schedules import _inject
@@ -110,7 +111,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
       np.testing.assert_almost_equal(state.hyperparams['eps'], 1e-8)
       np.testing.assert_almost_equal(state.hyperparams['eps_root'], 0.0)
       assert 'eps' in state.hyperparams
-      chex.assert_trees_all_close(updates, grads)
+      test_utils.assert_trees_all_close(updates, grads)
 
   def test_overriding_hyperparam(self):
     optim = _inject.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
@@ -142,7 +143,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
     )
 
     assert set(state.hyperparams.keys()) == {'learning_rate'}, state.hyperparams
-    chex.assert_trees_all_close(updates, expected_updates)
+    test_utils.assert_trees_all_close(updates, expected_updates)
 
   @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
   def test_numeric_static_args(self, static_args):

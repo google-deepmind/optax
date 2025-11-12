@@ -19,7 +19,6 @@ import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -27,6 +26,7 @@ import numpy as np
 from optax._src import alias
 from optax._src import alias_test
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.schedules import _schedule
 
@@ -736,7 +736,7 @@ class ScheduleAsLearningRateTest(parameterized.TestCase):
             opt_with_lr, params_with_lr, state_with_lr)
       # check if the constant learning rate schedule and the learning rate
       # are equivalent
-      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
+      test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 if __name__ == '__main__':
   absltest.main()

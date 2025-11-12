@@ -28,6 +28,7 @@ import numpy as np
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 from optax.transforms import _masking
@@ -121,12 +122,12 @@ class MaskedTest(parameterized.TestCase):
     with self.subTest('inner'):
       state = inner.init(params)
       result = optax.tree.map_params(inner, increment_dim_1, state)
-      chex.assert_trees_all_equal(result, inner.init(expected))
+      test_utils.assert_trees_all_equal(result, inner.init(expected))
 
     with self.subTest('masked'):
       state = masked.init(params)
       result = optax.tree.map_params(masked, increment_dim_1, state)
-      chex.assert_trees_all_equal(result, masked.init(expected))
+      test_utils.assert_trees_all_equal(result, masked.init(expected))
 
     with self.subTest('masked_with_extra_args'):
       # Users wishing to pass additional arguments with the same tree structure
@@ -191,12 +192,12 @@ class MaskedTest(parameterized.TestCase):
       chex.assert_trees_all_equal_structs(result, state)
 
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = masked_negate(correct_updates)
     updates, _ = update_fn(updates, state)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
@@ -223,14 +224,14 @@ class MaskedTest(parameterized.TestCase):
     update_fn = jax.jit(update_fn)
     state = jax.jit(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = jax.tree.map(
         _masked_sgd_on_updates, mask, correct_updates
     )
     updates, _ = update_fn(updates, state)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
   def test_update_requires_params(self):
     weight_decay = 0.1
@@ -253,7 +254,7 @@ class MaskedTest(parameterized.TestCase):
 
     state = jax.jit(init_fn)(params)
     updates, state = update_fn(input_updates, state, params)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
     params = update.apply_updates(params, updates)
 
@@ -265,7 +266,7 @@ class MaskedTest(parameterized.TestCase):
         params,
     )
     updates, _ = update_fn(correct_updates, state, params)
-    chex.assert_trees_all_close(updates, new_correct_updates)
+    test_utils.assert_trees_all_close(updates, new_correct_updates)
 
   @parameterized.parameters(list, tuple, dict)
   def test_empty(self, container):
@@ -333,7 +334,7 @@ class MaskedTest(parameterized.TestCase):
 
     state = jax.jit(init_fn)(params)
     updates, _ = jax.jit(update_fn)(input_updates, state, params)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
   def test_masked_state_structure(self):
     # https://github.com/deepmind/optax/issues/271
@@ -382,7 +383,7 @@ class MaskedTest(parameterized.TestCase):
       state = opt.init(module)
       updates = module
       new_updates, _ = opt.update(updates, state)
-      chex.assert_trees_all_equal(updates, new_updates)
+      test_utils.assert_trees_all_equal(updates, new_updates)
 
 
 if __name__ == '__main__':

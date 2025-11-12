@@ -14,12 +14,12 @@
 # ==============================================================================
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
 from optax._src import alias
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.experimental import _aggregating as aggregating
 
@@ -129,8 +129,8 @@ class AggregatorsTest(parameterized.TestCase):
     device_type = jax.devices()[0].platform
     rtol = 5 * 1e-3 if device_type == 'tpu' else 1e-5
     with self.subTest('aggregation matches standard'):
-      chex.assert_trees_all_close(std_params, agg_params, rtol=rtol)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(std_params, agg_params, rtol=rtol)
+      test_utils.assert_trees_all_close(
           std_metrics['full_batch_loss'],
           agg_metrics['full_batch_loss'],
           rtol=rtol,
@@ -146,8 +146,8 @@ class AggregatorsTest(parameterized.TestCase):
     acc_params, acc_metrics = _train(opt, accumulation_steps=2)
 
     with self.subTest('accumulation matches standard'):
-      chex.assert_trees_all_close(std_params, acc_params)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(std_params, acc_params)
+      test_utils.assert_trees_all_close(
           std_metrics['full_batch_loss'], acc_metrics['full_batch_loss'][::2]
       )
 
@@ -161,8 +161,8 @@ class AggregatorsTest(parameterized.TestCase):
     agg_acc_params, agg_acc_metrics = _train(opt, accumulation_steps=2)
 
     with self.subTest('aggregation and accumulation match standard'):
-      chex.assert_trees_all_close(std_params, agg_acc_params)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(std_params, agg_acc_params)
+      test_utils.assert_trees_all_close(
           std_metrics['full_batch_loss'],
           agg_acc_metrics['full_batch_loss'][::2],
       )
@@ -182,20 +182,21 @@ class AggregatorsTest(parameterized.TestCase):
     with self.subTest(
         'mean variance ema with aggregation training matches standard'
     ):
-      chex.assert_trees_all_close(std_params, mean_var_agg_params, rtol=rtol)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
+          std_params, mean_var_agg_params, rtol=rtol)
+      test_utils.assert_trees_all_close(
           std_metrics['full_batch_loss'],
           mean_var_agg_metrics['full_batch_loss'],
           rtol=rtol,
       )
     with self.subTest('monitored mean grads ema matches true mean grads ema'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           mean_var_agg_metrics['true_mean_grads_ema'],
           mean_var_agg_metrics['mean_grads_ema'],
           rtol=rtol,
       )
     with self.subTest('monitored var grads ema matches true var grads ema'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           mean_var_agg_metrics['true_var_grads_ema'],
           mean_var_agg_metrics['var_grads_ema'],
           rtol=rtol,
@@ -210,8 +211,9 @@ class AggregatorsTest(parameterized.TestCase):
     with self.subTest(
         'mean variance ema with accumulation training matches standard'
     ):
-      chex.assert_trees_all_close(std_params, mean_var_acc_params, rtol=rtol)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
+          std_params, mean_var_acc_params, rtol=rtol)
+      test_utils.assert_trees_all_close(
           std_metrics['full_batch_loss'],
           mean_var_acc_metrics['full_batch_loss'][::2],
           rtol=rtol,
@@ -220,7 +222,7 @@ class AggregatorsTest(parameterized.TestCase):
     with self.subTest(
         'var grads ema with accumulation matches var grads ema with aggregation'
     ):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           mean_var_agg_metrics['var_grads_ema'],
           mean_var_acc_metrics['var_grads_ema'][1::2],
       )

@@ -17,10 +17,10 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+from optax._src import test_utils
 from optax.experimental import _microbatching as microbatching
 
 
@@ -90,7 +90,7 @@ class MicrobatchingTest(parameterized.TestCase):
     )
     expected_answer = fun(nonbatch_arg, batch_arg1, batch_arg2)
     actual_answer = microbatched_fun(nonbatch_arg, batch_arg1, batch_arg2)
-    chex.assert_trees_all_close(expected_answer, actual_answer, atol=1e-6)
+    test_utils.assert_trees_all_close(expected_answer, actual_answer, atol=1e-6)
 
   def test_microbatch_with_kwargs(self):
     nonbatch_arg = jnp.array(np.random.normal(size=NONBATCH_SHAPE))
@@ -108,7 +108,7 @@ class MicrobatchingTest(parameterized.TestCase):
     actual_answer = microbatched_fun(
         nonbatch_arg, batch_arg1, batch_kwarg2=batch_kwarg2
     )
-    chex.assert_trees_all_close(expected_answer, actual_answer, atol=1e-6)
+    test_utils.assert_trees_all_close(expected_answer, actual_answer, atol=1e-6)
 
   def test_nondecomposable_function(self):
     def fun(x):
@@ -121,11 +121,12 @@ class MicrobatchingTest(parameterized.TestCase):
         microbatch_size=3,
         accumulator=microbatching.AccumulationType.SUM,
     )
-    chex.assert_trees_all_close(fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5)
+    test_utils.assert_trees_all_close(
+        fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5)
     # This split here is an implementation detail that could change:
     # microbatch1 = [0, 2, 4]
     # microbatch2 = [1, 3, 5]
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         microbatched_fun(x), 0 * 2 + 2 * 4 + 1 * 3 + 3 * 5
     )
 
@@ -171,7 +172,7 @@ class MicrobatchingTest(parameterized.TestCase):
         num_real_microbatches=2,
     )(x)
 
-    chex.assert_trees_all_close(jnp.sum(output != 0), 6)
+    test_utils.assert_trees_all_close(jnp.sum(output != 0), 6)
 
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,
@@ -193,7 +194,7 @@ class MicrobatchingTest(parameterized.TestCase):
     result1 = microbatching.microbatch(
         fun_axis1, argnums=(0, 1), microbatch_size=2, in_axes=1, accumulator=acc
     )(arg_axis1, arg_axis1)
-    chex.assert_trees_all_close(result0, result1)
+    test_utils.assert_trees_all_close(result0, result1)
 
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,
@@ -222,7 +223,12 @@ class MicrobatchingTest(parameterized.TestCase):
     ans5 = mfun(argnums=(), argnames=('b', 'a'), in_axes=(1, 0))(b=arg1, a=arg0)
     ans6 = mfun(argnums=0, argnames='b', in_axes=(0, 1))(arg0, b=arg1)
 
-    chex.assert_trees_all_close(ans0, ans1, ans2, ans3, ans4, ans5, ans6)
+    test_utils.assert_trees_all_close(ans0, ans1)
+    test_utils.assert_trees_all_close(ans0, ans2)
+    test_utils.assert_trees_all_close(ans0, ans3)
+    test_utils.assert_trees_all_close(ans0, ans4)
+    test_utils.assert_trees_all_close(ans0, ans5)
+    test_utils.assert_trees_all_close(ans0, ans6)
 
   def test_argnums_argnames_invariant(self):
     def fun(a, b, c, *, d, e, f):
@@ -236,13 +242,13 @@ class MicrobatchingTest(parameterized.TestCase):
         fun, argnums=0, argnames='b', microbatch_size=2,
     )(jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
-    chex.assert_trees_all_close(output1, output2)
+    test_utils.assert_trees_all_close(output1, output2)
 
     output3 = microbatching.microbatch(
         fun, argnums=(), argnames=('b', 'a'), microbatch_size=2,
     )(a=jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
-    chex.assert_trees_all_close(output1, output3)
+    test_utils.assert_trees_all_close(output1, output3)
 
   def test_vmap(self):
     x = jnp.arange(2*4*8).reshape(2, 4, 8)
@@ -252,7 +258,7 @@ class MicrobatchingTest(parameterized.TestCase):
         microbatch_size=2,
     )
     normal_vmap = jax.vmap(jnp.sum, in_axes=1)
-    chex.assert_trees_all_close(normal_vmap(x), custom_vmap(x), atol=1e-6)
+    test_utils.assert_trees_all_close(normal_vmap(x), custom_vmap(x), atol=1e-6)
 
 
 if __name__ == '__main__':

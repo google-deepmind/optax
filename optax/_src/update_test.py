@@ -16,9 +16,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax._src import update
 
 
@@ -30,7 +30,8 @@ class UpdateTest(parameterized.TestCase):
     exp_params = jax.tree.map(lambda t: 3 * t, params)
     new_params = jax.jit(update.apply_updates)(params, grads)
 
-    chex.assert_trees_all_close(exp_params, new_params, atol=1e-10, rtol=1e-5)
+    test_utils.assert_trees_all_close(
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
 
   def test_apply_updates_mixed_precision(self):
     params = (
@@ -51,7 +52,8 @@ class UpdateTest(parameterized.TestCase):
         params_2, params_1, 0.5
     )
 
-    chex.assert_trees_all_close(exp_params, new_params, atol=1e-10, rtol=1e-5)
+    test_utils.assert_trees_all_close(
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
 
   def test_periodic_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
@@ -65,12 +67,14 @@ class UpdateTest(parameterized.TestCase):
         new_params = update_fn(
             params_2, params_1, j * update_period + i, update_period
         )
-        chex.assert_trees_all_close(params_1, new_params, atol=1e-10, rtol=1e-5)
+        test_utils.assert_trees_all_close(
+            params_1, new_params, atol=1e-10, rtol=1e-5)
 
       new_params = update_fn(
           params_2, params_1, (j + 1) * update_period, update_period
       )
-      chex.assert_trees_all_close(params_2, new_params, atol=1e-10, rtol=1e-5)
+      test_utils.assert_trees_all_close(
+          params_2, new_params, atol=1e-10, rtol=1e-5)
 
   @parameterized.named_parameters(
       {'testcase_name': 'apply_updates', 'operation': update.apply_updates},

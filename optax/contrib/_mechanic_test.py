@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _mechanic
 import optax.tree
@@ -98,10 +99,10 @@ class MechanicTest(absltest.TestCase):
     expected_v = np.array([0.0] * num_betas)
     expected_s = np.array([1.6666667e-09] * num_betas)
 
-    chex.assert_trees_all_close(expected_m, final_state.m)
-    chex.assert_trees_all_close(expected_v, final_state.v)
-    chex.assert_trees_all_close(expected_s, final_state.s)
-    chex.assert_trees_all_close(final_params, params)
+    test_utils.assert_trees_all_close(expected_m, final_state.m)
+    test_utils.assert_trees_all_close(expected_v, final_state.v)
+    test_utils.assert_trees_all_close(expected_s, final_state.s)
+    test_utils.assert_trees_all_close(final_params, params)
     chex.assert_tree_all_finite((final_params, final_state))
 
 

@@ -25,6 +25,7 @@ import numpy as np
 from optax._src import alias
 from optax._src import base
 from optax._src import lookahead
+from optax._src import test_utils
 from optax._src import update
 import optax.tree
 
@@ -101,7 +102,7 @@ class LookaheadTest(parameterized.TestCase):
     # x steps must be: 3 -> 2 -> 1 -> 2 (sync) -> 1 -> 0 -> 1 (sync).
     # Similarly for y (with sign flipped).
     correct_final_params = {'x': 1, 'y': -1}
-    chex.assert_trees_all_close(final_params.slow, correct_final_params)
+    test_utils.assert_trees_all_close(final_params.slow, correct_final_params)
 
   @parameterized.parameters([False], [True])
   def test_lookahead_state_reset(self, reset_state):
@@ -128,7 +129,7 @@ class LookaheadTest(parameterized.TestCase):
           fast_optimizer, num_steps, self.initial_params
       )
 
-    chex.assert_trees_all_close(fast_state, correct_state)
+    test_utils.assert_trees_all_close(fast_state, correct_state)
 
   @parameterized.parameters(
       [1, 0.5, {'x': np.array(1.), 'y': np.array(-1.)}],
@@ -147,7 +148,7 @@ class LookaheadTest(parameterized.TestCase):
     final_params, _ = self.loop(
         optimizer, num_steps=2, params=self.synced_initial_params
     )
-    chex.assert_trees_all_close(final_params.slow, correct_result)
+    test_utils.assert_trees_all_close(final_params.slow, correct_result)
 
 
 if __name__ == '__main__':

@@ -16,12 +16,12 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 
@@ -72,7 +72,7 @@ class ComposeTest(absltest.TestCase):
       states = new_states
 
     # Check equivalence.
-    chex.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
+    test_utils.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
 
 
 def _map_keys_fn(fn):
@@ -176,12 +176,12 @@ class PartitionTest(parameterized.TestCase):
 
     updates, state = update_fn(input_updates, state, params)
     correct_updates = correct_update_fn(input_updates)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = correct_update_fn(correct_updates)
     updates, _ = update_fn(updates, state)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
   def test_extra_args(self):
 
@@ -288,7 +288,7 @@ class NamedChainTest(absltest.TestCase):
     opt_state = tx.init(params)
     updates, _ = tx.update(grads, opt_state, params, loss=0.1)
 
-    chex.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
+    test_utils.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
 
 
 if __name__ == '__main__':

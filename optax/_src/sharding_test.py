@@ -19,10 +19,10 @@ import os
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import optax
+from optax._src import test_utils
 from optax.experimental import _microbatching as microbatching
 
 
@@ -84,7 +84,7 @@ class ShardingTest(parameterized.TestCase):
 
       type0 = jax.tree.map(jax.typeof, state0)
       type1 = jax.tree.map(jax.typeof, state1)
-      chex.assert_trees_all_equal(type0, type1)
+      test_utils.assert_trees_all_equal(type0, type1)
 
   @parameterized.named_parameters(OPTIMIZERS.items())
   def test_state_sharding_type_preserved_with_jit(self, optimizer):
@@ -102,13 +102,13 @@ class ShardingTest(parameterized.TestCase):
       state1 = jax.jit(optimizer.init)(params)
       type0 = jax.tree.map(jax.typeof, state0)
       type1 = jax.tree.map(jax.typeof, state1)
-      chex.assert_trees_all_equal(type0, type1)
+      test_utils.assert_trees_all_equal(type0, type1)
 
       _, state2 = optimizer.update(params, state0, params)
       _, state3 = jax.jit(optimizer.update)(params, state0, params)
       type2 = jax.tree.map(jax.typeof, state2)
       type3 = jax.tree.map(jax.typeof, state3)
-      chex.assert_trees_all_equal(type2, type3)
+      test_utils.assert_trees_all_equal(type2, type3)
 
   @parameterized.named_parameters(
       ('replicated', jax.sharding.PartitionSpec()),
@@ -137,10 +137,10 @@ class ShardingTest(parameterized.TestCase):
       actual = microbatched_fun(data)
       expected = fun(data)
 
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           jax.tree.map(jax.typeof, actual), jax.tree.map(jax.typeof, expected)
       )
-      chex.assert_trees_all_equal(actual, expected)
+      test_utils.assert_trees_all_equal(actual, expected)
 
 
 if __name__ == '__main__':

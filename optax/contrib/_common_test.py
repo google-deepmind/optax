@@ -22,7 +22,6 @@ import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax import contrib
@@ -315,7 +314,8 @@ class ContribTest(parameterized.TestCase):
           or wrapper_name == 'schedule_free'
       ):
         params = contrib.schedule_free_eval_params(state, params)
-      chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+      test_utils.assert_trees_all_close(
+          params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
@@ -378,9 +378,9 @@ class ContribTest(parameterized.TestCase):
     )
 
     with self.subTest('Equality of updates.'):
-      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-5)
+      test_utils.assert_trees_all_close(updates_inject, updates, rtol=1e-5)
     with self.subTest('Equality of new optimizer states.'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           new_state_inject.inner_state, new_state, rtol=1e-5, atol=1e-5
       )
 
@@ -452,7 +452,7 @@ class ContribTest(parameterized.TestCase):
     else:
       update_kwargs = {}
     updates, _ = jax.jit(opt.update)(grads, state, params, **update_kwargs)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,
@@ -544,7 +544,7 @@ class ContribTest(parameterized.TestCase):
             opt_with_schedule, params_with_schedule, state_with_schedule)
         params_with_lr, state_with_lr = step(
             opt_with_lr, params_with_lr, state_with_lr)
-      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
+      test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 
 if __name__ == '__main__':

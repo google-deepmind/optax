@@ -24,6 +24,7 @@ import jax.numpy as jnp
 import jax.random as jrd
 import numpy as np
 from optax import tree_utils as otu
+from optax._src import test_utils
 
 # We consider samplers with varying input dtypes, we do not test all possible
 # samplers from `jax.random`.
@@ -98,7 +99,7 @@ class RandomTest(parameterized.TestCase):
           sampler(key, x.shape, dtype or x.dtype)
           for key, x in zip(keys, flat_tree)
       ]
-      chex.assert_trees_all_close(flat_rand_tree, expected_flat_rand_tree)
+      test_utils.assert_trees_all_close(flat_rand_tree, expected_flat_rand_tree)
 
     with self.subTest('Test dtype are as expected'):
       if dtype is not None:

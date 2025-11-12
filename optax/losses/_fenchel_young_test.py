@@ -15,11 +15,11 @@
 """Tests for fenchel young loss in `_fenchel_young.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp  # pylint: disable=g-importing-member
 
+from optax._src import test_utils
 from optax.losses import _classification
 from optax.losses import _fenchel_young
 
@@ -44,7 +44,7 @@ class FenchelYoungTest(absltest.TestCase):
     y_random = jax.vmap(jax.nn.softmax)(theta_random)
     grad_random = jax.vmap(jax.grad(fy_loss))(theta_random, y_true)
     # Checks that the gradient of the loss takes the correct form.
-    chex.assert_trees_all_close(grad_random, y_random - y_true, rtol=1e-4)
+    test_utils.assert_trees_all_close(grad_random, y_random - y_true, rtol=1e-4)
     y_one_hot = jax.vmap(one_hot_argmax)(theta_true)
     int_one_hot = jnp.where(y_one_hot == 1.)[1]
     loss_one_hot = jax.vmap(fy_loss)(theta_random, y_one_hot)
@@ -52,10 +52,11 @@ class FenchelYoungTest(absltest.TestCase):
         _classification.softmax_cross_entropy_with_integer_labels)(
             theta_random, int_one_hot)
     # Checks that the FY loss associated to logsumexp is correct.
-    chex.assert_trees_all_close(loss_one_hot, log_loss, rtol=1e-4)
+    test_utils.assert_trees_all_close(loss_one_hot, log_loss, rtol=1e-4)
     # Checks that vmapping or not is equivalent.
     loss_one_hot_no_vmap = fy_loss(theta_random, y_one_hot)
-    chex.assert_trees_all_close(loss_one_hot, loss_one_hot_no_vmap, rtol=1e-4)
+    test_utils.assert_trees_all_close(
+        loss_one_hot, loss_one_hot_no_vmap, rtol=1e-4)
 
 
 if __name__ == "__main__":

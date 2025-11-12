@@ -15,11 +15,11 @@
 """Tests for base functions in `base.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import base
+from optax._src import test_utils
 
 # pylint:disable=no-value-for-parameter
 
@@ -51,7 +51,7 @@ class BaseTest(absltest.TestCase):
         grads, base.EmptyState()
     )
     correct_zeros = ({'a': np.zeros((3, 4)), 'b': 0.0}, np.zeros((1, 2, 3)))
-    chex.assert_trees_all_close(updates, correct_zeros, rtol=0)
+    test_utils.assert_trees_all_close(updates, correct_zeros, rtol=0)
 
   def test_set_to_zero_is_stateless(self):
     """Tests that the zero transform returns an empty state."""
@@ -136,7 +136,7 @@ class StatelessTest(absltest.TestCase):
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state, params)
     expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.1])}
-    chex.assert_trees_all_close(new_updates, expected_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_updates)
 
   def test_stateless_no_params(self):
     updates = {'linear': jnp.full((5, 3), 3.0)}
@@ -149,7 +149,7 @@ class StatelessTest(absltest.TestCase):
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
-    chex.assert_trees_all_close(new_updates, expected_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_updates)
 
   def test_init_returns_emptystate(self):
     def weight_decay(g, p):
@@ -172,7 +172,7 @@ class StatelessWithTreeMapTest(absltest.TestCase):
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state, params)
     expected_updates = {'a': jnp.ones((1, 2)), 'b': jnp.array([2.1])}
-    chex.assert_trees_all_close(new_updates, expected_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_updates)
 
   def test_stateless_with_tree_map_no_params(self):
     updates = {'linear': jnp.full((5, 3), 3.0)}
@@ -182,7 +182,7 @@ class StatelessWithTreeMapTest(absltest.TestCase):
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
-    chex.assert_trees_all_close(new_updates, expected_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_updates)
 
   def test_init_returns_emptystate(self):
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)

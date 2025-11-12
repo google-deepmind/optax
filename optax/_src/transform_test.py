@@ -23,6 +23,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 import optax.tree
@@ -108,12 +109,12 @@ class TransformTest(parameterized.TestCase):
 
       # Every k steps, check equivalence.
       if i % k == k - 1:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             optax_sgd_apply_every_params, optax_sgd_params, atol=1e-6, rtol=1e-5
         )
       # Otherwise, check update is zero.
       else:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0
         )
 
@@ -131,7 +132,7 @@ class TransformTest(parameterized.TestCase):
 
       manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
-      chex.assert_trees_all_close(scaled_updates, manual_updates)
+      test_utils.assert_trees_all_close(scaled_updates, manual_updates)
 
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
@@ -147,7 +148,7 @@ class TransformTest(parameterized.TestCase):
     outputs = jnp.asarray(outputs)
     centralizer = transform.centralize()
     centralized_inputs, _ = centralizer.update(inputs, {})
-    chex.assert_trees_all_close(centralized_inputs, outputs)
+    test_utils.assert_trees_all_close(centralized_inputs, outputs)
 
   def test_scale_by_optimistic_gradient(self):
     opt = transform.scale_by_optimistic_gradient()
@@ -166,13 +167,13 @@ class TransformTest(parameterized.TestCase):
     with self.subTest('Check initial update is correct'):
       # see https://github.com/google-deepmind/optax/issues/1082
       # initial step should yield 2 * grad_0 - grad_0 = grad_0
-      chex.assert_trees_all_close(opt_grad_0, grad_0)
+      test_utils.assert_trees_all_close(opt_grad_0, grad_0)
 
     with self.subTest('Check second update is correct'):
-      chex.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
+      test_utils.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
 
     with self.subTest('Check third update is correct'):
-      chex.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
+      test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
@@ -216,7 +217,7 @@ class TransformTest(parameterized.TestCase):
       adam_updates, adam_state = adam.update(adam_grads, adam_state)
       adam_params = update.apply_updates(adam_params, adam_updates)
 
-    chex.assert_trees_all_close(adam_params, rms_params)
+    test_utils.assert_trees_all_close(adam_params, rms_params)
 
 
 if __name__ == '__main__':

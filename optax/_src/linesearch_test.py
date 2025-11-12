@@ -32,6 +32,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import linesearch as _linesearch
+from optax._src import test_utils
 from optax._src import update
 from optax._src import utils
 import optax.tree
@@ -202,7 +203,8 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
       value, grad = jax.value_and_grad(fn)(params)
       updates, state = update_fn(grad, state, params, value=value, grad=grad)
       params = update.apply_updates(params, updates)
-    chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
+    test_utils.assert_trees_all_close(
+        final_params, params, atol=1e-2, rtol=1e-2)
 
   def test_recycling_value_and_grad(self):
     # A vmap or a pmap makes the cond in value_and_state_from_grad
@@ -253,7 +255,8 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
     for iter_num in range(max_iter):
       params, state = step(params, state, iter_num)
     params = jax.block_until_ready(params)
-    chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
+    test_utils.assert_trees_all_close(
+        final_params, params, atol=1e-2, rtol=1e-2)
 
   def test_armijo_sgd(self):
     def fn(params, x, y):
@@ -294,7 +297,7 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
           grad, state, params, value=value, grad=grad, x=x, y=y
       )
       params = update.apply_updates(params, updates)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         params, target_params, atol=5 * 1e-2, rtol=5 * 1e-2
     )
 
@@ -358,10 +361,10 @@ class ZoomLinesearchTest(parameterized.TestCase):
     # match the value and gradient of the step done with the stepsize found
     final_value = optax.tree.get(final_state, 'value')
     final_grad = optax.tree.get(final_state, 'grad')
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         value_fn(final_params), final_value, atol=1e-5, rtol=1e-5
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         jax.grad(value_fn)(final_params), final_grad, atol=1e-5, rtol=1e-5
     )
 
@@ -499,8 +502,8 @@ class ZoomLinesearchTest(parameterized.TestCase):
     with self.subTest('Check against scipy'):
       stepsize = optax.tree.get(final_state, 'learning_rate')
       final_value = optax.tree.get(final_state, 'value')
-      chex.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
-      chex.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
+      test_utils.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
+      test_utils.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
 
   def test_failure_descent_direction(self):
     """Check failure when updates are not a descent direction."""

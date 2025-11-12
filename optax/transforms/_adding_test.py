@@ -15,9 +15,9 @@
 """Tests for methods in `optax.transforms._adding.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.transforms import _adding
 
 STEPS = 50
@@ -65,7 +65,7 @@ class AddingTest(absltest.TestCase):
     transform_fn = jax.jit(tx.update)
     new_updates, _ = transform_fn(updates, state, weights)
     # Assert output as expected.
-    chex.assert_trees_all_close(new_updates, expected_tx_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_tx_updates)
 
   def test_add_noise_has_correct_variance_scaling(self):
     # Prepare to compare noise with a rescaled unit-variance substitute.
@@ -92,7 +92,8 @@ class AddingTest(absltest.TestCase):
           lambda g, s=scale: g * s, updates_i_unit
       )
 
-      chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+      test_utils.assert_trees_all_close(
+          updates_i, updates_i_rescaled, rtol=1e-4)
 
   def test_none_argument(self):
     weights = (

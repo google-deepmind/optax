@@ -18,9 +18,9 @@
 import math
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.contrib import _muon
 from optax.transforms import _masking
 
@@ -92,7 +92,7 @@ class MuonTest(parameterized.TestCase):
     self.assertEqual(reshaped_x.shape, expected_flat_shape)
     # Check inverse shape and value
     self.assertEqual(reconstructed_x.shape, x.shape)
-    chex.assert_trees_all_close(reconstructed_x, x)
+    test_utils.assert_trees_all_close(reconstructed_x, x)
 
   def test_callable_weight_dim_nums(self):
     # Case 1: a dim nums for all weights, no matter if they're muon.
@@ -129,7 +129,7 @@ class MuonTest(parameterized.TestCase):
         "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
     reshape_updates_sq, _ = get_updates(params_sq,
                                         muon_weight_dimension_numbers=dim_nums)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         updates_sq, reshape_updates_sq, rtol=1e-8, atol=1e-8
     )
 
@@ -147,8 +147,8 @@ class MuonTest(parameterized.TestCase):
           "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
       reshape_updates, _ = get_updates(params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
-                                  atol=1e-8)
+      test_utils.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
+                                        atol=1e-8)
 
     with self.subTest("4D with dim nums, (10, 12) -> (4, 1, 10, 3)"):
       # Test 2: 4D with dim nums, (10, 12) -> (4, 1, 10, 3)
@@ -158,8 +158,9 @@ class MuonTest(parameterized.TestCase):
                                                   output_axis=(0, 3))}
       reshape_updates, _ = get_updates(reshape_params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(jax.tree.map(reshape_fn, updates),
-                                  reshape_updates, rtol=1e-8, atol=1e-8)
+      test_utils.assert_trees_all_close(
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
+          atol=1e-8)
 
     with self.subTest("4D with dim_nums, (10, 12) -> (5, 12, 1, 2)"):
       # Test 3: 4D with dim_nums, (10, 12) -> (5, 12, 1, 2)
@@ -169,8 +170,9 @@ class MuonTest(parameterized.TestCase):
                                                   output_axis=(1,))}
       reshape_updates, _ = get_updates(reshape_params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(jax.tree.map(reshape_fn, updates),
-                                  reshape_updates, rtol=1e-8, atol=1e-8)
+      test_utils.assert_trees_all_close(
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
+          atol=1e-8)
 
   def test_dim_nums_combinations(self):
     get_muon_mu = lambda state: state[0]["muon"][0][0][1]

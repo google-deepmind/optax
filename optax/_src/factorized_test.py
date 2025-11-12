@@ -20,6 +20,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import factorized
+from optax._src import test_utils
 from optax.transforms import _accumulation
 
 
@@ -85,7 +86,7 @@ class FactorizedTest(parameterized.TestCase):
     grads = jax.grad(fun)(params)
     state = jax.jit(opt.init)(params)
     updates, _ = jax.jit(opt.update)(grads, state, params)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
 if __name__ == '__main__':

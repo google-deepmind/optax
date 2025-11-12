@@ -202,7 +202,8 @@ class AliasTest(parameterized.TestCase):
             f'{opt_name} needs a non-None learning rate for numerically stable'
             ' optimization in practice.'
         )
-      chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+      test_utils.assert_trees_all_close(
+          params, final_params, rtol=3e-2, atol=3e-2)
 
     with self.subTest('Test that the optimizer doesn\'t recompile on 2nd call'):
       params = initial_params
@@ -273,9 +274,9 @@ class AliasTest(parameterized.TestCase):
     )
 
     with self.subTest('Equality of updates.'):
-      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-3)
+      test_utils.assert_trees_all_close(updates_inject, updates, rtol=1e-3)
     with self.subTest('Equality of new optimizer states.'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           optax.tree.unwrap_random_key_data(new_state_inject.inner_state),
           optax.tree.unwrap_random_key_data(new_state),
           rtol=1e-4,
@@ -418,7 +419,7 @@ class AliasTest(parameterized.TestCase):
         k: v for k, v in update_kwargs.items() if isinstance(v, jax.Array)}
     updates, _ = jax.jit(functools.partial(opt.update, **static_kwargs))(
         grads, state, params, **dyn_kwargs)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
 ##########################
@@ -693,7 +694,7 @@ class LBFGSTest(parameterized.TestCase):
     expected_precond_vec = precond_mat.dot(
         vec, precision=jax.lax.Precision.HIGHEST
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         plain_precond_vec, expected_precond_vec, rtol=1e-5
     )
 
@@ -720,7 +721,7 @@ class LBFGSTest(parameterized.TestCase):
         vec, dws, dus, rhos, identity_scale=1.0, memory_idx=idx
     )
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         lbfgs_precond_vec, expected_precond_vec, atol=1e-5, rtol=1e-5
     )
 
@@ -775,7 +776,7 @@ class LBFGSTest(parameterized.TestCase):
         flat_precond_mat, flat_vec, precision=jax.lax.Precision.HIGHEST
     )
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         flat_lbfgs_precond_vec, expected_flat_precond_vec, atol=1e-3, rtol=1e-3
     )
 
@@ -814,7 +815,7 @@ class LBFGSTest(parameterized.TestCase):
         memory_size=memory_size,
         scale_init_precond=scale_init_precond,
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         lbfgs_sol, expected_lbfgs_sol, atol=1e-5, rtol=1e-5
     )
 
@@ -836,7 +837,8 @@ class LBFGSTest(parameterized.TestCase):
     sol_arr, _ = _run_opt(opt, fun, init_array, maxiter=3)
     sol_tree, _ = _run_opt(opt, fun, init_tree, maxiter=3)
     sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
-    chex.assert_trees_all_close(sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5)
+    test_utils.assert_trees_all_close(
+        sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5)
 
   @parameterized.product(scale_init_precond=[True, False])
   def test_multiclass_logreg(self, scale_init_precond):
@@ -898,7 +900,7 @@ class LBFGSTest(parameterized.TestCase):
     sol_skl = (
         logreg.coef_.ravel() if logreg.coef_.shape[0] == 1 else logreg.coef_.T
     )
-    chex.assert_trees_all_close(sol, sol_skl, atol=5e-2)
+    test_utils.assert_trees_all_close(sol, sol_skl, atol=5e-2)
 
   @parameterized.product(
       problem_name=[
@@ -924,20 +926,21 @@ class LBFGSTest(parameterized.TestCase):
     # 1. Check minimizer obtained against known minimizer or scipy minimizer
     with self.subTest('Check minimizer'):
       if problem_name in ['matyas', 'zakharov']:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             optax_sol, problem['minimizer'], atol=tol, rtol=tol
         )
       else:
-        chex.assert_trees_all_close(optax_sol, scipy_sol, atol=tol, rtol=tol)
+        test_utils.assert_trees_all_close(
+            optax_sol, scipy_sol, atol=tol, rtol=tol)
 
     with self.subTest('Check minimum'):
       # 2. Check if minimum is reached or equal to scipy's found value
       if problem_name == 'eggholder':
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             jnp_fun(optax_sol), np_fun(scipy_sol), atol=tol, rtol=tol
         )
       else:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             jnp_fun(optax_sol), problem['minimum'], atol=tol, rtol=tol
         )
 
@@ -957,10 +960,11 @@ class LBFGSTest(parameterized.TestCase):
         method='BFGS',
         x0=init_params,
     ).x
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         np_fun(scipy_sol), jnp_fun(optax_sol), atol=tol, rtol=tol
     )
-    chex.assert_trees_all_close(jnp_fun(optax_sol), minimum, atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(
+        jnp_fun(optax_sol), minimum, atol=tol, rtol=tol)
 
   def test_steep_objective(self):
     # See jax related issue https://github.com/jax-ml/jax/issues/4594
@@ -973,7 +977,7 @@ class LBFGSTest(parameterized.TestCase):
 
     opt = alias.lbfgs()
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
-    chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
 
   @parameterized.product(
       linesearch=[
@@ -1011,7 +1015,7 @@ class LBFGSTest(parameterized.TestCase):
     sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
     sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         sol_complex, to_complex(sol_real), atol=tol, rtol=tol
     )
 
@@ -1043,7 +1047,7 @@ class LBFGSTest(parameterized.TestCase):
 
     opt = alias.lbfgs(linesearch=linesearch)
     got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
-    chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64, jnp.complex64,

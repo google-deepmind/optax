@@ -25,6 +25,7 @@ import jax.tree_util as jtu
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax.schedules import _inject
 from optax.schedules import _schedule
@@ -207,7 +208,7 @@ class StateUtilsTest(absltest.TestCase):
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree.map(lambda v: v + 1, params)
     mu = getattr(state.inner_state[0], 'mu')
-    chex.assert_trees_all_close(mu, params_plus_one)
+    test_utils.assert_trees_all_close(mu, params_plus_one)
 
   def test_map_params_to_none(self):
     opt = alias.adagrad(1e-4)
@@ -446,7 +447,7 @@ class StateUtilsTest(absltest.TestCase):
           count=jnp.asarray(0),
           rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
       )
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(noise_state),
           _random.tree_unwrap_random_key_data(expected_result)
       )
@@ -565,7 +566,7 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(new_state),
           _random.tree_unwrap_random_key_data(expected_result)
       )
@@ -590,7 +591,7 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(new_state, expected_result)
+      test_utils.assert_trees_all_equal(new_state, expected_result)
 
 
 def _fake_params():

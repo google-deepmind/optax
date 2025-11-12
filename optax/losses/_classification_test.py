@@ -24,6 +24,7 @@ import jax.numpy as jnp
 import jax.test_util as jaxtest
 import numpy as np
 from optax import projections
+from optax._src import test_utils
 from optax.losses import _classification
 
 
@@ -172,7 +173,8 @@ class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
     val_and_grad = jax.value_and_grad(
         _classification.safe_softmax_cross_entropy
     )(self.ys[0], self.ts[0])
-    chex.assert_trees_all_close(plain_val_and_grad, val_and_grad, atol=1e-4)
+    test_utils.assert_trees_all_close(
+        plain_val_and_grad, val_and_grad, atol=1e-4)
 
 
 class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):

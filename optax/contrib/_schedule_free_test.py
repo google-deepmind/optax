@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _schedule_free
 
@@ -58,7 +59,7 @@ class ScheduleFreeTest(parameterized.TestCase):
     for _ in range(5):
       params, state = step(params, state)
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         _schedule_free.schedule_free_eval_params(state, params),
         initial_params,
     )
@@ -97,7 +98,7 @@ class ScheduleFreeTest(parameterized.TestCase):
         b1=0.9,
     )
     params_wrapper = run(opt_wrapper)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         params_shortcut, params_wrapper, atol=1e-6, rtol=1e-6
     )
 

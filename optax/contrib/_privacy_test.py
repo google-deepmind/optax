@@ -16,9 +16,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.contrib import _privacy
 
 
@@ -52,7 +52,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state)
-      chex.assert_trees_all_close(updates, mean_grads)
+      test_utils.assert_trees_all_close(updates, mean_grads)
 
   @parameterized.parameters(0.5, 10.0, 20.0, 40.0, 80.0)
   def test_clipping_norm(self, l2_norm_clip):
@@ -78,7 +78,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state, self.params)
-      chex.assert_trees_all_close(updates, expected_tree, rtol=2e-7)
+      test_utils.assert_trees_all_close(updates, expected_tree, rtol=2e-7)
 
   @parameterized.parameters((3.0, 2.0), (1.0, 5.0), (100.0, 4.0), (1.0, 90.0))
   def test_noise_multiplier(self, l2_norm_clip, noise_multiplier):
@@ -93,7 +93,7 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
     grads = [jnp.ones((1, 100, 100))]  # batch size 1
     for _ in range(3):
       updates, state = update_fn(grads, state)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           expected_std, jnp.std(updates[0]), atol=0.1 * expected_std
       )
 

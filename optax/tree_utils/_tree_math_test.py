@@ -22,6 +22,7 @@ from jax import flatten_util
 import jax.numpy as jnp
 import numpy as np
 from optax import tree_utils as tu
+from optax._src import test_utils
 
 
 class TreeUtilsTest(parameterized.TestCase):
@@ -63,7 +64,7 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1] + self.tree_b[1],
     )
     got = tu.tree_add(self.tree_a, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_sub(self):
     expected = self.array_a - self.array_b
@@ -75,7 +76,7 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1] - self.tree_b[1],
     )
     got = tu.tree_sub(self.tree_a, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_mul(self):
     expected = self.array_a * self.array_b
@@ -87,7 +88,7 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1] * self.tree_b[1],
     )
     got = tu.tree_mul(self.tree_a, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_div(self):
     expected = self.array_a / self.array_b
@@ -99,7 +100,7 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1] / self.tree_b[1],
     )
     got = tu.tree_div(self.tree_a, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_scale(self):
     expected = 0.5 * self.array_a
@@ -108,7 +109,7 @@ class TreeUtilsTest(parameterized.TestCase):
 
     expected = (0.5 * self.tree_a[0], 0.5 * self.tree_a[1])
     got = tu.tree_scale(0.5, self.tree_a)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_add_scale(self):
     expected = (
@@ -116,12 +117,12 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1] + 0.5 * self.tree_b[1],
     )
     got = tu.tree_add_scale(self.tree_a, 0.5, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_add_scale_dtype(self):
     got = tu.tree_add_scale(3, 0.1, 2)
     expected = 3 + 0.1 * 2
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_vdot(self):
     expected = jnp.vdot(self.array_a, self.array_b)
@@ -136,7 +137,7 @@ class TreeUtilsTest(parameterized.TestCase):
         self.tree_a[1], self.tree_b[1]
     )
     got = tu.tree_vdot(self.tree_a, self.tree_b)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_sum(self):
     expected = jnp.sum(self.array_a)
@@ -189,7 +190,7 @@ class TreeUtilsTest(parameterized.TestCase):
 
     expected = (jnp.conj(self.tree_a[0]), jnp.conj(self.tree_a[1]))
     got = tu.tree_conj(self.tree_a)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_real(self):
     expected = jnp.real(self.array_a)
@@ -198,7 +199,7 @@ class TreeUtilsTest(parameterized.TestCase):
 
     expected = (jnp.real(self.tree_a[0]), jnp.real(self.tree_a[1]))
     got = tu.tree_real(self.tree_a)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_l2_norm(self):
     expected = jnp.sqrt(jnp.vdot(self.array_a, self.array_a).real)
@@ -239,7 +240,7 @@ class TreeUtilsTest(parameterized.TestCase):
 
     expected = (jnp.zeros_like(self.tree_a[0]), jnp.zeros_like(self.tree_a[1]))
     got = tu.tree_zeros_like(self.tree_a)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_ones_like(self):
     expected = jnp.ones_like(self.array_a)
@@ -248,26 +249,26 @@ class TreeUtilsTest(parameterized.TestCase):
 
     expected = (jnp.ones_like(self.tree_a[0]), jnp.ones_like(self.tree_a[1]))
     got = tu.tree_ones_like(self.tree_a)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_add_multiple_trees(self):
     """Test adding more than 2 trees with tree_add."""
     trees = [self.tree_a_dict_jax, self.tree_a_dict_jax, self.tree_a_dict_jax]
     expected = tu.tree_scale(3.0, self.tree_a_dict_jax)
     got = tu.tree_add(*trees)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_tree_clip(self):
     """Clip the tree to range [min_value, max_value]."""
     expected = tu.tree_scale(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=0, max_value=0.5)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
     expected = tu.tree_scale(0.5, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=None, max_value=0.5)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
     expected = tu.tree_scale(2.0, self.tree_a_dict_jax)
     got = tu.tree_clip(self.tree_a_dict_jax, min_value=2.0, max_value=None)
-    chex.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got)
 
   def test_update_infinity_moment(self):
     values = jnp.array([5.0, 7.0])
