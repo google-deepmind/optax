@@ -14,10 +14,8 @@
 # ==============================================================================
 """Regression losses."""
 
-import functools
 from typing import Optional, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import utils
@@ -74,10 +72,10 @@ def l2_loss(
   return 0.5 * squared_error(predictions, targets)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def huber_loss(
     predictions: jax.typing.ArrayLike,
     targets: Optional[jax.typing.ArrayLike] = None,
+    *,
     delta: float = 1.0,
 ) -> jax.Array:
   """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
@@ -135,10 +133,10 @@ def log_cosh(
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_similarity(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
+    *,
     epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
@@ -185,10 +183,10 @@ def cosine_similarity(
   return (a_unit * b_unit).sum(axis=axis, where=where)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_distance(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
+    *,
     epsilon: float = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
