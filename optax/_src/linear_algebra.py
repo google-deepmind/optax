@@ -19,7 +19,6 @@ import functools
 from typing import Optional, Union
 import warnings
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -61,14 +60,14 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 def power_iteration(
     matrix: Union[
-        jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
+        jax.typing.ArrayLike, Callable[[base.ArrayTree], base.ArrayTree]],
     *,
-    v0: Optional[chex.ArrayTree] = None,
+    v0: Optional[base.ArrayTree] = None,
     num_iters: jax.typing.ArrayLike = 100,
     error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
-) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
+) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
