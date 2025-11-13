@@ -18,7 +18,6 @@ import contextlib
 import functools
 from typing import Optional, Sequence
 
-import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
@@ -57,8 +56,8 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
+    tree: base.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
+) -> base.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
 
@@ -170,28 +169,28 @@ def multi_normal(
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def _scale_gradient(inputs: base.ArrayTree, scale: float) -> base.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
 def _scale_gradient_fwd(
-    inputs: chex.ArrayTree, scale: float
-) -> tuple[chex.ArrayTree, float]:
+    inputs: base.ArrayTree, scale: float
+) -> tuple[base.ArrayTree, float]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(
-    scale: float, g: chex.ArrayTree
-) -> tuple[chex.ArrayTree, None]:
+    scale: float, g: base.ArrayTree
+) -> tuple[base.ArrayTree, None]:
   return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
-def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def scale_gradient(inputs: base.ArrayTree, scale: float) -> base.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:

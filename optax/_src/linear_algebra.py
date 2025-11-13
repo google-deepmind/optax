@@ -61,14 +61,14 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 def power_iteration(
     matrix: Union[
-        jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
+        jax.typing.ArrayLike, Callable[[base.ArrayTree], base.ArrayTree]],
     *,
-    v0: Optional[chex.ArrayTree] = None,
+    v0: Optional[base.ArrayTree] = None,
     num_iters: int = 100,
     error_tolerance: float = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
-) -> tuple[chex.Numeric, chex.ArrayTree]:
+) -> tuple[chex.Numeric, base.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and

@@ -1499,15 +1499,15 @@ class ScaleByLBFGSState(NamedTuple):
   count: chex.Numeric
   params: base.Params
   updates: base.Params
-  diff_params_memory: chex.ArrayTree
-  diff_updates_memory: chex.ArrayTree
+  diff_params_memory: base.ArrayTree
+  diff_updates_memory: base.ArrayTree
   weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
-    diff_params_memory: chex.ArrayTree,
-    diff_updates_memory: chex.ArrayTree,
+    diff_params_memory: base.ArrayTree,
+    diff_updates_memory: base.ArrayTree,
     weights_memory: jax.typing.ArrayLike,
     identity_scale: Union[float, jax.Array],
     memory_idx: Union[int, jax.Array],
@@ -1817,8 +1817,8 @@ def normalize_by_update_norm(
     warn_deprecated_function, replacement='optax.tree.cast'
 )
 def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
+    tree: base.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
+) -> base.ArrayTree:
   return optax.tree.cast(tree, dtype)
 
 

@@ -107,7 +107,7 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def _check_arrays_have_batch_dim(grads: chex.ArrayTree) -> bool:
+def _check_arrays_have_batch_dim(grads: base.ArrayTree) -> bool:
   """Checks that each array in grads has a batch dimension in the 0th axis."""
   grads = jax.tree.flatten(grads)[0]
   batch_size = grads[0].shape[0]
@@ -115,8 +115,8 @@ def _check_arrays_have_batch_dim(grads: chex.ArrayTree) -> bool:
 
 
 def per_example_global_norm_clip(
-    grads: chex.ArrayTree, l2_norm_clip: float
-) -> tuple[chex.ArrayTree, jax.Array]:
+    grads: base.ArrayTree, l2_norm_clip: float
+) -> tuple[base.ArrayTree, jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
   Args:
@@ -166,8 +166,8 @@ def per_example_global_norm_clip(
 
 
 def per_example_layer_norm_clip(
-    grads: chex.ArrayTree, global_l2_norm_clip: float, uniform: bool = True
-) -> tuple[chex.ArrayTree, chex.ArrayTree]:
+    grads: base.ArrayTree, global_l2_norm_clip: float, uniform: bool = True
+) -> tuple[base.ArrayTree, base.ArrayTree]:
   """Applies gradient clipping per-example using per-layer norms.
 
   If len(grads) == 1, this function is equivalent to
