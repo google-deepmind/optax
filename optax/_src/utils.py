@@ -23,6 +23,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 import numpy as np
+from optax._src import base
 from optax._src import numerics
 from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 import optax.tree
@@ -141,7 +142,7 @@ class MultiNormalDiagFromLogScale:
         self._mean.shape, self._scale.shape
     )
 
-  def sample(self, shape: Sequence[int], key: chex.PRNGKey) -> jax.Array:
+  def sample(self, shape: base.Shape, key: base.PRNGKey) -> jax.Array:
     sample_shape = tuple(shape) + self._param_shape
     return (
         jax.random.normal(key, shape=sample_shape) * self._scale + self._mean

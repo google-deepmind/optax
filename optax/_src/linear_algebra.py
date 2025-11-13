@@ -67,7 +67,7 @@ def power_iteration(
     num_iters: int = 100,
     error_tolerance: float = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
-    key: Optional[chex.PRNGKey] = None,
+    key: Optional[base.PRNGKey] = None,
 ) -> tuple[chex.Numeric, chex.ArrayTree]:
   r"""Power iteration algorithm.
 

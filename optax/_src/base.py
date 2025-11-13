@@ -29,6 +29,7 @@ NO_PARAMS_MSG = (
 
 PyTree = Any
 Shape = Sequence[int]
+PRNGKey = jax.Array
 
 OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.

@@ -162,18 +162,18 @@ class InjectHyperparamsTest(parameterized.TestCase):
     """Check that random.key can be handled by :func:``inject_hyperparams``."""
 
     def random_noise_optimizer(
-        key: chex.PRNGKey, scale: jax.Array
+        key: base.PRNGKey, scale: jax.Array
     ) -> base.GradientTransformation:
-      def init_fn(params_like: base.Params) -> tuple[chex.PRNGKey,
+      def init_fn(params_like: base.Params) -> tuple[base.PRNGKey,
                                                      Union[jax.Array, float]]:
         del params_like
         return (key, scale)
 
       def update_fn(
           updates: base.Updates,
-          state: tuple[chex.PRNGKey, jax.Array],
+          state: tuple[base.PRNGKey, jax.Array],
           params: None = None,
-      ) -> tuple[base.Updates, tuple[chex.PRNGKey, Union[jax.Array, float]]]:
+      ) -> tuple[base.Updates, tuple[base.PRNGKey, Union[jax.Array, float]]]:
         del params
         key, scale = state
         keyit = iter(random.split(key, len(jax.tree.leaves(updates)) + 1))

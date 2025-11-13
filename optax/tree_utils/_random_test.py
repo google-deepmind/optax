@@ -24,6 +24,7 @@ import jax.numpy as jnp
 import jax.random as jrd
 import numpy as np
 from optax import tree_utils as otu
+from optax._src import base
 from optax._src import test_utils
 
 # We consider samplers with varying input dtypes, we do not test all possible
@@ -72,7 +73,7 @@ class RandomTest(parameterized.TestCase):
   def test_tree_random_like(
       self,
       sampler: Callable[
-          [chex.PRNGKey, chex.Shape, jax.typing.DTypeLike], jax.Array
+          [base.PRNGKey, base.Shape, jax.typing.DTypeLike], jax.Array
       ],
       dtype: str,
       type_var: str,
