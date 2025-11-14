@@ -44,8 +44,9 @@ class DoGState(NamedTuple):
 
 
 def scale_by_dog(
-    init_step: tuple[Literal["distance", "learning_rate", "heuristic"], float],
-    eps: float = 1e-8,
+    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
+                     jax.typing.ArrayLike],
+    eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
 
@@ -122,10 +123,10 @@ def scale_by_dog(
 def dog(
     learning_rate: base.ScalarOrSchedule = 1.0,
     init_step: tuple[
-        Literal["distance", "learning_rate", "heuristic"], float
+        Literal["distance", "learning_rate", "heuristic"], jax.typing.ArrayLike
     ] = ("heuristic", 1e-6),
-    eps: float = 1e-8,
-    weight_decay: Optional[float] = None,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: Optional[jax.typing.ArrayLike] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
   r"""Distance over Gradients (DoG) optimizer.
@@ -225,8 +226,8 @@ class DoWGState(NamedTuple):
 
 
 def scale_by_dowg(
-    init_estim_sq_dist: Optional[float] = None,
-    eps: float = 1e-4,
+    init_estim_sq_dist: Optional[jax.typing.ArrayLike] = None,
+    eps: jax.typing.ArrayLike = 1e-4,
 ) -> base.GradientTransformation:
   """Scale by Distance over Weighted Gradients (DoWG).
 
@@ -283,9 +284,9 @@ def scale_by_dowg(
 
 def dowg(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    init_estim_sq_dist: Optional[float] = None,
-    eps: float = 1e-4,
-    weight_decay: Optional[float] = None,
+    init_estim_sq_dist: Optional[jax.typing.ArrayLike] = None,
+    eps: jax.typing.ArrayLike = 1e-4,
+    weight_decay: Optional[jax.typing.ArrayLike] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
   r"""Distance over weighted Gradients optimizer.

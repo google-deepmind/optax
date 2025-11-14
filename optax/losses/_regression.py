@@ -78,7 +78,7 @@ def l2_loss(
 def huber_loss(
     predictions: jax.typing.ArrayLike,
     targets: Optional[jax.typing.ArrayLike] = None,
-    delta: float = 1.0,
+    delta: jax.typing.ArrayLike = 1.0,
 ) -> jax.Array:
   """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
 
@@ -139,7 +139,7 @@ def log_cosh(
 def cosine_similarity(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
-    epsilon: float = 0.0,
+    epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
@@ -189,7 +189,7 @@ def cosine_similarity(
 def cosine_distance(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
-    epsilon: float = 0.0,
+    epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:

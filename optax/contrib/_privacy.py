@@ -33,8 +33,8 @@ class DifferentiallyPrivateAggregateState(NamedTuple):
 
 
 def differentially_private_aggregate(
-    l2_norm_clip: float,
-    noise_multiplier: float,
+    l2_norm_clip: jax.typing.ArrayLike,
+    noise_multiplier: jax.typing.ArrayLike,
     key: jax.Array | int | None = None,
     *,
     seed: int | None = None,  # deprecated
@@ -108,10 +108,10 @@ def differentially_private_aggregate(
 
 def dpsgd(
     learning_rate: base.ScalarOrSchedule,
-    l2_norm_clip: float,
-    noise_multiplier: float,
+    l2_norm_clip: jax.typing.ArrayLike,
+    noise_multiplier: jax.typing.ArrayLike,
     seed: int,
-    momentum: Optional[float] = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
   """The DPSGD optimizer.
