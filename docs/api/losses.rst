@@ -11,6 +11,7 @@ Losses
     ctc_loss
     ctc_loss_with_forward_probs
     dice_loss
+    dice_plus_ce_loss
     hinge_loss
     huber_loss
     kl_divergence
@@ -59,6 +60,10 @@ Dice loss
 .. autofunction:: dice_loss
 .. autofunction:: multiclass_generalized_dice_loss
 .. autofunction:: binary_dice_loss
+
+Dice plus Cross-Entropy loss
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dice_plus_ce_loss
 
 Fenchel Young loss
 ~~~~~~~~~~~~~~~~~~

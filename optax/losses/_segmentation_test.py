@@ -20,6 +20,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _segmentation
+from optax.losses import _classification
 
 
 class DiceLossTest(parameterized.TestCase):
@@ -415,6 +416,59 @@ class DiceLossTest(parameterized.TestCase):
     # Should be the same for binary case
     self.assertTrue(jnp.allclose(loss_binary_with_bg, loss_binary_no_bg))
 
+  def test_dice_loss_weighting_parameters(self):
+    """Test Dice loss with different alpha and beta weightings."""
+    probs = jnp.array([[[0.1, 0.9], [0.8, 0.2]]])  # (1, 2, 2)
+    targets = jnp.array([[[0.0, 1.0], [1.0, 0.0]]])  # (1, 2, 2)
+    smooth = 1.0
+    alpha = 0.3
+    beta = 0.7
+
+    # Manual calculation
+    intersection = jnp.sum(probs * targets, axis=1)
+    pred_sum = jnp.sum(probs, axis=1)
+    target_sum = jnp.sum(targets, axis=1)
+
+    numerator = intersection + smooth
+    denominator = (
+        intersection
+        + alpha * (pred_sum - intersection)
+        + beta * (target_sum - intersection)
+        + smooth
+    )
+    expected_coeff = numerator / denominator
+    expected_loss_val = 1.0 - expected_coeff
+    expected_loss = jnp.mean(expected_loss_val, axis=-1)
+
+    loss = _segmentation.dice_loss(
+        probs,
+        targets,
+        smooth=smooth,
+        alpha=alpha,
+        beta=beta,
+        apply_softmax=False,
+    )
+    np.testing.assert_allclose(loss, expected_loss, rtol=1e-6)
+
+    # Test that default parameters (alpha=beta=0.5) work correctly
+    dice_loss_val = _segmentation.dice_loss(
+        probs, targets, apply_softmax=False, smooth=smooth
+    )
+    # Manual calculation for alpha=beta=0.5 to verify implementation
+    default_alpha = 0.5
+    default_beta = 0.5
+    default_numerator = intersection + smooth
+    default_denominator = (
+        intersection
+        + default_alpha * (pred_sum - intersection)
+        + default_beta * (target_sum - intersection)
+        + smooth
+    )
+    expected_default_coeff = default_numerator / default_denominator
+    expected_default_loss_val = 1.0 - expected_default_coeff
+    expected_default_loss = jnp.mean(expected_default_loss_val, axis=-1)
+    np.testing.assert_allclose(dice_loss_val, expected_default_loss, rtol=1e-6)
+
   def test_improved_shape_handling(self):
     """Test the improved shape handling for binary cases."""
     key = self.key
@@ -485,6 +539,122 @@ class DiceLossTest(parameterized.TestCase):
     self.assertFalse(jnp.allclose(gdl_with_bg, gdl_no_bg))
     self.assertTrue(jnp.isfinite(gdl_with_bg))
     self.assertTrue(jnp.isfinite(gdl_no_bg))
+
+  def test_dice_plus_ce_loss(self):
+    """Test the combined Dice + CE loss function."""
+    predictions = jax.random.normal(self.key, (2, 8, 8, 3))
+    class_labels = jax.random.randint(self.key, (2, 8, 8), 0, 3)
+    targets = jax.nn.one_hot(class_labels, 3)
+
+    dice_weight = 0.5
+    ce_weight = 1.5
+
+    # Calculate combined loss
+    combined_loss = _segmentation.dice_plus_ce_loss(
+        predictions,
+        targets,
+        dice_weight=dice_weight,
+        ce_weight=ce_weight,
+    )
+
+    # Manual calculation for verification
+    d_loss = _segmentation.dice_loss(predictions, targets)
+    ce_loss_per_pixel = _classification.softmax_cross_entropy(
+        predictions, targets
+    )
+    ce_loss = jnp.mean(
+        ce_loss_per_pixel, axis=tuple(range(1, predictions.ndim - 1))
+    )
+
+    expected_loss = dice_weight * d_loss + ce_weight * ce_loss
+
+    np.testing.assert_allclose(combined_loss, expected_loss, rtol=1e-6)
+    self.assertEqual(combined_loss.shape, (2,))
+
+  @parameterized.named_parameters(
+      (
+          "perfect_match_logits",
+          {"dice_weight": 1.0, "ce_weight": 1.0, "apply_softmax": True},
+          10.0,
+          0.01,
+          True,
+      ),
+      (
+          "perfect_match_probs",
+          {"dice_weight": 1.0, "ce_weight": 1.0, "apply_softmax": False},
+          10.0,
+          0.01,
+          True,
+      ),
+      (
+          "total_mismatch",
+          {"dice_weight": 1.0, "ce_weight": 1.0, "apply_softmax": True},
+          -10.0,
+          0.99,
+          False,
+      ),
+      (
+          "dice_only",
+          {"dice_weight": 1.0, "ce_weight": 0.0, "apply_softmax": True},
+          1.0,
+          -1.0,  # Sentinel value
+          True,
+      ),
+      (
+          "ce_only",
+          {"dice_weight": 0.0, "ce_weight": 1.0, "apply_softmax": True},
+          1.0,
+          -1.0,  # Sentinel value
+          True,
+      ),
+  )
+  def test_dice_plus_ce_loss_edge_cases(
+      self, loss_kwargs, pred_val, threshold, use_less
+  ):
+    """Tests edge cases for the combined Dice + CE loss function."""
+    targets = jnp.array([[[0.0, 1.0], [1.0, 0.0]]])
+    # Create predictions that are either perfect or completely wrong
+    preds = jnp.where(targets, pred_val, -pred_val)
+
+    if not loss_kwargs["apply_softmax"]:
+      preds = jax.nn.softmax(preds)
+
+    loss = _segmentation.dice_plus_ce_loss(preds, targets, **loss_kwargs)
+
+    if threshold != -1.0:
+      if use_less:
+        self.assertLess(jnp.mean(loss), threshold)
+      else:
+        self.assertGreater(jnp.mean(loss), threshold)
+
+    if loss_kwargs["ce_weight"] == 0.0:
+      # Compare with dice loss only
+      dice_kwargs = {"apply_softmax": loss_kwargs["apply_softmax"]}
+      expected_loss = (
+          _segmentation.dice_loss(preds, targets, **dice_kwargs)
+          * loss_kwargs["dice_weight"]
+      )
+      np.testing.assert_allclose(loss, expected_loss, rtol=1e-6)
+
+    if loss_kwargs["dice_weight"] == 0.0:
+      # Compare with ce loss only
+      if loss_kwargs["apply_softmax"]:
+        ce_loss_per_pixel = _classification.softmax_cross_entropy(
+            preds, targets
+        )
+      else:
+        log_preds = jnp.log(jnp.clip(preds, 1e-7, 1.0))
+        ce_loss_per_pixel = _classification.kl_divergence(log_preds, targets)
+
+      axis_to_reduce = tuple(range(1, ce_loss_per_pixel.ndim))
+      if ce_loss_per_pixel.ndim > 1:
+        expected_loss = (
+            jnp.mean(ce_loss_per_pixel, axis=axis_to_reduce)
+            * loss_kwargs["ce_weight"]
+        )
+      else:
+        expected_loss = ce_loss_per_pixel * loss_kwargs["ce_weight"]
+      np.testing.assert_allclose(loss, expected_loss, rtol=1e-6)
 
 
 if __name__ == "__main__":
