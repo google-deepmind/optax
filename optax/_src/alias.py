@@ -226,7 +226,7 @@ def adafactor(
     min_dim_size_to_factor: int = 128,
     decay_rate: jax.typing.ArrayLike = 0.8,
     decay_offset: jax.typing.ArrayLike = 0,
-    multiply_by_parameter_scale: float = True,
+    multiply_by_parameter_scale: bool = True,
     clipping_threshold: Optional[jax.typing.ArrayLike] = 1.0,
     momentum: Optional[jax.typing.ArrayLike] = None,  # float
     dtype_momentum: jax.typing.DTypeLike = jnp.float32,
