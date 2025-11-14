@@ -18,7 +18,6 @@ import functools
 import operator
 from typing import Any, Optional, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
@@ -141,7 +140,7 @@ def _vdot_safe(a, b):
   return _vdot(jnp.asarray(a), jnp.asarray(b))
 
 
-def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
+def tree_vdot(tree_x: Any, tree_y: Any) -> jax.typing.ArrayLike:
   r"""Compute the inner product between two pytrees.
 
   Args:
@@ -167,7 +166,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   return jax.tree.reduce(operator.add, vdots, initializer=0)
 
 
-def tree_sum(tree: Any) -> chex.Numeric:
+def tree_sum(tree: Any) -> jax.typing.ArrayLike:
   """Compute the sum of all the elements in a pytree.
 
   Args:
@@ -180,7 +179,7 @@ def tree_sum(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
-def tree_max(tree: Any) -> chex.Numeric:
+def tree_max(tree: Any) -> jax.typing.ArrayLike:
   """Compute the max of all the elements in a pytree.
 
   Args:
@@ -194,7 +193,7 @@ def tree_max(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
 
 
-def tree_min(tree: Any) -> chex.Numeric:
+def tree_min(tree: Any) -> jax.typing.ArrayLike:
   """Compute the min of all the elements in a pytree.
 
   Args:

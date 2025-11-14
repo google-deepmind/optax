@@ -1496,7 +1496,7 @@ class ScaleByLBFGSState(NamedTuple):
       :func:`optax.scale_by_lbfgs` for more details.
   """
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
   params: base.Params
   updates: base.Params
   diff_params_memory: chex.ArrayTree

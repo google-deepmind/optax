@@ -20,7 +20,6 @@ import inspect
 import operator
 from typing import Any, NamedTuple, Optional, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -43,8 +42,8 @@ class BacktrackingLinesearchInfo(NamedTuple):
       succeeded in finding such a stepsize.
   """
 
-  num_linesearch_steps: Union[int, chex.Numeric]
-  decrease_error: Union[float, chex.Numeric]
+  num_linesearch_steps: Union[int, jax.typing.ArrayLike]
+  decrease_error: Union[float, jax.typing.ArrayLike]
 
 
 class ScaleByBacktrackingLinesearchState(NamedTuple):
@@ -74,7 +73,7 @@ class BacktrackingLineSearchState(NamedTuple):
   learning_rate: Union[float, jax.Array]
   new_value: Union[float, jax.Array]
   new_grad: base.Updates
-  decrease_error: chex.Numeric
+  decrease_error: jax.typing.ArrayLike
   iter_num: Union[int, jax.Array]
 
 
@@ -273,11 +272,11 @@ def scale_by_backtracking_linesearch(
     )
 
   def _compute_decrease_error(
-      stepsize: chex.Numeric,
-      slope: chex.Numeric,
-      value: chex.Numeric,
-      new_value: chex.Numeric,
-  ) -> chex.Numeric:
+      stepsize: jax.typing.ArrayLike,
+      slope: jax.typing.ArrayLike,
+      value: jax.typing.ArrayLike,
+      new_value: jax.typing.ArrayLike,
+  ) -> jax.typing.ArrayLike:
     decrease_error = (
         new_value - (1.0 + rtol) * value - stepsize * slope_rtol * slope
     )
@@ -476,51 +475,51 @@ FLAG_NOT_A_DESCENT_DIRECTION = (
 class ZoomLinesearchState(NamedTuple):
   """State of the zoom linesearch."""
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
 
   # Fixed attributes
   params: base.Params  # current parameters
   updates: base.Updates  # update direction
-  stepsize_guess: chex.Numeric  # initial guess on the stepsize
+  stepsize_guess: jax.typing.ArrayLike  # initial guess on the stepsize
 
   # Changing attributes
-  stepsize: chex.Numeric  # current stepsize
-  value: chex.Numeric  # value at current stepsize
+  stepsize: jax.typing.ArrayLike  # current stepsize
+  value: jax.typing.ArrayLike  # value at current stepsize
   grad: base.Updates  # gradient at current stepsize
-  slope: chex.Numeric  # slope of function along updates at current stepsize
+  slope: jax.typing.ArrayLike  # slope of fn along updates at current stepsize
 
   # Initial information stored to compute the errors
-  value_init: chex.Numeric
-  slope_init: chex.Numeric
+  value_init: jax.typing.ArrayLike
+  slope_init: jax.typing.ArrayLike
 
   # Stopping criterions measures
-  decrease_error: chex.Numeric
-  curvature_error: chex.Numeric
-  error: chex.Numeric
+  decrease_error: jax.typing.ArrayLike
+  curvature_error: jax.typing.ArrayLike
+  error: jax.typing.ArrayLike
 
   # Booleans to switch between the two phases of the algorithm or stop the
   # linesearch
-  interval_found: chex.Numeric
-  done: chex.Numeric
-  failed: chex.Numeric
+  interval_found: jax.typing.ArrayLike
+  done: jax.typing.ArrayLike
+  failed: jax.typing.ArrayLike
 
   # Set up after interval search done, modified during zoom
   # Here low, high refer to stepsizes defining an interval where a valid
   # stepsize can be found. However the terms low, high do not refer to
   # low being smaller than high but to value(high) >= value(low).
-  low: chex.Numeric
-  value_low: chex.Numeric
-  slope_low: chex.Numeric
-  high: chex.Numeric
-  value_high: chex.Numeric
-  slope_high: chex.Numeric
-  cubic_ref: chex.Numeric
-  value_cubic_ref: chex.Numeric
+  low: jax.typing.ArrayLike
+  value_low: jax.typing.ArrayLike
+  slope_low: jax.typing.ArrayLike
+  high: jax.typing.ArrayLike
+  value_high: jax.typing.ArrayLike
+  slope_high: jax.typing.ArrayLike
+  cubic_ref: jax.typing.ArrayLike
+  value_cubic_ref: jax.typing.ArrayLike
 
   # Safeguard point: we may not be able to satisfy the curvature criterion
   # but we can still return a point that satisfies the decrease criterion
-  safe_stepsize: chex.Numeric
-  safe_value: chex.Numeric
+  safe_stepsize: jax.typing.ArrayLike
+  safe_value: jax.typing.ArrayLike
   safe_grad: base.Updates
 
 
@@ -537,7 +536,7 @@ def zoom_linesearch(
 ) -> tuple[
     Callable[..., ZoomLinesearchState],
     Callable[..., ZoomLinesearchState],
-    Callable[..., Union[bool, chex.Numeric]],
+    Callable[..., Union[bool, jax.typing.ArrayLike]],
 ]:
   r"""Zoom Linesearch ensuring sufficient decrease and small curvature.
 
@@ -608,12 +607,14 @@ def zoom_linesearch(
   """
 
   def _value_and_slope_on_line(
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       params: base.Params,
-      stepsize: chex.Numeric,
+      stepsize: jax.typing.ArrayLike,
       updates: base.Updates,
       fn_kwargs,
-  ) -> tuple[base.Params, chex.Numeric, base.Updates, chex.Numeric]:
+  ) -> tuple[
+      base.Params, jax.typing.ArrayLike, base.Updates, jax.typing.ArrayLike]:
     r"""Compute value and slope on line.
 
     Mathematically, outputs
@@ -660,12 +661,12 @@ def zoom_linesearch(
     return step, value_step, grad_step, slope_step
 
   def _compute_decrease_error(
-      stepsize: chex.Numeric,
-      value_step: chex.Numeric,
-      slope_step: chex.Numeric,
-      value_init: chex.Numeric,
-      slope_init: chex.Numeric,
-  ) -> chex.Numeric:
+      stepsize: jax.typing.ArrayLike,
+      value_step: jax.typing.ArrayLike,
+      slope_step: jax.typing.ArrayLike,
+      value_init: jax.typing.ArrayLike,
+      slope_init: jax.typing.ArrayLike,
+  ) -> jax.typing.ArrayLike:
     """Compute decrease error."""
     # We consider either the usual sufficient decrease (Armijo criterion), see
     # equation (3.7a) of [Nocedal and Wright, 1999]
@@ -703,8 +704,8 @@ def zoom_linesearch(
     return decrease_error
 
   def _compute_curvature_error(
-      slope_step: chex.Numeric, slope_init: chex.Numeric
-  ) -> chex.Numeric:
+      slope_step: jax.typing.ArrayLike, slope_init: jax.typing.ArrayLike
+  ) -> jax.typing.ArrayLike:
     """Compute curvature error."""
     # See equation (3.7b) of [Nocedal and Wright, 1999].
     curvature_error = jnp.abs(slope_step) - curv_rtol * jnp.abs(slope_init)
@@ -766,7 +767,8 @@ def zoom_linesearch(
 
   def _search_interval(
       state: ZoomLinesearchState,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Search initial interval, Algorithm 3.5 of [Nocedal and Wright, 1999]."""
@@ -922,7 +924,8 @@ def zoom_linesearch(
 
   def _zoom_into_interval(
       state: ZoomLinesearchState,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Zoom procedure, Algorithm 3.6 of [Nocedal and Wright, 1999]."""
@@ -1147,9 +1150,9 @@ def zoom_linesearch(
       updates: base.Updates,
       params: base.Params,
       *,
-      value: chex.Numeric,
+      value: jax.typing.ArrayLike,
       grad: base.Updates,
-      prev_stepsize: chex.Numeric = 1.0,
+      prev_stepsize: jax.typing.ArrayLike = 1.0,
       initial_guess_strategy: str = "one",
   ) -> ZoomLinesearchState:
     """Initializes the linesearch state."""
@@ -1205,7 +1208,8 @@ def zoom_linesearch(
   def step_fn(
       state: ZoomLinesearchState,
       *,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Makes a step of the linesearch."""
@@ -1228,7 +1232,8 @@ def zoom_linesearch(
     )
     return optax.tree.cast_like(new_state, other_tree=state)
 
-  def step_cond_fn(state: ZoomLinesearchState) -> Union[bool, chex.Numeric]:
+  def step_cond_fn(
+      state: ZoomLinesearchState) -> Union[bool, jax.typing.ArrayLike]:
     """Continuing criterion for the while loop of the linesearch."""
     return ~(state.done | state.failed)
 
@@ -1256,9 +1261,9 @@ class ZoomLinesearchInfo(NamedTuple):
       null value indicates it succeeded in finding such a stepsize.
   """
 
-  num_linesearch_steps: Union[int, chex.Numeric]
-  decrease_error: Union[float, chex.Numeric]
-  curvature_error: Union[float, chex.Numeric]
+  num_linesearch_steps: Union[int, jax.typing.ArrayLike]
+  decrease_error: Union[float, jax.typing.ArrayLike]
+  curvature_error: Union[float, jax.typing.ArrayLike]
 
 
 class ScaleByZoomLinesearchState(NamedTuple):
@@ -1275,8 +1280,8 @@ class ScaleByZoomLinesearchState(NamedTuple):
       :class:`otpax.ZoomLinesearchInfo`.
   """
 
-  learning_rate: chex.Numeric
-  value: chex.Numeric
+  learning_rate: jax.typing.ArrayLike
+  value: jax.typing.ArrayLike
   grad: base.Updates
   info: ZoomLinesearchInfo
 
@@ -1509,9 +1514,9 @@ def scale_by_zoom_linesearch(
       state: ScaleByZoomLinesearchState,
       params: base.Params,
       *,
-      value: chex.Numeric,
+      value: jax.typing.ArrayLike,
       grad: base.Updates,
-      value_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_fn: Callable[..., tuple[jax.typing.ArrayLike, base.Updates]],
       **extra_args: dict[str, Any],
   ) -> tuple[base.Updates, ScaleByZoomLinesearchState]:
     """Scales updates using the zoom linesearch.

@@ -20,7 +20,6 @@ https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 
 from typing import Optional, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -48,7 +47,7 @@ def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
 
 def safe_norm(
     x: jax.typing.ArrayLike,
-    min_norm: chex.Numeric,
+    min_norm: jax.typing.ArrayLike,
     ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
     axis: Union[None, tuple[int, ...], int] = None,
     keepdims: bool = False,
@@ -85,7 +84,7 @@ def safe_norm(
 
 
 def safe_root_mean_squares(
-    x: jax.typing.ArrayLike, min_rms: chex.Numeric) -> jax.Array:
+    x: jax.typing.ArrayLike, min_rms: jax.typing.ArrayLike) -> jax.Array:
   """Returns `maximum(sqrt(mean(abs_sq(x))), min_norm)` with correct grads.
 
   The gradients of `maximum(sqrt(mean(abs_sq(x))), min_norm)` at 0.0
@@ -104,7 +103,7 @@ def safe_root_mean_squares(
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
-def safe_increment(count: chex.Numeric) -> chex.Numeric:
+def safe_increment(count: jax.typing.ArrayLike) -> jax.typing.ArrayLike:
   """Increments counter by one while avoiding overflow.
 
   Denote ``max_val``, ``min_val`` as the maximum, minimum, possible values for

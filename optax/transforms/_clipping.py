@@ -29,7 +29,7 @@ from optax._src import utils
 import optax.tree
 
 
-def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
+def clip(max_delta: jax.typing.ArrayLike) -> base.GradientTransformation:
   """Clips updates element-wise, to be in ``[-max_delta, +max_delta]``.
 
   Args:

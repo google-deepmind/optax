@@ -20,7 +20,6 @@ import inspect
 from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -44,7 +43,7 @@ class InjectHyperparamsState(NamedTuple):
   """
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   inner_state: base.OptState
 
 
@@ -52,7 +51,7 @@ class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   hyperparams_states: dict[str, base.ScheduleState]
   inner_state: base.OptState
 
@@ -252,7 +251,7 @@ def inject_stateful_hyperparams(
 class WrappedScheduleState(NamedTuple):
   """The state for a wrapped schedule."""
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
 
 
 class WrappedSchedule:
@@ -279,5 +278,5 @@ class WrappedSchedule:
       self,
       state: WrappedScheduleState,
       **extra_args,
-  ) -> chex.Numeric:
+  ) -> jax.typing.ArrayLike:
     return self.schedule_fn(state.count)

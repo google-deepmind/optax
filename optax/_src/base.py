@@ -35,7 +35,7 @@ OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
-Schedule = Callable[[chex.Numeric], chex.Numeric]
+Schedule = Callable[[jax.typing.ArrayLike], jax.typing.ArrayLike]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
@@ -58,7 +58,7 @@ class StatefulSchedule(Protocol):
       self,
       state: ScheduleState,
       **extra_args,
-  ) -> chex.Numeric:
+  ) -> jax.typing.ArrayLike:
     """Computes the current schedule value."""
 
 

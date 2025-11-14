@@ -14,7 +14,6 @@
 # ==============================================================================
 """Self supervised losses."""
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -23,9 +22,10 @@ from optax.losses import _regression
 
 
 def ntxent(
-    embeddings: jax.typing.ArrayLike, labels: jax.typing.ArrayLike,
-    temperature: chex.Numeric = 0.07
-) -> chex.Numeric:
+    embeddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+    temperature: jax.typing.ArrayLike = 0.07,
+) -> jax.Array:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
   Examples:
@@ -128,9 +128,9 @@ def triplet_margin_loss(
     positives: jax.typing.ArrayLike,
     negatives: jax.typing.ArrayLike,
     axis: int = -1,
-    norm_degree: chex.Numeric = 2,
-    margin: chex.Numeric = 1.0,
-    eps: chex.Numeric = 1e-6,
+    norm_degree: jax.typing.ArrayLike = 2,
+    margin: jax.typing.ArrayLike = 1.0,
+    eps: jax.typing.ArrayLike = 1e-6,
 ) -> jax.Array:
   """Returns the triplet loss for a batch of embeddings.
 

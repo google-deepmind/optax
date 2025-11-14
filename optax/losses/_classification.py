@@ -107,8 +107,8 @@ def hinge_loss(
 
 
 def perceptron_loss(
-    predictor_outputs: chex.Numeric, targets: chex.Numeric
-) -> chex.Numeric:
+    predictor_outputs: jax.typing.ArrayLike, targets: jax.typing.ArrayLike
+) -> jax.Array:
   """Binary perceptron loss.
 
   Args:

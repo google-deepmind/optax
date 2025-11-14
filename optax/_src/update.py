@@ -14,7 +14,6 @@
 # ==============================================================================
 """Apply transformed gradient updates to parameters."""
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -49,8 +48,8 @@ def apply_updates(params: base.Params, updates: base.Updates) -> base.Params:
 
 
 def incremental_update(
-    new_tensors: base.Params, old_tensors: base.Params, step_size: chex.Numeric
-) -> base.Params:
+    new_tensors: base.Params, old_tensors: base.Params,
+    step_size: jax.typing.ArrayLike) -> base.Params:
   """Incrementally update parameters via polyak averaging.
 
   Polyak averaging tracks an (exponential moving) average of the past

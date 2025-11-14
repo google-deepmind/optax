@@ -19,7 +19,6 @@ from typing import NamedTuple, Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 from jax import random
 import jax.numpy as jnp
@@ -36,7 +35,7 @@ import optax.tree
 
 
 class ExampleState(NamedTuple):
-  total: chex.Numeric
+  total: jax.typing.ArrayLike
 
 
 class ExampleStatefulSchedule(base.StatefulSchedule):
@@ -48,7 +47,7 @@ class ExampleStatefulSchedule(base.StatefulSchedule):
     total = state.total + extra_args['addendum']
     return ExampleState(total=total)
 
-  def __call__(self, state: ExampleState, **extra_args) -> chex.Numeric:
+  def __call__(self, state: ExampleState, **extra_args) -> jax.typing.ArrayLike:
     return state.total
 
 

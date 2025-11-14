@@ -68,7 +68,7 @@ def power_iteration(
     error_tolerance: float = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
-) -> tuple[chex.Numeric, chex.ArrayTree]:
+) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and

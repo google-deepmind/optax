@@ -17,7 +17,6 @@
 
 from typing import Any
 
-import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
@@ -117,7 +116,7 @@ def _projection_unit_simplex_jvp(
   return primal_out, tangent_out
 
 
-def projection_simplex(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto a simplex.
 
   This function solves the following constrained optimization problem,
@@ -157,7 +156,7 @@ def projection_simplex(tree: Any, scale: chex.Numeric = 1) -> Any:
   return unravel_fn(new_values)
 
 
-def projection_l1_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l1_sphere(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l1 sphere.
 
   This function solves the following constrained optimization problem,
@@ -181,7 +180,7 @@ def projection_l1_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
   return optax.tree.mul(tree_sign, tree_abs_proj)
 
 
-def projection_l1_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l1_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l1 ball.
 
   This function solves the following constrained optimization problem,
@@ -221,7 +220,7 @@ def projection_l1_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   )
 
 
-def projection_l2_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l2_sphere(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l2 sphere.
 
   This function solves the following constrained optimization problem,
@@ -245,7 +244,7 @@ def projection_l2_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
   return optax.tree.scale(factor, tree)
 
 
-def projection_l2_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l2_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l2 ball.
 
   This function solves the following constrained optimization problem,
@@ -270,7 +269,7 @@ def projection_l2_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   return optax.tree.scale(factor, tree)
 
 
-def projection_linf_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_linf_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l-infinity ball.
 
   This function solves the following constrained optimization problem,
@@ -314,7 +313,7 @@ def projection_vector(x: Any, a: Any) -> Any:
   return optax.tree.scale(scalar, a)
 
 
-def projection_hyperplane(x: Any, a: Any, b: chex.Numeric) -> Any:
+def projection_hyperplane(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   r"""Projection onto a hyperplane.
 
   Projects a tree ``x`` onto the hyperplane defined by a tree ``a`` and scalar
@@ -338,7 +337,7 @@ def projection_hyperplane(x: Any, a: Any, b: chex.Numeric) -> Any:
   return optax.tree.add_scale(x, scalar, a)
 
 
-def projection_halfspace(x: Any, a: Any, b: chex.Numeric) -> Any:
+def projection_halfspace(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   r"""Projection onto a halfspace.
 
   Projects a tree ``x`` onto the halfspace defined by a tree ``a`` and scalar

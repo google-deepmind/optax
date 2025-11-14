@@ -22,7 +22,6 @@ parameters or the exploration factor used to select actions.
 from typing import Iterable, Optional, Union
 
 from absl import logging
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -51,9 +50,9 @@ def constant_schedule(value: Union[float, int]) -> base.Schedule:
 
 
 def polynomial_schedule(
-    init_value: chex.Scalar,
-    end_value: chex.Scalar,
-    power: chex.Scalar,
+    init_value: float,
+    end_value: float,
+    power: Union[float, int],
     transition_steps: int,
     transition_begin: int = 0,
 ) -> base.Schedule:
@@ -148,8 +147,8 @@ def polynomial_schedule(
 
 
 def linear_schedule(
-    init_value: chex.Scalar,
-    end_value: chex.Scalar,
+    init_value: float,
+    end_value: float,
     transition_steps: int,
     transition_begin: int = 0,
 ) -> base.Schedule:
@@ -702,7 +701,7 @@ def warmup_exponential_decay_schedule(
 
 
 def sgdr_schedule(
-    cosine_kwargs: Iterable[dict[str, chex.Numeric]],
+    cosine_kwargs: Iterable[dict[str, jax.typing.ArrayLike]],
 ) -> base.Schedule:
   """SGD with warm restarts.
 

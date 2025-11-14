@@ -24,7 +24,6 @@ from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
@@ -327,10 +326,10 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
 
 def _run_linesearch(
     opt: base.GradientTransformationExtraArgs,
-    fn: Callable[..., chex.Numeric],
+    fn: Callable[..., jax.typing.ArrayLike],
     params: base.Params,
     updates: base.Updates,
-    stepsize_guess: Optional[chex.Numeric] = None,
+    stepsize_guess: Optional[jax.typing.ArrayLike] = None,
 ) -> tuple[base.Params, base.OptState]:
   """Runs the linesearch, i.e., a single update of scale_by_zoom_linesearch."""
   init_state = opt.init(params)
@@ -356,7 +355,7 @@ class ZoomLinesearchTest(parameterized.TestCase):
       self,
       final_params: base.Params,
       final_state: base.OptState,
-      value_fn: Callable[..., chex.Numeric],
+      value_fn: Callable[..., jax.typing.ArrayLike],
   ) -> None:
     # Check that the value and gradient stored in the state
     # match the value and gradient of the step done with the stepsize found
@@ -371,12 +370,12 @@ class ZoomLinesearchTest(parameterized.TestCase):
 
   def _check_linesearch_conditions(
       self,
-      fun: Callable[..., chex.Numeric],
+      fun: Callable[..., jax.typing.ArrayLike],
       init_params: base.Params,
       updates: base.Updates,
       final_params: base.Params,
       final_state: base.OptState,
-      opt_args: dict[str, chex.Numeric],
+      opt_args: dict[str, jax.typing.ArrayLike],
       allow_failure: bool = False,
   ):
     """Check decrease conditions."""

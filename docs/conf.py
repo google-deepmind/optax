@@ -126,8 +126,7 @@ autodoc_type_aliases = {
     'base.OptState': 'optax.OptState',
     'base.PyTree': 'optax.PyTree',
     'chex.ArrayTree': 'chex.ArrayTree',
-    'jax.typing.ArrayLike': 'jax.typing.ArrayLike',
-    'chex.Numeric': 'chex.Numeric'
+    'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
 
 autodoc_default_options = {
