@@ -18,19 +18,21 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
+
+from optax import transforms
+
 from optax._src import alias
 from optax._src import base
-from optax._src import clipping
 from optax._src import transform
 from optax._src import update
 
 
 ALL_MODULES = [
     ('identity', base.identity, {}),
-    ('clip', clipping.clip, {'max_delta': 1.0}),
-    ('clip_by_global_norm', clipping.clip_by_global_norm, {'max_norm': 1.0}),
-    ('trace', transform.trace, {'decay': 0.5, 'nesterov': False}),
-    ('trace_with_nesterov', transform.trace, {'decay': 0.5, 'nesterov': True}),
+    ('clip', transforms.clip, {'max_delta': 1.0}),
+    ('clip_by_global_norm', transforms.clip_by_global_norm, {'max_norm': 1.0}),
+    ('trace', transforms.trace, {'decay': 0.5, 'nesterov': False}),
+    ('trace_with_nesterov', transforms.trace, {'decay': 0.5, 'nesterov': True}),
     ('scale_by_rss', transform.scale_by_rss, {}),
     ('scale_by_rms', transform.scale_by_rms, {}),
     ('scale_by_stddev', transform.scale_by_stddev, {}),
@@ -38,7 +40,7 @@ ALL_MODULES = [
     ('scale', transform.scale, {'step_size': 3.0}),
     (
         'add_decayed_weights',
-        transform.add_decayed_weights,
+        transforms.add_decayed_weights,
         {'weight_decay': 0.1},
     ),
     (
@@ -47,7 +49,7 @@ ALL_MODULES = [
         {'step_size_fn': lambda x: x * 0.1},
     ),
     ('scale_by_trust_ratio', transform.scale_by_trust_ratio, {}),
-    ('add_noise', transform.add_noise, {'eta': 1.0, 'gamma': 0.1, 'key': 0}),
+    ('add_noise', transforms.add_noise, {'eta': 1.0, 'gamma': 0.1, 'key': 0}),
     ('apply_every_k', transform.apply_every, {}),
     ('adagrad', alias.adagrad, {'learning_rate': 0.1}),
     ('adam', alias.adam, {'learning_rate': 0.1}),

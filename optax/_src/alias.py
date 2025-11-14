@@ -21,14 +21,14 @@ import warnings
 
 import jax
 import jax.numpy as jnp
+
 from optax._src import base
-from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
 from optax._src import wrappers
-
+from optax.transforms import _clipping
 
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
@@ -308,7 +308,7 @@ def adafactor(
   # This basic rescaling is typically combined with one or more of the following
   # transformation (all can be disabled via adafactor's constructor args).
   if clipping_threshold is not None:
-    tx.append(clipping.clip_by_block_rms(clipping_threshold))
+    tx.append(_clipping.clip_by_block_rms(clipping_threshold))
   if learning_rate is not None:
     tx.append(transform.scale_by_learning_rate(learning_rate, flip_sign=False))
   if multiply_by_parameter_scale:
