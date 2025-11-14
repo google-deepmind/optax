@@ -35,7 +35,7 @@ class TraceState(NamedTuple):
 
 
 def trace(
-    decay: float,
+    decay: jax.typing.ArrayLike,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
@@ -88,7 +88,9 @@ class EmaState(NamedTuple):
 
 
 def ema(
-    decay: float, debias: bool = True, accumulator_dtype: Optional[Any] = None
+    decay: jax.typing.ArrayLike,  # float
+    debias: bool = True,
+    accumulator_dtype: Optional[Any] = None
 ) -> base.GradientTransformation:
   """Compute an exponential moving average of past updates.
 
@@ -192,7 +194,7 @@ def skip_large_updates(
     updates: base.Updates,
     gradient_step: jax.typing.ArrayLike,
     params: Optional[base.Params],
-    max_squared_norm: float,
+    max_squared_norm: jax.typing.ArrayLike,
 ) -> tuple[jax.Array, chex.ArrayTree]:
   """Returns True if the global norm square of `updates` is small enough.
 

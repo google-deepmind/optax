@@ -470,7 +470,7 @@ def multiclass_perceptron_loss(
 def poly_loss_cross_entropy(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
-    epsilon: float = 2.0,
+    epsilon: jax.typing.ArrayLike = 2.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
@@ -638,7 +638,7 @@ def ctc_loss_with_forward_probs(
     labels: jax.typing.ArrayLike,
     label_paddings: jax.typing.ArrayLike,
     blank_id: int = 0,
-    log_epsilon: float = -1e5,
+    log_epsilon: jax.typing.ArrayLike = -1e5,
 ) -> tuple[jax.Array, jax.Array, jax.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
@@ -779,7 +779,7 @@ def ctc_loss(
     labels: jax.typing.ArrayLike,
     label_paddings: jax.typing.ArrayLike,
     blank_id: int = 0,
-    log_epsilon: float = -1e5,
+    log_epsilon: jax.typing.ArrayLike = -1e5,
 ) -> jax.Array:
   """Computes CTC loss.
 
@@ -822,8 +822,8 @@ def ctc_loss(
 def sigmoid_focal_loss(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
-    alpha: Optional[float] = None,
-    gamma: float = 2.0,
+    alpha: Optional[jax.typing.ArrayLike] = None,
+    gamma: jax.typing.ArrayLike = 2.0,
 ) -> jax.Array:
   r"""Sigmoid focal loss with numerical stability improvements.
 

@@ -41,12 +41,12 @@ class ReduceLROnPlateauState(NamedTuple):
 
 def reduce_on_plateau(
     factor: float = 0.1,
-    patience: int = 10,
+    patience: jax.typing.ArrayLike = 10,
     rtol: float = 1e-4,
     atol: float = 0.0,
-    cooldown: int = 0,
-    accumulation_size: int = 1,
-    min_scale: float = 0.0,
+    cooldown: jax.typing.ArrayLike = 0,
+    accumulation_size: jax.typing.ArrayLike = 1,
+    min_scale: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
@@ -167,7 +167,7 @@ def reduce_on_plateau(
       state: ReduceLROnPlateauState,
       params=None,
       *,
-      value: float,
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Params, ReduceLROnPlateauState]:
     del params, extra_args

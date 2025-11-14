@@ -26,7 +26,7 @@ def dice_loss(
     targets: jax.typing.ArrayLike,
     *,
     class_weights: Optional[jax.typing.ArrayLike] = None,
-    smooth: float = 1.0,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_softmax: bool = True,
     reduction: str = "mean",
     ignore_background: bool = False,
@@ -175,7 +175,7 @@ def multiclass_generalized_dice_loss(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
     *,
-    smooth: float = 1.0,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_softmax: bool = True,
     ignore_background: bool = False,
 ) -> jax.Array:
@@ -230,7 +230,7 @@ def binary_dice_loss(
     predictions: jax.typing.ArrayLike,
     targets: jax.typing.ArrayLike,
     *,
-    smooth: float = 1.0,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_sigmoid: bool = True,
 ) -> jax.Array:
   """Binary Dice Loss convenience function.

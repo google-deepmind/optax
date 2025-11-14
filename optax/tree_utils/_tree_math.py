@@ -16,7 +16,7 @@
 
 import functools
 import operator
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import chex
 import jax
@@ -82,7 +82,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
 
 
 def tree_scale(
-    scalar: Union[float, jax.Array],
+    scalar: jax.typing.ArrayLike,
     tree: Any,
 ) -> Any:
   r"""Multiply a tree by a scalar.
@@ -100,7 +100,7 @@ def tree_scale(
 
 
 def tree_add_scale(
-    tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
+    tree_x: Any, scalar: jax.typing.ArrayLike, tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
 

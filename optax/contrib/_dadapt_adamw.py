@@ -41,10 +41,10 @@ class DAdaptAdamWState(NamedTuple):
 
 def dadapt_adamw(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    betas: tuple[float, float] = (0.9, 0.999),
-    eps: float = 1e-8,
-    estim_lr0: float = 1e-6,
-    weight_decay: float = 0.0,
+    betas: tuple[jax.typing.ArrayLike, jax.typing.ArrayLike] = (0.9, 0.999),
+    eps: jax.typing.ArrayLike = 1e-8,
+    estim_lr0: jax.typing.ArrayLike = 1e-6,
+    weight_decay: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Learning rate free AdamW by D-Adaptation.
 

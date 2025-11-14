@@ -31,10 +31,10 @@ import optax.tree
 
 
 def scale_by_acprop(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-16,
+    eps_root: jax.typing.ArrayLike = 1e-16,
 ) -> base.GradientTransformation:
   """Rescale updates according to ACProp (asynchronous version of AdaBelief).
 
@@ -84,11 +84,11 @@ def scale_by_acprop(
 
 def acprop(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-16,
+    eps_root: jax.typing.ArrayLike = 1e-16,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   r"""The ACProp optimizer.
