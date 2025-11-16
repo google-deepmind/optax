@@ -56,6 +56,10 @@ from optax.contrib._reduce_on_plateau import reduce_on_plateau
 from optax.contrib._reduce_on_plateau import ReduceLROnPlateauState
 from optax.contrib._sam import normalize
 from optax.contrib._sam import NormalizeState
+from optax.contrib._RLion import rlion
+from optax.contrib._RLion import scale_by_rlion
+from optax.contrib._RLion import ScaleByRLionState
+from optax.contrib._RLion import smooth_sign
 from optax.contrib._sam import sam
 from optax.contrib._sam import SAMState
 from optax.contrib._schedule_free import schedule_free
