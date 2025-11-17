@@ -135,7 +135,9 @@ def _scale_update_for_width_transfer(
 
 
 def _scale_update_for_consistent_rms(
-    update: jax.Array, dim_nums: MuonDimensionNumbers, consistent_rms: float
+    update: jax.Array,
+    dim_nums: MuonDimensionNumbers,
+    consistent_rms: jax.typing.ArrayLike
 ):
   """Apply consistent RMS scaling from <https://arxiv.org/abs/2502.16982>."""
   fan_in, fan_out = _get_shape_products(update, dim_nums)
@@ -145,7 +147,7 @@ def _scale_update_for_consistent_rms(
 
 def scale_by_shape(
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
-    consistent_rms: float | None = None,
+    consistent_rms: jax.typing.ArrayLike | None = None,
 ) -> base.GradientTransformation:
   """Scale updates by factors derived from parameter shape.
 
@@ -205,8 +207,8 @@ def _newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
 def orthogonalize_via_newton_schulz(
     x: jax.Array,
     ns_coeffs: jax.Array,
-    ns_steps: int = 5,
-    eps: float = 1e-8,
+    ns_steps: jax.typing.ArrayLike = 5,
+    eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
 ) -> jax.Array:
   r"""Orthogonalize via Newton-Schulz iteration.
@@ -276,12 +278,13 @@ class MuonState(NamedTuple):
 
 def scale_by_muon(
     ns_coeffs: Union[
-        tuple[float, float, float],
-        tuple[tuple[float, float, float], ...],
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[tuple[jax.typing.ArrayLike, jax.typing.ArrayLike,
+                    jax.typing.ArrayLike], ...],
     ] = _DEFAULT_NS_COEFFS,
-    ns_steps: int = 5,
-    beta: float = 0.95,
-    eps: float = 1e-8,
+    ns_steps: jax.typing.ArrayLike = 5,
+    beta: jax.typing.ArrayLike = 0.95,
+    eps: jax.typing.ArrayLike = 1e-8,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = True,
@@ -382,13 +385,14 @@ def scale_by_muon(
 def muon(
     learning_rate: base.ScalarOrSchedule,
     ns_coeffs: Union[
-        tuple[float, float, float],
-        tuple[tuple[float, float, float], ...],
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[tuple[jax.typing.ArrayLike, jax.typing.ArrayLike,
+                    jax.typing.ArrayLike], ...],
     ] = _DEFAULT_NS_COEFFS,
-    ns_steps: int = 5,
-    beta: float = 0.95,
-    eps: float = 1e-8,
-    weight_decay: float = 0.0,
+    ns_steps: jax.typing.ArrayLike = 5,
+    beta: jax.typing.ArrayLike = 0.95,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     weight_decay_mask: Optional[
         Union[Any, Callable[[base.Params], Any]]
     ] = None,
@@ -396,12 +400,12 @@ def muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
-    adam_b1: float = 0.9,
-    adam_b2: float = 0.999,
-    adam_eps_root: float = 0.0,
-    adam_weight_decay: float = 0.0,
+    adam_b1: jax.typing.ArrayLike = 0.9,
+    adam_b2: jax.typing.ArrayLike = 0.999,
+    adam_eps_root: jax.typing.ArrayLike = 0.0,
+    adam_weight_decay: jax.typing.ArrayLike = 0.0,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
-    consistent_rms: float | None = None,
+    consistent_rms: jax.typing.ArrayLike | None = None,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 

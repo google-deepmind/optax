@@ -58,7 +58,7 @@ class Gumbel:
 def make_perturbed_fun(
     fun: Callable[[chex.ArrayTree], chex.ArrayTree],
     num_samples: int = 1000,
-    sigma: float = 0.1,
+    sigma: jax.typing.ArrayLike = 0.1,
     noise=Gumbel(),
     use_baseline=True,
 ) -> Callable[[base.PRNGKey, chex.ArrayTree], chex.ArrayTree]:

@@ -64,8 +64,8 @@ def power_iteration(
         jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
     *,
     v0: Optional[chex.ArrayTree] = None,
-    num_iters: int = 100,
-    error_tolerance: float = 1e-6,
+    num_iters: jax.typing.ArrayLike = 100,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
 ) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
@@ -155,10 +155,10 @@ def power_iteration(
 
 def matrix_inverse_pth_root(
     matrix: jax.typing.ArrayLike,
-    p: int,
-    num_iters: int = 100,
-    ridge_epsilon: float = 1e-6,
-    error_tolerance: float = 1e-6,
+    p: jax.typing.ArrayLike,
+    num_iters: jax.typing.ArrayLike = 100,
+    ridge_epsilon: jax.typing.ArrayLike = 1e-6,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
 ):
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
@@ -296,7 +296,7 @@ def nnls(
     b: jax.Array,
     iters: int,
     unroll: Union[int, bool] = 1,
-    L: Union[jax.Array, float, None] = None,
+    L: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
   r"""Solves the non-negative least squares problem.
 

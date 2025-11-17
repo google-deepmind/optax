@@ -18,7 +18,7 @@ from collections.abc import Callable
 import functools
 import inspect
 import operator
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -42,8 +42,8 @@ class BacktrackingLinesearchInfo(NamedTuple):
       succeeded in finding such a stepsize.
   """
 
-  num_linesearch_steps: Union[int, jax.typing.ArrayLike]
-  decrease_error: Union[float, jax.typing.ArrayLike]
+  num_linesearch_steps: jax.typing.ArrayLike  # int
+  decrease_error: jax.typing.ArrayLike  # float
 
 
 class ScaleByBacktrackingLinesearchState(NamedTuple):
@@ -61,8 +61,8 @@ class ScaleByBacktrackingLinesearchState(NamedTuple):
     info: information about the backtracking linesearch step, for debugging.
   """
 
-  learning_rate: Union[float, jax.Array]
-  value: Union[float, jax.Array]
+  learning_rate: jax.typing.ArrayLike  # float
+  value: jax.typing.ArrayLike  # float
   grad: Optional[base.Updates]
   info: BacktrackingLinesearchInfo
 
@@ -70,21 +70,21 @@ class ScaleByBacktrackingLinesearchState(NamedTuple):
 class BacktrackingLineSearchState(NamedTuple):
   """State during the inner loop of a backtracking line-search."""
 
-  learning_rate: Union[float, jax.Array]
-  new_value: Union[float, jax.Array]
+  learning_rate: jax.typing.ArrayLike  # float
+  new_value: jax.typing.ArrayLike  # float
   new_grad: base.Updates
   decrease_error: jax.typing.ArrayLike
-  iter_num: Union[int, jax.Array]
+  iter_num: jax.typing.ArrayLike  # int
 
 
 def scale_by_backtracking_linesearch(
-    max_backtracking_steps: int,
-    slope_rtol: float = 1e-4,
-    decrease_factor: float = 0.8,
-    increase_factor: float = 1.5,
-    max_learning_rate: float = 1.0,
-    atol: float = 0.0,
-    rtol: float = 0.0,
+    max_backtracking_steps: jax.typing.ArrayLike,  # int
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    decrease_factor: jax.typing.ArrayLike = 0.8,
+    increase_factor: jax.typing.ArrayLike = 1.5,
+    max_learning_rate: jax.typing.ArrayLike = 1.0,
+    atol: jax.typing.ArrayLike = 0.0,
+    rtol: jax.typing.ArrayLike = 0.0,
     store_grad: bool = False,
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -290,9 +290,9 @@ def scale_by_backtracking_linesearch(
       state: ScaleByBacktrackingLinesearchState,
       params: base.Params,
       *,
-      value: Union[float, jax.Array],
+      value: jax.typing.ArrayLike,  # float
       grad: base.Updates,
-      value_fn: Callable[..., Union[jax.Array, float]],
+      value_fn: Callable[..., jax.typing.ArrayLike],
       **extra_args: dict[str, Any],
   ) -> tuple[base.Updates, ScaleByBacktrackingLinesearchState]:
     """Compute scaled updates guaranteeing decrease of current objective.
@@ -524,19 +524,19 @@ class ZoomLinesearchState(NamedTuple):
 
 
 def zoom_linesearch(
-    max_linesearch_steps: int,
-    max_stepsize: Optional[float] = None,
-    tol: float = 0.0,
-    increase_factor: float = 2.0,
-    slope_rtol: float = 1e-4,
-    curv_rtol: float = 0.9,
-    approx_dec_rtol: Optional[float] = 1e-6,
-    interval_threshold: float = 1e-5,
+    max_linesearch_steps: jax.typing.ArrayLike,  # int
+    max_stepsize: Optional[jax.typing.ArrayLike] = None,  # float
+    tol: jax.typing.ArrayLike = 0.0,
+    increase_factor: jax.typing.ArrayLike = 2.0,
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    curv_rtol: jax.typing.ArrayLike = 0.9,
+    approx_dec_rtol: Optional[jax.typing.ArrayLike] = 1e-6,
+    interval_threshold: jax.typing.ArrayLike = 1e-5,
     verbose: bool = False,
 ) -> tuple[
     Callable[..., ZoomLinesearchState],
     Callable[..., ZoomLinesearchState],
-    Callable[..., Union[bool, jax.typing.ArrayLike]],
+    Callable[..., jax.typing.ArrayLike],
 ]:
   r"""Zoom Linesearch ensuring sufficient decrease and small curvature.
 
@@ -1232,8 +1232,7 @@ def zoom_linesearch(
     )
     return optax.tree.cast_like(new_state, other_tree=state)
 
-  def step_cond_fn(
-      state: ZoomLinesearchState) -> Union[bool, jax.typing.ArrayLike]:
+  def step_cond_fn(state: ZoomLinesearchState) -> jax.typing.ArrayLike:
     """Continuing criterion for the while loop of the linesearch."""
     return ~(state.done | state.failed)
 
@@ -1261,9 +1260,9 @@ class ZoomLinesearchInfo(NamedTuple):
       null value indicates it succeeded in finding such a stepsize.
   """
 
-  num_linesearch_steps: Union[int, jax.typing.ArrayLike]
-  decrease_error: Union[float, jax.typing.ArrayLike]
-  curvature_error: Union[float, jax.typing.ArrayLike]
+  num_linesearch_steps: jax.typing.ArrayLike  # int
+  decrease_error: jax.typing.ArrayLike  # float
+  curvature_error: jax.typing.ArrayLike  # float
 
 
 class ScaleByZoomLinesearchState(NamedTuple):
@@ -1287,14 +1286,14 @@ class ScaleByZoomLinesearchState(NamedTuple):
 
 
 def scale_by_zoom_linesearch(
-    max_linesearch_steps: int,
-    max_learning_rate: Optional[float] = None,
-    tol: float = 0.0,
-    increase_factor: float = 2.0,
-    slope_rtol: float = 1e-4,
-    curv_rtol: float = 0.9,
-    approx_dec_rtol: Optional[float] = 1e-6,
-    stepsize_precision: float = 1e-5,
+    max_linesearch_steps: jax.typing.ArrayLike,  # int
+    max_learning_rate: Optional[jax.typing.ArrayLike] = None,  # float
+    tol: jax.typing.ArrayLike = 0.0,
+    increase_factor: jax.typing.ArrayLike = 2.0,
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    curv_rtol: jax.typing.ArrayLike = 0.9,
+    approx_dec_rtol: Optional[jax.typing.ArrayLike] = 1e-6,
+    stepsize_precision: jax.typing.ArrayLike = 1e-5,
     initial_guess_strategy: str = "keep",
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -1590,8 +1589,8 @@ def scale_by_zoom_linesearch(
 
 
 def value_and_grad_from_state(
-    value_fn: Callable[..., Union[jax.Array, float]],
-) -> Callable[..., tuple[Union[float, jax.Array], base.Updates]]:
+    value_fn: Callable[..., jax.typing.ArrayLike],
+) -> Callable[..., tuple[jax.typing.ArrayLike, base.Updates]]:
   r"""Alternative to ``jax.value_and_grad`` that fetches value, grad from state.
 
   Line-search methods such as :func:`optax.scale_by_backtracking_linesearch`

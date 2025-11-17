@@ -17,6 +17,7 @@
 from typing import Any, NamedTuple, Callable
 
 import chex
+import jax
 from optax._src import base
 from optax.transforms import _accumulation
 from optax.transforms import _combining
@@ -178,7 +179,7 @@ def monitor(
 
 def measure_with_ema(
     measure: Callable[[base.Updates], chex.ArrayTree],
-    decay: float,
+    decay: jax.typing.ArrayLike,  # float
     debias: bool = True,
     accumulator_dtype: Any | None = None
 ) -> base.GradientTransformationExtraArgs:

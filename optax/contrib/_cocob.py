@@ -40,7 +40,7 @@ class COCOBState(NamedTuple):
 
 
 def scale_by_cocob(
-    alpha: float = 100, eps: float = 1e-8
+    alpha: jax.typing.ArrayLike = 100.0, eps: jax.typing.ArrayLike = 1e-8
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
 
@@ -112,9 +112,9 @@ def scale_by_cocob(
 
 def cocob(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    alpha: float = 100,
-    eps: float = 1e-8,
-    weight_decay: float = 0,
+    alpha: jax.typing.ArrayLike = 100.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.

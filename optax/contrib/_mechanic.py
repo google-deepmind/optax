@@ -50,9 +50,9 @@ class MechanicState(NamedTuple):
 def mechanize(
     base_optimizer: Union[base.GradientTransformation,
                           base.GradientTransformationExtraArgs],
-    weight_decay: float = 1e-2,
-    eps: float = 1e-8,
-    s_init: float = 1e-6,
+    weight_decay: jax.typing.ArrayLike = 1e-2,
+    eps: jax.typing.ArrayLike = 1e-8,
+    s_init: jax.typing.ArrayLike = 1e-6,
     num_betas: int = 6,
 ) -> base.GradientTransformationExtraArgs:
   """Mechanic - a black box learning rate tuner/optimizer.

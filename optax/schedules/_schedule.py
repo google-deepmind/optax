@@ -19,17 +19,16 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional
 
 from absl import logging
 import jax
 import jax.numpy as jnp
-import numpy as np
 from optax._src import base
 from optax.schedules import _join
 
 
-def constant_schedule(value: Union[float, int]) -> base.Schedule:
+def constant_schedule(value: jax.typing.ArrayLike) -> base.Schedule:
   """Constructs a constant schedule.
 
   Args:
@@ -50,9 +49,9 @@ def constant_schedule(value: Union[float, int]) -> base.Schedule:
 
 
 def polynomial_schedule(
-    init_value: float,
-    end_value: float,
-    power: Union[float, int],
+    init_value: jax.typing.ArrayLike,
+    end_value: jax.typing.ArrayLike,
+    power: jax.typing.ArrayLike,
     transition_steps: int,
     transition_begin: int = 0,
 ) -> base.Schedule:
@@ -147,8 +146,8 @@ def polynomial_schedule(
 
 
 def linear_schedule(
-    init_value: float,
-    end_value: float,
+    init_value: jax.typing.ArrayLike,
+    end_value: jax.typing.ArrayLike,
     transition_steps: int,
     transition_begin: int = 0,
 ) -> base.Schedule:
@@ -202,7 +201,8 @@ def linear_schedule(
 
 
 def piecewise_constant_schedule(
-    init_value: float, boundaries_and_scales: Optional[dict[int, float]] = None
+    init_value: jax.typing.ArrayLike,  # float
+    boundaries_and_scales: Optional[dict[int, float]] = None
 ) -> base.Schedule:
   """Piecewise constant schedule with scaled jumps at specific boundaries.
 
@@ -248,12 +248,12 @@ def piecewise_constant_schedule(
 
 
 def exponential_decay(
-    init_value: float,
+    init_value: jax.typing.ArrayLike,
     transition_steps: int,
     decay_rate: float,
     transition_begin: int = 0,
     staircase: bool = False,
-    end_value: Optional[float] = None,
+    end_value: Optional[jax.typing.ArrayLike] = None,
 ) -> base.Schedule:
   """Constructs a schedule with either continuous or discrete exponential decay.
 
@@ -326,10 +326,10 @@ def exponential_decay(
 
 
 def cosine_decay_schedule(
-    init_value: float,
+    init_value: jax.typing.ArrayLike,
     decay_steps: int,
-    alpha: float = 0.0,
-    exponent: float = 1.0,
+    alpha: jax.typing.ArrayLike = 0.0,
+    exponent: jax.typing.ArrayLike = 1.0,
 ) -> base.Schedule:
   r"""Returns a function which implements cosine learning rate decay.
 
@@ -389,19 +389,25 @@ def cosine_decay_schedule(
   return schedule
 
 
-def _linear_interpolate(start: float, end: float, pct: float):
+def _linear_interpolate(
+    start: jax.typing.ArrayLike,
+    end: jax.typing.ArrayLike,
+    pct: jax.typing.ArrayLike):
   """Linearly interpolate between two values."""
   return (end - start) * pct + start
 
 
-def _cosine_interpolate(start: float, end: float, pct: float):
+def _cosine_interpolate(
+    start: jax.typing.ArrayLike,
+    end: jax.typing.ArrayLike,
+    pct: jax.typing.ArrayLike):
   """Cosine interpolate between two values (smoother transitions)."""
   return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
 def piecewise_interpolate_schedule(
     interpolate_type: str,
-    init_value: float,
+    init_value: jax.typing.ArrayLike,
     boundaries_and_scales: Optional[dict[int, float]] = None,
 ) -> base.Schedule:
   """Piecewise interpolated schedule with linear or cosine transitions.
@@ -462,12 +468,11 @@ def piecewise_interpolate_schedule(
   else:
     boundaries, scales = (), ()
 
-  bounds = np.stack((0,) + boundaries)
-  values = np.cumprod(np.stack((init_value,) + scales))
-  interval_sizes = np.maximum(bounds[1:] - bounds[:-1], 1)
-
   def schedule(count):
-    indicator = (bounds[:-1] <= count) & (count < bounds[1:])
+    bounds = jnp.stack((0,) + boundaries)
+    values = jnp.cumprod(jnp.stack((init_value,) + scales))
+    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)
+    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])
     pct = (count - bounds[:-1]) / interval_sizes
     interp_vals = interpolate_fn(values[:-1], values[1:], pct)
     return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
@@ -477,7 +482,7 @@ def piecewise_interpolate_schedule(
 
 def linear_onecycle_schedule(
     transition_steps: int,
-    peak_value: float,
+    peak_value: jax.typing.ArrayLike,  # float
     pct_start: float = 0.3,
     pct_final: float = 0.85,
     div_factor: float = 25.0,
@@ -536,7 +541,7 @@ def linear_onecycle_schedule(
 
 def cosine_onecycle_schedule(
     transition_steps: int,
-    peak_value: float,
+    peak_value: jax.typing.ArrayLike,  # float
     pct_start: float = 0.3,
     div_factor: float = 25.0,
     final_div_factor: float = 1e4,
@@ -587,8 +592,8 @@ def cosine_onecycle_schedule(
 
 
 def warmup_constant_schedule(
-    init_value: float,
-    peak_value: float,
+    init_value: jax.typing.ArrayLike,
+    peak_value: jax.typing.ArrayLike,
     warmup_steps: int,
 ) -> base.Schedule:
   r"""Linear warmup followed by constant schedule i.e no decay.
@@ -610,12 +615,12 @@ def warmup_constant_schedule(
 
 
 def warmup_cosine_decay_schedule(
-    init_value: float,
-    peak_value: float,
+    init_value: jax.typing.ArrayLike,
+    peak_value: jax.typing.ArrayLike,
     warmup_steps: int,
     decay_steps: int,
-    end_value: float = 0.0,
-    exponent: float = 1.0,
+    end_value: jax.typing.ArrayLike = 0.0,
+    exponent: jax.typing.ArrayLike = 1.0,
 ) -> base.Schedule:
   r"""Linear warmup followed by cosine decay.
 
@@ -653,14 +658,14 @@ def warmup_cosine_decay_schedule(
 
 
 def warmup_exponential_decay_schedule(
-    init_value: float,
-    peak_value: float,
+    init_value: jax.typing.ArrayLike,
+    peak_value: jax.typing.ArrayLike,
     warmup_steps: int,
     transition_steps: int,
-    decay_rate: float,
+    decay_rate: jax.typing.ArrayLike,
     transition_begin: int = 0,
     staircase: bool = False,
-    end_value: Optional[float] = None,
+    end_value: Optional[jax.typing.ArrayLike] = None,
 ) -> base.Schedule:
   """Linear warmup followed by exponential decay.
 

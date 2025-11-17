@@ -35,10 +35,10 @@ MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 def adabelief(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-16,
+    eps_root: jax.typing.ArrayLike = 1e-16,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -142,9 +142,9 @@ def adabelief(
 
 def adadelta(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
-    rho: float = 0.9,
-    eps: float = 1e-6,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
+    rho: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-6,
+    weight_decay: Union[jax.typing.ArrayLike, base.ScalarOrSchedule] = 0.0,
     weight_decay_mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Adadelta optimizer.
@@ -224,14 +224,14 @@ def adadelta(
 def adafactor(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
-    decay_rate: float = 0.8,
-    decay_offset: int = 0,
+    decay_rate: jax.typing.ArrayLike = 0.8,
+    decay_offset: jax.typing.ArrayLike = 0,
     multiply_by_parameter_scale: float = True,
-    clipping_threshold: Optional[float] = 1.0,
-    momentum: Optional[float] = None,
-    dtype_momentum: Any = jnp.float32,
-    weight_decay_rate: Optional[Union[float, base.ScalarOrSchedule]] = None,
-    eps: float = 1e-30,
+    clipping_threshold: Optional[jax.typing.ArrayLike] = 1.0,
+    momentum: Optional[jax.typing.ArrayLike] = None,  # float
+    dtype_momentum: jax.typing.DTypeLike = jnp.float32,
+    weight_decay_rate: Optional[base.ScalarOrSchedule] = None,
+    eps: jax.typing.ArrayLike = 1e-30,
     factored: bool = True,
     weight_decay_mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
@@ -328,8 +328,8 @@ def adafactor(
 
 def adagrad(
     learning_rate: base.ScalarOrSchedule,
-    initial_accumulator_value: float = 0.1,
-    eps: float = 1e-7,
+    initial_accumulator_value: jax.typing.ArrayLike = 0.1,
+    eps: jax.typing.ArrayLike = 1e-7,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Adagrad optimizer.
 
@@ -413,10 +413,10 @@ def adagrad(
 
 def adam(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = False,
@@ -597,12 +597,12 @@ nadam.__doc__ = r"""The NAdam optimizer.
 
 def adamw(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-4,
+    weight_decay: base.ScalarOrSchedule = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     *,
     nesterov: bool = False,
@@ -808,12 +808,12 @@ nadamw.__doc__ = (
 
 def adan(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.98,
-    b2: float = 0.92,
-    b3: float = 0.99,
-    eps: float = 1e-8,
-    eps_root: float = 1e-8,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
+    b1: jax.typing.ArrayLike = 0.98,
+    b2: jax.typing.ArrayLike = 0.92,
+    b3: jax.typing.ArrayLike = 0.99,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 1e-8,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The ADAptive Nesterov momentum algorithm (Adan).
@@ -926,10 +926,10 @@ def adan(
 
 def lion(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.99,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.99,
     mu_dtype: Optional[Any] = None,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-3,
+    weight_decay: base.ScalarOrSchedule = 1e-3,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Lion optimizer.
@@ -1022,10 +1022,10 @@ def lion(
 
 def amsgrad(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
   """The AMSGrad optimizer.
@@ -1083,7 +1083,7 @@ def amsgrad(
 
 
 def fromage(
-    learning_rate: base.ScalarOrSchedule, min_norm: float = 1e-6
+    learning_rate: base.ScalarOrSchedule, min_norm: jax.typing.ArrayLike = 1e-6
 ) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
@@ -1147,12 +1147,12 @@ def fromage(
 
 def lars(
     learning_rate: base.ScalarOrSchedule,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     weight_decay_mask: MaskOrFn = True,
-    trust_coefficient: float = 0.001,
-    eps: float = 0.0,
+    trust_coefficient: jax.typing.ArrayLike = 0.001,
+    eps: jax.typing.ArrayLike = 0.0,
     trust_ratio_mask: MaskOrFn = True,
-    momentum: float = 0.9,
+    momentum: jax.typing.ArrayLike = 0.9,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """The LARS optimizer.
@@ -1220,11 +1220,11 @@ def lars(
 
 def lamb(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-6,
-    eps_root: float = 0.0,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-6,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   """The LAMB optimizer.
@@ -1289,9 +1289,9 @@ def lamb(
 
 def noisy_sgd(
     learning_rate: base.ScalarOrSchedule,
-    eta: float = 0.01,
-    gamma: float = 0.55,
-    key: jax.Array | int | None = None,
+    eta: jax.typing.ArrayLike = 0.01,
+    gamma: jax.typing.ArrayLike = 0.55,
+    key: jax.typing.ArrayLike | None = None,  # int
     *,
     seed: int | None = None,  # deprecated
 ) -> base.GradientTransformationExtraArgs:
@@ -1427,7 +1427,7 @@ def sign_sgd(
 
 def signum(
     learning_rate: base.ScalarOrSchedule,
-    beta: float = 0.9,
+    beta: jax.typing.ArrayLike = 0.9,
     accumulator_dtype: Any | None = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""A variant of SGD using signs of the components of an EMA of the gradient.
@@ -1467,11 +1467,11 @@ def signum(
 
 def novograd(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.25,
-    eps: float = 1e-6,
-    eps_root: float = 0.0,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.25,
+    eps: jax.typing.ArrayLike = 1e-6,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """NovoGrad optimizer.
 
@@ -1603,12 +1603,12 @@ def optimistic_gradient_descent(
 
 
 def optimistic_adam(
-    learning_rate: float,
-    optimism: Optional[float] = None,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-08,
-    eps_root: float = 0.0,
+    learning_rate: jax.typing.ArrayLike,
+    optimism: Optional[jax.typing.ArrayLike] = None,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-08,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = True,
@@ -1729,12 +1729,12 @@ def optimistic_adam(
 def optimistic_adam_v2(
     learning_rate: base.ScalarOrSchedule,
     *,
-    alpha: float = 1.0,
-    beta: float = 1.0,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-08,
-    eps_root: float = 0.0,
+    alpha: jax.typing.ArrayLike = 1.0,
+    beta: jax.typing.ArrayLike = 1.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-08,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     nesterov: bool = True,
 ) -> base.GradientTransformationExtraArgs:
@@ -1850,11 +1850,11 @@ def optimistic_adam_v2(
 
 def radam(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    threshold: float = 5.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    threshold: jax.typing.ArrayLike = 5.0,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -1921,12 +1921,12 @@ def radam(
 
 def rmsprop(
     learning_rate: base.ScalarOrSchedule,
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.0,
+    decay: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-8,
+    initial_scale: jax.typing.ArrayLike = 0.0,
     eps_in_sqrt: bool = True,
     centered: bool = False,
-    momentum: Optional[float] = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
     bias_correction: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -2035,7 +2035,7 @@ def rmsprop(
 
 def sgd(
     learning_rate: base.ScalarOrSchedule,
-    momentum: Optional[float] = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
@@ -2124,7 +2124,7 @@ def sgd(
 
 
 def sm3(
-    learning_rate: float, momentum: float = 0.9
+    learning_rate: jax.typing.ArrayLike, momentum: jax.typing.ArrayLike = 0.9
 ) -> base.GradientTransformationExtraArgs:
   r"""The SM3 optimizer.
 
@@ -2235,9 +2235,9 @@ def sm3(
 
 def yogi(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-3,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-3,
 ) -> base.GradientTransformationExtraArgs:
   # pylint: disable=line-too-long
   """The Yogi optimizer.
@@ -2294,9 +2294,9 @@ def yogi(
 
 def adamax(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformationExtraArgs:
   r"""A variant of the Adam optimizer that uses the infinity norm.
 
@@ -2379,10 +2379,10 @@ def adamax(
 
 def adamaxw(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    weight_decay: Union[float, base.ScalarOrSchedule] = 1e-4,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: base.ScalarOrSchedule = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Adamax with weight decay regularization.
@@ -2453,11 +2453,11 @@ def adamaxw(
 
 
 def rprop(
-    learning_rate: float,
-    eta_minus: float = 0.5,
-    eta_plus: float = 1.2,
-    min_step_size: float = 1e-6,
-    max_step_size: float = 50.0,
+    learning_rate: jax.typing.ArrayLike,
+    eta_minus: jax.typing.ArrayLike = 0.5,
+    eta_plus: jax.typing.ArrayLike = 1.2,
+    min_step_size: jax.typing.ArrayLike = 1e-6,
+    max_step_size: jax.typing.ArrayLike = 50.0,
 ) -> base.GradientTransformationExtraArgs:
   """The Rprop optimizer.
 
@@ -2524,10 +2524,10 @@ def rprop(
 
 
 def polyak_sgd(
-    max_learning_rate: float = 1.0,
+    max_learning_rate: jax.typing.ArrayLike = 1.0,
     scaling: base.ScalarOrSchedule = 1.0,
-    f_min: float = 0.0,
-    eps: float = 0.0,
+    f_min: jax.typing.ArrayLike = 0.0,
+    eps: jax.typing.ArrayLike = 0.0,
     variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""SGD with Polyak step-size.

@@ -14,15 +14,15 @@
 # ==============================================================================
 """Smoothing functions."""
 
-from jax import typing
+import jax
 import jax.numpy as jnp
 from optax._src import utils
 
 
 def smooth_labels(
-    labels: typing.ArrayLike,
-    alpha: float,
-) -> jnp.ndarray:
+    labels: jax.typing.ArrayLike,
+    alpha: jax.typing.ArrayLike,
+) -> jax.Array:
   """Apply label smoothing.
 
   Label smoothing is often used in combination with a cross-entropy loss.

@@ -46,7 +46,9 @@ def clip(max_delta: jax.typing.ArrayLike) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
+def clip_by_block_rms(
+    threshold: jax.typing.ArrayLike
+) -> base.GradientTransformation:
   """Clips updates to a max rms for the gradient of each param vector or matrix.
 
   A `block` is here a weight vector (e.g. in a Linear layer) or a weight matrix
@@ -74,7 +76,9 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
+def clip_by_global_norm(
+    max_norm: jax.typing.ArrayLike  # float
+) -> base.GradientTransformation:
   """Clips updates using their global norm.
 
   Args:
@@ -115,7 +119,7 @@ def _check_arrays_have_batch_dim(grads: chex.ArrayTree) -> bool:
 
 
 def per_example_global_norm_clip(
-    grads: chex.ArrayTree, l2_norm_clip: float
+    grads: chex.ArrayTree, l2_norm_clip: jax.typing.ArrayLike  # float
 ) -> tuple[chex.ArrayTree, jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
@@ -166,7 +170,9 @@ def per_example_global_norm_clip(
 
 
 def per_example_layer_norm_clip(
-    grads: chex.ArrayTree, global_l2_norm_clip: float, uniform: bool = True
+    grads: chex.ArrayTree,
+    global_l2_norm_clip: jax.typing.ArrayLike,  # float
+    uniform: bool = True
 ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
   """Applies gradient clipping per-example using per-layer norms.
 
@@ -290,7 +296,7 @@ def unitwise_clip(
     g_norm: jax.typing.ArrayLike,
     max_norm: jax.typing.ArrayLike,
     grad: jax.typing.ArrayLike,
-    div_eps: float = 1e-6,
+    div_eps: jax.typing.ArrayLike = 1e-6,
 ) -> jax.Array:
   """Applies gradient clipping unit-wise."""
   # This little max(., div_eps) is distinct from the normal eps and just
@@ -302,8 +308,8 @@ def unitwise_clip(
 
 
 def adaptive_grad_clip(
-    clipping: float,
-    eps: float = 1e-3,
+    clipping: jax.typing.ArrayLike,  # float
+    eps: jax.typing.ArrayLike = 1e-3,
     axis: Optional[Union[int, tuple[int, ...]]] = None,
 ) -> base.GradientTransformation:
   """Clips updates to be at most ``clipping * parameter_norm``, unit-wise.

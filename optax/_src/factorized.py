@@ -26,7 +26,8 @@ from optax._src import base
 from optax._src import numerics
 
 
-def _decay_rate_pow(i: int, exponent: float = 0.8) -> jax.Array:
+def _decay_rate_pow(
+    i: jax.typing.ArrayLike, exponent: jax.typing.ArrayLike = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
   return 1.0 - t ** (-exponent)
@@ -87,12 +88,13 @@ class FactoredState(NamedTuple):
 
 def scale_by_factored_rms(
     factored: bool = True,
-    decay_rate: float = 0.8,
-    step_offset: int = 0,
+    decay_rate: jax.typing.ArrayLike = 0.8,
+    step_offset: jax.typing.ArrayLike = 0,  # int
     min_dim_size_to_factor: int = 128,
-    epsilon: float = 1e-30,
+    epsilon: jax.typing.ArrayLike = 1e-30,
     decay_rate_fn: Callable[
-        [int, float], jax.typing.ArrayLike] = _decay_rate_pow,
+        [jax.typing.ArrayLike, jax.typing.ArrayLike],
+        jax.typing.ArrayLike] = _decay_rate_pow,  # arg types [int, float]
 ):
   """Scaling by a factored estimate of the gradient rms (as in Adafactor).
 
