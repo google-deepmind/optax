@@ -15,12 +15,13 @@
 """Differential Privacy utilities."""
 
 from typing import NamedTuple, Optional
-
 import warnings
 
 import jax
+
+from optax import transforms
+
 from optax._src import base
-from optax._src import clipping
 from optax._src import combine
 from optax._src import transform
 from optax._src import utils
@@ -91,7 +92,10 @@ def differentially_private_aggregate(
     del params
     grads_flat, grads_treedef = jax.tree.flatten(updates)
     bsize = grads_flat[0].shape[0]
-    clipped, _ = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
+    clipped, _ = transforms.per_example_global_norm_clip(
+        grads_flat,
+        l2_norm_clip
+    )
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [
@@ -155,7 +159,7 @@ def dpsgd(
           seed=seed,
       ),
       (
-          transform.trace(decay=momentum, nesterov=nesterov)
+          transforms.trace(decay=momentum, nesterov=nesterov)
           if momentum is not None
           else base.identity()
       ),

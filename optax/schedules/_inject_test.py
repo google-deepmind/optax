@@ -24,13 +24,13 @@ from jax import random
 import jax.numpy as jnp
 import numpy as np
 
+from optax import schedules
+from optax import transforms
+
 from optax._src import base
-from optax._src import clipping
 from optax._src import test_utils
 from optax._src import transform
 from optax._src import wrappers
-from optax.schedules import _inject
-from optax.schedules import _schedule
 import optax.tree
 
 
@@ -55,8 +55,8 @@ class InjectHyperparamsTest(parameterized.TestCase):
   """Tests for the inject_hyperparams wrapper."""
 
   def test_updates(self):
-    optim = _inject.inject_hyperparams(transform.scale)(  # stateless
-        step_size=_schedule.piecewise_constant_schedule(
+    optim = schedules.inject_hyperparams(transform.scale)(  # stateless
+        step_size=schedules.piecewise_constant_schedule(
             3.0, {1: 5, 7: 2, 12: 1.5}
         )
     )
@@ -76,8 +76,8 @@ class InjectHyperparamsTest(parameterized.TestCase):
       np.testing.assert_almost_equal(updates[0], expected_step_size[i + 1])
 
   def test_hyperparams_state(self):
-    optim = _inject.inject_hyperparams(transform.trace)(  # stateful
-        decay=_schedule.piecewise_constant_schedule(0.8, {3: 0.5, 9: 1.25}),
+    optim = schedules.inject_hyperparams(transform.trace)(  # stateful
+        decay=schedules.piecewise_constant_schedule(0.8, {3: 0.5, 9: 1.25}),
         nesterov=True,
     )
 
@@ -96,7 +96,9 @@ class InjectHyperparamsTest(parameterized.TestCase):
     np.testing.assert_almost_equal(state.hyperparams['decay'], expected_mom[-1])
 
   def test_constant_hyperparams(self):
-    optim = _inject.inject_hyperparams(transform.scale_by_adam)(b1=0.0, b2=0.0)
+    optim = schedules.inject_hyperparams(
+        transform.scale_by_adam
+    )(b1=0.0, b2=0.0)
 
     params = [jnp.zeros([2, 3]) for _ in range(3)]
     state = jax.jit(optim.init)(params)
@@ -113,7 +115,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(updates, grads)
 
   def test_overriding_hyperparam(self):
-    optim = _inject.inject_hyperparams(clipping.clip_by_global_norm)(0.1)
+    optim = schedules.inject_hyperparams(transforms.clip_by_global_norm)(0.1)
     params = jnp.zeros((3, 5, 7))
     state = jax.jit(optim.init)(params)
     update_fn = jax.jit(optim.update)
@@ -126,7 +128,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(('string', 'mask'), ('list', ['mask']))
   def test_static_args(self, static_args):
-    @functools.partial(_inject.inject_hyperparams, static_args=static_args)
+    @functools.partial(schedules.inject_hyperparams, static_args=static_args)
     def custom_optim(learning_rate, mask):
       return wrappers.masked(transform.scale(-learning_rate), mask)
 
@@ -146,7 +148,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(('one_arg', 'b1'), ('two_arg', ['b1', 'b2']))
   def test_numeric_static_args(self, static_args):
-    optim = _inject.inject_hyperparams(
+    optim = schedules.inject_hyperparams(
         transform.scale_by_adam, static_args=static_args
     )(b1=0.9, b2=0.95)
 
@@ -184,7 +186,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
 
       return base.GradientTransformation(init_fn, update_fn)
 
-    optim = _inject.inject_hyperparams(random_noise_optimizer)(
+    optim = schedules.inject_hyperparams(random_noise_optimizer)(
         key=random.key(17), scale=1e-3
     )
 
@@ -203,7 +205,7 @@ class InjectHyperparamsTest(parameterized.TestCase):
   )
   def test_hyperparam_dtypes(self, hyperparam_dtype, param_dtype, grad_dtype):
     """Tests that hyperparam dtype override works as desired."""
-    optim = _inject.inject_hyperparams(
+    optim = schedules.inject_hyperparams(
         transform.scale_by_adam, hyperparam_dtype=hyperparam_dtype
     )(b1=0.9, b2=0.95)
 
@@ -226,12 +228,12 @@ class InjectHyperparamsTest(parameterized.TestCase):
   @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):
-      _inject.inject_hyperparams(transform.scale, static_args=static_args)
+      schedules.inject_hyperparams(transform.scale, static_args=static_args)
 
   def test_inject_hyperparams_starts_with_step_count_zero(self):
     """Checks that inject_hyperparams uses step count 0 in the first update."""
     # See also: https://github.com/deepmind/optax/issues/415.
-    opt = _inject.inject_hyperparams(transform.scale)(lambda count: count)
+    opt = schedules.inject_hyperparams(transform.scale)(lambda count: count)
     params = jnp.zeros(3)
     grads = jnp.array([-1, 0, 1])
     updates, _ = jax.jit(opt.update)(grads, opt.init(params))
@@ -241,8 +243,8 @@ class InjectHyperparamsTest(parameterized.TestCase):
 class StatefulTest(absltest.TestCase):
 
   def test_wrap_stateless_schedule(self):
-    my_schedule = _schedule.linear_schedule(1.0, 1.0, 10)
-    my_wrapped_schedule = _inject.WrappedSchedule(my_schedule)
+    my_schedule = schedules.linear_schedule(1.0, 1.0, 10)
+    my_wrapped_schedule = schedules.WrappedSchedule(my_schedule)
 
     count = jnp.zeros([], dtype=jnp.int32)
     state = my_wrapped_schedule.init()
@@ -265,7 +267,7 @@ class StatefulTest(absltest.TestCase):
     params = grads
 
     my_stateful_schedule = ExampleStatefulSchedule()
-    tx = _inject.inject_hyperparams(transform.scale)(
+    tx = schedules.inject_hyperparams(transform.scale)(
         step_size=my_stateful_schedule
     )
     state = jax.jit(tx.init)(params)
