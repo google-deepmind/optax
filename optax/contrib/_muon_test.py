@@ -23,6 +23,7 @@ import jax.numpy as jnp
 from optax._src import test_utils
 from optax.contrib import _muon
 from optax.transforms import _masking
+from optax._src import update, numerics
 
 UNSPECIFIED = object()
 
@@ -41,6 +42,18 @@ def get_updates(params, muon_weight_dimension_numbers=UNSPECIFIED):
   updates, state = opt.update(grad, state, params=params)
   return updates, state
 
+def _setup_mixed_tensor_target_complex(dtype):
+  """Complex version of _common_test._setup_mixed_tensor_target"""
+  initial_params = jnp.zeros((2, 2), dtype=dtype)
+  final_params = jnp.array(
+    [[1.0+2.0j, 0.0], [-1.0+1.0j, 1.0-3.0j]],
+    dtype=dtype,
+  )
+
+  def obj_fn(params):
+    return jnp.sum(numerics.abs_sq(params - final_params))
+
+  return initial_params, final_params, obj_fn
 
 class MuonTest(parameterized.TestCase):
 
@@ -232,6 +245,96 @@ class MuonTest(parameterized.TestCase):
     self.assertIsInstance(get_muon_mu(state)["w2"]["a"], _masking.MaskedNode)
     self.assertIsInstance(get_muon_mu(state)["w2"]["b"], _masking.MaskedNode)
 
+  def test_newton_schulz(self):
+    """
+    Newton--Schulz should make real gradients orthogonal
+    and complex gradients unitary.
+    """
+    G_real = jax.random.normal(
+      jax.random.key(0), (4, 3), dtype=jnp.float32)
+    G_complex = jax.random.normal(
+      jax.random.key(0), (4, 3), dtype=jnp.complex64)
+
+    ns_coeffs =  jnp.array([2., -1.5, 0.5])
+
+    # For real matrices, Newton--Schulz should produce an orthonormal matrix
+    G_real_orth = _muon.orthogonalize_via_newton_schulz(
+        G_real,
+        ns_coeffs,
+        ns_steps=10,
+        eps=1e-8,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+
+    gram_real = G_real_orth.T @ G_real_orth
+    self.assertTrue(
+        jnp.allclose(gram_real, jnp.eye(G_real.shape[1]), atol=1e-5),
+        msg=("Real Newton–Schulz did not orthogonalize correctly."
+        f"\nGram:\n{gram_real}"), # should be close to identity
+    )
+
+    # For complex matrices, Newton--Schulz should produce a unitary matrix
+    G_complex_orth = _muon.orthogonalize_via_newton_schulz(
+        G_complex,
+        ns_coeffs,
+        ns_steps=10,
+        eps=1e-8,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+
+    # For complex matrices, Newton--Schulz should produce a unitary matrix
+    gram_complex = G_complex_orth.conj().T @ G_complex_orth
+    self.assertTrue(
+        jnp.allclose(gram_complex, jnp.eye(G_complex.shape[1]), atol=1e-5),
+        msg=("Complex Newton–Schulz did not produce a unitary matrix."
+        f"\nGram:\n{gram_complex}"), # should be close to identity
+    )
+
+    # Check that the output shape is preserved.
+    self.assertEqual(G_complex_orth.shape, G_complex.shape)
+
+  @parameterized.product(
+    target=(
+      _setup_mixed_tensor_target_complex,
+    ),
+    dtype=('complex64',),
+    adaptive=(True, False),
+    nesterov=(True, False),
+  )
+
+  def test_complex_mixed_target(self, target, dtype, adaptive, nesterov):
+    """
+    Test Muon optimizer on a complex mixed tensor optimization target.
+    """
+    dtype = getattr(jnp, dtype)
+
+    opt = _muon.muon(
+      learning_rate=1e-2,
+      adaptive=adaptive,
+      nesterov=nesterov,
+    )
+    initial_params, final_params, obj_fn = target(dtype)
+
+    @jax.jit
+    def step(params, state):
+      _, updates = jax.value_and_grad(obj_fn)(params)
+      updates = jax.tree.map(jnp.conj, updates)
+      updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+
+    with self.subTest('Test that optimization works'):
+
+      def f(params_state, _):
+        return step(*params_state), None
+
+      (params, state), _ = jax.lax.scan(f, (params, state), length=1000)
+
+      test_utils.assert_trees_all_close(
+          params, final_params, rtol=3e-2, atol=3e-2)
 
 if __name__ == "__main__":
   absltest.main()
