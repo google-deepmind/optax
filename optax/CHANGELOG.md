@@ -26,4 +26,7 @@ positional args for hyperparameter-like inputs.
 
 ### Removed
 
-- Stochastic gradient estimators à la Reinforce with control variates methods. See monte_carlo folder in optax 0.1.8 if you are interested.
+- Stochastic gradient estimators à la Reinforce with control variates methods.
+See monte_carlo folder in optax 0.1.8 if you are interested.
+- Removed optax._src.transform.cast_tree and optax._src.utils.cast_tree. Use
+optax.tree.cast from now on.
