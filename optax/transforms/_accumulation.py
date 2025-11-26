@@ -199,9 +199,9 @@ def skip_large_updates(
   """Returns True if the global norm square of `updates` is small enough.
 
   Args:
-    updates: see `ShouldSkipUpdateFunction`.
-    gradient_step: see `ShouldSkipUpdateFunction`.
-    params: see `ShouldSkipUpdateFunction`.
+    updates: see :py:class:`.ShouldSkipUpdateFunction`.
+    gradient_step: see :py:class:`.ShouldSkipUpdateFunction`.
+    params: see :py:class:`.ShouldSkipUpdateFunction`.
     max_squared_norm: max square norm that can be accepted in updates.
 
   Returns:

@@ -1987,7 +1987,7 @@ def rmsprop(
     Graves, `Generating Sequences With Recurrent Neural Networks
     <https://arxiv.org/pdf/1308.0850v5>`_, 2014
 
-    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam`
+    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam
     <https://arxiv.org/pdf/2002.04839>`_, 2021
 
   .. warning::
@@ -2596,7 +2596,7 @@ def polyak_sgd(
     <https://arxiv.org/abs/2307.14528>`_, 2023
 
   .. warning::
-    This method requires knowledge of an approximate value of the of the
+    This method requires knowledge of an approximate value of the
     objective function minimum, passed through the ``f_min`` argument.
     For models that interpolate the data, this can be set to 0 (default
     value).
