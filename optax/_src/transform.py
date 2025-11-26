@@ -1301,8 +1301,8 @@ def scale_by_optimistic_gradient(
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
-  See :func:`optax.optimistic_adam_v2`, :func:`optax.optimistic_gradient_descent`
-  for more details.
+  See :func:`optax.optimistic_adam_v2`,
+  :func:`optax.optimistic_gradient_descent` for more details.
 
   Args:
     alpha: Coefficient for generalized optimistic gradient descent.

@@ -50,9 +50,9 @@ def momo(
   """Adaptive Learning Rates for SGD with momentum.
 
   MoMo typically needs less tuning for value of ``learning_rate``,
-  by exploiting the fact that a lower bound of the loss (or the optimal value) is
-  known. For most tasks, zero is a lower bound and an accurate estimate of the
-  final loss.
+  by exploiting the fact that a lower bound of the loss (or the optimal value)
+  is known. For most tasks, zero is a lower bound and an accurate estimate of
+  the final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The
   effective step size is ``min(learning_rate, <adaptive term>)``, where the

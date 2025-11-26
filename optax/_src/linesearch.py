@@ -1591,7 +1591,7 @@ def scale_by_zoom_linesearch(
 def value_and_grad_from_state(
     value_fn: Callable[..., jax.typing.ArrayLike],
 ) -> Callable[..., tuple[jax.typing.ArrayLike, base.Updates]]:
-  r"""Alternative to :func:`jax.value_and_grad` that fetches value, grad from state.
+  r"""Alternative to :func:`jax.value_and_grad` fetches value, grad from state.
 
   Line-search methods such as :func:`optax.scale_by_backtracking_linesearch`
   require to compute the gradient and objective function at the candidate
