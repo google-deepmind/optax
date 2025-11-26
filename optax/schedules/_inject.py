@@ -108,9 +108,10 @@ def inject_hyperparams(
       hyperparameters will be cast to this type.
 
   Returns:
-    A callable that returns a :py:class:`.optax.GradientTransformationExtraArgs`.
-    This callable accepts the same arguments as ``inner_factory``, except you
-    may provide schedules in place of the constant arguments.
+    A callable that returns a
+    :py:class:`.optax.GradientTransformationExtraArgs`. This callable accepts
+    the same arguments as ``inner_factory``, except you may provide schedules
+    in place of the constant arguments.
 
   .. versionchanged:: 0.1.9
     New parameter ``hyperparam_dtype``, the returned callable outputs a
