@@ -39,7 +39,7 @@ class DoGTest(parameterized.TestCase):
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params
-    if scaler_constr == dog.scale_by_dog:
+    if scaler_constr is dog.scale_by_dog:
         scaler = scaler_constr(init_step=("heuristic", 1e-6))
     else:
         scaler = scaler_constr()
