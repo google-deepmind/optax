@@ -85,7 +85,8 @@ def scale_by_dog(
     elif init_step_type == "heuristic":
         if layer_wise:
             r_epsilon = jax.tree.map(
-                lambda p: init_step_value * (1 + numerics.safe_norm(p, 0.0)), params
+                lambda p: init_step_value * (1 + numerics.safe_norm(p, 0.0)),
+                params,
             )
         else:
             r_epsilon = init_step_value * (1 + optax.tree.norm(params))
@@ -95,7 +96,7 @@ def scale_by_dog(
       raise ValueError(
           f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
       )
-    
+
     if layer_wise:
         if init_step_type == "heuristic":
              # r_epsilon is already a tree of scalars
@@ -124,10 +125,12 @@ def scale_by_dog(
   def update_fn(
       updates: base.Updates, state: DoGState, params: base.Params
   ) -> tuple[base.Updates, DoGState]:
-    
+
     if layer_wise:
         dist = jax.tree.map(
-            lambda p, i: numerics.safe_norm(p - i, 0.0), params, state.init_params
+            lambda p, i: numerics.safe_norm(p - i, 0.0),
+            params,
+            state.init_params,
         )
         max_dist = jax.tree.map(jnp.maximum, state.max_dist, dist)
         sum_sq_norm_grads = jax.tree.map(
