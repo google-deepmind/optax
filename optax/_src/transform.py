@@ -24,6 +24,9 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
+from optax._src import combine
+from optax._src import dog
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
@@ -1339,12 +1342,7 @@ def scale_by_optimistic_gradient(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class ScaleByDistanceOverGradientsState(NamedTuple):
-  """State for scale_by_distance_over_gradients."""
-
-  max_dist: base.OptState
-  grad_sum_of_squares: base.OptState
-  init_params: base.OptState
+ScaleByDistanceOverGradientsState = dog.DoGState
 
 
 def scale_by_distance_over_gradients(
@@ -1372,49 +1370,16 @@ def scale_by_distance_over_gradients(
     Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
     Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
   """
-
-  def _l2(x, y=0.0):
-    return jnp.sqrt(jnp.square(x - y).sum())
-
-  def init_fn(params):
-    return ScaleByDistanceOverGradientsState(
-        # Initial distance (needed to prevent zero step sizes).
-        jax.tree.map(lambda x: reps_rel * (1 + _l2(x)), params),
-        # Initial gradient sum-of-squares.
-        jax.tree.map(lambda x: jnp.zeros(1), params),
-        # Initial params, cast to preferred precision.
-        optax.tree.cast(params, param_dtype),
-    )
-
-  def update_fn(updates, state: ScaleByDistanceOverGradientsState, params):
-    # update max distance
-    max_dist = jax.tree.map(
-        lambda d, x, y: jnp.maximum(d, _l2(x, y)),
-        state.max_dist,
-        params,
-        state.init_params,
-    )
-
-    # update gradient sum-of-squares
-    g_sos = jax.tree.map(
-        lambda x, y: x + jnp.square(y).sum(), state.grad_sum_of_squares, updates
-    )
-
-    def _tx(g, d, g_sos):
-      """Apply the transformation."""
-      eta = global_scale * (d / jnp.sqrt(g_sos + eps))
-      return eta * g
-
-    updates = jax.tree.map(_tx, updates, max_dist, g_sos)
-
-    # new state
-    state = ScaleByDistanceOverGradientsState(
-        max_dist, g_sos, state.init_params
-    )
-
-    return updates, state
-
-  return base.GradientTransformation(init_fn, update_fn)
+  del param_dtype  # Unused.
+  warn_deprecated_function(
+      "scale_by_distance_over_gradients", "scale_by_dog", "0.2.3"
+  )
+  return combine.chain(
+      dog.scale_by_dog(
+          init_step=("heuristic", reps_rel), eps=eps, layer_wise=True
+      ),
+      scale(global_scale),
+  )
 
 
 def scale_by_polyak(

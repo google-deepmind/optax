@@ -1,0 +1,77 @@
+Running tests under Python 3.13.2: C:\Users\Abhin\AppData\Local\Programs\Python\Python313\python.exe
+[ RUN      ] DoGTest.test_dog_layer_wise
+INFO:2025-11-28 13:52:04,475:jax._src.xla_bridge:812: Unable to initialize backend 'tpu': UNIMPLEMENTED: LoadPjrtPlugin is not implemented on windows yet.
+I1128 13:52:04.475814 22596 xla_bridge.py:812] Unable to initialize backend 'tpu': UNIMPLEMENTED: LoadPjrtPlugin is not implemented on windows yet.
+[  FAILED  ] DoGTest.test_dog_layer_wise
+[ RUN      ] DoGTest.test_legacy_compatibility
+[  FAILED  ] DoGTest.test_legacy_compatibility
+[ RUN      ] DoGTest.test_scalers_dog
+[       OK ] DoGTest.test_scalers_dog
+[ RUN      ] DoGTest.test_scalers_dowg
+[       OK ] DoGTest.test_scalers_dowg
+======================================================================
+ERROR: test_dog_layer_wise (__main__.DoGTest)
+DoGTest.test_dog_layer_wise
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog_test.py", line 73, in test_dog_layer_wise
+    updates_layer, _ = scaler_layer.update(self.per_step_updates, state_layer, params)
+                       ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog.py", line 125, in update_fn
+    sum_sq_norm_grads = jax.tree.map(
+        lambda s, u: s + numerics.safe_norm(u, 0.0, squared=True),
+        state.sum_sq_norm_grads,
+        updates
+    )
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree.py", line 155, in map
+    return tree_util.tree_map(f, tree, *rest, is_leaf=is_leaf)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree_util.py", line 361, in tree_map
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree_util.py", line 361, in <genexpr>
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+                             ~^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog.py", line 126, in <lambda>
+    lambda s, u: s + numerics.safe_norm(u, 0.0, squared=True),
+                     ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+TypeError: safe_norm() got an unexpected keyword argument 'squared'
+
+======================================================================
+ERROR: test_legacy_compatibility (__main__.DoGTest)
+DoGTest.test_legacy_compatibility
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog_test.py", line 108, in test_legacy_compatibility
+    legacy_updates, _ = legacy_scaler.update(self.per_step_updates, legacy_state, params)
+                        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\transforms\_combining.py", line 90, in update_fn
+    updates, new_s = fn(updates, s, params, **extra_args)
+                     ~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\base.py", line 338, in update
+    return tx.update(updates, state, params)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog.py", line 125, in update_fn
+    sum_sq_norm_grads = jax.tree.map(
+        lambda s, u: s + numerics.safe_norm(u, 0.0, squared=True),
+        state.sum_sq_norm_grads,
+        updates
+    )
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree.py", line 155, in map
+    return tree_util.tree_map(f, tree, *rest, is_leaf=is_leaf)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree_util.py", line 361, in tree_map
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Abhin\AppData\Local\Programs\Python\Python313\Lib\site-packages\jax\_src\tree_util.py", line 361, in <genexpr>
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+                             ~^^^^^
+  File "C:\Users\Abhin\Desktop\Contributions\optax\optax\_src\dog.py", line 126, in <lambda>
+    lambda s, u: s + numerics.safe_norm(u, 0.0, squared=True),
+                     ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+TypeError: safe_norm() got an unexpected keyword argument 'squared'
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.211s
+
+FAILED (errors=2)
