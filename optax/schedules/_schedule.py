@@ -673,8 +673,8 @@ def warmup_exponential_decay_schedule(
     init_value: Initial value for the scalar to be annealed.
     peak_value: Peak value for scalar to be annealed at end of warmup.
     warmup_steps: Positive integer, the length of the linear warmup.
-    transition_steps: must be positive. See :func:`optax.exponential_decay` for
-      more details.
+    transition_steps: must be positive.
+      See :func:`optax.schedules.exponential_decay` for more details.
     decay_rate: must not be zero. The decay rate.
     transition_begin: must be positive. After how many steps to start annealing
       (before this many steps the scalar value is held fixed at ``peak_value``).

@@ -50,8 +50,8 @@ def reduce_on_plateau(
 ) -> base.GradientTransformationExtraArgs:
   """Reduce learning rate when a metric has stopped improving.
 
-  Models often benefit from reducing the learning once learning stagnates.
-  his scheduler reads a metrics quantity and if no improvement is seen for
+  Models often benefit from reducing the learning rate once learning stagnates.
+  This scheduler reads a metrics quantity and if no improvement is seen for
   a ``patience`` number of epochs, the learning rate is reduced.
 
   Args:

@@ -1300,8 +1300,8 @@ def scale_by_optimistic_gradient(
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
-  See :func:`optax.optimistic_adam`, :func:`optax.optimistic_gradient_descent`
-  for more details.
+  See :func:`optax.optimistic_adam_v2`,
+  :func:`optax.optimistic_gradient_descent` for more details.
 
   Args:
     alpha: Coefficient for generalized optimistic gradient descent.
@@ -1629,7 +1629,7 @@ def scale_by_lbfgs(
   preconditioning matrix subject to some secant condition, see references
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
-  a memory bufffer.
+  a memory buffer.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
@@ -1649,12 +1649,12 @@ def scale_by_lbfgs(
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
-    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`__
-    , 1999
+    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`_,
+    1999
 
     Liu et al., `On the limited memory BFGS method for large scale optimization
-    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_
-    , 1989.
+    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_,
+    1989.
 
   .. note::
     We initialize the scaling of the identity as a capped reciprocal of the
