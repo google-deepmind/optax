@@ -469,7 +469,7 @@ def scale_by_lion(
 
   return base.GradientTransformation(init_fn, update_fn)
 
-def scale(step_size: float) -> base.GradientTransformation:
+def scale(step_size: jax.typing.ArrayLike) -> base.GradientTransformation:
   """Scale updates by some fixed scalar `step_size`.
 
   Args:
