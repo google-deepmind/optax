@@ -416,6 +416,7 @@ class ScaleByLionState(NamedTuple):
   count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
 
+
 def scale_by_lion(
     b1: jax.typing.ArrayLike = 0.9,
     b2: jax.typing.ArrayLike = 0.99,
@@ -473,6 +474,7 @@ def scale_by_lion(
     return updates_new, ScaleByLionState(count=count_inc, mu=mu)
 
   return base.GradientTransformation(init_fn, update_fn)
+
 
 def scale(step_size: jax.typing.ArrayLike) -> base.GradientTransformation:
   """Scale updates by some fixed scalar `step_size`.

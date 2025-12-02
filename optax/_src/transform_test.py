@@ -13,10 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-
 """Tests of gradient transformations."""
-
-from typing import Literal
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -129,7 +126,7 @@ class TransformTest(parameterized.TestCase):
 
       # Manually scale updates.
       def rescale(t):
-        return t * factor  # pylint:disable=cell-var-from-loop  # noqa: B023
+        return t * factor
 
       manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
@@ -166,8 +163,6 @@ class TransformTest(parameterized.TestCase):
     opt_grad_2, _ = opt.update(grad_2, state)
 
     with self.subTest('Check initial update is correct'):
-      # see https://github.com/google-deepmind/optax/issues/1082
-      # initial step should yield 2 * grad_0 - grad_0 = grad_0
       test_utils.assert_trees_all_close(opt_grad_0, grad_0)
 
     with self.subTest('Check second update is correct'):
@@ -187,9 +182,7 @@ class TransformTest(parameterized.TestCase):
       state = opt.init(updates)
       out_updates, _ = opt.update(updates, state)
 
-      # Init mu is zero => x = (1 - b1) * updates
       x = (1.0 - b1) * updates + b1 * state.mu
-      expected = jnp.zeros_like(updates)
 
       if mode == "hard":
         expected = jnp.sign(x)
@@ -202,7 +195,6 @@ class TransformTest(parameterized.TestCase):
 
   def test_lion_invalid_mode_raises(self):
     updates = jnp.array([0.1, -0.2])
-    # pytype: disable=wrong-arg-types
     opt = transform.scale_by_lion(mode="invalid_mode")
     state = opt.init(updates)
     with self.assertRaises(ValueError):
@@ -210,25 +202,21 @@ class TransformTest(parameterized.TestCase):
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
-    # for this objective, the Polyak step-size has an exact model and should
-    # converge to the minimizer in one step
     objective = lambda x: jnp.abs(x).sum()
 
     init_params = jnp.array([1.0, -1.0])
     polyak = transform.scale_by_polyak()
     polyak_state = polyak.init(init_params)
-    # check that polyak state raises an error if it called without a value
+
     with self.assertRaises(TypeError):
       polyak.update(self.per_step_updates, polyak_state, init_params)
 
     value, grad = jax.value_and_grad(objective)(init_params)
     updates, _ = polyak.update(grad, polyak_state, init_params, value=value)
-    # check that objective at (init_params - updates) is smaller than tol
-    print(grad, value, updates)
+
     self.assertLess(objective(init_params - updates), tol)
 
   def test_rms_match_adam(self):
-    """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
     fun = lambda x: optax.tree.norm(x, squared=True)
 
     rms = transform.scale_by_rms(
