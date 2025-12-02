@@ -416,7 +416,6 @@ class ScaleByLionState(NamedTuple):
   count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   mu: base.Updates
 
-
 def scale_by_lion(
     b1: float = 0.9,
     b2: float = 0.99,
@@ -448,11 +447,15 @@ def scale_by_lion(
     mu = optax.tree.zeros_like(params, dtype=mu_dtype)  # moment
     return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
 
+
+
   def update_fn(updates, state, params=None):
+
     del params
-    
-    def _comb(g, m):
-      x = (1.0 - b1) * g + b1 * m
+
+
+
+    def _comb(g, m):      x = (1.0 - b1) * g + b1 * m
       if mode == "hard":
         return jnp.sign(x)
       elif mode == "smooth":
