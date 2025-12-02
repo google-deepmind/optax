@@ -173,28 +173,28 @@ class TransformTest(parameterized.TestCase):
 
     with self.subTest('Check third update is correct'):
       test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
-  
+
   def test_lion_modes_variants(self):
     updates = jnp.array([0.2, -2.0, 0.5, -0.8])
     b1 = 0.5
     smooth_beta = 2.0
     for mode in ("hard", "smooth", "refined"):
       opt = transform.scale_by_lion(
-          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta
+          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta,
       )
       state = opt.init(updates)
       out_updates, _ = opt.update(updates, state)
-      
+
       # Init mu is zero => x = (1 - b1) * updates
       x = (1.0 - b1) * updates + b1 * state.mu
-      
+
       if mode == "hard":
         expected = jnp.sign(x)
       elif mode == "smooth":
         expected = jnp.tanh(smooth_beta * x)
       elif mode == "refined":
         expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
-      
+
       test_utils.assert_trees_all_close(out_updates, expected)
   def test_lion_invalid_mode_raises(self):
     updates = jnp.array([0.1, -0.2])

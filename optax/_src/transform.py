@@ -418,7 +418,7 @@ class ScaleByLionState(NamedTuple):
 def scale_by_lion(
     b1: float = 0.9,
     b2: float = 0.99,
-    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,  #
     *,
     mode: str = "hard", # "hard", "smooth", "refined"
     smooth_beta: float = 1.0,
@@ -428,7 +428,7 @@ def scale_by_lion(
   See :func:`optax.lion` for more details.
 
   Args:
-    b1: Rate for combining the momentum and the current grad.
+    b1: Rate for combining the momentum and the current grad.  #
     b2: Decay rate for the exponentially weighted average of grads.
     mu_dtype: Optional `dtype` to be used for the momentum; if `None` then the
       `dtype is inferred from `params` and `updates`.
@@ -450,7 +450,7 @@ def scale_by_lion(
     del params
     def _comb(g, m):
       x = (1.0 - b1) * g + b1 * m
-      
+
       if mode == "hard":
         return jnp.sign(x)
       elif mode == "smooth":
@@ -460,7 +460,7 @@ def scale_by_lion(
         return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
       else:
         raise ValueError(f"Unknown mode {mode}")
-    
+
     updates_new = jax.tree.map(_comb, updates, state.mu)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)
     mu = optax.tree.cast(mu, mu_dtype)
