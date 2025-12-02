@@ -18,7 +18,6 @@ import functools
 import operator
 from typing import Optional, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.special
@@ -466,11 +465,11 @@ def multiclass_perceptron_loss(
   return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def poly_loss_cross_entropy(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
-    epsilon: float = 2.0,
+    *,
+    epsilon: jax.typing.ArrayLike = 2.0,
     axis: Union[int, tuple[int, ...], None] = -1,
     where: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
@@ -631,14 +630,14 @@ def convex_kl_divergence(
   return x + y
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss_with_forward_probs(
     logits: jax.typing.ArrayLike,
     logit_paddings: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
     label_paddings: jax.typing.ArrayLike,
+    *,
     blank_id: int = 0,
-    log_epsilon: float = -1e5,
+    log_epsilon: jax.typing.ArrayLike = -1e5,
 ) -> tuple[jax.Array, jax.Array, jax.Array]:
   r"""Computes CTC loss and CTC forward-probabilities.
 
@@ -772,14 +771,14 @@ def ctc_loss_with_forward_probs(
   return per_seq_loss, logalpha_phi, logalpha_emit
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=4)
 def ctc_loss(
     logits: jax.typing.ArrayLike,
     logit_paddings: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
     label_paddings: jax.typing.ArrayLike,
+    *,
     blank_id: int = 0,
-    log_epsilon: float = -1e5,
+    log_epsilon: jax.typing.ArrayLike = -1e5,
 ) -> jax.Array:
   """Computes CTC loss.
 
@@ -818,12 +817,12 @@ def ctc_loss(
   return per_seq_loss
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def sigmoid_focal_loss(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
-    alpha: Optional[float] = None,
-    gamma: float = 2.0,
+    *,
+    alpha: Optional[jax.typing.ArrayLike] = None,
+    gamma: jax.typing.ArrayLike = 2.0,
 ) -> jax.Array:
   r"""Sigmoid focal loss with numerical stability improvements.
 

@@ -42,17 +42,17 @@ class MomoState(NamedTuple):
 
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    beta: float = 0.9,
-    lower_bound: float = 0.0,
-    weight_decay: float = 0.0,
+    beta: jax.typing.ArrayLike = 0.9,
+    lower_bound: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     adapt_lower_bound: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
   MoMo typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
-  known. For most tasks, zero is a lower bound and an accurate estimate of the
-  final loss.
+  by exploiting the fact that a lower bound of the loss (or the optimal value)
+  is known. For most tasks, zero is a lower bound and an accurate estimate of
+  the final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The
   effective step size is ``min(learning_rate, <adaptive term>)``, where the
@@ -195,11 +195,11 @@ class MomoAdamState(NamedTuple):
 
 def momo_adam(
     learning_rate: base.ScalarOrSchedule = 1e-2,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    lower_bound: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    lower_bound: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     adapt_lower_bound: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).

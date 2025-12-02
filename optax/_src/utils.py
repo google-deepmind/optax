@@ -15,7 +15,6 @@
 """Utility functions for testing."""
 
 import contextlib
-import functools
 from typing import Optional, Sequence
 
 import chex
@@ -25,8 +24,6 @@ import jax.scipy.stats.norm as multivariate_normal
 import numpy as np
 from optax._src import base
 from optax._src import numerics
-from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
-import optax.tree
 
 
 def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
@@ -51,15 +48,6 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
   )):
     return key_or_seed
   return jax.random.key(key_or_seed)
-
-
-@functools.partial(
-    warn_deprecated_function, replacement='optax.tree.cast'
-)
-def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
-  return optax.tree.cast(tree, dtype)
 
 
 def check_subdtype(array: jax.typing.ArrayLike, subdtype: jax.typing.DTypeLike):
@@ -170,20 +158,21 @@ def multi_normal(
 
 
 @jax.custom_vjp
-def _scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def _scale_gradient(
+    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
 def _scale_gradient_fwd(
-    inputs: chex.ArrayTree, scale: float
-) -> tuple[chex.ArrayTree, float]:
+    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike
+) -> tuple[chex.ArrayTree, jax.typing.ArrayLike]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(
-    scale: float, g: chex.ArrayTree
+    scale: jax.typing.ArrayLike, g: chex.ArrayTree
 ) -> tuple[chex.ArrayTree, None]:
   return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
@@ -191,7 +180,8 @@ def _scale_gradient_bwd(
 _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
-def scale_gradient(inputs: chex.ArrayTree, scale: float) -> chex.ArrayTree:
+def scale_gradient(
+    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:

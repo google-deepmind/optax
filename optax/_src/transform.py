@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Optional
 
 import chex
 import jax
@@ -24,7 +24,6 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
-from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
@@ -45,7 +44,8 @@ class ScaleByRssState(NamedTuple):
 
 
 def scale_by_rss(
-    initial_accumulator_value: float = 0.1, eps: float = 1e-7
+    initial_accumulator_value: jax.typing.ArrayLike = 0.1,
+    eps: jax.typing.ArrayLike = 1e-7
 ) -> base.GradientTransformation:
   """Rescale updates by the root of the sum of all squared gradients to date.
 
@@ -94,9 +94,9 @@ class ScaleByRmsWithCountState(NamedTuple):
 
 
 def scale_by_rms(
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.0,
+    decay: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-8,
+    initial_scale: jax.typing.ArrayLike = 0.0,
     eps_in_sqrt: bool = True,
     bias_correction: bool = False,
 ) -> base.GradientTransformation:
@@ -169,9 +169,9 @@ class ScaleByRStdDevWithCountState(NamedTuple):
 
 
 def scale_by_stddev(
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.0,
+    decay: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-8,
+    initial_scale: jax.typing.ArrayLike = 0.0,
     eps_in_sqrt: bool = True,
     bias_correction: bool = False,
 ) -> base.GradientTransformation:
@@ -245,10 +245,10 @@ class ScaleByAdamState(NamedTuple):
 
 
 def scale_by_adam(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = False,
@@ -319,10 +319,10 @@ class ScaleByAmsgradState(NamedTuple):
 
 
 def scale_by_amsgrad(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
@@ -375,7 +375,9 @@ def scale_by_amsgrad(
 
 
 def scale_by_adamax(
-    b1: float = 0.9, b2: float = 0.999, eps: float = 1e-8
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adamax algorithm.
 
@@ -418,7 +420,7 @@ class ScaleByLionState(NamedTuple):
 def scale_by_lion(
     b1: float = 0.9,
     b2: float = 0.99,
-    mu_dtype: Optional[jax.typing.DTypeLike] = None,  #
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     mode: str = "hard", # "hard", "smooth", "refined"
     smooth_beta: float = 1.0,
@@ -488,7 +490,7 @@ def scale(step_size: jax.typing.ArrayLike) -> base.GradientTransformation:
 
 
 def scale_by_param_block_norm(
-    min_scale: float = 1e-3,
+    min_scale: jax.typing.ArrayLike = 1e-3,
 ) -> base.GradientTransformation:
   """Scale updates for each param block by the norm of that block's parameters.
 
@@ -514,7 +516,7 @@ def scale_by_param_block_norm(
 
 
 def scale_by_param_block_rms(
-    min_scale: float = 1e-3,
+    min_scale: jax.typing.ArrayLike = 1e-3,
 ) -> base.GradientTransformation:
   """Scale updates by rms of the gradient for each param vector or matrix.
 
@@ -549,7 +551,7 @@ class ScaleByAdaDeltaState(NamedTuple):
 
 
 def scale_by_adadelta(
-    rho: float = 0.9, eps: float = 1e-6
+    rho: jax.typing.ArrayLike = 0.9, eps: jax.typing.ArrayLike = 1e-6
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adadelta algorithm.
 
@@ -596,11 +598,11 @@ class ScaleByAdanState(NamedTuple):
 
 
 def scale_by_adan(
-    b1: float = 0.98,
-    b2: float = 0.92,
-    b3: float = 0.99,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.98,
+    b2: jax.typing.ArrayLike = 0.92,
+    b3: jax.typing.ArrayLike = 0.99,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Adan algorithm.
 
@@ -674,10 +676,10 @@ class ScaleByBeliefState(NamedTuple):
 
 
 def scale_by_belief(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-16,
+    eps_root: jax.typing.ArrayLike = 1e-16,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -732,11 +734,11 @@ def scale_by_belief(
 
 
 def scale_by_yogi(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-3,
-    eps_root: float = 0.0,
-    initial_accumulator_value: float = 1e-6,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-3,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    initial_accumulator_value: jax.typing.ArrayLike = 1e-6,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Yogi algorithm.
 
@@ -788,11 +790,11 @@ def scale_by_yogi(
 
 
 def scale_by_radam(
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    threshold: float = 5.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    threshold: jax.typing.ArrayLike = 5.0,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -867,11 +869,11 @@ class ScaleByRpropState(NamedTuple):
 
 
 def scale_by_rprop(
-    learning_rate: float,
-    eta_minus: float = 0.5,
-    eta_plus: float = 1.2,
-    min_step_size: float = 1e-6,
-    max_step_size: float = 50.0,
+    learning_rate: jax.typing.ArrayLike,
+    eta_minus: jax.typing.ArrayLike = 0.5,
+    eta_plus: jax.typing.ArrayLike = 1.2,
+    min_step_size: jax.typing.ArrayLike = 1e-6,
+    max_step_size: jax.typing.ArrayLike = 50.0,
 ) -> base.GradientTransformation:
   """Scale with the Rprop optimizer.
 
@@ -1013,9 +1015,9 @@ def scale_by_schedule(
 
 
 def scale_by_trust_ratio(
-    min_norm: float = 0.0,
-    trust_coefficient: float = 1.0,
-    eps: float = 0.0,
+    min_norm: jax.typing.ArrayLike = 0.0,
+    trust_coefficient: jax.typing.ArrayLike = 1.0,
+    eps: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformation:
   """Scale updates by `trust ratio`.
 
@@ -1063,7 +1065,7 @@ class ApplyEvery(NamedTuple):
   grad_acc: base.Updates
 
 
-def apply_every(k: int = 1) -> base.GradientTransformation:
+def apply_every(k: jax.typing.ArrayLike = 1) -> base.GradientTransformation:
   """Accumulate gradients and apply them every k steps.
 
   Note that if this transformation is part of a chain, the states of the other
@@ -1152,7 +1154,9 @@ class ScaleBySM3State(NamedTuple):
 
 
 def scale_by_sm3(
-    b1: float = 0.9, b2: float = 1.0, eps: float = 1e-8
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 1.0,
+    eps: jax.typing.ArrayLike = 1e-8
 ) -> base.GradientTransformation:
   """Scale updates by `sm3`.
 
@@ -1229,11 +1233,11 @@ class ScaleByNovogradState(NamedTuple):
 
 
 def scale_by_novograd(
-    b1: float = 0.9,
-    b2: float = 0.25,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.25,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
@@ -1308,12 +1312,12 @@ class ScaleByOptimisticGradientState(NamedTuple):
 
 
 def scale_by_optimistic_gradient(
-    alpha: float = 1.0, beta: float = 1.0
+    alpha: jax.typing.ArrayLike = 1.0, beta: jax.typing.ArrayLike = 1.0
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
-  See :func:`optax.optimistic_adam`, :func:`optax.optimistic_gradient_descent`
-  for more details.
+  See :func:`optax.optimistic_adam_v2`,
+  :func:`optax.optimistic_gradient_descent` for more details.
 
   Args:
     alpha: Coefficient for generalized optimistic gradient descent.
@@ -1430,9 +1434,9 @@ def scale_by_distance_over_gradients(
 
 
 def scale_by_polyak(
-    f_min: float = 0.0,
-    max_learning_rate: float = 1.0,
-    eps: float = 0.0,
+    f_min: jax.typing.ArrayLike = 0.0,
+    max_learning_rate: jax.typing.ArrayLike = 1.0,
+    eps: jax.typing.ArrayLike = 0.0,
     variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""Scales the update by Polyak's step-size.
@@ -1457,7 +1461,7 @@ def scale_by_polyak(
       state: base.EmptyState,
       params: Optional[base.Params] = None,
       *,
-      value: float,
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, base.EmptyState]:
     """Scales the update by the Polyak step-size.
@@ -1525,8 +1529,8 @@ def _precondition_by_lbfgs(
     diff_params_memory: chex.ArrayTree,
     diff_updates_memory: chex.ArrayTree,
     weights_memory: jax.typing.ArrayLike,
-    identity_scale: Union[float, jax.Array],
-    memory_idx: Union[int, jax.Array],
+    identity_scale: jax.typing.ArrayLike,  # float
+    memory_idx: jax.typing.ArrayLike,  # int
 ) -> base.Updates:
   r"""Multiplies updates by an approximation of the inverse Hessian.
 
@@ -1641,7 +1645,7 @@ def scale_by_lbfgs(
   preconditioning matrix subject to some secant condition, see references
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
-  a memory bufffer.
+  a memory buffer.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
@@ -1661,12 +1665,12 @@ def scale_by_lbfgs(
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
-    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`__
-    , 1999
+    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`_,
+    1999
 
     Liu et al., `On the limited memory BFGS method for large scale optimization
-    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_
-    , 1989.
+    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_,
+    1989.
 
   .. note::
     We initialize the scaling of the identity as a capped reciprocal of the
@@ -1780,7 +1784,7 @@ def scale_by_lbfgs(
 
 
 def normalize_by_update_norm(
-    scale_factor: float = 1.0, eps: float = 1e-6
+    scale_factor: jax.typing.ArrayLike = 1.0, eps: jax.typing.ArrayLike = 1e-6
 ) -> base.GradientTransformation:
   """Scale by the inverse of the update norm.
 
@@ -1827,16 +1831,6 @@ def normalize_by_update_norm(
 
 
 ### Legacy symbols to be removed. ###
-
-
-@functools.partial(
-    warn_deprecated_function, replacement='optax.tree.cast'
-)
-def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
-  return optax.tree.cast(tree, dtype)
-
 
 trace = _accumulation.trace
 TraceState = _accumulation.TraceState

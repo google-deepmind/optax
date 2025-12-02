@@ -507,7 +507,7 @@ class PerElementMeanAndVarianceEMAState(NamedTuple):
 
 
 def track_per_element_mean_and_variance_with_ema(
-    ema_decay: float = 0.9,
+    ema_decay: jax.typing.ArrayLike = 0.9,
 ) -> base.GradientTransformation:
   """Track variance metrics with an EMA over time.
 
@@ -591,7 +591,7 @@ def get_unbiased_mean_and_variance_ema(
 
 def add_mean_variance_to_opt(
     opt: base.GradientTransformation,
-    ema_decay: float = 0.9,
+    ema_decay: jax.typing.ArrayLike = 0.9,
     per_elt_axis: int | list[int] = 0,
     accumulation_steps: int = 1,
 ):

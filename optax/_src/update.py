@@ -79,8 +79,8 @@ def incremental_update(
 def periodic_update(
     new_tensors: base.Params,
     old_tensors: base.Params,
-    steps: jax.typing.ArrayLike,
-    update_period: int,
+    steps: jax.typing.ArrayLike,  # int
+    update_period: jax.typing.ArrayLike,  # int
 ) -> base.Params:
   """Periodically update all parameters with new values.
 
