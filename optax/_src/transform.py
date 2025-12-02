@@ -447,8 +447,6 @@ def scale_by_lion(
     mu = optax.tree.zeros_like(params, dtype=mu_dtype)  # moment
     return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
 
-
-
   def update_fn(updates, state, params=None):
 
     del params
