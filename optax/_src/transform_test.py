@@ -188,7 +188,7 @@ class TransformTest(parameterized.TestCase):
       # Init mu is zero => x = (1 - b1) * updates
       x = (1.0 - b1) * updates + b1 * state.mu
       expected = jnp.zeros_like(updates)
-      
+
       if mode == "hard":
         expected = jnp.sign(x)
       elif mode == "smooth":
