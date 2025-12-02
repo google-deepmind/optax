@@ -463,7 +463,10 @@ def scale_by_lion(
         # Keep small values linear, saturate to sign for large values.
         return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
       else:
-        raise ValueError(f'Unknown lion mode: {mode}. It needs to be one of ["hard", "smooth", "refined"].')
+        raise ValueError(
+            f'Unknown lion mode: {mode}. '
+            'It needs to be one of ["hard", "smooth", "refined"].'
+        )
 
     updates_new = jax.tree.map(_comb, updates, state.mu)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)
