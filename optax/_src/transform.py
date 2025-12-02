@@ -1345,6 +1345,11 @@ def scale_by_optimistic_gradient(
 ScaleByDistanceOverGradientsState = dog.DoGState
 
 
+@functools.partial(
+    warn_deprecated_function,
+    replacement="scale_by_dog",
+    version_removed="0.2.3",
+)
 def scale_by_distance_over_gradients(
     reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0
 ) -> base.GradientTransformation:
@@ -1371,9 +1376,6 @@ def scale_by_distance_over_gradients(
     Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
   """
   del param_dtype  # Unused.
-  warn_deprecated_function(
-      "scale_by_distance_over_gradients", "scale_by_dog", "0.2.3"
-  )
   return combine.chain(
       dog.scale_by_dog(
           init_step=("heuristic", reps_rel), eps=eps, layer_wise=True
