@@ -52,12 +52,12 @@ class ScaleByAdemamixState(NamedTuple):
 
 
 def scale_by_ademamix(
-    b1: float = 0.9,
-    b2: float = 0.999,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
     b3: base.ScalarOrSchedule = 0.9999,
     alpha: base.ScalarOrSchedule = 6.0,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Scale updates according to the Ademamix algorithm.
@@ -72,7 +72,7 @@ def scale_by_ademamix(
     b1: Exponential decay rate to track the fast EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
     b3: Exponential decay rate to track the slow EMA.
-    alpha: Mixing coefficient in the linear combination fo the fast and slow
+    alpha: Mixing coefficient in the linear combination for the fast and slow
       EMAs.
     eps: A small constant applied to denominator outside of the square root (as
       in the Adam paper) to avoid dividing by zero when rescaling.
@@ -132,14 +132,14 @@ def scale_by_ademamix(
 
 def ademamix(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
     b3: base.ScalarOrSchedule = 0.9999,
     alpha: base.ScalarOrSchedule = 5.0,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   r"""AdEMAMix.
@@ -288,11 +288,11 @@ def lerp(t, a, b):
 
 
 def scale_by_simplified_ademamix(
-    b1: float = 0.99,
-    b2: float = 0.95,
+    b1: jax.typing.ArrayLike = 0.99,
+    b2: jax.typing.ArrayLike = 0.95,
     alpha: base.ScalarOrSchedule = 0.0,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformation:
   """Scale updates according to the Simplified AdEMAMix optimizer.
 
@@ -345,18 +345,18 @@ def scale_by_simplified_ademamix(
 
 def simplified_ademamix(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.99,
-    b2: float = 0.95,
+    b1: jax.typing.ArrayLike = 0.99,
+    b2: jax.typing.ArrayLike = 0.95,
     alpha: base.ScalarOrSchedule = 0.0,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   r"""Simplified AdEMAMix.
 
   Simplified AdEMAMix (Adaptive EMA Mixture) is a simplified version of AdEMAMix that
-  eliminates the need for maintaining two separate momentum buffers and and removes the
+  eliminates the need for maintaining two separate momentum buffers and removes the
   requirement for scheduling the mixing parameter :math:`\alpha`. Setting :math:`\alpha
   = 0` recovers the standard Adam optimizer, subject to appropriate transformations of
   :math:`\eta` and :math:`\beta_1`.

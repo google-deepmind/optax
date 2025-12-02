@@ -33,7 +33,7 @@ class WeightDecaySchedule(NamedTuple):
 
 
 def add_decayed_weights(
-    weight_decay: Union[float, jax.Array, base.ScalarOrSchedule] = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
@@ -94,8 +94,8 @@ class AddNoiseState(NamedTuple):
 
 
 def add_noise(
-    eta: float,
-    gamma: float,
+    eta: jax.typing.ArrayLike,
+    gamma: jax.typing.ArrayLike,
     key: jax.Array | int | None = None,
     *,
     seed: int | None = None,  # deprecated

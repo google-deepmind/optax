@@ -165,8 +165,8 @@ def triplet_margin_loss(
   References:
       V. Balntas et al,
       `Learning shallow convolutional feature descriptors with triplet losses
-      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`
-      _, 2016
+      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`_,
+      2016.
   """
   utils.check_subdtype(anchors, jnp.floating)
   utils.check_subdtype(positives, jnp.floating)
