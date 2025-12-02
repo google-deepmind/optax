@@ -460,7 +460,7 @@ def scale_by_lion(
       elif mode == "refined":
         # Keep small values linear, saturate to sign for large values.
         return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
-      else:
+      else:  # pytype: disable=unreachable
         raise ValueError(
             f'Unknown lion mode: {mode}. '
             'It needs to be one of ["hard", "smooth", "refined"].'
