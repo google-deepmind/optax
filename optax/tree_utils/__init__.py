@@ -26,6 +26,9 @@ from optax.tree_utils._random import tree_random_like
 from optax.tree_utils._random import tree_split_key_like
 from optax.tree_utils._random import tree_unwrap_random_key_data
 from optax.tree_utils._state_utils import NamedTupleKey
+from optax.tree_utils._state_utils import ParamsShapedState
+from optax.tree_utils._state_utils import reshape_params_shaped_state
+from optax.tree_utils._state_utils import shape_state_like_params
 from optax.tree_utils._state_utils import tree_get
 from optax.tree_utils._state_utils import tree_get_all_with_path
 from optax.tree_utils._state_utils import tree_map_params
