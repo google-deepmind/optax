@@ -2633,7 +2633,7 @@ def lbfgs(
   the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm. The BFGS algorithm
   requires storing a matrix of size :math:`p \times p` with :math:`p` the
   dimension of the parameters.
-  The limited variant circuments this issue by computing the approximation of
+  The limited variant circumvents this issue by computing the approximation of
   the inverse using only :math:`m` (``memory_size``) past differences of
   parameters/gradients. Namely, the approximation of the Hessian inverse is
   denoted :math:`P_k = P_{k, k}`, where
