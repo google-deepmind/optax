@@ -25,7 +25,7 @@ from optax._src import base
 from optax._src import numerics
 from optax._src import utils
 from optax._src import combine
-from optax._src import dog
+from optax.contrib import _dog as dog
 from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding

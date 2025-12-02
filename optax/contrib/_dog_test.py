@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 from optax._src import combine
-from optax._src import dog
+from optax.contrib import _dog as dog
 from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
