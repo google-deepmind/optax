@@ -450,9 +450,9 @@ def scale_by_lion(
 
   def update_fn(updates, state, params=None):
     del params
+    
     def _comb(g, m):
       x = (1.0 - b1) * g + b1 * m
-
       if mode == "hard":
         return jnp.sign(x)
       elif mode == "smooth":

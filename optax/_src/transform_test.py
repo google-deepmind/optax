@@ -179,8 +179,12 @@ class TransformTest(parameterized.TestCase):
     b1 = 0.5
     smooth_beta = 2.0
     for mode in ("hard", "smooth", "refined"):
+      opt = transform.scale_by_lion(b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta)
       opt = transform.scale_by_lion(
-          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta,
+        b1=b1, 
+        b2=0.9, 
+        mode=mode, 
+        smooth_beta=smooth_beta
       )
       state = opt.init(updates)
       out_updates, _ = opt.update(updates, state)
