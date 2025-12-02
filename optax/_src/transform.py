@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple, Optional
+from typing import Literal, NamedTuple, Optional
 
 import chex
 import jax
@@ -417,11 +417,11 @@ class ScaleByLionState(NamedTuple):
   mu: base.Updates
 
 def scale_by_lion(
-    b1: float = 0.9,
-    b2: float = 0.99,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.99,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
-    mode: str = "hard", # "hard", "smooth", "refined"
+    mode: Literal["hard", "smooth", "refined"] = "hard",
     smooth_beta: float = 1.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
@@ -429,7 +429,7 @@ def scale_by_lion(
   See :func:`optax.lion` for more details.
 
   Args:
-    b1: Rate for combining the momentum and the current grad.  #
+    b1: Rate for combining the momentum and the current grad.
     b2: Decay rate for the exponentially weighted average of grads.
     mu_dtype: Optional `dtype` to be used for the momentum; if `None` then the
       `dtype is inferred from `params` and `updates`.
@@ -463,7 +463,7 @@ def scale_by_lion(
         # Keep small values linear, saturate to sign for large values.
         return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
       else:
-        raise ValueError(f"Unknown mode {mode}")
+        raise ValueError(f'Unknown lion mode: {mode}. It needs to be one of ["hard", "smooth", "refined"].')
 
     updates_new = jax.tree.map(_comb, updates, state.mu)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)

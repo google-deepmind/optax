@@ -197,6 +197,7 @@ class TransformTest(parameterized.TestCase):
         expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
 
       test_utils.assert_trees_all_close(out_updates, expected)
+
   def test_lion_invalid_mode_raises(self):
     updates = jnp.array([0.1, -0.2])
     opt = transform.scale_by_lion(mode="invalid_mode")
