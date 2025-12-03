@@ -41,6 +41,8 @@ def adabelief(
     eps_root: jax.typing.ArrayLike = 1e-16,
     *,
     nesterov: bool = False,
+    weight_decay: float = 0.0,
+    weight_decay_mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The AdaBelief optimizer.
 
@@ -96,6 +98,16 @@ def adabelief(
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
     nesterov: Whether to use Nesterov momentum.
+    weight_decay: Strength of the weight decay regularization. Note that this
+      weight decay is multiplied with the learning rate. This is consistent
+      with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params PyTree,
+      or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip. Note
+      that the Adam gradient transformations are applied to all parameters.
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
@@ -136,6 +148,7 @@ def adabelief(
           eps_root=eps_root,
           nesterov=nesterov,
       ),
+      transform.add_decayed_weights(weight_decay, weight_decay_mask),
       transform.scale_by_learning_rate(learning_rate),
   )
 
