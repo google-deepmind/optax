@@ -18,6 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
+import warnings
 from optax._src import combine
 from optax.contrib import _dog as dog
 from optax._src import test_utils

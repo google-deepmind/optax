@@ -106,10 +106,10 @@ def scale_by_dog(
         else:
              # r_epsilon is a scalar, create tree of scalars
              max_dist = jax.tree.map(
-                 lambda p: jnp.full([], r_epsilon, dtype=params_dtype), params
+                 lambda p: jnp.full([], r_epsilon, dtype=p.dtype), params
              )
         sum_sq_norm_grads = jax.tree.map(
-            lambda p: jnp.zeros([], dtype=params_dtype), params
+            lambda p: jnp.zeros([], dtype=p.dtype), params
         )
     else:
         max_dist = jnp.asarray(r_epsilon, dtype=params_dtype)
