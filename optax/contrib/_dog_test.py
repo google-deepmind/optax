@@ -80,24 +80,7 @@ class DoGTest(parameterized.TestCase):
         self.per_step_updates, state_layer, params
     )
 
-    # They should be different because the updates are non-uniform across layers
-    # (500 vs 5 in first layer, 300 vs 3 in second)
-    # Wait, 500 and 5 are in the SAME layer (array).
-    # Layer-wise means per-leaf (per-array).
-    # Global means over all arrays.
 
-    # Let's check if they are different.
-    # Norm of updates:
-    # Layer 1: sqrt(500^2 + 5^2) approx 500
-    # Layer 2: sqrt(300^2 + 3^2) approx 300
-    # Global: sqrt(500^2 + 5^2 + 300^2 + 3^2) approx sqrt(250000 + 90000)
-    # = sqrt(340000) approx 583
-
-    # So global learning rate will be based on 583.
-    # Layer 1 learning rate based on 500.
-    # Layer 2 learning rate based on 300.
-
-    # So they should be different.
     with self.assertRaises(AssertionError):
         test_utils.assert_trees_all_close(updates_global, updates_layer)
 
