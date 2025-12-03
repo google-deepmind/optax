@@ -1405,7 +1405,7 @@ def scale_by_distance_over_gradients(
       eta = global_scale * (d / jnp.sqrt(g_sos + eps))
       return eta * g
 
-    updates = jax.tree.map(_tx, max_dist, g_sos, updates)
+    updates = jax.tree.map(_tx, updates, max_dist, g_sos)
 
     # new state
     state = ScaleByDistanceOverGradientsState(
