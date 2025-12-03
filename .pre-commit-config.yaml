@@ -33,6 +33,11 @@ repos:
     pass_filenames: false  # only run this check once globally per repo
     always_run: true
 
+- repo: https://github.com/kynan/nbstripout
+  rev: 0.8.1
+  hooks:
+  - id: nbstripout
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.9.10
   hooks:
