@@ -96,6 +96,44 @@ improved
 [complex numbers](https://optax.readthedocs.io/en/latest/api/contrib.html?complex-valued-optimization#complex-valued-optimization) support in Optax.
 
 
+## Pre-commit Hooks
+
+This repository uses [pre-commit](https://pre-commit.com/) to ensure code quality
+and consistency. Pre-commit hooks automatically run checks on your code before
+each commit.
+
+### Setup
+
+To install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+### What the hooks do
+
+The pre-commit configuration includes:
+- **Code quality checks**: AST validation, YAML/TOML linting, trailing whitespace removal
+- **nbstripout**: Automatically strips metadata from Jupyter notebooks (execution counts, outputs, cell IDs) to keep diffs clean and readable
+- **ruff**: Python linting and formatting
+
+### Running manually
+
+To run all hooks on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+To run hooks on specific files:
+
+```bash
+pre-commit run --files path/to/file.py
+```
+
+
+
 ## Contributor License Agreement
 
 Contributions to this project must be accompanied by a Contributor License
