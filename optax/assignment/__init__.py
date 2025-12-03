@@ -18,3 +18,4 @@
 
 from optax.assignment._hungarian_algorithm import base_hungarian_algorithm
 from optax.assignment._hungarian_algorithm import hungarian_algorithm
+from optax.assignment._auction_algorithm import auction_algorithm
