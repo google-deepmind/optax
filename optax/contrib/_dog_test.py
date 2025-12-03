@@ -110,9 +110,11 @@ class DoGTest(parameterized.TestCase):
     global_scale = 1.0
 
     # Legacy
-    legacy_scaler = transform.scale_by_distance_over_gradients(
-        reps_rel=reps_rel, global_scale=global_scale
-    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        legacy_scaler = transform.scale_by_distance_over_gradients(
+            reps_rel=reps_rel, global_scale=global_scale
+        )
     legacy_state = legacy_scaler.init(params)
     legacy_updates, _ = legacy_scaler.update(
         self.per_step_updates, legacy_state, params
