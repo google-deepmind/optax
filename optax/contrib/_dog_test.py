@@ -67,7 +67,7 @@ class DoGTest(parameterized.TestCase):
 
     # Global DoG
     scaler_global = dog.scale_by_dog(
-        init_step=("heuristic", 1e-6), layer_wise=False
+        init_step=("heuristic", 1e-6)
     )
     state_global = scaler_global.init(params)
     updates_global, _ = scaler_global.update(
@@ -75,9 +75,7 @@ class DoGTest(parameterized.TestCase):
     )
 
     # Layer-wise DoG
-    scaler_layer = dog.scale_by_dog(
-        init_step=("heuristic", 1e-6), layer_wise=True
-    )
+    scaler_layer = dog.scale_by_l_dog(reps_rel=1e-6)
     state_layer = scaler_layer.init(params)
     updates_layer, _ = scaler_layer.update(
         self.per_step_updates, state_layer, params

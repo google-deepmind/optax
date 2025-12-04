@@ -1342,7 +1342,7 @@ def scale_by_optimistic_gradient(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-ScaleByDistanceOverGradientsState = dog.LDoGState
+ScaleByDistanceOverGradientsState = dog.DoGState
 
 
 @functools.partial(

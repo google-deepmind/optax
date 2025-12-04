@@ -45,12 +45,6 @@ class DoGState(NamedTuple):
   sum_sq_norm_grads: chex.ArrayTree
 
 
-class LDoGState(NamedTuple):
-  """State for Layer-wise DoG optimizer."""
-
-  max_dist: chex.ArrayTree
-  grad_sum_of_squares: chex.ArrayTree
-  init_params: chex.ArrayTree
 
 
 def scale_by_l_dog(
@@ -83,57 +77,18 @@ def scale_by_l_dog(
   .. warning::
     The authors recommend using model averaging with this optimizer.
   """
-  param_dtype = utils.canonicalize_dtype(param_dtype)
-
-  def _l2(x, y=0.0):
-    return jnp.sqrt(jnp.square(x - y).sum())
-
-  def init_fn(params):
-    return LDoGState(
-        # Initial distance (needed to prevent zero step sizes).
-        jax.tree.map(lambda x: reps_rel * (1 + _l2(x)), params),
-        # Initial gradient sum-of-squares.
-        jax.tree.map(lambda x: jnp.zeros(1), params),
-        # Initial params, cast to preferred precision.
-        optax.tree.cast(params, param_dtype) if param_dtype else params,
-    )
-
-  def update_fn(updates, state: LDoGState, params):
-    # update max distance
-    max_dist = jax.tree.map(
-        lambda d, x, y: jnp.maximum(d, _l2(x, y)),
-        state.max_dist,
-        params,
-        state.init_params,
-    )
-
-    # update gradient sum-of-squares
-    g_sos = jax.tree.map(
-        lambda x, y: x + jnp.square(y).sum(),
-        state.grad_sum_of_squares,
-        updates,
-    )
-
-    def _tx(g, d, g_sos):
-      """Apply the transformation."""
-      eta = d / jnp.sqrt(g_sos + eps)
-      return eta * g
-
-    updates = jax.tree.map(_tx, updates, max_dist, g_sos)
-
-    # new state
-    state = LDoGState(max_dist, g_sos, state.init_params)
-
-    return updates, state
-
-  return base.GradientTransformation(init_fn, update_fn)
+  return _scale_by_dog(
+      init_step=("heuristic", reps_rel),
+      eps=eps,
+      layer_wise=True,
+      param_dtype=param_dtype,
+  )
 
 
 def scale_by_dog(
     init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
                      jax.typing.ArrayLike],
     eps: jax.typing.ArrayLike = 1e-8,
-    layer_wise: bool = False,
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
 
@@ -142,8 +97,6 @@ def scale_by_dog(
   Args:
     init_step: Initial step specification.
     eps: Epsilon used for numerical stability.
-    layer_wise: Whether to apply the update layer-wise (i.e. per leaf) or
-      globally.
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
@@ -156,6 +109,16 @@ def scale_by_dog(
     This optimizer's ``init`` function should receive the actual parameters (not
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
+  return _scale_by_dog(init_step=init_step, eps=eps, layer_wise=False)
+
+
+def _scale_by_dog(
+    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
+                     jax.typing.ArrayLike],
+    eps: jax.typing.ArrayLike = 1e-8,
+    layer_wise: bool = False,
+    param_dtype: Optional[jax.typing.DTypeLike] = None,
+) -> base.GradientTransformation:
 
   init_step_type, init_step_value = init_step
 
@@ -164,6 +127,8 @@ def scale_by_dog(
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
     params_dtype = optax.tree.dtype(params, "lowest")
+    if param_dtype is not None:
+        params_dtype = utils.canonicalize_dtype(param_dtype)
 
     if init_step_type == "distance":
       r_epsilon = init_step_value
@@ -202,7 +167,7 @@ def scale_by_dog(
 
     return DoGState(
         is_init_step=jnp.asarray(True),
-        init_params=params,
+        init_params=optax.tree.cast(params, params_dtype),
         max_dist=max_dist,
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
