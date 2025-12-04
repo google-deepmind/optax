@@ -32,6 +32,7 @@ from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
+from optax._src import utils
 import optax.tree
 
 
@@ -82,7 +83,7 @@ def scale_by_l_dog(
   .. warning::
     The authors recommend using model averaging with this optimizer.
   """
-  param_dtype = base.OptaxState.canonicalize_dtype(param_dtype)
+  param_dtype = utils.canonicalize_dtype(param_dtype)
 
   def _l2(x, y=0.0):
     return jnp.sqrt(jnp.square(x - y).sum())
