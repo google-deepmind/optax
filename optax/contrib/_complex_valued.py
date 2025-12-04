@@ -34,6 +34,11 @@ import jax.numpy as jnp
 from optax._src import base
 
 
+# NOTE(dsuo): Opt out of using the new `jax.pmap` implementation. There is
+# a C++ failure in windowing that needs to be resolved.
+jax.config.update('jax_pmap_shmap_merge', False)
+
+
 class SplitRealAndImaginaryArrays(NamedTuple):
   """A pair of real arrays split from a complex array."""
 
