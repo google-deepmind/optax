@@ -143,8 +143,9 @@ class NumericsTest(parameterized.TestCase):
       ],
   )
   def test_abs_sqr_hlo_equivalence(self, sq_fn, x):
-    # Test that numerics.abs_sq produces the same numerical results as
-    # standard square operations.
+    # Tests that JAX generates the same HLO from `numerics.abs_sq`,
+    # `jnp.square(x)`, `x * x`,  and `x**2` if they are real
+    # Check that it does not generate the same hlo if they are complex.
 
     def _get_hlo_repr(f, x):
       hlo_string = jax.jit(f).lower(x).compiler_ir(dialect="hlo").as_hlo_text()
