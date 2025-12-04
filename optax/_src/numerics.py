@@ -42,12 +42,7 @@ def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
   """
   if not isinstance(x, (np.ndarray, jnp.ndarray)):
     raise ValueError(f'`abs_sq` accepts only NDarrays, got: {x}.')
-  # For real dtypes, use x * x to ensure HLO equivalence
-  # For complex dtypes, use conjugate multiplication to compute |x|²
-  if jnp.issubdtype(x.dtype, jnp.complexfloating):
-    return (x.conj() * x).real
-  else:
-    return x * x
+  return (x.conj() * x).real
 
 
 def safe_norm(
