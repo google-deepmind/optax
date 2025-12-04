@@ -37,6 +37,10 @@ from optax.contrib._dog import dog
 from optax.contrib._dog import DoGState
 from optax.contrib._dog import dowg
 from optax.contrib._dog import DoWGState
+from optax.contrib._dog import LDoGState
+from optax.contrib._dog import scale_by_dog
+from optax.contrib._dog import scale_by_dowg
+from optax.contrib._dog import scale_by_l_dog
 from optax.contrib._mechanic import MechanicState
 from optax.contrib._mechanic import mechanize
 from optax.contrib._momo import momo

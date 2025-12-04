@@ -37,11 +37,14 @@ class DoGTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('dog', dog.scale_by_dog),
       ('dowg', dog.scale_by_dowg),
+      ('l_dog', dog.scale_by_l_dog),
   ])
   def test_scalers(self, scaler_constr):
     params = self.init_params
     if scaler_constr is dog.scale_by_dog:
         scaler = scaler_constr(init_step=("heuristic", 1e-6))
+    elif scaler_constr is dog.scale_by_l_dog:
+        scaler = scaler_constr(reps_rel=1e-6)
     else:
         scaler = scaler_constr()
 
@@ -85,8 +88,7 @@ class DoGTest(parameterized.TestCase):
         test_utils.assert_trees_all_close(updates_global, updates_layer)
 
   def test_legacy_compatibility(self):
-    # Test that scale_by_distance_over_gradients matches
-    # scale_by_dog(layer_wise=True) combined with scale(global_scale)
+    # Test that scale_by_distance_over_gradients matches scale_by_l_dog
 
     params = self.init_params
     reps_rel = 1e-6
@@ -103,25 +105,17 @@ class DoGTest(parameterized.TestCase):
         self.per_step_updates, legacy_state, params
     )
 
-    # New
-    # Note: scale_by_distance_over_gradients implementation in transform.py
-    # now calls scale_by_dog, so this test mainly verifies that the wrapper
-    # works as expected and that the logic inside the wrapper (chaining)
-    # produces valid results.
-
-    # Ideally we would compare against the *original* implementation logic,
-    # but since we replaced it, we are testing that the new implementation
-    # (wrapper) works. To be sure, we can manually construct what we expect.
-
-    dog_scaler = dog.scale_by_dog(
-        init_step=("heuristic", reps_rel), layer_wise=True
+    # New - using scale_by_l_dog directly
+    l_dog_scaler = combine.chain(
+        dog.scale_by_l_dog(reps_rel=reps_rel),
+        transform.scale(global_scale),
     )
-    dog_state = dog_scaler.init(params)
-    dog_updates, _ = dog_scaler.update(
-        self.per_step_updates, dog_state, params
+    l_dog_state = l_dog_scaler.init(params)
+    l_dog_updates, _ = l_dog_scaler.update(
+        self.per_step_updates, l_dog_state, params
     )
 
-    test_utils.assert_trees_all_close(legacy_updates, dog_updates)
+    test_utils.assert_trees_all_close(legacy_updates, l_dog_updates)
 
 
 if __name__ == '__main__':

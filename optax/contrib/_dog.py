@@ -44,6 +44,90 @@ class DoGState(NamedTuple):
   sum_sq_norm_grads: chex.ArrayTree
 
 
+class LDoGState(NamedTuple):
+  """State for Layer-wise DoG optimizer."""
+
+  max_dist: chex.ArrayTree
+  grad_sum_of_squares: chex.ArrayTree
+  init_params: chex.ArrayTree
+
+
+def scale_by_l_dog(
+    reps_rel: jax.typing.ArrayLike = 1e-6,
+    eps: jax.typing.ArrayLike = 1e-8,
+    param_dtype: Optional[jax.typing.DTypeLike] = None,
+) -> base.GradientTransformation:
+  """Scale by Layer-wise Distance over Gradients (LDoG).
+
+  This is a layer-wise variant of DoG that maintains separate distance and
+  gradient statistics for each parameter array (leaf in the tree). This
+  implementation is mathematically similar to the global DoG but maps
+  operations over the parameter tree.
+
+  Args:
+    reps_rel: Used to compute initial learning rate. Recommended values are
+      1e-4 for models using batch norm, 1e-6 otherwise.
+    eps: Small loading term to avoid divide-by-zero errors.
+    param_dtype: dtype for storing initial parameters (optional).
+
+  Returns:
+    A :class:`optax.GradientTransformation` object.
+
+  References:
+    Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
+    Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
+
+  .. versionadded:: 0.2.3
+
+  .. warning::
+    The authors recommend using model averaging with this optimizer.
+  """
+  param_dtype = base.OptaxState.canonicalize_dtype(param_dtype)
+
+  def _l2(x, y=0.0):
+    return jnp.sqrt(jnp.square(x - y).sum())
+
+  def init_fn(params):
+    return LDoGState(
+        # Initial distance (needed to prevent zero step sizes).
+        jax.tree.map(lambda x: reps_rel * (1 + _l2(x)), params),
+        # Initial gradient sum-of-squares.
+        jax.tree.map(lambda x: jnp.zeros(1), params),
+        # Initial params, cast to preferred precision.
+        optax.tree.cast(params, param_dtype) if param_dtype else params,
+    )
+
+  def update_fn(updates, state: LDoGState, params):
+    # update max distance
+    max_dist = jax.tree.map(
+        lambda d, x, y: jnp.maximum(d, _l2(x, y)),
+        state.max_dist,
+        params,
+        state.init_params,
+    )
+
+    # update gradient sum-of-squares
+    g_sos = jax.tree.map(
+        lambda x, y: x + jnp.square(y).sum(),
+        state.grad_sum_of_squares,
+        updates,
+    )
+
+    def _tx(g, d, g_sos):
+      """Apply the transformation."""
+      eta = d / jnp.sqrt(g_sos + eps)
+      return eta * g
+
+    updates = jax.tree.map(_tx, updates, max_dist, g_sos)
+
+    # new state
+    state = LDoGState(max_dist, g_sos, state.init_params)
+
+    return updates, state
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
 def scale_by_dog(
     init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
                      jax.typing.ArrayLike],

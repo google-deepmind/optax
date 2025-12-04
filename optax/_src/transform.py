@@ -1342,12 +1342,12 @@ def scale_by_optimistic_gradient(
   return base.GradientTransformation(init_fn, update_fn)
 
 
-ScaleByDistanceOverGradientsState = dog.DoGState
+ScaleByDistanceOverGradientsState = dog.LDoGState
 
 
 @functools.partial(
     warn_deprecated_function,
-    replacement="scale_by_dog",
+    replacement="scale_by_l_dog",
     version_removed="0.2.3",
 )
 def scale_by_distance_over_gradients(
@@ -1375,11 +1375,8 @@ def scale_by_distance_over_gradients(
     Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
     Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
   """
-  del param_dtype  # Unused.
   return combine.chain(
-      dog.scale_by_dog(
-          init_step=("heuristic", reps_rel), eps=eps, layer_wise=True
-      ),
+      dog.scale_by_l_dog(reps_rel=reps_rel, eps=eps, param_dtype=param_dtype),
       scale(global_scale),
   )
 
