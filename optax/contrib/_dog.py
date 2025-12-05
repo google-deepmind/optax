@@ -45,8 +45,6 @@ class DoGState(NamedTuple):
   sum_sq_norm_grads: chex.ArrayTree
 
 
-
-
 def scale_by_l_dog(
     reps_rel: jax.typing.ArrayLike = 1e-6,
     eps: jax.typing.ArrayLike = 1e-8,
@@ -77,17 +75,64 @@ def scale_by_l_dog(
   .. warning::
     The authors recommend using model averaging with this optimizer.
   """
-  return _scale_by_dog(
-      init_step=("heuristic", reps_rel),
-      eps=eps,
-      layer_wise=True,
-      param_dtype=param_dtype,
-  )
+
+  def init_fn(params: base.Params) -> DoGState:
+    params_dtype = optax.tree.dtype(params, "lowest")
+    if param_dtype is not None:
+      params_dtype = utils.canonicalize_dtype(param_dtype)
+
+    # r_epsilon is already a tree of scalars
+    r_epsilon = jax.tree.map(
+        lambda p: reps_rel * (1 + numerics.safe_norm(p, 0.0)),
+        params,
+    )
+    max_dist = jax.tree.map(
+        lambda r: jnp.asarray(r, dtype=params_dtype), r_epsilon
+    )
+    sum_sq_norm_grads = jax.tree.map(
+        lambda p: jnp.zeros([], dtype=p.dtype), params
+    )
+
+    return DoGState(
+        is_init_step=jnp.asarray(True),
+        init_params=optax.tree.cast(params, params_dtype),
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  def update_fn(
+      updates: base.Updates, state: DoGState, params: base.Params
+  ) -> tuple[base.Updates, DoGState]:
+    dist = jax.tree.map(
+        lambda p, i: numerics.safe_norm(p - i, 0.0),
+        params,
+        state.init_params,
+    )
+    max_dist = jax.tree.map(jnp.maximum, state.max_dist, dist)
+    sum_sq_norm_grads = jax.tree.map(
+        lambda s, u: s + numerics.safe_norm(u, 0.0) ** 2,
+        state.sum_sq_norm_grads,
+        updates,
+    )
+    learning_rate = jax.tree.map(
+        lambda d, s: d / jnp.sqrt(s + eps), max_dist, sum_sq_norm_grads
+    )
+
+    new_updates = optax.tree.mul(learning_rate, updates)
+    return new_updates, DoGState(
+        is_init_step=jnp.asarray(False),
+        init_params=state.init_params,
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def scale_by_dog(
-    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
-                     jax.typing.ArrayLike],
+    init_step: tuple[
+        Literal["distance", "learning_rate", "heuristic"], jax.typing.ArrayLike
+    ],
     eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
@@ -109,37 +154,15 @@ def scale_by_dog(
     This optimizer's ``init`` function should receive the actual parameters (not
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
-  return _scale_by_dog(init_step=init_step, eps=eps, layer_wise=False)
-
-
-def _scale_by_dog(
-    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
-                     jax.typing.ArrayLike],
-    eps: jax.typing.ArrayLike = 1e-8,
-    layer_wise: bool = False,
-    param_dtype: Optional[jax.typing.DTypeLike] = None,
-) -> base.GradientTransformation:
-
   init_step_type, init_step_value = init_step
 
   def init_fn(params: base.Params) -> DoGState:
-    # Define state parameters with the lowest dtype of the parameters to avoid
-    # dtype promotion of parameters resulting in a dtype mismatch between
-    # parameters and updates.
     params_dtype = optax.tree.dtype(params, "lowest")
-    if param_dtype is not None:
-        params_dtype = utils.canonicalize_dtype(param_dtype)
 
     if init_step_type == "distance":
       r_epsilon = init_step_value
     elif init_step_type == "heuristic":
-        if layer_wise:
-            r_epsilon = jax.tree.map(
-                lambda p: init_step_value * (1 + numerics.safe_norm(p, 0.0)),
-                params,
-            )
-        else:
-            r_epsilon = init_step_value * (1 + optax.tree.norm(params))
+      r_epsilon = init_step_value * (1 + optax.tree.norm(params))
     elif init_step_type == "learning_rate":
       r_epsilon = 0.0
     else:
@@ -147,23 +170,8 @@ def _scale_by_dog(
           f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
       )
 
-    if layer_wise:
-        if init_step_type == "heuristic":
-             # r_epsilon is already a tree of scalars
-             max_dist = jax.tree.map(
-                 lambda r: jnp.asarray(r, dtype=params_dtype), r_epsilon
-             )
-        else:
-             # r_epsilon is a scalar, create tree of scalars
-             max_dist = jax.tree.map(
-                 lambda p: jnp.full([], r_epsilon, dtype=p.dtype), params
-             )
-        sum_sq_norm_grads = jax.tree.map(
-            lambda p: jnp.zeros([], dtype=p.dtype), params
-        )
-    else:
-        max_dist = jnp.asarray(r_epsilon, dtype=params_dtype)
-        sum_sq_norm_grads = jnp.asarray(0.0, dtype=params_dtype)
+    max_dist = jnp.asarray(r_epsilon, dtype=params_dtype)
+    sum_sq_norm_grads = jnp.asarray(0.0, dtype=params_dtype)
 
     return DoGState(
         is_init_step=jnp.asarray(True),
@@ -175,45 +183,19 @@ def _scale_by_dog(
   def update_fn(
       updates: base.Updates, state: DoGState, params: base.Params
   ) -> tuple[base.Updates, DoGState]:
-
-    if layer_wise:
-        dist = jax.tree.map(
-            lambda p, i: numerics.safe_norm(p - i, 0.0),
-            params,
-            state.init_params,
-        )
-        max_dist = jax.tree.map(jnp.maximum, state.max_dist, dist)
-        sum_sq_norm_grads = jax.tree.map(
-            lambda s, u: s + numerics.safe_norm(u, 0.0)**2,
-            state.sum_sq_norm_grads,
-            updates
-        )
-        learning_rate = jax.tree.map(
-            lambda d, s: d / jnp.sqrt(s + eps), max_dist, sum_sq_norm_grads
-        )
-    else:
-        dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
-        max_dist = jnp.maximum(state.max_dist, dist)
-        sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
-            updates, squared=True
-        )
-        learning_rate = max_dist / jnp.sqrt(sum_sq_norm_grads + eps)
+    dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
+    max_dist = jnp.maximum(state.max_dist, dist)
+    sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
+        updates, squared=True
+    )
+    learning_rate = max_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
     if init_step_type == "learning_rate":
-      if layer_wise:
-          learning_rate = jax.tree.map(
-              lambda lr: jnp.where(state.is_init_step, init_step_value, lr),
-              learning_rate
-          )
-      else:
-          learning_rate = jnp.where(
-              state.is_init_step, init_step_value, learning_rate
-          )
+      learning_rate = jnp.where(
+          state.is_init_step, init_step_value, learning_rate
+      )
 
-    if layer_wise:
-        new_updates = optax.tree.mul(learning_rate, updates)
-    else:
-        new_updates = optax.tree.scale(learning_rate, updates)
+    new_updates = optax.tree.scale(learning_rate, updates)
     return new_updates, DoGState(
         is_init_step=jnp.asarray(False),
         init_params=state.init_params,

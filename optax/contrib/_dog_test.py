@@ -60,8 +60,8 @@ class DoGTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
-  def test_dog_layer_wise(self):
-    # Test that layer_wise=True produces different results than layer_wise=False
+  def test_l_dog_vs_dog(self):
+    # Test that scale_by_l_dog produces different results than scale_by_dog
     # and that it works.
     params = self.init_params
 
