@@ -1375,10 +1375,64 @@ def scale_by_distance_over_gradients(
     Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
     Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
   """
-  return combine.chain(
-      dog.scale_by_l_dog(reps_rel=reps_rel, eps=eps, param_dtype=param_dtype),
-      scale(global_scale),
-  )
+  reps_rel = 1e-6 if reps_rel is None else reps_rel
+  eps = 1e-8 if eps is None else eps
+  global_scale = 1.0 if global_scale is None else global_scale
+
+  def init_fn(params: base.Params) -> dog.DoGState:
+    params_dtype = optax.tree.dtype(params, "lowest")
+    if param_dtype is not None:
+      params_dtype = utils.canonicalize_dtype(param_dtype)
+
+    # r_epsilon is already a tree of scalars
+    r_epsilon = jax.tree.map(
+        lambda p: reps_rel * (1 + numerics.safe_norm(p, 0.0)),
+        params,
+    )
+    max_dist = jax.tree.map(
+        lambda r: jnp.asarray(r, dtype=params_dtype), r_epsilon
+    )
+    sum_sq_norm_grads = jax.tree.map(
+        lambda p: jnp.zeros([], dtype=p.dtype), params
+    )
+
+    return dog.DoGState(
+        is_init_step=jnp.asarray(True),
+        init_params=optax.tree.cast(params, params_dtype),
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  def update_fn(
+      updates: base.Updates, state: dog.DoGState, params: base.Params
+  ) -> tuple[base.Updates, dog.DoGState]:
+    dist = jax.tree.map(
+        lambda p, i: numerics.safe_norm(p - i, 0.0),
+        params,
+        state.init_params,
+    )
+    max_dist = jax.tree.map(jnp.maximum, state.max_dist, dist)
+    sum_sq_norm_grads = jax.tree.map(
+        lambda s, u: s + numerics.safe_norm(u, 0.0) ** 2,
+        state.sum_sq_norm_grads,
+        updates,
+    )
+    learning_rate = jax.tree.map(
+        lambda d, s: d / jnp.sqrt(s + eps), max_dist, sum_sq_norm_grads
+    )
+
+    new_updates = optax.tree.mul(learning_rate, updates)
+    if global_scale != 1.0:
+      new_updates = optax.tree.scale(global_scale, new_updates)
+
+    return new_updates, dog.DoGState(
+        is_init_step=jnp.asarray(False),
+        init_params=state.init_params,
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def scale_by_polyak(

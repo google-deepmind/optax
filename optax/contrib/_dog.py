@@ -48,7 +48,6 @@ class DoGState(NamedTuple):
 def scale_by_l_dog(
     reps_rel: jax.typing.ArrayLike = 1e-6,
     eps: jax.typing.ArrayLike = 1e-8,
-    param_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Scale by Layer-wise Distance over Gradients (LDoG).
 
@@ -61,7 +60,6 @@ def scale_by_l_dog(
     reps_rel: Used to compute initial learning rate. Recommended values are
       1e-4 for models using batch norm, 1e-6 otherwise.
     eps: Small loading term to avoid divide-by-zero errors.
-    param_dtype: dtype for storing initial parameters (optional).
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -78,8 +76,6 @@ def scale_by_l_dog(
 
   def init_fn(params: base.Params) -> DoGState:
     params_dtype = optax.tree.dtype(params, "lowest")
-    if param_dtype is not None:
-      params_dtype = utils.canonicalize_dtype(param_dtype)
 
     # r_epsilon is already a tree of scalars
     r_epsilon = jax.tree.map(
@@ -157,6 +153,9 @@ def scale_by_dog(
   init_step_type, init_step_value = init_step
 
   def init_fn(params: base.Params) -> DoGState:
+    # Define state parameters with the lowest dtype of the parameters to avoid
+    # dtype promotion of parameters resulting in a dtype mismatch between
+    # parameters and updates.
     params_dtype = optax.tree.dtype(params, "lowest")
 
     if init_step_type == "distance":

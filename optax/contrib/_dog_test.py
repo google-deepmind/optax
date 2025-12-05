@@ -1,4 +1,4 @@
-# Copyright 2024 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2025 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,7 +80,6 @@ class DoGTest(parameterized.TestCase):
     updates_layer, _ = scaler_layer.update(
         self.per_step_updates, state_layer, params
     )
-
 
     with self.assertRaises(AssertionError):
         test_utils.assert_trees_all_close(updates_global, updates_layer)
