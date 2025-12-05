@@ -91,7 +91,7 @@
 .. only:: html
 
   .. image:: /images/examples/flax_optax.png
-    :alt:
+    :alt: Train the parameters of a Flax module. 
 
   :doc:`_collections/examples/flax_example`
 
@@ -108,7 +108,7 @@
 .. only:: html
 
   .. image:: /images/examples/lookahead.png
-    :alt:
+    :alt: Adam optimizer and lookahead wrapper on the MNIST dataset.
 
   :doc:`_collections/examples/lookahead_mnist`
 
@@ -125,7 +125,7 @@
 .. only:: html
 
   .. image:: /images/examples/mnist.png
-    :alt:
+    :alt: Train an MLP classifier on MNIST using Optax.
 
   :doc:`_collections/examples/mlp_mnist`
 
@@ -141,7 +141,7 @@
 .. only:: html
 
   .. image:: /images/examples/adversarial.png
-     :alt: Adversarial training of CNN on MNIST
+     :alt: Adversarial training of CNN on MNIST.
 
   :doc:`_collections/examples/adversarial_training`
 
@@ -158,7 +158,7 @@
 .. only:: html
 
   .. image:: /images/examples/tiny_shakespeare.png
-     :alt: Character-level Transformer on Tiny Shakespeare
+     :alt: Character-level Transformer on Tiny Shakespeare.
 
   :doc:`_collections/examples/nanolm`
 
@@ -175,7 +175,7 @@
 .. only:: html
 
   .. image:: /images/examples/lbfgs.png
-    :alt:
+    :alt: Using LBFGS and linesearch.
 
   :doc:`_collections/examples/lbfgs`
 
@@ -192,7 +192,7 @@
 .. only:: html
 
   .. image:: /images/examples/perturbations.png
-    :alt:
+    :alt: Differentiable functions with perturbations.
 
   :doc:`_collections/examples/perturbations`
 
@@ -209,7 +209,7 @@
 .. only:: html
 
   .. image:: /images/examples/linear_assignment_problem.png
-    :alt:
+    :alt: Solving the linear assignment problem.
 
   :doc:`_collections/examples/linear_assignment_problem`
 
@@ -241,7 +241,7 @@ Examples that make use of the :doc:`api/contrib` module.
 .. only:: html
 
   .. image:: /images/favicon.svg
-    :alt:
+    :alt: Differentially private convolutional neural network on MNIST.
 
   :doc:`_collections/examples/contrib/differentially_private_sgd`
 
@@ -258,7 +258,7 @@ Examples that make use of the :doc:`api/contrib` module.
 .. only:: html
 
   .. image:: /images/examples/contrib/reduce_on_plateau.png
-    :alt:
+    :alt: Example usage of reduce_on_plateau learning rate scheduler.
 
   :doc:`_collections/examples/contrib/reduce_on_plateau`
 
@@ -275,7 +275,7 @@ Examples that make use of the :doc:`api/contrib` module.
 .. only:: html
 
   .. image:: /images/examples/contrib/sam.png
-    :alt:
+    :alt: Sharpness-Aware Minimization (SAM).
 
   :doc:`_collections/examples/contrib/sam`
 
@@ -291,7 +291,7 @@ Examples that make use of the :doc:`api/contrib` module.
 .. only:: html
 
   .. image:: /images/examples/contrib/ademamix_rosenbrock.png
-    :alt:
+    :alt: AdEMAMix
 
   :doc:`_collections/examples/contrib/rosenbrock_ademamix`
 
