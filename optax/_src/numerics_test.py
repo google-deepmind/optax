@@ -149,6 +149,11 @@ class NumericsTest(parameterized.TestCase):
 
     def _get_hlo_repr(f, x):
       hlo_string = jax.jit(f).lower(x).compiler_ir(dialect="hlo").as_hlo_text()
+      hlo_string = re.search(r"ENTRY.*", hlo_string, re.DOTALL)
+      if hlo_string:
+        hlo_string = hlo_string.group()
+      else:
+        raise ValueError(f"No ENTRY found in HLO string: {hlo_string}")
       hlo_string = re.sub("ENTRY.*?{", "ENTRY XXXX", hlo_string)
       hlo_string = re.sub("HloModule.*?\n", "", hlo_string)
       hlo_string = re.sub("ROOT.*?=", "ROOT result.2 =", hlo_string)
