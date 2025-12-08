@@ -125,7 +125,7 @@ class TransformTest(parameterized.TestCase):
       scaled_updates, _ = rescaler.update(updates, {})
 
       # Manually scale updates.
-      def rescale(t):
+      def rescale(t, factor=factor):
         return t * factor
 
       manual_updates = jax.tree.map(rescale, updates)
@@ -188,7 +188,7 @@ class TransformTest(parameterized.TestCase):
         expected = jnp.sign(x)
       elif mode == "smooth":
         expected = jnp.tanh(smooth_beta * x)
-      elif mode == "refined":
+      else:
         expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
 
       test_utils.assert_trees_all_close(out_updates, expected)
