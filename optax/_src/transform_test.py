@@ -195,7 +195,8 @@ class TransformTest(parameterized.TestCase):
 
   def test_lion_invalid_mode_raises(self):
     updates = jnp.array([0.1, -0.2])
-    opt = transform.scale_by_lion(mode="invalid_mode")  # pytype: disable=wrong-arg-types
+    # pytype: disable=wrong-arg-types
+    opt = transform.scale_by_lion(mode="invalid_mode")
     state = opt.init(updates)
     with self.assertRaises(ValueError):
       opt.update(updates, state)
