@@ -36,11 +36,22 @@ from optax._src import utils
 from optax.transforms import _masking
 import optax.tree
 
+import warnings
+
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
-
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
-
+_DION_NS_COEFFS = [
+  (4.0848, -6.8946, 2.9270),
+  (3.9505, -6.3029, 2.6377),
+  (3.7418, -5.5913, 2.3037),
+  (2.8769, -3.1427, 1.2046),
+  (2.8366, -3.0525, 1.2012),
+]
+PRESET_DICT = {
+  "standard":_DEFAULT_NS_COEFFS,
+  "dion":_DION_NS_COEFFS,
+}
 
 class MuonDimensionNumbers(NamedTuple):
   """Specification for which weight axes participate in matrix projection.
@@ -193,7 +204,21 @@ def scale_by_shape(
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def _newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
+def _aol_first_newton_schulz_iteration(
+    x: jax.Array,
+    coeffs: jax.Array,
+    eps: jax.typing.ArrayLike = 1e-8,
+  ) -> jax.Array:
+  # Implements the first Newton-Schulz step with AOL preconditioning
+  # which allows for better orthogonalization performance.
+  a = x @ x.T
+  rescaling = jnp.clip(jnp.abs(a).sum(axis=-1), min=eps)
+  s = jnp.expand_dims(jax.lax.rsqrt(rescaling), -1)
+  x, a = x * s, a * s * s.transpose(-1, -2)
+  b = coeffs[1] * a + coeffs[2] * a @ a
+  return coeffs[0] * x + b @ x
+
+def _base_newton_schulz_iteration(x: jax.Array, coeffs: jax.Array) -> jax.Array:
   # Implements Newton-Schulz step f(X) = c_0 X + c_1 (XX^T)X + c_2 (XX^T)^2X,
   # with quintic form f(X) = c_0 X + (c_1 A + c_2 AA)X, where A = XX^T.
   # The NS step has the property f(X) = f(X^T)^T. That is, we can get equivalent
@@ -203,11 +228,23 @@ def _newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
   b = coeffs[1] * a + coeffs[2] * a @ a
   return coeffs[0] * x + b @ x
 
+def _aol_ns_iterator(i, x, coeffs):
+  return jax.lax.cond(
+      i == 0,
+      lambda x: _aol_first_newton_schulz_iteration(x, coeffs),
+      lambda x: _base_newton_schulz_iteration(x, coeffs),
+      x,
+  )
+
+def _base_ns_iterator(i, x, coeffs):
+  return _base_newton_schulz_iteration(x, coeffs)
+
 
 def orthogonalize_via_newton_schulz(
     x: jax.Array,
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
+    precondition: bool=False,
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
 ) -> jax.Array:
@@ -251,16 +288,27 @@ def orthogonalize_via_newton_schulz(
       x = x.T
       transposed = True
 
-    x /= jnp.linalg.norm(x) + eps  # Ensure spectral norm is at most 1
+    if not precondition:
+        x /= jnp.linalg.norm(x) + eps  # Ensure spectral norm is at most 1
+        _ns_iterator = _base_ns_iterator
+    else:
+        _ns_iterator = _aol_ns_iterator
+
     ns_coeffs_ = ns_coeffs.astype(x.dtype)
+
     if ns_coeffs_.ndim == 1:
       x = jax.lax.fori_loop(
-          0, ns_steps, lambda _, x: _newton_schulz_iterator(x, ns_coeffs_), x,
+          0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
           unroll=True)  # Unroll to ensure efficient composition with jax.vmap.
     else:
-      x, _ = jax.lax.scan(
-          lambda x, abc: (_newton_schulz_iterator(x, abc), None), x, ns_coeffs_
-      )
+      def _scan_body(carry, coeffs_step):
+        i, x = carry
+        x_new = _ns_iterator(i, x, coeffs_step)
+        return (i + 1, x_new), None
+
+      init_carry = (jnp.asarray(0, dtype=jnp.int32), x)
+      (_, x), _ = jax.lax.scan(_scan_body, init_carry, ns_coeffs_)
+
     if transposed:
       x = x.T
     return x
@@ -275,7 +323,6 @@ class MuonState(NamedTuple):
   mu: base.Updates
   ns_coeffs: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
-
 def scale_by_muon(
     ns_coeffs: Union[
         tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
@@ -289,6 +336,7 @@ def scale_by_muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
+    precondition: bool = False,
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
@@ -309,6 +357,9 @@ def scale_by_muon(
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
       original updates. See <https://arxiv.org/abs/2409.20325>
+    precondition: Whether to use AOL preconditioning for Newton-Schulz.
+      It can usually allow the user to use one less ns_step.
+      See <https://arxiv.org/abs/2512.04632>.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -329,10 +380,18 @@ def scale_by_muon(
   def init_fn(params):
     mu = optax.tree.zeros_like(params, dtype=mu_dtype)  # First moment
     ns_coeffs_ = jnp.asarray(ns_coeffs)
+
     if ns_coeffs_.ndim > 2 or ns_coeffs_.shape[-1] != 3:
       raise ValueError(
           f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
       )
+    if ns_coeffs_.ndim == 2:
+      if not ns_coeffs_.shape[0] <= ns_steps:
+        raise ValueError(
+          f"Not enough coeffs to perform {ns_steps} steps"
+        )
+      ns_coeffs_ = ns_coeffs_[-ns_steps:]
+
     return MuonState(
         count=jnp.zeros([], jnp.int32),
         mu=mu,
@@ -364,7 +423,7 @@ def scale_by_muon(
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, eps, dim_num),
+            x, state.ns_coeffs, ns_steps, precondition, eps, dim_num),
         mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
@@ -388,6 +447,7 @@ def muon(
         tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
         tuple[tuple[jax.typing.ArrayLike, jax.typing.ArrayLike,
                     jax.typing.ArrayLike], ...],
+        str,
     ] = _DEFAULT_NS_COEFFS,
     ns_steps: jax.typing.ArrayLike = 5,
     beta: jax.typing.ArrayLike = 0.95,
@@ -400,6 +460,7 @@ def muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
+    precondition: bool = False,
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,
     adam_eps_root: jax.typing.ArrayLike = 0.0,
@@ -422,7 +483,8 @@ def muon(
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
-    ns_coeffs: Coefficients for the Newton-schulz method.
+    ns_coeffs: Coefficients for the Newton-schulz method (can be a string
+      indicator for a preset). Existing presets: `muon`, `dion`.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -440,6 +502,9 @@ def muon(
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
       original updates. See <https://arxiv.org/abs/2409.20325>
+    precondition: Whether to use AOL preconditioning for Newton-Schulz.
+      It can usually allow the user to use one less ns_step.
+      See <https://arxiv.org/abs/2512.04632>.
     adam_b1: Exponential decay rate for Adam's first moment estimates.
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
@@ -469,7 +534,23 @@ def muon(
 
     Liu et al., `Muon is Scalable for LLM Training`,
     <https://arxiv.org/abs/2502.16982>`_, 2025
+
+    Boissin et al., `Turbo-Muon: Accelerating Orthogonality-Based
+    Optimization with Pre-Conditioning`,
+    <https://arxiv.org/abs/2512.04632>`_, 2025.
+
+    Ahn et al., `Dion: Distributed Orthonormalized Updates`,
+    <https://arxiv.org/abs/2504.05295>`_, 2025
   """
+  if isinstance(ns_coeffs, str):
+    if ns_coeffs not in PRESET_DICT.keys():
+      raise ValueError(
+        f"Unknown ns_coeff preset string: {ns_coeffs}"
+      )
+    ns_coeffs_ = PRESET_DICT[ns_coeffs]
+  else:
+    ns_coeffs_ = ns_coeffs
+
   # None at root indicates the default 2D rule.
   if muon_weight_dimension_numbers is None:
     param_labels = lambda params: jax.tree.map(
@@ -508,13 +589,14 @@ def muon(
       transforms={
           'muon': combine.chain(
               scale_by_muon(
-                  ns_coeffs=ns_coeffs,
+                  ns_coeffs=ns_coeffs_,
                   ns_steps=ns_steps,
                   beta=beta,
                   eps=eps,
                   mu_dtype=mu_dtype,
                   nesterov=nesterov,
                   adaptive=adaptive,
+                  precondition=precondition,
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
               ),
               scale_by_shape(

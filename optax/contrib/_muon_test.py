@@ -27,12 +27,17 @@ from optax.transforms import _masking
 UNSPECIFIED = object()
 
 
-def get_updates(params, muon_weight_dimension_numbers=UNSPECIFIED):
+def get_updates(
+    params,
+    muon_weight_dimension_numbers=UNSPECIFIED,
+    precondition=False,
+  ):
   if muon_weight_dimension_numbers is UNSPECIFIED:
-    opt = _muon.muon(learning_rate=1e-3)
+    opt = _muon.muon(learning_rate=1e-3, precondition=precondition)
   else:
     opt = _muon.muon(
         learning_rate=1e-3,
+        precondition=precondition,
         muon_weight_dimension_numbers=muon_weight_dimension_numbers
     )
   state = opt.init(params)
@@ -42,7 +47,8 @@ def get_updates(params, muon_weight_dimension_numbers=UNSPECIFIED):
   return updates, state
 
 
-class MuonTest(parameterized.TestCase):
+class MuonTestBase(parameterized.TestCase):
+  precondition = True
 
   @parameterized.named_parameters(
       {
@@ -100,7 +106,7 @@ class MuonTest(parameterized.TestCase):
       fn_ = lambda x: _muon.MuonDimensionNumbers(0, 1) if x.ndim == 2 else None
       return jax.tree.map(fn_, params)
 
-    opt = _muon.muon(learning_rate=1e-3,
+    opt = _muon.muon(learning_rate=1e-3, precondition=self.precondition,
                      muon_weight_dimension_numbers=weight_dim_nums_fn)
     params = {"w1": jnp.ones((10, 10)), "w2": jnp.ones((2, 10))}
     state = opt.init(params)
@@ -111,7 +117,7 @@ class MuonTest(parameterized.TestCase):
       del params
       return {"w1": _muon.MuonDimensionNumbers(), "w2": None}
 
-    opt = _muon.muon(learning_rate=1e-3,
+    opt = _muon.muon(learning_rate=1e-3, precondition=self.precondition,
                      muon_weight_dimension_numbers=weight_dim_nums_fn)
     params = {"w1": jnp.ones((10, 10)), "w2": jnp.ones((2, 10))}
     state = opt.init(params)
@@ -123,11 +129,12 @@ class MuonTest(parameterized.TestCase):
     # Use 2D parameter (10, 10) with no dim nums as groundtruth
     key = jax.random.key(0)
     params_sq = {"w": jax.random.normal(key, shape=(10, 10))}
-    updates_sq, _ = get_updates(params_sq)
+    updates_sq, _ = get_updates(params_sq, precondition=self.precondition)
     # Test: 2D parameter (10, 10) with trivial dim nums
     dim_nums = {
         "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
     reshape_updates_sq, _ = get_updates(params_sq,
+                                        precondition=self.precondition,
                                         muon_weight_dimension_numbers=dim_nums)
     test_utils.assert_trees_all_close(
         updates_sq, reshape_updates_sq, rtol=1e-8, atol=1e-8
@@ -138,7 +145,7 @@ class MuonTest(parameterized.TestCase):
     key = jax.random.key(0)
     w = jax.random.normal(key, shape=(10, 12))
     params = {"w": w}
-    updates, _ = get_updates(params)
+    updates, _ = get_updates(params, precondition=self.precondition)
 
     with self.subTest("2D with dimension numbers, (10, 12)"):
       # Test 1: 2D with dimension numbers, (10, 12)
@@ -146,6 +153,7 @@ class MuonTest(parameterized.TestCase):
       dim_nums = {
           "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
       reshape_updates, _ = get_updates(params,
+                                       precondition=self.precondition,
                                        muon_weight_dimension_numbers=dim_nums)
       test_utils.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
                                         atol=1e-8)
@@ -157,6 +165,7 @@ class MuonTest(parameterized.TestCase):
       dim_nums = {"w": _muon.MuonDimensionNumbers(reduction_axis=(2,),
                                                   output_axis=(0, 3))}
       reshape_updates, _ = get_updates(reshape_params,
+                                       precondition=self.precondition,
                                        muon_weight_dimension_numbers=dim_nums)
       test_utils.assert_trees_all_close(
           jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
@@ -169,6 +178,7 @@ class MuonTest(parameterized.TestCase):
       dim_nums = {"w": _muon.MuonDimensionNumbers(reduction_axis=(0, 3),
                                                   output_axis=(1,))}
       reshape_updates, _ = get_updates(reshape_params,
+                                       precondition=self.precondition,
                                        muon_weight_dimension_numbers=dim_nums)
       test_utils.assert_trees_all_close(
           jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
@@ -182,20 +192,20 @@ class MuonTest(parameterized.TestCase):
     # Test 1: full dim_nums
     params = {"w1": jnp.ones((1, 2, 3)), "w2": jnp.ones((2, 3, 4))}
     dim_nums = {"w1": dim_num, "w2": dim_num}
-    _, state = get_updates(params, dim_nums)
+    _, state = get_updates(params, dim_nums, precondition=self.precondition)
     self.assertNotIsInstance(get_muon_mu(state)["w1"], _masking.MaskedNode)
     self.assertNotIsInstance(get_muon_mu(state)["w2"], _masking.MaskedNode)
 
     # Test 2: no dim_nums
     params = {"w1": jnp.ones((1, 2, 3)), "w2": jnp.ones((3, 4))}
-    _, state = get_updates(params)
+    _, state = get_updates(params, precondition=self.precondition)
     self.assertIsInstance(get_muon_mu(state)["w1"], _masking.MaskedNode)
     self.assertNotIsInstance(get_muon_mu(state)["w2"], _masking.MaskedNode)
 
     # Test 3: partial dim_nums with none
     params = {"w1": jnp.ones((1, 2, 3)), "w2": jnp.ones((2, 3, 4))}
     dim_nums = {"w1": None, "w2": dim_num}
-    _, state = get_updates(params, dim_nums)
+    _, state = get_updates(params, dim_nums, precondition=self.precondition)
     self.assertIsInstance(get_muon_mu(state)["w1"], _masking.MaskedNode)
 
     # Test 4: prefix None, full dim_nums
@@ -205,7 +215,7 @@ class MuonTest(parameterized.TestCase):
     }
     dim_num = _muon.MuonDimensionNumbers()
     dim_nums = {"w1": None, "w2": {"a": dim_num, "b": None}}
-    _, state = get_updates(params, dim_nums)
+    _, state = get_updates(params, dim_nums, precondition=self.precondition)
     state_structure = jax.tree.structure(
         get_muon_mu(state),
         is_leaf=lambda x: isinstance(x, _masking.MaskedNode))
@@ -232,6 +242,62 @@ class MuonTest(parameterized.TestCase):
     self.assertIsInstance(get_muon_mu(state)["w2"]["a"], _masking.MaskedNode)
     self.assertIsInstance(get_muon_mu(state)["w2"]["b"], _masking.MaskedNode)
 
+  @parameterized.named_parameters(
+      ("standard_square", False, (100, 100)), # Square for easy scaling check
+      ("standard_tall", False, (100, 50)),
+      ("standard_wide", False, (50, 100)),
+      ("aol_square", True, (100, 100)),
+      ("aol_tall", True, (100, 50)),
+      ("aol_wide", True, (50, 100)),
+  )
+  def test_muon_orthogonalization_modes(self, precondition, shape):
+    """Tests that Muon runs and produces near-orthogonal updates."""
+    key = jax.random.key(42)
+    params = {"w": jax.random.normal(key, shape)}
+
+    # Use LR=1.0 and no weight decay to inspect the raw orthogonalization.
+    opt = _muon.muon(learning_rate=1.0, weight_decay=0.0,
+                     precondition=precondition)
+    state = opt.init(params)
+
+    # Perform one update step
+    updates, _ = opt.update(params, state, params=params)
+
+    # 1. Check shape preservation
+    self.assertEqual(updates["w"].shape, shape)
+
+    # 2. Check Near-Orthogonality (Spectral Norm Constraint)
+    # Only applicable easily for square matrices where scaling factor is 1.0.
+    if shape[0] == shape[1]:
+      s = jnp.linalg.svd(updates["w"], compute_uv=False)
+
+      # Muon docstring states singular values result in S_i ~ Uniform(0.5, 1.5)
+      max_s = jnp.max(s)
+      min_s = jnp.min(s)
+
+      # Assert bounded spectral norm (should be close to 1.0, not exploding)
+      self.assertLess(max_s, 2.0, msg=f"Max singular value {max_s} too high")
+      # Assert non-collapse (should be > 0)
+      self.assertGreater(min_s, 0.1, msg=f"Min singular value {min_s} too low")
+
+  def test_aol_numerical_difference(self):
+    """Ensures that AOL=True produces different updates than Standard Muon."""
+    params = {"w": jnp.eye(8) * 2.0}
+
+    opt_std = _muon.muon(learning_rate=0.1, precondition=False)
+    updates_std, _ = opt_std.update(params, opt_std.init(params), params)
+
+    opt_aol = _muon.muon(learning_rate=0.1, precondition=True, ns_coeffs="dion")
+    updates_aol, _ = opt_aol.update(params, opt_aol.init(params), params)
+
+    with self.assertRaises(AssertionError):
+      test_utils.assert_trees_all_close(updates_std, updates_aol)
+
+class MuonTestAOL(MuonTestBase):
+  precondition = True
+
+class MuonTestStandard(MuonTestBase):
+  precondition = False
 
 if __name__ == "__main__":
   absltest.main()
