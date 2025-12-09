@@ -22,7 +22,7 @@ by Keller Jordan
 
 import functools
 import math
-from typing import Any, Callable, NamedTuple, Optional, Union, Sequence
+from typing import Any, Callable, NamedTuple, Optional, Union, Sequence, Literal
 
 import jax
 import jax.numpy as jnp
@@ -40,6 +40,7 @@ import warnings
 
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
+_PRECONDITIONINGS = ["frobenius", "spectral", "aol", "schatten"]
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
   (4.0848, -6.8946, 2.9270),
@@ -218,6 +219,20 @@ def _aol_first_newton_schulz_iteration(
   b = coeffs[1] * a + coeffs[2] * a @ a
   return coeffs[0] * x + b @ x
 
+def _schatten_first_newton_schulz_iteration(
+    x: jax.Array,
+    coeffs: jax.Array,
+    eps: jax.typing.ArrayLike = 1e-8,
+  ) -> jax.Array:
+  # Implements the first Newton-Schulz step with Schatten-4 norm
+  # preconditioning which allows for better orthogonalization performance.
+  a = x @ x.T
+  rescaling = jnp.clip(jnp.linalg.norm(a, ord='fro', axis=(-2, -1)), min=eps)
+  s = jnp.expand_dims(jax.lax.rsqrt(rescaling), (0, -1))
+  x, a = x * s, a * s ** 2
+  b = coeffs[1] * a + coeffs[2] * a @ a
+  return coeffs[0] * x + b @ x
+
 def _base_newton_schulz_iteration(x: jax.Array, coeffs: jax.Array) -> jax.Array:
   # Implements Newton-Schulz step f(X) = c_0 X + c_1 (XX^T)X + c_2 (XX^T)^2X,
   # with quintic form f(X) = c_0 X + (c_1 A + c_2 AA)X, where A = XX^T.
@@ -229,9 +244,19 @@ def _base_newton_schulz_iteration(x: jax.Array, coeffs: jax.Array) -> jax.Array:
   return coeffs[0] * x + b @ x
 
 def _aol_ns_iterator(i, x, coeffs):
+  # Modified first step using AOL rescaling
   return jax.lax.cond(
       i == 0,
       lambda x: _aol_first_newton_schulz_iteration(x, coeffs),
+      lambda x: _base_newton_schulz_iteration(x, coeffs),
+      x,
+  )
+
+def _schatten_ns_iterator(i, x, coeffs):
+  # Modified first step using Schatten-4 norm rescaling
+  return jax.lax.cond(
+      i == 0,
+      lambda x: _schatten_first_newton_schulz_iteration(x, coeffs),
       lambda x: _base_newton_schulz_iteration(x, coeffs),
       x,
   )
@@ -244,7 +269,12 @@ def orthogonalize_via_newton_schulz(
     x: jax.Array,
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
-    precondition: bool=False,
+    preconditioning: Literal[
+      "frobenius",
+      "spectral",
+      "aol",
+      "schatten",
+    ] = "frobenius",
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
 ) -> jax.Array:
@@ -265,6 +295,7 @@ def orthogonalize_via_newton_schulz(
       Must have shape (n, 3) where n is the number of iterations.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a 2D array.
+    preconditioning: Which preconditioning method to use.
     eps: Term added to denominators to improve numerical stability.
     dimension_numbers: Optional spec for reshaping a tensor before and after the
       orthogonalization, to support non-2D parameters.
@@ -288,11 +319,22 @@ def orthogonalize_via_newton_schulz(
       x = x.T
       transposed = True
 
-    if not precondition:
-        x /= jnp.linalg.norm(x) + eps  # Ensure spectral norm is at most 1
-        _ns_iterator = _base_ns_iterator
+    ns_iterators = {
+      "frobenius":_base_ns_iterator,
+      "spectral":_base_ns_iterator,
+      "aol":_aol_ns_iterator,
+      "schatten":_schatten_ns_iterator,
+    }
+    if preconditioning not in _PRECONDITIONINGS:
+        raise ValueError(f"Unknown preconditioning {preconditioning}")
+    _ns_iterator = ns_iterators[preconditioning]
+
+    if preconditioning == "frobenius":
+      x /= jnp.linalg.norm(x, ord='fro') + eps
+    elif preconditioning == "spectral":
+      x /= jnp.linalg.norm(x, ord=2) + eps
     else:
-        _ns_iterator = _aol_ns_iterator
+      pass
 
     ns_coeffs_ = ns_coeffs.astype(x.dtype)
 
@@ -336,7 +378,12 @@ def scale_by_muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
-    precondition: bool = False,
+    preconditioning: Literal[
+      "frobenius",
+      "spectral",
+      "aol",
+      "schatten",
+    ] = "frobenius",
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
@@ -357,9 +404,20 @@ def scale_by_muon(
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
       original updates. See <https://arxiv.org/abs/2409.20325>
-    precondition: Whether to use AOL preconditioning for Newton-Schulz.
-      It can usually allow the user to use one less ns_step.
-      See <https://arxiv.org/abs/2512.04632>.
+    preconditioning: What type of preconditioning to use before NS iterations.
+      Available options are:
+      - 'frobenius' (default): Use Frobenius rescaling before NS:
+        safe, standard, but degrades orthogonalization quality when using
+        less than 5 NS steps.
+      - 'spectral' : Use Spectral norm rescaling before NS:
+        much more computationally intensive, but better orthogonalization
+        quality.
+      - 'aol': Use AOL rescalings to improve orthogonality with little to
+        no overhead, usually allows the user to remove one iterative NS step.
+        See <https://arxiv.org/abs/2512.04632>.
+      - 'schatten': Use the Schatten-4 norm for rescaling,
+        allows for better performance with little to no extra cost.
+        See <https://arxiv.org/abs/2506.10935>.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -374,6 +432,20 @@ def scale_by_muon(
 
     Bernstein et al., `Old Optimizer, New Norm: An Anthology
     <https://arxiv.org/abs/2409.20325>`_, 2024
+
+    Liu et al., `Muon is Scalable for LLM Training`,
+    <https://arxiv.org/abs/2502.16982>`_, 2025
+
+    Boissin et al., `Turbo-Muon: Accelerating Orthogonality-Based
+    Optimization with Pre-Conditioning`,
+    <https://arxiv.org/abs/2512.04632>`_, 2025
+
+    Ahn et al., `Dion: Distributed Orthonormalized Updates`,
+    <https://arxiv.org/abs/2504.05295>`_, 2025
+
+    Grishina et al., `Accelerating Newton-Schulz Iteration for Orthogonalization
+    via Chebyshev-type Polynomials`,
+    <https://arxiv.org/abs/2506.10935>`_, 2025
   """
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
@@ -423,7 +495,7 @@ def scale_by_muon(
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, precondition, eps, dim_num),
+            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num),
         mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
@@ -460,7 +532,12 @@ def muon(
     *,
     nesterov: bool = True,
     adaptive: bool = False,
-    precondition: bool = False,
+    preconditioning: Literal[
+      "frobenius",
+      "spectral",
+      "aol",
+      "schatten",
+    ] = "frobenius",
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,
     adam_eps_root: jax.typing.ArrayLike = 0.0,
@@ -502,9 +579,20 @@ def muon(
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
       original updates. See <https://arxiv.org/abs/2409.20325>
-    precondition: Whether to use AOL preconditioning for Newton-Schulz.
-      It can usually allow the user to use one less ns_step.
-      See <https://arxiv.org/abs/2512.04632>.
+    preconditioning: What type of preconditioning to use before NS iterations.
+      Available options are:
+      - 'frobenius' (default): Use Frobenius rescaling before NS:
+        safe, standard, but degrades orthogonalization quality when using
+        less than 5 NS steps.
+      - 'spectral' : Use Spectral norm rescaling before NS:
+        much more computationally intensive, but better orthogonalization
+        quality.
+      - 'aol': Use AOL rescalings to improve orthogonality with little to
+        no overhead, usually allows the user to remove one iterative NS step.
+        See <https://arxiv.org/abs/2512.04632>.
+      - 'schatten': Use the Schatten-4 norm for rescaling,
+        allows for better performance with little to no extra cost.
+        See <https://arxiv.org/abs/2506.10935>.
     adam_b1: Exponential decay rate for Adam's first moment estimates.
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
@@ -537,13 +625,17 @@ def muon(
 
     Boissin et al., `Turbo-Muon: Accelerating Orthogonality-Based
     Optimization with Pre-Conditioning`,
-    <https://arxiv.org/abs/2512.04632>`_, 2025.
+    <https://arxiv.org/abs/2512.04632>`_, 2025
 
     Ahn et al., `Dion: Distributed Orthonormalized Updates`,
     <https://arxiv.org/abs/2504.05295>`_, 2025
+
+    Grishina et al., `Accelerating Newton-Schulz Iteration for Orthogonalization
+    via Chebyshev-type Polynomials`,
+    <https://arxiv.org/abs/2506.10935>`_, 2025
   """
   if isinstance(ns_coeffs, str):
-    if ns_coeffs not in PRESET_DICT.keys():
+    if ns_coeffs not in PRESET_DICT:
       raise ValueError(
         f"Unknown ns_coeff preset string: {ns_coeffs}"
       )
@@ -596,7 +688,7 @@ def muon(
                   mu_dtype=mu_dtype,
                   nesterov=nesterov,
                   adaptive=adaptive,
-                  precondition=precondition,
+                  preconditioning=preconditioning,
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
               ),
               scale_by_shape(
