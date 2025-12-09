@@ -291,7 +291,7 @@ Examples that make use of the :doc:`api/contrib` module.
 .. only:: html
 
   .. image:: /images/examples/contrib/ademamix_rosenbrock.png
-    :alt: AdEMAMix
+    :alt: AdEMAMix.
 
   :doc:`_collections/examples/contrib/rosenbrock_ademamix`
 
