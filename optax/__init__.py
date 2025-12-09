@@ -244,6 +244,7 @@ cosine_distance = losses.cosine_distance
 cosine_similarity = losses.cosine_similarity
 ctc_loss = losses.ctc_loss
 ctc_loss_with_forward_probs = losses.ctc_loss_with_forward_probs
+generalized_kl_divergence = losses.generalized_kl_divergence
 hinge_loss = losses.hinge_loss
 huber_loss = losses.huber_loss
 kl_divergence = losses.kl_divergence
@@ -366,6 +367,7 @@ __all__ = (
     "FactoredState",
     "flatten",
     "fromage",
+    "generalized_kl_divergence",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",

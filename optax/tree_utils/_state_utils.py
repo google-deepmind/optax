@@ -268,7 +268,7 @@ def tree_get(
   Search in the ``tree`` for a specific ``key`` (which can be a key
   from a dictionary, a field from a NamedTuple or the name of a NamedTuple).
 
-  If the ``tree`` does not containt ``key`` returns ``default``.
+  If the ``tree`` does not contain ``key`` returns ``default``.
 
   Raises a ``KeyError`` if multiple values of ``key`` are found in ``tree``.
 
