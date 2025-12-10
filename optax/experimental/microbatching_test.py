@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import test_utils
-from optax.experimental import _microbatching as microbatching
+from optax.experimental import microbatching
 
 
 def per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
