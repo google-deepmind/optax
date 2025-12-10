@@ -252,7 +252,7 @@ class MicrobatchingTest(parameterized.TestCase):
 
   def test_vmap(self):
     x = jnp.arange(2*4*8).reshape(2, 4, 8)
-    custom_vmap = microbatching.gvmap(
+    custom_vmap = microbatching.micro_vmap(
         jnp.sum,
         in_axes=1,
         microbatch_size=2,

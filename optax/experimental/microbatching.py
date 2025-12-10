@@ -29,6 +29,8 @@ import jax.numpy as jnp
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
 VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
+PyTreeFn: TypeAlias = Callable[[chex.ArrayTree], chex.ArrayTree]
+UpdateFn = Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
 IndividualOutputs = collections.namedtuple('Aux', ['values', 'metrics', 'aux'])
 ValueAndGradFn: TypeAlias = Callable[..., tuple[Any, IndividualOutputs]]
 
@@ -40,28 +42,28 @@ class Accumulator:
   Given a list of microbatch function evaluations [x_0, ..., x_{n-1}], this
   object represents the program.
 
-  ```
+  .. code-block:: python
+
   carry = init(x_0)
   for i in range(1, n):
     carry = update(carry, x_i, i)
   return finalize(carry)
-  ```
 
   Attributes:
-    init: A function f(value, num_microbatches) that initializes the microbatch
-      state from the function evaluation of the fist microbatch.
-    update: A function f(carry, value, index, num_microbatches) that updates the
-      microbatch state with the function evaluation of the current microbatch.
-    finalize: A function f(carry, num_microbatches) that returns the final
-      result from the final state.
+    init: A function f(value) that initializes the microbatch state from the
+      function evaluation of the fist microbatch.
+    update: A function f(carry, value, index) that updates the microbatch state
+      with the function evaluation of the current microbatch.
+    finalize: A function f(carry) that returns the final result from the final
+      state.
     aggregate: A function f(per_microbatch_value) that aggregates
-      per-microbatch values into a single value. Used by `gvmap`.
+      per-microbatch values into a single value. Used by `micro_vmap`.
   """
 
-  init: Callable[[chex.ArrayTree], chex.ArrayTree]
-  update: Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
-  finalize: Callable[[chex.ArrayTree], chex.ArrayTree]
-  aggregate: Callable[[chex.ArrayTree], chex.ArrayTree]
+  init: PyTreeFn
+  update: UpdateFn
+  finalize: PyTreeFn
+  aggregate: PyTreeFn
 
 
 def _with_floating_check(fn: Function) -> Function:
@@ -79,7 +81,7 @@ def _identity(value: Any) -> Any:
   return value
 
 
-def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0):
+def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """Reshape batch axis of pytree leaves for use with microbatching.
 
   This function reshapes the batch axis of each leaf into a shape
@@ -252,9 +254,13 @@ def _concat(num_microbatches: int) -> Accumulator:
 class AccumulationType(enum.Enum):
   """The type of accumulation to perform."""
   MEAN = enum.auto()
+  """Average the microbatch outputs."""
   SUM = enum.auto()
+  """Sum the microbatch outputs."""
   RUNNING_MEAN = enum.auto()
+  """Average the microbatch outputs over `num_real_microbatches`."""
   CONCAT = enum.auto()
+  """Concatenate the microbatch outputs along axis 0."""
 
 
 # In order to construct some accumulators (MEAN, CONCAT), we need to know the
@@ -444,7 +450,7 @@ def microbatch(
 
 
 # TODO(mckennar): Create a notebook demonstrating useful use-cases.
-def gvmap(
+def micro_vmap(
     fun: Function,
     in_axes: int | Sequence[int] = 0,
     out_axes: Any = 0,
@@ -467,8 +473,8 @@ def gvmap(
   Example Usage:
     >>> from optax.experimental import microbatching
     >>> import jax.numpy as jnp
-    >>> microbatching.gvmap(lambda x: x**2)(jnp.arange(8))
-    >>> Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
+    >>> microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
+    Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
 
   Args:
     fun: Function to be mapped over additional axes.
@@ -573,6 +579,7 @@ def micro_grad(
     native jax.value_and_grad due to the built-in microbatching.
 
   Example Usage (see https://arxiv.org/abs/2510.00236):
+    >>> from optax.experimental import microbatching
     >>> def mean_squared_loss(params, features, targets):
     ...   preds = features @ params
     ...   diff = preds - targets
@@ -580,11 +587,11 @@ def micro_grad(
     >>> params = jnp.zeros(1)
     >>> features = jnp.ones((4, 1))
     >>> targets = jnp.array([0, 2, 4, 6])
-    >>> (grads, squared_grads), aux = micro_grad(
+    >>> (grads, squared_grads), aux = microbatching.micro_grad(
     ...     mean_squared_loss,
     ...     argnums=0,
     ...     batch_argnums=(1,2),
-    ...     accumulator=AccumulationType.MEAN,
+    ...     accumulator=microbatching.AccumulationType.MEAN,
     ...     transform_fn=lambda x: (x, x**2),
     ...     metrics_fn=jnp.linalg.norm
     ... )(params, features, targets)
@@ -637,7 +644,7 @@ def micro_grad(
   in_axes = [None]*(max(batch_argnums) + 1)
   for i in batch_argnums:
     in_axes[i] = 0
-  micro_fun = gvmap(
+  micro_fun = micro_vmap(
       grad_fn,
       in_axes=in_axes,
       accumulator=(accumulator, AccumulationType.CONCAT),
