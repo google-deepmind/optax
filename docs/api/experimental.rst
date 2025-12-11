@@ -16,9 +16,10 @@ Experimental features subject to changes before being graduated into `optax`.
 
 Microbatching
 ~~~~~~~~~~~~~
-.. autoclass:: AccumulationType
-   :members:
 .. autofunction:: microbatch
 .. autofunction:: micro_vmap
 .. autofunction:: micro_grad
 .. autofunction:: reshape_batch_axis
+.. autoclass:: AccumulationType
+   :members:
+.. autoclass:: Accumulator
