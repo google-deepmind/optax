@@ -177,3 +177,539 @@ def triplet_margin_loss(
                                 .sum(axis) + eps, 1/norm_degree)
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
   return loss
+
+def byol_loss(
+    online_projection_1: jax.typing.ArrayLike,
+    target_projection_2: jax.typing.ArrayLike,
+    online_projection_2: jax.typing.ArrayLike | None = None,
+    target_projection_1: jax.typing.ArrayLike | None = None,
+    eps: jax.typing.ArrayLike = 1e-6,
+    symmetric: bool | None = None,
+) -> jax.Array:
+  """Bootstrap Your Own Latent (BYOL) loss.
+
+  This implements the BYOL loss between an online and a target network using
+  two augmented views of each sample.
+
+  Modes
+  -----
+  1. Single-direction (one pair of views):
+     Given two augmented views x1, x2 of the same image, the online network
+     (with predictor head) produces `online_projection_1` from x1, and the
+     target network produces `target_projection_2` from x2.
+
+     The loss is:
+       mean(2 - 2 * cosine_similarity(q1, z2))
+
+  2. Symmetric over two views (paper-style):
+     Given two augmented views x1, x2 of the same image, the online network
+     produces `online_projection_1` and `online_projection_2`, and the target
+     network produces `target_projection_1` and `target_projection_2`.
+     All projections are of shape [batch, feature_dim].
+
+     For normalized vectors, BYOL minimizes:
+       ||q - z||^2 = 2 - 2 * cosine_similarity(q, z)
+
+     The symmetric loss is:
+       mean(0.5 * [(2 - 2 * cos(q1, z2)) + (2 - 2 * cos(q2, z1))])
+
+  Args:
+    online_projection_1: Online-network prediction for view 1 (q1),
+      shape [batch, feature_dim].
+    target_projection_2: Target-network projection for view 2 (z2),
+      shape [batch, feature_dim].
+    online_projection_2: Optional online-network prediction for view 2 (q2),
+      shape [batch, feature_dim]. Required when `symmetric=True`.
+    target_projection_1: Optional target-network projection for view 1 (z1),
+      shape [batch, feature_dim]. Required when `symmetric=True`.
+    eps: Small epsilon used inside cosine similarity for numerical stability.
+    symmetric: If True, computes the symmetric BYOL loss using both directions
+      (q1 vs z2 and q2 vs z1). If False, or if left as None and the second
+      pair is not provided, computes only the single-direction loss between
+      `online_projection_1` and `target_projection_2`. If left as None and a
+      second pair (`online_projection_2` / `target_projection_1`) *is*
+      provided, symmetric mode is enabled automatically.
+
+  Returns:
+    A scalar BYOL loss averaged over the batch. In symmetric mode, the loss is
+    averaged over both directions and the batch.
+  """
+  online_projection_1 = jnp.asarray(online_projection_1)
+  target_projection_2 = jnp.asarray(target_projection_2)
+
+  utils.check_subdtype(online_projection_1, jnp.floating)
+  utils.check_subdtype(target_projection_2, jnp.floating)
+
+  # Cast eps to match the projection dtype for numerical consistency.
+  eps = jnp.asarray(eps, dtype=online_projection_1.dtype)
+
+  # Decide symmetric mode in a jit-safe way.
+  # If `symmetric` is a plain Python bool, respect it.
+  # Otherwise (None or JAX tracer), infer from presence of second view.
+  if symmetric is None or not isinstance(symmetric, bool):
+    symmetric_flag = (
+        online_projection_2 is not None or target_projection_1 is not None
+    )
+  else:
+    symmetric_flag = symmetric
+
+  # Single-direction mode: only (q1, z2) is used.
+  if not symmetric_flag:
+    if online_projection_1.shape != target_projection_2.shape:
+      raise ValueError(
+          'online_projection_1 and target_projection_2 must have the same '
+          f'shape, found {online_projection_1.shape} and '
+          f'{target_projection_2.shape}.'
+      )
+
+    # Stop gradient on target branch (teacher network).
+    target_projection_2 = lax.stop_gradient(target_projection_2)
+
+    cos_12 = _regression.cosine_similarity(
+        online_projection_1,
+        target_projection_2,
+        epsilon=eps,
+    )
+    loss_12 = 2.0 - 2.0 * cos_12
+    return jnp.mean(loss_12)
+
+  # Symmetric mode: requires all four projections.
+  if online_projection_2 is None or target_projection_1 is None:
+    raise ValueError(
+        'Symmetric BYOL loss requested, but `online_projection_2` or '
+        '`target_projection_1` is None. Provide all four projections or '
+        'set `symmetric=False`.'
+    )
+
+  online_projection_2 = jnp.asarray(online_projection_2)
+  target_projection_1 = jnp.asarray(target_projection_1)
+
+  utils.check_subdtype(online_projection_2, jnp.floating)
+  utils.check_subdtype(target_projection_1, jnp.floating)
+
+  if online_projection_1.shape != target_projection_2.shape:
+    raise ValueError(
+        'online_projection_1 and target_projection_2 must have the same '
+        f'shape, found {online_projection_1.shape} and '
+        f'{target_projection_2.shape}.'
+    )
+  if online_projection_2.shape != target_projection_1.shape:
+    raise ValueError(
+        'online_projection_2 and target_projection_1 must have the same '
+        f'shape, found {online_projection_2.shape} and '
+        f'{target_projection_1.shape}.'
+    )
+
+  # Stop gradient on target branch (teacher network).
+  target_projection_1 = lax.stop_gradient(target_projection_1)
+  target_projection_2 = lax.stop_gradient(target_projection_2)
+
+  # BYOL uses squared L2 distance between L2-normalized vectors.
+  # For normalized vectors: ||q - z||^2 = 2 - 2 * cos(q, z).
+  cos_12 = _regression.cosine_similarity(
+      online_projection_1,
+      target_projection_2,
+      epsilon=eps,
+  )
+  cos_21 = _regression.cosine_similarity(
+      online_projection_2,
+      target_projection_1,
+      epsilon=eps,
+  )
+
+  loss_12 = 2.0 - 2.0 * cos_12
+  loss_21 = 2.0 - 2.0 * cos_21
+  loss = 0.5 * (loss_12 + loss_21)
+
+  return jnp.mean(loss)
+
+
+def simsiam_loss(
+    predictor_projection_1: jax.typing.ArrayLike,
+    target_projection_2: jax.typing.ArrayLike,
+    predictor_projection_2: jax.typing.ArrayLike | None = None,
+    target_projection_1: jax.typing.ArrayLike | None = None,
+    eps: jax.typing.ArrayLike = 1e-6,
+    symmetric: bool | None = None,
+) -> jax.Array:
+  """SimSiam loss.
+
+  Implements the SimSiam loss between predictor outputs and target
+  projections from two augmented views of the same inputs.
+
+  Modes
+  -----
+  1. Single-direction loss:
+     D(p1, z2) = -cos(p1, stop_grad(z2))
+
+  2. Symmetric two-view loss:
+     D(p, z) = -cos(p, stop_grad(z))
+     loss = mean(0.5 * [D(p1, z2) + D(p2, z1)])
+
+  Args:
+    predictor_projection_1: Predictor output for view 1 (p1),
+      shape [batch, feature_dim].
+    target_projection_2: Target projection for view 2 (z2),
+      shape [batch, feature_dim]. Treated as stop-gradient.
+    predictor_projection_2: Optional predictor output for view 2 (p2),
+      shape [batch, feature_dim]. Required when `symmetric=True`.
+    target_projection_1: Optional target projection for view 1 (z1),
+      shape [batch, feature_dim]. Treated as stop-gradient. Required when
+      `symmetric=True`.
+    eps: Small epsilon used inside cosine similarity for numerical
+      stability.
+    symmetric: If True, computes the symmetric SimSiam loss using both
+      directions (p1 vs z2 and p2 vs z1). If False, or if left as None and
+      the second pair is not provided, computes only the single-direction
+      loss between `predictor_projection_1` and `target_projection_2`. If
+      left as None and a second pair (`predictor_projection_2` /
+      `target_projection_1`) *is* provided, symmetric mode is enabled
+      automatically.
+
+  Returns:
+    A scalar SimSiam loss averaged over the batch. In symmetric mode, the
+    loss is averaged over both directions and the batch.
+  """
+  predictor_projection_1 = jnp.asarray(predictor_projection_1)
+  target_projection_2 = jnp.asarray(target_projection_2)
+
+  utils.check_subdtype(predictor_projection_1, jnp.floating)
+  utils.check_subdtype(target_projection_2, jnp.floating)
+
+  # Cast eps to match the projection dtype for numerical consistency.
+  eps = jnp.asarray(eps, dtype=predictor_projection_1.dtype)
+
+  # Decide symmetric mode in a jit-safe way.
+  if symmetric is None or not isinstance(symmetric, bool):
+    symmetric_flag = (
+        predictor_projection_2 is not None or target_projection_1 is not None
+    )
+  else:
+    symmetric_flag = symmetric
+
+  # Single-direction mode: only (p1, z2) is used.
+  if not symmetric_flag:
+    if predictor_projection_1.shape != target_projection_2.shape:
+      raise ValueError(
+          'predictor_projection_1 and target_projection_2 must have the same '
+          f'shape, found {predictor_projection_1.shape} and '
+          f'{target_projection_2.shape}.'
+      )
+
+    # Stop gradient on target branch.
+    target_projection_2 = lax.stop_gradient(target_projection_2)
+
+    cos_12 = _regression.cosine_similarity(
+        predictor_projection_1,
+        target_projection_2,
+        epsilon=eps,
+    )
+    loss_12 = -cos_12
+    return jnp.mean(loss_12)
+
+  # Symmetric mode: requires all four projections.
+  if predictor_projection_2 is None or target_projection_1 is None:
+    raise ValueError(
+        'Symmetric SimSiam loss requested, but `predictor_projection_2` or '
+        '`target_projection_1` is None. Provide all four projections or '
+        'set `symmetric=False`.'
+    )
+
+  predictor_projection_2 = jnp.asarray(predictor_projection_2)
+  target_projection_1 = jnp.asarray(target_projection_1)
+
+  utils.check_subdtype(predictor_projection_2, jnp.floating)
+  utils.check_subdtype(target_projection_1, jnp.floating)
+
+  if predictor_projection_1.shape != target_projection_2.shape:
+    raise ValueError(
+        'predictor_projection_1 and target_projection_2 must have the same '
+        f'shape, found {predictor_projection_1.shape} and '
+        f'{target_projection_2.shape}.'
+    )
+  if predictor_projection_2.shape != target_projection_1.shape:
+    raise ValueError(
+        'predictor_projection_2 and target_projection_1 must have the same '
+        f'shape, found {predictor_projection_2.shape} and '
+        f'{target_projection_1.shape}.'
+    )
+
+  # Stop gradient on target branch.
+  target_projection_1 = lax.stop_gradient(target_projection_1)
+  target_projection_2 = lax.stop_gradient(target_projection_2)
+
+  cos_12 = _regression.cosine_similarity(
+      predictor_projection_1,
+      target_projection_2,
+      epsilon=eps,
+  )
+  cos_21 = _regression.cosine_similarity(
+      predictor_projection_2,
+      target_projection_1,
+      epsilon=eps,
+  )
+
+  loss_12 = -cos_12
+  loss_21 = -cos_21
+  loss = 0.5 * (loss_12 + loss_21)
+
+  return jnp.mean(loss)
+
+
+def _dino_temperature_to_array(
+    temperature: jax.typing.ArrayLike,
+) -> jax.Array:
+  """Convert temperature to array and ensure positivity for Python scalars."""
+  if isinstance(temperature, (int, float)):
+    if temperature <= 0:
+      raise ValueError('Temperatures must be positive.')
+  return jnp.asarray(temperature)
+
+
+def _single_view_dino_loss(
+    student_logits: jax.typing.ArrayLike,
+    teacher_logits: jax.typing.ArrayLike,
+    student_temperature: jax.Array,
+    teacher_temperature: jax.Array,
+    teacher_center: jax.Array,
+) -> jax.Array:
+  """Single-view DINO loss between a student and teacher distribution."""
+  student_logits = jnp.asarray(student_logits)
+  teacher_logits = jnp.asarray(teacher_logits)
+
+  if student_logits.shape != teacher_logits.shape:
+    raise ValueError(
+        'student_logits and teacher_logits must have the same shape, found '
+        f'{student_logits.shape} and {teacher_logits.shape}.'
+    )
+
+  # Apply centering and temperature scaling.
+  teacher_scaled = (teacher_logits - teacher_center) / teacher_temperature
+  student_scaled = student_logits / student_temperature
+
+  # Probabilities from teacher (stop-gradient) and log-probs from student.
+  teacher_prob = lax.stop_gradient(
+      jax.nn.softmax(teacher_scaled, axis=-1)
+  )
+  log_student_prob = jax.nn.log_softmax(student_scaled, axis=-1)
+
+  # Cross-entropy between teacher and student distributions.
+  loss_per_example = -jnp.sum(teacher_prob * log_student_prob, axis=-1)
+  return jnp.mean(loss_per_example)
+
+
+def dino_loss(
+    student_logits_1: jax.typing.ArrayLike,
+    teacher_logits_1: jax.typing.ArrayLike,
+    student_logits_2: jax.typing.ArrayLike | None = None,
+    teacher_logits_2: jax.typing.ArrayLike | None = None,
+    student_temperature: jax.typing.ArrayLike = 0.1,
+    teacher_temperature: jax.typing.ArrayLike = 0.04,
+    teacher_center: jax.typing.ArrayLike = 0.0,
+    two_view: bool | None = None,
+) -> jax.Array:
+  """DINO loss (self-distillation with no labels).
+
+  Computes the cross-entropy between teacher and student distributions
+  as in DINO for self-supervised ViT training.
+
+  Modes
+  -----
+  1. Single-view:
+     student(x1) matches teacher(x1).
+
+  2. Two-view symmetric:
+     student(x1) matches teacher(x2) and student(x2) matches teacher(x1),
+     and the two directional losses are averaged.
+
+  Args:
+    student_logits_1: Logits from the student network for view 1,
+      shape [..., num_classes].
+    teacher_logits_1: Logits from the teacher network for view 1,
+      shape [..., num_classes]. Treated as stop-gradient after softmax.
+    student_logits_2: Optional logits from the student network for view 2,
+      shape [..., num_classes]. Required when `two_view=True`.
+    teacher_logits_2: Optional logits from the teacher network for view 2,
+      shape [..., num_classes]. Required when `two_view=True`.
+    student_temperature: Temperature for the student softmax. Must be
+      positive.
+    teacher_temperature: Temperature for the teacher softmax. Must be
+      positive.
+    teacher_center: Centering term added to teacher logits before
+      temperature scaling. May be a scalar or an array broadcastable
+      to the shape of `teacher_logits_*`.
+    two_view: If True, computes the two-view symmetric DINO loss using
+      both directions (student_1 vs teacher_2 and student_2 vs teacher_1).
+      If False, or if left as None and the second pair is not provided,
+      computes only the single-view loss between `student_logits_1` and
+      `teacher_logits_1`. If left as None and a second pair
+      (`student_logits_2` / `teacher_logits_2`) *is* provided, two-view
+      symmetric mode is enabled automatically.
+
+  Returns:
+    A scalar DINO loss. In single-view mode, it is the mean cross-entropy
+    over the batch. In two-view mode, it is the average of the two
+    directional losses, each already averaged over the batch.
+  """
+  # Convert logits and center to arrays.
+  student_logits_1 = jnp.asarray(student_logits_1)
+  teacher_logits_1 = jnp.asarray(teacher_logits_1)
+  if student_logits_2 is not None:
+    student_logits_2 = jnp.asarray(student_logits_2)
+  if teacher_logits_2 is not None:
+    teacher_logits_2 = jnp.asarray(teacher_logits_2)
+  teacher_center = jnp.asarray(teacher_center)
+
+  utils.check_subdtype(student_logits_1, jnp.floating)
+  utils.check_subdtype(teacher_logits_1, jnp.floating)
+  if student_logits_2 is not None:
+    utils.check_subdtype(student_logits_2, jnp.floating)
+  if teacher_logits_2 is not None:
+    utils.check_subdtype(teacher_logits_2, jnp.floating)
+
+  # Ensure temperatures are positive (for Python scalars) and convert to arrays.
+  student_temperature = _dino_temperature_to_array(student_temperature)
+  teacher_temperature = _dino_temperature_to_array(teacher_temperature)
+
+  # Decide two-view mode in a jit-safe way.
+  if two_view is None or not isinstance(two_view, bool):
+    two_view_flag = (
+        student_logits_2 is not None or teacher_logits_2 is not None
+    )
+  else:
+    two_view_flag = two_view
+
+  # Single-view mode: use only (student_logits_1, teacher_logits_1).
+  if not two_view_flag:
+    return _single_view_dino_loss(
+        student_logits_1,
+        teacher_logits_1,
+        student_temperature,
+        teacher_temperature,
+        teacher_center,
+    )
+
+  # Two-view mode: requires all four logits.
+  if student_logits_2 is None or teacher_logits_2 is None:
+    raise ValueError(
+        'Two-view DINO loss requested, but `student_logits_2` or '
+        '`teacher_logits_2` is None. Provide all four logits or '
+        'set `two_view=False`.'
+    )
+
+  if not (
+      student_logits_1.shape
+      == student_logits_2.shape
+      == teacher_logits_1.shape
+      == teacher_logits_2.shape
+  ):
+    raise ValueError(
+        'In two-view mode, all logits must have the same shape. Found '
+        f'student_logits_1: {student_logits_1.shape}, '
+        f'student_logits_2: {student_logits_2.shape}, '
+        f'teacher_logits_1: {teacher_logits_1.shape}, '
+        f'teacher_logits_2: {teacher_logits_2.shape}.'
+    )
+
+  loss_12 = _single_view_dino_loss(
+      student_logits_1,
+      teacher_logits_2,
+      student_temperature,
+      teacher_temperature,
+      teacher_center,
+  )
+  loss_21 = _single_view_dino_loss(
+      student_logits_2,
+      teacher_logits_1,
+      student_temperature,
+      teacher_temperature,
+      teacher_center,
+  )
+
+  return 0.5 * (loss_12 + loss_21)
+
+
+def barlow_twins_loss(
+    projection_1: jax.typing.ArrayLike,
+    projection_2: jax.typing.ArrayLike,
+    off_diagonal_scale: jax.typing.ArrayLike = 5e-3,
+    eps: jax.typing.ArrayLike = 1e-12,
+) -> jax.Array:
+  """Barlow Twins loss.
+
+  Computes the Barlow Twins redundancy reduction loss between two
+  batches of projections corresponding to two augmented views of the
+  same inputs.
+
+  Given two batches of projections z1, z2 with shape [batch, feature_dim],
+  Barlow Twins computes the cross-correlation matrix between features of
+  the two views and encourages:
+
+  * On-diagonal entries C_ii to be close to 1.
+  * Off-diagonal entries C_ij (i != j) to be close to 0.
+
+  The loss is:
+      L = sum_i (1 - C_ii)^2 + lambda * sum_{i != j} C_ij^2
+
+  where lambda is `off_diagonal_scale`.
+
+  Args:
+    projection_1: Projections for view 1, shape [batch, feature_dim].
+    projection_2: Projections for view 2, shape [batch, feature_dim].
+    off_diagonal_scale: Weight for off-diagonal correlation terms.
+    eps: Small epsilon added to variances for numerical stability.
+
+  Returns:
+    A scalar Barlow Twins loss.
+  """
+  projection_1 = jnp.asarray(projection_1)
+  projection_2 = jnp.asarray(projection_2)
+
+  utils.check_subdtype(projection_1, jnp.floating)
+  utils.check_subdtype(projection_2, jnp.floating)
+
+  if projection_1.shape != projection_2.shape:
+    raise ValueError(
+        'projection_1 and projection_2 must have the same shape, found '
+        f'{projection_1.shape} and {projection_2.shape}.'
+    )
+  if projection_1.ndim != 2:
+    raise ValueError(
+        'Barlow Twins expects rank-2 inputs [batch, feature_dim], found '
+        f'shape {projection_1.shape}.'
+    )
+
+  batch_size, _ = projection_1.shape
+
+  eps = jnp.asarray(eps, dtype=projection_1.dtype)
+  off_diagonal_scale = jnp.asarray(
+      off_diagonal_scale, dtype=projection_1.dtype
+  )
+
+  # Normalize each feature dimension across the batch.
+  proj1_mean = jnp.mean(projection_1, axis=0, keepdims=True)
+  proj2_mean = jnp.mean(projection_2, axis=0, keepdims=True)
+  proj1_centered = projection_1 - proj1_mean
+  proj2_centered = projection_2 - proj2_mean
+
+  proj1_var = jnp.mean(proj1_centered ** 2, axis=0, keepdims=True)
+  proj2_var = jnp.mean(proj2_centered ** 2, axis=0, keepdims=True)
+  proj1_std = jnp.sqrt(proj1_var + eps)
+  proj2_std = jnp.sqrt(proj2_var + eps)
+
+  proj1_norm = proj1_centered / proj1_std
+  proj2_norm = proj2_centered / proj2_std
+
+  # Cross-correlation matrix C_ij.
+  cross_correlation = (proj1_norm.T @ proj2_norm) / batch_size
+
+  on_diag = jnp.diag(cross_correlation)
+  on_diag_loss = jnp.sum((1.0 - on_diag) ** 2)
+
+  corr_sq = cross_correlation ** 2
+  off_diag_loss = (
+      jnp.sum(corr_sq) - jnp.sum(jnp.diag(corr_sq))
+  )
+
+  loss = on_diag_loss + off_diagonal_scale * off_diag_loss
+  return loss
