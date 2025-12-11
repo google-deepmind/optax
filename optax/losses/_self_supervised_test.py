@@ -157,7 +157,8 @@ class ByolLossTest(absltest.TestCase):
     np.testing.assert_allclose(actual, expected, atol=1e-5)
 
   def test_jit_compatible(self):
-    loss = jax.jit(_self_supervised.byol_loss)(self.online_pred, self.target_proj)
+    loss = jax.jit(_self_supervised.byol_loss)(
+        self.online_pred, self.target_proj)
     self.assertEqual(loss.shape, (4,))
 
 
@@ -187,7 +188,8 @@ class SimSiamLossTest(absltest.TestCase):
     np.testing.assert_allclose(loss, jnp.zeros(1), atol=1e-5)
 
   def test_jit_compatible(self):
-    loss = jax.jit(_self_supervised.simsiam_loss)(self.predictions, self.projections)
+    loss = jax.jit(_self_supervised.simsiam_loss)(
+        self.predictions, self.projections)
     self.assertEqual(loss.shape, (4,))
 
 
@@ -247,8 +249,9 @@ class BarlowTwinsLossTest(absltest.TestCase):
     self.assertEqual(loss.shape, ())
 
   def test_identical_embeddings(self):
-    # When embeddings are identical, cross-correlation should be close to identity
-    # So loss should be close to 0 (only off-diagonal penalty from lambda)
+    # When embeddings are identical, cross-correlation should be close
+    # to identity. So loss should be close to 0 (only off-diagonal penalty
+    # from lambda).
     loss = _self_supervised.barlow_twins_loss(self.z_a, self.z_a)
     # Loss should be relatively small for identical inputs
     self.assertTrue(loss >= 0)
