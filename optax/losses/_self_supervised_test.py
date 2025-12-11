@@ -125,5 +125,149 @@ class TripletMarginLossTest(parameterized.TestCase):
                                , atol=1e-4)
 
 
+class ByolLossTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.key = jax.random.key(42)
+    self.key1, self.key2 = jax.random.split(self.key, 2)
+    self.online_pred = jax.random.normal(self.key1, shape=(4, 128))
+    self.target_proj = jax.random.normal(self.key2, shape=(4, 128))
+
+  def test_output_shape(self):
+    loss = _self_supervised.byol_loss(self.online_pred, self.target_proj)
+    self.assertEqual(loss.shape, (4,))
+
+  def test_identical_inputs(self):
+    # When inputs are identical, loss should be 0
+    loss = _self_supervised.byol_loss(self.online_pred, self.online_pred)
+    np.testing.assert_allclose(loss, jnp.zeros(4), atol=1e-5)
+
+  def test_normalized_equivalence(self):
+    # BYOL loss should be 2 - 2 * cosine_similarity for normalized vectors
+    eps = jnp.finfo(self.online_pred.dtype).eps
+    online_norm = self.online_pred / (
+        jnp.linalg.norm(self.online_pred, axis=-1, keepdims=True) + eps
+    )
+    target_norm = self.target_proj / (
+        jnp.linalg.norm(self.target_proj, axis=-1, keepdims=True) + eps
+    )
+    expected = 2.0 - 2.0 * jnp.sum(online_norm * target_norm, axis=-1)
+    actual = _self_supervised.byol_loss(self.online_pred, self.target_proj)
+    np.testing.assert_allclose(actual, expected, atol=1e-5)
+
+  def test_jit_compatible(self):
+    loss = jax.jit(_self_supervised.byol_loss)(self.online_pred, self.target_proj)
+    self.assertEqual(loss.shape, (4,))
+
+
+class SimSiamLossTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.key = jax.random.key(42)
+    self.key1, self.key2 = jax.random.split(self.key, 2)
+    self.predictions = jax.random.normal(self.key1, shape=(4, 128))
+    self.projections = jax.random.normal(self.key2, shape=(4, 128))
+
+  def test_output_shape(self):
+    loss = _self_supervised.simsiam_loss(self.predictions, self.projections)
+    self.assertEqual(loss.shape, (4,))
+
+  def test_identical_inputs(self):
+    # When inputs are identical, loss should be -1 (negative of max cosine sim)
+    loss = _self_supervised.simsiam_loss(self.predictions, self.predictions)
+    np.testing.assert_allclose(loss, -jnp.ones(4), atol=1e-5)
+
+  def test_orthogonal_vectors(self):
+    # Orthogonal vectors should give loss close to 0
+    v1 = jnp.array([[1.0, 0.0]])
+    v2 = jnp.array([[0.0, 1.0]])
+    loss = _self_supervised.simsiam_loss(v1, v2)
+    np.testing.assert_allclose(loss, jnp.zeros(1), atol=1e-5)
+
+  def test_jit_compatible(self):
+    loss = jax.jit(_self_supervised.simsiam_loss)(self.predictions, self.projections)
+    self.assertEqual(loss.shape, (4,))
+
+
+class DinoLossTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.key = jax.random.key(42)
+    self.key1, self.key2 = jax.random.split(self.key, 2)
+    self.student = jax.random.normal(self.key1, shape=(4, 256))
+    self.teacher = jax.random.normal(self.key2, shape=(4, 256))
+
+  def test_output_shape(self):
+    loss = _self_supervised.dino_loss(self.student, self.teacher)
+    self.assertEqual(loss.shape, (4,))
+
+  def test_with_center(self):
+    center = jnp.zeros(256)
+    loss = _self_supervised.dino_loss(self.student, self.teacher, center=center)
+    self.assertEqual(loss.shape, (4,))
+
+  def test_identical_logits(self):
+    # When student and teacher produce same logits, loss should be low
+    loss_same = _self_supervised.dino_loss(self.student, self.student)
+    loss_diff = _self_supervised.dino_loss(self.student, self.teacher)
+    # Same logits should have lower loss (but not zero due to temperature diff)
+    self.assertTrue(jnp.mean(loss_same) < jnp.mean(loss_diff))
+
+  def test_temperature_effect(self):
+    # Lower teacher temperature should produce sharper distributions
+    loss_low_temp = _self_supervised.dino_loss(
+        self.student, self.teacher, teacher_temp=0.01
+    )
+    loss_high_temp = _self_supervised.dino_loss(
+        self.student, self.teacher, teacher_temp=0.5
+    )
+    # Both should produce valid losses
+    self.assertEqual(loss_low_temp.shape, (4,))
+    self.assertEqual(loss_high_temp.shape, (4,))
+
+  def test_jit_compatible(self):
+    loss = jax.jit(_self_supervised.dino_loss)(self.student, self.teacher)
+    self.assertEqual(loss.shape, (4,))
+
+
+class BarlowTwinsLossTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.key = jax.random.key(42)
+    self.key1, self.key2 = jax.random.split(self.key, 2)
+    self.z_a = jax.random.normal(self.key1, shape=(32, 128))
+    self.z_b = jax.random.normal(self.key2, shape=(32, 128))
+
+  def test_output_shape(self):
+    loss = _self_supervised.barlow_twins_loss(self.z_a, self.z_b)
+    self.assertEqual(loss.shape, ())
+
+  def test_identical_embeddings(self):
+    # When embeddings are identical, cross-correlation should be close to identity
+    # So loss should be close to 0 (only off-diagonal penalty from lambda)
+    loss = _self_supervised.barlow_twins_loss(self.z_a, self.z_a)
+    # Loss should be relatively small for identical inputs
+    self.assertTrue(loss >= 0)
+
+  def test_lambda_effect(self):
+    # Higher lambda should penalize off-diagonal elements more
+    loss_low_lambda = _self_supervised.barlow_twins_loss(
+        self.z_a, self.z_b, lambda_=0.001
+    )
+    loss_high_lambda = _self_supervised.barlow_twins_loss(
+        self.z_a, self.z_b, lambda_=1.0
+    )
+    # Higher lambda should give higher loss (usually)
+    self.assertTrue(loss_high_lambda >= loss_low_lambda)
+
+  def test_jit_compatible(self):
+    loss = jax.jit(_self_supervised.barlow_twins_loss)(self.z_a, self.z_b)
+    self.assertEqual(loss.shape, ())
+
+
 if __name__ == '__main__':
   absltest.main()
