@@ -20,6 +20,7 @@ from typing import Any, Optional
 
 import jax
 import jax.numpy as jnp
+from jax import tree_util as jtu
 from optax._src import numerics
 
 
@@ -176,7 +177,12 @@ def tree_sum(tree: Any) -> jax.typing.ArrayLike:
     a scalar value.
   """
   sums = jax.tree.map(jnp.sum, tree)
-  return jax.tree.reduce(operator.add, sums, initializer=0)
+  # Use tree_reduce_associative for better compile time performance when
+  # available (JAX >= 0.6.0), otherwise fall back to tree.reduce.
+  if hasattr(jtu, 'tree_reduce_associative'):
+    return jtu.tree_reduce_associative(operator.add, sums, identity=0)
+  else:
+    return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
 def tree_max(tree: Any) -> jax.typing.ArrayLike:
