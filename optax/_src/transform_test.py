@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-
 """Tests of gradient transformations."""
 
 from absl.testing import absltest
@@ -126,8 +125,8 @@ class TransformTest(parameterized.TestCase):
       scaled_updates, _ = rescaler.update(updates, {})
 
       # Manually scale updates.
-      def rescale(t):
-        return t * factor  # pylint:disable=cell-var-from-loop  # noqa: B023
+      def rescale(t, factor=factor):
+        return t * factor
 
       manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
@@ -164,8 +163,6 @@ class TransformTest(parameterized.TestCase):
     opt_grad_2, _ = opt.update(grad_2, state)
 
     with self.subTest('Check initial update is correct'):
-      # see https://github.com/google-deepmind/optax/issues/1082
-      # initial step should yield 2 * grad_0 - grad_0 = grad_0
       test_utils.assert_trees_all_close(opt_grad_0, grad_0)
 
     with self.subTest('Check second update is correct'):
@@ -174,27 +171,53 @@ class TransformTest(parameterized.TestCase):
     with self.subTest('Check third update is correct'):
       test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
+  def test_lion_modes_variants(self):
+    updates = jnp.array([0.2, -2.0, 0.5, -0.8])
+    b1 = 0.5
+    smooth_beta = 2.0
+    for mode in ("hard", "smooth", "refined"):
+      opt = transform.scale_by_lion(
+          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta
+      )
+      state = opt.init(updates)
+      out_updates, _ = opt.update(updates, state)
+
+      x = (1.0 - b1) * updates + b1 * state.mu
+
+      if mode == "hard":
+        expected = jnp.sign(x)
+      elif mode == "smooth":
+        expected = jnp.tanh(smooth_beta * x)
+      else:
+        expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
+
+      test_utils.assert_trees_all_close(out_updates, expected)
+
+  def test_lion_invalid_mode_raises(self):
+    updates = jnp.array([0.1, -0.2])
+    # pytype: disable=wrong-arg-types
+    opt = transform.scale_by_lion(mode="invalid_mode")
+    state = opt.init(updates)
+    with self.assertRaises(ValueError):
+      opt.update(updates, state)
+
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
-    # for this objective, the Polyak step-size has an exact model and should
-    # converge to the minimizer in one step
     objective = lambda x: jnp.abs(x).sum()
 
     init_params = jnp.array([1.0, -1.0])
     polyak = transform.scale_by_polyak()
     polyak_state = polyak.init(init_params)
-    # check that polyak state raises an error if it called without a value
+
     with self.assertRaises(TypeError):
       polyak.update(self.per_step_updates, polyak_state, init_params)
 
     value, grad = jax.value_and_grad(objective)(init_params)
     updates, _ = polyak.update(grad, polyak_state, init_params, value=value)
-    # check that objective at (init_params - updates) is smaller than tol
-    print(grad, value, updates)
+
     self.assertLess(objective(init_params - updates), tol)
 
   def test_rms_match_adam(self):
-    """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
     fun = lambda x: optax.tree.norm(x, squared=True)
 
     rms = transform.scale_by_rms(
