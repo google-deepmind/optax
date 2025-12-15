@@ -46,7 +46,7 @@ Barlow Twins loss
 ~~~~~~~~~~~~~~~~~
 .. autofunction:: barlow_twins_loss
 
-BYOL loss
+Byol loss
 ~~~~~~~~~
 .. autofunction:: byol_loss
 
