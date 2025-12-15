@@ -188,30 +188,33 @@ def byol_loss(
 ) -> jax.Array:
   """Bootstrap Your Own Latent (BYOL) loss.
 
-  This implements the BYOL loss between an online and a target network using
-  two augmented views of each sample.
+  Computes the BYOL regression loss between an online network prediction and a
+  target (teacher) network projection using two augmented views of each sample.
+
+  For L2-normalized vectors q and z, the regression loss satisfies:
+
+    ||q - z||^2 = 2 - 2 * cosine_similarity(q, z)
 
   Modes
   -----
-  1. Single-direction (one pair of views):
-     Given two augmented views x1, x2 of the same image, the online network
-     (with predictor head) produces `online_projection_1` from x1, and the
-     target network produces `target_projection_2` from x2.
+  1. Single-direction:
+     Uses only (q1, z2) and returns:
+       mean(2 - 2 * cos(q1, stop_grad(z2)))
 
-     The loss is:
-       mean(2 - 2 * cosine_similarity(q1, z2))
+  2. Symmetric two-view:
+     Uses both directions (q1 vs z2) and (q2 vs z1) and returns:
+       mean(0.5 * [(2 - 2 * cos(q1, stop_grad(z2)))
+                 + (2 - 2 * cos(q2, stop_grad(z1)))])
 
-  2. Symmetric over two views (paper-style):
-     Given two augmented views x1, x2 of the same image, the online network
-     produces `online_projection_1` and `online_projection_2`, and the target
-     network produces `target_projection_1` and `target_projection_2`.
-     All projections are of shape [batch, feature_dim].
+  Examples:
+    >>> import jax.numpy as jnp, optax
+    >>> q1 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+    >>> z2 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+    >>> out = optax.losses.byol_loss(q1, z2)
 
-     For normalized vectors, BYOL minimizes:
-       ||q - z||^2 = 2 - 2 * cosine_similarity(q, z)
-
-     The symmetric loss is:
-       mean(0.5 * [(2 - 2 * cos(q1, z2)) + (2 - 2 * cos(q2, z1))])
+    >>> q2 = jnp.array([[0.0, 1.0], [1.0, 0.0]])
+    >>> z1 = jnp.array([[0.0, 1.0], [1.0, 0.0]])
+    >>> out = optax.losses.byol_loss(q1, z2, q2, z1, symmetric=True)
 
   Args:
     online_projection_1: Online-network prediction for view 1 (q1),
@@ -219,21 +222,28 @@ def byol_loss(
     target_projection_2: Target-network projection for view 2 (z2),
       shape [batch, feature_dim].
     online_projection_2: Optional online-network prediction for view 2 (q2),
-      shape [batch, feature_dim]. Required when `symmetric=True`.
+      shape [batch, feature_dim]. Required when symmetric mode is enabled.
     target_projection_1: Optional target-network projection for view 1 (z1),
-      shape [batch, feature_dim]. Required when `symmetric=True`.
+      shape [batch, feature_dim]. Required when symmetric mode is enabled.
     eps: Small epsilon used inside cosine similarity for numerical stability.
     symmetric: If True, computes the symmetric BYOL loss using both directions
-      (q1 vs z2 and q2 vs z1). If False, or if left as None and the second
-      pair is not provided, computes only the single-direction loss between
+      (q1 vs z2 and q2 vs z1). If False, or if left as None and the second pair
+      is not provided, computes only the single-direction loss between
       `online_projection_1` and `target_projection_2`. If left as None and a
-      second pair (`online_projection_2` / `target_projection_1`) *is*
-      provided, symmetric mode is enabled automatically.
+      second pair (`online_projection_2` / `target_projection_1`) *is* provided,
+      symmetric mode is enabled automatically.
 
   Returns:
     A scalar BYOL loss averaged over the batch. In symmetric mode, the loss is
     averaged over both directions and the batch.
+
+  References:
+    [1] J.-B. Grill et al,
+        `Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning
+        <https://arxiv.org/abs/2006.07733>`_, 2020.
   """
+
+
   online_projection_1 = jnp.asarray(online_projection_1)
   target_projection_2 = jnp.asarray(target_projection_2)
 
@@ -334,17 +344,36 @@ def simsiam_loss(
 ) -> jax.Array:
   """SimSiam loss.
 
-  Implements the SimSiam loss between predictor outputs and target
-  projections from two augmented views of the same inputs.
+  Computes the SimSiam negative cosine similarity loss between a predictor
+  output and a target projection from two augmented views of the same inputs.
+
+  The per-example loss is:
+
+    D(p, z) = -cosine_similarity(p, stop_grad(z))
 
   Modes
   -----
-  1. Single-direction loss:
-     D(p1, z2) = -cos(p1, stop_grad(z2))
+  1. Single-direction:
+     Uses only (p1, z2) and returns:
+       mean(-cos(p1, stop_grad(z2)))
 
-  2. Symmetric two-view loss:
-     D(p, z) = -cos(p, stop_grad(z))
-     loss = mean(0.5 * [D(p1, z2) + D(p2, z1)])
+  2. Symmetric two-view:
+     Uses both directions (p1 vs z2) and (p2 vs z1) and returns:
+       mean(0.5 * [-cos(p1, stop_grad(z2)) - cos(p2, stop_grad(z1))])
+
+  Examples:
+    >>> import jax.numpy as jnp, optax
+    >>> p1 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+    >>> z2 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+    >>> out = optax.losses.simsiam_loss(p1, z2)
+    >>> print(out)
+    -1.0
+
+    >>> p2 = jnp.array([[0.0, 1.0], [1.0, 0.0]])
+    >>> z1 = jnp.array([[0.0, 1.0], [1.0, 0.0]])
+    >>> out = optax.losses.simsiam_loss(p1, z2, p2, z1, symmetric=True)
+    >>> print(out)
+    -1.0
 
   Args:
     predictor_projection_1: Predictor output for view 1 (p1),
@@ -352,24 +381,28 @@ def simsiam_loss(
     target_projection_2: Target projection for view 2 (z2),
       shape [batch, feature_dim]. Treated as stop-gradient.
     predictor_projection_2: Optional predictor output for view 2 (p2),
-      shape [batch, feature_dim]. Required when `symmetric=True`.
+      shape [batch, feature_dim]. Required when symmetric mode is enabled.
     target_projection_1: Optional target projection for view 1 (z1),
       shape [batch, feature_dim]. Treated as stop-gradient. Required when
-      `symmetric=True`.
-    eps: Small epsilon used inside cosine similarity for numerical
-      stability.
+      symmetric mode is enabled.
+    eps: Small epsilon used inside cosine similarity for numerical stability.
     symmetric: If True, computes the symmetric SimSiam loss using both
-      directions (p1 vs z2 and p2 vs z1). If False, or if left as None and
-      the second pair is not provided, computes only the single-direction
-      loss between `predictor_projection_1` and `target_projection_2`. If
-      left as None and a second pair (`predictor_projection_2` /
-      `target_projection_1`) *is* provided, symmetric mode is enabled
-      automatically.
+      directions (p1 vs z2 and p2 vs z1). If False, or if left as None and the
+      second pair is not provided, computes only the single-direction loss
+      between `predictor_projection_1` and `target_projection_2`. If left as
+      None and a second pair (`predictor_projection_2` / `target_projection_1`)
+      *is* provided, symmetric mode is enabled automatically.
 
   Returns:
-    A scalar SimSiam loss averaged over the batch. In symmetric mode, the
-    loss is averaged over both directions and the batch.
+    A scalar SimSiam loss averaged over the batch. In symmetric mode, the loss
+    is averaged over both directions and the batch.
+
+  References:
+    [1] X. Chen and K. He,
+        `Exploring Simple Siamese Representation Learning
+        <https://arxiv.org/abs/2011.10566>`_, 2021.
   """
+
   predictor_projection_1 = jnp.asarray(predictor_projection_1)
   target_projection_2 = jnp.asarray(target_projection_2)
 
@@ -510,17 +543,34 @@ def dino_loss(
 ) -> jax.Array:
   """DINO loss (self-distillation with no labels).
 
-  Computes the cross-entropy between teacher and student distributions
-  as in DINO for self-supervised ViT training.
+  Computes the cross-entropy between teacher and student distributions as in
+  DINO for self-supervised ViT training.
+
+  The teacher distribution is obtained by applying centering and temperature
+  scaling to the teacher logits, followed by a softmax. Gradients are stopped
+  on the teacher branch. The student distribution is produced by applying a
+  temperature-scaled log-softmax to the student logits.
 
   Modes
   -----
   1. Single-view:
-     student(x1) matches teacher(x1).
+     Matches student(x1) to teacher(x1) and returns:
+       CE(stop_grad(softmax((t1 - c) / T_t)), log_softmax(s1 / T_s))
 
   2. Two-view symmetric:
-     student(x1) matches teacher(x2) and student(x2) matches teacher(x1),
-     and the two directional losses are averaged.
+     Matches student(x1) to teacher(x2) and student(x2) to teacher(x1), and
+     averages the two directional losses:
+       0.5 * [CE(t2 -> s1) + CE(t1 -> s2)]
+
+  Examples:
+    >>> import jax.numpy as jnp, optax
+    >>> s1 = jnp.zeros((2, 3))
+    >>> t1 = jnp.zeros((2, 3))
+    >>> out = optax.losses.dino_loss(s1, t1)
+
+    >>> s2 = jnp.zeros((2, 3))
+    >>> t2 = jnp.zeros((2, 3))
+    >>> out = optax.losses.dino_loss(s1, t1, s2, t2, two_view=True)
 
   Args:
     student_logits_1: Logits from the student network for view 1,
@@ -531,26 +581,29 @@ def dino_loss(
       shape [..., num_classes]. Required when `two_view=True`.
     teacher_logits_2: Optional logits from the teacher network for view 2,
       shape [..., num_classes]. Required when `two_view=True`.
-    student_temperature: Temperature for the student softmax. Must be
-      positive.
-    teacher_temperature: Temperature for the teacher softmax. Must be
-      positive.
-    teacher_center: Centering term added to teacher logits before
-      temperature scaling. May be a scalar or an array broadcastable
-      to the shape of `teacher_logits_*`.
-    two_view: If True, computes the two-view symmetric DINO loss using
-      both directions (student_1 vs teacher_2 and student_2 vs teacher_1).
-      If False, or if left as None and the second pair is not provided,
-      computes only the single-view loss between `student_logits_1` and
-      `teacher_logits_1`. If left as None and a second pair
-      (`student_logits_2` / `teacher_logits_2`) *is* provided, two-view
-      symmetric mode is enabled automatically.
+    student_temperature: Temperature for the student softmax. Must be positive.
+    teacher_temperature: Temperature for the teacher softmax. Must be positive.
+    teacher_center: Centering term added to teacher logits before temperature
+      scaling. May be a scalar or an array broadcastable to the shape of
+      `teacher_logits_*`.
+    two_view: If True, computes the two-view symmetric DINO loss using both
+      directions (student_1 vs teacher_2 and student_2 vs teacher_1). If False,
+      or if left as None and the second pair is not provided, computes only the
+      single-view loss between `student_logits_1` and `teacher_logits_1`. If left
+      as None and a second pair (`student_logits_2` / `teacher_logits_2`) *is*
+      provided, two-view symmetric mode is enabled automatically.
 
   Returns:
-    A scalar DINO loss. In single-view mode, it is the mean cross-entropy
-    over the batch. In two-view mode, it is the average of the two
-    directional losses, each already averaged over the batch.
+    A scalar DINO loss. In single-view mode, it is the mean cross-entropy over
+    the batch. In two-view mode, it is the average of the two directional losses,
+    each already averaged over the batch.
+
+  References:
+    [1] M. Caron et al,
+        `Emerging Properties in Self-Supervised Vision Transformers
+        <https://arxiv.org/abs/2104.14294>`_, 2021.
   """
+
   # Convert logits and center to arrays.
   student_logits_1 = jnp.asarray(student_logits_1)
   teacher_logits_1 = jnp.asarray(teacher_logits_1)
@@ -637,21 +690,25 @@ def barlow_twins_loss(
 ) -> jax.Array:
   """Barlow Twins loss.
 
-  Computes the Barlow Twins redundancy reduction loss between two
-  batches of projections corresponding to two augmented views of the
-  same inputs.
+  Computes the Barlow Twins redundancy reduction loss between two batches of
+  projections corresponding to two augmented views of the same inputs.
 
-  Given two batches of projections z1, z2 with shape [batch, feature_dim],
-  Barlow Twins computes the cross-correlation matrix between features of
-  the two views and encourages:
-
-  * On-diagonal entries C_ii to be close to 1.
-  * Off-diagonal entries C_ij (i != j) to be close to 0.
+  Given two batches of projections z1 and z2 with shape [batch, feature_dim],
+  Barlow Twins computes the cross-correlation matrix between features of the
+  two views and encourages:
+    * On-diagonal entries C_ii to be close to 1.
+    * Off-diagonal entries C_ij (i != j) to be close to 0.
 
   The loss is:
       L = sum_i (1 - C_ii)^2 + lambda * sum_{i != j} C_ij^2
 
   where lambda is `off_diagonal_scale`.
+
+  Examples:
+    >>> import jax.numpy as jnp, optax
+    >>> z1 = jnp.array([[1.0, 2.0], [3.0, 4.0]])
+    >>> z2 = jnp.array([[1.0, 2.0], [3.0, 4.0]])
+    >>> out = optax.losses.barlow_twins_loss(z1, z2)
 
   Args:
     projection_1: Projections for view 1, shape [batch, feature_dim].
@@ -661,6 +718,11 @@ def barlow_twins_loss(
 
   Returns:
     A scalar Barlow Twins loss.
+
+  References:
+    [1] J. Zbontar et al,
+        `Barlow Twins: Self-Supervised Learning via Redundancy Reduction
+        <https://arxiv.org/abs/2103.03230>`_, 2021.
   """
   projection_1 = jnp.asarray(projection_1)
   projection_2 = jnp.asarray(projection_2)
