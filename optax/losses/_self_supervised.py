@@ -207,7 +207,8 @@ def byol_loss(
                  + (2 - 2 * cos(q2, stop_grad(z1)))])
 
   Examples:
-    >>> import jax.numpy as jnp, optax
+    >>> import jax.numpy as jnp
+    >>> import optax
     >>> q1 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
     >>> z2 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
     >>> out = optax.losses.byol_loss(q1, z2)
@@ -230,7 +231,7 @@ def byol_loss(
       (q1 vs z2 and q2 vs z1). If False, or if left as None and the second pair
       is not provided, computes only the single-direction loss between
       `online_projection_1` and `target_projection_2`. If left as None and a
-      second pair (`online_projection_2` / `target_projection_1`) *is* provided,
+      second pair (`online_projection_2` / `target_projection_1`) is provided,
       symmetric mode is enabled automatically.
 
   Returns:
@@ -359,10 +360,12 @@ def simsiam_loss(
 
   2. Symmetric two-view:
      Uses both directions (p1 vs z2) and (p2 vs z1) and returns:
-       mean(0.5 * [-cos(p1, stop_grad(z2)) - cos(p2, stop_grad(z1))])
+       mean(0.5 * [-cos(p1, stop_grad(z2))
+                 - cos(p2, stop_grad(z1))])
 
   Examples:
-    >>> import jax.numpy as jnp, optax
+    >>> import jax.numpy as jnp
+    >>> import optax
     >>> p1 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
     >>> z2 = jnp.array([[1.0, 0.0], [0.0, 1.0]])
     >>> out = optax.losses.simsiam_loss(p1, z2)
@@ -391,7 +394,7 @@ def simsiam_loss(
       second pair is not provided, computes only the single-direction loss
       between `predictor_projection_1` and `target_projection_2`. If left as
       None and a second pair (`predictor_projection_2` / `target_projection_1`)
-      *is* provided, symmetric mode is enabled automatically.
+      is provided, symmetric mode is enabled automatically.
 
   Returns:
     A scalar SimSiam loss averaged over the batch. In symmetric mode, the loss
@@ -555,7 +558,8 @@ def dino_loss(
   -----
   1. Single-view:
      Matches student(x1) to teacher(x1) and returns:
-       CE(stop_grad(softmax((t1 - c) / T_t)), log_softmax(s1 / T_s))
+       CE(stop_grad(softmax((t1 - c) / T_t)),
+          log_softmax(s1 / T_s))
 
   2. Two-view symmetric:
      Matches student(x1) to teacher(x2) and student(x2) to teacher(x1), and
@@ -563,7 +567,8 @@ def dino_loss(
        0.5 * [CE(t2 -> s1) + CE(t1 -> s2)]
 
   Examples:
-    >>> import jax.numpy as jnp, optax
+    >>> import jax.numpy as jnp
+    >>> import optax
     >>> s1 = jnp.zeros((2, 3))
     >>> t1 = jnp.zeros((2, 3))
     >>> out = optax.losses.dino_loss(s1, t1)
@@ -589,14 +594,14 @@ def dino_loss(
     two_view: If True, computes the two-view symmetric DINO loss using both
       directions (student_1 vs teacher_2 and student_2 vs teacher_1). If False,
       or if left as None and the second pair is not provided, computes only the
-      single-view loss between `student_logits_1` and `teacher_logits_1`. If left
-      as None and a second pair (`student_logits_2` / `teacher_logits_2`) *is*
-      provided, two-view symmetric mode is enabled automatically.
+      single-view loss between `student_logits_1` and `teacher_logits_1`. If
+      left as None and a second pair (`student_logits_2` / `teacher_logits_2`)
+      is provided, two-view symmetric mode is enabled automatically.
 
   Returns:
     A scalar DINO loss. In single-view mode, it is the mean cross-entropy over
-    the batch. In two-view mode, it is the average of the two directional losses,
-    each already averaged over the batch.
+    the batch. In two-view mode, it is the average of the two directional
+    losses, each already averaged over the batch.
 
   References:
     [1] M. Caron et al,
@@ -705,7 +710,8 @@ def barlow_twins_loss(
   where lambda is `off_diagonal_scale`.
 
   Examples:
-    >>> import jax.numpy as jnp, optax
+    >>> import jax.numpy as jnp
+    >>> import optax
     >>> z1 = jnp.array([[1.0, 2.0], [3.0, 4.0]])
     >>> z2 = jnp.array([[1.0, 2.0], [3.0, 4.0]])
     >>> out = optax.losses.barlow_twins_loss(z1, z2)
@@ -724,6 +730,7 @@ def barlow_twins_loss(
         `Barlow Twins: Self-Supervised Learning via Redundancy Reduction
         <https://arxiv.org/abs/2103.03230>`_, 2021.
   """
+
   projection_1 = jnp.asarray(projection_1)
   projection_2 = jnp.asarray(projection_2)
 
