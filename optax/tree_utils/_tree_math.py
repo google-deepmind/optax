@@ -16,9 +16,8 @@
 
 import functools
 import operator
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
@@ -82,7 +81,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
 
 
 def tree_scale(
-    scalar: Union[float, jax.Array],
+    scalar: jax.typing.ArrayLike,
     tree: Any,
 ) -> Any:
   r"""Multiply a tree by a scalar.
@@ -100,7 +99,7 @@ def tree_scale(
 
 
 def tree_add_scale(
-    tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
+    tree_x: Any, scalar: jax.typing.ArrayLike, tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
 
@@ -116,19 +115,32 @@ def tree_add_scale(
   """
   scalar = jnp.asarray(scalar)
   return jax.tree.map(
-      lambda x, y: (None if x is None else
-                    (x + jnp.astype(scalar, jnp.asarray(x).dtype) * y)),
+      lambda x, y: (None if x is None else (x + scalar * y)),
       tree_x, tree_y, is_leaf=lambda x: x is None)
 
 
-_vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
+def _vdot(a, b, precision=jax.lax.Precision.HIGHEST):
+  """Compute the inner product between two (possibly complex) arrays."""
+  if jax.__version__ < "0.7.2":
+    return jnp.vdot(a, b, precision=precision)
+  assert a.shape == b.shape
+  if jax.dtypes.issubdtype(a.dtype, jnp.complexfloating):
+    a = jnp.conj(a)
+  # jnp.vdot internally uses ravel(), which leads to undesirable comms
+  # in distributed setups, and failures when using explicit-sharding.
+  mesh = jax.typeof(a).sharding.mesh
+  if mesh.are_all_axes_explicit:
+    sharding = jax.sharding.NamedSharding(mesh, jax.P())
+  else:
+    sharding = None
+  return jnp.tensordot(a, b, a.ndim, precision=precision, out_sharding=sharding)
 
 
 def _vdot_safe(a, b):
   return _vdot(jnp.asarray(a), jnp.asarray(b))
 
 
-def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
+def tree_vdot(tree_x: Any, tree_y: Any) -> jax.typing.ArrayLike:
   r"""Compute the inner product between two pytrees.
 
   Args:
@@ -154,7 +166,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
   return jax.tree.reduce(operator.add, vdots, initializer=0)
 
 
-def tree_sum(tree: Any) -> chex.Numeric:
+def tree_sum(tree: Any) -> jax.typing.ArrayLike:
   """Compute the sum of all the elements in a pytree.
 
   Args:
@@ -167,7 +179,7 @@ def tree_sum(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
-def tree_max(tree: Any) -> chex.Numeric:
+def tree_max(tree: Any) -> jax.typing.ArrayLike:
   """Compute the max of all the elements in a pytree.
 
   Args:
@@ -181,7 +193,7 @@ def tree_max(tree: Any) -> chex.Numeric:
   return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
 
 
-def tree_min(tree: Any) -> chex.Numeric:
+def tree_min(tree: Any) -> jax.typing.ArrayLike:
   """Compute the min of all the elements in a pytree.
 
   Args:

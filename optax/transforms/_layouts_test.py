@@ -15,9 +15,9 @@
 """Tests for methods in `optax.transforms._layouts.py`."""
 
 from absl.testing import absltest
-import chex
 import jax.numpy as jnp
 from optax._src import alias
+from optax._src import test_utils
 from optax._src import update
 from optax.transforms import _layouts
 
@@ -50,7 +50,7 @@ class LayoutsTest(absltest.TestCase):
     sgd_params_flatten = update.apply_updates(optax_sgd_params, updates_sgd)
 
     # Test that both give the same result
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         sgd_params_no_flatten, sgd_params_flatten, atol=1e-7, rtol=1e-7
     )
 

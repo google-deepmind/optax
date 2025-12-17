@@ -49,7 +49,7 @@ def tree_cast_like(tree: T, other_tree: chex.ArrayTree) -> T:
 
 
 def tree_cast(
-    tree: chex.ArrayTree, dtype: Optional[chex.ArrayDType]
+    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
 ) -> chex.ArrayTree:
   """Cast tree to given dtype, skip if None.
 
@@ -76,7 +76,7 @@ def tree_cast(
 
 def tree_dtype(
     tree: chex.ArrayTree, mixed_dtype_handler: Optional[str] = None
-) -> chex.ArrayDType:
+) -> jax.typing.DTypeLike:
   """Fetch dtype of tree.
 
   If the tree is empty, returns the default dtype of JAX arrays.
@@ -127,7 +127,7 @@ def tree_dtype(
     >>> # -> will throw an error because int32 and uint32
     >>> # cannot be promoted to one another.
     >>> optax.tree_utils.tree_dtype(tree, 'promote')
-    dtype('int64')
+    dtype('int32')
 
   .. seealso:: :func:`jax.numpy.promote_types`,
     `Type promotion semantics in JAX
@@ -166,7 +166,7 @@ def tree_dtype(
 
 
 def _tree_assert_all_dtypes_equal(
-    tree: chex.ArrayTree, dtype: chex.ArrayDType
+    tree: chex.ArrayTree, dtype: jax.typing.DTypeLike
 ) -> None:
   """Checks that all leaves of the tree have the given dtype.
 
@@ -194,8 +194,8 @@ def _tree_assert_all_dtypes_equal(
 
 
 def _lower_dtype(
-    dtype1: chex.ArrayDType, dtype2: chex.ArrayDType
-) -> chex.ArrayDType:
+    dtype1: jax.typing.DTypeLike, dtype2: jax.typing.DTypeLike
+) -> jax.typing.DTypeLike:
   """Returns lower dtype among two dtypes, if any can be promoted to the other.
 
   Args:
@@ -219,8 +219,8 @@ def _lower_dtype(
 
 
 def _higher_dtype(
-    dtype1: chex.ArrayDType, dtype2: chex.ArrayDType
-) -> chex.ArrayDType:
+    dtype1: jax.typing.DTypeLike, dtype2: jax.typing.DTypeLike
+) -> jax.typing.DTypeLike:
   """Returns higher dtype among two dtypes, if any can be promoted to the other.
 
   Args:

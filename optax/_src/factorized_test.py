@@ -16,10 +16,10 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import factorized
+from optax._src import test_utils
 from optax.transforms import _accumulation
 
 
@@ -30,22 +30,20 @@ class FactorizedTest(parameterized.TestCase):
     self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
     self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
-  @chex.all_variants
   def test_scale_by_factored_rms(self):
     params = self.init_params
 
     scaler = factorized.scale_by_factored_rms()
-    init_fn = self.variant(scaler.init)
-    transform_fn = self.variant(scaler.update)
+    init_fn = jax.jit(scaler.init)
+    transform_fn = jax.jit(scaler.update)
 
     state = init_fn(params)
-    chex.assert_tree_all_finite(state)
+    test_utils.assert_tree_all_finite(state)
 
     updates, state = transform_fn(self.per_step_updates, state, params)
-    chex.assert_tree_all_finite((params, updates, state))
-    chex.assert_trees_all_equal_shapes(params, updates)
+    test_utils.assert_tree_all_finite((params, updates, state))
+    test_utils.assert_trees_all_equal_shapes(params, updates)
 
-  @chex.variants(with_jit=True, without_jit=True, with_device=True)
   @parameterized.product(
       factorized_dims=(True, False), dtype=('bfloat16', 'float32')
   )
@@ -62,11 +60,10 @@ class FactorizedTest(parameterized.TestCase):
     else:
       params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
-    updates, _ = self.variant(opt.update)(grads, state, params)
+    state = jax.jit(opt.init)(params)
+    updates, _ = jax.jit(opt.update)(grads, state, params)
     self.assertEqual(updates.dtype, params.dtype)
 
-  @chex.variants(with_jit=True, without_jit=True, with_device=True)
   @parameterized.product(
       factorized_dims=(True, False), dtype=('bfloat16', 'float32')
   )
@@ -86,9 +83,9 @@ class FactorizedTest(parameterized.TestCase):
     else:
       params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
-    updates, _ = self.variant(opt.update)(grads, state, params)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    state = jax.jit(opt.init)(params)
+    updates, _ = jax.jit(opt.update)(grads, state, params)
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
 if __name__ == '__main__':

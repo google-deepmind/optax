@@ -58,10 +58,10 @@ class Gumbel:
 def make_perturbed_fun(
     fun: Callable[[chex.ArrayTree], chex.ArrayTree],
     num_samples: int = 1000,
-    sigma: float = 0.1,
+    sigma: jax.typing.ArrayLike = 0.1,
     noise=Gumbel(),
     use_baseline=True,
-) -> Callable[[chex.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
+) -> Callable[[base.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
   r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
   Let :math:`f` be a function, :math:`\sigma` be a scalar, :math:`\mu` be a
@@ -139,10 +139,10 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """  # noqa: E501
 
-  def mc_estimator(key: chex.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+  def mc_estimator(key: base.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
 
     def stoch_estimator(
-        key: chex.PRNGKey, x: chex.ArrayTree, baseline: chex.ArrayTree
+        key: base.PRNGKey, x: chex.ArrayTree, baseline: chex.ArrayTree
     ) -> chex.ArrayTree:
       sample = optax.tree.random_like(key, x, sampler=noise.sample)
       shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)

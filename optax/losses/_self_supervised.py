@@ -14,15 +14,18 @@
 # ==============================================================================
 """Self supervised losses."""
 
-import chex
+import jax
 from jax import lax
 import jax.numpy as jnp
+from optax._src import utils
 from optax.losses import _regression
 
 
 def ntxent(
-    embeddings: chex.Array, labels: chex.Array, temperature: chex.Numeric = 0.07
-) -> chex.Numeric:
+    embeddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+    temperature: jax.typing.ArrayLike = 0.07,
+) -> jax.Array:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
 
   Examples:
@@ -75,7 +78,7 @@ def ntxent(
 
   .. versionadded:: 0.2.3
   """
-  chex.assert_type([embeddings], float)
+  utils.check_subdtype(embeddings, jnp.floating)
   if labels.shape[0] != embeddings.shape[0]:
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
@@ -121,14 +124,14 @@ def ntxent(
 
 
 def triplet_margin_loss(
-    anchors: chex.Array,
-    positives: chex.Array,
-    negatives: chex.Array,
+    anchors: jax.typing.ArrayLike,
+    positives: jax.typing.ArrayLike,
+    negatives: jax.typing.ArrayLike,
     axis: int = -1,
-    norm_degree: chex.Numeric = 2,
-    margin: chex.Numeric = 1.0,
-    eps: chex.Numeric = 1e-6,
-) -> chex.Array:
+    norm_degree: jax.typing.ArrayLike = 2,
+    margin: jax.typing.ArrayLike = 1.0,
+    eps: jax.typing.ArrayLike = 1e-6,
+) -> jax.Array:
   """Returns the triplet loss for a batch of embeddings.
 
   Examples:
@@ -162,10 +165,12 @@ def triplet_margin_loss(
   References:
       V. Balntas et al,
       `Learning shallow convolutional feature descriptors with triplet losses
-      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`
-      _, 2016
+      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`_,
+      2016.
   """
-  chex.assert_type([anchors, positives, negatives], float)
+  utils.check_subdtype(anchors, jnp.floating)
+  utils.check_subdtype(positives, jnp.floating)
+  utils.check_subdtype(negatives, jnp.floating)
   positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree)
                                 .sum(axis) + eps, 1/norm_degree)
   negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree)

@@ -20,10 +20,11 @@ from typing import Optional, Union
 
 import chex
 import jax
+from optax._src import base
 
 
 def tree_split_key_like(
-    rng_key: chex.PRNGKey, target_tree: chex.ArrayTree
+    rng_key: base.PRNGKey, target_tree: chex.ArrayTree
 ) -> chex.ArrayTree:
   """Split keys to match structure of target tree.
 
@@ -40,12 +41,14 @@ def tree_split_key_like(
 
 
 def tree_random_like(
-    rng_key: chex.PRNGKey,
+    rng_key: base.PRNGKey,
     target_tree: chex.ArrayTree,
     sampler: Union[
-        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType], chex.Array],
-        Callable[[chex.PRNGKey, chex.Shape, chex.ArrayDType,
-                  jax.sharding.Sharding], chex.Array]] = jax.random.normal,
+        Callable[[base.PRNGKey, base.Shape, jax.typing.DTypeLike],
+                 jax.typing.ArrayLike],
+        Callable[[base.PRNGKey, base.Shape, jax.typing.DTypeLike,
+                  jax.sharding.Sharding],
+                 jax.typing.ArrayLike]] = jax.random.normal,
     dtype: Optional[chex.ArrayDType] = None,
 ) -> chex.ArrayTree:
   """Create tree with random entries of the same shape as target tree.

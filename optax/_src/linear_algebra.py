@@ -17,13 +17,13 @@
 from collections.abc import Callable
 import functools
 from typing import Optional, Union
+import warnings
 
 import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
 from optax._src import base
-from optax._src import numerics
 import optax.tree
 
 
@@ -32,11 +32,21 @@ def _normalize_tree(x):
   return optax.tree.scale(1.0 / optax.tree.norm(x), x)
 
 
-def global_norm(updates: base.PyTree) -> chex.Array:
-  """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(
-      sum(jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates))
+def global_norm(updates: base.PyTree) -> jax.Array:
+  """Compute the global norm across a nested structure of tensors.
+
+  .. warning::
+    Deprecated in favor of :func:`optax.tree.norm`.
+  Args:
+    updates: A nested structure of tensors.
+  Returns:
+    The global L2 norm of the updates.
+  """
+  warnings.warn(
+      'optax.global_norm is deprecated in favor of optax.tree.norm',
+      DeprecationWarning
   )
+  return optax.tree.norm(updates)
 
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
@@ -50,14 +60,15 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 
 def power_iteration(
-    matrix: Union[chex.Array, Callable[[chex.ArrayTree], chex.ArrayTree]],
+    matrix: Union[
+        jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
     *,
     v0: Optional[chex.ArrayTree] = None,
-    num_iters: int = 100,
-    error_tolerance: float = 1e-6,
+    num_iters: jax.typing.ArrayLike = 100,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
-    key: Optional[chex.PRNGKey] = None,
-) -> tuple[chex.Numeric, chex.ArrayTree]:
+    key: Optional[base.PRNGKey] = None,
+) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
@@ -143,11 +154,11 @@ def power_iteration(
 
 
 def matrix_inverse_pth_root(
-    matrix: chex.Array,
-    p: int,
-    num_iters: int = 100,
-    ridge_epsilon: float = 1e-6,
-    error_tolerance: float = 1e-6,
+    matrix: jax.typing.ArrayLike,
+    p: jax.typing.ArrayLike,
+    num_iters: jax.typing.ArrayLike = 100,
+    ridge_epsilon: jax.typing.ArrayLike = 1e-6,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
 ):
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
@@ -285,7 +296,7 @@ def nnls(
     b: jax.Array,
     iters: int,
     unroll: Union[int, bool] = 1,
-    L: Union[jax.Array, float, None] = None,
+    L: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
   r"""Solves the non-negative least squares problem.
 

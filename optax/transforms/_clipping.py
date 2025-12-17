@@ -24,12 +24,12 @@ import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
-from optax._src import linear_algebra
 from optax._src import numerics
+from optax._src import utils
 import optax.tree
 
 
-def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
+def clip(max_delta: jax.typing.ArrayLike) -> base.GradientTransformation:
   """Clips updates element-wise, to be in ``[-max_delta, +max_delta]``.
 
   Args:
@@ -46,7 +46,9 @@ def clip(max_delta: chex.Numeric) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
+def clip_by_block_rms(
+    threshold: jax.typing.ArrayLike
+) -> base.GradientTransformation:
   """Clips updates to a max rms for the gradient of each param vector or matrix.
 
   A `block` is here a weight vector (e.g. in a Linear layer) or a weight matrix
@@ -74,7 +76,9 @@ def clip_by_block_rms(threshold: float) -> base.GradientTransformation:
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
+def clip_by_global_norm(
+    max_norm: jax.typing.ArrayLike  # float
+) -> base.GradientTransformation:
   """Clips updates using their global norm.
 
   Args:
@@ -90,13 +94,13 @@ def clip_by_global_norm(max_norm: float) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = linear_algebra.global_norm(updates)
+    g_norm = optax.tree.norm(updates)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analyzed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
     # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
-    chex.assert_shape(trigger, ())  # A scalar.
+    utils.check_rank(trigger, 0)  # A scalar.
 
     def clip_fn(t):
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
@@ -115,7 +119,7 @@ def _check_arrays_have_batch_dim(grads: chex.ArrayTree) -> bool:
 
 
 def per_example_global_norm_clip(
-    grads: chex.ArrayTree, l2_norm_clip: float
+    grads: chex.ArrayTree, l2_norm_clip: jax.typing.ArrayLike  # float
 ) -> tuple[chex.ArrayTree, jax.Array]:
   """Applies gradient clipping per-example using their global norm.
 
@@ -154,7 +158,7 @@ def per_example_global_norm_clip(
         " `grads` to have a batch dimension in the 0th axis."
     )
 
-  global_grad_norms = jax.vmap(linear_algebra.global_norm)(grads)
+  global_grad_norms = jax.vmap(optax.tree.norm)(grads)
   multipliers = jnp.nan_to_num(
       jnp.minimum(l2_norm_clip / global_grad_norms, 1.0), nan=1.0
   )
@@ -166,7 +170,9 @@ def per_example_global_norm_clip(
 
 
 def per_example_layer_norm_clip(
-    grads: chex.ArrayTree, global_l2_norm_clip: float, uniform: bool = True
+    grads: chex.ArrayTree,
+    global_l2_norm_clip: jax.typing.ArrayLike,  # float
+    uniform: bool = True
 ) -> tuple[chex.ArrayTree, chex.ArrayTree]:
   """Applies gradient clipping per-example using per-layer norms.
 
@@ -245,8 +251,8 @@ def per_example_layer_norm_clip(
 
 
 def unitwise_norm(
-    x: chex.Array, axis: Optional[Union[int, tuple[int, ...]]] = None
-) -> chex.Array:
+    x: jax.typing.ArrayLike, axis: Optional[Union[int, tuple[int, ...]]] = None
+) -> jax.Array:
   """Computes the L2 norm of each unit separately.
 
   A "unit" is a slice of `x` along the dimensions specified by `axis`. If `axis`
@@ -283,27 +289,27 @@ def unitwise_norm(
         f"Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}. "
         "Use axis parameter to specify reduction axes for other shapes."
     )
-  chex.assert_is_broadcastable(squared_norm.shape, x.shape)
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)
 
 
 def unitwise_clip(
-    g_norm: chex.Array,
-    max_norm: chex.Array,
-    grad: chex.Array,
-    div_eps: float = 1e-6,
-) -> chex.Array:
+    g_norm: jax.typing.ArrayLike,
+    max_norm: jax.typing.ArrayLike,
+    grad: jax.typing.ArrayLike,
+    div_eps: jax.typing.ArrayLike = 1e-6,
+) -> jax.Array:
   """Applies gradient clipping unit-wise."""
   # This little max(., div_eps) is distinct from the normal eps and just
   # prevents division by zero. It technically should be impossible to engage.
   clipped_grad = grad * (max_norm / jnp.maximum(g_norm, div_eps))
-  chex.assert_equal_shape((g_norm, max_norm, grad, clipped_grad))
+  utils.check_shapes_equal(g_norm, max_norm)
+  utils.check_shapes_equal(g_norm, grad)
   return jnp.where(g_norm < max_norm, grad, clipped_grad)
 
 
 def adaptive_grad_clip(
-    clipping: float,
-    eps: float = 1e-3,
+    clipping: jax.typing.ArrayLike,  # float
+    eps: jax.typing.ArrayLike = 1e-3,
     axis: Optional[Union[int, tuple[int, ...]]] = None,
 ) -> base.GradientTransformation:
   """Clips updates to be at most ``clipping * parameter_norm``, unit-wise.

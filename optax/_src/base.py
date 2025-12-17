@@ -29,12 +29,13 @@ NO_PARAMS_MSG = (
 
 PyTree = Any
 Shape = Sequence[int]
+PRNGKey = jax.Array
 
 OptState = chex.ArrayTree  # States are arbitrary nests of `jnp.ndarrays`.
 Params = chex.ArrayTree  # Parameters are arbitrary nests of `jnp.ndarrays`.
 Updates = Params  # Gradient updates are of the same type as parameters.
 
-Schedule = Callable[[chex.Numeric], chex.Numeric]
+Schedule = Callable[[jax.typing.ArrayLike], jax.typing.ArrayLike]
 ScheduleState = Any
 ScalarOrSchedule = Union[float, jax.Array, Schedule]
 
@@ -57,7 +58,7 @@ class StatefulSchedule(Protocol):
       self,
       state: ScheduleState,
       **extra_args,
-  ) -> chex.Numeric:
+  ) -> jax.typing.ArrayLike:
     """Computes the current schedule value."""
 
 
@@ -90,7 +91,7 @@ class TransformUpdateFn(Protocol):
   access to the current values of the parameters.
 
   For the case where additional arguments are required, an alternative interface
-  may be used, see ``TransformUpdateExtraArgsFn`` for details.
+  may be used, see :py:class:`.TransformUpdateExtraArgsFn` for details.
   """
 
   def __call__(
@@ -295,7 +296,8 @@ def stateless(
 
 
 def stateless_with_tree_map(
-    f: Callable[[chex.Array, Optional[chex.Array]], chex.Array],
+    f: Callable[[jax.typing.ArrayLike, Optional[jax.typing.ArrayLike]],
+                jax.typing.ArrayLike],
 ) -> GradientTransformation:
   """Creates a stateless transformation from an update-like function for arrays.
 

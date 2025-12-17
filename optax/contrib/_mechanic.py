@@ -28,7 +28,6 @@ using Mechanic to be the same for reasonably large batch sizes (>1k).
 
 from typing import NamedTuple, Optional, Any, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -40,20 +39,20 @@ class MechanicState(NamedTuple):
   """State of the `GradientTransformation` returned by `mechanize`."""
 
   base_optimizer_state: base.OptState
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  r: chex.Array
-  m: chex.Array
-  v: chex.Array
-  s: chex.Array
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  r: jax.typing.ArrayLike
+  m: jax.typing.ArrayLike
+  v: jax.typing.ArrayLike
+  s: jax.typing.ArrayLike
   x0: base.Updates
 
 
 def mechanize(
     base_optimizer: Union[base.GradientTransformation,
                           base.GradientTransformationExtraArgs],
-    weight_decay: float = 1e-2,
-    eps: float = 1e-8,
-    s_init: float = 1e-6,
+    weight_decay: jax.typing.ArrayLike = 1e-2,
+    eps: jax.typing.ArrayLike = 1e-8,
+    s_init: jax.typing.ArrayLike = 1e-6,
     num_betas: int = 6,
 ) -> base.GradientTransformationExtraArgs:
   """Mechanic - a black box learning rate tuner/optimizer.

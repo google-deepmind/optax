@@ -16,15 +16,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from optax._src import alias
-from optax._src import combine
-from optax._src import linesearch
-from optax._src import transform
-from optax._src import update
 from optax._src import utils
 
 
@@ -115,7 +109,7 @@ class MultiNormalDiagFromLogScaleTest(parameterized.TestCase):
     self.assertEqual(probs.shape, ())
 
 
-class HelpersTest(chex.TestCase):
+class HelpersTest(parameterized.TestCase):
 
   @parameterized.parameters([
       (1, 1),
@@ -213,74 +207,6 @@ class HelpersTest(chex.TestCase):
   def test_canonicalize_dtype(self, dtype, expected_dtype):
     canonical = utils.canonicalize_dtype(dtype)
     self.assertIs(canonical, expected_dtype)
-
-  @chex.variants(
-      with_jit=True,
-      without_jit=True,
-      with_pmap=False,
-      with_device=True,
-      without_device=True,
-  )
-  def test_value_and_grad_from_state(self):
-    def fn(x):
-      return jnp.sum(x**2)
-
-    value_and_grad_ = utils.value_and_grad_from_state(fn)
-
-    value_and_grad = self.variant(value_and_grad_)
-
-    params = jnp.array([1.0, 2.0, 3.0])
-
-    # No value and grad in this transform so it should raise an error
-    opt = transform.scale_by_adam()
-    state = opt.init(params)
-    self.assertRaises(ValueError, value_and_grad, params, state=state)
-
-    # Multiple values and grads in this transform so it should raise an error
-    opt = combine.chain(
-        linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
-        linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
-    )
-    state = opt.init(params)
-    self.assertRaises(KeyError, value_and_grad, params, state=state)
-
-    # It should work efficiently when the linesearch stores the gradient
-    opt = combine.chain(
-        alias.sgd(learning_rate=1.0),
-        linesearch.scale_by_backtracking_linesearch(
-            max_backtracking_steps=15, store_grad=True
-        ),
-    )
-    state = opt.init(params)
-    value, grad = value_and_grad(params, state=state)
-    updates, state = opt.update(
-        grad, state, params, value=value, grad=grad, value_fn=fn
-    )
-    params = update.apply_updates(params, updates)
-    params = jax.block_until_ready(params)
-
-    def false_fn(_):
-      return 1.0
-
-    false_value_and_grad_ = utils.value_and_grad_from_state(false_fn)
-    false_value_and_grad = self.variant(false_value_and_grad_)
-
-    # At the second step we should not evaluate the function
-    # so in this case it should not return the output of false_fn
-    value, _ = false_value_and_grad(params, state=state)
-    self.assertNotEqual(value, 1.0)
-
-  def test_extract_fns_kwargs(self):
-    def fn1(a, b):
-      return a + b
-
-    def fn2(c, d):
-      return c + d
-
-    kwargs = {'b': 1.0, 'd': 2.0, 'e': 3.0}
-    fns_kwargs, remaining_kwargs = utils._extract_fns_kwargs((fn1, fn2), kwargs)
-    self.assertEqual(fns_kwargs, [{'b': 1.0}, {'d': 2.0}])
-    self.assertEqual(remaining_kwargs, {'e': 3.0})
 
 
 if __name__ == '__main__':

@@ -16,9 +16,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.contrib import _reduce_on_plateau
 
 
@@ -65,11 +65,11 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that learning rate is reduced
     scale, best_value, plateau_count, cooldown_count, *_ = state
-    chex.assert_trees_all_close(scale, 0.1)
-    chex.assert_trees_all_close(best_value, 1.0)
-    chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_count, self.cooldown)
-    chex.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, 1.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
+    test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
 
     # One more step
     _, state = self.transform.update(
@@ -78,10 +78,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that cooldown_count is decremented
     scale, best_value, plateau_count, cooldown_count, *_ = state
-    chex.assert_trees_all_close(scale, 0.1)
-    chex.assert_trees_all_close(best_value, 1.0)
-    chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_count, self.cooldown - 1)
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, 1.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, self.cooldown - 1)
 
   @parameterized.parameters(False, True)
   def test_learning_rate_is_not_reduced(self, enable_x64):
@@ -107,9 +107,9 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that plateau_count resets
     scale, best_value, plateau_count, *_ = new_state
-    chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(scale, 0.1)
-    chex.assert_trees_all_close(best_value, 0.1)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, 0.1)
 
   @parameterized.parameters(False, True)
   def test_learning_rate_not_reduced_during_cooldown(self, enable_x64):
@@ -136,10 +136,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     # Check that learning rate is not reduced and
     # plateau_count is not incremented
     scale, best_value, plateau_count, cooldown_count, *_ = new_state
-    chex.assert_trees_all_close(scale, 0.1)
-    chex.assert_trees_all_close(best_value, 1.0)
-    chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_count, 2)
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, 1.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, 2)
 
   @parameterized.parameters(False, True)
   def test_learning_rate_not_reduced_after_end_scale_is_reached(
@@ -171,11 +171,11 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that learning rate is not reduced
     scale, best_value, plateau_count, cooldown_count, *_ = state
-    chex.assert_trees_all_close(scale, 0.01)
-    chex.assert_trees_all_close(best_value, 0.1)
-    chex.assert_trees_all_close(plateau_count, 0)
-    chex.assert_trees_all_close(cooldown_count, self.cooldown)
-    chex.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
+    test_utils.assert_trees_all_close(scale, 0.01)
+    test_utils.assert_trees_all_close(best_value, 0.1)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
+    test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
 
 
 if __name__ == '__main__':

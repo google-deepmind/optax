@@ -20,7 +20,6 @@ import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -46,9 +45,8 @@ def _invalid_ord_axis_inputs(ord_axis_keepdims):
   ))
 
 
-class NumericsTest(chex.TestCase):
+class NumericsTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.parameters(*(
       "bfloat16",
       "float16",
@@ -68,7 +66,7 @@ class NumericsTest(chex.TestCase):
     if dtype in ["float64", "int64", "uint64"]:
       jax.config.update("jax_enable_x64", True)
     dtype = jnp.dtype(dtype)
-    inc_fn = self.variant(numerics.safe_increment)
+    inc_fn = jax.jit(numerics.safe_increment)
 
     with self.subTest("Increments correctly"):
       base = jnp.asarray(3, dtype=dtype)
@@ -102,7 +100,6 @@ class NumericsTest(chex.TestCase):
         ValueError, numerics.safe_increment, jnp.asarray(1, dtype=dtype)
     )
 
-  @chex.all_variants
   @parameterized.parameters(
       itertools.filterfalse(
           _invalid_ord_axis_inputs,
@@ -110,7 +107,7 @@ class NumericsTest(chex.TestCase):
       )
   )
   def test_safe_norm(self, ord, axis, keepdims):  # pylint: disable=redefined-builtin
-    dnorm_dx = self.variant(
+    dnorm_dx = jax.jit(
         jax.jacfwd(
             functools.partial(
                 numerics.safe_norm, ord=ord, axis=axis, keepdims=keepdims
@@ -125,9 +122,8 @@ class NumericsTest(chex.TestCase):
     g = dnorm_dx(float32_array(jnp.zeros((3, 4))), float32_array(3.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
-  @chex.all_variants
   def test_safe_rms(self):
-    drms_dx = self.variant(jax.grad(numerics.safe_root_mean_squares))
+    drms_dx = jax.jit(jax.grad(numerics.safe_root_mean_squares))
     # Test gradient is 0. in 0. when zero min rms is used.
     g = drms_dx(float32_array(0.0), float32_array(0.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
@@ -153,6 +149,11 @@ class NumericsTest(chex.TestCase):
 
     def _get_hlo_repr(f, x):
       hlo_string = jax.jit(f).lower(x).compiler_ir(dialect="hlo").as_hlo_text()
+      hlo_string = re.search(r"ENTRY.*", hlo_string, re.DOTALL)
+      if hlo_string:
+        hlo_string = hlo_string.group()
+      else:
+        raise ValueError(f"No ENTRY found in HLO string: {hlo_string}")
       hlo_string = re.sub("ENTRY.*?{", "ENTRY XXXX", hlo_string)
       hlo_string = re.sub("HloModule.*?\n", "", hlo_string)
       hlo_string = re.sub("ROOT.*?=", "ROOT result.2 =", hlo_string)

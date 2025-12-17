@@ -15,12 +15,12 @@
 """Tests for methods in `optax.transforms._clipping.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from optax._src import linear_algebra
+from optax._src import test_utils
 from optax.transforms import _clipping
+import optax.tree
 
 
 STEPS = 50
@@ -42,12 +42,12 @@ class ClippingTest(absltest.TestCase):
     # For a sufficiently high delta the update should not be changed.
     clipper = _clipping.clip(1e6)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_trees_all_close(clipped_updates, updates)
+    test_utils.assert_trees_all_close(clipped_updates, updates)
 
     # Clipping at delta=1 should make all updates exactly 1.
     clipper = _clipping.clip(1.0)
     clipped_updates, _ = clipper.update(updates, None)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         clipped_updates, jax.tree.map(jnp.ones_like, updates)
     )
 
@@ -62,7 +62,7 @@ class ClippingTest(absltest.TestCase):
       self.assertAlmostEqual(rmf_fn(updates[1]), 1.0 / i)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_trees_all_close(updates, updates_step)
+      test_utils.assert_trees_all_close(updates, updates_step)
 
   def test_clip_by_global_norm(self):
     updates = self.per_step_updates
@@ -70,12 +70,10 @@ class ClippingTest(absltest.TestCase):
       clipper = _clipping.clip_by_global_norm(1.0 / i)
       # Check that the clipper actually works and global norm is <= max_norm
       updates, _ = clipper.update(updates, None)
-      self.assertAlmostEqual(
-          linear_algebra.global_norm(updates), 1.0 / i, places=6
-      )
+      self.assertAlmostEqual(optax.tree.norm(updates), 1.0 / i, places=6)
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None)
-      chex.assert_trees_all_close(updates, updates_step)
+      test_utils.assert_trees_all_close(updates, updates_step)
 
   def test_adaptive_grad_clip_with_axis(self):
     """Test adaptive_grad_clip with custom axis parameter."""
@@ -131,7 +129,8 @@ class ClippingTest(absltest.TestCase):
     )
 
     # Should be nearly unchanged since clipping=2.0 is large
-    chex.assert_trees_all_close(unclipped[0], small_conv3d_grad, rtol=1e-6)
+    test_utils.assert_trees_all_close(
+        unclipped[0], small_conv3d_grad, rtol=1e-6)
 
   def test_unitwise_norm_with_axis(self):
     """Test unitwise_norm function with custom axis parameter."""
@@ -156,7 +155,7 @@ class ClippingTest(absltest.TestCase):
     norm_default = _clipping.unitwise_norm(x_2d)
     norm_explicit = _clipping.unitwise_norm(x_2d, axis=None)
 
-    chex.assert_trees_all_close(norm_default, norm_explicit)
+    test_utils.assert_trees_all_close(norm_default, norm_explicit)
 
     # Test error case: unsupported shape without axis
     x_6d = jnp.ones((2, 2, 2, 2, 2, 2))
@@ -186,7 +185,7 @@ class ClippingTest(absltest.TestCase):
 
       # Check that continuously clipping won't cause numerical issues.
       updates_step, _ = clipper.update(self.per_step_updates, None, params)
-      chex.assert_trees_all_close(updates, updates_step)
+      test_utils.assert_trees_all_close(updates, updates_step)
 
     # Simple 2D tensor case for default behavior
     grads_small = [jnp.array([[1.0, 2.0], [3.0, 4.0]])]

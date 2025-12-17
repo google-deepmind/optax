@@ -18,7 +18,6 @@ from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union
 import warnings
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -30,11 +29,11 @@ import optax.tree
 
 class WeightDecaySchedule(NamedTuple):
   """Maintains count for weight decay scheduling."""
-  count: chex.Array  # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
 
 
 def add_decayed_weights(
-    weight_decay: Union[float, jax.Array, base.ScalarOrSchedule] = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Add parameter scaled by `weight_decay`.
@@ -60,6 +59,15 @@ def add_decayed_weights(
   def update_fn(updates, state, params):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    if callable(weight_decay):
+      new_state = WeightDecaySchedule(numerics.safe_increment(state.count))
+    else:
+      new_state = state
+
+    # If weight decay is a zero constant, we can skip the update.
+    if isinstance(weight_decay, (int, float)) and weight_decay == 0.0:
+      return updates, new_state
+
     s = weight_decay(state.count) if callable(weight_decay) else weight_decay
     updates = jax.tree.map(
         lambda g, p: None if g is None else g + s * p,
@@ -67,7 +75,7 @@ def add_decayed_weights(
         params,
         is_leaf=lambda x: x is None,
     )
-    return updates, state
+    return updates, new_state
 
   # If mask is not `None`, apply mask to the gradient transformation.
   # E.g. it is common to skip weight decay on bias units and batch stats.
@@ -86,8 +94,8 @@ class AddNoiseState(NamedTuple):
 
 
 def add_noise(
-    eta: float,
-    gamma: float,
+    eta: jax.typing.ArrayLike,
+    gamma: jax.typing.ArrayLike,
     key: jax.Array | int | None = None,
     *,
     seed: int | None = None,  # deprecated
@@ -139,16 +147,15 @@ def add_noise(
     )
     if key is not None:
       raise ValueError('Only one of seed or key can be specified.')
-    key = jax.random.key(seed)
+    key = seed
   if key is None:
     warnings.warn('Specifying a key will be required in optax 0.2.7.')
-    key = jax.random.key(0)
-  key = utils.canonicalize_key(key)
+    key = 0
 
   def init_fn(params):
     del params
     return AddNoiseState(
-        count=jnp.zeros([], jnp.int32), rng_key=key
+        count=jnp.zeros([], jnp.int32), rng_key=utils.canonicalize_key(key)
     )
 
   def update_fn(updates, state, params=None):

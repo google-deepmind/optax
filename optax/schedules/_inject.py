@@ -20,7 +20,6 @@ import inspect
 from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -44,7 +43,7 @@ class InjectHyperparamsState(NamedTuple):
   """
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   inner_state: base.OptState
 
 
@@ -52,7 +51,7 @@ class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   hyperparams_states: dict[str, base.ScheduleState]
   inner_state: base.OptState
 
@@ -87,7 +86,7 @@ def inject_hyperparams(
     ...     b1=linear_schedule, b2=0.99)
 
   You may manually change numeric hyperparameters that were not scheduled
-  through the ``hyperparams`` dict in the ``InjectHyperparamState``::
+  through the ``hyperparams`` dict in the :py:class:`.InjectHyperparamsState`::
 
     >>> params, grads = jnp.array(0.), jnp.array(0.)
     >>> state = scheduled_adam.init(params)
@@ -109,9 +108,10 @@ def inject_hyperparams(
       hyperparameters will be cast to this type.
 
   Returns:
-    A callable that returns a ``optax.GradientTransformationExtraArgs``. This
-    callable accepts the same arguments as ``inner_factory``, except you may
-    provide schedules in place of the constant arguments.
+    A callable that returns a
+    :py:class:`.optax.GradientTransformationExtraArgs`. This callable accepts
+    the same arguments as ``inner_factory``, except you may provide schedules
+    in place of the constant arguments.
 
   .. versionchanged:: 0.1.9
     New parameter ``hyperparam_dtype``, the returned callable outputs a
@@ -252,7 +252,7 @@ def inject_stateful_hyperparams(
 class WrappedScheduleState(NamedTuple):
   """The state for a wrapped schedule."""
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
 
 
 class WrappedSchedule:
@@ -279,5 +279,5 @@ class WrappedSchedule:
       self,
       state: WrappedScheduleState,
       **extra_args,
-  ) -> chex.Numeric:
+  ) -> jax.typing.ArrayLike:
     return self.schedule_fn(state.count)

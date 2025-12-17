@@ -12,33 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Functions for computing diagonals of the Hessian wrt to a set of parameters.
-
-Computing the Hessian for neural networks is typically intractable due to the
-quadratic memory requirements. Solving for the diagonal can be done cheaply,
-with sub-quadratic memory requirements.
+"""Deprecated second order utilities kept for backward compatibility.
 """
 
-from typing import Any
+import abc
+import functools
+from typing import Any, Protocol
 
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
-from optax.second_order import _base
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 
 
 def _ravel(p: Any) -> jax.Array:
   return flatten_util.ravel_pytree(p)[0]
 
 
+class LossFn(Protocol):
+  """A loss function to be optimized."""
+
+  @abc.abstractmethod
+  def __call__(
+      self, params: Any, inputs: jax.Array, targets: jax.Array
+  ) -> jax.Array:
+    ...
+
+
+@functools.partial(warn_deprecated_function, version_removed='0.2.9')
 def hvp(
-    loss: _base.LossFn,
+    loss: LossFn,
     v: jax.Array,
     params: Any,
     inputs: jax.Array,
     targets: jax.Array,
 ) -> jax.Array:
   """Performs an efficient vector-Hessian (of `loss`) product.
+
+  .. deprecated: 0.2.7. This function will be removed in 0.2.9
 
   Args:
     loss: the loss function.
@@ -56,13 +67,16 @@ def hvp(
   return jax.jvp(jax.grad(loss_fn), [params], [unravel_fn(v)])[1]
 
 
+@functools.partial(warn_deprecated_function, version_removed='0.2.9')
 def hessian_diag(
-    loss: _base.LossFn,
+    loss: LossFn,
     params: Any,
     inputs: jax.Array,
     targets: jax.Array,
 ) -> jax.Array:
   """Computes the diagonal hessian of `loss` at (`inputs`, `targets`).
+
+  .. deprecated: 0.2.7. This function will be removed in 0.2.9
 
   Args:
     loss: the loss function.
@@ -77,3 +91,30 @@ def hessian_diag(
   vs = jnp.eye(_ravel(params).size)
   comp = lambda v: jnp.vdot(v, _ravel(hvp(loss, v, params, inputs, targets)))
   return jax.vmap(comp)(vs)
+
+
+@functools.partial(warn_deprecated_function, version_removed='0.2.9')
+def fisher_diag(
+    negative_log_likelihood: LossFn,
+    params: Any,
+    inputs: jax.Array,
+    targets: jax.Array,
+) -> jax.Array:
+  """Computes the diagonal of the (observed) Fisher information matrix.
+
+  .. deprecated: 0.2.7. This function will be removed in 0.2.9
+
+  Args:
+    negative_log_likelihood: the negative log likelihood function with expected
+      signature `loss = fn(params, inputs, targets)`.
+    params: model parameters.
+    inputs: inputs at which `negative_log_likelihood` is evaluated.
+    targets: targets at which `negative_log_likelihood` is evaluated.
+
+  Returns:
+    An Array corresponding to the product to the Hessian of
+    `negative_log_likelihood` evaluated at `(params, inputs, targets)`.
+  """
+  return jnp.square(
+      _ravel(jax.grad(negative_log_likelihood)(params, inputs, targets))
+  )

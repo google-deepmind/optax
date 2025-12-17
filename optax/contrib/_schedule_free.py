@@ -16,7 +16,6 @@
 
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -32,10 +31,10 @@ import optax.tree
 class ScheduleFreeState(NamedTuple):
   """State for schedule_free."""
 
-  b1: chex.Array
-  weight_sum: chex.Array
-  step_count: chex.Array
-  max_lr: chex.Array
+  b1: jax.typing.ArrayLike
+  weight_sum: jax.typing.ArrayLike
+  step_count: jax.typing.ArrayLike
+  max_lr: jax.typing.ArrayLike
   base_optimizer_state: base.OptState
   z: base.Params
 
@@ -56,8 +55,8 @@ def schedule_free_eval_params(state: base.OptState, params: base.Params):
 def schedule_free(
     base_optimizer: base.GradientTransformation,
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""Turn base_optimizer schedule_free.
@@ -223,11 +222,11 @@ def schedule_free(
 
 
 def schedule_free_sgd(
-    learning_rate: float = 1.0,
+    learning_rate: jax.typing.ArrayLike = 1.0,
     warmup_steps: Optional[int] = None,
-    b1: float = 0.9,
-    weight_decay: Optional[float] = None,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    weight_decay: Optional[jax.typing.ArrayLike] = None,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for SGD.
@@ -297,13 +296,13 @@ def schedule_free_sgd(
 
 
 def schedule_free_adamw(
-    learning_rate: float = 0.0025,
+    learning_rate: jax.typing.ArrayLike = 0.0025,
     warmup_steps: Optional[int] = None,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    weight_decay: float = 0.0,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for AdamW.

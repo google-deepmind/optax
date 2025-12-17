@@ -14,7 +14,7 @@
 # ==============================================================================
 """A lookahead optimization wrapper."""
 
-from typing import NamedTuple, Union
+from typing import NamedTuple
 
 from absl import logging
 import jax
@@ -32,7 +32,7 @@ class LookaheadState(NamedTuple):
   """
 
   fast_state: base.OptState
-  steps_since_sync: jnp.ndarray
+  steps_since_sync: jax.Array
 
 
 class LookaheadParams(NamedTuple):
@@ -62,8 +62,8 @@ class LookaheadParams(NamedTuple):
 
 def lookahead(
     fast_optimizer: base.GradientTransformation,
-    sync_period: int,
-    slow_step_size: float,
+    sync_period: jax.typing.ArrayLike,  # int
+    slow_step_size: jax.typing.ArrayLike,  # float
     reset_state: bool = False,
 ) -> base.GradientTransformation:
   """Lookahead optimizer.
@@ -139,9 +139,9 @@ def lookahead(
 
 def _lookahead_update(
     updates: base.Updates,
-    sync_next: Union[bool, jax.Array],
+    sync_next: jax.typing.ArrayLike,  # bool
     params: LookaheadParams,
-    slow_step_size: float,
+    slow_step_size: jax.typing.ArrayLike,  # float
 ) -> LookaheadParams:
   """Returns the updates corresponding to one lookahead step.
 

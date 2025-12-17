@@ -17,11 +17,11 @@
 from typing import NamedTuple
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _mechanic
 import optax.tree
@@ -45,7 +45,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   def update_fn(updates, state, params):
     # The test optimizer does not use the parameters, but we check that they
     # have been passed correctly.
-    chex.assert_trees_all_equal_shapes(updates, params)
+    test_utils.assert_trees_all_equal_shapes(updates, params)
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree.map(lambda u: step_size * u, updates)
     return updates, OptimizerTestState(aggregate_grads)
@@ -53,19 +53,19 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
   return base.GradientTransformation(init_fn, update_fn)
 
 
-class MechanicTest(chex.TestCase):
+class MechanicTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
     self.grads = {'x': np.array(2.0), 'y': np.array(-2.0)}
     self.initial_params = {'x': np.array(3.0), 'y': np.array(-3.0)}
 
-  def loop(self, optimizer, num_steps, params):
+  def loop(self, optimizer, num_steps, params
+           ) -> tuple[base.Params, _mechanic.MechanicState]:
     """Performs a given number of optimizer steps."""
     init_fn, update_fn = optimizer
-    # Use the chex variant to check various function versions (jit, pmap, etc).
-    step = self.variant(update_fn)
-    opt_state = self.variant(init_fn)(params)
+    step = jax.jit(update_fn)
+    opt_state = jax.jit(init_fn)(params)
 
     # A no-op change, to verify that tree map works.
     opt_state = optax.tree.map_params(init_fn, lambda v: v, opt_state)
@@ -77,7 +77,6 @@ class MechanicTest(chex.TestCase):
 
     return params, opt_state
 
-  @chex.all_variants(with_pmap=False)
   def test_mechanized(self):
     params = self.initial_params
     num_betas = 6
@@ -98,11 +97,11 @@ class MechanicTest(chex.TestCase):
     expected_v = np.array([0.0] * num_betas)
     expected_s = np.array([1.6666667e-09] * num_betas)
 
-    chex.assert_trees_all_close(expected_m, final_state.m)
-    chex.assert_trees_all_close(expected_v, final_state.v)
-    chex.assert_trees_all_close(expected_s, final_state.s)
-    chex.assert_trees_all_close(final_params, params)
-    chex.assert_tree_all_finite((final_params, final_state))
+    test_utils.assert_trees_all_close(expected_m, final_state.m)
+    test_utils.assert_trees_all_close(expected_v, final_state.v)
+    test_utils.assert_trees_all_close(expected_s, final_state.s)
+    test_utils.assert_trees_all_close(final_params, params)
+    test_utils.assert_tree_all_finite((final_params, final_state))
 
 
 if __name__ == '__main__':

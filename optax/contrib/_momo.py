@@ -22,7 +22,6 @@ Michael Eickenberg, Aaron Defazio and Robert M. Gower.
 
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -35,25 +34,25 @@ class MomoState(NamedTuple):
   """State of the `GradientTransformation` returned by `momo`."""
 
   exp_avg: base.Updates
-  barf: chex.Array  # shape=(), dtype=jnp.float32.
-  gamma: chex.Array  # shape=(), dtype=jnp.float32.
-  lb: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def momo(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    beta: float = 0.9,
-    lower_bound: float = 0.0,
-    weight_decay: float = 0.0,
+    beta: jax.typing.ArrayLike = 0.9,
+    lower_bound: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     adapt_lower_bound: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for SGD with momentum.
 
   MoMo typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
-  known. For most tasks, zero is a lower bound and an accurate estimate of the
-  final loss.
+  by exploiting the fact that a lower bound of the loss (or the optimal value)
+  is known. For most tasks, zero is a lower bound and an accurate estimate of
+  the final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The
   effective step size is ``min(learning_rate, <adaptive term>)``, where the
@@ -120,7 +119,7 @@ def momo(
       state: MomoState,
       params: Optional[base.Params],
       *,
-      value: Optional[jax.Array] = None,
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoState]:
     del extra_args  # complies with signature of GradientTransformationExtraArgs
@@ -133,7 +132,9 @@ def momo(
     count = state.count
     # initialize at first gradient, and loss
     bt = jnp.where(count == 0, 0.0, beta)
-    barf = bt * state.barf + (1 - bt) * value.astype(state.barf.dtype)
+    barf = bt * state.barf + (1 - bt) * jnp.asarray(
+        value, dtype=state.barf.dtype
+    )
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
     )
@@ -188,19 +189,19 @@ class MomoAdamState(NamedTuple):
 
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
-  barf: chex.Array  # shape=(), dtype=jnp.float32.
-  gamma: chex.Array  # shape=(), dtype=jnp.float32.
-  lb: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def momo_adam(
     learning_rate: base.ScalarOrSchedule = 1e-2,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    lower_bound: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    lower_bound: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     adapt_lower_bound: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
@@ -279,7 +280,7 @@ def momo_adam(
       state: MomoAdamState,
       params: Optional[base.Params],
       *,
-      value: Optional[jax.Array],
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoAdamState]:
     del extra_args  # complies with signature of GradientTransformationExtraArgs
@@ -291,7 +292,9 @@ def momo_adam(
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
     count_inc = numerics.safe_increment(count)
-    barf = b1 * state.barf + (1 - b1) * value.astype(state.barf.dtype)
+    barf = b1 * state.barf + (1 - b1) * jnp.asarray(
+        value, dtype=state.barf.dtype
+    )
     exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
     )

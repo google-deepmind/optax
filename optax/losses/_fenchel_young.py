@@ -16,13 +16,13 @@
 
 from typing import Any, Protocol
 
-import chex
+import jax
 import jax.numpy as jnp
 
 
 class MaxFun(Protocol):
 
-  def __call__(self, scores, *args, **kwargs: Any) -> chex.Numeric:
+  def __call__(self, scores, *args, **kwargs: Any) -> jax.typing.ArrayLike:
     ...
 
 

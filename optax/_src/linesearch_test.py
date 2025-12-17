@@ -24,7 +24,6 @@ from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
@@ -32,6 +31,8 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import linesearch as _linesearch
+from optax._src import test_utils
+from optax._src import transform
 from optax._src import update
 from optax._src import utils
 import optax.tree
@@ -83,7 +84,7 @@ def get_problem(name: str):
   return problems[name]
 
 
-class BacktrackingLinesearchTest(chex.TestCase):
+class BacktrackingLinesearchTest(parameterized.TestCase):
 
   def _check_decrease_conditions(
       self, fun, init_params, descent_dir, final_params, final_state, opt_args
@@ -105,9 +106,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     )
     self.assertTrue(sufficient_decrease)
 
-  @chex.all_variants()
-  def test_linesearch_with_jax_variants(self):
-    """Test backtracking linesearch with jax variants (jit etc...)."""
+  def test_linesearch_update(self):
     fun = lambda x: jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
@@ -121,7 +120,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
-    update_fn = self.variant(update_fn)
+    update_fn = jax.jit(update_fn)
     _, state = update_fn(
         updates, state, params, value=fun(params), grad=jax.grad(fun)(params)
     )
@@ -204,15 +203,9 @@ class BacktrackingLinesearchTest(chex.TestCase):
       value, grad = jax.value_and_grad(fn)(params)
       updates, state = update_fn(grad, state, params, value=value, grad=grad)
       params = update.apply_updates(params, updates)
-    chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
+    test_utils.assert_trees_all_close(
+        final_params, params, atol=1e-2, rtol=1e-2)
 
-  @chex.variants(
-      with_jit=True,
-      without_jit=True,
-      with_pmap=False,
-      with_device=True,
-      without_device=True,
-  )
   def test_recycling_value_and_grad(self):
     # A vmap or a pmap makes the cond in value_and_state_from_grad
     # become a select and in that case this code cannot be optimal.
@@ -223,7 +216,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     def fn(params):
       return jnp.sum((params - final_params) ** 2)
 
-    value_and_grad = utils.value_and_grad_from_state(fn)
+    value_and_grad = _linesearch.value_and_grad_from_state(fn)
 
     base_opt = alias.sgd(learning_rate=0.1)
     solver = combine.chain(
@@ -243,7 +236,7 @@ class BacktrackingLinesearchTest(chex.TestCase):
     def fake_fun(_):
       return 1.0
 
-    fake_value_and_grad = utils.value_and_grad_from_state(fake_fun)
+    fake_value_and_grad = _linesearch.value_and_grad_from_state(fake_fun)
 
     def step_(params, state, iter_num):
       # Should still work as the value and grad are extracted from the state
@@ -256,13 +249,14 @@ class BacktrackingLinesearchTest(chex.TestCase):
       params = update.apply_updates(params, updates)
       return params, state
 
-    step = self.variant(step_)
+    step = jax.jit(step_)
     params = init_params
     state = init_state
     for iter_num in range(max_iter):
       params, state = step(params, state, iter_num)
     params = jax.block_until_ready(params)
-    chex.assert_trees_all_close(final_params, params, atol=1e-2, rtol=1e-2)
+    test_utils.assert_trees_all_close(
+        final_params, params, atol=1e-2, rtol=1e-2)
 
   def test_armijo_sgd(self):
     def fn(params, x, y):
@@ -293,30 +287,32 @@ class BacktrackingLinesearchTest(chex.TestCase):
     update_fn = functools.partial(solver.update, value_fn=fn)
     update_fn = jax.jit(update_fn)
 
+    value_and_grad_fn = jax.jit(jax.value_and_grad(fn))
+
     params = init_params
     for _ in range(num_passes):
       x, y = next(xs_iter), next(ys_iter)
-      value, grad = jax.value_and_grad(fn)(params, x, y)
+      value, grad = value_and_grad_fn(params, x, y)
       updates, state = update_fn(
           grad, state, params, value=value, grad=grad, x=x, y=y
       )
       params = update.apply_updates(params, updates)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         params, target_params, atol=5 * 1e-2, rtol=5 * 1e-2
     )
 
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
       confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
-      kw=['slope_rtol', 'decrease_factor', 'increase_factor',
-          'max_learning_rate', 'atol', 'rtol']
   )
-  def test_dtype_stability(self, dtype, confuse_dtype, kw):
+  def test_dtype_stability(self, dtype, confuse_dtype):
+    kw = ['slope_rtol', 'decrease_factor', 'increase_factor',
+          'max_learning_rate', 'atol', 'rtol']
     with utils.x64_precision(True):
       # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_backtracking_linesearch(
           max_backtracking_steps=5,
-          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+          **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
       # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)
@@ -330,10 +326,10 @@ class BacktrackingLinesearchTest(chex.TestCase):
 
 def _run_linesearch(
     opt: base.GradientTransformationExtraArgs,
-    fn: Callable[..., chex.Numeric],
+    fn: Callable[..., jax.typing.ArrayLike],
     params: base.Params,
     updates: base.Updates,
-    stepsize_guess: Optional[chex.Numeric] = None,
+    stepsize_guess: Optional[jax.typing.ArrayLike] = None,
 ) -> tuple[base.Params, base.OptState]:
   """Runs the linesearch, i.e., a single update of scale_by_zoom_linesearch."""
   init_state = opt.init(params)
@@ -353,33 +349,33 @@ def _run_linesearch(
   return final_params, final_state
 
 
-class ZoomLinesearchTest(chex.TestCase):
+class ZoomLinesearchTest(parameterized.TestCase):
 
   def _check_value_and_grad_in_zoom_state(
       self,
       final_params: base.Params,
       final_state: base.OptState,
-      value_fn: Callable[..., chex.Numeric],
+      value_fn: Callable[..., jax.typing.ArrayLike],
   ) -> None:
     # Check that the value and gradient stored in the state
     # match the value and gradient of the step done with the stepsize found
     final_value = optax.tree.get(final_state, 'value')
     final_grad = optax.tree.get(final_state, 'grad')
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         value_fn(final_params), final_value, atol=1e-5, rtol=1e-5
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         jax.grad(value_fn)(final_params), final_grad, atol=1e-5, rtol=1e-5
     )
 
   def _check_linesearch_conditions(
       self,
-      fun: Callable[..., chex.Numeric],
+      fun: Callable[..., jax.typing.ArrayLike],
       init_params: base.Params,
       updates: base.Updates,
       final_params: base.Params,
       final_state: base.OptState,
-      opt_args: dict[str, chex.Numeric],
+      opt_args: dict[str, jax.typing.ArrayLike],
       allow_failure: bool = False,
   ):
     """Check decrease conditions."""
@@ -424,9 +420,7 @@ class ZoomLinesearchTest(chex.TestCase):
           f'Small curvature error: {small_curvature_error}',
       )
 
-  @chex.all_variants()
-  def test_linesearch_with_jax_variants(self):
-    """Test zoom linesearch with jax variants (jit etc...)."""
+  def test_linesearch_update(self):
     fun = lambda x: jnp.sum(x**2)
     params = jnp.zeros(2)
     updates = -jax.grad(fun)(params)
@@ -440,7 +434,7 @@ class ZoomLinesearchTest(chex.TestCase):
     self.assertTrue(jnp.isinf(value))
 
     update_fn = functools.partial(opt.update, value_fn=fun)
-    update_fn = self.variant(update_fn)
+    update_fn = jax.jit(update_fn)
     _, state = update_fn(
         updates, state, params, value=fun(params), grad=jax.grad(fun)(params)
     )
@@ -508,8 +502,8 @@ class ZoomLinesearchTest(chex.TestCase):
     with self.subTest('Check against scipy'):
       stepsize = optax.tree.get(final_state, 'learning_rate')
       final_value = optax.tree.get(final_state, 'value')
-      chex.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
-      chex.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
+      test_utils.assert_trees_all_close(scipy_res[0], stepsize, rtol=1e-5)
+      test_utils.assert_trees_all_close(scipy_res[3], final_value, rtol=1e-5)
 
   def test_failure_descent_direction(self):
     """Check failure when updates are not a descent direction."""
@@ -701,15 +695,15 @@ class ZoomLinesearchTest(chex.TestCase):
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
       confuse_dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
-      kw=['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
-          'approx_dec_rtol', 'stepsize_precision']
   )
-  def test_dtype_stability(self, dtype, confuse_dtype, kw):
+  def test_dtype_stability(self, dtype, confuse_dtype):
+    kw = ['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
+          'approx_dec_rtol', 'stepsize_precision']
     with utils.x64_precision(True):
       # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_zoom_linesearch(
           max_linesearch_steps=5,
-          **{kw: jnp.array(1e-5, dtype=confuse_dtype)})
+          **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
       # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)
@@ -720,6 +714,68 @@ class ZoomLinesearchTest(chex.TestCase):
                                               value_fn=value_fn)[1],
                    lambda x: state, x)
 
+  def test_value_and_grad_from_state(self):
+    def fn(x):
+      return jnp.sum(x**2)
+
+    value_and_grad_ = _linesearch.value_and_grad_from_state(fn)
+
+    value_and_grad = jax.jit(value_and_grad_)
+
+    params = jnp.array([1.0, 2.0, 3.0])
+
+    # No value and grad in this transform so it should raise an error
+    opt = transform.scale_by_adam()
+    state = opt.init(params)
+    self.assertRaises(ValueError, value_and_grad, params, state=state)
+
+    # Multiple values and grads in this transform so it should raise an error
+    opt = combine.chain(
+        _linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
+        _linesearch.scale_by_backtracking_linesearch(max_backtracking_steps=15),
+    )
+    state = opt.init(params)
+    self.assertRaises(KeyError, value_and_grad, params, state=state)
+
+    # It should work efficiently when the linesearch stores the gradient
+    opt = combine.chain(
+        alias.sgd(learning_rate=1.0),
+        _linesearch.scale_by_backtracking_linesearch(
+            max_backtracking_steps=15, store_grad=True
+        ),
+    )
+    state = opt.init(params)
+    value, grad = value_and_grad(params, state=state)
+    updates, state = opt.update(
+        grad, state, params, value=value, grad=grad, value_fn=fn
+    )
+    params = update.apply_updates(params, updates)
+    params = jax.block_until_ready(params)
+
+    def false_fn(_):
+      return 1.0
+
+    false_value_and_grad_ = _linesearch.value_and_grad_from_state(false_fn)
+    false_value_and_grad = jax.jit(false_value_and_grad_)
+
+    # At the second step we should not evaluate the function
+    # so in this case it should not return the output of false_fn
+    value, _ = false_value_and_grad(params, state=state)
+    self.assertNotEqual(value, 1.0)
+
+  def test_extract_fns_kwargs(self):
+    def fn1(a, b):
+      return a + b
+
+    def fn2(c, d):
+      return c + d
+
+    kwargs = {'b': 1.0, 'd': 2.0, 'e': 3.0}
+    fns_kwargs, remaining_kwargs = _linesearch._extract_fns_kwargs(
+        (fn1, fn2), kwargs
+    )
+    self.assertEqual(fns_kwargs, [{'b': 1.0}, {'d': 2.0}])
+    self.assertEqual(remaining_kwargs, {'e': 3.0})
 
 if __name__ == '__main__':
   absltest.main()

@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -24,7 +23,7 @@ import numpy as np
 from optax.losses import _self_supervised
 
 
-class NtxentTest(chex.TestCase):
+class NtxentTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -47,28 +46,27 @@ class NtxentTest(chex.TestCase):
     self.exp_2 = jnp.array(8.968544)
     self.exp_3 = jnp.array(9.2889)
 
-  @chex.all_variants
   def test_batched(self):
     np.testing.assert_allclose(
-        self.variant(_self_supervised.ntxent)(self.ys, self.ts_1),
+        jax.jit(_self_supervised.ntxent)(self.ys, self.ts_1),
         self.exp_1,
         atol=1e-4,
     )
 
     np.testing.assert_allclose(
-        self.variant(_self_supervised.ntxent)(self.ys, self.ts_2),
+        jax.jit(_self_supervised.ntxent)(self.ys, self.ts_2),
         self.exp_2,
         atol=1e-4,
     )
 
     np.testing.assert_allclose(
-        self.variant(_self_supervised.ntxent)(self.ys_2, self.ts_1),
+        jax.jit(_self_supervised.ntxent)(self.ys_2, self.ts_1),
         self.exp_3,
         atol=1e-4,
     )
 
 
-class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
+class TripletMarginLossTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -79,7 +77,6 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
     self.p2 = jnp.ones((2, 2))
     self.n2 = jnp.ones((2, 2)) * 2
 
-  @chex.all_variants
   @parameterized.parameters([
       {
           'anchor': np.ones((2, 2)),
@@ -103,12 +100,11 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
     handmade_result = testing_triplet_margin_loss(
         a=anchor, p=positive, n=negative, margin=margin
     )
-    result = self.variant(_self_supervised.triplet_margin_loss)(
+    result = jax.jit(_self_supervised.triplet_margin_loss)(
         anchor, positive, negative
     )
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-  @chex.all_variants
   @parameterized.parameters([
       {
           'anchor': np.ones((2, 2)),
@@ -122,7 +118,7 @@ class TripletMarginLossTest(chex.TestCase, parameterized.TestCase):
     anchor_batched = anchor.reshape(1, *anchor.shape)
     positive_batched = positive.reshape(1, *positive.shape)
     negative_batched = negative.reshape(1, *negative.shape)
-    vmap_loss = self.variant(
+    vmap_loss = jax.jit(
         jax.vmap(_self_supervised.triplet_margin_loss, in_axes=(0, 0, 0)))(
             anchor_batched, positive_batched, negative_batched)
     np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten()

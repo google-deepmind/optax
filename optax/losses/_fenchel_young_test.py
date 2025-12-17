@@ -15,11 +15,11 @@
 """Tests for fenchel young loss in `_fenchel_young.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp  # pylint: disable=g-importing-member
 
+from optax._src import test_utils
 from optax.losses import _classification
 from optax.losses import _fenchel_young
 
@@ -31,12 +31,11 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
   return jnp.reshape(flat_one_hot, inputs.shape)
 
 
-class FenchelYoungTest(chex.TestCase):
+class FenchelYoungTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_fenchel_young_reg(self):
     # Checks the behavior of the Fenchel-Young loss.
-    fy_loss = self.variant(_fenchel_young.make_fenchel_young_loss(logsumexp))
+    fy_loss = jax.jit(_fenchel_young.make_fenchel_young_loss(logsumexp))
     rng = jax.random.key(0)
     rngs = jax.random.split(rng, 2)
     theta_true = jax.random.uniform(rngs[0], (8, 5))
@@ -45,7 +44,7 @@ class FenchelYoungTest(chex.TestCase):
     y_random = jax.vmap(jax.nn.softmax)(theta_random)
     grad_random = jax.vmap(jax.grad(fy_loss))(theta_random, y_true)
     # Checks that the gradient of the loss takes the correct form.
-    chex.assert_trees_all_close(grad_random, y_random - y_true, rtol=1e-4)
+    test_utils.assert_trees_all_close(grad_random, y_random - y_true, rtol=1e-4)
     y_one_hot = jax.vmap(one_hot_argmax)(theta_true)
     int_one_hot = jnp.where(y_one_hot == 1.)[1]
     loss_one_hot = jax.vmap(fy_loss)(theta_random, y_one_hot)
@@ -53,10 +52,11 @@ class FenchelYoungTest(chex.TestCase):
         _classification.softmax_cross_entropy_with_integer_labels)(
             theta_random, int_one_hot)
     # Checks that the FY loss associated to logsumexp is correct.
-    chex.assert_trees_all_close(loss_one_hot, log_loss, rtol=1e-4)
+    test_utils.assert_trees_all_close(loss_one_hot, log_loss, rtol=1e-4)
     # Checks that vmapping or not is equivalent.
     loss_one_hot_no_vmap = fy_loss(theta_random, y_one_hot)
-    chex.assert_trees_all_close(loss_one_hot, loss_one_hot_no_vmap, rtol=1e-4)
+    test_utils.assert_trees_all_close(
+        loss_one_hot, loss_one_hot_no_vmap, rtol=1e-4)
 
 
 if __name__ == "__main__":

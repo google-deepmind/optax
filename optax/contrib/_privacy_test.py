@@ -16,13 +16,13 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.contrib import _privacy
 
 
-class DifferentiallyPrivateAggregateTest(chex.TestCase):
+class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -41,28 +41,26 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
         self.params,
     )
 
-  @chex.all_variants
   def test_no_privacy(self):
     """l2_norm_clip=MAX_FLOAT32 and noise_multiplier=0 should recover SGD."""
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=jnp.finfo(jnp.float32).max, noise_multiplier=0.0, key=0
     )
     state = dp_agg.init(self.params)
-    update_fn = self.variant(dp_agg.update)
+    update_fn = jax.jit(dp_agg.update)
     mean_grads = jax.tree.map(lambda g: g.mean(0), self.per_eg_grads)
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state)
-      chex.assert_trees_all_close(updates, mean_grads)
+      test_utils.assert_trees_all_close(updates, mean_grads)
 
-  @chex.all_variants
   @parameterized.parameters(0.5, 10.0, 20.0, 40.0, 80.0)
   def test_clipping_norm(self, l2_norm_clip):
     dp_agg = _privacy.differentially_private_aggregate(
         l2_norm_clip=l2_norm_clip, noise_multiplier=0.0, key=42
     )
     state = dp_agg.init(self.params)
-    update_fn = self.variant(dp_agg.update)
+    update_fn = jax.jit(dp_agg.update)
 
     # Shape of the three arrays below is (self.batch_size, )
     norms = [
@@ -80,9 +78,8 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
 
     for _ in range(3):
       updates, state = update_fn(self.per_eg_grads, state, self.params)
-      chex.assert_trees_all_close(updates, expected_tree, rtol=2e-7)
+      test_utils.assert_trees_all_close(updates, expected_tree, rtol=2e-7)
 
-  @chex.all_variants
   @parameterized.parameters((3.0, 2.0), (1.0, 5.0), (100.0, 4.0), (1.0, 90.0))
   def test_noise_multiplier(self, l2_norm_clip, noise_multiplier):
     """Standard dev. of noise should be l2_norm_clip * noise_multiplier."""
@@ -90,13 +87,13 @@ class DifferentiallyPrivateAggregateTest(chex.TestCase):
         l2_norm_clip=l2_norm_clip, noise_multiplier=noise_multiplier, key=1337
     )
     state = dp_agg.init(self.params)
-    update_fn = self.variant(dp_agg.update)
+    update_fn = jax.jit(dp_agg.update)
     expected_std = l2_norm_clip * noise_multiplier
 
     grads = [jnp.ones((1, 100, 100))]  # batch size 1
     for _ in range(3):
       updates, state = update_fn(grads, state)
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           expected_std, jnp.std(updates[0]), atol=0.1 * expected_std
       )
 

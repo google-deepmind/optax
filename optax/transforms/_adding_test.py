@@ -15,22 +15,21 @@
 """Tests for methods in `optax.transforms._adding.py`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax.transforms import _adding
 
 STEPS = 50
 
 
-class AddingTest(chex.TestCase):
+class AddingTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
     self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
     self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
-  @chex.all_variants
   def test_add_decayed_weights(self):
     # Define a transform that add decayed weights.
     # We can define a mask either as a pytree, or as a function that
@@ -63,12 +62,11 @@ class AddingTest(chex.TestCase):
     )
     # Apply transform
     state = tx.init(weights)
-    transform_fn = self.variant(tx.update)
+    transform_fn = jax.jit(tx.update)
     new_updates, _ = transform_fn(updates, state, weights)
     # Assert output as expected.
-    chex.assert_trees_all_close(new_updates, expected_tx_updates)
+    test_utils.assert_trees_all_close(new_updates, expected_tx_updates)
 
-  @chex.all_variants
   def test_add_noise_has_correct_variance_scaling(self):
     # Prepare to compare noise with a rescaled unit-variance substitute.
     eta = 0.3
@@ -85,7 +83,7 @@ class AddingTest(chex.TestCase):
     updates = jax.tree.map(jnp.zeros_like, params)
 
     for i in range(1, STEPS + 1):
-      updates_i, state = self.variant(noise.update)(updates, state)
+      updates_i, state = jax.jit(noise.update)(updates, state)
       updates_i_unit, state_unit = noise_unit.update(updates, state_unit)
 
       scale = jnp.sqrt(eta / i**gamma)
@@ -94,7 +92,8 @@ class AddingTest(chex.TestCase):
           lambda g, s=scale: g * s, updates_i_unit
       )
 
-      chex.assert_trees_all_close(updates_i, updates_i_rescaled, rtol=1e-4)
+      test_utils.assert_trees_all_close(
+          updates_i, updates_i_rescaled, rtol=1e-4)
 
   def test_none_argument(self):
     weights = (

@@ -18,11 +18,14 @@
 import math
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import numerics
+from optax._src import test_utils
+from optax._src import update
 from optax.contrib import _muon
 from optax.transforms import _masking
+
 
 UNSPECIFIED = object()
 
@@ -42,7 +45,21 @@ def get_updates(params, muon_weight_dimension_numbers=UNSPECIFIED):
   return updates, state
 
 
-class MuonTest(chex.TestCase):
+def _setup_mixed_tensor_target_complex(dtype):
+  """Complex version of _common_test._setup_mixed_tensor_target."""
+  initial_params = jnp.zeros((2, 2), dtype=dtype)
+  final_params = jnp.array(
+      [[1.0+2.0j, 0.0], [-1.0+1.0j, 1.0-3.0j]],
+      dtype=dtype,
+  )
+
+  def obj_fn(params):
+    return jnp.sum(numerics.abs_sq(params - final_params))
+
+  return initial_params, final_params, obj_fn
+
+
+class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       {
@@ -92,7 +109,7 @@ class MuonTest(chex.TestCase):
     self.assertEqual(reshaped_x.shape, expected_flat_shape)
     # Check inverse shape and value
     self.assertEqual(reconstructed_x.shape, x.shape)
-    chex.assert_trees_all_close(reconstructed_x, x)
+    test_utils.assert_trees_all_close(reconstructed_x, x)
 
   def test_callable_weight_dim_nums(self):
     # Case 1: a dim nums for all weights, no matter if they're muon.
@@ -129,7 +146,7 @@ class MuonTest(chex.TestCase):
         "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
     reshape_updates_sq, _ = get_updates(params_sq,
                                         muon_weight_dimension_numbers=dim_nums)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         updates_sq, reshape_updates_sq, rtol=1e-8, atol=1e-8
     )
 
@@ -147,8 +164,8 @@ class MuonTest(chex.TestCase):
           "w": _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1)}
       reshape_updates, _ = get_updates(params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
-                                  atol=1e-8)
+      test_utils.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
+                                        atol=1e-8)
 
     with self.subTest("4D with dim nums, (10, 12) -> (4, 1, 10, 3)"):
       # Test 2: 4D with dim nums, (10, 12) -> (4, 1, 10, 3)
@@ -158,8 +175,9 @@ class MuonTest(chex.TestCase):
                                                   output_axis=(0, 3))}
       reshape_updates, _ = get_updates(reshape_params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(jax.tree.map(reshape_fn, updates),
-                                  reshape_updates, rtol=1e-8, atol=1e-8)
+      test_utils.assert_trees_all_close(
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
+          atol=1e-8)
 
     with self.subTest("4D with dim_nums, (10, 12) -> (5, 12, 1, 2)"):
       # Test 3: 4D with dim_nums, (10, 12) -> (5, 12, 1, 2)
@@ -169,8 +187,9 @@ class MuonTest(chex.TestCase):
                                                   output_axis=(1,))}
       reshape_updates, _ = get_updates(reshape_params,
                                        muon_weight_dimension_numbers=dim_nums)
-      chex.assert_trees_all_close(jax.tree.map(reshape_fn, updates),
-                                  reshape_updates, rtol=1e-8, atol=1e-8)
+      test_utils.assert_trees_all_close(
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
+          atol=1e-8)
 
   def test_dim_nums_combinations(self):
     get_muon_mu = lambda state: state[0]["muon"][0][0][1]
@@ -230,6 +249,102 @@ class MuonTest(chex.TestCase):
     self.assertIsInstance(get_muon_mu(state)["w2"]["a"], _masking.MaskedNode)
     self.assertIsInstance(get_muon_mu(state)["w2"]["b"], _masking.MaskedNode)
 
+  def test_newton_schulz(self):
+    """Test that Newton--Schulz orhogonalizes/unitiarizes correctly."""
+    mat_real = jax.random.normal(jax.random.key(0), (4, 3), dtype=jnp.float32)
+    mat_complex = jax.random.normal(
+        jax.random.key(0), (4, 3), dtype=jnp.complex64
+    )
+
+    ns_coeffs = jnp.array([2.0, -1.5, 0.5])
+
+    if jax.default_backend() == "tpu":
+      atol, rtol = 1e-2, 1e-2
+    else:
+      atol, rtol = 1e-5, 1e-5
+
+    # For real matrices, Newton--Schulz should produce an orthonormal matrix
+    mat_real_orth = _muon.orthogonalize_via_newton_schulz(
+        mat_real,
+        ns_coeffs,
+        ns_steps=20,
+        eps=1e-12,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+
+    gram_real = mat_real_orth.T @ mat_real_orth
+    with self.subTest("Real Newton--Schulz produces an orthonormal matrix"):
+      self.assertTrue(
+          jnp.allclose(
+              gram_real, jnp.eye(mat_real.shape[1]), atol=atol, rtol=rtol
+          ),
+          msg=(
+              "Real Newton–Schulz did not orthogonalize correctly."
+              f"\nGram:\n{gram_real}"
+          ),  # should be close to identity
+      )
+
+    # For complex matrices, Newton--Schulz should produce a unitary matrix
+    mat_complex_orth = _muon.orthogonalize_via_newton_schulz(
+        mat_complex,
+        ns_coeffs,
+        ns_steps=10,
+        eps=1e-8,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+
+    gram_complex = mat_complex_orth.conj().T @ mat_complex_orth
+    with self.subTest("Complex Newton--Schulz produces a unitary matrix"):
+      self.assertTrue(
+          jnp.allclose(
+              gram_complex, jnp.eye(mat_complex.shape[1]), atol=atol, rtol=rtol
+          ),
+          msg=(
+              "Complex Newton–Schulz did not produce a unitary matrix."
+              f"\nGram:\n{gram_complex}"
+          ),  # should be close to identity
+      )
+
+    with self.subTest("Output shape is preserved for complex matrices"):
+      # Check that the output shape is preserved.
+      self.assertEqual(mat_complex_orth.shape, mat_complex.shape)
+
+  @parameterized.product(
+      target=(_setup_mixed_tensor_target_complex,),
+      dtype=("complex64",),
+      adaptive=(True, False),
+      nesterov=(True, False),
+  )
+  def test_complex_mixed_target(self, target, dtype, adaptive, nesterov):
+    """Test Muon optimizer on a complex mixed tensor optimization target."""
+    dtype = getattr(jnp, dtype)
+
+    opt = _muon.muon(
+        learning_rate=1e-2,
+        adaptive=adaptive,
+        nesterov=nesterov,
+    )
+    initial_params, final_params, obj_fn = target(dtype)
+
+    @jax.jit
+    def step(params, state):
+      _, updates = jax.value_and_grad(obj_fn)(params)
+      updates = jax.tree.map(jnp.conj, updates)
+      updates, state = opt.update(updates, state, params)
+      params = update.apply_updates(params, updates)
+      return params, state
+
+    params = initial_params
+    state = opt.init(params)
+
+    def f(params_state, _):
+      return step(*params_state), None
+
+    (params, _), _ = jax.lax.scan(f, (params, state), length=1000)
+
+    test_utils.assert_trees_all_close(
+        params, final_params, rtol=3e-2, atol=3e-2
+    )
 
 if __name__ == "__main__":
   absltest.main()

@@ -16,22 +16,22 @@
 
 from typing import Optional
 
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import utils
 
 
 def dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
-    class_weights: Optional[chex.Array] = None,
-    smooth: float = 1.0,
+    class_weights: Optional[jax.typing.ArrayLike] = None,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_softmax: bool = True,
     reduction: str = "mean",
     ignore_background: bool = False,
-    axis: Optional[chex.Array] = None,
-) -> chex.Array:
+    axis: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   r"""Computes the Dice Loss for multi-class segmentation.
 
   Computes the Soft Dice Loss for segmentation tasks. Works for both binary
@@ -111,8 +111,7 @@ def dice_loss(
     predictions = predictions[..., None]
   if targets.ndim == predictions.ndim - 1:
     targets = targets[..., None]
-
-  chex.assert_equal_shape([predictions, targets])
+  utils.check_shapes_equal(predictions, targets)
 
   # Input validation for probability distributions
   if not apply_softmax:
@@ -149,8 +148,7 @@ def dice_loss(
 
   # Apply class weights if provided
   if class_weights is not None:
-    num_classes = probs.shape[-1]
-    chex.assert_shape(class_weights, (num_classes,))
+    utils.check_rank(class_weights, 1)
     dice_l = dice_l * class_weights
 
   # Handle background class ignoring
@@ -174,13 +172,13 @@ def dice_loss(
 
 
 def multiclass_generalized_dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
-    smooth: float = 1.0,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_softmax: bool = True,
     ignore_background: bool = False,
-) -> chex.Array:
+) -> jax.Array:
   """Computes Multiclass Generalized Dice Loss with automatic class weighting.
 
   Computes Generalized Dice Loss where class weights are automatically
@@ -202,7 +200,7 @@ def multiclass_generalized_dice_loss(
       Sudre et al. "Generalised Dice overlap as a deep learning loss function
       for highly unbalanced segmentations" (2017).
   """
-  chex.assert_equal_shape([predictions, targets])
+  utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
   class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))
@@ -229,12 +227,12 @@ def multiclass_generalized_dice_loss(
 
 
 def binary_dice_loss(
-    predictions: chex.Array,
-    targets: chex.Array,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
     *,
-    smooth: float = 1.0,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_sigmoid: bool = True,
-) -> chex.Array:
+) -> jax.Array:
   """Binary Dice Loss convenience function.
 
   Args:

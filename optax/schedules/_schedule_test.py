@@ -19,7 +19,6 @@ import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -27,19 +26,19 @@ import numpy as np
 from optax._src import alias
 from optax._src import alias_test
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.schedules import _schedule
 
 
-class ConstantTest(chex.TestCase):
+class ConstantTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_constant(self):
     """Check constant schedule."""
     # Get schedule function.
     const_value = 10
     num_steps = 15
-    schedule_fn = self.variant(_schedule.constant_schedule(const_value))
+    schedule_fn = jax.jit(_schedule.constant_schedule(const_value))
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(num_steps):
@@ -52,13 +51,12 @@ class ConstantTest(chex.TestCase):
     )
 
 
-class PolynomialTest(chex.TestCase):
+class PolynomialTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_linear(self):
     """Check linear schedule."""
     # Get schedule function.
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.polynomial_schedule(
             init_value=10.0, end_value=20.0, power=1, transition_steps=10
         )
@@ -74,14 +72,13 @@ class PolynomialTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   def test_zero_steps_schedule(self):
     # Get schedule function.
     initial_value = 10.0
     end_value = 20.0
 
     for num_steps in [-1, 0]:
-      schedule_fn = self.variant(
+      schedule_fn = jax.jit(
           _schedule.polynomial_schedule(
               init_value=initial_value,
               end_value=end_value,
@@ -92,11 +89,10 @@ class PolynomialTest(chex.TestCase):
       for count in range(15):
         np.testing.assert_allclose(schedule_fn(count), initial_value)
 
-  @chex.all_variants
   def test_nonlinear(self):
     """Check non-linear (quadratic) schedule."""
     # Get schedule function.
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.polynomial_schedule(
             init_value=25.0, end_value=10.0, power=2, transition_steps=10
         )
@@ -115,11 +111,10 @@ class PolynomialTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   def test_with_decay_begin(self):
     """Check quadratic schedule with non-zero schedule begin."""
     # Get schedule function.
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.polynomial_schedule(
             init_value=30.0,
             end_value=10.0,
@@ -145,13 +140,12 @@ class PolynomialTest(chex.TestCase):
     )
 
 
-class PiecewiseConstantTest(chex.TestCase):
+class PiecewiseConstantTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_positive(self):
     """Check piecewise constant schedule of positive values."""
     # Get schedule function.
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_constant_schedule(0.1, {3: 2.0, 6: 0.5})
     )
     # Test that generated values equal the expected schedule values.
@@ -165,11 +159,10 @@ class PiecewiseConstantTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   def test_negative(self):
     """Check piecewise constant schedule of negative values."""
     # Get schedule function.
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_constant_schedule(-0.1, {3: 2.0, 6: 0.5})
     )
     # Test that generated values equal the expected schedule values.
@@ -186,16 +179,15 @@ class PiecewiseConstantTest(chex.TestCase):
     )
 
 
-class ExponentialTest(chex.TestCase):
+class ExponentialTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_constant_schedule(self, staircase):
     """Checks constant schedule for exponential decay schedule."""
     num_steps = 15
     # Get schedule function.
     init_value = 1.0
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.exponential_decay(
             init_value=init_value,
             transition_steps=num_steps,
@@ -212,13 +204,12 @@ class ExponentialTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_nonvalid_transition_steps(self, staircase):
     """Checks nonvalid decay steps results in a constant schedule."""
     init_value = 1.0
     for transition_steps in [-1, 0]:
-      schedule_fn = self.variant(
+      schedule_fn = jax.jit(
           _schedule.exponential_decay(
               init_value=init_value,
               transition_steps=transition_steps,
@@ -229,12 +220,11 @@ class ExponentialTest(chex.TestCase):
       for count in range(15):
         np.testing.assert_allclose(schedule_fn(count), init_value)
 
-  @chex.all_variants
   @parameterized.parameters(False, True)
   def test_nonvalid_decay_rate(self, staircase):
     """Checks nonvalid decay steps results in a constant schedule."""
     init_value = 1.0
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.exponential_decay(
             init_value=init_value,
             transition_steps=2,
@@ -245,7 +235,6 @@ class ExponentialTest(chex.TestCase):
     for count in range(15):
       np.testing.assert_allclose(schedule_fn(count), init_value)
 
-  @chex.all_variants
   @parameterized.parameters((False, 0), (True, 0), (False, 5), (True, 5))
   def test_exponential(self, staircase, transition_begin):
     """Checks non-linear (quadratic) schedule."""
@@ -254,7 +243,7 @@ class ExponentialTest(chex.TestCase):
     num_steps = 15
     transition_steps = 2
     decay_rate = 2.0
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.exponential_decay(
             init_value=init_value,
             transition_steps=transition_steps,
@@ -286,7 +275,6 @@ class ExponentialTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   @parameterized.parameters(
       (0.2, 0.1, False),
       (1.0, 0.1, False),
@@ -301,7 +289,7 @@ class ExponentialTest(chex.TestCase):
     num_steps = 11
     transition_steps = 2
     transition_begin = 3
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.exponential_decay(
             init_value=init_value,
             transition_steps=transition_steps,
@@ -340,13 +328,12 @@ class ExponentialTest(chex.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-  @chex.all_variants
   def test_immutable_count(self):
     """Checks constant schedule for exponential decay schedule."""
     num_steps = 5
     # Get schedule function.
     init_value = 32.0
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.exponential_decay(
             init_value=init_value, transition_steps=1, decay_rate=0.5
         )
@@ -354,22 +341,19 @@ class ExponentialTest(chex.TestCase):
     # Test that generated values equal the expected schedule values.
     generated_vals = []
     for count in range(num_steps):
-      # Jax arrays are read-only in ChexVariantType.WITHOUT_DEVICE.
-      immutable_count = jnp.array(count, dtype=jnp.float32)
-      generated_vals.append(schedule_fn(immutable_count))
+      generated_vals.append(schedule_fn(count))
     expected_vals = np.array([32, 16, 8, 4, 2], dtype=np.float32)
     np.testing.assert_allclose(
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
 
-class CosineDecayTest(chex.TestCase):
+class CosineDecayTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_decay_count_smaller_count(self):
     """Check cosine schedule decay for the entire training schedule."""
     initial_value = 0.1
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_decay_schedule(initial_value, 10, 0.0)
     )
     # Test that generated values equal the expected schedule values.
@@ -391,11 +375,10 @@ class CosineDecayTest(chex.TestCase):
         atol=1e-3,
     )
 
-  @chex.all_variants
   def test_decay_count_greater_count(self):
     """Check cosine schedule decay for a part of the training schedule."""
     initial_value = 0.1
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_decay_schedule(initial_value, 5, 0.0)
     )
     # Test that generated values equal the expected schedule values.
@@ -421,12 +404,11 @@ class CosineDecayTest(chex.TestCase):
         atol=1e-3,
     )
 
-  @chex.all_variants
   def test_decay_count_greater_count_with_alpha(self):
     """Check cosine schedule decay for a part of the training schedule."""
     # Get schedule function.
     initial_value = 0.1
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_decay_schedule(initial_value, 5, 0.1)
     )
     # Test that generated values equal the expected schedule values.
@@ -453,10 +435,9 @@ class CosineDecayTest(chex.TestCase):
         atol=1e-3,
     )
 
-  @chex.all_variants
   def test_with_exponent(self):
     """Check cosine schedule decay with exponent on."""
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_decay_schedule(
             init_value=0.1, decay_steps=100, alpha=0.0, exponent=2
         )
@@ -469,10 +450,9 @@ class CosineDecayTest(chex.TestCase):
         atol=1e-8,
     )
 
-  @chex.all_variants
   def test_with_giant_int_steps(self):
     """Check cosine schedule decay with decay_steps not fitting into int32."""
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_decay_schedule(
             init_value=1000.0, decay_steps=int(1e10), alpha=0.0, exponent=1
         )
@@ -481,16 +461,15 @@ class CosineDecayTest(chex.TestCase):
     np.testing.assert_allclose(output, 975.52826)
 
 
-class WarmupCosineDecayTest(chex.TestCase):
+class WarmupCosineDecayTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.named_parameters(
       ('with end value', 10, 0.5, 1e-4),
       ('without end value', 5, 3, 0.0),
   )
   def test_limits(self, init_value, peak_value, end_value):
     """Check cosine schedule decay for the entire training schedule."""
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.warmup_cosine_decay_schedule(
             init_value=init_value,
             peak_value=peak_value,
@@ -504,10 +483,9 @@ class WarmupCosineDecayTest(chex.TestCase):
     np.testing.assert_allclose(peak_value, schedule_fn(100))
     np.testing.assert_allclose(end_value, schedule_fn(1000), rtol=1e-3)
 
-  @chex.all_variants
   def test_with_exponent(self):
     """Check that we get correct results when running with exponent on."""
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.warmup_cosine_decay_schedule(
             init_value=0.2,
             peak_value=1.21,
@@ -531,10 +509,9 @@ class WarmupCosineDecayTest(chex.TestCase):
         atol=1e-8,
     )
 
-  @chex.all_variants
   def test_zero_peak_value(self):
     """Check that we get correct results when running with zero peak value."""
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.warmup_cosine_decay_schedule(
             init_value=0.2,
             peak_value=0,
@@ -550,9 +527,8 @@ class WarmupCosineDecayTest(chex.TestCase):
     )
 
 
-class SGDRTest(chex.TestCase):
+class SGDRTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.named_parameters(
       ('with step decay', 1.6, 0.8, 0.4),
       ('without step_decay', 1.6, 1.6, 1.6),
@@ -568,17 +544,16 @@ class SGDRTest(chex.TestCase):
           'end_value': 0.0,
           'warmup_steps': 500,
       }]
-    schedule_fn = self.variant(_schedule.sgdr_schedule(lr_kwargs))
+    schedule_fn = jax.jit(_schedule.sgdr_schedule(lr_kwargs))
     np.testing.assert_allclose(lr0, schedule_fn(500))
     np.testing.assert_allclose(lr1, schedule_fn(2500))
     np.testing.assert_allclose(lr2, schedule_fn(5500))
 
 
-class PiecewiseInterpolateTest(chex.TestCase):
+class PiecewiseInterpolateTest(absltest.TestCase):
 
-  @chex.all_variants
   def test_linear_piecewise(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_interpolate_schedule(
             'linear', 200.0, {5: 1.5, 10: 0.25}
         )
@@ -601,9 +576,8 @@ class PiecewiseInterpolateTest(chex.TestCase):
     ]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants
   def test_cos_piecewise(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_interpolate_schedule(
             'cosine', 400.0, {5: 1.2, 3: 0.6, 7: 1.0}
         )
@@ -622,18 +596,16 @@ class PiecewiseInterpolateTest(chex.TestCase):
     ]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants
   def test_empty_dict(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_interpolate_schedule('linear', 13.0, {})
     )
     generated_vals = [schedule_fn(step) for step in range(5)]
     expected_vals = [13.0, 13.0, 13.0, 13.0, 13.0]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants
   def test_no_dict(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.piecewise_interpolate_schedule('cosine', 17.0)
     )
     generated_vals = [schedule_fn(step) for step in range(3)]
@@ -654,12 +626,19 @@ class PiecewiseInterpolateTest(chex.TestCase):
     with self.assertRaises(ValueError):
       _schedule.piecewise_interpolate_schedule('linear', 13.0, {5: -3})
 
+  def test_zero_interval_size(self):
+    sched = _schedule.piecewise_interpolate_schedule(
+        'linear', 13.0, {0: 2.0, 5: 3.0}
+    )
+    self.assertTrue(all(jnp.isfinite(sched(i)) for i in range(6)))
+    self.assertAlmostEqual(sched(0), 26.0)  # 13.0 * 2.0
+    self.assertAlmostEqual(sched(5), 78.0)  # 26.0 * 3.0
 
-class OneCycleTest(chex.TestCase):
 
-  @chex.all_variants
+class OneCycleTest(absltest.TestCase):
+
   def test_linear(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.linear_onecycle_schedule(
             transition_steps=10,
             peak_value=1000,
@@ -687,9 +666,8 @@ class OneCycleTest(chex.TestCase):
     ]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
-  @chex.all_variants
   def test_cosine(self):
-    schedule_fn = self.variant(
+    schedule_fn = jax.jit(
         _schedule.cosine_onecycle_schedule(
             transition_steps=5,
             peak_value=1000.0,
@@ -758,7 +736,7 @@ class ScheduleAsLearningRateTest(parameterized.TestCase):
             opt_with_lr, params_with_lr, state_with_lr)
       # check if the constant learning rate schedule and the learning rate
       # are equivalent
-      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
+      test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 if __name__ == '__main__':
   absltest.main()

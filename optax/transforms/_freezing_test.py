@@ -17,12 +17,12 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import alias
 from optax._src import base
+from optax._src import test_utils
 from optax._src import update
 from optax.transforms import _freezing
 
@@ -116,10 +116,10 @@ class FreezeTest(parameterized.TestCase):
     state = optimizer.init(params)
     updates, new_state = optimizer.update(grads, state, params)
 
-    chex.assert_trees_all_close(updates, expected_updates, atol=0)
-    chex.assert_trees_all_equal(state, new_state)
+    test_utils.assert_trees_all_close(updates, expected_updates, atol=0)
+    test_utils.assert_trees_all_equal(state, new_state)
     # pytype: disable=attribute-error
-    chex.assert_trees_all_equal(state.inner_state, base.EmptyState())
+    test_utils.assert_trees_all_equal(state.inner_state, base.EmptyState())
     # pytype: enable=attribute-error
 
   def test_nested_freeze_all(self):
@@ -131,7 +131,7 @@ class FreezeTest(parameterized.TestCase):
     opt = _freezing.freeze(mask)
     state = opt.init(PARAMS_NESTED)
     updates, _ = opt.update(GRAD_NESTED, state, PARAMS_NESTED)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         updates, jax.tree.map(lambda g: g * 0, GRAD_NESTED), atol=0
     )
 
@@ -144,7 +144,7 @@ class FreezeTest(parameterized.TestCase):
     opt = _freezing.freeze(mask)
     state = opt.init(PARAMS_NESTED)
     updates, _ = opt.update(GRAD_NESTED, state, PARAMS_NESTED)
-    chex.assert_trees_all_close(updates, GRAD_NESTED, atol=0)
+    test_utils.assert_trees_all_close(updates, GRAD_NESTED, atol=0)
 
   @parameterized.named_parameters([
       ("py_bool", True),
@@ -159,7 +159,7 @@ class FreezeTest(parameterized.TestCase):
         if bool(scalar_mask)
         else GRAD_FLAT
     )
-    chex.assert_trees_all_close(updates, expected, atol=0)
+    test_utils.assert_trees_all_close(updates, expected, atol=0)
 
   def test_bad_structure_raises(self):
     bad_mask = {"layer1": [True]}  # missing the bias leaf
@@ -185,7 +185,7 @@ class FreezeTest(parameterized.TestCase):
         "a": jnp.array(10.0),
         "b": {"c": jnp.array(0.0), "d": jnp.array(0.0)},
     }
-    chex.assert_trees_all_close(updates, expected_updates, atol=0)
+    test_utils.assert_trees_all_close(updates, expected_updates, atol=0)
 
 
 class SelectiveTransformTest(parameterized.TestCase):
@@ -290,7 +290,7 @@ class SelectiveTransformTest(parameterized.TestCase):
     updates, _ = optimizer.update(grads, state, params)
     new_params = update.apply_updates(params, updates)
 
-    chex.assert_trees_all_close(new_params, expected_params, atol=1e-6)
+    test_utils.assert_trees_all_close(new_params, expected_params, atol=1e-6)
 
   def test_nested_train_all(self):
     mask = {
@@ -302,7 +302,7 @@ class SelectiveTransformTest(parameterized.TestCase):
     updates, _ = opt.update(GRAD_NESTED, opt.init(PARAMS_NESTED), PARAMS_NESTED)
     new_params = update.apply_updates(PARAMS_NESTED, updates)
     expected = jax.tree.map(lambda p, g: p - g, PARAMS_NESTED, GRAD_NESTED)
-    chex.assert_trees_all_close(new_params, expected, atol=1e-6)
+    test_utils.assert_trees_all_close(new_params, expected, atol=1e-6)
 
   @parameterized.named_parameters([
       ("py_bool", True),
@@ -312,7 +312,7 @@ class SelectiveTransformTest(parameterized.TestCase):
     opt = _freezing.selective_transform(alias.sgd(1.0), freeze_mask=scalar_mask)
     updates, _ = opt.update(GRAD_FLAT, opt.init(PARAMS_FLAT), PARAMS_FLAT)
     new_params = update.apply_updates(PARAMS_FLAT, updates)
-    chex.assert_trees_all_close(new_params, PARAMS_FLAT, atol=1e-6)
+    test_utils.assert_trees_all_close(new_params, PARAMS_FLAT, atol=1e-6)
 
   def test_selective_bad_structure(self):
     bad_mask = {"a": True}  # missing 'b'
@@ -339,7 +339,7 @@ class SelectiveTransformTest(parameterized.TestCase):
     # 'a' is updated by SGD (p - g), 'b' remains unchanged
 
     expected_params = {"a": params["a"] - grads["a"], "b": params["b"]}
-    chex.assert_trees_all_close(new_params, expected_params, atol=1e-6)
+    test_utils.assert_trees_all_close(new_params, expected_params, atol=1e-6)
 
 
 if __name__ == "__main__":

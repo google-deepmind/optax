@@ -16,14 +16,13 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _segmentation
 
 
-class DiceLossTest(chex.TestCase):
+class DiceLossTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -334,10 +333,9 @@ class DiceLossTest(chex.TestCase):
         self.key, 0.5, (2, 16, 16, 2)
     )  # Wrong classes
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(ValueError):
       _segmentation.dice_loss(predictions, targets)
 
-  @chex.all_variants
   def test_jit_compilation(self):
     """Test that the function can be JIT compiled."""
     # Use simpler shapes to avoid dynamic reshape issues
@@ -350,20 +348,19 @@ class DiceLossTest(chex.TestCase):
     loss_no_jit = _segmentation.dice_loss(predictions, targets)
 
     # Test with JIT
-    jit_loss_fn = self.variant(_segmentation.dice_loss)
+    jit_loss_fn = jax.jit(_segmentation.dice_loss)
     loss_jit = jit_loss_fn(predictions, targets)
 
     # Should be approximately equal
     np.testing.assert_allclose(loss_no_jit, loss_jit, rtol=1e-6)
 
-  @chex.all_variants
   def test_vmap_compatibility(self):
     """Test that the function works with vmap."""
 
     def single_loss(pred, target):
       return _segmentation.dice_loss(pred[None, ...], target[None, ...])
 
-    batched_loss = self.variant(jax.vmap(single_loss))
+    batched_loss = jax.jit(jax.vmap(single_loss))
 
     predictions = jax.random.normal(
         self.key, (4, 4, 1)

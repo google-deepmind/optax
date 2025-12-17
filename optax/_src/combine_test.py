@@ -16,12 +16,12 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 
@@ -30,14 +30,13 @@ STEPS = 50
 LR = 1e-2
 
 
-class ComposeTest(chex.TestCase):
+class ComposeTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
     self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
     self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
-  @chex.all_variants
   def test_chain(self):
     transformations = [
         transform.scale_by_adam(),
@@ -51,7 +50,7 @@ class ComposeTest(chex.TestCase):
     state = chained_transforms.init(chain_params)
     self.assertIsInstance(state, tuple)
 
-    @self.variant
+    @jax.jit
     def update_fn(updates, state):
       return chained_transforms.update(updates, state)
 
@@ -73,7 +72,7 @@ class ComposeTest(chex.TestCase):
       states = new_states
 
     # Check equivalence.
-    chex.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
+    test_utils.assert_trees_all_close(manual_params, chain_params, rtol=1e-4)
 
 
 def _map_keys_fn(fn):
@@ -86,7 +85,7 @@ def _map_keys_fn(fn):
   return map_fn
 
 
-class ExtraArgsTest(chex.TestCase):
+class ExtraArgsTest(absltest.TestCase):
 
   def test_extra_args(self):
     def init_fn(params):
@@ -151,10 +150,9 @@ class ExtraArgsTest(chex.TestCase):
     opt.update(params, state, params=params, ignored_kwarg='hi')
 
 
-class PartitionTest(chex.TestCase):
+class PartitionTest(parameterized.TestCase):
   """Tests for the partition wrapper."""
 
-  @chex.all_variants
   @parameterized.parameters(True, False)
   def test_partition(self, use_fn):
     params = {'a1': 1.0, 'b1': 2.0, 'z1': {'a2': 3.0, 'z2': {'c1': 4.0}}}
@@ -169,8 +167,8 @@ class PartitionTest(chex.TestCase):
     if not use_fn:
       param_labels = param_labels(params)
     tx = combine.partition(tx_dict, param_labels)
-    update_fn = self.variant(tx.update)
-    state = self.variant(tx.init)(params)
+    update_fn = jax.jit(tx.update)
+    state = jax.jit(tx.init)(params)
 
     correct_update_fn = _map_keys_fn(
         lambda k, v: {'a': -v, 'b': v, 'c': 2.0 * v}[k[0]]
@@ -178,12 +176,12 @@ class PartitionTest(chex.TestCase):
 
     updates, state = update_fn(input_updates, state, params)
     correct_updates = correct_update_fn(input_updates)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
     # Check repeated application, this time with no params.
     correct_updates = correct_update_fn(correct_updates)
     updates, _ = update_fn(updates, state)
-    chex.assert_trees_all_close(updates, correct_updates)
+    test_utils.assert_trees_all_close(updates, correct_updates)
 
   def test_extra_args(self):
 
@@ -231,7 +229,6 @@ class PartitionTest(chex.TestCase):
     updates, _ = update_fn(container(), init_fn(container()))
     self.assertEqual(updates, container())
 
-  @chex.all_variants
   @parameterized.parameters(
       (False, False), (False, True), (True, False), (True, True)
   )
@@ -255,11 +252,11 @@ class PartitionTest(chex.TestCase):
 
     if use_extra_label:
       with self.assertRaises(ValueError):
-        self.variant(init_fn)(params)
+        jax.jit(init_fn)(params)
     else:
-      state = self.variant(init_fn)(params)
+      state = jax.jit(init_fn)(params)
       updates = jax.tree.map(lambda x: x / 10.0, params)
-      self.variant(update_fn)(updates, state)
+      jax.jit(update_fn)(updates, state)
 
 
 def scale_by_loss():
@@ -291,7 +288,7 @@ class NamedChainTest(absltest.TestCase):
     opt_state = tx.init(params)
     updates, _ = tx.update(grads, opt_state, params, loss=0.1)
 
-    chex.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
+    test_utils.assert_trees_all_close(updates, {'a': jnp.ones((4,))})
 
 
 if __name__ == '__main__':

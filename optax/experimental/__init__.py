@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2025 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Base types for the second order sub-package."""
 
-import abc
-from typing import Any, Protocol
+"""Experimental optax modules."""
 
-import jax
+from . import _aggregating as aggregating
+from .microbatching import microbatch
 
 
-class LossFn(Protocol):
-  """A loss function to be optimized."""
-
-  @abc.abstractmethod
-  def __call__(
-      self, params: Any, inputs: jax.Array, targets: jax.Array
-  ) -> jax.Array:
-    ...
+__all__ = [
+    'aggregating',
+    'microbatch',
+]

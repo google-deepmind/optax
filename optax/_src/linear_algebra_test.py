@@ -19,9 +19,9 @@ from typing import Iterable
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import flax.linen as nn
 import jax
+from jax import flatten_util
 from jax import random
 import jax.numpy as jnp
 import numpy as np
@@ -43,7 +43,7 @@ class MLP(nn.Module):
     return nn.Dense(self.num_outputs)(x)
 
 
-class LinearAlgebraTest(chex.TestCase):
+class LinearAlgebraTest(parameterized.TestCase):
 
   def test_global_norm(self):
     flat_updates = jnp.array([2.0, 4.0, 3.0, 5.0], dtype=jnp.float32)
@@ -53,7 +53,7 @@ class LinearAlgebraTest(chex.TestCase):
     }
     np.testing.assert_array_equal(
         jnp.sqrt(jnp.sum(flat_updates**2)),
-        linear_algebra.global_norm(nested_updates),
+        optax.tree.norm(nested_updates),
     )
 
   def test_power_iteration_cond_fun(self, dim=6):
@@ -77,7 +77,6 @@ class LinearAlgebraTest(chex.TestCase):
     )
     self.assertEqual(cond_fun_result, False)
 
-  @chex.all_variants
   @parameterized.parameters(
       {'implicit': True},
       {'implicit': False},
@@ -100,7 +99,7 @@ class LinearAlgebraTest(chex.TestCase):
       power_iteration = linear_algebra.power_iteration
 
     # test this function with/without jax.jit and on different devices
-    power_iteration = self.variant(power_iteration)
+    power_iteration = jax.jit(power_iteration)
 
     # create a random PSD matrix
     matrix = jax.random.normal(jax.random.key(0), (dim, dim))
@@ -117,7 +116,6 @@ class LinearAlgebraTest(chex.TestCase):
         decimal=3,
     )
 
-  @chex.all_variants
   def test_power_iteration_pytree(self, dim=6, tol=1e-3, num_iters=100):
     """Test power_iteration for matrix-vector products acting on pytrees."""
 
@@ -127,7 +125,7 @@ class LinearAlgebraTest(chex.TestCase):
       # block respectively.
       return {'a': 2 * x['a'], 'b': x['b']}
 
-    @self.variant
+    @jax.jit
     def power_iteration(*, v0):
       return linear_algebra.power_iteration(
           matrix_vector_product,
@@ -143,7 +141,6 @@ class LinearAlgebraTest(chex.TestCase):
     # from the block-diagonal structure of matrix, largest eigenvalue is 2.
     self.assertAlmostEqual(eigval_power, 2.0, delta=10 * tol)
 
-  @chex.all_variants
   def test_power_iteration_mlp_hessian(
       self, input_dim=16, output_dim=4, tol=1e-3
   ):
@@ -156,7 +153,7 @@ class LinearAlgebraTest(chex.TestCase):
     x = jax.random.normal(key_input, (input_dim,))
     y = jax.random.normal(key_output, (output_dim,))
 
-    @self.variant
+    @jax.jit
     def train_obj(params_):
       z = mlp.apply(params_, x)
       return jnp.sum((z - y) ** 2)
@@ -168,8 +165,8 @@ class LinearAlgebraTest(chex.TestCase):
         hessian_vector_product, v0=optax.tree.ones_like(params)
     )
 
-    params_flat, unravel = jax.flatten_util.ravel_pytree(params)
-    eigvec_power_flat, _ = jax.flatten_util.ravel_pytree(eigvec_power)
+    params_flat, unravel = flatten_util.ravel_pytree(params)
+    eigvec_power_flat, _ = flatten_util.ravel_pytree(eigvec_power)
 
     def train_obj_flat(params_flat_):
       params_ = unravel(params_flat_)

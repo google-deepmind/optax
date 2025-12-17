@@ -30,6 +30,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import linesearch as _linesearch
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 from optax._src import utils
@@ -90,6 +91,7 @@ _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'rprop', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'sgd', 'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9}},
     {'opt_name': 'sign_sgd', 'opt_kwargs': {'learning_rate': 1e-1}},
+    {'opt_name': 'signum', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'sm3', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'yogi', 'opt_kwargs': {'learning_rate': 1e-1}},
 )
@@ -128,7 +130,7 @@ def _setup_rosenbrock(dtype):
   return initial_params, final_params, objective
 
 
-class AliasTest(chex.TestCase):
+class AliasTest(parameterized.TestCase):
 
   @parameterized.product(
       _OPTIMIZERS_UNDER_TEST,
@@ -148,12 +150,13 @@ class AliasTest(chex.TestCase):
         'adan',
         'polyak_sgd',
         'sign_sgd',
+        'signum',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
       )
 
-    if opt_name in ('sign_sgd',) and target is _setup_rosenbrock:
+    if opt_name in ('sign_sgd', 'signum') and target is _setup_rosenbrock:
       raise absltest.SkipTest(
           f'{opt_name} requires learning rate scheduling to solve the'
           ' Rosenbrockfunction'
@@ -184,8 +187,14 @@ class AliasTest(chex.TestCase):
       state = optax.tree.map_params(opt, lambda v: v, state)
 
     with self.subTest('Test that optimization works'):
-      for _ in range(10000):
-        params, state = step(params, state)
+      for it in range(10000):
+        if it == 1:
+          with test_utils.log_compilations() as compilation_logs:
+            params, state = step(params, state)
+          self.assertEmpty(compilation_logs,
+                           'Optimizer recompiles on second call to "update".')
+        else:
+          params, state = step(params, state)
 
       if (opt_name in ('adadelta', 'adafactor')
           and opt_kwargs.get('learning_rate') is None):
@@ -193,7 +202,18 @@ class AliasTest(chex.TestCase):
             f'{opt_name} needs a non-None learning rate for numerically stable'
             ' optimization in practice.'
         )
-      chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+      test_utils.assert_trees_all_close(
+          params, final_params, rtol=3e-2, atol=3e-2)
+
+    with self.subTest('Test that the optimizer doesn\'t recompile on 2nd call'):
+      params = initial_params
+      state = opt.init(params)
+      params, state = step(params, state)
+      with test_utils.log_compilations() as compilation_logs:
+        _ = step(params, state)
+      self.assertEmpty(
+          compilation_logs, 'Optimizer recompiles on second call to "update".'
+      )
 
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_accept_extra_args(self, opt_name, opt_kwargs):
@@ -218,7 +238,6 @@ class AliasTest(chex.TestCase):
       for _ in range(2):
         params, state = step(params, state)
 
-  @chex.all_variants
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs
@@ -240,24 +259,24 @@ class AliasTest(chex.TestCase):
     params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
 
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': jnp.array(0.0)}
     else:
       update_kwargs = {}
-    updates, new_state = self.variant(opt.update)(
+    updates, new_state = jax.jit(opt.update)(
         grads, state, params, **update_kwargs
     )
 
-    state_inject = self.variant(opt_inject.init)(params)
-    updates_inject, new_state_inject = self.variant(opt_inject.update)(
+    state_inject = jax.jit(opt_inject.init)(params)
+    updates_inject, new_state_inject = jax.jit(opt_inject.update)(
         grads, state_inject, params, **update_kwargs
     )
 
     with self.subTest('Equality of updates.'):
-      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-4)
+      test_utils.assert_trees_all_close(updates_inject, updates, rtol=1e-3)
     with self.subTest('Equality of new optimizer states.'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           optax.tree.unwrap_random_key_data(new_state_inject.inner_state),
           optax.tree.unwrap_random_key_data(new_state),
           rtol=1e-4,
@@ -290,12 +309,6 @@ class AliasTest(chex.TestCase):
       attribute = optax.tree.get(state, attribute_name)
       self.assertEqual(expected_dtype, attribute.dtype)
 
-  # Not testing with `without_device=True` because without_device set the
-  # variables to the host which appears to convert then the dtype, so we
-  # lose control of the dtype and the test fails.
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
   def test_preserve_dtype(self, opt_name, opt_kwargs, dtype):
     """Test that the optimizers return updates of same dtype as gradients."""
@@ -314,12 +327,12 @@ class AliasTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': fun(params)}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
+    updates, _ = jax.jit(opt.update)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, grads.dtype)
 
   @parameterized.product(
@@ -333,7 +346,7 @@ class AliasTest(chex.TestCase):
     if opt_name in (
         'fromage', 'noisy_sgd', 'sm3', 'optimistic_gradient_descent',
         'optimistic_adam', 'lion', 'rprop', 'adadelta', 'adan', 'polyak_sgd',
-        'sign_sgd') and jnp.iscomplexobj(dtype):
+        'sign_sgd', 'signum') and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
       )
@@ -379,9 +392,6 @@ class AliasTest(chex.TestCase):
                                lambda: new_state)    # noqa: B023
           # pylint: enable=cell-var-from-loop
 
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32'))
   def test_gradient_accumulation(self, opt_name, opt_kwargs, dtype):
     """Test that the optimizers can safely be used with optax.MultiSteps."""
@@ -395,7 +405,7 @@ class AliasTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     grads = jax.grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name == 'polyak_sgd':
       update_kwargs = {'value': fun(params)}
     elif opt_name == 'lbfgs':
@@ -407,9 +417,9 @@ class AliasTest(chex.TestCase):
         k: v for k, v in update_kwargs.items() if not isinstance(v, jax.Array)}
     dyn_kwargs = {
         k: v for k, v in update_kwargs.items() if isinstance(v, jax.Array)}
-    updates, _ = self.variant(functools.partial(opt.update, **static_kwargs))(
+    updates, _ = jax.jit(functools.partial(opt.update, **static_kwargs))(
         grads, state, params, **dyn_kwargs)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
 ##########################
@@ -668,7 +678,7 @@ def _get_problem(
   return problems[name]
 
 
-class LBFGSTest(chex.TestCase):
+class LBFGSTest(parameterized.TestCase):
 
   def test_plain_preconditioning(self):
     key = jrd.key(0)
@@ -684,7 +694,7 @@ class LBFGSTest(chex.TestCase):
     expected_precond_vec = precond_mat.dot(
         vec, precision=jax.lax.Precision.HIGHEST
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         plain_precond_vec, expected_precond_vec, rtol=1e-5
     )
 
@@ -711,7 +721,7 @@ class LBFGSTest(chex.TestCase):
         vec, dws, dus, rhos, identity_scale=1.0, memory_idx=idx
     )
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         lbfgs_precond_vec, expected_precond_vec, atol=1e-5, rtol=1e-5
     )
 
@@ -766,7 +776,7 @@ class LBFGSTest(chex.TestCase):
         flat_precond_mat, flat_vec, precision=jax.lax.Precision.HIGHEST
     )
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         flat_lbfgs_precond_vec, expected_flat_precond_vec, atol=1e-3, rtol=1e-3
     )
 
@@ -805,7 +815,7 @@ class LBFGSTest(chex.TestCase):
         memory_size=memory_size,
         scale_init_precond=scale_init_precond,
     )
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         lbfgs_sol, expected_lbfgs_sol, atol=1e-5, rtol=1e-5
     )
 
@@ -827,7 +837,8 @@ class LBFGSTest(chex.TestCase):
     sol_arr, _ = _run_opt(opt, fun, init_array, maxiter=3)
     sol_tree, _ = _run_opt(opt, fun, init_tree, maxiter=3)
     sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
-    chex.assert_trees_all_close(sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5)
+    test_utils.assert_trees_all_close(
+        sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5)
 
   @parameterized.product(scale_init_precond=[True, False])
   def test_multiclass_logreg(self, scale_init_precond):
@@ -889,7 +900,7 @@ class LBFGSTest(chex.TestCase):
     sol_skl = (
         logreg.coef_.ravel() if logreg.coef_.shape[0] == 1 else logreg.coef_.T
     )
-    chex.assert_trees_all_close(sol, sol_skl, atol=5e-2)
+    test_utils.assert_trees_all_close(sol, sol_skl, atol=5e-2)
 
   @parameterized.product(
       problem_name=[
@@ -915,20 +926,21 @@ class LBFGSTest(chex.TestCase):
     # 1. Check minimizer obtained against known minimizer or scipy minimizer
     with self.subTest('Check minimizer'):
       if problem_name in ['matyas', 'zakharov']:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             optax_sol, problem['minimizer'], atol=tol, rtol=tol
         )
       else:
-        chex.assert_trees_all_close(optax_sol, scipy_sol, atol=tol, rtol=tol)
+        test_utils.assert_trees_all_close(
+            optax_sol, scipy_sol, atol=tol, rtol=tol)
 
     with self.subTest('Check minimum'):
       # 2. Check if minimum is reached or equal to scipy's found value
       if problem_name == 'eggholder':
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             jnp_fun(optax_sol), np_fun(scipy_sol), atol=tol, rtol=tol
         )
       else:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             jnp_fun(optax_sol), problem['minimum'], atol=tol, rtol=tol
         )
 
@@ -948,10 +960,11 @@ class LBFGSTest(chex.TestCase):
         method='BFGS',
         x0=init_params,
     ).x
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         np_fun(scipy_sol), jnp_fun(optax_sol), atol=tol, rtol=tol
     )
-    chex.assert_trees_all_close(jnp_fun(optax_sol), minimum, atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(
+        jnp_fun(optax_sol), minimum, atol=tol, rtol=tol)
 
   def test_steep_objective(self):
     # See jax related issue https://github.com/jax-ml/jax/issues/4594
@@ -964,7 +977,7 @@ class LBFGSTest(chex.TestCase):
 
     opt = alias.lbfgs()
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
-    chex.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
 
   @parameterized.product(
       linesearch=[
@@ -1002,7 +1015,7 @@ class LBFGSTest(chex.TestCase):
     sol_complex, _ = _run_opt(opt_complex, f_complex, init_params=z0, tol=tol)
     sol_real, _ = _run_opt(opt_real, f_real, init_params=x0, tol=tol)
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         sol_complex, to_complex(sol_real), atol=tol, rtol=tol
     )
 
@@ -1034,7 +1047,7 @@ class LBFGSTest(chex.TestCase):
 
     opt = alias.lbfgs(linesearch=linesearch)
     got, _ = _run_opt(opt, fun, init, maxiter=500, tol=tol)
-    chex.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
+    test_utils.assert_trees_all_close(got, expected, atol=tol, rtol=tol)
 
   @parameterized.product(
       dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64, jnp.complex64,
