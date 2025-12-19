@@ -17,7 +17,6 @@
 import contextlib
 from typing import Optional, Sequence
 
-import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
@@ -159,21 +158,21 @@ def multi_normal(
 
 @jax.custom_vjp
 def _scale_gradient(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
 def _scale_gradient_fwd(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike
-) -> tuple[chex.ArrayTree, jax.typing.ArrayLike]:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike
+) -> tuple[base.ArrayTree, jax.typing.ArrayLike]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(
-    scale: jax.typing.ArrayLike, g: chex.ArrayTree
-) -> tuple[chex.ArrayTree, None]:
+    scale: jax.typing.ArrayLike, g: base.ArrayTree
+) -> tuple[base.ArrayTree, None]:
   return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
@@ -181,7 +180,7 @@ _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
 def scale_gradient(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:
