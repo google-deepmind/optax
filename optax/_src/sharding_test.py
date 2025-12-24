@@ -23,7 +23,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from optax._src import test_utils
-from optax.experimental import _microbatching as microbatching
+from optax.experimental import microbatching
 
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'

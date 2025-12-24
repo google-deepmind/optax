@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import test_utils
-from optax.experimental import _microbatching as microbatching
+from optax.experimental import microbatching
 
 
 def per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
@@ -252,13 +252,48 @@ class MicrobatchingTest(parameterized.TestCase):
 
   def test_vmap(self):
     x = jnp.arange(2*4*8).reshape(2, 4, 8)
-    custom_vmap = microbatching.gvmap(
+    custom_vmap = microbatching.micro_vmap(
         jnp.sum,
         in_axes=1,
         microbatch_size=2,
     )
     normal_vmap = jax.vmap(jnp.sum, in_axes=1)
     test_utils.assert_trees_all_close(normal_vmap(x), custom_vmap(x), atol=1e-6)
+
+  @parameterized.parameters([False, True])
+  def test_micro_grad_basic(self, keep_batch_dim):
+    # This function definition is valid whether or not features/targets has a
+    # batch axis or not (shape (1,) or shape (B,1)).
+    def mean_squared_loss(params, features, targets):
+      assert features.ndim == int(keep_batch_dim) + 1
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    params = jnp.zeros(1)
+    features = jnp.ones((4, 1))
+    targets = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        transform_fn=lambda x: (x, x**2),
+        metrics_fn=jnp.linalg.norm,
+        keep_batch_dim=keep_batch_dim,
+    )
+
+    (grads, squared_grads), aux = grad_fn(params, features, targets)
+    expected_grad = -(0 + 1 + 2 + 3)
+    expected_squared_grad = 0**2 + 1**2 + 2**2 + 3**2
+    expected_values = jnp.array([0, 0.5, 2, 4.5], dtype=jnp.float32)
+    expected_norms = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    test_utils.assert_trees_all_close(grads[0], expected_grad)
+    test_utils.assert_trees_all_close(squared_grads[0], expected_squared_grad)
+    test_utils.assert_trees_all_close(aux.values, expected_values)
+    test_utils.assert_trees_all_close(aux.metrics, expected_norms)
+    self.assertIsNone(aux.aux)
 
 
 if __name__ == '__main__':

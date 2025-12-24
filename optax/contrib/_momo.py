@@ -50,9 +50,9 @@ def momo(
   """Adaptive Learning Rates for SGD with momentum.
 
   MoMo typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
-  known. For most tasks, zero is a lower bound and an accurate estimate of the
-  final loss.
+  by exploiting the fact that a lower bound of the loss (or the optimal value)
+  is known. For most tasks, zero is a lower bound and an accurate estimate of
+  the final loss.
 
   MoMo performs SGD with momentum with a Polyak-type learning rate. The
   effective step size is ``min(learning_rate, <adaptive term>)``, where the
@@ -119,7 +119,7 @@ def momo(
       state: MomoState,
       params: Optional[base.Params],
       *,
-      value: Optional[jax.Array] = None,
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoState]:
     del extra_args  # complies with signature of GradientTransformationExtraArgs
@@ -132,7 +132,9 @@ def momo(
     count = state.count
     # initialize at first gradient, and loss
     bt = jnp.where(count == 0, 0.0, beta)
-    barf = bt * state.barf + (1 - bt) * value.astype(state.barf.dtype)
+    barf = bt * state.barf + (1 - bt) * jnp.asarray(
+        value, dtype=state.barf.dtype
+    )
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
     )
@@ -278,7 +280,7 @@ def momo_adam(
       state: MomoAdamState,
       params: Optional[base.Params],
       *,
-      value: Optional[jax.Array],
+      value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoAdamState]:
     del extra_args  # complies with signature of GradientTransformationExtraArgs
@@ -290,7 +292,9 @@ def momo_adam(
                        Use ``jax.value_and_grad`` for this.""")
     count = state.count
     count_inc = numerics.safe_increment(count)
-    barf = b1 * state.barf + (1 - b1) * value.astype(state.barf.dtype)
+    barf = b1 * state.barf + (1 - b1) * jnp.asarray(
+        value, dtype=state.barf.dtype
+    )
     exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
     )

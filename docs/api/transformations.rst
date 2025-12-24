@@ -97,6 +97,7 @@ Transformations
     TraceState
     TransformInitFn
     TransformUpdateFn
+    TransformUpdateExtraArgsFn
     update_infinity_moment
     update_moment
     update_moment_per_elem_norm
@@ -117,6 +118,8 @@ Types
 .. autoclass:: TransformInitFn
 
 .. autoclass:: TransformUpdateFn
+
+.. autoclass:: TransformUpdateExtraArgsFn
 
 .. autoclass:: OptState
 

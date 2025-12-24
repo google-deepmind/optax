@@ -91,7 +91,7 @@ class TransformUpdateFn(Protocol):
   access to the current values of the parameters.
 
   For the case where additional arguments are required, an alternative interface
-  may be used, see ``TransformUpdateExtraArgsFn`` for details.
+  may be used, see :py:class:`.TransformUpdateExtraArgsFn` for details.
   """
 
   def __call__(

@@ -199,7 +199,7 @@ def _newton_schulz_iterator(x: jax.Array, coeffs: jax.Array) -> jax.Array:
   # The NS step has the property f(X) = f(X^T)^T. That is, we can get equivalent
   # result by transposing input and output. In particular, we may transpose X
   # when rows > cols for efficiency.
-  a = x @ x.T
+  a = x @ x.T.conj()
   b = coeffs[1] * a + coeffs[2] * a @ a
   return coeffs[0] * x + b @ x
 
@@ -370,7 +370,7 @@ def scale_by_muon(
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
       updates = jax.tree.map(
-          lambda x, y: jnp.sum(x * y) * y, mu_hat, updates
+          lambda x, y: jnp.sum(x.conj() * y) * y, mu_hat, updates
       )
 
     mu = optax.tree.cast(mu, mu_dtype)
