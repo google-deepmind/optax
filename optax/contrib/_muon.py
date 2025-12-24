@@ -167,10 +167,9 @@ def scale_by_shape(
   def update_fn(updates, state, params=None):
     del params
     # TODO(rdyro): extend to _masking._mask_callable
-    if callable(weight_dimension_numbers):
-      # Populate weight_dim_nums if it's a callable. Use updates instead of
-      # actual params since only shapes matter and params may not be provided.
-      resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    if _masking._mask_callable(weight_dimension_numbers):
+        # Use updates since only shapes matter
+        resolved_weight_dim_nums = weight_dimension_numbers(updates)
     else:
       resolved_weight_dim_nums = weight_dimension_numbers
 
@@ -181,11 +180,23 @@ def scale_by_shape(
     else:
       scaling_fn = _scale_update_for_width_transfer
 
+    def maybe_scale(update, dim_nums):
+      if isinstance(dim_nums, _masking.MaskedNode):
+        return update  # identity
+      return scaling_fn(update, dim_nums)
+
+    def is_leaf_fn(x):
+      return (
+          x is None
+          or _is_weight_dim_nums(x)
+          or isinstance(x, _masking.MaskedNode)
+      )  
+
     scaled_updates = jax.tree.map(
-        scaling_fn,
+        maybe_scale,
         updates,
         resolved_weight_dim_nums,
-        is_leaf=_is_weight_dim_nums,
+        is_leaf=is_leaf_fn,
     )
     return scaled_updates, state
 
@@ -342,12 +353,11 @@ def scale_by_muon(
   def update_fn(updates, state, params=None):
     del params
     # TODO(rdyro): extend to _masking._mask_callable
-    if callable(weight_dimension_numbers):
-      # Populate weight_dim_nums if it's a callable. Use updates instead of
-      # actual params since only shapes matter and params may not be provided.
-      resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    if _masking._mask_callable(weight_dimension_numbers):
+        # Use updates since only shapes matter
+        resolved_weight_dim_nums = weight_dimension_numbers(updates)
     else:
-      resolved_weight_dim_nums = weight_dimension_numbers
+        resolved_weight_dim_nums = weight_dimension_numbers
 
     mu = optax.tree.update_moment(updates, state.mu, beta, 1)
     count_inc = numerics.safe_increment(state.count)
@@ -361,16 +371,41 @@ def scale_by_muon(
       )
     else:
       mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
+
+    def maybe_orthogonalize(update, dim_nums):
+        if isinstance(dim_nums, _masking.MaskedNode):
+            return update  # identity for masked leaves
+        return orthogonalize_via_newton_schulz(
+            update, state.ns_coeffs, ns_steps, eps, dim_nums
+        )
+
+    def is_leaf_fn(x):
+        return (
+            x is None
+            or _is_weight_dim_nums(x)
+            or isinstance(x, _masking.MaskedNode)
+        )  
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
-        lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, eps, dim_num),
-        mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
+        maybe_orthogonalize,
+        mu_hat,
+        resolved_weight_dim_nums,
+        is_leaf=is_leaf_fn,
+    )
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
+      def maybe_scale(original_mu, orth_update, dim_nums):
+          if isinstance(dim_nums, _masking.MaskedNode):
+              return orth_update
+          return jnp.sum(original_mu.conj() * orth_update) * orth_update
+
       updates = jax.tree.map(
-          lambda x, y: jnp.sum(x.conj() * y) * y, mu_hat, updates
+          maybe_scale,
+          mu_hat,
+          updates,
+          resolved_weight_dim_nums,
+          is_leaf=is_leaf_fn,
       )
 
     mu = optax.tree.cast(mu, mu_dtype)
