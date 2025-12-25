@@ -166,10 +166,15 @@ def scale_by_shape(
 
   def update_fn(updates, state, params=None):
     del params
-    # TODO(rdyro): extend to _masking._mask_callable
-    if _masking._mask_callable(weight_dimension_numbers):
-        # Use updates since only shapes matter
-        resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    if weight_dimension_numbers is None:
+      # None at root implies all parameters are 2D matrices
+      # Broadcast default dim nums to match updates tree structure
+      resolved_weight_dim_nums = jax.tree.map(
+          lambda _: MuonDimensionNumbers(), updates
+      )
+    elif _masking._mask_callable(weight_dimension_numbers):
+      # Use updates since only shapes matter
+      resolved_weight_dim_nums = weight_dimension_numbers(updates)
     else:
       resolved_weight_dim_nums = weight_dimension_numbers
 
@@ -181,7 +186,8 @@ def scale_by_shape(
       scaling_fn = _scale_update_for_width_transfer
 
     def maybe_scale(update, dim_nums):
-      if isinstance(dim_nums, _masking.MaskedNode):
+      # Leaf-level None or MaskedNode means skip this parameter
+      if dim_nums is None or isinstance(dim_nums, _masking.MaskedNode):
         return update  # identity
       return scaling_fn(update, dim_nums)
 
@@ -352,12 +358,17 @@ def scale_by_muon(
 
   def update_fn(updates, state, params=None):
     del params
-    # TODO(rdyro): extend to _masking._mask_callable
-    if _masking._mask_callable(weight_dimension_numbers):
-        # Use updates since only shapes matter
-        resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    if weight_dimension_numbers is None:
+      # None at root implies all parameters are 2D matrices
+      # Broadcast default dim nums to match updates tree structure
+      resolved_weight_dim_nums = jax.tree.map(
+          lambda _: MuonDimensionNumbers(), updates
+      )
+    elif _masking._mask_callable(weight_dimension_numbers):
+      # Use updates since only shapes matter
+      resolved_weight_dim_nums = weight_dimension_numbers(updates)
     else:
-        resolved_weight_dim_nums = weight_dimension_numbers
+      resolved_weight_dim_nums = weight_dimension_numbers
 
     mu = optax.tree.update_moment(updates, state.mu, beta, 1)
     count_inc = numerics.safe_increment(state.count)
@@ -373,18 +384,19 @@ def scale_by_muon(
       mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
 
     def maybe_orthogonalize(update, dim_nums):
-        if isinstance(dim_nums, _masking.MaskedNode):
-            return update  # identity for masked leaves
-        return orthogonalize_via_newton_schulz(
-            update, state.ns_coeffs, ns_steps, eps, dim_nums
-        )
+      # Leaf-level None or MaskedNode means skip this parameter
+      if dim_nums is None or isinstance(dim_nums, _masking.MaskedNode):
+        return update  # identity for masked leaves
+      return orthogonalize_via_newton_schulz(
+          update, state.ns_coeffs, ns_steps, eps, dim_nums
+      )
 
     def is_leaf_fn(x):
-        return (
-            x is None
-            or _is_weight_dim_nums(x)
-            or isinstance(x, _masking.MaskedNode)
-        )  
+      return (
+          x is None
+          or _is_weight_dim_nums(x)
+          or isinstance(x, _masking.MaskedNode)
+      )
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         maybe_orthogonalize,
@@ -396,9 +408,9 @@ def scale_by_muon(
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
       def maybe_scale(original_mu, orth_update, dim_nums):
-          if isinstance(dim_nums, _masking.MaskedNode):
-              return orth_update
-          return jnp.sum(original_mu.conj() * orth_update) * orth_update
+        if dim_nums is None or isinstance(dim_nums, _masking.MaskedNode):
+          return orth_update
+        return jnp.sum(original_mu.conj() * orth_update) * orth_update
 
       updates = jax.tree.map(
           maybe_scale,
