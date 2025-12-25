@@ -196,7 +196,7 @@ def scale_by_shape(
           x is None
           or _is_weight_dim_nums(x)
           or isinstance(x, _masking.MaskedNode)
-      )  
+      )
 
     scaled_updates = jax.tree.map(
         maybe_scale,
