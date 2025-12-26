@@ -30,7 +30,9 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import combine
+from optax._src import numerics
 from optax._src import transform
+from optax._src import utils
 import optax.tree
 
 
@@ -39,13 +41,94 @@ class DoGState(NamedTuple):
 
   is_init_step: jax.Array  # bool
   init_params: chex.ArrayTree
-  max_dist: jax.Array
-  sum_sq_norm_grads: jax.Array
+  max_dist: chex.ArrayTree
+  sum_sq_norm_grads: chex.ArrayTree
+
+
+def scale_by_l_dog(
+    reps_rel: jax.typing.ArrayLike = 1e-6,
+    eps: jax.typing.ArrayLike = 1e-8,
+) -> base.GradientTransformation:
+  """Scale by Layer-wise Distance over Gradients (LDoG).
+
+  This is a layer-wise variant of DoG that maintains separate distance and
+  gradient statistics for each parameter array (leaf in the tree). This
+  implementation is mathematically similar to the global DoG but maps
+  operations over the parameter tree.
+
+  Args:
+    reps_rel: Used to compute initial learning rate. Recommended values are
+      1e-4 for models using batch norm, 1e-6 otherwise.
+    eps: Small loading term to avoid divide-by-zero errors.
+
+  Returns:
+    A :class:`optax.GradientTransformation` object.
+
+  References:
+    Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
+    Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
+
+  .. versionadded:: 0.2.3
+
+  .. warning::
+    The authors recommend using model averaging with this optimizer.
+  """
+
+  def init_fn(params: base.Params) -> DoGState:
+    params_dtype = optax.tree.dtype(params, "lowest")
+
+    # r_epsilon is already a tree of scalars
+    r_epsilon = jax.tree.map(
+        lambda p: reps_rel * (1 + numerics.safe_norm(p, 0.0)),
+        params,
+    )
+    max_dist = jax.tree.map(
+        lambda r: jnp.asarray(r, dtype=params_dtype), r_epsilon
+    )
+    sum_sq_norm_grads = jax.tree.map(
+        lambda p: jnp.zeros([], dtype=p.dtype), params
+    )
+
+    return DoGState(
+        is_init_step=jnp.asarray(True),
+        init_params=optax.tree.cast(params, params_dtype),
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  def update_fn(
+      updates: base.Updates, state: DoGState, params: base.Params
+  ) -> tuple[base.Updates, DoGState]:
+    dist = jax.tree.map(
+        lambda p, i: numerics.safe_norm(p - i, 0.0),
+        params,
+        state.init_params,
+    )
+    max_dist = jax.tree.map(jnp.maximum, state.max_dist, dist)
+    sum_sq_norm_grads = jax.tree.map(
+        lambda s, u: s + numerics.safe_norm(u, 0.0) ** 2,
+        state.sum_sq_norm_grads,
+        updates,
+    )
+    learning_rate = jax.tree.map(
+        lambda d, s: d / jnp.sqrt(s + eps), max_dist, sum_sq_norm_grads
+    )
+
+    new_updates = optax.tree.mul(learning_rate, updates)
+    return new_updates, DoGState(
+        is_init_step=jnp.asarray(False),
+        init_params=state.init_params,
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
 
 
 def scale_by_dog(
-    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
-                     jax.typing.ArrayLike],
+    init_step: tuple[
+        Literal["distance", "learning_rate", "heuristic"], jax.typing.ArrayLike
+    ],
     eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformation:
   r"""Scale by Distance over Gradients (DoG).
@@ -67,7 +150,6 @@ def scale_by_dog(
     This optimizer's ``init`` function should receive the actual parameters (not
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
-
   init_step_type, init_step_value = init_step
 
   def init_fn(params: base.Params) -> DoGState:
@@ -87,11 +169,14 @@ def scale_by_dog(
           f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
       )
 
+    max_dist = jnp.asarray(r_epsilon, dtype=params_dtype)
+    sum_sq_norm_grads = jnp.asarray(0.0, dtype=params_dtype)
+
     return DoGState(
         is_init_step=jnp.asarray(True),
-        init_params=params,
-        max_dist=jnp.asarray(r_epsilon, dtype=params_dtype),
-        sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
+        init_params=optax.tree.cast(params, params_dtype),
+        max_dist=max_dist,
+        sum_sq_norm_grads=sum_sq_norm_grads,
     )
 
   def update_fn(
