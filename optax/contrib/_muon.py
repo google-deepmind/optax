@@ -166,7 +166,6 @@ def scale_by_shape(
 
   def update_fn(updates, state, params=None):
     del params
-    # TODO(rdyro): extend to _masking._mask_callable
     if callable(weight_dimension_numbers):
       # Populate weight_dim_nums if it's a callable. Use updates instead of
       # actual params since only shapes matter and params may not be provided.
