@@ -203,21 +203,25 @@ class TransformTest(parameterized.TestCase):
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
+    # for this objective, the Polyak step-size has an exact model and should
+    # converge to the minimizer in one step
     objective = lambda x: jnp.abs(x).sum()
 
     init_params = jnp.array([1.0, -1.0])
     polyak = transform.scale_by_polyak()
     polyak_state = polyak.init(init_params)
-
+    # check that polyak state raises an error if it called without a value
     with self.assertRaises(TypeError):
       polyak.update(self.per_step_updates, polyak_state, init_params)
 
     value, grad = jax.value_and_grad(objective)(init_params)
     updates, _ = polyak.update(grad, polyak_state, init_params, value=value)
-
+    # check that objective at (init_params - updates) is smaller that tol
+    print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
 
   def test_rms_match_adam(self):
+    """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)"""
     fun = lambda x: optax.tree.norm(x, squared=True)
 
     rms = transform.scale_by_rms(
