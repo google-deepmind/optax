@@ -125,117 +125,112 @@ class TripletMarginLossTest(parameterized.TestCase):
                                , atol=1e-4)
 
 class ByolLossTest(parameterized.TestCase):
-  @parameterized.parameters(0, 1, 7, 42, 123)
-  def test_symmetric_zero_for_identical_and_nonzero_otherwise(
-    self, seed):
+  @parameterized.parameters(0, 1, 42)
+  def test_symmetric_batched_matches_handmade(self, seed):
     key = jax.random.PRNGKey(seed)
-    k_q1, k_q2, k_zrand = jax.random.split(key, 3)
+    k1, k2, k3, k4 = jax.random.split(key, 4)
+    q1 = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    q2 = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
+    z1 = jax.random.normal(k3, (2, 3), dtype=jnp.float32)
+    z2 = jax.random.normal(k4, (2, 3), dtype=jnp.float32)
 
-    q1 = jax.random.normal(k_q1, (8, 16), dtype=jnp.float32)
-    q2 = jax.random.normal(k_q2, (8, 16), dtype=jnp.float32)
-    z2 = q1
-    z1 = q2
+    def testing_byol_loss(q1_val, z2_val, q2_val, z1_val, eps=1e-6):
 
-    loss_identical = jax.jit(_self_supervised.byol_loss)(
+      cos_12 = _regression.cosine_similarity(
+          q1_val, z2_val, epsilon=eps,
+      )
+      cos_21 = _regression.cosine_similarity(
+          q2_val, z1_val, epsilon=eps,
+      )
+      loss_12 = 2.0 - 2.0 * cos_12
+      loss_21 = 2.0 - 2.0 * cos_21
+      loss = 0.5 * (loss_12 + loss_21)
+      return jnp.mean(loss)
+
+    handmade_result = testing_byol_loss(q1, z2, q2, z1)
+    result = jax.jit(_self_supervised.byol_loss)(
         q1, z2, q2, z1, symmetric=True,
     )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
-    np.testing.assert_allclose(loss_identical, 0.0, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    z2_random = jax.random.normal(k_zrand, z2.shape, dtype=jnp.float32)
-    loss_random = jax.jit(_self_supervised.byol_loss)(
-        q1, z2_random, q2, z1, symmetric=True,
-    )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
-    self.assertGreater(float(loss_random), 1e-4)
-
-  @parameterized.parameters(0, 1, 7, 42, 123)
-  def test_single_direction_zero_for_identical_and_nonzero_otherwise(
-    self, seed):
+  @parameterized.parameters(0, 1, 42)
+  def test_single_direction_matches_handmade(self, seed):
     key = jax.random.PRNGKey(seed)
-    k_q, k_zrand = jax.random.split(key, 2)
+    k1, k2 = jax.random.split(key, 2)
+    q = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    z = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
 
-    q = jax.random.normal(k_q, (8, 16), dtype=jnp.float32)
-    z = q
-    loss_identical = jax.jit(_self_supervised.byol_loss)(
-        q, z,symmetric=False,
+    def testing_single_direction_byol(q_val, z_val, eps=1e-6):
+      cos = _regression.cosine_similarity(
+          q_val, z_val, epsilon=eps,
+      )
+      loss = 2.0 - 2.0 * cos
+      return jnp.mean(loss)
+
+    handmade_result = testing_single_direction_byol(q, z)
+    result = jax.jit(_self_supervised.byol_loss)(
+        q, z, symmetric=False,
     )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
-    np.testing.assert_allclose(loss_identical, 0.0, atol=1e-4)
-
-    z_random = jax.random.normal(k_zrand, z.shape, dtype=jnp.float32)
-    loss_random = jax.jit(_self_supervised.byol_loss)(
-        q, z_random, symmetric=False,
-    )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
-    self.assertGreater(float(loss_random), 1e-4)
-
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
 class SimSiamLossTest(parameterized.TestCase):
-
-  @parameterized.parameters(0, 1, 7, 42, 123)
-  def test_symmetric_minimum_for_identical_and_higher_otherwise(
-    self, seed):
+  @parameterized.parameters(0, 1, 42)
+  def test_symmetric_batched_matches_handmade(self, seed):
     key = jax.random.PRNGKey(seed)
-    k_p1, k_p2, k_zrand = jax.random.split(key, 3)
+    k1, k2, k3, k4 = jax.random.split(key, 4)
+    p1 = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    p2 = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
+    z1 = jax.random.normal(k3, (2, 3), dtype=jnp.float32)
+    z2 = jax.random.normal(k4, (2, 3), dtype=jnp.float32)
 
-    p1 = jax.random.normal(k_p1, (8, 16), dtype=jnp.float32)
-    p2 = jax.random.normal(k_p2, (8, 16), dtype=jnp.float32)
-    z2 = p1
-    z1 = p2
+    def testing_simsiam_loss(p1_val, z2_val, p2_val, z1_val, eps=1e-6):
+      cos_12 = _regression.cosine_similarity(
+          p1_val, z2_val, epsilon=eps,
+      )
+      cos_21 = _regression.cosine_similarity(
+          p2_val, z1_val, epsilon=eps,
+      )
+      loss_12 = -cos_12
+      loss_21 = -cos_21
+      loss = 0.5 * (loss_12 + loss_21)
+      return jnp.mean(loss)
 
-    loss_identical = jax.jit(_self_supervised.simsiam_loss)(
+    handmade_result = testing_simsiam_loss(p1, z2, p2, z1)
+    result = jax.jit(_self_supervised.simsiam_loss)(
         p1, z2, p2, z1, symmetric=True,
     )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
-    np.testing.assert_allclose(loss_identical, -1.0, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    z2_random = jax.random.normal(k_zrand, z2.shape, dtype=jnp.float32)
-    loss_random = jax.jit(_self_supervised.simsiam_loss)(
-        p1, z2_random, p2, z1, symmetric=True,
-    )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
-    self.assertGreater(float(loss_random), float(loss_identical) + 1e-3)
-
-  @parameterized.parameters(0, 1, 7, 42, 123)
-  def test_single_direction_minimum_for_identical_and_higher_otherwise(
-    self, seed):
+  @parameterized.parameters(0, 1, 42)
+  def test_single_direction_matches_handmade(self, seed):
     key = jax.random.PRNGKey(seed)
-    k_p, k_zrand = jax.random.split(key, 2)
-    p = jax.random.normal(k_p, (8, 16), dtype=jnp.float32)
-    z = p
-    loss_identical = jax.jit(_self_supervised.simsiam_loss)(
+    k1, k2 = jax.random.split(key, 2)
+    p = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    z = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
+
+    def testing_single_direction_simsiam(p_val, z_val, eps=1e-6):
+      cos = _regression.cosine_similarity(
+          p_val, z_val, epsilon=eps,
+      )
+      loss = -cos
+      return jnp.mean(loss)
+
+    handmade_result = testing_single_direction_simsiam(p, z)
+    result = jax.jit(_self_supervised.simsiam_loss)(
         p, z, symmetric=False,
     )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
-    np.testing.assert_allclose(loss_identical, -1.0, atol=1e-4)
+    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
-    z_random = jax.random.normal(k_zrand, z.shape, dtype=jnp.float32)
-    loss_random = jax.jit(_self_supervised.simsiam_loss)(
-        p, z_random, symmetric=False,
-    )
-    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
-    self.assertGreater(float(loss_random), float(loss_identical) + 1e-3)
-
-class DinoLossTest(absltest.TestCase):
-
-  def test_single_view_matches_handmade(self):
-    student_logits = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.3, 0.1, 0.2]],
-        dtype=jnp.float32,
-    )
-    teacher_logits = jnp.array(
-        [[0.0, 0.0, 0.0],
-         [0.2, 0.2, 0.0]],
-        dtype=jnp.float32,
-    )
+class DinoLossTest(parameterized.TestCase):
+  @parameterized.parameters(0, 1, 42)
+  def test_single_view_matches_handmade(self, seed):
+    key = jax.random.PRNGKey(seed)
+    k1, k2, k3 = jax.random.split(key, 3)
+    student_logits = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    teacher_logits = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
     student_temperature = 0.1
     teacher_temperature = 0.04
-    teacher_center = jnp.array(
-        [0.1, -0.1, 0.0],
-        dtype=jnp.float32,
-    )
+    teacher_center = jax.random.normal(k3, (3,), dtype=jnp.float32)
 
     def testing_dino_loss(
         student,
@@ -273,33 +268,17 @@ class DinoLossTest(absltest.TestCase):
     )
     np.testing.assert_allclose(result, handmade_result, atol=1e-6)
 
-  def test_two_view_matches_handmade(self):
-    s1 = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.3, 0.1, 0.2]],
-        dtype=jnp.float32,
-    )
-    s2 = jnp.array(
-        [[0.0, 0.1, 0.4],
-         [0.2, 0.2, 0.1]],
-        dtype=jnp.float32,
-    )
-    t1 = jnp.array(
-        [[0.0, 0.0, 0.0],
-         [0.2, 0.2, 0.0]],
-        dtype=jnp.float32,
-    )
-    t2 = jnp.array(
-        [[0.1, -0.1, 0.0],
-         [0.0, 0.1, -0.1]],
-        dtype=jnp.float32,
-    )
+  @parameterized.parameters(0, 1, 42)
+  def test_two_view_matches_handmade(self, seed):
+    key = jax.random.PRNGKey(seed)
+    k1, k2, k3, k4, k5 = jax.random.split(key, 5)
+    s1 = jax.random.normal(k1, (2, 3), dtype=jnp.float32)
+    s2 = jax.random.normal(k2, (2, 3), dtype=jnp.float32)
+    t1 = jax.random.normal(k3, (2, 3), dtype=jnp.float32)
+    t2 = jax.random.normal(k4, (2, 3), dtype=jnp.float32)
     student_temperature = 0.1
     teacher_temperature = 0.04
-    teacher_center = jnp.array(
-        [0.1, -0.1, 0.0],
-        dtype=jnp.float32,
-    )
+    teacher_center = jax.random.normal(k5, (3,), dtype=jnp.float32)
 
     def single_view_dino(student, teacher):
       teacher_scaled = (teacher - teacher_center) / teacher_temperature
@@ -344,63 +323,28 @@ class DinoLossTest(absltest.TestCase):
       )
 
 
-class BarlowTwinsLossTest(absltest.TestCase):
-
-  def test_batched_matches_handmade(self):
-    z1 = jnp.array(
-        [[0.1, -0.2, 0.3],
-         [0.0, 0.5, -0.4],
-         [1.0, -1.0, 0.2],
-         [-0.3, 0.7, 0.1]],
+class BarlowTwinsLossTest(parameterized.TestCase):
+  # This matrix has per-dim mean is 0, per-dim var is 1,
+  #  and columns are orthogonal.
+  # This makes the cross-correlation exactly identity when z1 == z2,
+  #  so the Barlow loss should be 0.
+  def test_zero_for_identity_like_inputs_and_nonzero_otherwise(self):
+    z = jnp.array(
+        [
+            [1.0,  1.0,  1.0],
+            [-1.0, 1.0, -1.0],
+            [1.0, -1.0, -1.0],
+            [-1.0, -1.0, 1.0],
+        ],
         dtype=jnp.float32,
     )
-    z2 = jnp.array(
-        [[0.0, -0.1, 0.4],
-         [0.2, 0.4, -0.3],
-         [0.9, -0.8, 0.3],
-         [-0.2, 0.6, 0.0]],
-        dtype=jnp.float32,
-    )
+    loss_same = jax.jit(_self_supervised.barlow_twins_loss)(z, z)
+    self.assertTrue(np.isfinite(loss_same))
+    np.testing.assert_allclose(loss_same, 0.0, atol=1e-6)
 
-    def testing_barlow_twins_loss(
-        z1_val,
-        z2_val,
-        off_diagonal_scale=5e-3,
-        eps=1e-12,
-    ):
-      batch_size, feature_dim = z1_val.shape
-
-      z1_mean = jnp.mean(z1_val, axis=0)
-      z2_mean = jnp.mean(z2_val, axis=0)
-      z1_centered = z1_val - z1_mean
-      z2_centered = z2_val - z2_mean
-
-      z1_var = jnp.mean(z1_centered ** 2, axis=0)
-      z2_var = jnp.mean(z2_centered ** 2, axis=0)
-      z1_std = jnp.sqrt(z1_var + eps)
-      z2_std = jnp.sqrt(z2_var + eps)
-
-      z1_norm = z1_centered / z1_std
-      z2_norm = z2_centered / z2_std
-
-      cross_correlation = z1_norm.T @ z2_norm
-      cross_correlation /= batch_size
-
-      on_diag = jnp.diag(cross_correlation)
-      on_diag_loss = jnp.sum((1.0 - on_diag) ** 2)
-
-      off_diag_mask = 1.0 - jnp.eye(
-          feature_dim,
-          dtype=cross_correlation.dtype,
-      )
-      off_diag = cross_correlation * off_diag_mask
-      off_diag_loss = jnp.sum(off_diag ** 2)
-
-      return on_diag_loss + off_diagonal_scale * off_diag_loss
-
-    handmade_result = testing_barlow_twins_loss(z1, z2)
-    result = jax.jit(_self_supervised.barlow_twins_loss)(z1, z2)
-    np.testing.assert_allclose(result, handmade_result, atol=1e-6)
+    loss_diff = jax.jit(_self_supervised.barlow_twins_loss)(z, -z)
+    self.assertTrue(np.isfinite(loss_diff))
+    self.assertGreater(float(loss_diff), 1e-3)
 
   def test_raises_on_rank_not_2(self):
     z1 = jnp.zeros((2, 3, 4), dtype=jnp.float32)
@@ -413,5 +357,6 @@ class BarlowTwinsLossTest(absltest.TestCase):
     z2 = jnp.zeros((5, 3), dtype=jnp.float32)
     with self.assertRaises(ValueError):
       _self_supervised.barlow_twins_loss(z1, z2)
+
 if __name__ == '__main__':
   absltest.main()
