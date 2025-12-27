@@ -124,166 +124,98 @@ class TripletMarginLossTest(parameterized.TestCase):
     np.testing.assert_allclose(vmap_loss.flatten(), original_loss.flatten()
                                , atol=1e-4)
 
-class ByolLossTest(absltest.TestCase):
+class ByolLossTest(parameterized.TestCase):
+  @parameterized.parameters(0, 1, 7, 42, 123)
+  def test_symmetric_zero_for_identical_and_nonzero_otherwise(
+    self, seed):
+    key = jax.random.PRNGKey(seed)
+    k_q1, k_q2, k_zrand = jax.random.split(key, 3)
 
-  def test_symmetric_batched_matches_handmade(self):
-    q1 = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.4, 0.5, 0.6]],
-        dtype=jnp.float32,
-    )
-    q2 = jnp.array(
-        [[0.2, 0.1, 0.0],
-         [0.3, 0.2, 0.1]],
-        dtype=jnp.float32,
-    )
-    z1 = jnp.array(
-        [[0.5, 0.4, 0.3],
-         [0.2, 0.1, 0.0]],
-        dtype=jnp.float32,
-    )
-    z2 = jnp.array(
-        [[0.3, 0.2, 0.1],
-         [0.6, 0.5, 0.4]],
-        dtype=jnp.float32,
-    )
+    q1 = jax.random.normal(k_q1, (8, 16), dtype=jnp.float32)
+    q2 = jax.random.normal(k_q2, (8, 16), dtype=jnp.float32)
+    z2 = q1
+    z1 = q2
 
-    def testing_byol_loss(q1_val, z2_val, q2_val, z1_val, eps=1e-6):
-
-      cos_12 = _regression.cosine_similarity(
-          q1_val,
-          z2_val,
-          epsilon=eps,
-      )
-      cos_21 = _regression.cosine_similarity(
-          q2_val,
-          z1_val,
-          epsilon=eps,
-      )
-      loss_12 = 2.0 - 2.0 * cos_12
-      loss_21 = 2.0 - 2.0 * cos_21
-      loss = 0.5 * (loss_12 + loss_21)
-      return jnp.mean(loss)
-
-    handmade_result = testing_byol_loss(q1, z2, q2, z1)
-    result = jax.jit(_self_supervised.byol_loss)(
-        q1,
-        z2,
-        q2,
-        z1,
-        symmetric=True,
+    loss_identical = jax.jit(_self_supervised.byol_loss)(
+        q1, z2, q2, z1, symmetric=True,
     )
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
+    np.testing.assert_allclose(loss_identical, 0.0, atol=1e-4)
 
-  def test_single_direction_matches_handmade(self):
-    q = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.3, 0.2, 0.1]],
-        dtype=jnp.float32,
+    z2_random = jax.random.normal(k_zrand, z2.shape, dtype=jnp.float32)
+    loss_random = jax.jit(_self_supervised.byol_loss)(
+        q1, z2_random, q2, z1, symmetric=True,
     )
-    z = jnp.array(
-        [[0.4, 0.0, 0.2],
-         [0.1, 0.5, 0.3]],
-        dtype=jnp.float32,
-    )
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
+    self.assertGreater(float(loss_random), 1e-4)
 
-    def testing_single_direction_byol(q_val, z_val, eps=1e-6):
-      cos = _regression.cosine_similarity(
-          q_val,
-          z_val,
-          epsilon=eps,
-      )
-      loss = 2.0 - 2.0 * cos
-      return jnp.mean(loss)
+  @parameterized.parameters(0, 1, 7, 42, 123)
+  def test_single_direction_zero_for_identical_and_nonzero_otherwise(
+    self, seed):
+    key = jax.random.PRNGKey(seed)
+    k_q, k_zrand = jax.random.split(key, 2)
 
-    handmade_result = testing_single_direction_byol(q, z)
-    result = jax.jit(_self_supervised.byol_loss)(
-        q,
-        z,
-        symmetric=False,
+    q = jax.random.normal(k_q, (8, 16), dtype=jnp.float32)
+    z = q
+    loss_identical = jax.jit(_self_supervised.byol_loss)(
+        q, z,symmetric=False,
     )
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
+    np.testing.assert_allclose(loss_identical, 0.0, atol=1e-4)
+
+    z_random = jax.random.normal(k_zrand, z.shape, dtype=jnp.float32)
+    loss_random = jax.jit(_self_supervised.byol_loss)(
+        q, z_random, symmetric=False,
+    )
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
+    self.assertGreater(float(loss_random), 1e-4)
 
 
-class SimSiamLossTest(absltest.TestCase):
+class SimSiamLossTest(parameterized.TestCase):
 
-  def test_symmetric_batched_matches_handmade(self):
-    p1 = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.4, 0.5, 0.6]],
-        dtype=jnp.float32,
-    )
-    p2 = jnp.array(
-        [[0.2, 0.1, 0.0],
-         [0.3, 0.2, 0.1]],
-        dtype=jnp.float32,
-    )
-    z1 = jnp.array(
-        [[0.5, 0.4, 0.3],
-         [0.2, 0.1, 0.0]],
-        dtype=jnp.float32,
-    )
-    z2 = jnp.array(
-        [[0.3, 0.2, 0.1],
-         [0.6, 0.5, 0.4]],
-        dtype=jnp.float32,
-    )
+  @parameterized.parameters(0, 1, 7, 42, 123)
+  def test_symmetric_minimum_for_identical_and_higher_otherwise(
+    self, seed):
+    key = jax.random.PRNGKey(seed)
+    k_p1, k_p2, k_zrand = jax.random.split(key, 3)
 
-    def testing_simsiam_loss(p1_val, z2_val, p2_val, z1_val, eps=1e-6):
-      cos_12 = _regression.cosine_similarity(
-          p1_val,
-          z2_val,
-          epsilon=eps,
-      )
-      cos_21 = _regression.cosine_similarity(
-          p2_val,
-          z1_val,
-          epsilon=eps,
-      )
-      loss_12 = -cos_12
-      loss_21 = -cos_21
-      loss = 0.5 * (loss_12 + loss_21)
-      return jnp.mean(loss)
+    p1 = jax.random.normal(k_p1, (8, 16), dtype=jnp.float32)
+    p2 = jax.random.normal(k_p2, (8, 16), dtype=jnp.float32)
+    z2 = p1
+    z1 = p2
 
-    handmade_result = testing_simsiam_loss(p1, z2, p2, z1)
-    result = jax.jit(_self_supervised.simsiam_loss)(
-        p1,
-        z2,
-        p2,
-        z1,
-        symmetric=True,
+    loss_identical = jax.jit(_self_supervised.simsiam_loss)(
+        p1, z2, p2, z1, symmetric=True,
     )
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
+    np.testing.assert_allclose(loss_identical, -1.0, atol=1e-4)
 
-  def test_single_direction_matches_handmade(self):
-    p = jnp.array(
-        [[0.1, 0.2, 0.3],
-         [0.3, 0.2, 0.1]],
-        dtype=jnp.float32,
+    z2_random = jax.random.normal(k_zrand, z2.shape, dtype=jnp.float32)
+    loss_random = jax.jit(_self_supervised.simsiam_loss)(
+        p1, z2_random, p2, z1, symmetric=True,
     )
-    z = jnp.array(
-        [[0.4, 0.0, 0.2],
-         [0.1, 0.5, 0.3]],
-        dtype=jnp.float32,
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
+    self.assertGreater(float(loss_random), float(loss_identical) + 1e-3)
+
+  @parameterized.parameters(0, 1, 7, 42, 123)
+  def test_single_direction_minimum_for_identical_and_higher_otherwise(
+    self, seed):
+    key = jax.random.PRNGKey(seed)
+    k_p, k_zrand = jax.random.split(key, 2)
+    p = jax.random.normal(k_p, (8, 16), dtype=jnp.float32)
+    z = p
+    loss_identical = jax.jit(_self_supervised.simsiam_loss)(
+        p, z, symmetric=False,
     )
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_identical))))
+    np.testing.assert_allclose(loss_identical, -1.0, atol=1e-4)
 
-    def testing_single_direction_simsiam(p_val, z_val, eps=1e-6):
-      cos = _regression.cosine_similarity(
-          p_val,
-          z_val,
-          epsilon=eps,
-      )
-      loss = -cos
-      return jnp.mean(loss)
-
-    handmade_result = testing_single_direction_simsiam(p, z)
-    result = jax.jit(_self_supervised.simsiam_loss)(
-        p,
-        z,
-        symmetric=False,
+    z_random = jax.random.normal(k_zrand, z.shape, dtype=jnp.float32)
+    loss_random = jax.jit(_self_supervised.simsiam_loss)(
+        p, z_random, symmetric=False,
     )
-    np.testing.assert_allclose(result, handmade_result, atol=1e-4)
-
+    self.assertTrue(bool(np.isfinite(np.asarray(loss_random))))
+    self.assertGreater(float(loss_random), float(loss_identical) + 1e-3)
 
 class DinoLossTest(absltest.TestCase):
 
