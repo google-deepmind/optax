@@ -167,6 +167,22 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_min(tree)
     np.testing.assert_allclose(expected, got)
 
+  def test_tree_min_empty(self):
+    tree = [jnp.ones([2, 3]), jnp.zeros([4, 0, 5])]
+    got = tu.tree_min(tree)
+    expected = 1.0
+    assert expected == got
+
+  @parameterized.product(
+      expected=(0, 10000, -10000, float('inf'), -float('inf')),
+      dtype=('int8', 'uint8', 'float32'),
+      which=(tu.tree_min, tu.tree_max),
+  )
+  def test_tree_max_min_empty_dtype(self, expected, dtype, which):
+    tree = [expected, jnp.zeros(0, dtype)]
+    got = which(tree)
+    assert expected == got
+
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
   )
