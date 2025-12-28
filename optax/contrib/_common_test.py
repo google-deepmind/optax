@@ -64,6 +64,10 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
         'opt_name': 'sophia',
         'opt_kwargs': {'learning_rate': 1e-2}
     },
+    {
+        'opt_name': 'galore',
+        'opt_kwargs': {'learning_rate': 1e-2, 'rank': 8}
+    },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
   optimizer['wrapper_name'] = None
@@ -332,6 +336,10 @@ class ContribTest(parameterized.TestCase):
       # TODO(vroulet): discuss adding support for reduce_on_plateau
       # so removing all assertions in its definition
       self.skipTest('reduce_on_plateau is not supported by inject_hyperparams.')
+    if opt_name == 'galore':
+      # GaLore uses SVD which has numerical sensitivity that can cause small
+      # differences between traced and non-traced execution paths.
+      self.skipTest('galore use SVD which is numerically sensitive to tracing.')
     if wrapper_name is None:
       factory = _get_opt_factory(opt_name)
       hparams = opt_kwargs
@@ -346,7 +354,7 @@ class ContribTest(parameterized.TestCase):
     # inject_hyperparams.
     static_args = []
     for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn',
-                                'ns_steps']:
+                                'ns_steps', 'rank', 'update_proj_gap']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)
