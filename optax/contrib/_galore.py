@@ -62,7 +62,7 @@ def _get_orthogonal_matrix_left(
   Returns:
     Orthogonal projection matrix P of shape (m, rank).
   """
-  # SVD requires float32 (LAPACK doesn't support bfloat16), so cast and cast back
+  # SVD require float32 (LAPACK doesn't support bfloat16),so cast and cast back
   original_dtype = weights.dtype
   weights_f32 = weights.astype(jnp.float32)
   u, _, _ = jnp.linalg.svd(weights_f32, full_matrices=False)
@@ -82,7 +82,7 @@ def _get_orthogonal_matrix_right(
   Returns:
     Orthogonal projection matrix P of shape (n, rank).
   """
-  # SVD requires float32 (LAPACK doesn't support bfloat16), so cast and cast back
+  # SVD require float32 (LAPACK doesn't support bfloat16),so cast and cast back
   original_dtype = weights.dtype
   weights_f32 = weights.astype(jnp.float32)
   _, _, vh = jnp.linalg.svd(weights_f32, full_matrices=False)
@@ -168,8 +168,8 @@ def scale_by_galore(
   significantly reducing memory for optimizer states while maintaining
   full-parameter learning.
 
-  For parameters of shape other than 2D (biases, layer norms), standard Adam updates are used
-  without projection.
+  For parameters of shape other than 2D (biases, layer norms), standard
+  Adam updates are used without projection.
 
   Args:
     rank: Target rank for the low-rank projection. Lower rank = less memory
@@ -284,7 +284,8 @@ def scale_by_galore(
       low_rank_update = m_hat / (jnp.sqrt(v_hat) + eps)
 
       # Project back to full space and cast to original dtype
-      full_update = (scale * _project_back_left(low_rank_update, new_projector)).astype(original_dtype)
+      upd = _project_back_left(low_rank_update, new_projector)
+      full_update = (scale * upd).astype(original_dtype)
 
       return full_update, new_m, new_v, new_projector
 
@@ -319,7 +320,8 @@ def scale_by_galore(
       low_rank_update = m_hat / (jnp.sqrt(v_hat) + eps)
 
       # Project back to full space and cast to original dtype
-      full_update = (scale * _project_back_right(low_rank_update, new_projector)).astype(original_dtype)
+      upd = _project_back_right(low_rank_update, new_projector)
+      full_update = (scale * upd).astype(original_dtype)
 
       return full_update, new_m, new_v, new_projector
 
@@ -336,7 +338,7 @@ def scale_by_galore(
       v_hat = new_v / bias_correction_v
 
       # Standard Adam update and cast to original dtype
-      full_update = (scale * m_hat / (jnp.sqrt(v_hat) + eps)).astype(original_dtype)
+      full_update = (scale*m_hat/(jnp.sqrt(v_hat)+eps)).astype(original_dtype)
 
       return full_update, new_m, new_v, projector
 
@@ -351,7 +353,7 @@ def scale_by_galore(
       else:
 
         # This is determined at init time based on dimensions
-        # Use left when m >= n (moments are r×n), right when m < n (moments are m×r)
+        # Use left when m >=n(moment are r×n),right when m < n(moment are m×r)
         m_dim, n_dim = grad.shape
         if m_dim >= n_dim:
           return update_2d_left(grad, m, v, projector)
@@ -402,7 +404,7 @@ def galore(
     weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
-  r"""GaLore optimizer: Memory-efficient training via gradient low-rank projection.
+  r"""GaLore optimizer: Memoryefficient training via gradient lowrank projection
 
   GaLore (Gradient Low-Rank Projection) is a memory-efficient training strategy
   that enables full-parameter learning while reducing optimizer state memory by

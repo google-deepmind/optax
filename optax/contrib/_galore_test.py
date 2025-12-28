@@ -55,7 +55,7 @@ class GaLoreTest(parameterized.TestCase):
       # Square defaults to left
       {"shape": (64, 64), "rank": 8, "expect_left": True},
   )
-  def test_left_vs_right_projection_state_shapes(self, shape, rank, expect_left):
+  def test_left_vs_right_projection_state_shapes(self,shape, rank, expect_left):
     params = jnp.zeros(shape, dtype=jnp.float32)
     opt = _galore.galore(learning_rate=0.1, rank=rank, update_proj_gap=10)
     state = opt.init(params)
