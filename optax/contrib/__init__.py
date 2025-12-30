@@ -38,6 +38,7 @@ from optax.contrib._dog import DoGState
 from optax.contrib._dog import dowg
 from optax.contrib._dog import DoWGState
 from optax.contrib._galore import galore
+from optax.contrib._galore import GaLoreDimensionNumbers
 from optax.contrib._galore import GaLoreState
 from optax.contrib._galore import scale_by_galore
 from optax.contrib._mechanic import MechanicState

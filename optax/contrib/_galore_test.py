@@ -61,30 +61,33 @@ class GaLoreTest(parameterized.TestCase):
     state = opt.init(params)
 
     galore_state = state[0]
-    m, v, P = galore_state.m, galore_state.v, galore_state.projector
+    # Access mu/nu from the base optimizer state (default is scale_by_adam)
+    base_state = galore_state.base_optimizer_state
+    mu, nu, P = base_state.mu, base_state.nu, galore_state.projector
 
     m_dim, n_dim = shape
     r_eff = min(rank, m_dim, n_dim)
 
     if expect_left:
       self.assertEqual(P.shape, (m_dim, r_eff))
-      self.assertEqual(m.shape, (r_eff, n_dim))
-      self.assertEqual(v.shape, (r_eff, n_dim))
+      self.assertEqual(mu.shape, (r_eff, n_dim))
+      self.assertEqual(nu.shape, (r_eff, n_dim))
     else:
       self.assertEqual(P.shape, (n_dim, r_eff))
-      self.assertEqual(m.shape, (m_dim, r_eff))
-      self.assertEqual(v.shape, (m_dim, r_eff))
+      self.assertEqual(mu.shape, (m_dim, r_eff))
+      self.assertEqual(nu.shape, (m_dim, r_eff))
 
   def test_rank_is_clipped_to_min_dimension(self):
     params = jnp.zeros((10, 3), dtype=jnp.float32)
     opt = _galore.galore(learning_rate=0.1, rank=999, update_proj_gap=10)
     state = opt.init(params)
     galore_state = state[0]
+    base_state = galore_state.base_optimizer_state
 
     # min(m,n)=3, m>n => left projection (moments r×n = 3×3)
     self.assertEqual(galore_state.projector.shape, (10, 3))  # (m, r)
-    self.assertEqual(galore_state.m.shape, (3, 3))           # (r, n)
-    self.assertEqual(galore_state.v.shape, (3, 3))           # (r, n)
+    self.assertEqual(base_state.mu.shape, (3, 3))            # (r, n)
+    self.assertEqual(base_state.nu.shape, (3, 3))            # (r, n)
 
   # ---------------------------------------------------------------------------
   # Memory reduction tests
@@ -97,10 +100,11 @@ class GaLoreTest(parameterized.TestCase):
     opt = _galore.galore(learning_rate=0.1, rank=rank)
     state = opt.init(params)
     galore_state = state[0]
+    base_state = galore_state.base_optimizer_state
 
-    self.assertEqual(galore_state.m.size, rank * dim)
-    self.assertEqual(galore_state.v.size, rank * dim)
-    self.assertLess(galore_state.m.size, dim * dim)
+    self.assertEqual(base_state.mu.size, rank * dim)
+    self.assertEqual(base_state.nu.size, rank * dim)
+    self.assertLess(base_state.mu.size, dim * dim)
 
   # ---------------------------------------------------------------------------
   # Projector correctness tests
@@ -204,11 +208,13 @@ class GaLoreTest(parameterized.TestCase):
         "b": jnp.ones((32,), dtype=jnp.bfloat16),
         "conv": jnp.ones((3, 3, 8), dtype=jnp.bfloat16),
     }
+    # Use base_optimizer with mu_dtype for controlling moment precision
+    base_opt = optax.scale_by_adam(mu_dtype=jnp.float32)
     opt = _galore.galore(
         learning_rate=0.01,
         rank=4,
         update_proj_gap=5,
-        mu_dtype=jnp.float32,
+        base_optimizer=base_opt,
     )
     state = opt.init(params)
 
@@ -226,17 +232,22 @@ class GaLoreTest(parameterized.TestCase):
 
   def test_mu_dtype_controls_moment_dtype(self):
     params = jnp.ones((16, 32), dtype=jnp.bfloat16)
+    # Configure mu_dtype through the base optimizer
+    base_opt = optax.scale_by_adam(mu_dtype=jnp.float32)
     opt = _galore.galore(
         learning_rate=0.01,
         rank=4,
         update_proj_gap=1,
-        mu_dtype=jnp.float32,
+        base_optimizer=base_opt,
     )
     state = opt.init(params)
     galore_state = state[0]
+    base_state = galore_state.base_optimizer_state
 
-    self.assertEqual(galore_state.m.dtype, jnp.float32)
-    self.assertEqual(galore_state.v.dtype, jnp.float32)
+    self.assertEqual(base_state.mu.dtype, jnp.float32)
+    # Note: nu (second moment) is not controlled by mu_dtype in scale_by_adam
+    # It uses the params dtype by default
+    self.assertEqual(base_state.nu.dtype, jnp.bfloat16)
 
     grads = jnp.ones_like(params)
     updates, _ = opt.update(grads, state, params)
