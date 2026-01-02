@@ -151,7 +151,9 @@ class TreeUtilsTest(parameterized.TestCase):
     if hasattr(jax.tree, 'reduce_associative'):
       with self.subTest('associative_version_matches_regular'):
         regular_result = tu.tree_sum(self.tree_a)
-        associative_result = tu.tree_sum(self.tree_a, associative_reduction=True)
+        associative_result = tu.tree_sum(
+            self.tree_a, associative_reduction=True
+        )
         np.testing.assert_allclose(regular_result, associative_result)
 
   @parameterized.parameters(
