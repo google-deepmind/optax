@@ -147,6 +147,15 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_sum(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
+    # Test that associative version matches regular version
+    if hasattr(jax.tree, 'reduce_associative'):
+      with self.subTest('associative_version_matches_regular'):
+        regular_result = tu.tree_sum(self.tree_a)
+        associative_result = tu.tree_sum(
+            self.tree_a, associative_reduction=True
+        )
+        np.testing.assert_allclose(regular_result, associative_result)
+
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
   )
