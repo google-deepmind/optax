@@ -49,13 +49,13 @@ class GaLoreTest(parameterized.TestCase):
 
   @parameterized.parameters(
       # Right projection when m < n (moments are m×r, smaller than r×n)
-      {"shape": (32, 64), "rank": 8, "expect_left": False},
+      {"shape": (32, 64), "rank": 8, "expec_left": False},
       # Left projection when m > n (moments are r×n, smaller than m×r)
-      {"shape": (64, 32), "rank": 8, "expect_left": True},
+      {"shape": (64, 32), "rank": 8, "expec_left": True},
       # Square defaults to left
-      {"shape": (64, 64), "rank": 8, "expect_left": True},
+      {"shape": (64, 64), "rank": 8, "expec_left": True},
   )
-  def test_left_vs_right_projection_state_shapes(self,shape, rank, expect_left):
+  def test_left_vs_right_projection_state_shapes(self, shape, rank, expec_left):
     params = jnp.zeros(shape, dtype=jnp.float32)
     opt = _galore.galore(learning_rate=0.1, rank=rank, update_proj_gap=10)
     state = opt.init(params)
@@ -68,7 +68,7 @@ class GaLoreTest(parameterized.TestCase):
     m_dim, n_dim = shape
     r_eff = min(rank, m_dim, n_dim)
 
-    if expect_left:
+    if expec_left:
       self.assertEqual(P.shape, (m_dim, r_eff))
       self.assertEqual(mu.shape, (r_eff, n_dim))
       self.assertEqual(nu.shape, (r_eff, n_dim))

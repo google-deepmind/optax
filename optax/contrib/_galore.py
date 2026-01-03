@@ -365,17 +365,17 @@ def scale_by_galore(
 
       return low_rank_grad, new_projector
 
-    def project_back_to_full(low_rank_update,projector,original_grad,dim_num):
+    def project_back_to_full(low_rank_update, projector, originalgrad, dim_num):
       """Project low-rank update back to full space."""
       if dim_num is None:
         return low_rank_update
 
-      original_dtype = original_grad.dtype
+      original_dtype = originalgrad.dtype
 
       # Get inverse reshape function
-      _, inverse_fn = _compute_galore_reshape(original_grad, dim_num)
-      reshape_fn, _ = _compute_galore_reshape(original_grad, dim_num)
-      grad_2d = reshape_fn(original_grad)
+      _, inverse_fn = _compute_galore_reshape(originalgrad, dim_num)
+      reshape_fn, _ = _compute_galore_reshape(originalgrad, dim_num)
+      grad_2d = reshape_fn(originalgrad)
       m_dim, n_dim = grad_2d.shape
       use_left = m_dim >= n_dim
 
