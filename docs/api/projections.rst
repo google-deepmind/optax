@@ -31,8 +31,13 @@ For instance, here is an example how we can project parameters to the non-negati
 Available projections
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
+    kl_projection_birkhoff
+    kl_projection_transport
+    projection_birkhoff
     projection_box
+    projection_halfspace
     projection_hypercube
+    projection_hyperplane
     projection_l1_ball
     projection_l1_sphere
     projection_l2_ball
@@ -40,17 +45,37 @@ Available projections
     projection_linf_ball
     projection_non_negative
     projection_simplex
+    projection_sparse_simplex
+    projection_transport
     projection_vector
-    projection_hyperplane
-    projection_halfspace
+
+Kullback-Leibler projection onto the Birkhoff polytope
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: kl_projection_birkhoff
+
+Kullback-Leibler projection onto the transportation polytope
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: kl_projection_transport
+
+Projection onto the Birkhoff polytope
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_birkhoff
 
 Projection onto a box
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_box
 
+Projection onto a halfspace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_halfspace
+
 Projection onto a hypercube
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_hypercube
+
+Projection onto a hyperplane
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_hyperplane
 
 Projection onto the L1 ball
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,7 +94,7 @@ Projection onto the L2 sphere
 .. autofunction:: projection_l2_sphere
 
 Projection onto the L-infinity ball
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_linf_ball
 
 Projection onto the non-negative orthant
@@ -80,14 +105,14 @@ Projection onto a simplex
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_simplex
 
+Projection onto the sparse simplex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_sparse_simplex
+
+Projection onto the transportation polytope
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: projection_transport
+
 Projection onto a vector
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: projection_vector
-
-Projection onto a hyperplane
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_hyperplane
-
-Projection onto a halfspace
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_halfspace

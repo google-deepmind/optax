@@ -270,6 +270,179 @@ class ProjectionsTest(parameterized.TestCase):
     y_expected = x
     assert optax.tree.allclose(y_actual, y_expected)
 
+  # ==================== Sparse simplex tests ====================
+
+  @parameterized.parameters(1.0, 0.8)
+  def test_projection_sparse_simplex_array(self, scale):
+    """Test constraint satisfaction with array input."""
+    rng = np.random.RandomState(0)
+    x = rng.randn(50).astype(np.float32)
+    max_nz = 10
+    p = proj.projection_sparse_simplex(x, max_nz=max_nz, scale=scale)
+
+    # Sum constraint
+    np.testing.assert_almost_equal(jnp.sum(p), scale, decimal=4)
+    # Non-negativity
+    self.assertTrue(jnp.all(p >= 0))
+    # Sparsity constraint
+    self.assertTrue(jnp.count_nonzero(p) <= max_nz)
+
+  @parameterized.parameters(1.0, 0.8)
+  def test_projection_sparse_simplex_pytree(self, scale):
+    """Test with pytree input."""
+    pytree = {'w': jnp.array([2.5, 3.2, 0.1, 0.2]), 'b': jnp.array([0.5, 0.3])}
+    max_nz = 3
+    new_pytree = proj.projection_sparse_simplex(
+        pytree, max_nz=max_nz, scale=scale
+    )
+
+    # Sum constraint
+    np.testing.assert_almost_equal(optax.tree.sum(new_pytree), scale, decimal=4)
+    # Sparsity constraint
+    total_nonzero = sum(
+        jnp.count_nonzero(x) for x in jax.tree.leaves(new_pytree)
+    )
+    self.assertTrue(total_nonzero <= max_nz)
+
+  def test_projection_sparse_simplex_max_nz_one(self):
+    """Test with max_nz=1 (should place all mass on largest element)."""
+    x = jnp.array([0.5, 3.0, 1.0, 2.0])
+    p = proj.projection_sparse_simplex(x, max_nz=1)
+
+    # Only one non-zero
+    self.assertEqual(jnp.count_nonzero(p), 1)
+    # Should be at index 1 (the maximum)
+    np.testing.assert_array_almost_equal(p, jnp.array([0.0, 1.0, 0.0, 0.0]))
+
+  def test_projection_sparse_simplex_max_nz_geq_n(self):
+    """Test when max_nz >= n (should equal regular simplex projection)."""
+    x = jnp.array([0.5, 3.0, 1.0])
+    max_nz = 5  # Greater than array length
+
+    p_sparse = proj.projection_sparse_simplex(x, max_nz=max_nz)
+    p_regular = proj.projection_simplex(x)
+
+    np.testing.assert_array_almost_equal(p_sparse, p_regular)
+
+  def test_projection_sparse_simplex_jacobian(self):
+    """Test JVP correctness against finite difference."""
+    rng = np.random.RandomState(0)
+    x = rng.rand(10).astype(np.float32)
+    v = rng.randn(10).astype(np.float32)
+    max_nz = 5
+
+    proj_fn = partial(proj.projection_sparse_simplex, max_nz=max_nz)
+
+    # Check JVP against finite difference
+    jvp = jax.jvp(proj_fn, (x,), (v,))[1]
+    eps = 1e-4
+    jvp_finite_diff = (proj_fn(x + eps * v) - proj_fn(x - eps * v)) / (2 * eps)
+    np.testing.assert_array_almost_equal(jvp, jvp_finite_diff, decimal=3)
+
+  def test_projection_sparse_simplex_theoretical_jacobian(self):
+    """Check Jacobian matches theoretical expression."""
+    rng = np.random.RandomState(0)
+    x = rng.rand(10).astype(np.float32)
+    max_nz = 5
+
+    proj_fn = partial(proj.projection_sparse_simplex, max_nz=max_nz)
+    p = proj_fn(x)
+
+    # Theoretical Jacobian (same as regular simplex on support)
+    jac_true = projection_simplex_jacobian(p)
+    jac_fwd = jax.jacfwd(proj_fn)(x)
+    np.testing.assert_array_almost_equal(jac_true, jac_fwd, decimal=5)
+
+  @parameterized.parameters(1.0, 0.8)
+  def test_projection_sparse_simplex_vmap(self, scale):
+    """Test vmap compatibility."""
+    rng = np.random.RandomState(0)
+    x = rng.randn(3, 20).astype(np.float32)
+    max_nz = 5
+    scales = jnp.full(len(x), scale)
+
+    p = jax.vmap(
+        lambda xi, s: proj.projection_sparse_simplex(xi, max_nz=max_nz, scale=s)
+    )(x, scales)
+
+    # Check each row
+    np.testing.assert_array_almost_equal(jnp.sum(p, axis=1), scales)
+    for i in range(len(x)):
+      self.assertTrue(jnp.count_nonzero(p[i]) <= max_nz)
+
+  # ==================== Transport/Birkhoff tests ====================
+
+  def test_projection_transport_requires_solver(self):
+    """Test that projection_transport raises error without solver."""
+    sim_matrix = jnp.ones((3, 4))
+    marginals_a = jnp.ones(3) / 3
+    marginals_b = jnp.ones(4) / 4
+
+    with self.assertRaises(NotImplementedError):
+      proj.projection_transport(
+          sim_matrix, marginals=(marginals_a, marginals_b), make_solver=None
+      )
+
+  def test_kl_projection_transport_requires_solver(self):
+    """Test that kl_projection_transport raises error without solver."""
+    sim_matrix = jnp.ones((3, 4))
+    marginals_a = jnp.ones(3) / 3
+    marginals_b = jnp.ones(4) / 4
+
+    with self.assertRaises(NotImplementedError):
+      proj.kl_projection_transport(
+          sim_matrix, marginals=(marginals_a, marginals_b), make_solver=None
+      )
+
+  def test_projection_birkhoff_requires_solver(self):
+    """Test that projection_birkhoff raises error without solver."""
+    sim_matrix = jnp.ones((3, 3))
+
+    with self.assertRaises(NotImplementedError):
+      proj.projection_birkhoff(sim_matrix, make_solver=None)
+
+  def test_kl_projection_birkhoff_requires_solver(self):
+    """Test that kl_projection_birkhoff raises error without solver."""
+    sim_matrix = jnp.ones((3, 3))
+
+    with self.assertRaises(NotImplementedError):
+      proj.kl_projection_birkhoff(sim_matrix, make_solver=None)
+
+  def test_projection_transport_validation(self):
+    """Test input validation for projection_transport."""
+    # Create a mock solver that we won't actually use
+    def make_solver(fun):
+      class MockSolver:
+        def run(self, *args, **kwargs):
+          raise ValueError('Should not reach here')
+      return MockSolver()
+
+    sim_matrix = jnp.ones((3, 4))
+
+    # Test marginals_a should be a vector
+    with self.assertRaises(ValueError):
+      proj.projection_transport(
+          sim_matrix,
+          marginals=(jnp.ones((3, 2)), jnp.ones(4)),
+          make_solver=make_solver,
+      )
+
+    # Test marginals_b should be a vector
+    with self.assertRaises(ValueError):
+      proj.projection_transport(
+          sim_matrix,
+          marginals=(jnp.ones(3), jnp.ones((4, 2))),
+          make_solver=make_solver,
+      )
+
+    # Test shape mismatch
+    with self.assertRaises(ValueError):
+      proj.projection_transport(
+          sim_matrix,
+          marginals=(jnp.ones(5), jnp.ones(4)),  # 5 != 3
+          make_solver=make_solver,
+      )
+
 
 if __name__ == '__main__':
   absltest.main()
