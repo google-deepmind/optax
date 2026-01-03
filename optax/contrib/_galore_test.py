@@ -258,7 +258,7 @@ class GaLoreTest(parameterized.TestCase):
   # ---------------------------------------------------------------------------
 
   def test_3d_attention_weights_with_dimension_numbers(self):
-    """Test projecting 3D attention weights as 2D matrices."""
+
     # Attention weights: (embed_dim, num_heads, head_dim)
     embed_dim, num_heads, head_dim = 512, 8, 64
     params = {'attn': jnp.ones((embed_dim, num_heads, head_dim))}
@@ -290,7 +290,7 @@ class GaLoreTest(parameterized.TestCase):
     self.assertEqual(galore_state.projector['attn'].shape, expected_proj_shape)
 
   def test_3d_memory_reduction_with_dimension_numbers(self):
-    """Verify memory reduction for 3D tensors reshaped to 2D."""
+
     embed_dim, num_heads, head_dim = 256, 8, 64
     rank = 16
     params = {'w': jnp.zeros((embed_dim, num_heads, head_dim))}
@@ -322,7 +322,7 @@ class GaLoreTest(parameterized.TestCase):
     self.assertLess(moment_size, full_size)
 
   def test_dimension_numbers_convergence(self):
-    """Test that optimization converges with dimension numbers."""
+
     embed_dim, num_heads, head_dim = 64, 4, 16
     params = {'attn': jnp.ones((embed_dim, num_heads, head_dim))}
 
@@ -355,7 +355,7 @@ class GaLoreTest(parameterized.TestCase):
     self.assertLess(e1, e0)
 
   def test_mixed_2d_and_3d_params_with_dimension_numbers(self):
-    """Test pytree with both 2D and 3D parameters."""
+
     params = {
         'attn': jnp.ones((128, 4, 32)),   # 3D attention
         'mlp': jnp.ones((128, 256)),       # 2D linear
@@ -387,7 +387,7 @@ class GaLoreTest(parameterized.TestCase):
     self.assertEqual(updates['bias'].shape, (256,))
 
   def test_dimension_numbers_right_projection(self):
-    """Test dimension numbers with right projection (m < n)."""
+
     # Small input, large output → right projection
     params = {'w': jnp.ones((32, 8, 64))}  # reshaped to (32, 512)
 
@@ -415,7 +415,7 @@ class GaLoreTest(parameterized.TestCase):
     self.assertEqual(base_state.mu['w'].shape, (32, rank))
 
   def test_single_dimension_number_applied_to_all(self):
-    """Test applying single GaLoreDimensionNumbers to all eligible params."""
+
     params = {
         'w1': jnp.ones((64, 4, 16)),
         'w2': jnp.ones((32, 8, 8)),
