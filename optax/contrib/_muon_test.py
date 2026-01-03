@@ -49,7 +49,7 @@ def _setup_mixed_tensor_target_complex(dtype):
   """Complex version of _common_test._setup_mixed_tensor_target."""
   initial_params = jnp.zeros((2, 2), dtype=dtype)
   final_params = jnp.array(
-      [[1.0+2.0j, 0.0], [-1.0+1.0j, 1.0-3.0j]],
+      [[1.0 + 2.0j, 0.0], [-1.0 + 1.0j, 1.0 - 3.0j]],
       dtype=dtype,
   )
 
@@ -345,6 +345,7 @@ class MuonTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(
         params, final_params, rtol=3e-2, atol=3e-2
     )
+
 
 if __name__ == "__main__":
   absltest.main()

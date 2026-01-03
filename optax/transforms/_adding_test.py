@@ -54,9 +54,9 @@ class AddingTest(absltest.TestCase):
     # This mask means that we will add decayed weights to the first two
     # terms in the input updates, but not to the last element.
     expected_tx_updates = (
-        0.1*jnp.ones((2,), dtype=jnp.float32),
+        0.1 * jnp.ones((2,), dtype=jnp.float32),
         {
-            "a": 0.1*jnp.ones((2,), dtype=jnp.float32),
+            "a": 0.1 * jnp.ones((2,), dtype=jnp.float32),
             "b": jnp.zeros((2,), dtype=jnp.float32),
         },
     )

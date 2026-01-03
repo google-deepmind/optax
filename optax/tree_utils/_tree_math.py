@@ -14,6 +14,9 @@
 # ==============================================================================
 """Utilities to perform maths on pytrees."""
 
+# pylint: disable=g-wrong-blank-lines
+# pylint: disable=g-inconsistent-quotes
+
 import functools
 import operator
 from typing import Any, Optional

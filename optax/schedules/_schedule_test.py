@@ -738,5 +738,6 @@ class ScheduleAsLearningRateTest(parameterized.TestCase):
       # are equivalent
       test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
+
 if __name__ == '__main__':
   absltest.main()

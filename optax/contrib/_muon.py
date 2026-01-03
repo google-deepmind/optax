@@ -63,6 +63,7 @@ class MuonDimensionNumbers(NamedTuple):
   reduction_axis: Sequence[int] | int = 0
   output_axis: Sequence[int] | int = 1
 
+
 WeightDimNumOrFn = MuonDimensionNumbers | base.Params | Callable[
     [base.Params], base.Params | None]
 

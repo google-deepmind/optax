@@ -1498,8 +1498,9 @@ def scale_by_polyak(
       The scaled updates and the state of the transformation.
     """
     del params
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     grad_sq_norm = optax.tree.norm(updates, squared=True)
     gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
     if variant == 'sps':
@@ -1851,7 +1852,7 @@ def normalize_by_update_norm(
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-### Legacy symbols to be removed. ###
+# Legacy symbols to be removed.
 
 trace = _accumulation.trace
 TraceState = _accumulation.TraceState

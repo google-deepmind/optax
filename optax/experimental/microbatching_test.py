@@ -251,7 +251,7 @@ class MicrobatchingTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(output1, output3)
 
   def test_vmap(self):
-    x = jnp.arange(2*4*8).reshape(2, 4, 8)
+    x = jnp.arange(2 * 4 * 8).reshape(2, 4, 8)
     custom_vmap = microbatching.micro_vmap(
         jnp.sum,
         in_axes=1,

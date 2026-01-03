@@ -99,7 +99,7 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
     A pytree of reshaped jax.Arrays.
   """
   def reshape_leaf(x):
-    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis+1:]
+    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1:]
     if jax.__version__ < '0.7.0':
       return x.reshape(new_shape, order='F')
 
@@ -114,7 +114,7 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
     if len(spec) < axis:  # The batch axis is not sharded.
       new_spec = spec
     else:
-      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis+1:])
+      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1:])
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
@@ -218,7 +218,7 @@ def _running_mean() -> Accumulator:
 def _get_out_sharding(x):
   """Compute the desired sharding of x.reshape(-1, *x.shape[2:], order='F')."""
   # We use dict because jax doesn't have out_sharding in older jax versions.
-  if  jax.__version__ < '0.7.0':
+  if jax.__version__ < '0.7.0':
     return {}
   sharding = jax.typeof(x).sharding
   if sharding.mesh.are_all_axes_explicit:
@@ -641,7 +641,7 @@ def micro_grad(
     )
     return result, aux
 
-  in_axes = [None]*(max(batch_argnums) + 1)
+  in_axes = [None] * (max(batch_argnums) + 1)
   for i in batch_argnums:
     in_axes[i] = 0
   micro_fun = micro_vmap(

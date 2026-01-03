@@ -1084,6 +1084,7 @@ class SigmoidFocalLossTest(parameterized.TestCase):
 
     # Test with gamma < 1 which is most problematic for numerical stability
     gamma = 0.5
+
     def loss_fn(logits):
       return jnp.sum(jax.jit(_classification.sigmoid_focal_loss)(
           logits, labels, gamma=gamma

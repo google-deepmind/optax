@@ -92,8 +92,9 @@ def dadapt_adamw(
       params: Optional[base.Params] = None,
       **extra_args,
   ) -> tuple[base.Updates, DAdaptAdamWState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count

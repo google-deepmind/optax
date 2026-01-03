@@ -122,8 +122,9 @@ def momo(
       value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:
@@ -283,8 +284,9 @@ def momo_adam(
       value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoAdamState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:
