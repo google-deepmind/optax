@@ -90,13 +90,15 @@ class FixMatchLossTest(parameterized.TestCase):
     key = jax.random.key(seed)
     k1, k2, k3, k4 = jax.random.split(key, 4)
 
-    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32)
+                       * 2.0).astype(dtype)
     uw = (jax.random.normal(k2, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
     us = (jax.random.normal(k3, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
 
     # Labels: either int [B] or soft [B,C] (kept float32 for stability).
     if soft_labels:
-      raw = jax.random.uniform(k4, (B, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+      raw = jax.random.uniform(k4, (B, C), minval=0.0, maxval=1.0,
+                                dtype=jnp.float32)
       labeled_labels = raw / jnp.sum(raw, axis=-1, keepdims=True)
     else:
       labeled_labels = jax.random.randint(k4, (B,), 0, C, dtype=jnp.int32)
@@ -105,7 +107,8 @@ class FixMatchLossTest(parameterized.TestCase):
       logits = jnp.asarray(logits)
       labels = jnp.asarray(labels)
       if labels.ndim == 1:
-        return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(logits, labels))
+        return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
+          logits, labels))
       return jnp.mean(optax.softmax_cross_entropy(logits, labels))
 
     def reference(ll, lab, uw_, us_, tau, lam):
@@ -120,14 +123,16 @@ class FixMatchLossTest(parameterized.TestCase):
         p_w = jax.nn.softmax(uw_, axis=-1)
         max_p = jnp.max(p_w, axis=-1)
         pseudo = jnp.argmax(p_w, axis=-1)
-        mask = (max_p >= jnp.asarray(tau, dtype=max_p.dtype)).astype(jnp.float32)
+        mask = (max_p >= jnp.asarray(tau,
+                                     dtype=max_p.dtype)).astype(jnp.float32)
 
         per_ex = optax.softmax_cross_entropy_with_integer_labels(us_, pseudo)
         denom = jnp.asarray(jnp.maximum(us_.shape[0], 1), dtype=jnp.float32)
         unsup = jnp.sum(mask * per_ex) / denom
         return sup + jnp.asarray(lam, dtype=jnp.float32) * unsup
 
-      return lax.cond(us_.shape[0] == 0, lambda _: sup, with_unlabeled, operand=None)
+      return lax.cond(us_.shape[0] == 0,
+                       lambda _: sup, with_unlabeled, operand=None)
 
     expected = jax.jit(reference)(
         labeled_logits, labeled_labels, uw, us, confidence_threshold, lambda_u
@@ -159,14 +164,18 @@ class FixMatchLossTest(parameterized.TestCase):
           "confidence_threshold": 0.0, "lambda_u": 1.0, "dtype": jnp.bfloat16,
       },
   ])
-  def test_random_vmap(self, seed, N, B, U, C, confidence_threshold, lambda_u, dtype):
+  def test_random_vmap(self, seed, N, B, U, C,
+                        confidence_threshold, lambda_u, dtype):
     key = jax.random.key(seed)
     k1, k2, k3, k4 = jax.random.split(key, 4)
 
-    labeled_logits = (jax.random.normal(k1, (N, B, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (N, B, C), dtype=jnp.float32) *
+                       2.0).astype(dtype)
     labeled_labels = jax.random.randint(k2, (N, B), 0, C, dtype=jnp.int32)
-    uw = (jax.random.normal(k3, (N, U, C), dtype=jnp.float32) * 2.0).astype(dtype)
-    us = (jax.random.normal(k4, (N, U, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    uw = (jax.random.normal(k3, (N, U, C), dtype=jnp.float32) *
+           2.0).astype(dtype)
+    us = (jax.random.normal(k4, (N, U, C), dtype=jnp.float32) *
+           2.0).astype(dtype)
 
     # "Original" computed via lax.map (JAX loop primitive), not vmap.
     def per_item(args):
@@ -202,7 +211,8 @@ class FixMatchLossTest(parameterized.TestCase):
     key = jax.random.key(seed)
     k1, k2, k3, k4, k5, k6 = jax.random.split(key, 6)
 
-    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) *
+                       2.0).astype(dtype)
     labeled_labels = jax.random.randint(k2, (B,), 0, C, dtype=jnp.int32)
     uw = (jax.random.normal(k3, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
     us = (jax.random.normal(k4, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
@@ -231,7 +241,8 @@ class FixMatchLossTest(parameterized.TestCase):
       {"seed": 30, "B": 3, "U": 5, "C": 6, "magnitude": 100.0},
       {"seed": 31, "B": 2, "U": 3, "C": 4, "magnitude": 200.0},
   ])
-  def test_random_numerical_stability_extreme_logits(self, seed, B, U, C, magnitude):
+  def test_random_numerical_stability_extreme_logits(
+    self, seed, B, U, C, magnitude):
     key = jax.random.key(seed)
     k1, k2, k3, k4 = jax.random.split(key, 4)
 
@@ -282,10 +293,12 @@ class FixMatchLossTest(parameterized.TestCase):
         lambda_u=0.0,
     )
     expected = jnp.mean(
-        optax.softmax_cross_entropy_with_integer_labels(labeled_logits, labeled_labels)
+        optax.softmax_cross_entropy_with_integer_labels(
+          labeled_logits, labeled_labels)
     )
     np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(expected, np.float32), atol=1e-6, rtol=1e-6
+        np.asarray(got, np.float32), np.asarray(
+          expected, np.float32), atol=1e-6, rtol=1e-6
     )
 
   def test_confidence_threshold_edges(self):
@@ -297,7 +310,8 @@ class FixMatchLossTest(parameterized.TestCase):
     us = jnp.array([[0.0, 50.0, 0.0],
                     [0.0, 0.0, 50.0]], dtype=jnp.float32)
 
-    sup = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(labeled_logits, labeled_labels))
+    sup = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
+      labeled_logits, labeled_labels))
 
     got_none = _semi_supervised.fixmatch_loss(
         labeled_logits,
@@ -306,7 +320,8 @@ class FixMatchLossTest(parameterized.TestCase):
         lambda_u=1.0,
     )
     np.testing.assert_allclose(
-        np.asarray(got_none, np.float32), np.asarray(sup, np.float32), atol=1e-6, rtol=1e-6
+        np.asarray(got_none, np.float32),
+          np.asarray(sup, np.float32), atol=1e-6, rtol=1e-6
     )
     got_all = _semi_supervised.fixmatch_loss(
         labeled_logits,
@@ -330,10 +345,12 @@ class FixMatchLossTest(parameterized.TestCase):
         lambda_u=1.0,
     )
     expected = jnp.mean(
-        optax.softmax_cross_entropy_with_integer_labels(labeled_logits, labeled_labels)
+        optax.softmax_cross_entropy_with_integer_labels(
+          labeled_logits, labeled_labels)
     )
     np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(expected, np.float32), atol=1e-6, rtol=1e-6
+        np.asarray(got, np.float32), np.asarray(
+          expected, np.float32), atol=1e-6, rtol=1e-6
     )
     self._assert_finite(got)
 
@@ -395,22 +412,30 @@ class MixMatchLossTest(parameterized.TestCase):
       raise AssertionError(f"Expected finite values, got {x}")
 
   @parameterized.parameters([
-      {"seed": 100, "B": 4, "U": 8, "C": 5, "soft_labels": False, "lambda_u": 10.0, "dtype": jnp.float32},
-      {"seed": 101, "B": 2, "U": 6, "C": 3, "soft_labels": True, "lambda_u": 5.0, "dtype": jnp.float32},
-      {"seed": 102, "B": 3, "U": 5, "C": 6, "soft_labels": False, "lambda_u": 10.0, "dtype": jnp.bfloat16},
+      {"seed": 100, "B": 4, "U": 8, "C": 5, "soft_labels": False,
+        "lambda_u": 10.0, "dtype": jnp.float32},
+      {"seed": 101, "B": 2, "U": 6, "C": 3, "soft_labels": True,
+        "lambda_u": 5.0, "dtype": jnp.float32},
+      {"seed": 102, "B": 3, "U": 5, "C": 6, "soft_labels": False,
+        "lambda_u": 10.0, "dtype": jnp.bfloat16},
   ])
-  def test_random_batched_matches_reference(self, seed, B, U, C, soft_labels, lambda_u, dtype):
+  def test_random_batched_matches_reference(
+    self, seed, B, U, C, soft_labels, lambda_u, dtype):
     key = jax.random.key(seed)
     k1, k2, k3, k4, k5 = jax.random.split(key, 5)
 
-    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) * 2.0).astype(dtype)
-    unlabeled_logits = (jax.random.normal(k2, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) *
+                       2.0).astype(dtype)
+    unlabeled_logits = (jax.random.normal(k2, (U, C), dtype=jnp.float32) *
+                         2.0).astype(dtype)
 
-    raw_u = jax.random.uniform(k3, (U, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+    raw_u = jax.random.uniform(k3, (U, C), minval=0.0,
+                                maxval=1.0, dtype=jnp.float32)
     unlabeled_targets = raw_u / jnp.sum(raw_u, axis=-1, keepdims=True)
 
     if soft_labels:
-      raw_l = jax.random.uniform(k4, (B, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+      raw_l = jax.random.uniform(k4, (B, C),
+                                  minval=0.0, maxval=1.0, dtype=jnp.float32)
       labeled_labels = raw_l / jnp.sum(raw_l, axis=-1, keepdims=True)
     else:
       labeled_labels = jax.random.randint(k5, (B,), 0, C, dtype=jnp.int32)
@@ -419,7 +444,8 @@ class MixMatchLossTest(parameterized.TestCase):
       logits = jnp.asarray(logits)
       labels = jnp.asarray(labels)
       if labels.ndim == 1:
-        return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(logits, labels))
+        return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
+          logits, labels))
       return jnp.mean(optax.softmax_cross_entropy(logits, labels))
 
     def reference(ll, lab, ul, ut, lam):
@@ -434,7 +460,9 @@ class MixMatchLossTest(parameterized.TestCase):
       unsup = jnp.mean(jnp.sum(optax.squared_error(p, q), axis=-1))
       return sup + jnp.asarray(lam, dtype=jnp.float32) * unsup
 
-    expected = jax.jit(reference)(labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets, lambda_u)
+    expected = jax.jit(reference)(
+      labeled_logits, labeled_labels,
+      unlabeled_logits, unlabeled_targets, lambda_u)
 
     got = jax.jit(_semi_supervised.mixmatch_loss)(
         labeled_logits,
@@ -448,19 +476,25 @@ class MixMatchLossTest(parameterized.TestCase):
     self._assert_finite(got)
 
   @parameterized.parameters([
-      {"seed": 110, "N": 3, "B": 4, "U": 5, "C": 6, "lambda_u": 10.0, "dtype": jnp.float32},
-      {"seed": 111, "N": 2, "B": 2, "U": 3, "C": 4, "lambda_u": 5.0, "dtype": jnp.float32},
-      {"seed": 112, "N": 2, "B": 3, "U": 4, "C": 5, "lambda_u": 10.0, "dtype": jnp.bfloat16},
+      {"seed": 110, "N": 3, "B": 4, "U": 5, "C": 6,
+        "lambda_u": 10.0, "dtype": jnp.float32},
+      {"seed": 111, "N": 2, "B": 2, "U": 3, "C": 4,
+        "lambda_u": 5.0, "dtype": jnp.float32},
+      {"seed": 112, "N": 2, "B": 3, "U": 4, "C": 5,
+        "lambda_u": 10.0, "dtype": jnp.bfloat16},
   ])
   def test_random_vmap(self, seed, N, B, U, C, lambda_u, dtype):
     key = jax.random.key(seed)
     k1, k2, k3, k4 = jax.random.split(key, 4)
 
-    labeled_logits = (jax.random.normal(k1, (N, B, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (N, B, C), dtype=jnp.float32) *
+                       2.0).astype(dtype)
     labeled_labels = jax.random.randint(k2, (N, B), 0, C, dtype=jnp.int32)
-    unlabeled_logits = (jax.random.normal(k3, (N, U, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    unlabeled_logits = (jax.random.normal(k3, (N, U, C), dtype=jnp.float32) *
+                         2.0).astype(dtype)
 
-    raw = jax.random.uniform(k4, (N, U, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+    raw = jax.random.uniform(k4, (N, U, C), minval=0.0,
+                              maxval=1.0, dtype=jnp.float32)
     unlabeled_targets = raw / jnp.sum(raw, axis=-1, keepdims=True)
 
     # "Original" computed via lax.map (JAX loop primitive), not vmap.
@@ -468,15 +502,18 @@ class MixMatchLossTest(parameterized.TestCase):
       ll, lab, ul, ut = args
       return _semi_supervised.mixmatch_loss(ll, lab, ul, ut, lambda_u=lambda_u)
 
-    original = lax.map(per_item, (labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets))
+    original = lax.map(per_item, (
+      labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets))
 
     vmap_fn = jax.vmap(
-        lambda ll, lab, ul, ut: _semi_supervised.mixmatch_loss(ll, lab, ul, ut, lambda_u=lambda_u),
+        lambda ll, lab, ul, ut: _semi_supervised.mixmatch_loss(
+          ll, lab, ul, ut, lambda_u=lambda_u),
         in_axes=(0, 0, 0, 0),
         out_axes=0,
     )
 
-    got = jax.jit(vmap_fn)(labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets)
+    got = jax.jit(vmap_fn)(
+      labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets)
     self._assert_allclose(got, original, dtype)
     self._assert_finite(got)
 
@@ -490,15 +527,19 @@ class MixMatchLossTest(parameterized.TestCase):
     key = jax.random.key(seed)
     k1, k2, k3, k4, k5, k6 = jax.random.split(key, 6)
 
-    labeled_logits = (jax.random.normal(k1, (B, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    labeled_logits = (jax.random.normal(k1, (B, C),
+                                         dtype=jnp.float32) * 2.0).astype(dtype)
     labeled_labels = jax.random.randint(k2, (B,), 0, C, dtype=jnp.int32)
-    unlabeled_logits = (jax.random.normal(k3, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
+    unlabeled_logits = (
+      jax.random.normal(k3, (U, C), dtype=jnp.float32) * 2.0).astype(dtype)
 
-    raw_u = jax.random.uniform(k4, (U, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+    raw_u = jax.random.uniform(k4, (U, C),
+                                minval=0.0, maxval=1.0, dtype=jnp.float32)
     unlabeled_targets = raw_u / jnp.sum(raw_u, axis=-1, keepdims=True)
 
     loss0 = _semi_supervised.mixmatch_loss(
-        labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets, lambda_u=lambda_u
+        labeled_logits, labeled_labels, unlabeled_logits,
+          unlabeled_targets, lambda_u=lambda_u
     )
     perm_b = jax.random.permutation(k5, B)
     perm_u = jax.random.permutation(k6, U)
@@ -517,7 +558,8 @@ class MixMatchLossTest(parameterized.TestCase):
       {"seed": 130, "B": 3, "U": 5, "C": 6, "magnitude": 100.0},
       {"seed": 131, "B": 2, "U": 3, "C": 4, "magnitude": 200.0},
   ])
-  def test_random_numerical_stability_extreme_logits(self, seed, B, U, C, magnitude):
+  def test_random_numerical_stability_extreme_logits(
+    self, seed, B, U, C, magnitude):
     key = jax.random.key(seed)
     k1, k2, k3, k4 = jax.random.split(key, 4)
 
@@ -530,15 +572,19 @@ class MixMatchLossTest(parameterized.TestCase):
     labeled_labels = jax.random.randint(k2, (B,), 0, C, dtype=jnp.int32)
     unlabeled_logits = extreme_logits(k3, (U, C))
 
-    raw_u = jax.random.uniform(k4, (U, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
+    raw_u = jax.random.uniform(
+      k4, (U, C), minval=0.0, maxval=1.0, dtype=jnp.float32)
     unlabeled_targets = raw_u / jnp.sum(raw_u, axis=-1, keepdims=True)
 
     loss = _semi_supervised.mixmatch_loss(
-        labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets, lambda_u=10.0
+        labeled_logits, labeled_labels,
+          unlabeled_logits, unlabeled_targets, lambda_u=10.0
     )
     self._assert_finite(loss)
+
     def f(ll, ul):
-      return _semi_supervised.mixmatch_loss(ll, labeled_labels, ul, unlabeled_targets, lambda_u=10.0)
+      return _semi_supervised.mixmatch_loss(
+        ll, labeled_labels, ul, unlabeled_targets, lambda_u=10.0)
 
     g_ll, g_ul = jax.grad(f, argnums=(0, 1))(labeled_logits, unlabeled_logits)
     self._assert_finite(g_ll)
@@ -554,13 +600,16 @@ class MixMatchLossTest(parameterized.TestCase):
                                    [0.1, 0.8, 0.1]], dtype=jnp.float32)
 
     got = _semi_supervised.mixmatch_loss(
-        labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets, lambda_u=0.0
+        labeled_logits, labeled_labels,
+          unlabeled_logits, unlabeled_targets, lambda_u=0.0
     )
     expected = jnp.mean(
-        optax.softmax_cross_entropy_with_integer_labels(labeled_logits, labeled_labels)
+        optax.softmax_cross_entropy_with_integer_labels(
+          labeled_logits, labeled_labels)
     )
     np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(expected, np.float32), atol=1e-6, rtol=1e-6
+        np.asarray(got, np.float32), np.asarray(
+          expected, np.float32), atol=1e-6, rtol=1e-6
     )
 
   def test_stop_gradient_unlabeled_targets(self):
@@ -601,9 +650,11 @@ class MixMatchLossTest(parameterized.TestCase):
     got = _semi_supervised.mixmatch_loss(
         labeled_logits, labeled_labels, unlabeled_logits, targets, lambda_u=10.0
     )
-    sup = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(labeled_logits, labeled_labels))
+    sup = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
+      labeled_logits, labeled_labels))
     np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(sup, np.float32), atol=2e-5, rtol=2e-5
+        np.asarray(got, np.float32),
+          np.asarray(sup, np.float32), atol=2e-5, rtol=2e-5
     )
 
   def test_bfloat16_runs(self):
@@ -616,9 +667,11 @@ class MixMatchLossTest(parameterized.TestCase):
                                    [0.1, 0.8, 0.1]], dtype=jnp.bfloat16)
 
     loss = _semi_supervised.mixmatch_loss(
-        labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets, lambda_u=10.0
+        labeled_logits, labeled_labels,
+          unlabeled_logits, unlabeled_targets, lambda_u=10.0
     )
     self._assert_finite(loss)
+
 
 if __name__ == "__main__":
   absltest.main()

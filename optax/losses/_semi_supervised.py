@@ -30,13 +30,15 @@ def fixmatch_loss(
     confidence_threshold: jax.typing.ArrayLike = 0.95,
     lambda_u: jax.typing.ArrayLike = 1.0,
 ) -> jax.Array:
-  """FixMatch loss: supervised CE + thresholded pseudo-label CE (weak -> strong).
+  """FixMatch loss: supervised CE + thresholded pseudo-label CE
+    (weak -> strong).
 
   Args:
     labeled_logits: Logits for labeled batch, shape [B, C].
     labeled_labels: Integer labels [B] or soft/one-hot labels [B, C].
     unlabeled_weak_logits: Weak-aug logits for unlabeled batch, shape [U, C].
-    unlabeled_strong_logits: Strong-aug logits for unlabeled batch, shape [U, C].
+    unlabeled_strong_logits: Strong-aug logits for unlabeled batch,
+      shape [U, C].
     confidence_threshold: tau; keep pseudo-label if max prob >= tau.
     lambda_u: Weight for unlabeled term.
 
@@ -53,10 +55,12 @@ def fixmatch_loss(
   utils.check_subdtype(unlabeled_strong_logits, jnp.floating)
 
   if labeled_logits.ndim != 2:
-    raise ValueError(f'labeled_logits must be rank-2 [B,C], got {labeled_logits.shape}')
+    raise ValueError('labeled_logits must be rank-2 [B,C],got '
+                     ' {labeled_logits.shape}')
   if unlabeled_weak_logits.shape != unlabeled_strong_logits.shape:
     raise ValueError(
-        'unlabeled_weak_logits and unlabeled_strong_logits must have the same shape, '
+        'unlabeled_weak_logits and unlabeled_strong_logits'
+        ' must have the same shape, '
         f'got {unlabeled_weak_logits.shape} vs {unlabeled_strong_logits.shape}'
     )
   if labeled_logits.shape[-1] != unlabeled_weak_logits.shape[-1]:
@@ -137,7 +141,8 @@ def mixmatch_loss(
   if labeled_logits.ndim != 2 or unlabeled_logits.ndim != 2:
     raise ValueError('logits must be rank-2 [*,C].')
   if labeled_logits.shape[-1] != unlabeled_logits.shape[-1]:
-    raise ValueError('Class dimension must match between labeled and unlabeled logits.')
+    raise ValueError('Class dimension must match between '
+    'labeled and unlabeled logits.')
   if unlabeled_targets.shape != unlabeled_logits.shape:
     raise ValueError(
         'unlabeled_targets must match unlabeled_logits shape [U,C], got '
