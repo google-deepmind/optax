@@ -58,7 +58,7 @@ jobs:
           python3 -m pylint $(find optax -name '*_test.py' | xargs) -d W0212,E1102 || pylint-exit $PYLINT_ARGS $?
       - name: Lint check quote consistency
         run: |
-          python3 -m pylint $(find optax -name '*.py' | grep -v 'test.py' | xargs) \
+          python3 -m pylint $(find optax -name '*.py' | xargs) \
             --disable=R,C,W,E --enable=inconsistent-quotes --check-quote-consistency=y
   build-and-pytype:
     needs: [pre-commit, flake8, pylint, ruff-lint]  # do not run tests if linting fails
