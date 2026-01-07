@@ -248,6 +248,16 @@ class TransformTest(parameterized.TestCase):
       adam_params = update.apply_updates(adam_params, adam_updates)
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
+  
+  def test_scale_by_rms_zero_gradients_no_nan(self):
+    tx = transform.scale_by_rms()
+    grads = jnp.zeros((8,))
+    state = tx.init(grads)
+
+    updates, _ = tx.update(grads, state)
+
+    test_utils.assert_tree_all_finite(updates)
+
 
 
 if __name__ == '__main__':
