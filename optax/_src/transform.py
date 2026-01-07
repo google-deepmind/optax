@@ -24,6 +24,9 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
+from optax._src import combine
+from optax.contrib import _dog as dog
+from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
@@ -1384,6 +1387,11 @@ class ScaleByDistanceOverGradientsState(NamedTuple):
   init_params: base.OptState
 
 
+@functools.partial(
+    warn_deprecated_function,
+    replacement="scale_by_l_dog",
+    version_removed="0.2.3",
+)
 def scale_by_distance_over_gradients(
     reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0
 ) -> base.GradientTransformation:
