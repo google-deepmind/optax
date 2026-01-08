@@ -439,7 +439,7 @@ def galore(
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     weight_dimension_numbers: Optional[GaLoreDimNumsOrFn] = None,
 ) -> base.GradientTransformation:
-  r"""GaLore optimizer:Memory-efficient training via gradient lowrank projection.
+  r"""GaLore: Memory-efficient training via gradient lowrank projection.
 
   GaLore (Gradient Low-Rank Projection) is a memory-efficient training strategy
   that enables full-parameter learning while reducing optimizer state memory by
