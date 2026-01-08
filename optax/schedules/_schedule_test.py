@@ -559,6 +559,41 @@ class WarmupCosineDecayTest(parameterized.TestCase):
       for t in range(warmup_steps, decay_steps + 1):
         self.assertLessEqual(float(vals2[t]), float(vals[t]) + 1e-12)
 
+  def test_warmup_zero_steps(self):
+    init, peak, end = 0.2, 1.2, 0.1
+    warmup_steps, decay_steps = 0, 10
+
+    sched = _schedule.warmup_cosine_decay_schedule(
+        init_value=init,
+        peak_value=peak,
+        warmup_steps=warmup_steps,
+        decay_steps=decay_steps,
+        end_value=end,
+    )
+
+    np.testing.assert_allclose(peak, sched(0))
+    np.testing.assert_allclose(end, sched(decay_steps), rtol=1e-3)
+    sched_jit = jax.jit(sched)
+    np.testing.assert_allclose(sched(3), sched_jit(3), rtol=1e-6, atol=1e-8)
+
+    vals = jnp.asarray([sched(t) for t in range(decay_steps + 1)])
+    self.assertTrue(bool(jnp.all(jnp.isfinite(vals))))
+
+  def test_decay_smaller_than_warmup_defined_or_raises(self):
+    kwargs = dict(
+        init_value=0.2,
+        peak_value=1.2,
+        warmup_steps=10,
+        decay_steps=5,
+        end_value=0.0,
+    )
+    try:
+      sched = _schedule.warmup_cosine_decay_schedule(**kwargs)
+    except ValueError:
+      return
+    vals = jnp.asarray([sched(t) for t in range(kwargs['decay_steps'] + 1)])
+    self.assertTrue(bool(jnp.all(jnp.isfinite(vals))))
+
   def test_raises_when_decay_equals_warmup(self):
     with self.assertRaises(ValueError):
       _schedule.warmup_cosine_decay_schedule(
