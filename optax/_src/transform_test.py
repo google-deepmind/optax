@@ -173,7 +173,7 @@ class TransformTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
   def test_lion_modes_variants(self):
-    updates = jnp.arraynan([0.2, -2.0, 0.5, -0.8])
+    updates = jnp.array([0.2, -2.0, 0.5, -0.8])
     b1 = 0.5
     smooth_beta = 2.0
     for mode in ('hard', 'smooth', 'refined'):
