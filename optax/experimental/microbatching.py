@@ -21,16 +21,16 @@ import enum
 import functools
 from typing import Any, Callable, Sequence, TypeAlias
 
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import base
 
 
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
 VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
-PyTreeFn: TypeAlias = Callable[[chex.ArrayTree], chex.ArrayTree]
-UpdateFn = Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
+PyTreeFn: TypeAlias = Callable[[base.ArrayTree], base.ArrayTree]
+UpdateFn = Callable[[base.ArrayTree, base.ArrayTree, int], base.ArrayTree]
 IndividualOutputs = collections.namedtuple('Aux', ['values', 'metrics', 'aux'])
 ValueAndGradFn: TypeAlias = Callable[..., tuple[Any, IndividualOutputs]]
 
@@ -557,8 +557,8 @@ def micro_grad(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
-    transform_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: x,
-    metrics_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: None
+    transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
+    metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None
 ) -> ValueAndGradFn:
   """Create a function to compute, transform, and sum per-example gradients.
 
