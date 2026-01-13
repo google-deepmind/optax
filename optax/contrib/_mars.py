@@ -23,9 +23,9 @@ import jax.numpy as jnp
 from optax import tree
 from optax._src import base
 from optax._src import combine
+from optax._src import linear_algebra as la
 from optax._src import numerics
 from optax._src import transform
-from optax._src import utils
 
 __all__ = ["mars_adamw", "scale_by_mars", "MarsState"]
 
@@ -86,8 +86,8 @@ def scale_by_mars(
         mu = tree.update_moment(updates, state.mu, b1, 1)
         nu = tree.update_moment(updates, state.nu, b2, 2)
 
-        mu_hat = tree.bias_correction(mu, b1, count)
-        nu_hat = tree.bias_correction(nu, b2, count)
+        mu_hat = jax.tree.map(lambda x: x / (1 - b1**count), mu)
+        nu_hat = jax.tree.map(lambda x: x / (1 - b2**count), nu)
 
         adam_direction = jax.tree_util.tree_map(
             lambda m, n: m / (jnp.sqrt(n) + eps), mu_hat, nu_hat
@@ -105,7 +105,12 @@ def scale_by_mars(
         # Clipping the correction term
         correction = raw_correction
         if max_norm is not None:
-            global_norm = numerics.safe_norm(correction, min_norm=0.0)
+            # We clip the global norm of the correction term.
+            # Compute l2 norm of the entire correction pytree.
+            global_norm = numerics.safe_norm(
+                la.global_norm(correction),
+                min_norm=0.0,
+            )
             scale = jnp.where(
                 global_norm > max_norm,
                 max_norm / (global_norm + 1e-12),  # Avoid division by zero
