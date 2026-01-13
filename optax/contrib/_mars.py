@@ -14,7 +14,8 @@
 # ==============================================================================
 """MARS optimizer implementation."""
 
-from typing import NamedTuple, Optional
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
 import chex
 import jax
@@ -141,7 +142,7 @@ def mars_adamw(
     weight_decay: float = 1e-4,
     gamma: float = 0.025,
     max_norm: Optional[float] = None,
-    mask: Optional[base.MaskOrFn] = None,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
     """A MARS optimizer with AdamW features.
 
