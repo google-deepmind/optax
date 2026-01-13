@@ -86,8 +86,8 @@ def scale_by_mars(
         mu = tree.update_moment(updates, state.mu, b1, 1)
         nu = tree.update_moment(updates, state.nu, b2, 2)
 
-        mu_hat = utils.bias_correction(mu, b1, count)
-        nu_hat = utils.bias_correction(nu, b2, count)
+        mu_hat = tree.bias_correction(mu, b1, count)
+        nu_hat = tree.bias_correction(nu, b2, count)
 
         adam_direction = jax.tree_util.tree_map(
             lambda m, n: m / (jnp.sqrt(n) + eps), mu_hat, nu_hat
