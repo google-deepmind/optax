@@ -1,4 +1,4 @@
-# Copyright 2023 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2026 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,14 @@ from typing import NamedTuple, Optional
 import chex
 import jax
 import jax.numpy as jnp
+from optax import tree
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
 from optax._src import transform
 from optax._src import utils
+
+__all__ = ['mars_adamw', 'scale_by_mars', 'MarsState']
 
 
 class MarsState(NamedTuple):
@@ -43,9 +46,12 @@ def scale_by_mars(
 ) -> base.GradientTransformation:
   """Rescale updates according to the MARS algorithm.
 
-  MARS (Maximum A Posteriori Regularization for SGD) consists of a standard prior
+  MARS (Make vAriance Reduction Shine) consists of a standard prior
   correction term (like Adam) plus a correction term based on the difference
   between the current and previous gradients.
+
+  References:
+    Hu et al., 2024: https://arxiv.org/abs/2411.10438
 
   Args:
     b1: Decay rate for the exponentially weighted average of grads.
@@ -75,8 +81,8 @@ def scale_by_mars(
 
     count = state.count + jnp.array(1, dtype=jnp.int32)
 
-    mu = utils.update_moment(updates, state.mu, b1, 1)
-    nu = utils.update_moment(updates, state.nu, b2, 2)
+    mu = tree.update_moment(updates, state.mu, b1, 1)
+    nu = tree.update_moment(updates, state.nu, b2, 2)
 
     mu_hat = utils.bias_correction(mu, b1, count)
     nu_hat = utils.bias_correction(nu, b2, count)
@@ -99,7 +105,6 @@ def scale_by_mars(
     correction = raw_correction
     if max_norm is not None:
       global_norm = numerics.safe_norm(correction, min_norm=0.0)
-      # scale = max_norm / global_norm if global_norm > max_norm else 1.0
       scale = jnp.where(
           global_norm > max_norm,
           max_norm / (global_norm + 1e-12),  # Avoid division by zero
