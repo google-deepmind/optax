@@ -462,6 +462,8 @@ def muon(
       applied to all 2D parameters.
     consistent_rms: An optional float to activate consistent RMS scaling.
       Scales updates by `sqrt(max(fan_in, fan_out)) * consistent_rms` to make
+      root mean square (RMS) shape-independent, like AdamW. `0.2` is recommended
+      to match AdamW's empirical RMS. See <https://arxiv.org/abs/2502.16982>.
       If `None`, uses width scaling `sqrt(max(1, fan_out / fan_in))`.
     learning_rate_adam: Learning rate for AdamW-optimized parameters (biases,
       layer norms, input encodings, etc.). If `None`, defaults to

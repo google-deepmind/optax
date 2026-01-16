@@ -348,7 +348,8 @@ class MuonTest(parameterized.TestCase):
     )
 
   def test_muon_adamw_lr_default(self):
-    """Test that if learning_rate_adam is None, behavior is identical to current."""
+    """Test that if learning_rate_adam is None, behavior is identical to
+    current."""
     # Use simple params: 2D for Muon, 1D for AdamW
     params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
     grads = {"w": jnp.ones((5, 5)) * 0.1, "b": jnp.ones(5) * 0.1}
@@ -362,17 +363,19 @@ class MuonTest(parameterized.TestCase):
     opt_explicit = _muon.muon(learning_rate=0.01, learning_rate_adam=0.01)
     state_explicit = opt_explicit.init(params)
     updates_explicit, _ = opt_explicit.update(grads, state_explicit, params)
-    
+
     # Verify exact numerical identity
-    test_utils.assert_trees_all_close(updates_default, updates_explicit, rtol=0.0, atol=0.0)
+    test_utils.assert_trees_all_close(
+        updates_default, updates_explicit, rtol=0.0, atol=0.0)
 
     # Case 3: learning_rate_adam set to None
     opt_none = _muon.muon(learning_rate=0.01, learning_rate_adam=None)
     state_none = opt_none.init(params)
     updates_none, _ = opt_none.update(grads, state_none, params)
-    
+
     # Verify exact numerical identity
-    test_utils.assert_trees_all_close(updates_default, updates_none, rtol=0.0, atol=0.0)
+    test_utils.assert_trees_all_close(
+        updates_default, updates_none, rtol=0.0, atol=0.0)
 
   def test_muon_separate_adamw_learning_rate(self):
     """Test that separate learning rates lead to different updates."""
@@ -403,14 +406,14 @@ class MuonTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(updates["ln_w"], updates_ref["ln_w"])
 
     # 1D tensors should be different (AdamW uses 0.001 vs 0.01)
-    # Since updates scale roughly linearly with LR for Adam, we expect significant difference
+    # Since updates scale linearly with LR, expect significant difference
     self.assertFalse(jnp.allclose(updates["b"], updates_ref["b"]))
 
     # Additional check: Create optimizer with LR=0.001 globally
     opt_low = _muon.muon(learning_rate=0.001)
     state_low = opt_low.init(params)
     updates_low, _ = opt_low.update(grads, state_low, params)
-    
+
     # 1D tensors should match the global LR=0.001 case
     test_utils.assert_trees_all_close(updates["b"], updates_low["b"])
 
@@ -420,15 +423,15 @@ class MuonTest(parameterized.TestCase):
     params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
     # Use eye for w to ensure full rank for Newton-Schulz
     grads = {"w": jnp.eye(5) * 0.01, "b": jnp.ones(5) * 0.01}
-    
+
     opt = _muon.muon(learning_rate=0.1, learning_rate_adam=0.001)
     state = opt.init(params)
     updates, _ = opt.update(grads, state, params)
-    
+
     # Ensure no NaNs or Infs
     self.assertTrue(jnp.all(jnp.isfinite(updates["w"])))
     self.assertTrue(jnp.all(jnp.isfinite(updates["b"])))
-    
+
     # Check that magnitudes correspond roughly to LRs
     # Muon update is normalized, scaled by LR=0.1. Norm approx 0.1
     # Adam update is normalized, scaled by LR=0.001. Norm approx 0.001
@@ -441,14 +444,15 @@ class MuonTest(parameterized.TestCase):
     self.assertGreater(w_mean, 10 * b_mean)
 
   def test_muon_adamw_lr_param_grouping(self):
-    """Verify correct parameters go to Muon vs Adam based on dimension_numbers."""
+    """Verify correct parameters go to Muon vs Adam based on
+    dimension_numbers."""
     params = {
         "muon_param": jnp.ones((10, 10)),      # 2D, default Muon
         "adam_param": jnp.ones(10),            # 1D, default Adam
         "force_adam": jnp.ones((5, 5)),        # 2D, but we will force to Adam
     }
     grads = jax.tree.map(lambda x: x * 0.1, params)
-    
+
     # Force "force_adam" to be Adam by using mask
     def dim_nums_fn(params):
         return {
@@ -456,11 +460,11 @@ class MuonTest(parameterized.TestCase):
             "adam_param": None,
             "force_adam": None  # Explicitly force this 2D param to Adam
         }
-        
+
     # Set vastly different LRs to detect which optimizer is used
     muon_lr = 1.0
     adam_lr = 0.0001
-    
+
     opt = _muon.muon(
         learning_rate=muon_lr,
         learning_rate_adam=adam_lr,
@@ -468,20 +472,18 @@ class MuonTest(parameterized.TestCase):
     )
     state = opt.init(params)
     updates, _ = opt.update(grads, state, params)
-    
+
     # Check magnitudes
     # muon_param should obey muon_lr (large update)
-    # Frobenius norm is 1.0, so RMS is 1/sqrt(N). For 10x10, RMS=0.1. Mean abs is slightly less.
-    # We used LR=1.0. So update RMS ~ 0.1.
-    # Adam used LR=0.0001. So update RMS ~ 0.0001.
-    
+    # Frobenius norm=1.0, RMS=1/sqrt(N). For 10x10, RMS=0.1.
+
     # We expect muon update to be significantly larger than adam update
     muon_update_mean = jnp.mean(jnp.abs(updates["muon_param"]))
     adam_update_mean = jnp.mean(jnp.abs(updates["force_adam"]))
-    
+
     # Assert muon is at least 100x larger (0.1 vs 0.0001)
     self.assertGreater(muon_update_mean, 100 * adam_update_mean)
-    
+
     # Also rudimentary absolute check
     self.assertGreater(muon_update_mean, 0.02)
     self.assertLess(adam_update_mean, 0.01)
@@ -497,11 +499,10 @@ class MuonTest(parameterized.TestCase):
         learning_rate=schedule_main,
         learning_rate_adam=schedule_adam
     )
-    
+
     params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
     grads = {"w": jnp.ones((5, 5)) * 0.1, "b": jnp.ones(5) * 0.1}
     state = opt.init(params)
-    
     # Should run without error
     updates, _ = opt.update(grads, state, params)
     self.assertTrue(jnp.all(jnp.isfinite(updates["w"])))
@@ -518,14 +519,13 @@ class MuonTest(parameterized.TestCase):
         learning_rate=schedule_main,
         learning_rate_adam=schedule_adam
     )
-    
+
     params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
-    grads = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)} # Unit gradients
+    grads = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}  # Unit gradients
     state = opt.init(params)
-    
     # Step 0: Both LRs = 1.0 (approx)
     updates0, state = opt.update(grads, state, params)
-    
+
     # Step 1: Main=0.5, Adam=0.9
     _, state = opt.update(grads, state, params)
 
@@ -550,27 +550,23 @@ class MuonTest(parameterized.TestCase):
         "w": jnp.ones((10, 10)),    # Muon
         "b": jnp.ones(10),          # Adam
     }
-    
     # Mask out 'b' from weight decay
     def weight_decay_mask(params):
         return {"w": True, "b": False}
-        
     opt = _muon.muon(
         learning_rate=0.01,
         learning_rate_adam=0.001,
         weight_decay=0.1,
         weight_decay_mask=weight_decay_mask
     )
-    
+
     # Use zero gradients to isolate weight decay
     grads = jax.tree.map(jnp.zeros_like, params)
     state = opt.init(params)
     updates, _ = opt.update(grads, state, params)
-    
     # 'w' should have weight decay applied (non-zero update)
     # Note: Muon applies weight decay * learning_rate
     self.assertFalse(jnp.allclose(updates["w"], 0.0))
-    
     # 'b' should NOT have weight decay (zero update because grad is zero)
     test_utils.assert_trees_all_close(
         updates["b"], jnp.zeros_like(updates["b"])
@@ -582,6 +578,7 @@ class MuonTest(parameterized.TestCase):
         ValueError, "learning_rate_adam must be non-negative"
     ):
         _muon.muon(learning_rate=0.01, learning_rate_adam=-0.001)
+
 
 if __name__ == "__main__":
   absltest.main()
