@@ -550,6 +550,7 @@ class MuonTest(parameterized.TestCase):
         "w": jnp.ones((10, 10)),    # Muon
         "b": jnp.ones(10),          # Adam
     }
+
     # Mask out 'b' from weight decay
     def weight_decay_mask(params):
         return {"w": True, "b": False}

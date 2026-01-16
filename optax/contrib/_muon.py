@@ -483,7 +483,7 @@ def muon(
 
     Liu et al., `Muon is Scalable for LLM Training`,
     <https://arxiv.org/abs/2502.16982>`_, 2025
-    
+
     Backward Compatibility:
       This feature is fully backward compatible. Existing code using
       `muon(learning_rate=...)` will continue to work without modification,
