@@ -17,7 +17,6 @@
 import math
 from typing import Any, NamedTuple, Protocol, Sequence
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax import tree
@@ -26,8 +25,8 @@ from optax._src import utils
 from optax.transforms import _combining
 
 
-PerElementUpdates = chex.ArrayTree
-AggregatedUpdates = chex.ArrayTree
+PerElementUpdates = base.ArrayTree
+AggregatedUpdates = base.ArrayTree
 MaybeAxis = int | Sequence[int] | None
 
 

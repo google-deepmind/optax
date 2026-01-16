@@ -17,7 +17,6 @@
 import functools
 from typing import Literal, NamedTuple, Optional
 
-import chex
 import jax
 from jax import nn
 import jax.numpy as jnp
@@ -1542,15 +1541,15 @@ class ScaleByLBFGSState(NamedTuple):
   count: jax.typing.ArrayLike
   params: base.Params
   updates: base.Params
-  diff_params_memory: chex.ArrayTree
-  diff_updates_memory: chex.ArrayTree
+  diff_params_memory: base.ArrayTree
+  diff_updates_memory: base.ArrayTree
   weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
-    diff_params_memory: chex.ArrayTree,
-    diff_updates_memory: chex.ArrayTree,
+    diff_params_memory: base.ArrayTree,
+    diff_updates_memory: base.ArrayTree,
     weights_memory: jax.typing.ArrayLike,
     identity_scale: jax.typing.ArrayLike,  # float
     memory_idx: jax.typing.ArrayLike,  # int
