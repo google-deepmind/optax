@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - CHANGELOG.md file added to track notable changes.
+- Added `learning_rate_adam` argument to `optax.contrib.muon`.
 
 ### Changed
 

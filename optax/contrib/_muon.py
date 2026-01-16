@@ -406,6 +406,7 @@ def muon(
     adam_weight_decay: jax.typing.ArrayLike = 0.0,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
     consistent_rms: jax.typing.ArrayLike | None = None,
+    learning_rate_adam: base.ScalarOrSchedule | None = None,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -420,8 +421,9 @@ def muon(
   The non-2D parameters are instead passed through an Adam optimizer.
 
   Args:
-    learning_rate: A global scaling factor, either fixed or evolving along
-      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    learning_rate: The base learning rate. Applies to Muon-optimized 2D matrix
+      parameters. If `learning_rate_adam` is not specified, also used for
+      AdamW-optimized parameters (biases, encodings, etc.).
     ns_coeffs: Coefficients for the Newton-schulz method.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
@@ -453,9 +455,12 @@ def muon(
       applied to all 2D parameters.
     consistent_rms: An optional float to activate consistent RMS scaling.
       Scales updates by `sqrt(max(fan_in, fan_out)) * consistent_rms` to make
-      root mean square (RMS) shape-independent, like AdamW. `0.2` is recommended
-      to match AdamW's empirical RMS. See <https://arxiv.org/abs/2502.16982>.
       If `None`, uses width scaling `sqrt(max(1, fan_out / fan_in))`.
+    learning_rate_adam: Learning rate for AdamW-optimized parameters (biases,
+      layer norms, input encodings, etc.). If `None`, defaults to
+      `learning_rate`, ensuring backward compatibility. Different optimal values
+      per architecture (e.g., 10-100x differences) may significantly impact
+      training. Reference: arXiv:2512.14366 Appendix A.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -469,6 +474,11 @@ def muon(
 
     Liu et al., `Muon is Scalable for LLM Training`,
     <https://arxiv.org/abs/2502.16982>`_, 2025
+    
+    Backward Compatibility:
+      This feature is fully backward compatible. Existing code using
+      `muon(learning_rate=...)` will continue to work without modification,
+      with `learning_rate_adam` defaulting to `learning_rate`.
   """
   # None at root indicates the default 2D rule.
   if muon_weight_dimension_numbers is None:
@@ -504,6 +514,15 @@ def muon(
         lambda m: dim_nums if m else _masking.MaskedNode(), submask)
     return jax.tree.map(populate_subtree_, dim_nums, mask, is_leaf=is_leaf)
 
+  if learning_rate_adam is not None:
+    if isinstance(learning_rate_adam, (int, float)) and learning_rate_adam < 0:
+      raise ValueError(
+          f'learning_rate_adam must be non-negative, got {learning_rate_adam}.'
+      )
+
+  if learning_rate_adam is None:
+    learning_rate_adam = learning_rate
+
   return combine.partition(
       transforms={
           'muon': combine.chain(
@@ -525,7 +544,7 @@ def muon(
               transform.scale_by_learning_rate(learning_rate),
           ),
           'adam': alias.adamw(
-              learning_rate=learning_rate,
+              learning_rate=learning_rate_adam,
               b1=adam_b1,
               b2=adam_b2,
               eps=eps,

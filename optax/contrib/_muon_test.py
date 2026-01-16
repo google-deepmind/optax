@@ -346,6 +346,239 @@ class MuonTest(parameterized.TestCase):
         params, final_params, rtol=3e-2, atol=3e-2
     )
 
+  def test_muon_adamw_lr_default(self):
+    """Test that if learning_rate_adam is None, behavior is identical to current."""
+    # Use simple params: 2D for Muon, 1D for AdamW
+    params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
+    grads = {"w": jnp.ones((5, 5)) * 0.1, "b": jnp.ones(5) * 0.1}
+
+    # Case 1: No learning_rate_adam (default)
+    opt_default = _muon.muon(learning_rate=0.01)
+    state_default = opt_default.init(params)
+    updates_default, _ = opt_default.update(grads, state_default, params)
+
+    # Case 2: learning_rate_adam explicitly set to same value
+    opt_explicit = _muon.muon(learning_rate=0.01, learning_rate_adam=0.01)
+    state_explicit = opt_explicit.init(params)
+    updates_explicit, _ = opt_explicit.update(grads, state_explicit, params)
+    
+    # Verify exact numerical identity
+    test_utils.assert_trees_all_close(updates_default, updates_explicit, rtol=0.0, atol=0.0)
+
+    # Case 3: learning_rate_adam set to None
+    opt_none = _muon.muon(learning_rate=0.01, learning_rate_adam=None)
+    state_none = opt_none.init(params)
+    updates_none, _ = opt_none.update(grads, state_none, params)
+    
+    # Verify exact numerical identity
+    test_utils.assert_trees_all_close(updates_default, updates_none, rtol=0.0, atol=0.0)
+
+  def test_muon_separate_adamw_learning_rate(self):
+    """Test that separate learning rates lead to different updates."""
+    params = {
+        "w": jnp.ones((10, 10)),    # 2D - uses Muon
+        "b": jnp.ones(10),          # 1D - uses AdamW
+        "ln_w": jnp.ones((5, 5)),   # 2D - uses Muon
+    }
+    grads = {
+        "w": jnp.ones((10, 10)) * 0.1,
+        "b": jnp.ones(10) * 0.1,
+        "ln_w": jnp.ones((5, 5)) * 0.1,
+    }
+
+    # Optimizer with different learning rates
+    # Muon LR = 0.01, AdamW LR = 0.001
+    opt = _muon.muon(learning_rate=0.01, learning_rate_adam=0.001)
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+
+    # Reference optimizer with global LR = 0.01
+    opt_ref = _muon.muon(learning_rate=0.01)
+    state_ref = opt_ref.init(params)
+    updates_ref, _ = opt_ref.update(grads, state_ref, params)
+
+    # 2D tensors should be identical (both use LR=0.01 via Muon)
+    test_utils.assert_trees_all_close(updates["w"], updates_ref["w"])
+    test_utils.assert_trees_all_close(updates["ln_w"], updates_ref["ln_w"])
+
+    # 1D tensors should be different (AdamW uses 0.001 vs 0.01)
+    # Since updates scale roughly linearly with LR for Adam, we expect significant difference
+    self.assertFalse(jnp.allclose(updates["b"], updates_ref["b"]))
+
+    # Additional check: Create optimizer with LR=0.001 globally
+    opt_low = _muon.muon(learning_rate=0.001)
+    state_low = opt_low.init(params)
+    updates_low, _ = opt_low.update(grads, state_low, params)
+    
+    # 1D tensors should match the global LR=0.001 case
+    test_utils.assert_trees_all_close(updates["b"], updates_low["b"])
+
+  def test_muon_adamw_lr_extreme_differences(self):
+    """Test with extreme differences in learning rates (100x ratio)."""
+    # Paper shows ratios like Muon=0.1, Adam=0.001 are useful
+    params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
+    # Use eye for w to ensure full rank for Newton-Schulz
+    grads = {"w": jnp.eye(5) * 0.01, "b": jnp.ones(5) * 0.01}
+    
+    opt = _muon.muon(learning_rate=0.1, learning_rate_adam=0.001)
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+    
+    # Ensure no NaNs or Infs
+    self.assertTrue(jnp.all(jnp.isfinite(updates["w"])))
+    self.assertTrue(jnp.all(jnp.isfinite(updates["b"])))
+    
+    # Check that magnitudes correspond roughly to LRs
+    # Muon update is normalized, scaled by LR=0.1. Norm approx 0.1
+    # Adam update is normalized, scaled by LR=0.001. Norm approx 0.001
+    w_norm = jnp.linalg.norm(updates["w"])
+    b_norm = jnp.linalg.norm(updates["b"])
+    
+    # b_norm should be much smaller than w_norm (roughly 1/100th, discounting tensor size)
+    # Since w is (5,5) and b is (5), let's look at mean abs value
+    w_mean = jnp.mean(jnp.abs(updates["w"]))
+    b_mean = jnp.mean(jnp.abs(updates["b"]))
+    
+    # Should differ by order of magnitude
+    self.assertGreater(w_mean, 10 * b_mean)
+
+  def test_muon_adamw_lr_param_grouping(self):
+    """Verify correct parameters go to Muon vs Adam based on dimension_numbers."""
+    params = {
+        "muon_param": jnp.ones((10, 10)),      # 2D, default Muon
+        "adam_param": jnp.ones(10),            # 1D, default Adam
+        "force_adam": jnp.ones((5, 5)),        # 2D, but we will force to Adam
+    }
+    grads = jax.tree.map(lambda x: x * 0.1, params)
+    
+    # Force "force_adam" to be Adam by using mask
+    def dim_nums_fn(params):
+        return {
+            "muon_param": _muon.MuonDimensionNumbers(0, 1),
+            "adam_param": None,
+            "force_adam": None  # Explicitly force this 2D param to Adam
+        }
+        
+    # Set vastly different LRs to detect which optimizer is used
+    muon_lr = 1.0
+    adam_lr = 0.0001
+    
+    opt = _muon.muon(
+        learning_rate=muon_lr,
+        learning_rate_adam=adam_lr,
+        muon_weight_dimension_numbers=dim_nums_fn
+    )
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+    
+    # Check magnitudes
+    # muon_param should obey muon_lr (large update)
+    # Frobenius norm is 1.0, so RMS is 1/sqrt(N). For 10x10, RMS=0.1. Mean abs is slightly less.
+    # We used LR=1.0. So update RMS ~ 0.1.
+    # Adam used LR=0.0001. So update RMS ~ 0.0001.
+    
+    # We expect muon update to be significantly larger than adam update
+    muon_update_mean = jnp.mean(jnp.abs(updates["muon_param"]))
+    adam_update_mean = jnp.mean(jnp.abs(updates["force_adam"]))
+    
+    # Assert muon is at least 100x larger (0.1 vs 0.0001)
+    self.assertGreater(muon_update_mean, 100 * adam_update_mean)
+    
+    # Also rudimentary absolute check
+    self.assertGreater(muon_update_mean, 0.02)
+    self.assertLess(adam_update_mean, 0.01)
+
+  def test_muon_adamw_lr_schedule_compatibility(self):
+    """Test that two different schedule objects work correctly."""
+    import optax
+    
+    # Schedule 1: Constant
+    schedule_main = optax.constant_schedule(0.01)
+    # Schedule 2: Exponential
+    schedule_adam = optax.exponential_decay(0.001, 100, 0.5)
+    
+    opt = _muon.muon(
+        learning_rate=schedule_main,
+        learning_rate_adam=schedule_adam
+    )
+    
+    params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
+    grads = {"w": jnp.ones((5, 5)) * 0.1, "b": jnp.ones(5) * 0.1}
+    state = opt.init(params)
+    
+    # Should run without error
+    updates, _ = opt.update(grads, state, params)
+    self.assertTrue(jnp.all(jnp.isfinite(updates["w"])))
+
+  def test_muon_adamw_lr_schedule_evolution(self):
+    """Verify schedules evolve independently."""
+    import optax
+    
+    # Main: Decay fast
+    schedule_main = optax.exponential_decay(1.0, 1, 0.5) 
+    # Adam: Decay slow
+    schedule_adam = optax.exponential_decay(1.0, 1, 0.9)
+    
+    opt = _muon.muon(
+        learning_rate=schedule_main,
+        learning_rate_adam=schedule_adam
+    )
+    
+    params = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)}
+    grads = {"w": jnp.ones((5, 5)), "b": jnp.ones(5)} # Unit gradients
+    state = opt.init(params)
+    
+    # Step 0: Both LRs = 1.0 (approx)
+    updates0, state = opt.update(grads, state, params)
+    
+    # Step 1: Main=0.5, Adam=0.9
+    updates1, state = opt.update(grads, state, params)
+    
+    # Step 2: Main=0.25, Adam=0.81
+    updates2, state = opt.update(grads, state, params)
+    
+    # Check that Muon updates decayed much faster than Adam updates
+    # Muon update magnitude at step 2 vs step 0
+    muon_ratio = jnp.mean(jnp.abs(updates2["w"])) / jnp.mean(jnp.abs(updates0["w"]))
+    adam_ratio = jnp.mean(jnp.abs(updates2["b"])) / jnp.mean(jnp.abs(updates0["b"]))
+    
+    # Muon should have dropped more significantly
+    self.assertLess(muon_ratio, adam_ratio)
+
+  def test_muon_adamw_lr_with_weight_decay_mask(self):
+    """Test interaction with weight_decay_mask."""
+    params = {
+        "w": jnp.ones((10, 10)),    # Muon
+        "b": jnp.ones(10),          # Adam
+    }
+    
+    # Mask out 'b' from weight decay
+    def weight_decay_mask(params):
+        return {"w": True, "b": False}
+        
+    opt = _muon.muon(
+        learning_rate=0.01,
+        learning_rate_adam=0.001,
+        weight_decay=0.1,
+        weight_decay_mask=weight_decay_mask
+    )
+    
+    # Use zero gradients to isolate weight decay
+    grads = jax.tree.map(jnp.zeros_like, params)
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+    
+    # 'w' should have weight decay applied (non-zero update)
+    # Note: Muon applies weight decay * learning_rate
+    self.assertFalse(jnp.allclose(updates["w"], 0.0))
+    
+    # 'b' should NOT have weight decay (zero update because grad is zero)
+    test_utils.assert_trees_all_close(updates["b"], jnp.zeros_like(updates["b"]))
+
+  def test_muon_adamw_lr_validation(self):
+    """Test that negative learning_rate_adam raises ValueError."""
+    with self.assertRaisesRegex(ValueError, "learning_rate_adam must be non-negative"):
+        _muon.muon(learning_rate=0.01, learning_rate_adam=-0.001)
 
 if __name__ == "__main__":
   absltest.main()
