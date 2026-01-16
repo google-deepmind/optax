@@ -25,6 +25,7 @@ from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _muon
 from optax.transforms import _masking
+import optax
 
 
 UNSPECIFIED = object()
@@ -431,14 +432,11 @@ class MuonTest(parameterized.TestCase):
     # Check that magnitudes correspond roughly to LRs
     # Muon update is normalized, scaled by LR=0.1. Norm approx 0.1
     # Adam update is normalized, scaled by LR=0.001. Norm approx 0.001
-    w_norm = jnp.linalg.norm(updates["w"])
-    b_norm = jnp.linalg.norm(updates["b"])
-    
-    # b_norm should be much smaller than w_norm (roughly 1/100th, discounting tensor size)
+    # b_norm should be much smaller than w_norm (roughly 1/100th)
     # Since w is (5,5) and b is (5), let's look at mean abs value
     w_mean = jnp.mean(jnp.abs(updates["w"]))
     b_mean = jnp.mean(jnp.abs(updates["b"]))
-    
+
     # Should differ by order of magnitude
     self.assertGreater(w_mean, 10 * b_mean)
 
@@ -490,13 +488,11 @@ class MuonTest(parameterized.TestCase):
 
   def test_muon_adamw_lr_schedule_compatibility(self):
     """Test that two different schedule objects work correctly."""
-    import optax
-    
     # Schedule 1: Constant
     schedule_main = optax.constant_schedule(0.01)
     # Schedule 2: Exponential
     schedule_adam = optax.exponential_decay(0.001, 100, 0.5)
-    
+
     opt = _muon.muon(
         learning_rate=schedule_main,
         learning_rate_adam=schedule_adam
@@ -512,13 +508,12 @@ class MuonTest(parameterized.TestCase):
 
   def test_muon_adamw_lr_schedule_evolution(self):
     """Verify schedules evolve independently."""
-    import optax
-    
+
     # Main: Decay fast
-    schedule_main = optax.exponential_decay(1.0, 1, 0.5) 
+    schedule_main = optax.exponential_decay(1.0, 1, 0.5)
     # Adam: Decay slow
     schedule_adam = optax.exponential_decay(1.0, 1, 0.9)
-    
+
     opt = _muon.muon(
         learning_rate=schedule_main,
         learning_rate_adam=schedule_adam
@@ -532,16 +527,20 @@ class MuonTest(parameterized.TestCase):
     updates0, state = opt.update(grads, state, params)
     
     # Step 1: Main=0.5, Adam=0.9
-    updates1, state = opt.update(grads, state, params)
-    
+    _, state = opt.update(grads, state, params)
+
     # Step 2: Main=0.25, Adam=0.81
     updates2, state = opt.update(grads, state, params)
-    
+
     # Check that Muon updates decayed much faster than Adam updates
     # Muon update magnitude at step 2 vs step 0
-    muon_ratio = jnp.mean(jnp.abs(updates2["w"])) / jnp.mean(jnp.abs(updates0["w"]))
-    adam_ratio = jnp.mean(jnp.abs(updates2["b"])) / jnp.mean(jnp.abs(updates0["b"]))
-    
+    muon_ratio = (
+        jnp.mean(jnp.abs(updates2["w"])) / jnp.mean(jnp.abs(updates0["w"]))
+    )
+    adam_ratio = (
+        jnp.mean(jnp.abs(updates2["b"])) / jnp.mean(jnp.abs(updates0["b"]))
+    )
+
     # Muon should have dropped more significantly
     self.assertLess(muon_ratio, adam_ratio)
 
@@ -573,11 +572,15 @@ class MuonTest(parameterized.TestCase):
     self.assertFalse(jnp.allclose(updates["w"], 0.0))
     
     # 'b' should NOT have weight decay (zero update because grad is zero)
-    test_utils.assert_trees_all_close(updates["b"], jnp.zeros_like(updates["b"]))
+    test_utils.assert_trees_all_close(
+        updates["b"], jnp.zeros_like(updates["b"])
+    )
 
   def test_muon_adamw_lr_validation(self):
     """Test that negative learning_rate_adam raises ValueError."""
-    with self.assertRaisesRegex(ValueError, "learning_rate_adam must be non-negative"):
+    with self.assertRaisesRegex(
+        ValueError, "learning_rate_adam must be non-negative"
+    ):
         _muon.muon(learning_rate=0.01, learning_rate_adam=-0.001)
 
 if __name__ == "__main__":

@@ -385,9 +385,15 @@ def scale_by_muon(
 def muon(
     learning_rate: base.ScalarOrSchedule,
     ns_coeffs: Union[
-        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
-        tuple[tuple[jax.typing.ArrayLike, jax.typing.ArrayLike,
-                    jax.typing.ArrayLike], ...],
+        tuple[
+            jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+        ],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
     ] = _DEFAULT_NS_COEFFS,
     ns_steps: jax.typing.ArrayLike = 5,
     beta: jax.typing.ArrayLike = 0.95,
@@ -434,10 +440,11 @@ def muon(
       with other frameworks such as PyTorch, but different from
       (Loshchilov et al, 2019) where the weight decay is only multiplied with
       the "schedule multiplier", but not the base learning rate.
-    weight_decay_mask: A tree with same structure as (or a prefix of) the params
-      PyTree, or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the weight decay to, and `False` for those you want to skip.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the
+      params PyTree, or a Callable that returns such a pytree given the
+      params/updates. The leaves should be booleans, `True` for leaves/subtrees
+      you want to apply the weight decay to, and `False` for those you want to
+      skip.
     mu_dtype: Data type of the momentum accumulator.
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
