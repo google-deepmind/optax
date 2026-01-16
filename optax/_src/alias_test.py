@@ -20,6 +20,7 @@ from typing import Any, Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
@@ -449,11 +450,11 @@ class AliasTest(parameterized.TestCase):
 
 def _run_opt(
     opt: base.GradientTransformationExtraArgs,
-    fun: Callable[[base.ArrayTree], jnp.ndarray],
-    init_params: base.ArrayTree,
+    fun: Callable[[chex.ArrayTree], jnp.ndarray],
+    init_params: chex.ArrayTree,
     maxiter: int = 500,
     tol: float = 1e-3,
-) -> tuple[base.ArrayTree, base.OptState]:
+) -> tuple[chex.ArrayTree, base.OptState]:
   """Run LBFGS solver by iterative calls to grad transform and apply_updates."""
   value_and_grad_fun = jax.value_and_grad(fun)
 

@@ -18,6 +18,7 @@ import dataclasses
 from typing import Optional, TypedDict, cast
 
 from absl.testing import absltest
+import chex
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
@@ -41,7 +42,7 @@ class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
   count: jax.typing.ArrayLike
-  params: TypedDict('Params', {'mu': base.ArrayTree, 'nu': base.ArrayTree})
+  params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
 
 
 def _scale_by_adam_with_dicts():

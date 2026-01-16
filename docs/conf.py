@@ -125,7 +125,7 @@ autodoc_type_aliases = {
     'base.Updates': 'optax.Updates',
     'base.OptState': 'optax.OptState',
     'base.PyTree': 'optax.PyTree',
-    'base.ArrayTree': 'optax.ArrayTree',
+    'chex.ArrayTree': 'chex.ArrayTree',
     'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
 

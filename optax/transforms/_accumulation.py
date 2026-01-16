@@ -18,6 +18,7 @@ from collections.abc import Callable
 import functools
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
+import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -138,7 +139,7 @@ class ShouldSkipUpdateFunction(Protocol):
       updates: base.Updates,
       gradient_step: jax.typing.ArrayLike,
       params: Optional[base.Params],
-  ) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
+  ) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
     """Returns true to indicate that updates should be skipped in a multi-step.
 
     Args:
@@ -161,7 +162,7 @@ def skip_not_finite(
     updates: base.Updates,
     gradient_step: jax.typing.ArrayLike,
     params: Optional[base.Params],
-) -> tuple[jax.Array, base.ArrayTree]:
+) -> tuple[jax.Array, chex.ArrayTree]:
   """Returns True iff any of the `updates` contains an inf or a NaN.
 
   Args:
@@ -194,7 +195,7 @@ def skip_large_updates(
     gradient_step: jax.typing.ArrayLike,
     params: Optional[base.Params],
     max_squared_norm: jax.typing.ArrayLike,
-) -> tuple[jax.Array, base.ArrayTree]:
+) -> tuple[jax.Array, chex.ArrayTree]:
   """Returns True if the global norm square of `updates` is small enough.
 
   Args:
@@ -237,7 +238,7 @@ class MultiStepsState(NamedTuple):
   gradient_step: jax.typing.ArrayLike
   inner_opt_state: Any
   acc_grads: Any
-  skip_state: base.ArrayTree = ()
+  skip_state: chex.ArrayTree = ()
 
 
 class MultiSteps:
@@ -415,7 +416,7 @@ class MultiSteps:
     return new_updates, new_state
 
   def has_updated(
-      self, state: Union[MultiStepsState, base.ArrayTree]
+      self, state: Union[MultiStepsState, chex.ArrayTree]
   ) -> jax.typing.ArrayLike:
     # Use `getattr` to bypass pytype checks.
     return jnp.logical_and(

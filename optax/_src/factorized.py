@@ -18,6 +18,7 @@ from collections.abc import Callable
 import dataclasses
 from typing import NamedTuple, Optional
 
+import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -80,9 +81,9 @@ class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
 
   count: jax.typing.ArrayLike  # number of update steps.
-  v_row: base.ArrayTree  # Tree of factored params.
-  v_col: base.ArrayTree  # Tree of factored params.
-  v: base.ArrayTree  # Tree for params where factoring is skipped.
+  v_row: chex.ArrayTree  # Tree of factored params.
+  v_col: chex.ArrayTree  # Tree of factored params.
+  v: chex.ArrayTree  # Tree for params where factoring is skipped.
 
 
 def scale_by_factored_rms(

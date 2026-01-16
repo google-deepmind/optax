@@ -141,7 +141,7 @@ def tree_map_params(
   """
 
   # Cast for pytype checks (no-op for other usages).
-  placeholder = cast(base.ArrayTree, _ParamsPlaceholder())
+  placeholder = cast(base.chex.ArrayTree, _ParamsPlaceholder())
 
   if isinstance(initable, Initable):
     initable = cast(Initable, initable)  # for pytype checks

@@ -17,6 +17,7 @@
 
 from typing import Union
 
+import chex
 import jax
 
 from optax._src import base
@@ -26,7 +27,7 @@ from optax.transforms._masking import masked
 # pylint: enable=g-importing-member
 
 
-def freeze(mask: Union[bool, base.ArrayTree]) -> base.GradientTransformation:
+def freeze(mask: Union[bool, chex.ArrayTree]) -> base.GradientTransformation:
   """Create a transformation that zeros out gradient updates for `mask=True`.
 
   This essentially freezes (i.e. holding constant) masked parameters.
@@ -64,7 +65,7 @@ def freeze(mask: Union[bool, base.ArrayTree]) -> base.GradientTransformation:
 def selective_transform(
     optimizer: base.GradientTransformation,
     *,  # force kw-only arguments to show this is a freeze and not allow mask
-    freeze_mask: Union[bool, base.ArrayTree],
+    freeze_mask: Union[bool, chex.ArrayTree],
 ) -> base.GradientTransformation:
   """Partition updates so that only un-frozen parameters are optimized.
 
