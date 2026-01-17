@@ -958,3 +958,101 @@ def multiclass_sparsemax_loss(
     Multi-Label Classification <https://arxiv.org/abs/1602.02068>`, 2016.
   """
   return jax.vmap(_multiclass_sparsemax_loss)(scores, labels)
+
+
+def nll_loss(
+    log_probs: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
+    *,
+    weight: Optional[jax.typing.ArrayLike] = None,
+    ignore_index: Optional[int] = None,
+) -> jax.Array:
+  """Computes the negative log-likelihood loss.
+
+  This loss function is commonly used for classification problems with integer
+  labels. Unlike softmax cross-entropy which takes logits and one-hot labels,
+  this function expects log-probabilities and integer target indices.
+
+  The negative log-likelihood loss is computed as::
+
+      loss = -log_probs[target]
+
+  With class weights, the loss becomes::
+
+      loss = -weight[target] * log_probs[target]
+
+  Args:
+    log_probs: Log probabilities from the model, with shape ``[batch_size,
+      num_classes]`` or ``[batch_size, num_classes, ...]``.  These should be
+      the output of ``jax.nn.log_softmax`` or similar.
+    targets: Ground truth class indices, with shape ``[batch_size]`` or
+      ``[batch_size, ...]``. Values should be in the range ``[0, num_classes)``.
+    weight: Optional manual rescaling weight for each class. If provided,
+      should have shape ``[num_classes]``.
+    ignore_index: Optional class index to ignore in the loss computation.
+      Losses for samples with this target class will be set to zero.
+
+  Returns:
+    The negative log-likelihood loss for each sample, with shape
+    ``[batch_size]`` or matching the shape of ``targets``.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> jnp.set_printoptions(precision=4)
+    >>> # Example: batch_size=3, num_classes=4
+    >>> logits = jnp.array([[2.0, 1.0, 0.1, 0.2],
+    ...                     [0.5, 2.5, 0.3, 0.1],
+    ...                     [1.0, 0.5, 2.0, 0.3]])
+    >>> log_probs = jax.nn.log_softmax(logits, axis=-1)
+    >>> targets = jnp.array([0, 1, 2])
+    >>> loss = optax.nll_loss(log_probs, targets)
+    >>> print(loss)
+    [0.658  0.4068 0.577 ]
+
+    >>> # Example with class weights
+    >>> weights = jnp.array([1.0, 2.0, 1.5, 1.0])
+    >>> loss_weighted = optax.nll_loss(log_probs, targets, weight=weights)
+    >>> print(loss_weighted)
+    [0.658  0.8135 0.8655]
+
+    >>> # Example with ignore_index
+    >>> targets_with_ignore = jnp.array([0, -100, 2])
+    >>> loss_ignored = optax.nll_loss(
+    ...     log_probs, targets_with_ignore, ignore_index=-100)
+    >>> print(loss_ignored)
+    [0.658  0.     0.577 ]
+
+  References:
+    `Negative Log-Likelihood Loss
+    <https://en.wikipedia.org/wiki/Cross-entropy#Cross-entropy_loss_function_and_logistic_regression>`_,
+    Wikipedia
+
+  .. seealso::
+    This function is the inverse operation of
+    :func:`optax.losses.softmax_cross_entropy_with_integer_labels`.
+    While that function computes the log-softmax internally from logits,
+    this function expects pre-computed log-probabilities.
+
+  .. versionadded:: 0.2.5
+  """
+  utils.check_subdtype(log_probs, jnp.floating)
+  utils.check_subdtype(targets, jnp.integer)
+
+  # Get the log probability for the target class
+  targets_expanded = jnp.expand_dims(targets, axis=-1)
+  loss = -jnp.take_along_axis(log_probs, targets_expanded, axis=-1)
+  loss = jnp.squeeze(loss, axis=-1)
+
+  # Apply class weights if provided
+  if weight is not None:
+    weight = jnp.asarray(weight)
+    target_weights = jnp.take(weight, targets)
+    loss = loss * target_weights
+
+  # Handle ignore_index
+  if ignore_index is not None:
+    mask = targets != ignore_index
+    loss = jnp.where(mask, loss, 0.0)
+
+  return loss

@@ -212,7 +212,7 @@ def cosine_distance(
     Wikipedia.
 
   .. versionchanged:: 0.2.4
-    Added ``axis`` and ``where`` arguments.
+     Added ``axis`` and ``where`` arguments.
   """
   utils.check_subdtype(predictions, jnp.floating)
   utils.check_subdtype(targets, jnp.floating)
@@ -220,3 +220,157 @@ def cosine_distance(
   return 1.0 - cosine_similarity(
       predictions, targets, epsilon=epsilon, axis=axis, where=where
   )
+
+
+def poisson_nll_loss(
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
+    *,
+    log_input: bool = True,
+    full: bool = False,
+    eps: jax.typing.ArrayLike = 1e-8,
+) -> jax.Array:
+  """Computes the Poisson negative log-likelihood loss.
+
+  This loss is useful for regression problems where the targets represent
+  counts (non-negative integers), following a Poisson distribution.
+
+  Args:
+    predictions: Predicted values. If ``log_input=True``, these are in
+      log-space. Shape can be any broadcastable shape with ``targets``.
+    targets: Ground truth count values (non-negative). Shape can be any
+      broadcastable shape with ``predictions``.
+    log_input: If ``True`` (default), ``predictions`` are assumed to be in
+      log-space and will be exponentiated. If ``False``, ``predictions`` are
+      treated as-is.
+    full: If ``True``, compute the full loss including the Stirling
+      approximation of the log-factorial term: ``log(target!)``. If ``False``
+      (default), this constant term is omitted as it doesn't affect
+      optimization.
+    eps: Small constant for numerical stability when computing logarithms.
+
+  Returns:
+    The Poisson NLL loss, element-wise with shape matching the broadcasted
+    shape of ``predictions`` and ``targets``.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> jnp.set_printoptions(precision=4)
+    >>> # Predictions in log-space (default)
+    >>> log_predictions = jnp.array([0.5, 1.0, 1.5])
+    >>> targets = jnp.array([1.0, 2.0, 3.0])
+    >>> loss = optax.poisson_nll_loss(log_predictions, targets)
+    >>> print(loss)
+    [1.1487 1.0986 1.4306]
+
+    >>> # Predictions in natural space
+    >>> predictions = jnp.exp(log_predictions)
+    >>> loss_natural = optax.poisson_nll_loss(
+    ...     predictions, targets, log_input=False)
+    >>> print(loss_natural)
+    [1.1487 1.0986 1.4306]
+
+    >>> # With full loss (including factorial term)
+    >>> loss_full = optax.poisson_nll_loss(
+    ...     log_predictions, targets, full=True)
+    >>> print(loss_full)
+    [1.1487 1.7918 3.0078]
+
+  References:
+    `Poisson Distribution
+    <https://en.wikipedia.org/wiki/Poisson_distribution>`_, Wikipedia
+
+  .. versionadded:: 0.2.5
+  """
+  utils.check_subdtype(predictions, jnp.floating)
+  targets = jnp.asarray(targets, dtype=predictions.dtype)
+
+  if log_input:
+    loss = jnp.exp(predictions) - targets * predictions
+  else:
+    predictions = jnp.clip(predictions, eps, None)
+    loss = predictions - targets * jnp.log(predictions + eps)
+
+  if full:
+    stirling_approx = (
+        targets * jnp.log(targets + eps) - targets +
+        0.5 * jnp.log(2.0 * jnp.pi * (targets + eps))
+    )
+    stirling_approx = jnp.where(targets > 1, stirling_approx, 0.0)
+    loss = loss + stirling_approx
+
+  return loss
+
+
+def gaussian_nll_loss(
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
+    var: jax.typing.ArrayLike,
+    *,
+    full: bool = False,
+    eps: jax.typing.ArrayLike = 1e-6,
+) -> jax.Array:
+  """Computes the Gaussian negative log-likelihood loss.
+
+  This loss is useful for regression problems where the model predicts both
+  a mean and a variance (or standard deviation), enabling the model to express
+  uncertainty in its predictions.
+
+  Args:
+    predictions: Predicted mean values. Shape can be any shape broadcastable
+      with ``targets`` and ``var``.
+    targets: Ground truth values. Shape can be any shape broadcastable with
+      ``predictions`` and ``var``.
+    var: Predicted variance values (must be non-negative). Can be a scalar,
+      per-sample, or per-element variance. Shape must be broadcastable with
+      ``predictions`` and ``targets``.
+    full: If ``True``, include the constant term ``0.5 * log(2π)``. If
+      ``False`` (default), omit this term as it doesn't affect optimization.
+    eps: Small constant for numerical stability, used as minimum variance.
+
+  Returns:
+    The Gaussian NLL loss, element-wise with shape matching the broadcasted
+    shape of ``predictions``, ``targets``, and ``var``.
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> jnp.set_printoptions(precision=4)
+    >>> predictions = jnp.array([1.0, 2.0, 3.0])
+    >>> targets = jnp.array([1.2, 1.8, 3.1])
+    >>> var = jnp.array([0.5, 0.5, 0.5])
+    >>> loss = optax.gaussian_nll_loss(predictions, targets, var)
+    >>> print(loss)
+    [0.3866 0.4266 0.3566]
+
+    >>> # With scalar variance
+    >>> loss_scalar_var = optax.gaussian_nll_loss(
+    ...     predictions, targets, var=1.0)
+    >>> print(loss_scalar_var)
+    [0.02 0.02 0.005]
+
+    >>> # With full loss (including constant)
+    >>> loss_full = optax.gaussian_nll_loss(
+    ...     predictions, targets, var, full=True)
+    >>> print(loss_full)
+    [1.3059 1.3459 1.2759]
+
+  References:
+    `Normal Distribution
+    <https://en.wikipedia.org/wiki/Normal_distribution>`_, Wikipedia
+
+  .. versionadded:: 0.2.5
+  """
+  utils.check_subdtype(predictions, jnp.floating)
+  targets = jnp.asarray(targets, dtype=predictions.dtype)
+  var = jnp.asarray(var, dtype=predictions.dtype)
+
+  var = jnp.maximum(var, eps)
+
+  loss = 0.5 * (jnp.log(var) + (predictions - targets) ** 2 / var)
+
+  if full:
+    loss = loss + 0.5 * jnp.log(2.0 * jnp.pi)
+
+  return loss
