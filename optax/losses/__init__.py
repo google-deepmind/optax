@@ -26,6 +26,7 @@ from optax.losses._classification import kl_divergence_with_log_targets
 from optax.losses._classification import multiclass_hinge_loss
 from optax.losses._classification import multiclass_perceptron_loss
 from optax.losses._classification import multiclass_sparsemax_loss
+from optax.losses._classification import nll_loss
 from optax.losses._classification import perceptron_loss
 from optax.losses._classification import poly_loss_cross_entropy
 from optax.losses._classification import safe_softmax_cross_entropy
@@ -40,9 +41,11 @@ from optax.losses._fenchel_young import make_fenchel_young_loss
 from optax.losses._ranking import ranking_softmax_loss
 from optax.losses._regression import cosine_distance
 from optax.losses._regression import cosine_similarity
+from optax.losses._regression import gaussian_nll_loss
 from optax.losses._regression import huber_loss
 from optax.losses._regression import l2_loss
 from optax.losses._regression import log_cosh
+from optax.losses._regression import poisson_nll_loss
 from optax.losses._regression import squared_error
 from optax.losses._segmentation import binary_dice_loss
 from optax.losses._segmentation import dice_loss
