@@ -88,6 +88,49 @@ Hessian vector product
 .. autofunction:: hvp
 
 
+State utilities
+-------------------
+
+.. currentmodule:: optax.tree_utils
+
+.. autosummary::
+    ParamsShapedState
+    reshape_params_shaped_state
+    shape_state_like_params
+    tree_map_params
+    tree_get
+    tree_get_all_with_path
+    tree_set
+
+ParamsShapedState
+~~~~~~~~~~~~~~~~~
+.. autoclass:: ParamsShapedState
+
+Reshape params-shaped state
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: reshape_params_shaped_state
+
+Shape state like params
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: shape_state_like_params
+
+Fetch single value that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get
+
+Fetch all values that match a given key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_get_all_with_path
+
+Tree map parameters
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_map_params
+
+Set values in a tree
+~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: tree_set
+
+
 Tree
 ----
 
@@ -106,10 +149,7 @@ Tree
     tree_div
     tree_dtype
     tree_full_like
-    tree_get
-    tree_get_all_with_path
     tree_norm
-    tree_map_params
     tree_max
     tree_min
     tree_mul
@@ -174,21 +214,10 @@ Tree divide
 ~~~~~~~~~~~
 .. autofunction:: tree_div
 
-Fetch single value that match a given key
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_get
-
-Fetch all values that match a given key
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_get_all_with_path
 
 Tree norm
 ~~~~~~~~~
 .. autofunction:: tree_norm
-
-Tree map parameters
-~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_map_params
 
 Tree max
 ~~~~~~~~
@@ -221,10 +250,6 @@ Tree real part
 Tree scalar multiply
 ~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: tree_scale
-
-Set values in a tree
-~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_set
 
 Tree size
 ~~~~~~~~~

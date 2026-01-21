@@ -18,6 +18,7 @@ import dataclasses
 from typing import Optional, TypedDict, cast
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import chex
 import jax
 import jax.numpy as jnp
@@ -76,7 +77,21 @@ def _scale_by_adam_with_dicts():
   return base.GradientTransformation(init, update)
 
 
-class StateUtilsTest(absltest.TestCase):
+def _get_opt_to_test(test_name: str):
+  opts_to_test = {
+      'no params in state': transform.scale(1.0),
+      'chained optimizer': alias.adam(1.0),
+      'with state dict': _scale_by_adam_with_dicts(),
+      'with inject hyperparams': _inject.inject_hyperparams(alias.adam)(1.0),
+      'partitioned': combine.partition(
+          {'adam': alias.adam(1.), 'sgd': alias.sgd(1.)},
+          {'my/fake/module': 'adam', 'my/other/fake/module': 'sgd'},
+      ),
+      }
+  return opts_to_test[test_name]
+
+
+class StateUtilsTest(parameterized.TestCase):
 
   def test_dict_based_optimizers(self):
     """Test we can map over params also for optimizer states using dicts."""
@@ -222,6 +237,72 @@ class StateUtilsTest(absltest.TestCase):
         ),
     )
     self.assertEqual(state, expected)
+
+  @parameterized.product(
+      opt_to_test=[
+          'no params in state',
+          'chained optimizer',
+          'with state dict',
+          'with inject hyperparams',
+          'partitioned',
+      ]
+  )
+  def test_shape_and_reshape_state_is_identity(self, opt_to_test):
+    opt = _get_opt_to_test(opt_to_test)
+    params = _fake_params()
+    state = opt.init(params)
+    shaped_state = _state_utils.shape_state_like_params(opt, state)
+    reshaped_state = _state_utils.reshape_params_shaped_state(shaped_state)
+    chex.assert_trees_all_equal(state, reshaped_state)
+
+  @parameterized.product(
+      opt_to_test=[
+          'no params in state',
+          'chained optimizer',
+          'with state dict',
+          'with inject hyperparams',
+          # 'partitioned',  # TODO(vroulet): Fix tree_map_params for partition.
+      ]
+  )
+  def test_shape_against_tree_map_params(self, opt_to_test):
+    opt = _get_opt_to_test(opt_to_test)
+    params = _fake_params()
+    state = opt.init(params)
+    params_sharding_spec = {
+        'my/fake/module': {
+            'w': FakeShardSpec(0),
+            'b': FakeShardSpec(1),
+        },
+        'my/other/fake/module': {
+            'w': FakeShardSpec(0),
+            'b': FakeShardSpec(1),
+        },
+    }
+    shard_spec_state = _state_utils.tree_map_params(
+        opt,
+        lambda _, spec: spec,
+        state,
+        params_sharding_spec,
+    )
+    shaped_state = _state_utils.shape_state_like_params(opt, state)
+
+    def sharding_rules(path):
+      if 'w' in jax.tree_util.keystr(path):
+        return FakeShardSpec(0)
+      elif 'b' in jax.tree_util.keystr(path):
+        return FakeShardSpec(1)
+      else:
+        return FakeShardSpec(2)
+
+    shard_sped_params_like = jax.tree.map_with_path(
+        lambda path, _: sharding_rules(path), shaped_state.params_like
+    )
+    shard_spec_state_got = _state_utils.reshape_params_shaped_state(
+        _state_utils.ParamsShapedState(
+            shaped_state.non_params_like, shard_sped_params_like
+        )
+    )
+    chex.assert_trees_all_equal(shard_spec_state, shard_spec_state_got)
 
   def test_tree_get_all_with_path(self):
     params = jnp.array([1.0, 2.0, 3.0])
