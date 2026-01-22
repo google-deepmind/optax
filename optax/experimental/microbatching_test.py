@@ -271,6 +271,16 @@ class MicrobatchingTest(parameterized.TestCase):
     normal_vmap = jax.vmap(fun, in_axes=0)
     test_utils.assert_trees_all_equal(normal_vmap(x, y=y), custom_vmap(x, y=y))
 
+  def test_vmap_early_stopping(self):
+    x = jnp.ones(16)
+    custom_vmap = microbatching.micro_vmap(
+        jnp.sum,
+        microbatch_size=4,
+        num_real_microbatches=3,
+        accumulator=microbatching.AccumulationType.SUM,
+    )
+    test_utils.assert_trees_all_close(custom_vmap(x), 12.0)
+
   @parameterized.parameters([False, True])
   def test_micro_grad_basic(self, keep_batch_dim):
     # This function definition is valid whether or not features/targets has a
@@ -305,6 +315,13 @@ class MicrobatchingTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(aux.values, expected_values)
     test_utils.assert_trees_all_close(aux.metrics, expected_norms)
     self.assertIsNone(aux.aux)
+
+  def test_micro_grad_early_stopping(self):
+    grad_fn = microbatching.micro_grad(
+        lambda c, x: c * x.sum(), microbatch_size=4, num_real_microbatches=3
+    )
+    result, _ = grad_fn(1.0, jnp.ones(16))
+    test_utils.assert_trees_all_close(result, 12.0)
 
 
 if __name__ == '__main__':

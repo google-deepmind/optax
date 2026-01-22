@@ -461,6 +461,7 @@ def micro_vmap(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.CONCAT,
+    num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
   """A generalized version of jax.vmap that supports microbatching.
 
@@ -494,6 +495,10 @@ def micro_vmap(
       batch axis is not needed and is too large to fit in memory. This
       accumulator can be any PyTree prefix of the outputs of `fun` to apply
       different reductions to different sub-trees.
+    num_real_microbatches: Optional number of microbatches that are actually
+      executed. If specified, microbatching will terminate early after this
+      many steps. Can be helpful to handle variable batch sizes without
+      recompilation.
 
   Returns:
     A new function with the same args and kwargs having an additional
@@ -524,6 +529,7 @@ def micro_vmap(
       microbatch_size=microbatch_size,
       accumulator=accumulator,
       in_axes=tuple(ax for ax in in_axes if ax is not None) + (0,),
+      num_real_microbatches=num_real_microbatches,
   )
 
   def wrapped_fn(*args, **kwargs):
@@ -566,7 +572,8 @@ def micro_grad(
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
     transform_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: x,
-    metrics_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: None
+    metrics_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: None,
+    num_real_microbatches: int | jax.Array | None = None,
 ) -> ValueAndGradFn:
   """Create a function to compute, transform, and sum per-example gradients.
 
@@ -626,6 +633,10 @@ def micro_grad(
     metrics_fn: A function to apply to per-example gradients before
       transforming. Will be returned on a per-example basis as part of the
       auxiliary output, and therefore should be scalar or low-dimensional.
+    num_real_microbatches: Optional number of microbatches that are actually
+      executed. If specified, microbatching will terminate early after this
+      many steps. Can be helpful to handle variable batch sizes without
+      recompilation.
 
   Returns:
     A function that computes the value and gradient of `fun`, averaging the
@@ -657,7 +668,8 @@ def micro_grad(
       grad_fn,
       in_axes=in_axes,
       accumulator=(accumulator, AccumulationType.CONCAT),
-      microbatch_size=microbatch_size
+      microbatch_size=microbatch_size,
+      num_real_microbatches=num_real_microbatches,
   )
   if keep_batch_dim:
     micro_fun = _with_extra_batch_axis(micro_fun, batch_argnums)
