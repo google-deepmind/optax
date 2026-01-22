@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import test_utils
-from optax.experimental import _microbatching as microbatching
+from optax.experimental import microbatching
 
 
 def per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
@@ -251,14 +251,77 @@ class MicrobatchingTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(output1, output3)
 
   def test_vmap(self):
-    x = jnp.arange(2*4*8).reshape(2, 4, 8)
-    custom_vmap = microbatching.gvmap(
+    x = jnp.arange(2 * 4 * 8).reshape(2, 4, 8)
+    custom_vmap = microbatching.micro_vmap(
         jnp.sum,
         in_axes=1,
         microbatch_size=2,
     )
     normal_vmap = jax.vmap(jnp.sum, in_axes=1)
     test_utils.assert_trees_all_close(normal_vmap(x), custom_vmap(x), atol=1e-6)
+
+  def test_vmap_kwargs(self):
+    x = jnp.arange(4 * 8).reshape(4, 8)
+    y = jnp.ones(4 * 8).reshape(4, 8).astype(jnp.int32)
+
+    def fun(x, *, y):
+      return jnp.sum(x + y)
+
+    custom_vmap = microbatching.micro_vmap(fun, in_axes=0, microbatch_size=2)
+    normal_vmap = jax.vmap(fun, in_axes=0)
+    test_utils.assert_trees_all_equal(normal_vmap(x, y=y), custom_vmap(x, y=y))
+
+  def test_vmap_early_stopping(self):
+    x = jnp.ones(16)
+    custom_vmap = microbatching.micro_vmap(
+        jnp.sum,
+        microbatch_size=4,
+        num_real_microbatches=3,
+        accumulator=microbatching.AccumulationType.SUM,
+    )
+    test_utils.assert_trees_all_close(custom_vmap(x), 12.0)
+
+  @parameterized.parameters([False, True])
+  def test_micro_grad_basic(self, keep_batch_dim):
+    # This function definition is valid whether or not features/targets has a
+    # batch axis or not (shape (1,) or shape (B,1)).
+    def mean_squared_loss(params, features, targets):
+      assert features.ndim == int(keep_batch_dim) + 1
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    params = jnp.zeros(1)
+    features = jnp.ones((4, 1))
+    targets = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        transform_fn=lambda x: (x, x**2),
+        metrics_fn=jnp.linalg.norm,
+        keep_batch_dim=keep_batch_dim,
+    )
+
+    (grads, squared_grads), aux = grad_fn(params, features, targets)
+    expected_grad = -(0 + 1 + 2 + 3)
+    expected_squared_grad = 0**2 + 1**2 + 2**2 + 3**2
+    expected_values = jnp.array([0, 0.5, 2, 4.5], dtype=jnp.float32)
+    expected_norms = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    test_utils.assert_trees_all_close(grads[0], expected_grad)
+    test_utils.assert_trees_all_close(squared_grads[0], expected_squared_grad)
+    test_utils.assert_trees_all_close(aux.values, expected_values)
+    test_utils.assert_trees_all_close(aux.metrics, expected_norms)
+    self.assertIsNone(aux.aux)
+
+  def test_micro_grad_early_stopping(self):
+    grad_fn = microbatching.micro_grad(
+        lambda c, x: c * x.sum(), microbatch_size=4, num_real_microbatches=3
+    )
+    result, _ = grad_fn(1.0, jnp.ones(16))
+    test_utils.assert_trees_all_close(result, 12.0)
 
 
 if __name__ == '__main__':

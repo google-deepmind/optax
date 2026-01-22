@@ -118,7 +118,7 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum()/matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
 
   return loss
 
@@ -165,15 +165,15 @@ def triplet_margin_loss(
   References:
       V. Balntas et al,
       `Learning shallow convolutional feature descriptors with triplet losses
-      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`
-      _, 2016
+      <https://bmva-archive.org.uk/bmvc/2016/papers/paper119/abstract119.pdf>`_,
+      2016.
   """
   utils.check_subdtype(anchors, jnp.floating)
   utils.check_subdtype(positives, jnp.floating)
   utils.check_subdtype(negatives, jnp.floating)
   positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree)
-                                .sum(axis) + eps, 1/norm_degree)
+                                .sum(axis) + eps, 1 / norm_degree)
   negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree)
-                                .sum(axis) + eps, 1/norm_degree)
+                                .sum(axis) + eps, 1 / norm_degree)
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
   return loss

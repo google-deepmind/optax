@@ -139,7 +139,7 @@ def tree_dtype(
   if not leaves:
     # If the tree is empty, we return the default dtype as given by JAX on
     # empty lists.
-    return jnp.dtype(jnp.asarray(leaves))
+    return jnp.asarray(leaves).dtype
   if mixed_dtype_handler is None:
     dtype = jnp.asarray(leaves[0]).dtype
     _tree_assert_all_dtypes_equal(tree, dtype)

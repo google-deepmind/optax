@@ -777,5 +777,6 @@ class ZoomLinesearchTest(parameterized.TestCase):
     self.assertEqual(fns_kwargs, [{'b': 1.0}, {'d': 2.0}])
     self.assertEqual(remaining_kwargs, {'e': 3.0})
 
+
 if __name__ == '__main__':
   absltest.main()

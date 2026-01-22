@@ -199,9 +199,9 @@ def skip_large_updates(
   """Returns True if the global norm square of `updates` is small enough.
 
   Args:
-    updates: see `ShouldSkipUpdateFunction`.
-    gradient_step: see `ShouldSkipUpdateFunction`.
-    params: see `ShouldSkipUpdateFunction`.
+    updates: see :py:class:`.ShouldSkipUpdateFunction`.
+    gradient_step: see :py:class:`.ShouldSkipUpdateFunction`.
+    params: see :py:class:`.ShouldSkipUpdateFunction`.
     max_squared_norm: max square norm that can be accepted in updates.
 
   Returns:
@@ -369,7 +369,7 @@ class MultiSteps:
           gradient_step=emit * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jax.tree.map(
-              lambda st, nst: jnp.where(emit, nst, st),
+              lambda st, nst: jnp.astype(jnp.where(emit, nst, st), st.dtype),
               state.inner_opt_state,
               new_inner_state,
           ),
@@ -393,18 +393,13 @@ class MultiSteps:
       eval_fn = functools.partial(self._opt.update, **static_args)
       zero_updates, new_inner_state = jax.eval_shape(
           eval_fn, updates, state.inner_opt_state, params=params, **dyn_args)
+      del new_inner_state
       zero_updates = optax.tree.zeros_like(zero_updates)
 
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,
           gradient_step=state.gradient_step,
-          inner_opt_state=jax.tree.map(
-              lambda x, y: (
-                  x.astype(y.dtype) if isinstance(x, jax.Array) else x
-              ),
-              state.inner_opt_state,
-              new_inner_state,
-          ),
+          inner_opt_state=state.inner_opt_state,
           acc_grads=jax.tree.map(
               lambda acc, upd: acc.astype(upd.dtype),
               state.acc_grads,

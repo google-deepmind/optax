@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple, Optional
+from typing import Literal, NamedTuple, Optional
 
 import chex
 import jax
@@ -24,7 +24,6 @@ import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
 from optax._src import utils
-from optax._src.deprecations import warn_deprecated_function  # pylint: disable=g-importing-member
 from optax.transforms import _accumulation
 from optax.transforms import _adding
 import optax.tree
@@ -305,6 +304,7 @@ def scale_by_adam(
         is_leaf=lambda x: x is None,
     )
     mu = optax.tree.cast(mu, mu_dtype)
+    nu = optax.tree.cast_like(nu, state.nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -325,6 +325,8 @@ def scale_by_amsgrad(
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    bias_correction_mu: bool = True,
+    bias_correction_nu: bool = True,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -338,6 +340,11 @@ def scale_by_amsgrad(
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
+    bias_correction_mu: Whether to apply bias correction to the first moment
+      estimate. Set to ``False`` to match the original AMSGrad paper.
+    bias_correction_nu: Whether to apply bias correction to the second moment
+      estimate before taking the elementwise maximum (``nu_max``). Set to
+      ``False`` to match the original AMSGrad paper.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -358,9 +365,18 @@ def scale_by_amsgrad(
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
-    mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
-    nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
-    nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_hat)
+
+    if bias_correction_mu:
+      mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
+    else:
+      mu_hat = mu
+
+    if bias_correction_nu:
+      nu_eff = optax.tree.bias_correction(nu, b2, count_inc)
+    else:
+      nu_eff = nu
+
+    nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_eff)
     updates = jax.tree.map(
         lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
         mu_hat,
@@ -422,6 +438,9 @@ def scale_by_lion(
     b1: jax.typing.ArrayLike = 0.9,
     b2: jax.typing.ArrayLike = 0.99,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    mode: Literal['hard', 'smooth', 'refined'] = 'hard',
+    smooth_beta: float = 1.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
 
@@ -432,6 +451,9 @@ def scale_by_lion(
     b2: Decay rate for the exponentially weighted average of grads.
     mu_dtype: Optional `dtype` to be used for the momentum; if `None` then the
       `dtype is inferred from `params` and `updates`.
+    mode : Which sign variant to use: "Hard (sign)", "smooth (tanh smoothing),"
+      or "refined" (linear around 0, saturate to sign for a large value).
+    smooth_beta: Smoothing factor used when mode == "smooth"
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -444,10 +466,25 @@ def scale_by_lion(
     return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
 
   def update_fn(updates, state, params=None):
+
     del params
-    updates_new = jax.tree.map(
-        lambda g, m: jnp.sign((1.0 - b1) * g + b1 * m), updates, state.mu
-    )
+
+    def _comb(g, m):
+      x = (1.0 - b1) * g + b1 * m
+      if mode == 'hard':
+        return jnp.sign(x)
+      elif mode == 'smooth':
+        return jnp.tanh(smooth_beta * x)
+      elif mode == 'refined':
+        # Keep small values linear, saturate to sign for large values.
+        return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
+      else:  # pytype: disable=unreachable
+        raise ValueError(
+            f'Unknown lion mode: {mode}. '
+            'It needs to be one of ["hard", "smooth", "refined"].'
+        )
+
+    updates_new = jax.tree.map(_comb, updates, state.mu)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)
     mu = optax.tree.cast(mu, mu_dtype)
     count_inc = numerics.safe_increment(state.count)
@@ -1301,8 +1338,8 @@ def scale_by_optimistic_gradient(
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
-  See :func:`optax.optimistic_adam`, :func:`optax.optimistic_gradient_descent`
-  for more details.
+  See :func:`optax.optimistic_adam_v2`,
+  :func:`optax.optimistic_gradient_descent` for more details.
 
   Args:
     alpha: Coefficient for generalized optimistic gradient descent.
@@ -1406,7 +1443,7 @@ def scale_by_distance_over_gradients(
       eta = global_scale * (d / jnp.sqrt(g_sos + eps))
       return eta * g
 
-    updates = jax.tree.map(_tx, max_dist, g_sos, updates)
+    updates = jax.tree.map(_tx, updates, max_dist, g_sos)
 
     # new state
     state = ScaleByDistanceOverGradientsState(
@@ -1462,8 +1499,9 @@ def scale_by_polyak(
       The scaled updates and the state of the transformation.
     """
     del params
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     grad_sq_norm = optax.tree.norm(updates, squared=True)
     gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
     if variant == 'sps':
@@ -1630,7 +1668,7 @@ def scale_by_lbfgs(
   preconditioning matrix subject to some secant condition, see references
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
-  a memory bufffer.
+  a memory buffer.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
@@ -1650,12 +1688,12 @@ def scale_by_lbfgs(
 
   References:
     Algorithms 7.4, 7.5 (page 199) of Nocedal et al, `Numerical Optimization
-    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`__
-    , 1999
+    <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>`_,
+    1999
 
     Liu et al., `On the limited memory BFGS method for large scale optimization
-    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_
-    , 1989.
+    <https://users.iems.northwestern.edu/~nocedal/PDFfiles/limited-memory.pdf>`_,
+    1989.
 
   .. note::
     We initialize the scaling of the identity as a capped reciprocal of the
@@ -1815,17 +1853,7 @@ def normalize_by_update_norm(
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-### Legacy symbols to be removed. ###
-
-
-@functools.partial(
-    warn_deprecated_function, replacement='optax.tree.cast'
-)
-def cast_tree(
-    tree: chex.ArrayTree, dtype: Optional[jax.typing.DTypeLike]
-) -> chex.ArrayTree:
-  return optax.tree.cast(tree, dtype)
-
+# Legacy symbols to be removed.
 
 trace = _accumulation.trace
 TraceState = _accumulation.TraceState
