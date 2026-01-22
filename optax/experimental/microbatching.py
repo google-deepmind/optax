@@ -506,7 +506,9 @@ def micro_vmap(
   if isinstance(in_axes, int):
     in_axes = (in_axes,)
 
-  def vmap_reduce_fn(*args, **kwargs):
+  # The semantics of vmap require that all kwargs are mapped along the leading
+  # axis. We therefore bundle all kwargs into a single dictionary kwarg below.
+  def vmap_reduce_fn(*args, kwargs):
     output = vmap_fn(fun, in_axes, out_axes)(*args, **kwargs)
     microbatch_size_ = jax.tree.leaves(output)[0].shape[0]
 
@@ -515,13 +517,19 @@ def micro_vmap(
     temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
     return temporary_accumulator.aggregate(output)
 
-  return microbatch(
+  micro_vmap_fn = microbatch(
       vmap_reduce_fn,
       argnums=tuple(x[0] for x in enumerate(in_axes) if x[1] is not None),
+      argnames='kwargs',
       microbatch_size=microbatch_size,
       accumulator=accumulator,
-      in_axes=tuple(ax for ax in in_axes if ax is not None),
+      in_axes=tuple(ax for ax in in_axes if ax is not None) + (0,),
   )
+
+  def wrapped_fn(*args, **kwargs):
+    return micro_vmap_fn(*args, kwargs=kwargs)
+
+  return wrapped_fn
 
 
 def _normalize_fun_to_return_aux(fun, has_aux):
