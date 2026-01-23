@@ -526,6 +526,45 @@ class WarmupCosineDecayTest(parameterized.TestCase):
         output, np.array([0.2, 0.16, 0.0, 0.0, 0.0]), rtol=1e-6, atol=1e-8
     )
 
+  def test_monotonicity_and_exponent_ordering(self):
+    init, peak, end = 0.0, 1.0, 0.1
+    warmup_steps, decay_steps = 5, 25
+
+    regular = _schedule.warmup_cosine_decay_schedule(
+        init_value=init, peak_value=peak,
+        warmup_steps=warmup_steps, decay_steps=decay_steps,
+        end_value=end, exponent=1.0)
+    steep = _schedule.warmup_cosine_decay_schedule(
+        init_value=init, peak_value=peak,
+        warmup_steps=warmup_steps, decay_steps=decay_steps,
+        end_value=end, exponent=2.0)
+
+    steps = np.arange(decay_steps + 1)
+    vals = regular(steps)
+    vals2 = steep(steps)
+
+    with self.subTest('warmup increases'):
+      for t in range(warmup_steps):
+        self.assertLess(float(vals[t]), float(vals[t + 1]))
+
+    with self.subTest('peak at boundary'):
+      self.assertAlmostEqual(float(vals[warmup_steps]), peak, places=6)
+
+    with self.subTest('cosine decay nonincreasing and end value'):
+      for t in range(warmup_steps, decay_steps):
+        self.assertGreaterEqual(float(vals[t]), float(vals[t + 1]))
+      self.assertAlmostEqual(float(vals[-1]), end, places=6)
+
+    with self.subTest('exponent ordering (p=2 ≤ p=1)'):
+      for t in range(warmup_steps, decay_steps + 1):
+        self.assertLessEqual(float(vals2[t]), float(vals[t]) + 1e-12)
+
+  def test_raises_when_decay_equals_warmup(self):
+    with self.assertRaises(ValueError):
+      _schedule.warmup_cosine_decay_schedule(
+          init_value=0.2, peak_value=1.2,
+          warmup_steps=10, decay_steps=10, end_value=0.0)
+
 
 class SGDRTest(parameterized.TestCase):
 

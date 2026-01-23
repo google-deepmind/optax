@@ -404,6 +404,7 @@ def muon(
     adam_b2: jax.typing.ArrayLike = 0.999,
     adam_eps_root: jax.typing.ArrayLike = 0.0,
     adam_weight_decay: jax.typing.ArrayLike = 0.0,
+    adam_learning_rate: base.ScalarOrSchedule | None = None,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
     consistent_rms: jax.typing.ArrayLike | None = None,
 ) -> base.GradientTransformation:
@@ -417,7 +418,8 @@ def muon(
 
   Note that Muon is currently only defined for 2D parameters, i.e. matrices.
   This is because the Newton-Schulz iterator expects a matrix as input.
-  The non-2D parameters are instead passed through an Adam optimizer.
+  The non-2D parameters are instead passed through an AdamW optimizer
+  (using a weight decay of 0 as default).
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -444,6 +446,8 @@ def muon(
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
     adam_weight_decay: Weight decay factor for Adam.
+    adam_learning_rate: Auxilary learning rate for the Adam optimizer.
+      If `None`, the learning rate for Adam defaults to the same as Muon.
     muon_weight_dimension_numbers: An optional tree of `MuonDimensionNumbers`s,
       specifying how to reshape the parameters for orthogonalization otherwise
       muon parameters are assumed to be 2D matrices. A `None` value indicates
@@ -470,6 +474,10 @@ def muon(
     Liu et al., `Muon is Scalable for LLM Training`,
     <https://arxiv.org/abs/2502.16982>`_, 2025
   """
+
+  if adam_learning_rate is None:
+    adam_learning_rate = learning_rate
+
   # None at root indicates the default 2D rule.
   if muon_weight_dimension_numbers is None:
     param_labels = lambda params: jax.tree.map(
@@ -525,7 +533,7 @@ def muon(
               transform.scale_by_learning_rate(learning_rate),
           ),
           'adam': alias.adamw(
-              learning_rate=learning_rate,
+              learning_rate=adam_learning_rate,
               b1=adam_b1,
               b2=adam_b2,
               eps=eps,

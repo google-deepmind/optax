@@ -304,6 +304,7 @@ def scale_by_adam(
         is_leaf=lambda x: x is None,
     )
     mu = optax.tree.cast(mu, mu_dtype)
+    nu = optax.tree.cast_like(nu, state.nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
