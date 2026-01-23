@@ -440,7 +440,8 @@ def microbatch(
     def body_fun(index, carry):
       return accumulator_.update(carry, f(index), index)
 
-    loop_bound = num_real_microbatches or num_microbatches
+    early_stop = num_real_microbatches is not None
+    loop_bound = num_real_microbatches if early_stop else num_microbatches
     answer = jax.lax.fori_loop(
         1, loop_bound, body_fun, accumulator_.init(f(0)),
     )

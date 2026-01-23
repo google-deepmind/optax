@@ -250,6 +250,16 @@ class MicrobatchingTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(output1, output3)
 
+  def test_dynamic_steps(self):
+    @jax.jit
+    def fun(x, steps):
+      return microbatching.microbatch(
+          jnp.sum, argnums=0, microbatch_size=4, num_real_microbatches=steps
+      )(x)
+
+    x = jnp.ones(128)
+    self.assertEqual(fun(x, 4), x[:16].sum())
+
   def test_vmap(self):
     x = jnp.arange(2 * 4 * 8).reshape(2, 4, 8)
     custom_vmap = microbatching.micro_vmap(
