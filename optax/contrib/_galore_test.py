@@ -23,6 +23,7 @@ import jax.numpy as jnp
 from optax._src import transform
 from optax._src import update
 from optax.contrib import _galore
+import optax
 
 
 def _tree_sum_squares(tree):
@@ -274,6 +275,196 @@ class GaLoreTest(parameterized.TestCase):
 
   # pylint: enable=invalid-name
   # pytype: enable=annotation-type-mismatch
+
+  # ---------------------------------------------------------------------------
+  # Non-2D array support (GaLoreDimensionNumbers) tests
+  # ---------------------------------------------------------------------------
+
+  def test_3d_attention_weights_with_dimension_numbers(self):
+
+    # Attention weights: (embed_dim, num_heads, head_dim)
+    embed_dim, num_heads, head_dim = 512, 8, 64
+    params = {'attn': jnp.ones((embed_dim, num_heads, head_dim))}
+
+    dim_nums = {
+        'attn': _galore.GaLoreDimensionNumbers(
+            reduction_axis=0,      # embed_dim
+            output_axis=(1, 2),    # heads * head_dim
+        )
+    }
+
+    opt = _galore.galore(
+        learning_rate=0.01,
+        rank=16,
+        weight_dimension_numbers=dim_nums,
+    )
+    state = opt.init(params)
+    grads = {'attn': jnp.ones((embed_dim, num_heads, head_dim)) * 0.1}
+
+    updates, _ = opt.update(grads, state, params)
+
+    # Check output shape matches input
+    self.assertEqual(updates['attn'].shape, (embed_dim, num_heads, head_dim))
+
+    # Verify projector has correct shape
+    # Reshaped to (512, 512), use left projection since m >= n
+    galore_state = state[0]
+    expected_proj_shape = (embed_dim, 16)  # (m, rank)
+    self.assertEqual(galore_state.projector['attn'].shape, expected_proj_shape)
+
+  def test_3d_memory_reduction_with_dimension_numbers(self):
+
+    embed_dim, num_heads, head_dim = 256, 8, 64
+    rank = 16
+    params = {'w': jnp.zeros((embed_dim, num_heads, head_dim))}
+
+    dim_nums = {
+        'w': _galore.GaLoreDimensionNumbers(
+            reduction_axis=0,
+            output_axis=(1, 2),
+        )
+    }
+
+    opt = _galore.galore(
+        learning_rate=0.1,
+        rank=rank,
+        weight_dimension_numbers=dim_nums,
+    )
+    state = opt.init(params)
+    galore_state = state[0]
+    base_state = galore_state.base_optimizer_state
+
+    # Reshaped: (256, 512), m < n → right projection
+    # Moments should be (m, rank) = (256, 16)
+    self.assertEqual(base_state.mu['w'].shape, (embed_dim, rank))
+    self.assertEqual(base_state.nu['w'].shape, (embed_dim, rank))
+
+    # Verify memory savings
+    full_size = embed_dim * num_heads * head_dim
+    moment_size = base_state.mu['w'].size
+    self.assertLess(moment_size, full_size)
+
+  def test_dimension_numbers_convergence(self):
+
+    embed_dim, num_heads, head_dim = 64, 4, 16
+    params = {'attn': jnp.ones((embed_dim, num_heads, head_dim))}
+
+    dim_nums = {
+        'attn': _galore.GaLoreDimensionNumbers(
+            reduction_axis=0,
+            output_axis=(1, 2),
+        )
+    }
+
+    opt = _galore.galore(
+        learning_rate=0.1,
+        rank=8,
+        update_proj_gap=1,
+        weight_dimension_numbers=dim_nums,
+    )
+    state = opt.init(params)
+
+    @jax.jit
+    def step(p, s):
+      grads = jax.tree.map(lambda x: x, p)
+      u, ns = opt.update(grads, s, p)
+      return optax.apply_updates(p, u), ns
+
+    e0 = _tree_sum_squares(params)
+    for _ in range(10):
+      params, state = step(params, state)
+    e1 = _tree_sum_squares(params)
+
+    self.assertLess(e1, e0)
+
+  def test_mixed_2d_and_3d_params_with_dimension_numbers(self):
+
+    params = {
+        'attn': jnp.ones((128, 4, 32)),   # 3D attention
+        'mlp': jnp.ones((128, 256)),       # 2D linear
+        'bias': jnp.ones((256,)),          # 1D bias
+    }
+
+    dim_nums = {
+        'attn': _galore.GaLoreDimensionNumbers(
+            reduction_axis=0,
+            output_axis=(1, 2),
+        ),
+        'mlp': None,   # Use default 2D projection
+        'bias': None,  # Skip (1D)
+    }
+
+    opt = _galore.galore(
+        learning_rate=0.01,
+        rank=8,
+        weight_dimension_numbers=dim_nums,
+    )
+    state = opt.init(params)
+    grads = jax.tree.map(lambda x: x * 0.1, params)
+
+    updates, _ = opt.update(grads, state, params)
+
+    # Check all shapes preserved
+    self.assertEqual(updates['attn'].shape, (128, 4, 32))
+    self.assertEqual(updates['mlp'].shape, (128, 256))
+    self.assertEqual(updates['bias'].shape, (256,))
+
+  def test_dimension_numbers_right_projection(self):
+
+    # Small input, large output → right projection
+    params = {'w': jnp.ones((32, 8, 64))}  # reshaped to (32, 512)
+
+    dim_nums = {
+        'w': _galore.GaLoreDimensionNumbers(
+            reduction_axis=0,      # 32
+            output_axis=(1, 2),    # 8*64 = 512
+        )
+    }
+
+    rank = 8
+    opt = _galore.galore(
+        learning_rate=0.01,
+        rank=rank,
+        weight_dimension_numbers=dim_nums,
+    )
+    state = opt.init(params)
+    galore_state = state[0]
+    base_state = galore_state.base_optimizer_state
+
+    # m=32 < n=512 → right projection
+    # Projector: (n, rank) = (512, 8)
+    # Moments: (m, rank) = (32, 8)
+    self.assertEqual(galore_state.projector['w'].shape, (512, rank))
+    self.assertEqual(base_state.mu['w'].shape, (32, rank))
+
+  def test_single_dimension_number_applied_to_all(self):
+
+    params = {
+        'w1': jnp.ones((64, 4, 16)),
+        'w2': jnp.ones((32, 8, 8)),
+        'bias': jnp.ones((64,)),  # 1D, should be skipped
+    }
+
+    # Single dim_nums applied to all 2D+ params
+    single_dim_nums = _galore.GaLoreDimensionNumbers(
+        reduction_axis=0,
+        output_axis=(1, 2),
+    )
+
+    opt = _galore.galore(
+        learning_rate=0.01,
+        rank=8,
+        weight_dimension_numbers=single_dim_nums,
+    )
+    state = opt.init(params)
+    grads = jax.tree.map(lambda x: x * 0.1, params)
+
+    updates, _ = opt.update(grads, state, params)
+
+    # All shapes preserved
+    self.assertEqual(updates['w1'].shape, (64, 4, 16))
+    self.assertEqual(updates['w2'].shape, (32, 8, 8))
+    self.assertEqual(updates['bias'].shape, (64,))
 
 
 if __name__ == "__main__":
