@@ -1,4 +1,4 @@
-# Copyright 2024 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2026 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,15 @@ def fixmatch_loss(
     lambda_u: Weight for unlabeled term.
 
   Returns:
-    Scalar FixMatch loss.
+      A scalar FixMatch loss value computed as the sum of supervised
+      cross-entropy loss on labeled samples and unsupervised
+      consistency loss on unlabeled samples using pseudo-labels
+      generated from weakly augmented inputs.
+
+  References:
+      K. Sohn et al. `FixMatch: Simplifying Semi-Supervised Learning
+      with Consistency and Confidence <https://arxiv.org/abs/2001.07685>`_, 2020
+
   """
   labeled_logits = jnp.asarray(labeled_logits)
   labeled_labels = jnp.asarray(labeled_labels)
@@ -127,7 +135,14 @@ def mixmatch_loss(
     lambda_u: Weight for unlabeled term.
 
   Returns:
-    Scalar MixMatch loss.
+      A scalar MixMatch loss value combining supervised cross-entropy
+      on labeled samples and unsupervised consistency loss on unlabeled
+      samples using sharpened averaged predictions and MixUp.
+
+  References:
+      D. Berthelot et al. `MixMatch: A Holistic Approach to Semi-Supervised
+       Learning <https://arxiv.org/abs/1905.02249>`_, 2019
+
   """
   labeled_logits = jnp.asarray(labeled_logits)
   labeled_labels = jnp.asarray(labeled_labels)

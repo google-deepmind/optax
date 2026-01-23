@@ -1,4 +1,4 @@
-# Copyright 2024 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2026 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,23 +25,23 @@ import optax
 from optax.losses import _semi_supervised
 
 
+def _assert_allclose(got, expected, dtype):
+  got = np.asarray(got, dtype=np.float32)
+  expected = np.asarray(expected, dtype=np.float32)
+  if dtype == jnp.bfloat16:
+    atol, rtol = 3e-2, 5e-3
+  else:
+    atol, rtol = 1e-5, 1e-5
+  np.testing.assert_allclose(got, expected, atol=atol, rtol=rtol)
+
+
+def _assert_finite(x):
+  x = np.asarray(x, dtype=np.float32)
+  if not np.all(np.isfinite(x)):
+    raise AssertionError(f"Expected finite values, got {x}")
+
+
 class FixMatchLossTest(parameterized.TestCase):
-  @staticmethod
-  def _assert_allclose(got, expected, dtype):
-    got = np.asarray(got, dtype=np.float32)
-    expected = np.asarray(expected, dtype=np.float32)
-    if dtype == jnp.bfloat16:
-      atol, rtol = 3e-2, 5e-3
-    else:
-      atol, rtol = 1e-5, 1e-5
-    np.testing.assert_allclose(got, expected, atol=atol, rtol=rtol)
-
-  @staticmethod
-  def _assert_finite(x):
-    x = np.asarray(x, dtype=np.float32)
-    if not np.all(np.isfinite(x)):
-      raise AssertionError(f"Expected finite values, got {x}")
-
   @parameterized.parameters([
       {
           "seed": 0,
@@ -147,8 +147,10 @@ class FixMatchLossTest(parameterized.TestCase):
         lambda_u=lambda_u,
     )
 
-    self._assert_allclose(got, expected, dtype)
-    self._assert_finite(got)
+    with self.subTest("allclose"):
+      _assert_allclose(got, expected, dtype)
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   @parameterized.parameters([
       {
@@ -197,8 +199,10 @@ class FixMatchLossTest(parameterized.TestCase):
     )
 
     got = jax.jit(vmap_fn)(labeled_logits, labeled_labels, uw, us)
-    self._assert_allclose(got, original, dtype)
-    self._assert_finite(got)
+    with self.subTest("allclose"):
+      _assert_allclose(got, original, dtype)
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   @parameterized.parameters([
       {"seed": 20, "B": 5, "U": 7, "C": 6, "dtype": jnp.float32},
@@ -233,9 +237,12 @@ class FixMatchLossTest(parameterized.TestCase):
         confidence_threshold=confidence_threshold,
         lambda_u=lambda_u,
     )
-    self._assert_allclose(loss0, loss1, dtype)
-    self._assert_finite(loss0)
-    self._assert_finite(loss1)
+    with self.subTest("allclose"):
+      _assert_allclose(loss0, loss1, dtype)
+    with self.subTest("finite_loss0"):
+      _assert_finite(loss0)
+    with self.subTest("finite_loss1"):
+      _assert_finite(loss1)
 
   @parameterized.parameters([
       {"seed": 30, "B": 3, "U": 5, "C": 6, "magnitude": 100.0},
@@ -262,7 +269,8 @@ class FixMatchLossTest(parameterized.TestCase):
         confidence_threshold=0.0,
         lambda_u=1.0,
     )
-    self._assert_finite(loss)
+    with self.subTest("finite_loss"):
+      _assert_finite(loss)
 
     def f(ll, strong):
       return _semi_supervised.fixmatch_loss(
@@ -273,8 +281,10 @@ class FixMatchLossTest(parameterized.TestCase):
       )
 
     g_ll, g_us = jax.grad(f, argnums=(0, 1))(labeled_logits, us)
-    self._assert_finite(g_ll)
-    self._assert_finite(g_us)
+    with self.subTest("finite_grad_labeled_logits"):
+      _assert_finite(g_ll)
+    with self.subTest("finite_grad_strong_logits"):
+      _assert_finite(g_us)
 
   # deterministic tests
   def test_lambda_u_zero_is_supervised_only(self):
@@ -296,10 +306,13 @@ class FixMatchLossTest(parameterized.TestCase):
         optax.softmax_cross_entropy_with_integer_labels(
           labeled_logits, labeled_labels)
     )
-    np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(
-          expected, np.float32), atol=1e-6, rtol=1e-6
-    )
+    with self.subTest("allclose"):
+      np.testing.assert_allclose(
+          np.asarray(got, np.float32), np.asarray(
+            expected, np.float32), atol=1e-6, rtol=1e-6
+      )
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   def test_confidence_threshold_edges(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -319,17 +332,24 @@ class FixMatchLossTest(parameterized.TestCase):
         confidence_threshold=1.1,
         lambda_u=1.0,
     )
-    np.testing.assert_allclose(
-        np.asarray(got_none, np.float32),
-          np.asarray(sup, np.float32), atol=1e-6, rtol=1e-6
-    )
+    with self.subTest("none_allclose_sup"):
+      np.testing.assert_allclose(
+          np.asarray(got_none, np.float32),
+            np.asarray(sup, np.float32), atol=1e-6, rtol=1e-6
+      )
+    with self.subTest("none_finite"):
+      _assert_finite(got_none)
+
     got_all = _semi_supervised.fixmatch_loss(
         labeled_logits,
         labeled_labels, uw, us,
         confidence_threshold=0.0,
         lambda_u=1.0,
     )
-    self.assertGreaterEqual(float(got_all), float(sup) - 1e-6)
+    with self.subTest("all_ge_sup"):
+      self.assertGreaterEqual(float(got_all), float(sup) - 1e-6)
+    with self.subTest("all_finite"):
+      _assert_finite(got_all)
 
   def test_empty_unlabeled_batch_is_supervised_only(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -348,11 +368,13 @@ class FixMatchLossTest(parameterized.TestCase):
         optax.softmax_cross_entropy_with_integer_labels(
           labeled_logits, labeled_labels)
     )
-    np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(
-          expected, np.float32), atol=1e-6, rtol=1e-6
-    )
-    self._assert_finite(got)
+    with self.subTest("allclose"):
+      np.testing.assert_allclose(
+          np.asarray(got, np.float32), np.asarray(
+            expected, np.float32), atol=1e-6, rtol=1e-6
+      )
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   def test_grad_flows_through_strong_logits(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -373,8 +395,10 @@ class FixMatchLossTest(parameterized.TestCase):
       )
 
     g_us = jax.grad(loss_wrt_strong)(us)
-    self._assert_finite(g_us)
-    self.assertTrue(bool(jnp.any(jnp.abs(g_us) > 1e-8)))
+    with self.subTest("finite_grad"):
+      _assert_finite(g_us)
+    with self.subTest("nonzero_grad"):
+      self.assertTrue(bool(jnp.any(jnp.abs(g_us) > 1e-8)))
 
   def test_bfloat16_runs(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -391,26 +415,11 @@ class FixMatchLossTest(parameterized.TestCase):
         confidence_threshold=0.95,
         lambda_u=1.0,
     )
-    self._assert_finite(loss)
+    with self.subTest("finite"):
+      _assert_finite(loss)
 
 
 class MixMatchLossTest(parameterized.TestCase):
-  @staticmethod
-  def _assert_allclose(got, expected, dtype):
-    got = np.asarray(got, dtype=np.float32)
-    expected = np.asarray(expected, dtype=np.float32)
-    if dtype == jnp.bfloat16:
-      atol, rtol = 3e-2, 5e-3
-    else:
-      atol, rtol = 1e-5, 1e-5
-    np.testing.assert_allclose(got, expected, atol=atol, rtol=rtol)
-
-  @staticmethod
-  def _assert_finite(x):
-    x = np.asarray(x, dtype=np.float32)
-    if not np.all(np.isfinite(x)):
-      raise AssertionError(f"Expected finite values, got {x}")
-
   @parameterized.parameters([
       {"seed": 100, "B": 4, "U": 8, "C": 5, "soft_labels": False,
         "lambda_u": 10.0, "dtype": jnp.float32},
@@ -471,9 +480,10 @@ class MixMatchLossTest(parameterized.TestCase):
         unlabeled_targets,
         lambda_u=lambda_u,
     )
-
-    self._assert_allclose(got, expected, dtype)
-    self._assert_finite(got)
+    with self.subTest("allclose"):
+      _assert_allclose(got, expected, dtype)
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   @parameterized.parameters([
       {"seed": 110, "N": 3, "B": 4, "U": 5, "C": 6,
@@ -514,8 +524,10 @@ class MixMatchLossTest(parameterized.TestCase):
 
     got = jax.jit(vmap_fn)(
       labeled_logits, labeled_labels, unlabeled_logits, unlabeled_targets)
-    self._assert_allclose(got, original, dtype)
-    self._assert_finite(got)
+    with self.subTest("allclose"):
+      _assert_allclose(got, original, dtype)
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   @parameterized.parameters([
       {"seed": 120, "B": 5, "U": 7, "C": 6, "dtype": jnp.float32},
@@ -550,9 +562,12 @@ class MixMatchLossTest(parameterized.TestCase):
         unlabeled_targets[perm_u],
         lambda_u=lambda_u,
     )
-    self._assert_allclose(loss0, loss1, dtype)
-    self._assert_finite(loss0)
-    self._assert_finite(loss1)
+    with self.subTest("allclose"):
+      _assert_allclose(loss0, loss1, dtype)
+    with self.subTest("finite_loss0"):
+      _assert_finite(loss0)
+    with self.subTest("finite_loss1"):
+      _assert_finite(loss1)
 
   @parameterized.parameters([
       {"seed": 130, "B": 3, "U": 5, "C": 6, "magnitude": 100.0},
@@ -580,15 +595,18 @@ class MixMatchLossTest(parameterized.TestCase):
         labeled_logits, labeled_labels,
           unlabeled_logits, unlabeled_targets, lambda_u=10.0
     )
-    self._assert_finite(loss)
+    with self.subTest("finite_loss"):
+      _assert_finite(loss)
 
     def f(ll, ul):
       return _semi_supervised.mixmatch_loss(
         ll, labeled_labels, ul, unlabeled_targets, lambda_u=10.0)
 
     g_ll, g_ul = jax.grad(f, argnums=(0, 1))(labeled_logits, unlabeled_logits)
-    self._assert_finite(g_ll)
-    self._assert_finite(g_ul)
+    with self.subTest("finite_grad_labeled_logits"):
+      _assert_finite(g_ll)
+    with self.subTest("finite_grad_unlabeled_logits"):
+      _assert_finite(g_ul)
 
   def test_lambda_u_zero_is_supervised_only(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -607,10 +625,13 @@ class MixMatchLossTest(parameterized.TestCase):
         optax.softmax_cross_entropy_with_integer_labels(
           labeled_logits, labeled_labels)
     )
-    np.testing.assert_allclose(
-        np.asarray(got, np.float32), np.asarray(
-          expected, np.float32), atol=1e-6, rtol=1e-6
-    )
+    with self.subTest("allclose"):
+      np.testing.assert_allclose(
+          np.asarray(got, np.float32), np.asarray(
+            expected, np.float32), atol=1e-6, rtol=1e-6
+      )
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   def test_stop_gradient_unlabeled_targets(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -630,13 +651,15 @@ class MixMatchLossTest(parameterized.TestCase):
       )
 
     g_t = jax.grad(loss_wrt_targets)(unlabeled_targets)
-    np.testing.assert_allclose(
-        np.asarray(g_t, np.float32),
-        np.asarray(jnp.zeros_like(g_t), np.float32),
-        atol=1e-7,
-        rtol=0.0,
-    )
-    self._assert_finite(g_t)
+    with self.subTest("allclose_zero_grad"):
+      np.testing.assert_allclose(
+          np.asarray(g_t, np.float32),
+          np.asarray(jnp.zeros_like(g_t), np.float32),
+          atol=1e-7,
+          rtol=0.0,
+      )
+    with self.subTest("finite_grad"):
+      _assert_finite(g_t)
 
   def test_unsup_zero_when_targets_match_probs(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -652,10 +675,13 @@ class MixMatchLossTest(parameterized.TestCase):
     )
     sup = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
       labeled_logits, labeled_labels))
-    np.testing.assert_allclose(
-        np.asarray(got, np.float32),
-          np.asarray(sup, np.float32), atol=2e-5, rtol=2e-5
-    )
+    with self.subTest("allclose_sup"):
+      np.testing.assert_allclose(
+          np.asarray(got, np.float32),
+            np.asarray(sup, np.float32), atol=2e-5, rtol=2e-5
+      )
+    with self.subTest("finite"):
+      _assert_finite(got)
 
   def test_bfloat16_runs(self):
     labeled_logits = jnp.array([[2.0, 0.0, 0.0],
@@ -670,7 +696,8 @@ class MixMatchLossTest(parameterized.TestCase):
         labeled_logits, labeled_labels,
           unlabeled_logits, unlabeled_targets, lambda_u=10.0
     )
-    self._assert_finite(loss)
+    with self.subTest("finite"):
+      _assert_finite(loss)
 
 
 if __name__ == "__main__":
