@@ -262,6 +262,7 @@ def unitwise_norm(
     - Rank-2: Axis 0 (e.g., for linear layers).
     - Rank-3 or 4: Axes (0, 1, 2) (e.g., for multi-head attention or
       convolutions).
+    - Rank-5: Axes (0, 1, 2, 3) (e.g., for Conv3D kernels with spatial dims).
 
   Args:
     x: Input array for which to compute unit-wise norms.
@@ -284,9 +285,11 @@ def unitwise_norm(
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=0, keepdims=True)
   elif x.ndim == 4:  # Conv kernels of shape HWIO
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2), keepdims=True)
+  elif x.ndim == 5:  # Conv3D kernels of shape DHWIO
+    squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2, 3), keepdims=True)
   else:
     raise ValueError(
-        f"Expected parameter with shape in {1, 2, 3, 4}, got {x.shape}. "
+        f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {x.shape}. "
         "Use axis parameter to specify reduction axes for other shapes."
     )
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)

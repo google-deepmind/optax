@@ -144,11 +144,15 @@ class ClippingTest(absltest.TestCase):
     )  # Over spatial dims
     norm_channels = _clipping.unitwise_norm(x, axis=(3, 4))  # Over channel dims
     norm_last = _clipping.unitwise_norm(x, axis=-1)  # Over last dim only
+    norm_default_5d = _clipping.unitwise_norm(x)
+    norm_conv3d = _clipping.unitwise_norm(x, axis=(0, 1, 2, 3))
 
     # Verify shapes
     self.assertEqual(norm_spatial.shape, x.shape)  # Should broadcast back
     self.assertEqual(norm_channels.shape, x.shape)
     self.assertEqual(norm_last.shape, x.shape)
+    self.assertEqual(norm_default_5d.shape, x.shape)
+    test_utils.assert_trees_all_close(norm_default_5d, norm_conv3d)
 
     # Test that default behavior still works for supported shapes
     x_2d = jnp.array([[1.0, 2.0], [3.0, 4.0]])
