@@ -45,8 +45,8 @@ def scale_by_madgrad(
   and squared gradients to compute adaptive updates.
 
   References:
-    Defazio et al, `Adaptivity without Compromise: A Momentumized, Adaptive, Dual
-    Averaged Gradient Method for Stochastic Optimization
+    Defazio et al, `Adaptivity without Compromise: A Momentumized, Adaptive,
+    Dual Averaged Gradient Method for Stochastic Optimization
     <https://arxiv.org/abs/2101.11075>`_, 2021
 
   Args:

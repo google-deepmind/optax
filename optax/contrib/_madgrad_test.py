@@ -27,7 +27,7 @@ class MadgradTest(absltest.TestCase):
     # A simple quadratic function: f(x) = sum(x^2)
     # Minimum is at x = [0, 0, 0]
     params = jnp.array([1.0, 2.0, 3.0])
-    
+
     # MADGRAD typically needs a slightly higher LR than Adam
     optimizer = _madgrad.madgrad(learning_rate=0.1, momentum=0.9)
     opt_state = optimizer.init(params)
@@ -40,6 +40,7 @@ class MadgradTest(absltest.TestCase):
 
     # Check if we converged close to zero
     self.assertTrue(jnp.allclose(params, jnp.zeros_like(params), atol=1e-3))
+
 
 if __name__ == '__main__':
   absltest.main()
