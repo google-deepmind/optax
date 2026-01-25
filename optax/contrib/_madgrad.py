@@ -66,9 +66,9 @@ def scale_by_madgrad(
         count=jnp.zeros([], jnp.int32),
         grad_sum_sq=tree_utils.tree_zeros_like(params),
         s=tree_utils.tree_zeros_like(params),
-        # Store initial parameters (x0). We use map_params to handle
+        # Store initial parameters (x0). We use jax.tree.map to handle
         # arbitrary tree structures (including placeholders) correctly.
-        x0=tree_utils.tree_map_params(lambda x: x, params),
+        x0=jax.tree.map(lambda x: x, params),
     )
 
   def update_fn(updates, state, params=None):
