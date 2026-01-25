@@ -29,9 +29,9 @@ from optax import tree_utils
 class MadgradState(NamedTuple):
   """State for the MADGRAD optimizer."""
   count: jax.Array
-  grad_sum_sq: base.Updates  # Weighted sum of squared gradients (G_k)
-  s: base.Updates            # Weighted sum of gradients (s_k)
-  x0: base.Params            # Initial parameters (x_0)
+  grad_sum_sq: base.Updates  # Weighted sum of squared gradients (G_k).
+  s: base.Updates            # Weighted sum of gradients (s_k).
+  x0: base.Params            # Initial parameters (x_0).
 
 
 def scale_by_madgrad(
@@ -42,7 +42,9 @@ def scale_by_madgrad(
   """Rescale updates according to the MADGRAD algorithm.
 
   MADGRAD is a Dual Averaging method that maintains a weighted sum of gradients
-  and squared gradients to compute adaptive updates.
+  and squared gradients to compute adaptive updates. It effectively bridges the
+  gap between the generalization performance of SGD and the convergence speed
+  of adaptive methods like Adam.
 
   References:
     Defazio et al, `Adaptivity without Compromise: A Momentumized, Adaptive,
@@ -52,11 +54,11 @@ def scale_by_madgrad(
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler.
-    momentum: Momentum parameter.
+    momentum: Momentum parameter (default: 0.9).
     eps: Term added to the denominator to improve numerical stability.
 
   Returns:
-    A `GradientTransformation` object.
+    A :class:`optax.GradientTransformation` object.
   """
 
   def init_fn(params):
@@ -64,7 +66,9 @@ def scale_by_madgrad(
         count=jnp.zeros([], jnp.int32),
         grad_sum_sq=tree_utils.tree_zeros_like(params),
         s=tree_utils.tree_zeros_like(params),
-        x0=tree_utils.tree_cast(params, params.dtype),
+        # Store initial parameters (x0). We use map_params to handle
+        # arbitrary tree structures (including placeholders) correctly.
+        x0=tree_utils.tree_map_params(lambda x: x, params),
     )
 
   def update_fn(updates, state, params=None):
@@ -84,14 +88,22 @@ def scale_by_madgrad(
     # lamb = lr * sqrt(k + 1)
     lamb = lr_stable * jnp.sqrt(count + 1)
 
+    # Convert lamb to the dtype of the updates to avoid implicit promotion.
+    # This prevents errors where float16 parameters are promoted to float32.
+    lamb_tree = jax.tree.map(
+        lambda g: jnp.asarray(lamb, dtype=g.dtype), updates
+    )
+
     # G_{k+1} = G_k + lamb * g_k^2
     grad_sum_sq = jax.tree.map(
-        lambda g_sq, g: g_sq + lamb * (g ** 2), state.grad_sum_sq, updates
+        lambda g_sq, g, lam: g_sq + lam * (g ** 2),
+        state.grad_sum_sq, updates, lamb_tree
     )
 
     # s_{k+1} = s_k + lamb * g_k
     s = jax.tree.map(
-        lambda s_val, g: s_val + lamb * g, state.s, updates
+        lambda s_val, g, lam: s_val + lam * g,
+        state.s, updates, lamb_tree
     )
 
     # sigma_{k+1} = (G_{k+1})^(1/3) + eps
@@ -111,7 +123,7 @@ def scale_by_madgrad(
         params
     )
 
-    # Convert the new parameter state into an update (x_new - x_old)
+    # Convert the new parameter state into an update (x_new - x_old).
     final_updates = jax.tree.map(lambda n, o: n - o, x_new, params)
 
     new_state = MadgradState(
