@@ -303,13 +303,15 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # Check output shape matches input
-    self.assertEqual(updates["attn"].shape, (embed_dim, num_heads, head_dim))  # pytype: disable=attribute-error
+    # pytype: disable=attribute-error
+    self.assertEqual(updates["attn"].shape, (embed_dim, num_heads, head_dim))
 
     # Verify projector has correct shape
     # Reshaped to (512, 512), use left projection since m >= n
     galore_state = state[0]
     expected_proj_shape = (embed_dim, 16)  # (m, rank)
-    self.assertEqual(galore_state.projector["attn"].shape, expected_proj_shape)  # pytype: disable=attribute-error
+    self.assertEqual(galore_state.projector["attn"].shape, expected_proj_shape)
+    # pytype: enable=attribute-error
 
   def test_3d_memory_reduction_with_dimension_numbers(self):
 
@@ -330,11 +332,15 @@ class GaLoreTest(parameterized.TestCase):
         weight_dimension_numbers=dim_nums,
     )
     state = opt.init(params)
-    galore_state = state[0]
-    base_state = galore_state.base_optimizer_state  # pytype: disable=attribute-error
+    assert isinstance(state[0], _galore.GaLoreState)
+    # pytype: disable=annotation-type-mismatch
+    galore_state: _galore.GaLoreState = state[0]
+    # pytype: enable=annotation-type-mismatch
+    base_state = galore_state.base_optimizer_state
 
     # Reshaped: (256, 512), m < n → right projection
     # Moments should be (m, rank) = (256, 16)
+    # pytype: disable=attribute-error
     self.assertEqual(base_state.mu["w"].shape, (embed_dim, rank))
     self.assertEqual(base_state.nu["w"].shape, (embed_dim, rank))
 
@@ -342,6 +348,7 @@ class GaLoreTest(parameterized.TestCase):
     full_size = embed_dim * num_heads * head_dim
     moment_size = base_state.mu["w"].size
     self.assertLess(moment_size, full_size)
+    # pytype: enable=attribute-error
 
   def test_dimension_numbers_convergence(self):
 
@@ -404,9 +411,11 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # Check all shapes preserved
-    self.assertEqual(updates["attn"].shape, (128, 4, 32))  # pytype: disable=attribute-error
-    self.assertEqual(updates["mlp"].shape, (128, 256))  # pytype: disable=attribute-error
-    self.assertEqual(updates["bias"].shape, (256,))  # pytype: disable=attribute-error
+    # pytype: disable=attribute-error
+    self.assertEqual(updates["attn"].shape, (128, 4, 32))
+    self.assertEqual(updates["mlp"].shape, (128, 256))
+    self.assertEqual(updates["bias"].shape, (256,))
+    # pytype: enable=attribute-error
 
   def test_dimension_numbers_right_projection(self):
 
@@ -428,13 +437,15 @@ class GaLoreTest(parameterized.TestCase):
     )
     state = opt.init(params)
     galore_state = state[0]
-    base_state = galore_state.base_optimizer_state  # pytype: disable=attribute-error
+    # pytype: disable=attribute-error
+    base_state = galore_state.base_optimizer_state
 
     # m=32 < n=512 → right projection
     # Projector: (n, rank) = (512, 8)
     # Moments: (m, rank) = (32, 8)
-    self.assertEqual(galore_state.projector["w"].shape, (512, rank))  # pytype: disable=attribute-error
+    self.assertEqual(galore_state.projector["w"].shape, (512, rank))
     self.assertEqual(base_state.mu["w"].shape, (32, rank))
+    # pytype: enable=attribute-error
 
   def test_single_dimension_number_applied_to_all(self):
 
@@ -461,9 +472,11 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # All shapes preserved
-    self.assertEqual(updates["w1"].shape, (64, 4, 16))  # pytype: disable=attribute-error
-    self.assertEqual(updates["w2"].shape, (32, 8, 8))  # pytype: disable=attribute-error
-    self.assertEqual(updates["bias"].shape, (64,))  # pytype: disable=attribute-error
+    # pytype: disable=attribute-error
+    self.assertEqual(updates["w1"].shape, (64, 4, 16))
+    self.assertEqual(updates["w2"].shape, (32, 8, 8))
+    self.assertEqual(updates["bias"].shape, (64,))
+    # pytype: enable=attribute-error
 
 
 if __name__ == "__main__":
