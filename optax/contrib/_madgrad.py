@@ -88,22 +88,18 @@ def scale_by_madgrad(
     # lamb = lr * sqrt(k + 1)
     lamb = lr_stable * jnp.sqrt(count + 1)
 
-    # Convert lamb to the dtype of the updates to avoid implicit promotion.
-    # This prevents errors where float16 parameters are promoted to float32.
-    lamb_tree = jax.tree.map(
-        lambda g: jnp.asarray(lamb, dtype=g.dtype), updates
-    )
-
     # G_{k+1} = G_k + lamb * g_k^2
+    # We cast the update term to the dtype of g to avoid implicit promotion
+    # to float32 (e.g. when g is float16 but lamb is float32).
     grad_sum_sq = jax.tree.map(
-        lambda g_sq, g, lam: g_sq + lam * (g ** 2),
-        state.grad_sum_sq, updates, lamb_tree
+        lambda g_sq, g: g_sq + (lamb * (g ** 2)).astype(g.dtype),
+        state.grad_sum_sq, updates
     )
 
     # s_{k+1} = s_k + lamb * g_k
     s = jax.tree.map(
-        lambda s_val, g, lam: s_val + lam * g,
-        state.s, updates, lamb_tree
+        lambda s_val, g: s_val + (lamb * g).astype(g.dtype),
+        state.s, updates
     )
 
     # sigma_{k+1} = (G_{k+1})^(1/3) + eps
