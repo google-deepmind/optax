@@ -19,6 +19,7 @@
 from optax.losses._classification import convex_kl_divergence
 from optax.losses._classification import ctc_loss
 from optax.losses._classification import ctc_loss_with_forward_probs
+from optax.losses._classification import generalized_kl_divergence
 from optax.losses._classification import hinge_loss
 from optax.losses._classification import kl_divergence
 from optax.losses._classification import kl_divergence_with_log_targets

@@ -573,7 +573,7 @@ class SparsemaxTest(parameterized.TestCase):
     np.testing.assert_allclose(grad, grad_expected, atol=1e-4)
 
 
-class ConvexKLDivergenceTest(parameterized.TestCase):
+class GeneralizedKLDivergenceTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -585,12 +585,12 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
         [[0.2, 0.2, 0.2, 0.1, 0.15, 0.15], [0.05, 0.03, 0.02, 0.3, 0.5, 0.0]]
     )
 
-    # Computed convex kullback-leibler divergence of P from Q.
+    # Computed generalized kullback-leibler divergence of P from Q.
     self.exp = np.array([0.88757247, 0.859308])
 
   def test_scalar(self):
     np.testing.assert_allclose(
-        jax.jit(_classification.convex_kl_divergence)(
+        jax.jit(_classification.generalized_kl_divergence)(
             self.log_ps[0], self.qs[0]
         ),
         self.exp[0],
@@ -599,7 +599,7 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
 
   def test_batched(self):
     np.testing.assert_allclose(
-        jax.jit(_classification.convex_kl_divergence)(
+        jax.jit(_classification.generalized_kl_divergence)(
             self.log_ps, self.qs
         ),
         self.exp,
@@ -611,8 +611,8 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
     preds = np.random.normal(size=size)
     targets = np.random.dirichlet(np.ones(size))
     mask = np.random.randint(2, size=size, dtype=bool)
-    x = _classification.convex_kl_divergence(preds[mask], targets[mask])
-    y = _classification.convex_kl_divergence(preds, targets, where=mask)
+    x = _classification.generalized_kl_divergence(preds[mask], targets[mask])
+    y = _classification.generalized_kl_divergence(preds, targets, where=mask)
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.parameters(
@@ -623,11 +623,18 @@ class ConvexKLDivergenceTest(parameterized.TestCase):
   def test_axis(self, shape, axis):
     preds = np.random.normal(size=shape)
     targets = np.random.dirichlet(np.ones(shape[-1]), size=shape[:-1])
-    x = _classification.convex_kl_divergence(preds, targets, axis=axis)
-    y = _classification.convex_kl_divergence(
+    x = _classification.generalized_kl_divergence(preds, targets, axis=axis)
+    y = _classification.generalized_kl_divergence(
         np.moveaxis(preds, axis, -1),
         np.moveaxis(targets, axis, -1),
     )
+    np.testing.assert_allclose(x, y, atol=1e-4)
+
+  def test_deprecated_alias(self):
+    with self.assertWarnsRegex(DeprecationWarning,
+                               'use generalized_kl_divergence'):
+      x = _classification.convex_kl_divergence(self.log_ps[0], self.qs[0])
+    y = _classification.generalized_kl_divergence(self.log_ps[0], self.qs[0])
     np.testing.assert_allclose(x, y, atol=1e-4)
 
 
@@ -1079,6 +1086,7 @@ class SigmoidFocalLossTest(parameterized.TestCase):
 
     # Test with gamma < 1 which is most problematic for numerical stability
     gamma = 0.5
+
     def loss_fn(logits):
       return jnp.sum(jax.jit(_classification.sigmoid_focal_loss)(
           logits, labels, gamma=gamma

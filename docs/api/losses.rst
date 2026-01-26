@@ -11,6 +11,7 @@ Losses
     ctc_loss
     ctc_loss_with_forward_probs
     dice_loss
+    generalized_kl_divergence
     hinge_loss
     huber_loss
     kl_divergence
@@ -63,6 +64,10 @@ Dice loss
 Fenchel Young loss
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: make_fenchel_young_loss
+
+Generalized Kullback-Leibler divergence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: generalized_kl_divergence
 
 Hinge loss
 ~~~~~~~~~~
