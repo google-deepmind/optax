@@ -323,6 +323,39 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
                                               value_fn=value_fn)[1],
                    lambda x: state, x)
 
+  def test_linesearch_raises_on_unused_extra_args(self):
+    """Unused extra kwargs passed to update should raise an error."""
+
+    def value_fn(params, batch):
+      return jnp.sum(params * batch)
+
+    params = jnp.array([1.0, 2.0])
+    updates = jnp.array([-0.1, -0.1])
+    grad = jnp.array([1.0, 1.0])
+    batch = jnp.ones_like(params)
+
+    value = value_fn(params, batch)
+
+    opt = _linesearch.scale_by_backtracking_linesearch(
+        max_backtracking_steps=5
+    )
+    state = opt.init(params)
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'Unexpected keyword arguments',
+    ):
+      opt.update(
+          updates,
+          state,
+          params,
+          value=value,
+          grad=grad,
+          value_fn=value_fn,
+          batch=batch,
+          unused_arg=42,  # ← must trigger error
+      )
+
 
 def _run_linesearch(
     opt: base.GradientTransformationExtraArgs,
@@ -762,6 +795,39 @@ class ZoomLinesearchTest(parameterized.TestCase):
     # so in this case it should not return the output of false_fn
     value, _ = false_value_and_grad(params, state=state)
     self.assertNotEqual(value, 1.0)
+
+  def test_zoom_linesearch_raises_on_unused_extra_args(self):
+    """Unused extra kwargs passed to update should raise an error."""
+
+    def value_fn(params, batch):
+      return jnp.sum(params * batch)
+
+    params = jnp.array([1.0, 2.0])
+    updates = jnp.array([-0.1, -0.1])
+    grad = jnp.array([1.0, 1.0])
+    batch = jnp.ones_like(params)
+
+    value = value_fn(params, batch)
+
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=5
+    )
+    state = opt.init(params)
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'Unexpected keyword arguments',
+    ):
+      opt.update(
+          updates,
+          state,
+          params,
+          value=value,
+          grad=grad,
+          value_fn=value_fn,
+          batch=batch,
+          unused_arg=42,  # must trigger error
+      )
 
   def test_extract_fns_kwargs(self):
     def fn1(a, b):
