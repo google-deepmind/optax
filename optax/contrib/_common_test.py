@@ -37,6 +37,7 @@ from optax.schedules import _schedule
 from optax.transforms import _accumulation
 import optax.tree
 
+# pylint: disable=invalid-name
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
@@ -48,6 +49,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'dog', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'dowg', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'madgrad', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'muon', 'opt_kwargs': {'learning_rate': 1e-2}},
@@ -142,6 +144,7 @@ _ALL_OPTIMIZERS_UNDER_TEST = tuple(
     _MAIN_OPTIMIZERS_UNDER_TEST + _OTHER_OPTIMIZERS_UNDER_TEST
 )
 _MAIN_OPTIMIZERS_UNDER_TEST = tuple(_MAIN_OPTIMIZERS_UNDER_TEST)
+# pylint: enable=invalid-name
 
 
 def _get_opt_factory(opt_name):
