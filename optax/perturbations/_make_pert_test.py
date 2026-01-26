@@ -274,7 +274,7 @@ class MakePertTest(parameterized.TestCase):
   def test_hessian(self, scale, noise):
     """Test that hessian of perturbed function matches exact hessian."""
     fun = lambda x: 0.5 * jnp.sum(x**2)
-    fun_p = _make_pert.make_perturbed_fun(fun, 10**5, sigma, noise)
+    fun_p = _make_pert.make_perturbed_fun(fun, 10**5, scale, noise)
     x = jnp.array([0.0, 0.0])
     got = jax.hessian(fun_p, argnums=1)(jax.random.key(0), x)
     expected = jax.hessian(fun)(x)
