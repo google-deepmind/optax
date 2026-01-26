@@ -1,0 +1,1436 @@
+# Mutation Testing Diff File
+# Target: optax/schedules/_schedule.py
+# Generated: 2026-01-25 21:44:44
+# Total Mutations: 130
+================================================================================
+
+Mutation #0 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 56
+Status: killed
+
+--- original
++++ mutated
+@@ -56,1 +56,1 @@
+-    transition_begin: int = 0,
++    transition_begin: int = 1,
+
+Mutation #1 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 126
+Status: killed
+
+--- original
++++ mutated
+@@ -126,1 +126,1 @@
+-  if transition_steps <= 0:
++  if transition_steps < 0:
+
+Mutation #2 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 126
+Status: survived
+
+--- original
++++ mutated
+@@ -126,1 +126,1 @@
+-  if transition_steps <= 0:
++  if transition_steps <= 1:
+
+Mutation #3 - ROR: Relational Operator Replacement: < to <=
+File: optax/schedules/_schedule.py
+Line: 133
+Status: survived
+
+--- original
++++ mutated
+@@ -133,1 +133,1 @@
+-  if transition_begin < 0:
++  if transition_begin <= 0:
+
+Mutation #4 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 133
+Status: survived
+
+--- original
++++ mutated
+@@ -133,1 +133,1 @@
+-  if transition_begin < 0:
++  if transition_begin < 1:
+
+Mutation #5 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 138
+Status: survived
+
+--- original
++++ mutated
+@@ -138,1 +138,1 @@
+-    transition_begin = 0
++    transition_begin = 1
+
+Mutation #6 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 141
+Status: killed
+
+--- original
++++ mutated
+@@ -141,1 +141,1 @@
+-    count = jnp.clip(count - transition_begin, 0, transition_steps)
++    count = jnp.clip(count + transition_begin, 0, transition_steps)
+
+Mutation #7 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 141
+Status: killed
+
+--- original
++++ mutated
+@@ -141,1 +141,1 @@
+-    count = jnp.clip(count - transition_begin, 0, transition_steps)
++    count = jnp.clip(count - transition_begin, 1, transition_steps)
+
+Mutation #8 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 142
+Status: killed
+
+--- original
++++ mutated
+@@ -142,1 +142,1 @@
+-    frac = 1 - count / transition_steps
++    frac = 1 + count / transition_steps
+
+Mutation #9 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 142
+Status: killed
+
+--- original
++++ mutated
+@@ -142,1 +142,1 @@
+-    frac = 1 - count / transition_steps
++    frac = 1 - count * transition_steps
+
+Mutation #10 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 142
+Status: killed
+
+--- original
++++ mutated
+@@ -142,1 +142,1 @@
+-    frac = 1 - count / transition_steps
++    frac = 2 - count / transition_steps
+
+Mutation #11 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 143
+Status: killed
+
+--- original
++++ mutated
+@@ -143,1 +143,1 @@
+-    return (init_value - end_value) * (frac**power) + end_value
++    return (init_value - end_value) * (frac**power) - end_value
+
+Mutation #12 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 143
+Status: killed
+
+--- original
++++ mutated
+@@ -143,1 +143,1 @@
+-    return (init_value - end_value) * (frac**power) + end_value
++    return (init_value + end_value) * (frac**power) + end_value
+
+Mutation #13 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 143
+Status: killed
+
+--- original
++++ mutated
+@@ -143,1 +143,1 @@
+-    return (init_value - end_value) * (frac**power) + end_value
++    return (init_value - end_value) / (frac**power) + end_value
+
+Mutation #14 - AOR: Arithmetic Operator Replacement: ** to *
+File: optax/schedules/_schedule.py
+Line: 143
+Status: killed
+
+--- original
++++ mutated
+@@ -143,1 +143,1 @@
+-    return (init_value - end_value) * (frac**power) + end_value
++    return (init_value - end_value) * (frac*power) + end_value
+
+Mutation #15 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 152
+Status: killed
+
+--- original
++++ mutated
+@@ -152,1 +152,1 @@
+-    transition_begin: int = 0,
++    transition_begin: int = 1,
+
+Mutation #16 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 197
+Status: killed
+
+--- original
++++ mutated
+@@ -197,1 +197,1 @@
+-      power=1,
++      power=2,
+
+Mutation #17 - ROR: Relational Operator Replacement: >= to >
+File: optax/schedules/_schedule.py
+Line: 233
+Status: survived
+
+--- original
++++ mutated
+@@ -233,1 +233,1 @@
+-    all_positive = all(scale >= 0.0 for scale in boundaries_and_scales.values())
++    all_positive = all(scale > 0.0 for scale in boundaries_and_scales.values())
+
+Mutation #18 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 233
+Status: survived
+
+--- original
++++ mutated
+@@ -233,1 +233,1 @@
+-    all_positive = all(scale >= 0.0 for scale in boundaries_and_scales.values())
++    all_positive = all(scale >= 0.1 for scale in boundaries_and_scales.values())
+
+Mutation #19 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 243
+Status: killed
+
+--- original
++++ mutated
+@@ -243,1 +243,1 @@
+-        indicator = jnp.maximum(0.0, jnp.sign(threshold - count))
++        indicator = jnp.maximum(0.0, jnp.sign(threshold + count))
+
+Mutation #20 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 243
+Status: killed
+
+--- original
++++ mutated
+@@ -243,1 +243,1 @@
+-        indicator = jnp.maximum(0.0, jnp.sign(threshold - count))
++        indicator = jnp.maximum(0.1, jnp.sign(threshold - count))
+
+Mutation #21 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v * indicator - (1 - indicator) * scale * v
+
+Mutation #22 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v * indicator + (1 + indicator) * scale * v
+
+Mutation #23 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v / indicator + (1 - indicator) * scale * v
+
+Mutation #24 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v * indicator + (1 - indicator) / scale * v
+
+Mutation #25 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v * indicator + (1 - indicator) * scale / v
+
+Mutation #26 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 244
+Status: killed
+
+--- original
++++ mutated
+@@ -244,1 +244,1 @@
+-        v = v * indicator + (1 - indicator) * scale * v
++        v = v * indicator + (2 - indicator) * scale * v
+
+Mutation #27 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 254
+Status: killed
+
+--- original
++++ mutated
+@@ -254,1 +254,1 @@
+-    transition_begin: int = 0,
++    transition_begin: int = 1,
+
+Mutation #28 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 288
+Status: survived
+
+--- original
++++ mutated
+@@ -288,1 +288,1 @@
+-  if transition_steps <= 0:
++  if transition_steps < 0:
+
+Mutation #29 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 288
+Status: killed
+
+--- original
++++ mutated
+@@ -288,1 +288,1 @@
+-  if transition_steps <= 0:
++  if transition_steps <= 1:
+
+Mutation #30 - ROR: Relational Operator Replacement: == to !=
+File: optax/schedules/_schedule.py
+Line: 296
+Status: killed
+
+--- original
++++ mutated
+@@ -296,1 +296,1 @@
+-  if decay_rate == 0:
++  if decay_rate != 0:
+
+Mutation #31 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 296
+Status: killed
+
+--- original
++++ mutated
+@@ -296,1 +296,1 @@
+-  if decay_rate == 0:
++  if decay_rate == 1:
+
+Mutation #32 - ROR: Relational Operator Replacement: < to <=
+File: optax/schedules/_schedule.py
+Line: 303
+Status: survived
+
+--- original
++++ mutated
+@@ -303,1 +303,1 @@
+-  if transition_begin < 0:
++  if transition_begin <= 0:
+
+Mutation #33 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 303
+Status: survived
+
+--- original
++++ mutated
+@@ -303,1 +303,1 @@
+-  if transition_begin < 0:
++  if transition_begin < 1:
+
+Mutation #34 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 308
+Status: survived
+
+--- original
++++ mutated
+@@ -308,1 +308,1 @@
+-    transition_begin = 0
++    transition_begin = 1
+
+Mutation #35 - ROR: Relational Operator Replacement: < to <=
+File: optax/schedules/_schedule.py
+Line: 311
+Status: killed
+
+--- original
++++ mutated
+@@ -311,1 +311,1 @@
+-    clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum
++    clip_fn = jnp.maximum if decay_rate <= 1.0 else jnp.minimum
+
+Mutation #36 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 311
+Status: killed
+
+--- original
++++ mutated
+@@ -311,1 +311,1 @@
+-    clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum
++    clip_fn = jnp.maximum if decay_rate < 1.1 else jnp.minimum
+
+Mutation #37 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 314
+Status: killed
+
+--- original
++++ mutated
+@@ -314,1 +314,1 @@
+-    decreased_count = count - transition_begin
++    decreased_count = count + transition_begin
+
+Mutation #38 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 315
+Status: killed
+
+--- original
++++ mutated
+@@ -315,1 +315,1 @@
+-    p = decreased_count / transition_steps
++    p = decreased_count * transition_steps
+
+Mutation #39 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 319
+Status: killed
+
+--- original
++++ mutated
+@@ -319,1 +319,1 @@
+-        decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)
++        decreased_count <= 0, init_value, init_value / jnp.power(decay_rate, p)
+
+Mutation #40 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 319
+Status: survived
+
+--- original
++++ mutated
+@@ -319,1 +319,1 @@
+-        decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)
++        decreased_count < 0, init_value, init_value * jnp.power(decay_rate, p)
+
+Mutation #41 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 319
+Status: killed
+
+--- original
++++ mutated
+@@ -319,1 +319,1 @@
+-        decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)
++        decreased_count <= 1, init_value, init_value * jnp.power(decay_rate, p)
+
+Mutation #42 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 322
+Status: survived
+
+--- original
++++ mutated
+@@ -322,1 +322,1 @@
+-      decayed_value = clip_fn(decayed_value, end_value)  # pylint: disable=undefined-variable
++      decayed_value = clip_fn(decayed_value, end_value)  # pylint: disable=undefined+variable
+
+Mutation #43 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 331
+Status: survived
+
+--- original
++++ mutated
+@@ -331,1 +331,1 @@
+-    alpha: jax.typing.ArrayLike = 0.0,
++    alpha: jax.typing.ArrayLike = 0.1,
+
+Mutation #44 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 332
+Status: killed
+
+--- original
++++ mutated
+@@ -332,1 +332,1 @@
+-    exponent: jax.typing.ArrayLike = 1.0,
++    exponent: jax.typing.ArrayLike = 1.1,
+
+Mutation #45 - ROR: Relational Operator Replacement: > to >=
+File: optax/schedules/_schedule.py
+Line: 371
+Status: killed
+
+--- original
++++ mutated
+@@ -371,1 +371,1 @@
+-  if not decay_steps > 0:
++  if not decay_steps >= 0:
+
+Mutation #46 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 371
+Status: survived
+
+--- original
++++ mutated
+@@ -371,1 +371,1 @@
+-  if not decay_steps > 0:
++  if not decay_steps > 1:
+
+Mutation #47 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.5 * (1 - jnp.cos(jnp.pi * count / decay_steps))
+
+Mutation #48 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.5 / (1 + jnp.cos(jnp.pi * count / decay_steps))
+
+Mutation #49 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi / count / decay_steps))
+
+Mutation #50 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count * decay_steps))
+
+Mutation #51 - CRP: Constant Replacement: 0.5 to 0.6
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.6 * (1 + jnp.cos(jnp.pi * count / decay_steps))
+
+Mutation #52 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 385
+Status: killed
+
+--- original
++++ mutated
+@@ -385,1 +385,1 @@
+-    cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))
++    cosine_decay = 0.5 * (2 + jnp.cos(jnp.pi * count / decay_steps))
+
+Mutation #53 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 386
+Status: killed
+
+--- original
++++ mutated
+@@ -386,1 +386,1 @@
+-    decayed = (1 - alpha) * cosine_decay**exponent + alpha
++    decayed = (1 - alpha) * cosine_decay**exponent - alpha
+
+Mutation #54 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 386
+Status: killed
+
+--- original
++++ mutated
+@@ -386,1 +386,1 @@
+-    decayed = (1 - alpha) * cosine_decay**exponent + alpha
++    decayed = (1 + alpha) * cosine_decay**exponent + alpha
+
+Mutation #55 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 386
+Status: killed
+
+--- original
++++ mutated
+@@ -386,1 +386,1 @@
+-    decayed = (1 - alpha) * cosine_decay**exponent + alpha
++    decayed = (1 - alpha) / cosine_decay**exponent + alpha
+
+Mutation #56 - AOR: Arithmetic Operator Replacement: ** to *
+File: optax/schedules/_schedule.py
+Line: 386
+Status: killed
+
+--- original
++++ mutated
+@@ -386,1 +386,1 @@
+-    decayed = (1 - alpha) * cosine_decay**exponent + alpha
++    decayed = (1 - alpha) * cosine_decay*exponent + alpha
+
+Mutation #57 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 386
+Status: killed
+
+--- original
++++ mutated
+@@ -386,1 +386,1 @@
+-    decayed = (1 - alpha) * cosine_decay**exponent + alpha
++    decayed = (2 - alpha) * cosine_decay**exponent + alpha
+
+Mutation #58 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 387
+Status: killed
+
+--- original
++++ mutated
+@@ -387,1 +387,1 @@
+-    return init_value * decayed
++    return init_value / decayed
+
+Mutation #59 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 397
+Status: killed
+
+--- original
++++ mutated
+@@ -397,1 +397,1 @@
+-  return (end - start) * pct + start
++  return (end - start) * pct - start
+
+Mutation #60 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 397
+Status: killed
+
+--- original
++++ mutated
+@@ -397,1 +397,1 @@
+-  return (end - start) * pct + start
++  return (end + start) * pct + start
+
+Mutation #61 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 397
+Status: killed
+
+--- original
++++ mutated
+@@ -397,1 +397,1 @@
+-  return (end - start) * pct + start
++  return (end - start) / pct + start
+
+Mutation #62 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end - (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
+
+Mutation #63 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) - 1)
+
+Mutation #64 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start + end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
+
+Mutation #65 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) / 2.0 / (jnp.cos(jnp.pi * pct) + 1)
+
+Mutation #66 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi / pct) + 1)
+
+Mutation #67 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) * 2.0 * (jnp.cos(jnp.pi * pct) + 1)
+
+Mutation #68 - CRP: Constant Replacement: 2.0 to 2.1
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) / 2.1 * (jnp.cos(jnp.pi * pct) + 1)
+
+Mutation #69 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 405
+Status: killed
+
+--- original
++++ mutated
+@@ -405,1 +405,1 @@
+-  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
++  return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 2)
+
+Mutation #70 - ROR: Relational Operator Replacement: == to !=
+File: optax/schedules/_schedule.py
+Line: 455
+Status: killed
+
+--- original
++++ mutated
+@@ -455,1 +455,1 @@
+-  if interpolate_type == 'linear':
++  if interpolate_type != 'linear':
+
+Mutation #71 - ROR: Relational Operator Replacement: == to !=
+File: optax/schedules/_schedule.py
+Line: 457
+Status: killed
+
+--- original
++++ mutated
+@@ -457,1 +457,1 @@
+-  elif interpolate_type == 'cosine':
++  elif interpolate_type != 'cosine':
+
+Mutation #72 - LCR: Logical Connector Replacement: or to and
+File: optax/schedules/_schedule.py
+Line: 460
+Status: survived
+
+--- original
++++ mutated
+@@ -460,1 +460,1 @@
+-    raise ValueError("`interpolate_type` must be either 'cosine' or 'linear'")
++    raise ValueError("`interpolate_type` must be either 'cosine' and 'linear'")
+
+Mutation #73 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 463
+Status: killed
+
+--- original
++++ mutated
+@@ -463,1 +463,1 @@
+-    boundaries, scales = zip(*sorted(boundaries_and_scales.items()))
++    boundaries, scales = zip(/sorted(boundaries_and_scales.items()))
+
+Mutation #74 - ROR: Relational Operator Replacement: >= to >
+File: optax/schedules/_schedule.py
+Line: 464
+Status: survived
+
+--- original
++++ mutated
+@@ -464,1 +464,1 @@
+-    if not all(scale >= 0.0 for scale in scales):
++    if not all(scale > 0.0 for scale in scales):
+
+Mutation #75 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 464
+Status: killed
+
+--- original
++++ mutated
+@@ -464,1 +464,1 @@
+-    if not all(scale >= 0.0 for scale in scales):
++    if not all(scale >= 0.1 for scale in scales):
+
+Mutation #76 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 472
+Status: killed
+
+--- original
++++ mutated
+@@ -472,1 +472,1 @@
+-    bounds = jnp.stack((0,) + boundaries)
++    bounds = jnp.stack((0,) - boundaries)
+
+Mutation #77 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 472
+Status: killed
+
+--- original
++++ mutated
+@@ -472,1 +472,1 @@
+-    bounds = jnp.stack((0,) + boundaries)
++    bounds = jnp.stack((1,) + boundaries)
+
+Mutation #78 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 473
+Status: killed
+
+--- original
++++ mutated
+@@ -473,1 +473,1 @@
+-    values = jnp.cumprod(jnp.stack((init_value,) + scales))
++    values = jnp.cumprod(jnp.stack((init_value,) - scales))
+
+Mutation #79 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 474
+Status: killed
+
+--- original
++++ mutated
+@@ -474,1 +474,1 @@
+-    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)
++    interval_sizes = jnp.maximum(bounds[1:] + bounds[:-1], 1)
+
+Mutation #80 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 474
+Status: killed
+
+--- original
++++ mutated
+@@ -474,1 +474,1 @@
+-    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)
++    interval_sizes = jnp.maximum(bounds[2:] - bounds[:-1], 1)
+
+Mutation #81 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 474
+Status: killed
+
+--- original
++++ mutated
+@@ -474,1 +474,1 @@
+-    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)
++    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-2], 1)
+
+Mutation #82 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 474
+Status: survived
+
+--- original
++++ mutated
+@@ -474,1 +474,1 @@
+-    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)
++    interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 2)
+
+Mutation #83 - ROR: Relational Operator Replacement: < to <=
+File: optax/schedules/_schedule.py
+Line: 475
+Status: killed
+
+--- original
++++ mutated
+@@ -475,1 +475,1 @@
+-    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])
++    indicator = jnp.logical_and(bounds[:-1] <= count, count <= bounds[1:])
+
+Mutation #84 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 475
+Status: killed
+
+--- original
++++ mutated
+@@ -475,1 +475,1 @@
+-    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])
++    indicator = jnp.logical_and(bounds[:-1] < count, count < bounds[1:])
+
+Mutation #85 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 475
+Status: killed
+
+--- original
++++ mutated
+@@ -475,1 +475,1 @@
+-    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])
++    indicator = jnp.logical_and(bounds[:-2] <= count, count < bounds[1:])
+
+Mutation #86 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 475
+Status: killed
+
+--- original
++++ mutated
+@@ -475,1 +475,1 @@
+-    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])
++    indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[2:])
+
+Mutation #87 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 476
+Status: killed
+
+--- original
++++ mutated
+@@ -476,1 +476,1 @@
+-    pct = (count - bounds[:-1]) / interval_sizes
++    pct = (count + bounds[:-1]) / interval_sizes
+
+Mutation #88 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 476
+Status: killed
+
+--- original
++++ mutated
+@@ -476,1 +476,1 @@
+-    pct = (count - bounds[:-1]) / interval_sizes
++    pct = (count - bounds[:-1]) * interval_sizes
+
+Mutation #89 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 476
+Status: killed
+
+--- original
++++ mutated
+@@ -476,1 +476,1 @@
+-    pct = (count - bounds[:-1]) / interval_sizes
++    pct = (count - bounds[:-2]) / interval_sizes
+
+Mutation #90 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 477
+Status: killed
+
+--- original
++++ mutated
+@@ -477,1 +477,1 @@
+-    interp_vals = interpolate_fn(values[:-1], values[1:], pct)
++    interp_vals = interpolate_fn(values[:-2], values[1:], pct)
+
+Mutation #91 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 477
+Status: killed
+
+--- original
++++ mutated
+@@ -477,1 +477,1 @@
+-    interp_vals = interpolate_fn(values[:-1], values[1:], pct)
++    interp_vals = interpolate_fn(values[:-1], values[2:], pct)
+
+Mutation #92 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 478
+Status: killed
+
+--- original
++++ mutated
+@@ -478,1 +478,1 @@
+-    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
++    return indicator.dot(interp_vals) - (bounds[-1] <= count) * values[-1]
+
+Mutation #93 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 478
+Status: killed
+
+--- original
++++ mutated
+@@ -478,1 +478,1 @@
+-    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
++    return indicator.dot(interp_vals) + (bounds[-1] <= count) / values[-1]
+
+Mutation #94 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 478
+Status: killed
+
+--- original
++++ mutated
+@@ -478,1 +478,1 @@
+-    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
++    return indicator.dot(interp_vals) + (bounds[-1] < count) * values[-1]
+
+Mutation #95 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 478
+Status: killed
+
+--- original
++++ mutated
+@@ -478,1 +478,1 @@
+-    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
++    return indicator.dot(interp_vals) + (bounds[-2] <= count) * values[-1]
+
+Mutation #96 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 478
+Status: killed
+
+--- original
++++ mutated
+@@ -478,1 +478,1 @@
+-    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]
++    return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-2]
+
+Mutation #97 - CRP: Constant Replacement: 0.3 to 0.4
+File: optax/schedules/_schedule.py
+Line: 486
+Status: survived
+
+--- original
++++ mutated
+@@ -486,1 +486,1 @@
+-    pct_start: float = 0.3,
++    pct_start: float = 0.4,
+
+Mutation #98 - CRP: Constant Replacement: 0.85 to 0.95
+File: optax/schedules/_schedule.py
+Line: 487
+Status: survived
+
+--- original
++++ mutated
+@@ -487,1 +487,1 @@
+-    pct_final: float = 0.85,
++    pct_final: float = 0.95,
+
+Mutation #99 - CRP: Constant Replacement: 25.0 to 25.1
+File: optax/schedules/_schedule.py
+Line: 488
+Status: survived
+
+--- original
++++ mutated
+@@ -488,1 +488,1 @@
+-    div_factor: float = 25.0,
++    div_factor: float = 25.1,
+
+Mutation #100 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 525
+Status: killed
+
+--- original
++++ mutated
+@@ -525,1 +525,1 @@
+-  if transition_steps <= 0:
++  if transition_steps < 0:
+
+Mutation #101 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 525
+Status: survived
+
+--- original
++++ mutated
+@@ -525,1 +525,1 @@
+-  if transition_steps <= 0:
++  if transition_steps <= 1:
+
+Mutation #102 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 533
+Status: killed
+
+--- original
++++ mutated
+@@ -533,1 +533,1 @@
+-      peak_value / div_factor,
++      peak_value * div_factor,
+
+Mutation #103 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 535
+Status: killed
+
+--- original
++++ mutated
+@@ -535,1 +535,1 @@
+-          int(pct_start * transition_steps): div_factor,
++          int(pct_start / transition_steps): div_factor,
+
+Mutation #104 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 536
+Status: killed
+
+--- original
++++ mutated
+@@ -536,1 +536,1 @@
+-          int(pct_final * transition_steps): 1.0 / div_factor,
++          int(pct_final / transition_steps): 1.0 / div_factor,
+
+Mutation #105 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 536
+Status: killed
+
+--- original
++++ mutated
+@@ -536,1 +536,1 @@
+-          int(pct_final * transition_steps): 1.0 / div_factor,
++          int(pct_final * transition_steps): 1.0 * div_factor,
+
+Mutation #106 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 536
+Status: killed
+
+--- original
++++ mutated
+@@ -536,1 +536,1 @@
+-          int(pct_final * transition_steps): 1.0 / div_factor,
++          int(pct_final * transition_steps): 1.1 / div_factor,
+
+Mutation #107 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 537
+Status: killed
+
+--- original
++++ mutated
+@@ -537,1 +537,1 @@
+-          transition_steps: 1.0 / final_div_factor,
++          transition_steps: 1.0 * final_div_factor,
+
+Mutation #108 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 537
+Status: killed
+
+--- original
++++ mutated
+@@ -537,1 +537,1 @@
+-          transition_steps: 1.0 / final_div_factor,
++          transition_steps: 1.1 / final_div_factor,
+
+Mutation #109 - CRP: Constant Replacement: 0.3 to 0.4
+File: optax/schedules/_schedule.py
+Line: 545
+Status: survived
+
+--- original
++++ mutated
+@@ -545,1 +545,1 @@
+-    pct_start: float = 0.3,
++    pct_start: float = 0.4,
+
+Mutation #110 - CRP: Constant Replacement: 25.0 to 25.1
+File: optax/schedules/_schedule.py
+Line: 546
+Status: survived
+
+--- original
++++ mutated
+@@ -546,1 +546,1 @@
+-    div_factor: float = 25.0,
++    div_factor: float = 25.1,
+
+Mutation #111 - ROR: Relational Operator Replacement: <= to <
+File: optax/schedules/_schedule.py
+Line: 578
+Status: killed
+
+--- original
++++ mutated
+@@ -578,1 +578,1 @@
+-  if transition_steps <= 0:
++  if transition_steps < 0:
+
+Mutation #112 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 578
+Status: survived
+
+--- original
++++ mutated
+@@ -578,1 +578,1 @@
+-  if transition_steps <= 0:
++  if transition_steps <= 1:
+
+Mutation #113 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 586
+Status: killed
+
+--- original
++++ mutated
+@@ -586,1 +586,1 @@
+-      peak_value / div_factor,
++      peak_value * div_factor,
+
+Mutation #114 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 588
+Status: killed
+
+--- original
++++ mutated
+@@ -588,1 +588,1 @@
+-          int(pct_start * transition_steps): div_factor,
++          int(pct_start / transition_steps): div_factor,
+
+Mutation #115 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/schedules/_schedule.py
+Line: 589
+Status: killed
+
+--- original
++++ mutated
+@@ -589,1 +589,1 @@
+-          int(transition_steps): 1.0 / (div_factor * final_div_factor),
++          int(transition_steps): 1.0 / (div_factor / final_div_factor),
+
+Mutation #116 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 589
+Status: killed
+
+--- original
++++ mutated
+@@ -589,1 +589,1 @@
+-          int(transition_steps): 1.0 / (div_factor * final_div_factor),
++          int(transition_steps): 1.0 * (div_factor * final_div_factor),
+
+Mutation #117 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 589
+Status: killed
+
+--- original
++++ mutated
+@@ -589,1 +589,1 @@
+-          int(transition_steps): 1.0 / (div_factor * final_div_factor),
++          int(transition_steps): 1.1 / (div_factor * final_div_factor),
+
+Mutation #118 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 622
+Status: survived
+
+--- original
++++ mutated
+@@ -622,1 +622,1 @@
+-    end_value: jax.typing.ArrayLike = 0.0,
++    end_value: jax.typing.ArrayLike = 0.1,
+
+Mutation #119 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/schedules/_schedule.py
+Line: 623
+Status: survived
+
+--- original
++++ mutated
+@@ -623,1 +623,1 @@
+-    exponent: jax.typing.ArrayLike = 1.0,
++    exponent: jax.typing.ArrayLike = 1.1,
+
+Mutation #120 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/schedules/_schedule.py
+Line: 643
+Status: killed
+
+--- original
++++ mutated
+@@ -643,1 +643,1 @@
+-  alpha = 0.0 if peak_value == 0.0 else end_value / peak_value
++  alpha = 0.0 if peak_value == 0.0 else end_value * peak_value
+
+Mutation #121 - ROR: Relational Operator Replacement: == to !=
+File: optax/schedules/_schedule.py
+Line: 643
+Status: killed
+
+--- original
++++ mutated
+@@ -643,1 +643,1 @@
+-  alpha = 0.0 if peak_value == 0.0 else end_value / peak_value
++  alpha = 0.0 if peak_value != 0.0 else end_value / peak_value
+
+Mutation #122 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 643
+Status: survived
+
+--- original
++++ mutated
+@@ -643,1 +643,1 @@
+-  alpha = 0.0 if peak_value == 0.0 else end_value / peak_value
++  alpha = 0.1 if peak_value == 0.0 else end_value / peak_value
+
+Mutation #123 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/schedules/_schedule.py
+Line: 643
+Status: killed
+
+--- original
++++ mutated
+@@ -643,1 +643,1 @@
+-  alpha = 0.0 if peak_value == 0.0 else end_value / peak_value
++  alpha = 0.0 if peak_value == 0.1 else end_value / peak_value
+
+Mutation #124 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/schedules/_schedule.py
+Line: 652
+Status: killed
+
+--- original
++++ mutated
+@@ -652,1 +652,1 @@
+-          decay_steps=decay_steps - warmup_steps,
++          decay_steps=decay_steps + warmup_steps,
+
+Mutation #125 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 666
+Status: survived
+
+--- original
++++ mutated
+@@ -666,1 +666,1 @@
+-    transition_begin: int = 0,
++    transition_begin: int = 1,
+
+Mutation #126 - CRP: Constant Replacement: 0 to 1
+File: optax/schedules/_schedule.py
+Line: 731
+Status: killed
+
+--- original
++++ mutated
+@@ -731,1 +731,1 @@
+-  step = 0
++  step = 1
+
+Mutation #127 - AOR: Arithmetic Operator Replacement: ** to *
+File: optax/schedules/_schedule.py
+Line: 733
+Status: killed
+
+--- original
++++ mutated
+@@ -733,1 +733,1 @@
+-    schedules += [warmup_cosine_decay_schedule(**kwargs)]
++    schedules += [warmup_cosine_decay_schedule(*kwargs)]
+
+Mutation #128 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/schedules/_schedule.py
+Line: 734
+Status: killed
+
+--- original
++++ mutated
+@@ -734,1 +734,1 @@
+-    boundaries += [step + kwargs['decay_steps']]
++    boundaries += [step - kwargs['decay_steps']]
+
+Mutation #129 - CRP: Constant Replacement: 1 to 2
+File: optax/schedules/_schedule.py
+Line: 736
+Status: killed
+
+--- original
++++ mutated
+@@ -736,1 +736,1 @@
+-  return _join.join_schedules(schedules, boundaries[:-1])
++  return _join.join_schedules(schedules, boundaries[:-2])
+
