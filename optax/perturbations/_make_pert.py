@@ -57,20 +57,20 @@ class Gumbel:
 
 def make_perturbed_fun(
     fun: Callable[[chex.ArrayTree], chex.ArrayTree],
-    num_samples: int = 1000,
-    sigma: jax.typing.ArrayLike = 0.1,
+    num_samples: int = 1,
+    scale: jax.typing.ArrayLike = 0.1,
     noise=Gumbel(),
     use_baseline=True,
 ) -> Callable[[base.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
   r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
-  Let :math:`f` be a function, :math:`\sigma` be a scalar, :math:`\mu` be a
+  Let :math:`f` be a function, :math:`s` be a scale scalar, :math:`\mu` be a
   noise distribution, and
 
   .. math::
-    f_\sigma(x) = \mathbb{E}_{z \sim \mu} f(x + \sigma z)
+    f_s(x) = \mathbb{E}_{z \sim \mu} f(x + s z)
 
-  Given certain conditions on :math:`\mu`, :math:`f_\sigma` is a smoothed,
+  Given certain conditions on :math:`\mu`, :math:`f_s` is a smoothed,
   differentiable approximation of :math:`f`, even if :math:`f` itself is not
   differentiable.
 
@@ -79,7 +79,7 @@ def make_perturbed_fun(
   automatic differentiation
   <https://docs.jax.dev/en/latest/automatic-differentiation.html>`_
   system) are unbiased Monte-Carlo estimates of the corresponding values and
-  derivatives of :math:`f_\sigma`. These estimates are computed using only
+  derivatives of :math:`f_s`. These estimates are computed using only
   values (not derivatives) of :math:`f`, at stochastic perturbations of the
   input. Thus :math:`f` itself does not have to be differentiable.
 
@@ -87,7 +87,7 @@ def make_perturbed_fun(
     fun: The function to transform into a differentiable function. The signature
       currently supported is from pytree to pytree, whose leaves are JAX arrays.
     num_samples: an int, the number of perturbed outputs to average over.
-    sigma: a float, the scale of the random perturbation.
+    scale: a float, the scale of the random perturbation.
     noise: a distribution object that implements ``sample`` and ``log_prob``
       methods, like :class:`optax.perturbations.Gumbel` (which is the default).
     use_baseline: Use the value of the function at the unperturbed input as a
@@ -104,19 +104,19 @@ def make_perturbed_fun(
     >>> key = jax.random.key(0)
     >>> x = jnp.array([0.0, 0.0, 0.0])
     >>> f = lambda x: jnp.sum(jnp.maximum(x, 0.0))
-    >>> fn = make_perturbed_fun(f, 1_000, 0.1)
+    >>> fn = make_perturbed_fun(f, num_samples=1_000, scale=0.1)
     >>> with jnp.printoptions(precision=2):
     ...   print(jax.grad(fn, argnums=1)(key, x))
     [0.69 0.72 0.58]
 
   .. note::
-    For the curious reader, :math:`f_\sigma` can also be expressed as
+    For the curious reader, :math:`f_s` can also be expressed as
 
     .. math::
-      f_\sigma(x) = \mathbb{E}_{y \sim \nu(x, \sigma)} f(y)
+      f_s(x) = \mathbb{E}_{y \sim \nu(x, s)} f(y)
 
-    where :math:`\nu(x, \sigma)` is the probability distribution of the random
-    variable :math:`x + \sigma z`.
+    where :math:`\nu(x, s)` is the probability distribution of the random
+    variable :math:`x + s z`.
 
     The gradient can then be obtained by the score function estimator, a.k.a.
     REINFORCE. We implement the score function estimator through the "magic
@@ -145,9 +145,9 @@ def make_perturbed_fun(
         key: base.PRNGKey, x: chex.ArrayTree, baseline: chex.ArrayTree
     ) -> chex.ArrayTree:
       sample = optax.tree.random_like(key, x, sampler=noise.sample)
-      shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
+      shifted_sample = jax.tree.map(lambda x, z: x + scale * z, x, sample)
       shifted_sample = jax.lax.stop_gradient(shifted_sample)
-      sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
+      sample = jax.tree.map(lambda x, y: (y - x) / scale, x, shifted_sample)
 
       log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
       box = _magicbox(log_prob_sample)
