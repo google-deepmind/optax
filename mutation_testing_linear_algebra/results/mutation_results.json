@@ -1,0 +1,1090 @@
+{
+  "total_mutations": 108,
+  "killed": 43,
+  "survived": 65,
+  "errors": 0,
+  "mutation_score": 39.81481481481482,
+  "elapsed_time": 773.5596811771393,
+  "mutations": [
+    {
+      "id": 0,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 32,
+      "original_code": "return optax.tree.scale(1.0 / optax.tree.norm(x), x)",
+      "mutated_code": "return optax.tree.scale(1.0 * optax.tree.norm(x), x)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 1,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 32,
+      "original_code": "return optax.tree.scale(1.0 / optax.tree.norm(x), x)",
+      "mutated_code": "return optax.tree.scale(1.1 / optax.tree.norm(x), x)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 2,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 58,
+      "original_code": "converged = jnp.abs(residual_norm / eig) < error_tolerance",
+      "mutated_code": "converged = jnp.abs(residual_norm * eig) < error_tolerance",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 3,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 58,
+      "original_code": "converged = jnp.abs(residual_norm / eig) < error_tolerance",
+      "mutated_code": "converged = jnp.abs(residual_norm / eig) <= error_tolerance",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 4,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 59,
+      "original_code": "return ~converged & (iter_num < num_iters)",
+      "mutated_code": "return ~converged & (iter_num <= num_iters)",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 5,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 65,
+      "original_code": "*,",
+      "mutated_code": "/,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 6,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 67,
+      "original_code": "num_iters: jax.typing.ArrayLike = 100,",
+      "mutated_code": "num_iters: jax.typing.ArrayLike = 101,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 100 to 101",
+      "status": "survived"
+    },
+    {
+      "id": 7,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 68,
+      "original_code": "error_tolerance: jax.typing.ArrayLike = 1e-6,",
+      "mutated_code": "error_tolerance: jax.typing.ArrayLike = 1e-7,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 6 to 7",
+      "status": "survived"
+    },
+    {
+      "id": 8,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 123,
+      "original_code": "key = jax.random.PRNGKey(0)",
+      "mutated_code": "key = jax.random.PRNGKey(1)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 9,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 127,
+      "original_code": "shape=matrix.shape[-1:],",
+      "mutated_code": "shape=matrix.shape[-2:],",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 10,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 129,
+      "original_code": "minval=-1.0,",
+      "mutated_code": "minval=-1.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "survived"
+    },
+    {
+      "id": 11,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 130,
+      "original_code": "maxval=1.0,",
+      "mutated_code": "maxval=1.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "survived"
+    },
+    {
+      "id": 12,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 146,
+      "original_code": "return eigvec, z, eig, iter_num + 1",
+      "mutated_code": "return eigvec, z, eig, iter_num - 1",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 13,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 146,
+      "original_code": "return eigvec, z, eig, iter_num + 1",
+      "mutated_code": "return eigvec, z, eig, iter_num + 2",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 14,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 148,
+      "original_code": "init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))",
+      "mutated_code": "init_vars = (v0, mvp(v0), jnp.asarray(0.1), jnp.asarray(0))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "survived"
+    },
+    {
+      "id": 15,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 148,
+      "original_code": "init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))",
+      "mutated_code": "init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(1))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 16,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 159,
+      "original_code": "num_iters: jax.typing.ArrayLike = 100,",
+      "mutated_code": "num_iters: jax.typing.ArrayLike = 101,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 100 to 101",
+      "status": "survived"
+    },
+    {
+      "id": 17,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 160,
+      "original_code": "ridge_epsilon: jax.typing.ArrayLike = 1e-6,",
+      "mutated_code": "ridge_epsilon: jax.typing.ArrayLike = 1e-7,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 6 to 7",
+      "status": "survived"
+    },
+    {
+      "id": 18,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 161,
+      "original_code": "error_tolerance: jax.typing.ArrayLike = 1e-6,",
+      "mutated_code": "error_tolerance: jax.typing.ArrayLike = 1e-7,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 6 to 7",
+      "status": "survived"
+    },
+    {
+      "id": 19,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 191,
+      "original_code": "matrix_size = matrix.shape[0]",
+      "mutated_code": "matrix_size = matrix.shape[1]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 20,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 192,
+      "original_code": "alpha = jnp.asarray(-1.0 / p, jnp.float32)",
+      "mutated_code": "alpha = jnp.asarray(-1.0 * p, jnp.float32)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 21,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 192,
+      "original_code": "alpha = jnp.asarray(-1.0 / p, jnp.float32)",
+      "mutated_code": "alpha = jnp.asarray(-1.1 / p, jnp.float32)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "survived"
+    },
+    {
+      "id": 22,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 192,
+      "original_code": "alpha = jnp.asarray(-1.0 / p, jnp.float32)",
+      "mutated_code": "alpha = jnp.asarray(-1.0 / p, jnp.float33)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 23,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 193,
+      "original_code": "identity = jnp.eye(matrix_size, dtype=jnp.float32)",
+      "mutated_code": "identity = jnp.eye(matrix_size, dtype=jnp.float33)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 24,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 195,
+      "original_code": "matrix=matrix, num_iters=100, error_tolerance=1e-6, precision=precision",
+      "mutated_code": "matrix=matrix, num_iters=101, error_tolerance=1e-6, precision=precision",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 100 to 101",
+      "status": "survived"
+    },
+    {
+      "id": 25,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 195,
+      "original_code": "matrix=matrix, num_iters=100, error_tolerance=1e-6, precision=precision",
+      "mutated_code": "matrix=matrix, num_iters=100, error_tolerance=1e-7, precision=precision",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 6 to 7",
+      "status": "survived"
+    },
+    {
+      "id": 26,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 197,
+      "original_code": "ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)",
+      "mutated_code": "ridge_epsilon = ridge_epsilon / jnp.maximum(max_ev, 1e-16)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 27,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 197,
+      "original_code": "ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)",
+      "mutated_code": "ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-17)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 16 to 17",
+      "status": "survived"
+    },
+    {
+      "id": 28,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 230,
+      "original_code": "jnp.asarray(exponent, jnp.int32),",
+      "mutated_code": "jnp.asarray(exponent, jnp.int33),",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 29,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 242,
+      "original_code": "error_above_threshold = jnp.logical_and(error > error_tolerance, run_step)",
+      "mutated_code": "error_above_threshold = jnp.logical_and(error >= error_tolerance, run_step)",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: > to >=",
+      "status": "survived"
+    },
+    {
+      "id": 30,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 243,
+      "original_code": "return jnp.logical_and(i < num_iters, error_above_threshold)",
+      "mutated_code": "return jnp.logical_and(i <= num_iters, error_above_threshold)",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 31,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 247,
+      "original_code": "mat_m_i = (1 - alpha) * identity + alpha * mat_m",
+      "mutated_code": "mat_m_i = (1 - alpha) * identity - alpha * mat_m",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 32,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 247,
+      "original_code": "mat_m_i = (1 - alpha) * identity + alpha * mat_m",
+      "mutated_code": "mat_m_i = (1 + alpha) * identity + alpha * mat_m",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 33,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 247,
+      "original_code": "mat_m_i = (1 - alpha) * identity + alpha * mat_m",
+      "mutated_code": "mat_m_i = (1 - alpha) / identity + alpha * mat_m",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 34,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 247,
+      "original_code": "mat_m_i = (1 - alpha) * identity + alpha * mat_m",
+      "mutated_code": "mat_m_i = (1 - alpha) * identity + alpha / mat_m",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 35,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 247,
+      "original_code": "mat_m_i = (1 - alpha) * identity + alpha * mat_m",
+      "mutated_code": "mat_m_i = (2 - alpha) * identity + alpha * mat_m",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 36,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 250,
+      "original_code": "new_error = jnp.max(jnp.abs(new_mat_m - identity))",
+      "mutated_code": "new_error = jnp.max(jnp.abs(new_mat_m + identity))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 37,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 254,
+      "original_code": "i + 1,",
+      "mutated_code": "i - 1,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 38,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 254,
+      "original_code": "i + 1,",
+      "mutated_code": "i + 2,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 39,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 259,
+      "original_code": "new_error < error * 1.2,",
+      "mutated_code": "new_error < error / 1.2,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 40,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 259,
+      "original_code": "new_error < error * 1.2,",
+      "mutated_code": "new_error <= error * 1.2,",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 41,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 259,
+      "original_code": "new_error < error * 1.2,",
+      "mutated_code": "new_error < error * 1.3,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.2 to 1.3",
+      "status": "survived"
+    },
+    {
+      "id": 42,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 262,
+      "original_code": "if matrix_size == 1:",
+      "mutated_code": "if matrix_size != 1:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "survived"
+    },
+    {
+      "id": 43,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 262,
+      "original_code": "if matrix_size == 1:",
+      "mutated_code": "if matrix_size == 2:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 44,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 263,
+      "original_code": "resultant_mat_h = (matrix + ridge_epsilon) ** alpha",
+      "mutated_code": "resultant_mat_h = (matrix - ridge_epsilon) ** alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 45,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 263,
+      "original_code": "resultant_mat_h = (matrix + ridge_epsilon) ** alpha",
+      "mutated_code": "resultant_mat_h = (matrix + ridge_epsilon) * alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: ** to *",
+      "status": "survived"
+    },
+    {
+      "id": 46,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 264,
+      "original_code": "error = 0",
+      "mutated_code": "error = 1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 47,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 266,
+      "original_code": "damped_matrix = matrix + ridge_epsilon * identity",
+      "mutated_code": "damped_matrix = matrix - ridge_epsilon * identity",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 48,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 266,
+      "original_code": "damped_matrix = matrix + ridge_epsilon * identity",
+      "mutated_code": "damped_matrix = matrix + ridge_epsilon / identity",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 49,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 268,
+      "original_code": "z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "mutated_code": "z = (1 - p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 50,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 268,
+      "original_code": "z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "mutated_code": "z = (1 + p) / (2 / jnp.linalg.norm(damped_matrix))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 51,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 268,
+      "original_code": "z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "mutated_code": "z = (1 + p) * (2 * jnp.linalg.norm(damped_matrix))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 52,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 268,
+      "original_code": "z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "mutated_code": "z = (2 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 53,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 268,
+      "original_code": "z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))",
+      "mutated_code": "z = (1 + p) / (3 * jnp.linalg.norm(damped_matrix))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "survived"
+    },
+    {
+      "id": 54,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 269,
+      "original_code": "new_mat_m_0 = damped_matrix * z",
+      "mutated_code": "new_mat_m_0 = damped_matrix / z",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 55,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 270,
+      "original_code": "new_error = jnp.max(jnp.abs(new_mat_m_0 - identity))",
+      "mutated_code": "new_error = jnp.max(jnp.abs(new_mat_m_0 + identity))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 56,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 271,
+      "original_code": "new_mat_h_0 = identity * jnp.power(z, 1.0 / p)",
+      "mutated_code": "new_mat_h_0 = identity / jnp.power(z, 1.0 / p)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 57,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 271,
+      "original_code": "new_mat_h_0 = identity * jnp.power(z, 1.0 / p)",
+      "mutated_code": "new_mat_h_0 = identity * jnp.power(z, 1.0 * p)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "survived"
+    },
+    {
+      "id": 58,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 271,
+      "original_code": "new_mat_h_0 = identity * jnp.power(z, 1.0 / p)",
+      "mutated_code": "new_mat_h_0 = identity * jnp.power(z, 1.1 / p)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "survived"
+    },
+    {
+      "id": 59,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 273,
+      "original_code": "[0, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]",
+      "mutated_code": "[1, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 60,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 278,
+      "original_code": "error = jnp.max(jnp.abs(mat_m - identity))",
+      "mutated_code": "error = jnp.max(jnp.abs(mat_m + identity))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 61,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 279,
+      "original_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501",
+      "mutated_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute+error  # lax-types # noqa: E501",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 62,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 279,
+      "original_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501",
+      "mutated_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax+types # noqa: E501",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 63,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 279,
+      "original_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501",
+      "mutated_code": "is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E52",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 01 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 64,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 280,
+      "original_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h",
+      "mutated_code": "resultant_mat_h = is_converged * mat_h - (1 - is_converged) * old_mat_h",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 65,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 280,
+      "original_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h",
+      "mutated_code": "resultant_mat_h = is_converged * mat_h + (1 + is_converged) * old_mat_h",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 66,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 280,
+      "original_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h",
+      "mutated_code": "resultant_mat_h = is_converged / mat_h + (1 - is_converged) * old_mat_h",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 67,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 280,
+      "original_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h",
+      "mutated_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) / old_mat_h",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "survived"
+    },
+    {
+      "id": 68,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 280,
+      "original_code": "resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h",
+      "mutated_code": "resultant_mat_h = is_converged * mat_h + (2 - is_converged) * old_mat_h",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 69,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 289,
+      "original_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0",
+      "mutated_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size == 0 else 0",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: != to ==",
+      "status": "killed"
+    },
+    {
+      "id": 70,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 289,
+      "original_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0",
+      "mutated_code": "b = jnp.linalg.matrix_norm(matrix, ord=2) if matrix.size != 0 else 0",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 71,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 289,
+      "original_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0",
+      "mutated_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 1 else 0",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 72,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 289,
+      "original_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0",
+      "mutated_code": "b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 73,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 298,
+      "original_code": "unroll: Union[int, bool] = 1,",
+      "mutated_code": "unroll: Union[int, bool] = 2,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 74,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 332,
+      "original_code": "assert A.ndim == 2",
+      "mutated_code": "assert A.ndim != 2",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 75,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 332,
+      "original_code": "assert A.ndim == 2",
+      "mutated_code": "assert A.ndim == 3",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 76,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 333,
+      "original_code": "assert b.ndim in (1, 2)",
+      "mutated_code": "assert b.ndim in (2, 2)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 77,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 333,
+      "original_code": "assert b.ndim in (1, 2)",
+      "mutated_code": "assert b.ndim in (1, 3)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 78,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 334,
+      "original_code": "assert b.shape[0] == A.shape[0]",
+      "mutated_code": "assert b.shape[0] != A.shape[0]",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 79,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 334,
+      "original_code": "assert b.shape[0] == A.shape[0]",
+      "mutated_code": "assert b.shape[1] == A.shape[0]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 80,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 334,
+      "original_code": "assert b.shape[0] == A.shape[0]",
+      "mutated_code": "assert b.shape[0] == A.shape[1]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 81,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 342,
+      "original_code": "L = jnp.where(L == 0, 1, L)  # avoid division by zero below",
+      "mutated_code": "L = jnp.where(L != 0, 1, L)  # avoid division by zero below",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 82,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 342,
+      "original_code": "L = jnp.where(L == 0, 1, L)  # avoid division by zero below",
+      "mutated_code": "L = jnp.where(L == 1, 1, L)  # avoid division by zero below",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 83,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 342,
+      "original_code": "L = jnp.where(L == 0, 1, L)  # avoid division by zero below",
+      "mutated_code": "L = jnp.where(L == 0, 2, L)  # avoid division by zero below",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 84,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 - jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 85,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 - 4 * c ** 2)) / 2",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 86,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 4 / c ** 2)) / 2",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 87,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) * 2",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "survived"
+    },
+    {
+      "id": 88,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 4 * c * 2)) / 2",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: ** to *",
+      "status": "survived"
+    },
+    {
+      "id": 89,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (2 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 90,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(2 + 4 * c ** 2)) / 2",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 91,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 5 * c ** 2)) / 2",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 4 to 5",
+      "status": "survived"
+    },
+    {
+      "id": 92,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 3)) / 2",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "survived"
+    },
+    {
+      "id": 93,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 347,
+      "original_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2",
+      "mutated_code": "cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 3",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2 to 3",
+      "status": "killed"
+    },
+    {
+      "id": 94,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 348,
+      "original_code": "s = (c - 1) / cn",
+      "mutated_code": "s = (c + 1) / cn",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 95,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 348,
+      "original_code": "s = (c - 1) / cn",
+      "mutated_code": "s = (c - 1) * cn",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "survived"
+    },
+    {
+      "id": 96,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 348,
+      "original_code": "s = (c - 1) / cn",
+      "mutated_code": "s = (c - 2) / cn",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 97,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 350,
+      "original_code": "xn = (p - (Q @ p - q) / L).clip(0)",
+      "mutated_code": "xn = (p + (Q @ p - q) / L).clip(0)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 98,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 350,
+      "original_code": "xn = (p - (Q @ p - q) / L).clip(0)",
+      "mutated_code": "xn = (p - (Q @ p + q) / L).clip(0)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 99,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 350,
+      "original_code": "xn = (p - (Q @ p - q) / L).clip(0)",
+      "mutated_code": "xn = (p - (Q @ p - q) * L).clip(0)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 100,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 350,
+      "original_code": "xn = (p - (Q @ p - q) / L).clip(0)",
+      "mutated_code": "xn = (p - (Q @ p - q) / L).clip(1)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 101,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 351,
+      "original_code": "pn = xn + s * (xn - x)",
+      "mutated_code": "pn = xn - s * (xn - x)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "survived"
+    },
+    {
+      "id": 102,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 351,
+      "original_code": "pn = xn + s * (xn - x)",
+      "mutated_code": "pn = xn + s * (xn + x)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 103,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 351,
+      "original_code": "pn = xn + s * (xn - x)",
+      "mutated_code": "pn = xn + s / (xn - x)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 104,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 355,
+      "original_code": "x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])",
+      "mutated_code": "x = jnp.zeros_like(b, shape=A.shape[-1:] - b.shape[1:])",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 105,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 355,
+      "original_code": "x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])",
+      "mutated_code": "x = jnp.zeros_like(b, shape=A.shape[-2:] + b.shape[1:])",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 106,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 355,
+      "original_code": "x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])",
+      "mutated_code": "x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[2:])",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 107,
+      "file_path": "optax/_src/linear_algebra.py",
+      "line_number": 357,
+      "original_code": "c = 0.",
+      "mutated_code": "c = 0.1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0. to 0.1",
+      "status": "survived"
+    }
+  ]
+}

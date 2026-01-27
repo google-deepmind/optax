@@ -1,0 +1,1194 @@
+# Mutation Testing Diff File
+# Target: optax/_src/linear_algebra.py
+# Generated: 2026-01-26 16:35:21
+# Total Mutations: 108
+================================================================================
+
+Mutation #0 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 32
+Status: killed
+
+--- original
++++ mutated
+@@ -32,1 +32,1 @@
+-  return optax.tree.scale(1.0 / optax.tree.norm(x), x)
++  return optax.tree.scale(1.0 * optax.tree.norm(x), x)
+
+Mutation #1 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/_src/linear_algebra.py
+Line: 32
+Status: killed
+
+--- original
++++ mutated
+@@ -32,1 +32,1 @@
+-  return optax.tree.scale(1.0 / optax.tree.norm(x), x)
++  return optax.tree.scale(1.1 / optax.tree.norm(x), x)
+
+Mutation #2 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 58
+Status: killed
+
+--- original
++++ mutated
+@@ -58,1 +58,1 @@
+-  converged = jnp.abs(residual_norm / eig) < error_tolerance
++  converged = jnp.abs(residual_norm * eig) < error_tolerance
+
+Mutation #3 - ROR: Relational Operator Replacement: < to <=
+File: optax/_src/linear_algebra.py
+Line: 58
+Status: survived
+
+--- original
++++ mutated
+@@ -58,1 +58,1 @@
+-  converged = jnp.abs(residual_norm / eig) < error_tolerance
++  converged = jnp.abs(residual_norm / eig) <= error_tolerance
+
+Mutation #4 - ROR: Relational Operator Replacement: < to <=
+File: optax/_src/linear_algebra.py
+Line: 59
+Status: survived
+
+--- original
++++ mutated
+@@ -59,1 +59,1 @@
+-  return ~converged & (iter_num < num_iters)
++  return ~converged & (iter_num <= num_iters)
+
+Mutation #5 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 65
+Status: killed
+
+--- original
++++ mutated
+@@ -65,1 +65,1 @@
+-    *,
++    /,
+
+Mutation #6 - CRP: Constant Replacement: 100 to 101
+File: optax/_src/linear_algebra.py
+Line: 67
+Status: survived
+
+--- original
++++ mutated
+@@ -67,1 +67,1 @@
+-    num_iters: jax.typing.ArrayLike = 100,
++    num_iters: jax.typing.ArrayLike = 101,
+
+Mutation #7 - CRP: Constant Replacement: 6 to 7
+File: optax/_src/linear_algebra.py
+Line: 68
+Status: survived
+
+--- original
++++ mutated
+@@ -68,1 +68,1 @@
+-    error_tolerance: jax.typing.ArrayLike = 1e-6,
++    error_tolerance: jax.typing.ArrayLike = 1e-7,
+
+Mutation #8 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 123
+Status: survived
+
+--- original
++++ mutated
+@@ -123,1 +123,1 @@
+-        key = jax.random.PRNGKey(0)
++        key = jax.random.PRNGKey(1)
+
+Mutation #9 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 127
+Status: survived
+
+--- original
++++ mutated
+@@ -127,1 +127,1 @@
+-          shape=matrix.shape[-1:],
++          shape=matrix.shape[-2:],
+
+Mutation #10 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/_src/linear_algebra.py
+Line: 129
+Status: survived
+
+--- original
++++ mutated
+@@ -129,1 +129,1 @@
+-          minval=-1.0,
++          minval=-1.1,
+
+Mutation #11 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/_src/linear_algebra.py
+Line: 130
+Status: survived
+
+--- original
++++ mutated
+@@ -130,1 +130,1 @@
+-          maxval=1.0,
++          maxval=1.1,
+
+Mutation #12 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 146
+Status: survived
+
+--- original
++++ mutated
+@@ -146,1 +146,1 @@
+-    return eigvec, z, eig, iter_num + 1
++    return eigvec, z, eig, iter_num - 1
+
+Mutation #13 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 146
+Status: survived
+
+--- original
++++ mutated
+@@ -146,1 +146,1 @@
+-    return eigvec, z, eig, iter_num + 1
++    return eigvec, z, eig, iter_num + 2
+
+Mutation #14 - CRP: Constant Replacement: 0.0 to 0.1
+File: optax/_src/linear_algebra.py
+Line: 148
+Status: survived
+
+--- original
++++ mutated
+@@ -148,1 +148,1 @@
+-  init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))
++  init_vars = (v0, mvp(v0), jnp.asarray(0.1), jnp.asarray(0))
+
+Mutation #15 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 148
+Status: survived
+
+--- original
++++ mutated
+@@ -148,1 +148,1 @@
+-  init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(0))
++  init_vars = (v0, mvp(v0), jnp.asarray(0.0), jnp.asarray(1))
+
+Mutation #16 - CRP: Constant Replacement: 100 to 101
+File: optax/_src/linear_algebra.py
+Line: 159
+Status: survived
+
+--- original
++++ mutated
+@@ -159,1 +159,1 @@
+-    num_iters: jax.typing.ArrayLike = 100,
++    num_iters: jax.typing.ArrayLike = 101,
+
+Mutation #17 - CRP: Constant Replacement: 6 to 7
+File: optax/_src/linear_algebra.py
+Line: 160
+Status: survived
+
+--- original
++++ mutated
+@@ -160,1 +160,1 @@
+-    ridge_epsilon: jax.typing.ArrayLike = 1e-6,
++    ridge_epsilon: jax.typing.ArrayLike = 1e-7,
+
+Mutation #18 - CRP: Constant Replacement: 6 to 7
+File: optax/_src/linear_algebra.py
+Line: 161
+Status: survived
+
+--- original
++++ mutated
+@@ -161,1 +161,1 @@
+-    error_tolerance: jax.typing.ArrayLike = 1e-6,
++    error_tolerance: jax.typing.ArrayLike = 1e-7,
+
+Mutation #19 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 191
+Status: survived
+
+--- original
++++ mutated
+@@ -191,1 +191,1 @@
+-  matrix_size = matrix.shape[0]
++  matrix_size = matrix.shape[1]
+
+Mutation #20 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 192
+Status: killed
+
+--- original
++++ mutated
+@@ -192,1 +192,1 @@
+-  alpha = jnp.asarray(-1.0 / p, jnp.float32)
++  alpha = jnp.asarray(-1.0 * p, jnp.float32)
+
+Mutation #21 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/_src/linear_algebra.py
+Line: 192
+Status: survived
+
+--- original
++++ mutated
+@@ -192,1 +192,1 @@
+-  alpha = jnp.asarray(-1.0 / p, jnp.float32)
++  alpha = jnp.asarray(-1.1 / p, jnp.float32)
+
+Mutation #22 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 192
+Status: killed
+
+--- original
++++ mutated
+@@ -192,1 +192,1 @@
+-  alpha = jnp.asarray(-1.0 / p, jnp.float32)
++  alpha = jnp.asarray(-1.0 / p, jnp.float33)
+
+Mutation #23 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 193
+Status: killed
+
+--- original
++++ mutated
+@@ -193,1 +193,1 @@
+-  identity = jnp.eye(matrix_size, dtype=jnp.float32)
++  identity = jnp.eye(matrix_size, dtype=jnp.float33)
+
+Mutation #24 - CRP: Constant Replacement: 100 to 101
+File: optax/_src/linear_algebra.py
+Line: 195
+Status: survived
+
+--- original
++++ mutated
+@@ -195,1 +195,1 @@
+-      matrix=matrix, num_iters=100, error_tolerance=1e-6, precision=precision
++      matrix=matrix, num_iters=101, error_tolerance=1e-6, precision=precision
+
+Mutation #25 - CRP: Constant Replacement: 6 to 7
+File: optax/_src/linear_algebra.py
+Line: 195
+Status: survived
+
+--- original
++++ mutated
+@@ -195,1 +195,1 @@
+-      matrix=matrix, num_iters=100, error_tolerance=1e-6, precision=precision
++      matrix=matrix, num_iters=100, error_tolerance=1e-7, precision=precision
+
+Mutation #26 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 197
+Status: survived
+
+--- original
++++ mutated
+@@ -197,1 +197,1 @@
+-  ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)
++  ridge_epsilon = ridge_epsilon / jnp.maximum(max_ev, 1e-16)
+
+Mutation #27 - CRP: Constant Replacement: 16 to 17
+File: optax/_src/linear_algebra.py
+Line: 197
+Status: survived
+
+--- original
++++ mutated
+@@ -197,1 +197,1 @@
+-  ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)
++  ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-17)
+
+Mutation #28 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 230
+Status: killed
+
+--- original
++++ mutated
+@@ -230,1 +230,1 @@
+-        jnp.asarray(exponent, jnp.int32),
++        jnp.asarray(exponent, jnp.int33),
+
+Mutation #29 - ROR: Relational Operator Replacement: > to >=
+File: optax/_src/linear_algebra.py
+Line: 242
+Status: survived
+
+--- original
++++ mutated
+@@ -242,1 +242,1 @@
+-    error_above_threshold = jnp.logical_and(error > error_tolerance, run_step)
++    error_above_threshold = jnp.logical_and(error >= error_tolerance, run_step)
+
+Mutation #30 - ROR: Relational Operator Replacement: < to <=
+File: optax/_src/linear_algebra.py
+Line: 243
+Status: survived
+
+--- original
++++ mutated
+@@ -243,1 +243,1 @@
+-    return jnp.logical_and(i < num_iters, error_above_threshold)
++    return jnp.logical_and(i <= num_iters, error_above_threshold)
+
+Mutation #31 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 247
+Status: killed
+
+--- original
++++ mutated
+@@ -247,1 +247,1 @@
+-    mat_m_i = (1 - alpha) * identity + alpha * mat_m
++    mat_m_i = (1 - alpha) * identity - alpha * mat_m
+
+Mutation #32 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 247
+Status: killed
+
+--- original
++++ mutated
+@@ -247,1 +247,1 @@
+-    mat_m_i = (1 - alpha) * identity + alpha * mat_m
++    mat_m_i = (1 + alpha) * identity + alpha * mat_m
+
+Mutation #33 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 247
+Status: killed
+
+--- original
++++ mutated
+@@ -247,1 +247,1 @@
+-    mat_m_i = (1 - alpha) * identity + alpha * mat_m
++    mat_m_i = (1 - alpha) / identity + alpha * mat_m
+
+Mutation #34 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 247
+Status: killed
+
+--- original
++++ mutated
+@@ -247,1 +247,1 @@
+-    mat_m_i = (1 - alpha) * identity + alpha * mat_m
++    mat_m_i = (1 - alpha) * identity + alpha / mat_m
+
+Mutation #35 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 247
+Status: killed
+
+--- original
++++ mutated
+@@ -247,1 +247,1 @@
+-    mat_m_i = (1 - alpha) * identity + alpha * mat_m
++    mat_m_i = (2 - alpha) * identity + alpha * mat_m
+
+Mutation #36 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 250
+Status: killed
+
+--- original
++++ mutated
+@@ -250,1 +250,1 @@
+-    new_error = jnp.max(jnp.abs(new_mat_m - identity))
++    new_error = jnp.max(jnp.abs(new_mat_m + identity))
+
+Mutation #37 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 254
+Status: survived
+
+--- original
++++ mutated
+@@ -254,1 +254,1 @@
+-        i + 1,
++        i - 1,
+
+Mutation #38 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 254
+Status: survived
+
+--- original
++++ mutated
+@@ -254,1 +254,1 @@
+-        i + 1,
++        i + 2,
+
+Mutation #39 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 259
+Status: killed
+
+--- original
++++ mutated
+@@ -259,1 +259,1 @@
+-        new_error < error * 1.2,
++        new_error < error / 1.2,
+
+Mutation #40 - ROR: Relational Operator Replacement: < to <=
+File: optax/_src/linear_algebra.py
+Line: 259
+Status: survived
+
+--- original
++++ mutated
+@@ -259,1 +259,1 @@
+-        new_error < error * 1.2,
++        new_error <= error * 1.2,
+
+Mutation #41 - CRP: Constant Replacement: 1.2 to 1.3
+File: optax/_src/linear_algebra.py
+Line: 259
+Status: survived
+
+--- original
++++ mutated
+@@ -259,1 +259,1 @@
+-        new_error < error * 1.2,
++        new_error < error * 1.3,
+
+Mutation #42 - ROR: Relational Operator Replacement: == to !=
+File: optax/_src/linear_algebra.py
+Line: 262
+Status: survived
+
+--- original
++++ mutated
+@@ -262,1 +262,1 @@
+-  if matrix_size == 1:
++  if matrix_size != 1:
+
+Mutation #43 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 262
+Status: survived
+
+--- original
++++ mutated
+@@ -262,1 +262,1 @@
+-  if matrix_size == 1:
++  if matrix_size == 2:
+
+Mutation #44 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 263
+Status: survived
+
+--- original
++++ mutated
+@@ -263,1 +263,1 @@
+-    resultant_mat_h = (matrix + ridge_epsilon) ** alpha
++    resultant_mat_h = (matrix - ridge_epsilon) ** alpha
+
+Mutation #45 - AOR: Arithmetic Operator Replacement: ** to *
+File: optax/_src/linear_algebra.py
+Line: 263
+Status: survived
+
+--- original
++++ mutated
+@@ -263,1 +263,1 @@
+-    resultant_mat_h = (matrix + ridge_epsilon) ** alpha
++    resultant_mat_h = (matrix + ridge_epsilon) * alpha
+
+Mutation #46 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 264
+Status: survived
+
+--- original
++++ mutated
+@@ -264,1 +264,1 @@
+-    error = 0
++    error = 1
+
+Mutation #47 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 266
+Status: survived
+
+--- original
++++ mutated
+@@ -266,1 +266,1 @@
+-    damped_matrix = matrix + ridge_epsilon * identity
++    damped_matrix = matrix - ridge_epsilon * identity
+
+Mutation #48 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 266
+Status: killed
+
+--- original
++++ mutated
+@@ -266,1 +266,1 @@
+-    damped_matrix = matrix + ridge_epsilon * identity
++    damped_matrix = matrix + ridge_epsilon / identity
+
+Mutation #49 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 268
+Status: killed
+
+--- original
++++ mutated
+@@ -268,1 +268,1 @@
+-    z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))
++    z = (1 - p) / (2 * jnp.linalg.norm(damped_matrix))
+
+Mutation #50 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 268
+Status: survived
+
+--- original
++++ mutated
+@@ -268,1 +268,1 @@
+-    z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))
++    z = (1 + p) / (2 / jnp.linalg.norm(damped_matrix))
+
+Mutation #51 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 268
+Status: killed
+
+--- original
++++ mutated
+@@ -268,1 +268,1 @@
+-    z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))
++    z = (1 + p) * (2 * jnp.linalg.norm(damped_matrix))
+
+Mutation #52 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 268
+Status: survived
+
+--- original
++++ mutated
+@@ -268,1 +268,1 @@
+-    z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))
++    z = (2 + p) / (2 * jnp.linalg.norm(damped_matrix))
+
+Mutation #53 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 268
+Status: survived
+
+--- original
++++ mutated
+@@ -268,1 +268,1 @@
+-    z = (1 + p) / (2 * jnp.linalg.norm(damped_matrix))
++    z = (1 + p) / (3 * jnp.linalg.norm(damped_matrix))
+
+Mutation #54 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 269
+Status: survived
+
+--- original
++++ mutated
+@@ -269,1 +269,1 @@
+-    new_mat_m_0 = damped_matrix * z
++    new_mat_m_0 = damped_matrix / z
+
+Mutation #55 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 270
+Status: survived
+
+--- original
++++ mutated
+@@ -270,1 +270,1 @@
+-    new_error = jnp.max(jnp.abs(new_mat_m_0 - identity))
++    new_error = jnp.max(jnp.abs(new_mat_m_0 + identity))
+
+Mutation #56 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 271
+Status: survived
+
+--- original
++++ mutated
+@@ -271,1 +271,1 @@
+-    new_mat_h_0 = identity * jnp.power(z, 1.0 / p)
++    new_mat_h_0 = identity / jnp.power(z, 1.0 / p)
+
+Mutation #57 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 271
+Status: survived
+
+--- original
++++ mutated
+@@ -271,1 +271,1 @@
+-    new_mat_h_0 = identity * jnp.power(z, 1.0 / p)
++    new_mat_h_0 = identity * jnp.power(z, 1.0 * p)
+
+Mutation #58 - CRP: Constant Replacement: 1.0 to 1.1
+File: optax/_src/linear_algebra.py
+Line: 271
+Status: survived
+
+--- original
++++ mutated
+@@ -271,1 +271,1 @@
+-    new_mat_h_0 = identity * jnp.power(z, 1.0 / p)
++    new_mat_h_0 = identity * jnp.power(z, 1.1 / p)
+
+Mutation #59 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 273
+Status: survived
+
+--- original
++++ mutated
+@@ -273,1 +273,1 @@
+-        [0, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]
++        [1, new_mat_m_0, new_mat_h_0, new_mat_h_0, new_error, True]
+
+Mutation #60 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 278
+Status: killed
+
+--- original
++++ mutated
+@@ -278,1 +278,1 @@
+-    error = jnp.max(jnp.abs(mat_m - identity))
++    error = jnp.max(jnp.abs(mat_m + identity))
+
+Mutation #61 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 279
+Status: survived
+
+--- original
++++ mutated
+@@ -279,1 +279,1 @@
+-    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
++    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute+error  # lax-types # noqa: E501
+
+Mutation #62 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 279
+Status: survived
+
+--- original
++++ mutated
+@@ -279,1 +279,1 @@
+-    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
++    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax+types # noqa: E501
+
+Mutation #63 - CRP: Constant Replacement: 01 to 2
+File: optax/_src/linear_algebra.py
+Line: 279
+Status: survived
+
+--- original
++++ mutated
+@@ -279,1 +279,1 @@
+-    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
++    is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E52
+
+Mutation #64 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 280
+Status: survived
+
+--- original
++++ mutated
+@@ -280,1 +280,1 @@
+-    resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
++    resultant_mat_h = is_converged * mat_h - (1 - is_converged) * old_mat_h
+
+Mutation #65 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 280
+Status: survived
+
+--- original
++++ mutated
+@@ -280,1 +280,1 @@
+-    resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
++    resultant_mat_h = is_converged * mat_h + (1 + is_converged) * old_mat_h
+
+Mutation #66 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 280
+Status: survived
+
+--- original
++++ mutated
+@@ -280,1 +280,1 @@
+-    resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
++    resultant_mat_h = is_converged / mat_h + (1 - is_converged) * old_mat_h
+
+Mutation #67 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 280
+Status: survived
+
+--- original
++++ mutated
+@@ -280,1 +280,1 @@
+-    resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
++    resultant_mat_h = is_converged * mat_h + (1 - is_converged) / old_mat_h
+
+Mutation #68 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 280
+Status: survived
+
+--- original
++++ mutated
+@@ -280,1 +280,1 @@
+-    resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
++    resultant_mat_h = is_converged * mat_h + (2 - is_converged) * old_mat_h
+
+Mutation #69 - ROR: Relational Operator Replacement: != to ==
+File: optax/_src/linear_algebra.py
+Line: 289
+Status: killed
+
+--- original
++++ mutated
+@@ -289,1 +289,1 @@
+-  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0
++  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size == 0 else 0
+
+Mutation #70 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 289
+Status: killed
+
+--- original
++++ mutated
+@@ -289,1 +289,1 @@
+-  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0
++  b = jnp.linalg.matrix_norm(matrix, ord=2) if matrix.size != 0 else 0
+
+Mutation #71 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 289
+Status: survived
+
+--- original
++++ mutated
+@@ -289,1 +289,1 @@
+-  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0
++  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 1 else 0
+
+Mutation #72 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 289
+Status: survived
+
+--- original
++++ mutated
+@@ -289,1 +289,1 @@
+-  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0
++  b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 1
+
+Mutation #73 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 298
+Status: survived
+
+--- original
++++ mutated
+@@ -298,1 +298,1 @@
+-    unroll: Union[int, bool] = 1,
++    unroll: Union[int, bool] = 2,
+
+Mutation #74 - ROR: Relational Operator Replacement: == to !=
+File: optax/_src/linear_algebra.py
+Line: 332
+Status: killed
+
+--- original
++++ mutated
+@@ -332,1 +332,1 @@
+-  assert A.ndim == 2
++  assert A.ndim != 2
+
+Mutation #75 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 332
+Status: killed
+
+--- original
++++ mutated
+@@ -332,1 +332,1 @@
+-  assert A.ndim == 2
++  assert A.ndim == 3
+
+Mutation #76 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 333
+Status: killed
+
+--- original
++++ mutated
+@@ -333,1 +333,1 @@
+-  assert b.ndim in (1, 2)
++  assert b.ndim in (2, 2)
+
+Mutation #77 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 333
+Status: killed
+
+--- original
++++ mutated
+@@ -333,1 +333,1 @@
+-  assert b.ndim in (1, 2)
++  assert b.ndim in (1, 3)
+
+Mutation #78 - ROR: Relational Operator Replacement: == to !=
+File: optax/_src/linear_algebra.py
+Line: 334
+Status: killed
+
+--- original
++++ mutated
+@@ -334,1 +334,1 @@
+-  assert b.shape[0] == A.shape[0]
++  assert b.shape[0] != A.shape[0]
+
+Mutation #79 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 334
+Status: killed
+
+--- original
++++ mutated
+@@ -334,1 +334,1 @@
+-  assert b.shape[0] == A.shape[0]
++  assert b.shape[1] == A.shape[0]
+
+Mutation #80 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 334
+Status: killed
+
+--- original
++++ mutated
+@@ -334,1 +334,1 @@
+-  assert b.shape[0] == A.shape[0]
++  assert b.shape[0] == A.shape[1]
+
+Mutation #81 - ROR: Relational Operator Replacement: == to !=
+File: optax/_src/linear_algebra.py
+Line: 342
+Status: killed
+
+--- original
++++ mutated
+@@ -342,1 +342,1 @@
+-  L = jnp.where(L == 0, 1, L)  # avoid division by zero below
++  L = jnp.where(L != 0, 1, L)  # avoid division by zero below
+
+Mutation #82 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 342
+Status: survived
+
+--- original
++++ mutated
+@@ -342,1 +342,1 @@
+-  L = jnp.where(L == 0, 1, L)  # avoid division by zero below
++  L = jnp.where(L == 1, 1, L)  # avoid division by zero below
+
+Mutation #83 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 342
+Status: survived
+
+--- original
++++ mutated
+@@ -342,1 +342,1 @@
+-  L = jnp.where(L == 0, 1, L)  # avoid division by zero below
++  L = jnp.where(L == 0, 2, L)  # avoid division by zero below
+
+Mutation #84 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: killed
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 - jnp.sqrt(1 + 4 * c ** 2)) / 2
+
+Mutation #85 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: killed
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 - 4 * c ** 2)) / 2
+
+Mutation #86 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: killed
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 4 / c ** 2)) / 2
+
+Mutation #87 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) * 2
+
+Mutation #88 - AOR: Arithmetic Operator Replacement: ** to *
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 4 * c * 2)) / 2
+
+Mutation #89 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (2 + jnp.sqrt(1 + 4 * c ** 2)) / 2
+
+Mutation #90 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(2 + 4 * c ** 2)) / 2
+
+Mutation #91 - CRP: Constant Replacement: 4 to 5
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 5 * c ** 2)) / 2
+
+Mutation #92 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: survived
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 4 * c ** 3)) / 2
+
+Mutation #93 - CRP: Constant Replacement: 2 to 3
+File: optax/_src/linear_algebra.py
+Line: 347
+Status: killed
+
+--- original
++++ mutated
+@@ -347,1 +347,1 @@
+-    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
++    cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 3
+
+Mutation #94 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 348
+Status: killed
+
+--- original
++++ mutated
+@@ -348,1 +348,1 @@
+-    s = (c - 1) / cn
++    s = (c + 1) / cn
+
+Mutation #95 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 348
+Status: survived
+
+--- original
++++ mutated
+@@ -348,1 +348,1 @@
+-    s = (c - 1) / cn
++    s = (c - 1) * cn
+
+Mutation #96 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 348
+Status: killed
+
+--- original
++++ mutated
+@@ -348,1 +348,1 @@
+-    s = (c - 1) / cn
++    s = (c - 2) / cn
+
+Mutation #97 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 350
+Status: killed
+
+--- original
++++ mutated
+@@ -350,1 +350,1 @@
+-    xn = (p - (Q @ p - q) / L).clip(0)
++    xn = (p + (Q @ p - q) / L).clip(0)
+
+Mutation #98 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 350
+Status: killed
+
+--- original
++++ mutated
+@@ -350,1 +350,1 @@
+-    xn = (p - (Q @ p - q) / L).clip(0)
++    xn = (p - (Q @ p + q) / L).clip(0)
+
+Mutation #99 - AOR: Arithmetic Operator Replacement: / to *
+File: optax/_src/linear_algebra.py
+Line: 350
+Status: killed
+
+--- original
++++ mutated
+@@ -350,1 +350,1 @@
+-    xn = (p - (Q @ p - q) / L).clip(0)
++    xn = (p - (Q @ p - q) * L).clip(0)
+
+Mutation #100 - CRP: Constant Replacement: 0 to 1
+File: optax/_src/linear_algebra.py
+Line: 350
+Status: killed
+
+--- original
++++ mutated
+@@ -350,1 +350,1 @@
+-    xn = (p - (Q @ p - q) / L).clip(0)
++    xn = (p - (Q @ p - q) / L).clip(1)
+
+Mutation #101 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 351
+Status: survived
+
+--- original
++++ mutated
+@@ -351,1 +351,1 @@
+-    pn = xn + s * (xn - x)
++    pn = xn - s * (xn - x)
+
+Mutation #102 - AOR: Arithmetic Operator Replacement: - to +
+File: optax/_src/linear_algebra.py
+Line: 351
+Status: survived
+
+--- original
++++ mutated
+@@ -351,1 +351,1 @@
+-    pn = xn + s * (xn - x)
++    pn = xn + s * (xn + x)
+
+Mutation #103 - AOR: Arithmetic Operator Replacement: * to /
+File: optax/_src/linear_algebra.py
+Line: 351
+Status: killed
+
+--- original
++++ mutated
+@@ -351,1 +351,1 @@
+-    pn = xn + s * (xn - x)
++    pn = xn + s / (xn - x)
+
+Mutation #104 - AOR: Arithmetic Operator Replacement: + to -
+File: optax/_src/linear_algebra.py
+Line: 355
+Status: killed
+
+--- original
++++ mutated
+@@ -355,1 +355,1 @@
+-  x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])
++  x = jnp.zeros_like(b, shape=A.shape[-1:] - b.shape[1:])
+
+Mutation #105 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 355
+Status: killed
+
+--- original
++++ mutated
+@@ -355,1 +355,1 @@
+-  x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])
++  x = jnp.zeros_like(b, shape=A.shape[-2:] + b.shape[1:])
+
+Mutation #106 - CRP: Constant Replacement: 1 to 2
+File: optax/_src/linear_algebra.py
+Line: 355
+Status: killed
+
+--- original
++++ mutated
+@@ -355,1 +355,1 @@
+-  x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[1:])
++  x = jnp.zeros_like(b, shape=A.shape[-1:] + b.shape[2:])
+
+Mutation #107 - CRP: Constant Replacement: 0. to 0.1
+File: optax/_src/linear_algebra.py
+Line: 357
+Status: survived
+
+--- original
++++ mutated
+@@ -357,1 +357,1 @@
+-  c = 0.
++  c = 0.1
+
