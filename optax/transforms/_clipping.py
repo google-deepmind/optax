@@ -321,8 +321,8 @@ def adaptive_grad_clip(
     clipping: The maximum allowed ratio of update norm to parameter norm.
     eps: An epsilon term to prevent clipping of zero-initialized params.
     axis: Axis or axes along which to compute the unit-wise norm. If None, uses
-      default behavior based on input dimensions. This is useful for custom
-      parameter shapes like Conv3D (ndim=5).
+      default behavior based on input dimensions (including Conv3D, ndim=5).
+      Provide axis for custom parameter shapes beyond the defaults.
 
   Returns:
     A :class:`optax.GradientTransformation` object.

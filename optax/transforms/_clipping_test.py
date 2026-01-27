@@ -132,6 +132,26 @@ class ClippingTest(absltest.TestCase):
     test_utils.assert_trees_all_close(
         unclipped[0], small_conv3d_grad, rtol=1e-6)
 
+  def test_adaptive_grad_clip_default_axis_conv3d(self):
+    """Test adaptive_grad_clip default axis for Conv3D parameters."""
+
+    conv3d_grad = jnp.ones((2, 2, 2, 3, 4)) * 2.0
+    conv3d_param = jnp.ones((2, 2, 2, 3, 4))
+
+    agc_default = _clipping.adaptive_grad_clip(clipping=0.5)
+    clipped, _ = agc_default.update([conv3d_grad], None, [conv3d_param])
+    clipped = clipped[0]
+
+    self.assertEqual(clipped.shape, conv3d_grad.shape)
+
+    grad_norm_default = _clipping.unitwise_norm(clipped)
+    grad_norm_explicit = _clipping.unitwise_norm(clipped, axis=(0, 1, 2, 3))
+    test_utils.assert_trees_all_close(grad_norm_default, grad_norm_explicit)
+
+    param_norm_default = _clipping.unitwise_norm(conv3d_param)
+    max_allowed = 0.5 * param_norm_default + 1e-6
+    self.assertTrue(jnp.all(grad_norm_default <= max_allowed))
+
   def test_unitwise_norm_with_axis(self):
     """Test unitwise_norm function with custom axis parameter."""
 
