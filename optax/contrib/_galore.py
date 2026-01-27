@@ -490,11 +490,11 @@ def galore(
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 9.80E+03
-    Objective function: 9.60E+03
-    Objective function: 9.41E+03
-    Objective function: 9.22E+03
-    Objective function: 9.04E+03
+    Objective function: 9.98E+03
+    Objective function: 9.96E+03
+    Objective function: 9.94E+03
+    Objective function: 9.92E+03
+    Objective function: 9.90E+03
 
   Using weight decay (equivalent to AdamW behavior):
     >>> solver = optax.contrib.galore(
