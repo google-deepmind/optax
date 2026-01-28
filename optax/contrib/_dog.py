@@ -25,7 +25,6 @@ References:
 from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union, Literal
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -38,7 +37,7 @@ class DoGState(NamedTuple):
   """State for DoG optimizer."""
 
   is_init_step: jax.Array  # bool
-  init_params: chex.ArrayTree
+  init_params: base.ArrayTree
   max_dist: jax.Array
   sum_sq_norm_grads: jax.Array
 
@@ -220,7 +219,7 @@ def dog(
 class DoWGState(NamedTuple):
   """State for DoWG optimizer."""
 
-  init_params: chex.ArrayTree
+  init_params: base.ArrayTree
   weighted_sq_norm_grads: jax.Array
   estim_sq_dist: jax.Array
 
