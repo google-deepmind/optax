@@ -23,6 +23,7 @@ from optax import assignment
 from optax import contrib
 from optax import experimental
 from optax import losses
+from optax import microbatching
 from optax import perturbations
 from optax import projections
 from optax import schedules
@@ -158,6 +159,7 @@ from optax.contrib import dpsgd as _deprecated_dpsgd
 
 
 # TODO(mtthss): remove aliases after updates.
+microbatch = microbatching.microbatch
 adaptive_grad_clip = transforms.adaptive_grad_clip
 AdaptiveGradClipState = EmptyState
 clip = transforms.clip
@@ -398,6 +400,7 @@ __all__ = (
     "matrix_inverse_pth_root",
     "measure_with_ema",
     "monitor",
+    "microbatch",
     "MonitorState",
     "multi_normal",
     "multi_transform",  # for backwards compatibility

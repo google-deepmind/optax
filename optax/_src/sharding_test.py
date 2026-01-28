@@ -23,7 +23,6 @@ import jax
 import jax.numpy as jnp
 import optax
 from optax._src import test_utils
-from optax.experimental import microbatching
 
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
@@ -127,10 +126,10 @@ class ShardingTest(parameterized.TestCase):
       data = jnp.arange(16, out_sharding=sharding)
 
       strategy = (
-          microbatching.AccumulationType.CONCAT,
-          microbatching.AccumulationType.SUM,
+          optax.microbatching.AccumulationType.CONCAT,
+          optax.microbatching.AccumulationType.SUM,
       )
-      microbatched_fun = microbatching.microbatch(
+      microbatched_fun = optax.microbatching.microbatch(
           fun, argnums=0, microbatch_size=8, accumulator=strategy
       )
 

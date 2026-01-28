@@ -336,7 +336,6 @@ def microbatch(
     *,
     argnames: str | Sequence[str] = (),
     in_axes: int | Sequence[int] = 0,
-    # TODO(mckennar): Document this option via notebook or doctest.
     num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
   """A general microbatching transformation.
@@ -365,16 +364,15 @@ def microbatch(
 
   Example Usage:
     >>> import jax.numpy as jnp
-    >>> from optax.experimental import microbatching
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
     >>> data = jnp.array([1, 2, 3, 4])
     >>> fun(data)
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
     >>> strategy = (
-    ...    microbatching.AccumulationType.CONCAT,
-    ...    microbatching.AccumulationType.SUM
+    ...    optax.microbatching.AccumulationType.CONCAT,
+    ...    optax.microbatching.AccumulationType.SUM
     ... )
-    >>> microbatched_fun = microbatching.microbatch(
+    >>> microbatched_fun = optax.microbatch(
     ...    fun, argnums=0, microbatch_size=2, accumulator=strategy
     ... )
     >>> microbatched_fun(data)
@@ -451,7 +449,6 @@ def microbatch(
   return microbatched_fun
 
 
-# TODO(mckennar): Create a notebook demonstrating useful use-cases.
 def micro_vmap(
     fun: Function,
     in_axes: int | Sequence[int] = 0,
@@ -474,9 +471,9 @@ def micro_vmap(
   and `out_axes`.
 
   Example Usage:
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> import jax.numpy as jnp
-    >>> microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
+    >>> optax.microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
     Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
 
   Args:
@@ -596,7 +593,7 @@ def micro_grad(
     native jax.value_and_grad due to the built-in microbatching.
 
   Example Usage (see https://arxiv.org/abs/2510.00236):
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> def mean_squared_loss(params, features, targets):
     ...   preds = features @ params
     ...   diff = preds - targets
@@ -604,11 +601,11 @@ def micro_grad(
     >>> params = jnp.zeros(1)
     >>> features = jnp.ones((4, 1))
     >>> targets = jnp.array([0, 2, 4, 6])
-    >>> (grads, squared_grads), aux = microbatching.micro_grad(
+    >>> (grads, squared_grads), aux = optax.microbatching.micro_grad(
     ...     mean_squared_loss,
     ...     argnums=0,
     ...     batch_argnums=(1,2),
-    ...     accumulator=microbatching.AccumulationType.MEAN,
+    ...     accumulator=optax.microbatching.AccumulationType.MEAN,
     ...     transform_fn=lambda x: (x, x**2),
     ...     metrics_fn=jnp.linalg.norm
     ... )(params, features, targets)

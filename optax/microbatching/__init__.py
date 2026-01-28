@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Module providing a general `microbatch` transformation."""
+from . import _microbatching
 
-"""Experimental optax modules."""
-
-from . import _aggregating as aggregating
-
-
-__all__ = [
-    'aggregating',
-]
+Accumulator = _microbatching.Accumulator
+AccumulationType = _microbatching.AccumulationType
+microbatch = _microbatching.microbatch
+micro_grad = _microbatching.micro_grad
+micro_vmap = _microbatching.micro_vmap
+reshape_batch_axis = _microbatching.reshape_batch_axis
