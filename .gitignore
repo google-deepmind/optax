@@ -25,3 +25,5 @@ docs/sg_execution_times.rst
 .idea
 .vscode
 
+.venv/
+mutation_testing/__pycache__/

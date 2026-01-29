@@ -1,0 +1,1310 @@
+{
+  "total_mutations": 130,
+  "killed": 102,
+  "survived": 28,
+  "errors": 0,
+  "mutation_score": 78.46153846153847,
+  "elapsed_time": 574.7492187023163,
+  "mutations": [
+    {
+      "id": 0,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 56,
+      "original_code": "transition_begin: int = 0,",
+      "mutated_code": "transition_begin: int = 1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 1,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 126,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps < 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "killed"
+    },
+    {
+      "id": 2,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 126,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps <= 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 3,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 133,
+      "original_code": "if transition_begin < 0:",
+      "mutated_code": "if transition_begin <= 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 4,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 133,
+      "original_code": "if transition_begin < 0:",
+      "mutated_code": "if transition_begin < 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 5,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 138,
+      "original_code": "transition_begin = 0",
+      "mutated_code": "transition_begin = 1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 6,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 141,
+      "original_code": "count = jnp.clip(count - transition_begin, 0, transition_steps)",
+      "mutated_code": "count = jnp.clip(count + transition_begin, 0, transition_steps)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 7,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 141,
+      "original_code": "count = jnp.clip(count - transition_begin, 0, transition_steps)",
+      "mutated_code": "count = jnp.clip(count - transition_begin, 1, transition_steps)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 8,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 142,
+      "original_code": "frac = 1 - count / transition_steps",
+      "mutated_code": "frac = 1 + count / transition_steps",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 9,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 142,
+      "original_code": "frac = 1 - count / transition_steps",
+      "mutated_code": "frac = 1 - count * transition_steps",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 10,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 142,
+      "original_code": "frac = 1 - count / transition_steps",
+      "mutated_code": "frac = 2 - count / transition_steps",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 11,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 143,
+      "original_code": "return (init_value - end_value) * (frac**power) + end_value",
+      "mutated_code": "return (init_value - end_value) * (frac**power) - end_value",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 12,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 143,
+      "original_code": "return (init_value - end_value) * (frac**power) + end_value",
+      "mutated_code": "return (init_value + end_value) * (frac**power) + end_value",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 13,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 143,
+      "original_code": "return (init_value - end_value) * (frac**power) + end_value",
+      "mutated_code": "return (init_value - end_value) / (frac**power) + end_value",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 14,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 143,
+      "original_code": "return (init_value - end_value) * (frac**power) + end_value",
+      "mutated_code": "return (init_value - end_value) * (frac*power) + end_value",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: ** to *",
+      "status": "killed"
+    },
+    {
+      "id": 15,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 152,
+      "original_code": "transition_begin: int = 0,",
+      "mutated_code": "transition_begin: int = 1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 16,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 197,
+      "original_code": "power=1,",
+      "mutated_code": "power=2,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 17,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 233,
+      "original_code": "all_positive = all(scale >= 0.0 for scale in boundaries_and_scales.values())",
+      "mutated_code": "all_positive = all(scale > 0.0 for scale in boundaries_and_scales.values())",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: >= to >",
+      "status": "survived"
+    },
+    {
+      "id": 18,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 233,
+      "original_code": "all_positive = all(scale >= 0.0 for scale in boundaries_and_scales.values())",
+      "mutated_code": "all_positive = all(scale >= 0.1 for scale in boundaries_and_scales.values())",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "survived"
+    },
+    {
+      "id": 19,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 243,
+      "original_code": "indicator = jnp.maximum(0.0, jnp.sign(threshold - count))",
+      "mutated_code": "indicator = jnp.maximum(0.0, jnp.sign(threshold + count))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 20,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 243,
+      "original_code": "indicator = jnp.maximum(0.0, jnp.sign(threshold - count))",
+      "mutated_code": "indicator = jnp.maximum(0.1, jnp.sign(threshold - count))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "killed"
+    },
+    {
+      "id": 21,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v * indicator - (1 - indicator) * scale * v",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 22,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v * indicator + (1 + indicator) * scale * v",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 23,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v / indicator + (1 - indicator) * scale * v",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 24,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v * indicator + (1 - indicator) / scale * v",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 25,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v * indicator + (1 - indicator) * scale / v",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 26,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 244,
+      "original_code": "v = v * indicator + (1 - indicator) * scale * v",
+      "mutated_code": "v = v * indicator + (2 - indicator) * scale * v",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 27,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 254,
+      "original_code": "transition_begin: int = 0,",
+      "mutated_code": "transition_begin: int = 1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 28,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 288,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps < 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "survived"
+    },
+    {
+      "id": 29,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 288,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps <= 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 30,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 296,
+      "original_code": "if decay_rate == 0:",
+      "mutated_code": "if decay_rate != 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 31,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 296,
+      "original_code": "if decay_rate == 0:",
+      "mutated_code": "if decay_rate == 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 32,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 303,
+      "original_code": "if transition_begin < 0:",
+      "mutated_code": "if transition_begin <= 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "survived"
+    },
+    {
+      "id": 33,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 303,
+      "original_code": "if transition_begin < 0:",
+      "mutated_code": "if transition_begin < 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 34,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 308,
+      "original_code": "transition_begin = 0",
+      "mutated_code": "transition_begin = 1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 35,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 311,
+      "original_code": "clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum",
+      "mutated_code": "clip_fn = jnp.maximum if decay_rate <= 1.0 else jnp.minimum",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "killed"
+    },
+    {
+      "id": 36,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 311,
+      "original_code": "clip_fn = jnp.maximum if decay_rate < 1.0 else jnp.minimum",
+      "mutated_code": "clip_fn = jnp.maximum if decay_rate < 1.1 else jnp.minimum",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 37,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 314,
+      "original_code": "decreased_count = count - transition_begin",
+      "mutated_code": "decreased_count = count + transition_begin",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 38,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 315,
+      "original_code": "p = decreased_count / transition_steps",
+      "mutated_code": "p = decreased_count * transition_steps",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 39,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 319,
+      "original_code": "decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)",
+      "mutated_code": "decreased_count <= 0, init_value, init_value / jnp.power(decay_rate, p)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 40,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 319,
+      "original_code": "decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)",
+      "mutated_code": "decreased_count < 0, init_value, init_value * jnp.power(decay_rate, p)",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "survived"
+    },
+    {
+      "id": 41,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 319,
+      "original_code": "decreased_count <= 0, init_value, init_value * jnp.power(decay_rate, p)",
+      "mutated_code": "decreased_count <= 1, init_value, init_value * jnp.power(decay_rate, p)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 42,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 322,
+      "original_code": "decayed_value = clip_fn(decayed_value, end_value)  # pylint: disable=undefined-variable",
+      "mutated_code": "decayed_value = clip_fn(decayed_value, end_value)  # pylint: disable=undefined+variable",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "survived"
+    },
+    {
+      "id": 43,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 331,
+      "original_code": "alpha: jax.typing.ArrayLike = 0.0,",
+      "mutated_code": "alpha: jax.typing.ArrayLike = 0.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "survived"
+    },
+    {
+      "id": 44,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 332,
+      "original_code": "exponent: jax.typing.ArrayLike = 1.0,",
+      "mutated_code": "exponent: jax.typing.ArrayLike = 1.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 45,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 371,
+      "original_code": "if not decay_steps > 0:",
+      "mutated_code": "if not decay_steps >= 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: > to >=",
+      "status": "killed"
+    },
+    {
+      "id": 46,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 371,
+      "original_code": "if not decay_steps > 0:",
+      "mutated_code": "if not decay_steps > 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 47,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.5 * (1 - jnp.cos(jnp.pi * count / decay_steps))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 48,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.5 / (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 49,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi / count / decay_steps))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 50,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count * decay_steps))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 51,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.6 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.5 to 0.6",
+      "status": "killed"
+    },
+    {
+      "id": 52,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 385,
+      "original_code": "cosine_decay = 0.5 * (1 + jnp.cos(jnp.pi * count / decay_steps))",
+      "mutated_code": "cosine_decay = 0.5 * (2 + jnp.cos(jnp.pi * count / decay_steps))",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 53,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 386,
+      "original_code": "decayed = (1 - alpha) * cosine_decay**exponent + alpha",
+      "mutated_code": "decayed = (1 - alpha) * cosine_decay**exponent - alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 54,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 386,
+      "original_code": "decayed = (1 - alpha) * cosine_decay**exponent + alpha",
+      "mutated_code": "decayed = (1 + alpha) * cosine_decay**exponent + alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 55,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 386,
+      "original_code": "decayed = (1 - alpha) * cosine_decay**exponent + alpha",
+      "mutated_code": "decayed = (1 - alpha) / cosine_decay**exponent + alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 56,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 386,
+      "original_code": "decayed = (1 - alpha) * cosine_decay**exponent + alpha",
+      "mutated_code": "decayed = (1 - alpha) * cosine_decay*exponent + alpha",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: ** to *",
+      "status": "killed"
+    },
+    {
+      "id": 57,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 386,
+      "original_code": "decayed = (1 - alpha) * cosine_decay**exponent + alpha",
+      "mutated_code": "decayed = (2 - alpha) * cosine_decay**exponent + alpha",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 58,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 387,
+      "original_code": "return init_value * decayed",
+      "mutated_code": "return init_value / decayed",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 59,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 397,
+      "original_code": "return (end - start) * pct + start",
+      "mutated_code": "return (end - start) * pct - start",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 60,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 397,
+      "original_code": "return (end - start) * pct + start",
+      "mutated_code": "return (end + start) * pct + start",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 61,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 397,
+      "original_code": "return (end - start) * pct + start",
+      "mutated_code": "return (end - start) / pct + start",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 62,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end - (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 63,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) - 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 64,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start + end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 65,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) / 2.0 / (jnp.cos(jnp.pi * pct) + 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 66,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi / pct) + 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 67,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) * 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 68,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) / 2.1 * (jnp.cos(jnp.pi * pct) + 1)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 2.0 to 2.1",
+      "status": "killed"
+    },
+    {
+      "id": 69,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 405,
+      "original_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)",
+      "mutated_code": "return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 2)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 70,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 455,
+      "original_code": "if interpolate_type == 'linear':",
+      "mutated_code": "if interpolate_type != 'linear':",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 71,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 457,
+      "original_code": "elif interpolate_type == 'cosine':",
+      "mutated_code": "elif interpolate_type != 'cosine':",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 72,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 460,
+      "original_code": "raise ValueError(\"`interpolate_type` must be either 'cosine' or 'linear'\")",
+      "mutated_code": "raise ValueError(\"`interpolate_type` must be either 'cosine' and 'linear'\")",
+      "operator": "LCR",
+      "operator_description": "Logical Connector Replacement: or to and",
+      "status": "survived"
+    },
+    {
+      "id": 73,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 463,
+      "original_code": "boundaries, scales = zip(*sorted(boundaries_and_scales.items()))",
+      "mutated_code": "boundaries, scales = zip(/sorted(boundaries_and_scales.items()))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 74,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 464,
+      "original_code": "if not all(scale >= 0.0 for scale in scales):",
+      "mutated_code": "if not all(scale > 0.0 for scale in scales):",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: >= to >",
+      "status": "survived"
+    },
+    {
+      "id": 75,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 464,
+      "original_code": "if not all(scale >= 0.0 for scale in scales):",
+      "mutated_code": "if not all(scale >= 0.1 for scale in scales):",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "killed"
+    },
+    {
+      "id": 76,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 472,
+      "original_code": "bounds = jnp.stack((0,) + boundaries)",
+      "mutated_code": "bounds = jnp.stack((0,) - boundaries)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 77,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 472,
+      "original_code": "bounds = jnp.stack((0,) + boundaries)",
+      "mutated_code": "bounds = jnp.stack((1,) + boundaries)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 78,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 473,
+      "original_code": "values = jnp.cumprod(jnp.stack((init_value,) + scales))",
+      "mutated_code": "values = jnp.cumprod(jnp.stack((init_value,) - scales))",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 79,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 474,
+      "original_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)",
+      "mutated_code": "interval_sizes = jnp.maximum(bounds[1:] + bounds[:-1], 1)",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 80,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 474,
+      "original_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)",
+      "mutated_code": "interval_sizes = jnp.maximum(bounds[2:] - bounds[:-1], 1)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 81,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 474,
+      "original_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)",
+      "mutated_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-2], 1)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 82,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 474,
+      "original_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 1)",
+      "mutated_code": "interval_sizes = jnp.maximum(bounds[1:] - bounds[:-1], 2)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "survived"
+    },
+    {
+      "id": 83,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 475,
+      "original_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])",
+      "mutated_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count <= bounds[1:])",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: < to <=",
+      "status": "killed"
+    },
+    {
+      "id": 84,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 475,
+      "original_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])",
+      "mutated_code": "indicator = jnp.logical_and(bounds[:-1] < count, count < bounds[1:])",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "killed"
+    },
+    {
+      "id": 85,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 475,
+      "original_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])",
+      "mutated_code": "indicator = jnp.logical_and(bounds[:-2] <= count, count < bounds[1:])",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 86,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 475,
+      "original_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[1:])",
+      "mutated_code": "indicator = jnp.logical_and(bounds[:-1] <= count, count < bounds[2:])",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 87,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 476,
+      "original_code": "pct = (count - bounds[:-1]) / interval_sizes",
+      "mutated_code": "pct = (count + bounds[:-1]) / interval_sizes",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 88,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 476,
+      "original_code": "pct = (count - bounds[:-1]) / interval_sizes",
+      "mutated_code": "pct = (count - bounds[:-1]) * interval_sizes",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 89,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 476,
+      "original_code": "pct = (count - bounds[:-1]) / interval_sizes",
+      "mutated_code": "pct = (count - bounds[:-2]) / interval_sizes",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 90,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 477,
+      "original_code": "interp_vals = interpolate_fn(values[:-1], values[1:], pct)",
+      "mutated_code": "interp_vals = interpolate_fn(values[:-2], values[1:], pct)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 91,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 477,
+      "original_code": "interp_vals = interpolate_fn(values[:-1], values[1:], pct)",
+      "mutated_code": "interp_vals = interpolate_fn(values[:-1], values[2:], pct)",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 92,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 478,
+      "original_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]",
+      "mutated_code": "return indicator.dot(interp_vals) - (bounds[-1] <= count) * values[-1]",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 93,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 478,
+      "original_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]",
+      "mutated_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) / values[-1]",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 94,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 478,
+      "original_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]",
+      "mutated_code": "return indicator.dot(interp_vals) + (bounds[-1] < count) * values[-1]",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "killed"
+    },
+    {
+      "id": 95,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 478,
+      "original_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]",
+      "mutated_code": "return indicator.dot(interp_vals) + (bounds[-2] <= count) * values[-1]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 96,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 478,
+      "original_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-1]",
+      "mutated_code": "return indicator.dot(interp_vals) + (bounds[-1] <= count) * values[-2]",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    },
+    {
+      "id": 97,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 486,
+      "original_code": "pct_start: float = 0.3,",
+      "mutated_code": "pct_start: float = 0.4,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.3 to 0.4",
+      "status": "survived"
+    },
+    {
+      "id": 98,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 487,
+      "original_code": "pct_final: float = 0.85,",
+      "mutated_code": "pct_final: float = 0.95,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.85 to 0.95",
+      "status": "survived"
+    },
+    {
+      "id": 99,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 488,
+      "original_code": "div_factor: float = 25.0,",
+      "mutated_code": "div_factor: float = 25.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 25.0 to 25.1",
+      "status": "survived"
+    },
+    {
+      "id": 100,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 525,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps < 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "killed"
+    },
+    {
+      "id": 101,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 525,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps <= 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 102,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 533,
+      "original_code": "peak_value / div_factor,",
+      "mutated_code": "peak_value * div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 103,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 535,
+      "original_code": "int(pct_start * transition_steps): div_factor,",
+      "mutated_code": "int(pct_start / transition_steps): div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 104,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 536,
+      "original_code": "int(pct_final * transition_steps): 1.0 / div_factor,",
+      "mutated_code": "int(pct_final / transition_steps): 1.0 / div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 105,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 536,
+      "original_code": "int(pct_final * transition_steps): 1.0 / div_factor,",
+      "mutated_code": "int(pct_final * transition_steps): 1.0 * div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 106,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 536,
+      "original_code": "int(pct_final * transition_steps): 1.0 / div_factor,",
+      "mutated_code": "int(pct_final * transition_steps): 1.1 / div_factor,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 107,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 537,
+      "original_code": "transition_steps: 1.0 / final_div_factor,",
+      "mutated_code": "transition_steps: 1.0 * final_div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 108,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 537,
+      "original_code": "transition_steps: 1.0 / final_div_factor,",
+      "mutated_code": "transition_steps: 1.1 / final_div_factor,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 109,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 545,
+      "original_code": "pct_start: float = 0.3,",
+      "mutated_code": "pct_start: float = 0.4,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.3 to 0.4",
+      "status": "survived"
+    },
+    {
+      "id": 110,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 546,
+      "original_code": "div_factor: float = 25.0,",
+      "mutated_code": "div_factor: float = 25.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 25.0 to 25.1",
+      "status": "survived"
+    },
+    {
+      "id": 111,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 578,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps < 0:",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: <= to <",
+      "status": "killed"
+    },
+    {
+      "id": 112,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 578,
+      "original_code": "if transition_steps <= 0:",
+      "mutated_code": "if transition_steps <= 1:",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 113,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 586,
+      "original_code": "peak_value / div_factor,",
+      "mutated_code": "peak_value * div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 114,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 588,
+      "original_code": "int(pct_start * transition_steps): div_factor,",
+      "mutated_code": "int(pct_start / transition_steps): div_factor,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 115,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 589,
+      "original_code": "int(transition_steps): 1.0 / (div_factor * final_div_factor),",
+      "mutated_code": "int(transition_steps): 1.0 / (div_factor / final_div_factor),",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: * to /",
+      "status": "killed"
+    },
+    {
+      "id": 116,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 589,
+      "original_code": "int(transition_steps): 1.0 / (div_factor * final_div_factor),",
+      "mutated_code": "int(transition_steps): 1.0 * (div_factor * final_div_factor),",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 117,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 589,
+      "original_code": "int(transition_steps): 1.0 / (div_factor * final_div_factor),",
+      "mutated_code": "int(transition_steps): 1.1 / (div_factor * final_div_factor),",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "killed"
+    },
+    {
+      "id": 118,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 622,
+      "original_code": "end_value: jax.typing.ArrayLike = 0.0,",
+      "mutated_code": "end_value: jax.typing.ArrayLike = 0.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "survived"
+    },
+    {
+      "id": 119,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 623,
+      "original_code": "exponent: jax.typing.ArrayLike = 1.0,",
+      "mutated_code": "exponent: jax.typing.ArrayLike = 1.1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1.0 to 1.1",
+      "status": "survived"
+    },
+    {
+      "id": 120,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 643,
+      "original_code": "alpha = 0.0 if peak_value == 0.0 else end_value / peak_value",
+      "mutated_code": "alpha = 0.0 if peak_value == 0.0 else end_value * peak_value",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: / to *",
+      "status": "killed"
+    },
+    {
+      "id": 121,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 643,
+      "original_code": "alpha = 0.0 if peak_value == 0.0 else end_value / peak_value",
+      "mutated_code": "alpha = 0.0 if peak_value != 0.0 else end_value / peak_value",
+      "operator": "ROR",
+      "operator_description": "Relational Operator Replacement: == to !=",
+      "status": "killed"
+    },
+    {
+      "id": 122,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 643,
+      "original_code": "alpha = 0.0 if peak_value == 0.0 else end_value / peak_value",
+      "mutated_code": "alpha = 0.1 if peak_value == 0.0 else end_value / peak_value",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "survived"
+    },
+    {
+      "id": 123,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 643,
+      "original_code": "alpha = 0.0 if peak_value == 0.0 else end_value / peak_value",
+      "mutated_code": "alpha = 0.0 if peak_value == 0.1 else end_value / peak_value",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0.0 to 0.1",
+      "status": "killed"
+    },
+    {
+      "id": 124,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 652,
+      "original_code": "decay_steps=decay_steps - warmup_steps,",
+      "mutated_code": "decay_steps=decay_steps + warmup_steps,",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: - to +",
+      "status": "killed"
+    },
+    {
+      "id": 125,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 666,
+      "original_code": "transition_begin: int = 0,",
+      "mutated_code": "transition_begin: int = 1,",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "survived"
+    },
+    {
+      "id": 126,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 731,
+      "original_code": "step = 0",
+      "mutated_code": "step = 1",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 0 to 1",
+      "status": "killed"
+    },
+    {
+      "id": 127,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 733,
+      "original_code": "schedules += [warmup_cosine_decay_schedule(**kwargs)]",
+      "mutated_code": "schedules += [warmup_cosine_decay_schedule(*kwargs)]",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: ** to *",
+      "status": "killed"
+    },
+    {
+      "id": 128,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 734,
+      "original_code": "boundaries += [step + kwargs['decay_steps']]",
+      "mutated_code": "boundaries += [step - kwargs['decay_steps']]",
+      "operator": "AOR",
+      "operator_description": "Arithmetic Operator Replacement: + to -",
+      "status": "killed"
+    },
+    {
+      "id": 129,
+      "file_path": "optax/schedules/_schedule.py",
+      "line_number": 736,
+      "original_code": "return _join.join_schedules(schedules, boundaries[:-1])",
+      "mutated_code": "return _join.join_schedules(schedules, boundaries[:-2])",
+      "operator": "CRP",
+      "operator_description": "Constant Replacement: 1 to 2",
+      "status": "killed"
+    }
+  ]
+}
