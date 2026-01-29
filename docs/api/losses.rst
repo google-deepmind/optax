@@ -4,13 +4,16 @@ Losses
 .. currentmodule:: optax.losses
 
 .. autosummary::
+    barlow_twins_loss
     binary_dice_loss
+    byol_loss
     convex_kl_divergence
     cosine_distance
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
     dice_loss
+    dino_loss
     generalized_kl_divergence
     hinge_loss
     huber_loss
@@ -30,6 +33,7 @@ Losses
     safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
+    simsiam_loss
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels
@@ -37,6 +41,14 @@ Losses
     squared_error
     triplet_margin_loss
 
+
+Barlow Twins loss
+~~~~~~~~~~~~~~~~~
+.. autofunction:: barlow_twins_loss
+
+Byol loss
+~~~~~~~~~
+.. autofunction:: byol_loss
 
 Convex Kullback Leibler divergence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,6 +72,10 @@ Dice loss
 .. autofunction:: dice_loss
 .. autofunction:: multiclass_generalized_dice_loss
 .. autofunction:: binary_dice_loss
+
+DINO loss
+~~~~~~~~~
+.. autofunction:: dino_loss
 
 Fenchel Young loss
 ~~~~~~~~~~~~~~~~~~
@@ -126,6 +142,10 @@ Soft-max cross-entropy
 .. autofunction:: safe_softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: softmax_cross_entropy_with_integer_labels
+
+SimSiam loss
+~~~~~~~~~~~~
+.. autofunction:: simsiam_loss
 
 Sparsemax
 ~~~~~~~~~
