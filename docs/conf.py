@@ -264,7 +264,6 @@ def linkcode_resolve(domain, info):
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
     'flax': ('https://flax.readthedocs.io/en/latest/', None),
-    'chex': ('https://chex.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']
