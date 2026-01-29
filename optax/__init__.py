@@ -399,6 +399,7 @@ __all__ = (
     "MaskedState",
     "matrix_inverse_pth_root",
     "measure_with_ema",
+    "microbatch",
     "monitor",
     "microbatch",
     "MonitorState",
