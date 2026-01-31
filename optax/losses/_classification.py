@@ -927,6 +927,85 @@ def sigmoid_focal_loss(
   return weighted
 
 
+def asymmetric_loss(
+    logits: jax.typing.ArrayLike,
+    label: jax.typing.ArrayLike,
+    gamma_pos: jax.typing.ArrayLike = 0.0,
+    gamma_neg: jax.typing.ArrayLike = 4.0,
+    margin: jax.typing.ArrayLike = 0.05,
+) -> jax.Array:
+  r"""Asymmetric loss (ASL) for sparse multi-label classification.
+
+  An extension of Sigmoid focal loss and Sigmoid binary crossentropy to
+  emphasize loss from predictions for positive labels. ASL adds two mechanisms
+  to counter the accumulation of small errors from a large number of easy
+  negative examples, asymmetric focusing and a hard threshold.
+
+  Asymmetric focusing applies different gammas to the positive and negative
+  components of the loss.
+
+  .. math::
+    loss_{-} = - (p_{-})^\gamma_{-} \log(1 - p_{-})
+    loss_{+} = - (1 - p_{+})^\gamma_{+} \log(p_{+})
+
+  As gamma increases, small errors approach zero faster. Intuitively, with
+  sparse labels, the rare positive label is important so training should give
+  full focus to those errors. With asymmetric focusing, the positive gamma can
+  be set to 0 (no downweighing) while the negative gamma can be set to a higher
+  value (typically between 2--4).
+
+  In addition to focusing, the effect of small negative errors can be further
+  reduced by setting a hard threshold, controlled by the margin parameter. All
+  negative predictions less than margin are zeroed.
+
+  Args:
+    logits: Unnormalized log probabilities.
+    labels: Binary labels {0, 1}.
+    gamma_pos: Focusing parameter for positive examples. Default 0.0.
+    gamma_neg: Focusing parameter for negative examples. Default 4.0.
+    margin: Probability margin for hard thresholding negative cases. 
+      Default 0.05.
+
+  Returns:
+    Loss values with shape identical to `logits`.
+ 
+  References:
+    Ben-Baruch, Ridnik & Zamir et al. `Asymmetric Loss for Multi-Label
+    Classification <https://arxiv.org/abs/2009.14119v4>`_, 2020"""
+  utils.check_subdtype(logits, jnp.floating)
+  labels = jnp.astype(labels, logits.dtype)
+
+  preds = jax.nn.sigmoid(logits)
+
+  if gamma_pos == 0:
+      loss_pos = labels * jax.nn.log_sigmoid(logits)
+  else:
+      weight_pos = jnp.power(1.0 - preds, gamma_pos)
+      loss_pos = labels * weight_pos * jax.nn.log_sigmoid(logits)
+
+
+  # With margin clipping, the log component becomes:
+  #   log(1 - max(preds - margin, 0)).
+  # When the logit is large, the e ** x component of the sigmoid function can
+  # overflow (see sigmoid crossentropy). For better stability, rewrite in
+  # log-space:
+  #   log(sigmoid(-x) + m) = logaddexp(log(1+m), log(m) + x) + log_sigmoid(-x)
+  log_sigmoid_neg = jnp.logaddexp(
+      jnp.log(margin + 1.0), jnp.log(margin) + logits
+  ) + jax.nn.log_sigmoid(-logits)
+
+  # Clip when prediction less than margin and (1 - (preds - margin)) > 1
+  log_sigmoid_neg_clipped = jnp.minimum(0.0, log_sigmoid_neg)
+
+  if gamma_neg == 0:
+      weight_neg = 1.0
+  else:
+      weight_neg = jnp.power(jnp.maximum(0.0, preds - margin), gamma_neg)
+
+  loss_neg = (1.0 - labels) * weight_neg * log_sigmoid_neg_clipped
+
+  return -(loss_pos + loss_neg)
+
 def _multiclass_sparsemax_loss(
     scores: jax.typing.ArrayLike, label: jax.typing.ArrayLike
 ) -> jax.Array:
