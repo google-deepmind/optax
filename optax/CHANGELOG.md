@@ -23,6 +23,8 @@ accelerators, and `pmap` is deprecated.
 `ctc_loss_with_forward_probs`, `ctc_loss`, `sigmoid_focal_loss`) and regression
 losses (`huber_loss`, `cosine_similarity`, `cosine_distance`) no longer support
 positional args for hyperparameter-like inputs.
+- Substituted `chex` types with internally-defined types and removed `chex`
+dependency.
 
 ### Removed
 
