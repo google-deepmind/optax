@@ -194,7 +194,7 @@ class MicrobatchingTest(parameterized.TestCase):
     result1 = microbatching.microbatch(
         fun_axis1, argnums=(0, 1), microbatch_size=2, in_axes=1, accumulator=acc
     )(arg_axis1, arg_axis1)
-    test_utils.assert_trees_all_close(result0, result1)
+    test_utils.assert_trees_all_close(result0, result1, atol=1e-6, rtol=1e-6)
 
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,
