@@ -166,7 +166,7 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> jax.typing.ArrayLike:
     numerical issues.
   """
   vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
-  return jax.tree.reduce(operator.add, vdots, initializer=0)
+  return tree_sum(vdots)
 
 
 def tree_sum(
@@ -490,6 +490,4 @@ def tree_allclose(
   def f(a, b):
     return jnp.allclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
   tree = jax.tree.map(f, a, b)
-  leaves = jax.tree.leaves(tree)
-  result = functools.reduce(operator.and_, leaves, True)
-  return result
+  return jax.tree.reduce(operator.and_, tree, True)

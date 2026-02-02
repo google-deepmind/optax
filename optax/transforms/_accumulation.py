@@ -177,11 +177,8 @@ def skip_not_finite(
       - `num_not_finite`: total number of inf and NaN found in `updates`.
   """
   del gradient_step, params
-  all_is_finite = [
-      jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-      for p in jax.tree.leaves(updates)
-  ]
-  num_not_finite = jnp.sum(jnp.array(all_is_finite))
+  not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
+  num_not_finite = optax.tree.sum(not_finite)
   should_skip = num_not_finite > 0
   return should_skip, {
       'should_skip': should_skip,
@@ -211,9 +208,7 @@ def skip_large_updates(
       - `norm_squared`: overall norm square of the `updates`.
   """
   del gradient_step, params
-  norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)])
-  )
+  norm_sq = optax.tree.norm(updates, squared=True)
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, {'should_skip': should_skip, 'norm_squared': norm_sq}
