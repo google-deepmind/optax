@@ -201,6 +201,7 @@ nb_execution_excludepatterns = [
     'differentially_private_sgd.ipynb',
     'lookahead_mnist.ipynb',
     'mlp_mnist.ipynb',
+    'gradient_accumulation_and_microbatching.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
