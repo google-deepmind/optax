@@ -36,11 +36,9 @@ from optax._src import utils
 from optax.transforms import _masking
 import optax.tree
 
-import warnings
-
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
-_PRECONDITIONINGS = ["frobenius", "spectral", "aol", "schatten"]
+_PRECONDITIONINGS = ['frobenius', 'spectral', 'aol', 'schatten']
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
   (4.0848, -6.8946, 2.9270),
@@ -49,9 +47,9 @@ _DION_NS_COEFFS = [
   (2.8769, -3.1427, 1.2046),
   (2.8366, -3.0525, 1.2012),
 ]
-PRESET_DICT = {
-  "standard": _DEFAULT_NS_COEFFS,
-  "dion": _DION_NS_COEFFS,
+_NS_COEFFS_PRESET_DICT = {
+  'standard': _DEFAULT_NS_COEFFS,
+  'dion': _DION_NS_COEFFS,
 }
 
 
@@ -102,13 +100,13 @@ def _compute_muon_reshape(x: jax.Array, dim_nums: MuonDimensionNumbers
                           ) -> tuple[ReshapeFn, ReshapeFn]:
   """Compute the reshape and inverse functions for an array from a spec."""
   if x.ndim < 2:
-    raise ValueError("Muon optimized parameters must have rank >= 2, got"
-                     f" {x.ndim=}")
+    raise ValueError('Muon optimized parameters must have rank >= 2, got'
+                     f' {x.ndim=}')
   reduction_axes, output_axes = _normalize_axes(x, dim_nums)
   if set(reduction_axes) & set(output_axes):
-    raise ValueError("Normalized reduction axes and output axes must be"
-                     f" disjoint, got {reduction_axes} and {output_axes}."
-                     f" Originally {dim_nums=} and {x.shape=}")
+    raise ValueError('Normalized reduction axes and output axes must be'
+                     f' disjoint, got {reduction_axes} and {output_axes}.'
+                     f' Originally {dim_nums=} and {x.shape=}')
   batch_axes = tuple(sorted(set(range(x.ndim)) - set(reduction_axes)
                             - set(output_axes)))
   transpose = batch_axes + reduction_axes + output_axes
@@ -230,7 +228,7 @@ def _schatten_first_newton_schulz_iteration(
   # Implements the first Newton-Schulz step with Schatten-4 norm
   # preconditioning which allows for better orthogonalization performance.
   a = x @ x.T
-  rescaling = jnp.clip(jnp.linalg.norm(a, ord="fro", axis=(-2, -1)), min=eps)
+  rescaling = jnp.clip(jnp.linalg.norm(a, ord='fro', axis=(-2, -1)), min=eps)
   s = jnp.expand_dims(jax.lax.rsqrt(rescaling), (0, -1))
   x, a = x * s, a * s ** 2
   b = coeffs[1] * a + coeffs[2] * a @ a
@@ -277,11 +275,11 @@ def orthogonalize_via_newton_schulz(
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
     preconditioning: Literal[
-      "frobenius",
-      "spectral",
-      "aol",
-      "schatten",
-    ] = "frobenius",
+      'frobenius',
+      'spectral',
+      'aol',
+      'schatten',
+    ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
 ) -> jax.Array:
@@ -312,13 +310,13 @@ def orthogonalize_via_newton_schulz(
   """
   if x.ndim != 2 and not isinstance(dimension_numbers, MuonDimensionNumbers):
     raise ValueError(
-        f"Input must have shape (m, n) or weight dimension numbers must be"
-        f" provided. Got shape={x.shape} and {dimension_numbers=}.")
+        f'Input must have shape (m, n) or weight dimension numbers must be'
+        f' provided. Got shape={x.shape} and {dimension_numbers=}.')
   if x.ndim == 2:
     dimension_numbers = MuonDimensionNumbers(reduction_axis=0, output_axis=1)
   if ns_coeffs.ndim > 2 or ns_coeffs.shape[-1] != 3:
-    raise ValueError("Newton-Schulz coefficients must have shape (3,) or"
-                     f" (n, 3), got {ns_coeffs.shape}")
+    raise ValueError('Newton-Schulz coefficients must have shape (3,) or'
+                     f' (n, 3), got {ns_coeffs.shape}')
 
   def _orthogonalize(x):
     transposed = False
@@ -327,18 +325,18 @@ def orthogonalize_via_newton_schulz(
       transposed = True
 
     ns_iterators = {
-      "frobenius": _base_ns_iterator,
-      "spectral": _base_ns_iterator,
-      "aol": _aol_ns_iterator,
-      "schatten": _schatten_ns_iterator,
+      'frobenius': _base_ns_iterator,
+      'spectral': _base_ns_iterator,
+      'aol': _aol_ns_iterator,
+      'schatten': _schatten_ns_iterator,
     }
     if preconditioning not in _PRECONDITIONINGS:
-        raise ValueError(f"Unknown preconditioning {preconditioning}")
+        raise ValueError(f'Unknown preconditioning {preconditioning}')
     _ns_iterator = ns_iterators[preconditioning]
 
-    if preconditioning == "frobenius":
-      x /= jnp.linalg.norm(x, ord="fro") + eps
-    elif preconditioning == "spectral":
+    if preconditioning == 'frobenius':
+      x /= jnp.linalg.norm(x, ord='fro') + eps
+    elif preconditioning == 'spectral':
       x /= jnp.linalg.norm(x, ord=2) + eps
     else:
       pass
@@ -387,11 +385,11 @@ def scale_by_muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-      "frobenius",
-      "spectral",
-      "aol",
-      "schatten",
-    ] = "frobenius",
+      'frobenius',
+      'spectral',
+      'aol',
+      'schatten',
+    ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
@@ -414,18 +412,10 @@ def scale_by_muon(
       original updates. See <https://arxiv.org/abs/2409.20325>
     preconditioning: What type of preconditioning to use before NS iterations.
       Available options are:
-      - 'frobenius' (default): Use Frobenius rescaling before NS:
-        safe, standard, but degrades orthogonalization quality when using
-        less than 5 NS steps.
-      - 'spectral' : Use Spectral norm rescaling before NS:
-        much more computationally intensive, but better orthogonalization
-        quality.
-      - 'aol': Use AOL rescalings to improve orthogonality with little to
-        no overhead, usually allows the user to remove one iterative NS step.
-        See <https://arxiv.org/abs/2512.04632>.
-      - 'schatten': Use the Schatten-4 norm for rescaling,
-        allows for better performance with little to no extra cost.
-        See <https://arxiv.org/abs/2506.10935>.
+      - 'frobenius' (default): Use Frobenius rescaling before NS.
+      - 'spectral' : Use Spectral norm rescaling before NS.
+      - 'aol': Use AOL rescaling to improve orthogonality.
+      - 'schatten': Use the Schatten-4 norm for rescaling.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -467,12 +457,12 @@ def scale_by_muon(
 
     if ns_coeffs_.ndim > 2 or ns_coeffs_.shape[-1] != 3:
       raise ValueError(
-          f"ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}"
+          f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
       )
     if ns_coeffs_.ndim == 2:
       if not ns_coeffs_.shape[0] <= ns_steps:
         raise ValueError(
-          f"Not enough coeffs to perform {ns_steps} steps"
+          f'Not enough coeffs to perform {ns_steps} steps'
         )
       ns_coeffs_ = ns_coeffs_[-ns_steps:]
 
@@ -545,11 +535,11 @@ def muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-      "frobenius",
-      "spectral",
-      "aol",
-      "schatten",
-    ] = "frobenius",
+      'frobenius',
+      'spectral',
+      'aol',
+      'schatten',
+    ] = 'frobenius',
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,
     adam_eps_root: jax.typing.ArrayLike = 0.0,
@@ -659,18 +649,18 @@ def muon(
     adam_learning_rate = learning_rate
 
   if isinstance(ns_coeffs, str):
-    if ns_coeffs not in PRESET_DICT:
+    if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
       raise ValueError(
-        f"Unknown ns_coeff preset string: {ns_coeffs}"
+        f'Unknown ns_coeff preset string: {ns_coeffs}'
       )
-    ns_coeffs_ = PRESET_DICT[ns_coeffs]
+    ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
   else:
     ns_coeffs_ = ns_coeffs
 
   # None at root indicates the default 2D rule.
   if muon_weight_dimension_numbers is None:
     param_labels = lambda params: jax.tree.map(
-        lambda x: "muon" if x.ndim == 2 else "adam", params
+        lambda x: 'muon' if x.ndim == 2 else 'adam', params
     )
     muon_weight_dimension_numbers = MuonDimensionNumbers()
   else:
@@ -679,7 +669,7 @@ def muon(
                   if callable(muon_weight_dimension_numbers)
                   else muon_weight_dimension_numbers)
       populate_subtree_ = lambda dim_num, x: jax.tree.map(
-          lambda y: "muon" if dim_num is not None else "adam", x)
+          lambda y: 'muon' if dim_num is not None else 'adam', x)
       # Dimension numbers come first since they can be a prefix mask.
       return jax.tree.map(populate_subtree_, dim_nums, params,
                           is_leaf=lambda x: x is None or _is_weight_dim_nums(x))
@@ -694,7 +684,7 @@ def muon(
     dim_nums = (muon_weight_dimension_numbers(params)
                 if callable(muon_weight_dimension_numbers)
                 else muon_weight_dimension_numbers)
-    mask = jax.tree.map(lambda label: label == "muon", param_labels(params))
+    mask = jax.tree.map(lambda label: label == 'muon', param_labels(params))
     is_leaf = lambda x: (x is None or _is_weight_dim_nums(x)
                          or isinstance(x, _masking.MaskedNode))
     populate_subtree_ = lambda dim_nums, submask: jax.tree.map(
@@ -703,7 +693,7 @@ def muon(
 
   return combine.partition(
       transforms={
-          "muon": combine.chain(
+          'muon': combine.chain(
               scale_by_muon(
                   ns_coeffs=ns_coeffs_,
                   ns_steps=ns_steps,
@@ -722,7 +712,7 @@ def muon(
               transform.add_decayed_weights(weight_decay, weight_decay_mask),
               transform.scale_by_learning_rate(learning_rate),
           ),
-          "adam": alias.adamw(
+          'adam': alias.adamw(
               learning_rate=adam_learning_rate,
               b1=adam_b1,
               b2=adam_b2,
