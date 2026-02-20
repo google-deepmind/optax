@@ -41,6 +41,9 @@ import optax.tree
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'adahessian', 'opt_kwargs': {'learning_rate': 1e-2,
+                                              'update_interval': 10,
+                                              'hessian_power': 0.25}},
     {'opt_name': 'ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'simplified_ademamix', 'opt_kwargs': {'learning_rate': 1e-3}},
     {'opt_name': 'adopt', 'opt_kwargs': {'learning_rate': 1e-2}},
@@ -239,7 +242,7 @@ class ContribTest(parameterized.TestCase):
       update_kwargs = {'unexpected_extra_args_your_optimizer_doesnt_expect': 1}
       if opt_name in ['momo', 'momo_adam', 'sgd']:
         update_kwargs['value'] = value
-      if opt_name in ['sophia']:
+      if opt_name in ['sophia', 'adahessian']:
         update_kwargs['obj_fn'] = objective
       updates, state = opt.update(updates, state, params, **update_kwargs)
       params = update.apply_updates(params, updates)
@@ -295,7 +298,7 @@ class ContribTest(parameterized.TestCase):
           or wrapper_name == 'reduce_on_plateau'
       ):
         update_kwargs = {'value': value}
-      elif opt_name == 'sophia':
+      elif opt_name in ['sophia', 'adahessian']:
         update_kwargs = {'obj_fn': obj_fn}
       else:
         update_kwargs = {}
@@ -322,12 +325,12 @@ class ContribTest(parameterized.TestCase):
       ):
         params = contrib.schedule_free_eval_params(state, params)
 
-    with self.subTest('Test that the optimization converges'):
-      platform = list(jax.tree.leaves(params)[0].devices())[0].platform
-      # GaLore is sensitive to the SVD accuracy and can fail on this example
-      if not (opt_name == 'galore' and platform != 'cpu'):
-        test_utils.assert_trees_all_close(
-            params, final_params, rtol=3e-2, atol=3e-2)
+      with self.subTest('Test that the optimization converges'):
+        platform = list(jax.tree.leaves(params)[0].devices())[0].platform
+        # GaLore is sensitive to the SVD accuracy and can fail on this example.
+        if not (opt_name == 'galore' and platform != 'cpu'):
+          test_utils.assert_trees_all_close(
+              params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
@@ -371,7 +374,7 @@ class ContribTest(parameterized.TestCase):
       update_kwargs = {'value': jnp.array(1.0)}
     else:
       update_kwargs = {}
-    if opt_name == 'sophia':
+    if opt_name in ['sophia', 'adahessian']:
       obj_fn = lambda x: optax.tree.norm(x, squared=True)
       update_fn = functools.partial(opt.update, obj_fn=obj_fn)
       inject_update_fn = functools.partial(opt_inject.update, obj_fn=obj_fn)
@@ -426,7 +429,7 @@ class ContribTest(parameterized.TestCase):
       update_kwargs = {'value': value}
     else:
       update_kwargs = {}
-    if opt_name == 'sophia':
+    if opt_name in ['sophia', 'adahessian']:
       update_fn = functools.partial(opt.update, obj_fn=fun)
     else:
       update_fn = opt.update
@@ -449,7 +452,7 @@ class ContribTest(parameterized.TestCase):
 
     fun = lambda x: jnp.sum(x**2)
 
-    if opt_name == 'sophia':
+    if opt_name in ['sophia', 'adahessian']:
       update_fn = functools.partial(opt.update, obj_fn=fun)
     else:
       update_fn = opt.update
@@ -486,7 +489,7 @@ class ContribTest(parameterized.TestCase):
                              else jnp.bfloat16)  # confuse dtype intentionally
         if opt_name in ['polyak_sgd', 'momo', 'momo_adam']:
           update_kwargs = {'value': value}
-        elif opt_name == 'sophia':
+        elif opt_name in ['sophia', 'adahessian']:
           update_kwargs = {'obj_fn': objective}
         else:
           update_kwargs = {}
@@ -539,7 +542,7 @@ class ContribTest(parameterized.TestCase):
           or wrapper_name == 'reduce_on_plateau'
       ):
         update_kwargs = {'value': value}
-      elif opt_name == 'sophia':
+      elif opt_name in ['sophia', 'adahessian']:
         update_kwargs = {'obj_fn': obj_fn}
       else:
         update_kwargs = {}
