@@ -265,6 +265,7 @@ class MultiSteps:
           int, Callable[[jax.typing.ArrayLike], jax.typing.ArrayLike]],
       use_grad_mean: bool = True,
       should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None,
+      accumulator_dtype: jax.typing.DTypeLike = jnp.float32,
   ):
     """Initializer.
 
@@ -289,6 +290,8 @@ class MultiSteps:
         :class:`optax.MultiStepsState` contains a keyword argument
         ``skip_state`` in which debugging and monitoring information returned by
         ``should_skip_update_fn`` is written.
+      accumulator_dtype: Optional `dtype` to be used for the accumulator;
+        defaults to `float32`.
     """
     self._opt = base.with_extra_args_support(opt)
 
@@ -297,6 +300,7 @@ class MultiSteps:
     else:
       self._every_k_schedule = every_k_schedule
     self._use_grad_mean = use_grad_mean
+    self._accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
     if self._use_grad_mean:
       # Use Welford algorithm for numerically stable aggregation of mean.
@@ -320,13 +324,14 @@ class MultiSteps:
   def init(self, params: Any) -> MultiStepsState:
     """Builds and returns initial `MultiStepsState`."""
     updates = optax.tree.zeros_like(params)
+    acc_grads = optax.tree.zeros_like(params, dtype=self._accumulator_dtype)
     gradient_step = jnp.zeros([], dtype=jnp.int32)
     _, skip_state = self._should_skip_update_fn(updates, gradient_step, params)
     init_state = MultiStepsState(
         mini_step=jnp.zeros([], dtype=jnp.int32),
         gradient_step=gradient_step,
         inner_opt_state=self._opt.init(params),
-        acc_grads=updates,
+        acc_grads=acc_grads,
         skip_state=skip_state,
     )
     return init_state
@@ -359,8 +364,8 @@ class MultiSteps:
       )
 
       final_updates, new_inner_state = self._opt.update(
-          acc_grads, state.inner_opt_state, params=params, **extra_args
-      )
+          optax.tree.cast_like(acc_grads, updates), state.inner_opt_state,
+          params=params, **extra_args)
 
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
@@ -373,13 +378,11 @@ class MultiSteps:
               new_inner_state,
           ),
           acc_grads=jax.tree.map(
-              lambda ga, upd: (1 - emit) * ga.astype(upd.dtype),
+              lambda ga: jnp.astype((1 - emit) * ga, self._accumulator_dtype),
               acc_grads,
-              final_updates,
           ),
           skip_state=skip_state,
       )
-
       final_updates = jax.tree.map(lambda ga: emit * ga, final_updates)
       return final_updates, new_state
 
@@ -390,23 +393,19 @@ class MultiSteps:
       dyn_args = {
           k: v for k, v in extra_args.items() if isinstance(v, jax.Array)}
       eval_fn = functools.partial(self._opt.update, **static_args)
-      zero_updates, new_inner_state = jax.eval_shape(
-          eval_fn, updates, state.inner_opt_state, params=params, **dyn_args)
-      del new_inner_state
+
+      acc_grads = optax.tree.cast_like(state.acc_grads, updates)
+      zero_updates, _ = jax.eval_shape(
+          eval_fn, acc_grads, state.inner_opt_state, params=params, **dyn_args)
       zero_updates = optax.tree.zeros_like(zero_updates)
 
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,
           gradient_step=state.gradient_step,
           inner_opt_state=state.inner_opt_state,
-          acc_grads=jax.tree.map(
-              lambda acc, upd: acc.astype(upd.dtype),
-              state.acc_grads,
-              zero_updates,
-          ),
+          acc_grads=state.acc_grads,
           skip_state=skip_state,
       )
-
       return zero_updates, multi_state_when_skip
 
     new_updates, new_state = lax.cond(
