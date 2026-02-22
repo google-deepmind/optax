@@ -182,7 +182,8 @@ def scale_by_stddev(
     eps_in_sqrt: bool = True,
     bias_correction: bool = False,
 ) -> base.GradientTransformation:
-    """Rescale updates by the root of the centered exp. moving average of squares.
+    """Rescale updates by the root of the centered exp. moving average of
+    squares.
 
     See :func:`optax.rmsprop` for more details.
 
@@ -304,8 +305,8 @@ def scale_by_adam(
         else:
             mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
         # Dozat 2016 https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ
-        # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
-        # unclear why. Other Nadam implementations also omit the extra b2 factor.
+        # unclear why. Other Nadam implementations also omit the extra b2
+        # factor.
         nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
         updates = jax.tree.map(
             lambda m, v: (
@@ -1411,51 +1412,74 @@ def scale_by_optimistic_gradient(
     return base.GradientTransformation(init_fn, update_fn)
 
 
+# ==============================================================================
+# TRANSFORM.PY - ONLY THE CHANGED FUNCTION
+# Replace your existing scale_by_distance_over_gradients with this version
+# ==============================================================================
+#
+# TWO FIXES APPLIED:
+#
+# FIX 1 - C0415 (pylint) / PLC0415 (ruff): Import outside toplevel
+#   Solution: wrap the lazy import with pylint disable/enable block
+#   AND add # noqa: PLC0415 for ruff
+#
+# FIX 2 - E501: Lines >80 chars in docstring
+#   Solution: wrapped all long lines to stay under 80 chars
+#
+# NOTE: The lazy import MUST stay inside the function body because
+# _dog.py imports from optax._src.transform, creating a circular
+# dependency if we put the import at the top of transform.py.
+# The disable comments are the correct/standard way to handle this.
+# ==============================================================================
+
+
 def scale_by_distance_over_gradients(
     reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0
 ) -> base.GradientTransformation:
-    """Distance-over-gradients learning rate-free optimizer.
+  """Distance-over-gradients learning rate-free optimizer.
 
-    .. deprecated::
-      This function is deprecated. Use
-      :func:`optax.contrib.scale_by_l_dog` instead, which provides the same
-      layer-wise DoG functionality in the ``optax.contrib`` module.
+  .. deprecated::
+    This function is deprecated. Use
+    :func:`optax.contrib.scale_by_l_dog` instead, which provides the
+    same layer-wise DoG functionality in the ``optax.contrib`` module.
 
-    This implementation stores a single copy of the model parameters, plus two
-    scalars per parameter array. It is equivalent to "Layer-wise DoG" (LDoG)
-    in the paper.
+  This implementation stores a single copy of the model parameters,
+  plus two scalars per parameter array. It is equivalent to
+  "Layer-wise DoG" (LDoG) in the paper.
 
-    The authors recommend using model averaging with this optimizer.
+  The authors recommend using model averaging with this optimizer.
 
-    Args:
-      reps_rel: Used to compute initial learning rate. Recommended values are
-        1e-4 for models using batch norm, 1e-6 otherwise.
-      eps: Small loading term to avoid divide-by-zero errors.
-      param_dtype: dtype for storing initial parameters.
-      global_scale: Global scale factor, typically 1.0 or -1.0
+  Args:
+    reps_rel: Used to compute initial learning rate. Recommended values
+      are 1e-4 for models using batch norm, 1e-6 otherwise.
+    eps: Small loading term to avoid divide-by-zero errors.
+    param_dtype: dtype for storing initial parameters.
+    global_scale: Global scale factor, typically 1.0 or -1.0
 
-    Returns:
-      A :class:`optax.GradientTransformation` object.
+  Returns:
+    A :class:`optax.GradientTransformation` object.
 
-    References:
-      Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step Size
-      Schedule <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
-    """
-    warnings.warn(
-        "`scale_by_distance_over_gradients` is deprecated. "
-        "Use `optax.contrib.scale_by_l_dog` instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    # Lazy import to avoid circular dependency (contrib imports from _src).
-    from optax.contrib import _dog  # pylint: disable=g-import-not-at-top
-
-    return _dog.scale_by_l_dog(
-        reps_rel=reps_rel,
-        eps=eps,
-        param_dtype=param_dtype,
-        global_scale=global_scale,
-    )
+  References:
+    Ivgi et al, `DoG is SGD's Best Friend: A Parameter-Free Dynamic
+    Step Size Schedule
+    <https://arxiv.org/pdf/2302.12022.pdf>`_, 2023
+  """
+  warnings.warn(
+      '`scale_by_distance_over_gradients` is deprecated. '
+      'Use `optax.contrib.scale_by_l_dog` instead.',
+      DeprecationWarning,
+      stacklevel=2,
+  )
+  # Lazy import to avoid circular dependency (contrib imports from _src).
+  # pylint: disable=g-import-not-at-top
+  from optax.contrib import _dog  # noqa: PLC0415
+  # pylint: enable=g-import-not-at-top
+  return _dog.scale_by_l_dog(
+      reps_rel=reps_rel,
+      eps=eps,
+      param_dtype=param_dtype,
+      global_scale=global_scale,
+  )
 
 
 def scale_by_polyak(

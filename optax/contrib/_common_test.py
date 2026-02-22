@@ -185,7 +185,7 @@ def _setup_rosenbrock(dtype):
 
 
 def _setup_matrix_parabola(dtype):
-    """Quadratic function as an optimization target with 2D tensor parameters."""
+    """Quadratic function as target with 2D tensor parameters."""
     initial_params = jnp.zeros((2, 2), dtype=dtype)
     final_params = jnp.array([[3.0, -2.0], [1.0, 4.0]], dtype=dtype)
 
@@ -324,7 +324,8 @@ class ContribTest(parameterized.TestCase):
 
         with self.subTest("Test that the optimization converges"):
             platform = list(jax.tree.leaves(params)[0].devices())[0].platform
-            # GaLore is sensitive to the SVD accuracy and can fail on this example
+            # GaLore is sensitive to the SVD accuracy and can fail on this
+            # example
             if not (opt_name == "galore" and platform != "cpu"):
                 test_utils.assert_trees_all_close(
                     params, final_params, rtol=3e-2, atol=3e-2
@@ -337,9 +338,10 @@ class ContribTest(parameterized.TestCase):
         """Checks that optimizers can be wrapped in inject_hyperparams."""
         # See also https://github.com/deepmind/optax/issues/412.
         # When debugging this, make sure that options like weight decay or not
-        # are checked by asserting wehter such a value is None or not (see e.g. the
-        # logic in schedule_free_adamw). Some hyperparameters may not be supported
-        # by inject_hyperparams (e.g. warmup_steps). In that case (if you're sure
+        # are checked by asserting wehter such a value is None or not
+        # (see e.g. the logic in schedule_free_adamw). Some hyperparameters
+        # may not be supported by inject_hyperparams (e.g. warmup_steps).
+        # In that case (if you're sure
         # you can ignore such hyperparameter), add the exception below.
         if wrapper_name == "reduce_on_plateau":
             # TODO(vroulet): discuss adding support for reduce_on_plateau
@@ -435,7 +437,8 @@ class ContribTest(parameterized.TestCase):
         # This may end up letting updates have a dtype different from params.
         # The solution is to fix the dtype of the result to the desired dtype
         # (just as done in optax.tree.bias_correction).
-        # Otherwise, just make sure that all variables defined in the optimizer have
+        # Otherwise, just make sure that all variables defined in the optimizer
+        # have the same dtype as the parameters.
         # the same dtype as the parameters.
         dtype = jnp.dtype(dtype)
         opt = _get_opt_factory(opt_name)(**opt_kwargs)
@@ -527,7 +530,8 @@ class ContribTest(parameterized.TestCase):
                     update_kwargs = {"obj_fn": objective}
                 else:
                     update_kwargs = {}
-                # defeat compiler optimization, use lax.cond to check for stability
+                # defeat compiler optimization, use lax.cond to check for
+                # stability
                 cond = jax.random.randint(jax.random.key(0), (), 0, 2) == 0
                 updates, state = jax.lax.cond(
                     cond,
