@@ -34,89 +34,90 @@ import optax.tree
 
 
 class DoGState(NamedTuple):
-  """State for DoG optimizer."""
+    """State for DoG optimizer."""
 
-  is_init_step: jax.Array  # bool
-  init_params: base.ArrayTree
-  max_dist: jax.Array
-  sum_sq_norm_grads: jax.Array
+    is_init_step: jax.Array  # bool
+    init_params: base.ArrayTree
+    max_dist: jax.Array
+    sum_sq_norm_grads: jax.Array
 
 
 def scale_by_dog(
-    init_step: tuple[Literal["distance", "learning_rate", "heuristic"],
-                     jax.typing.ArrayLike],
+    init_step: tuple[
+        Literal["distance", "learning_rate", "heuristic"], jax.typing.ArrayLike
+    ],
     eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformation:
-  r"""Scale by Distance over Gradients (DoG).
+    r"""Scale by Distance over Gradients (DoG).
 
-  See :func:`optax.contrib.dog` for more details.
+    See :func:`optax.contrib.dog` for more details.
 
-  Args:
-    init_step: Initial step specification.
-    eps: Epsilon used for numerical stability.
+    Args:
+      init_step: Initial step specification.
+      eps: Epsilon used for numerical stability.
 
-  Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    Returns:
+      The corresponding :class:`optax.GradientTransformation`.
 
-  .. versionadded:: 0.2.3
+    .. versionadded:: 0.2.3
 
-  .. warning::
-    The authors recommend using model averaging with this optimizer.
+    .. warning::
+      The authors recommend using model averaging with this optimizer.
 
-    This optimizer's ``init`` function should receive the actual parameters (not
-    just dummy parameters) when the ``heuristic`` initial step is used.
-  """
+      This optimizer's ``init`` function should receive the actual parameters (not
+      just dummy parameters) when the ``heuristic`` initial step is used.
+    """
 
-  init_step_type, init_step_value = init_step
+    init_step_type, init_step_value = init_step
 
-  def init_fn(params: base.Params) -> DoGState:
-    # Define state parameters with the lowest dtype of the parameters to avoid
-    # dtype promotion of parameters resulting in a dtype mismatch between
-    # parameters and updates.
-    params_dtype = optax.tree.dtype(params, "lowest")
+    def init_fn(params: base.Params) -> DoGState:
+        # Define state parameters with the lowest dtype of the parameters to avoid
+        # dtype promotion of parameters resulting in a dtype mismatch between
+        # parameters and updates.
+        params_dtype = optax.tree.dtype(params, "lowest")
 
-    if init_step_type == "distance":
-      r_epsilon = init_step_value
-    elif init_step_type == "heuristic":
-      r_epsilon = init_step_value * (1 + optax.tree.norm(params))
-    elif init_step_type == "learning_rate":
-      r_epsilon = 0.0
-    else:
-      raise ValueError(
-          f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
-      )
+        if init_step_type == "distance":
+            r_epsilon = init_step_value
+        elif init_step_type == "heuristic":
+            r_epsilon = init_step_value * (1 + optax.tree.norm(params))
+        elif init_step_type == "learning_rate":
+            r_epsilon = 0.0
+        else:
+            raise ValueError(
+                f"Invalid init_step specification for scale_by_dog: {init_step_type=}"
+            )
 
-    return DoGState(
-        is_init_step=jnp.asarray(True),
-        init_params=params,
-        max_dist=jnp.asarray(r_epsilon, dtype=params_dtype),
-        sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
-    )
+        return DoGState(
+            is_init_step=jnp.asarray(True),
+            init_params=params,
+            max_dist=jnp.asarray(r_epsilon, dtype=params_dtype),
+            sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
+        )
 
-  def update_fn(
-      updates: base.Updates, state: DoGState, params: base.Params
-  ) -> tuple[base.Updates, DoGState]:
-    dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
-    max_dist = jnp.maximum(state.max_dist, dist)
-    sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
-        updates, squared=True
-    )
-    learning_rate = max_dist / jnp.sqrt(sum_sq_norm_grads + eps)
+    def update_fn(
+        updates: base.Updates, state: DoGState, params: base.Params
+    ) -> tuple[base.Updates, DoGState]:
+        dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
+        max_dist = jnp.maximum(state.max_dist, dist)
+        sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
+            updates, squared=True
+        )
+        learning_rate = max_dist / jnp.sqrt(sum_sq_norm_grads + eps)
 
-    if init_step_type == "learning_rate":
-      learning_rate = jnp.where(
-          state.is_init_step, init_step_value, learning_rate
-      )
+        if init_step_type == "learning_rate":
+            learning_rate = jnp.where(
+                state.is_init_step, init_step_value, learning_rate
+            )
 
-    new_updates = optax.tree.scale(learning_rate, updates)
-    return new_updates, DoGState(
-        is_init_step=jnp.asarray(False),
-        init_params=state.init_params,
-        max_dist=max_dist,
-        sum_sq_norm_grads=sum_sq_norm_grads,
-    )
+        new_updates = optax.tree.scale(learning_rate, updates)
+        return new_updates, DoGState(
+            is_init_step=jnp.asarray(False),
+            init_params=state.init_params,
+            max_dist=max_dist,
+            sum_sq_norm_grads=sum_sq_norm_grads,
+        )
 
-  return base.GradientTransformation(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
 
 
 def dog(
@@ -128,7 +129,7 @@ def dog(
     weight_decay: Optional[jax.typing.ArrayLike] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
-  r"""Distance over Gradients (DoG) optimizer.
+    r"""Distance over Gradients (DoG) optimizer.
 
   DoG updates parameters :math:`x_t` with stochastic gradients :math:`g_t`
   according to the update rule:
@@ -207,78 +208,78 @@ def dog(
     This optimizer's ``init`` function should receive the actual parameters (not
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
-  return combine.chain(
-      transform.add_decayed_weights(weight_decay, mask)
-      if weight_decay is not None
-      else base.identity(),
-      scale_by_dog(init_step, eps),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+    return combine.chain(
+        transform.add_decayed_weights(weight_decay, mask)
+        if weight_decay is not None
+        else base.identity(),
+        scale_by_dog(init_step, eps),
+        transform.scale_by_learning_rate(learning_rate),
+    )
 
 
 class DoWGState(NamedTuple):
-  """State for DoWG optimizer."""
+    """State for DoWG optimizer."""
 
-  init_params: base.ArrayTree
-  weighted_sq_norm_grads: jax.Array
-  estim_sq_dist: jax.Array
+    init_params: base.ArrayTree
+    weighted_sq_norm_grads: jax.Array
+    estim_sq_dist: jax.Array
 
 
 def scale_by_dowg(
     init_estim_sq_dist: Optional[jax.typing.ArrayLike] = None,
     eps: jax.typing.ArrayLike = 1e-4,
 ) -> base.GradientTransformation:
-  """Scale by Distance over Weighted Gradients (DoWG).
+    """Scale by Distance over Weighted Gradients (DoWG).
 
-  See :func:`optax.contrib.dowg` for more details.
+    See :func:`optax.contrib.dowg` for more details.
 
-  Args:
-    init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
-      the learning rate, also used as initial guess for the distance to solution
-      if ``init_estim_sq_dist`` is None.
+    Args:
+      init_estim_sq_dist: initial guess of the squared distance to solution.
+      eps: small value to prevent division by zero in the denominator definining,
+        the learning rate, also used as initial guess for the distance to solution
+        if ``init_estim_sq_dist`` is None.
 
-  Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    Returns:
+      The corresponding :class:`optax.GradientTransformation`.
 
-  .. versionadded:: 0.2.3
-  """
+    .. versionadded:: 0.2.3
+    """
 
-  def init_fn(params: base.Params) -> DoWGState:
-    # Define state parameters with the lowest dtype of the parameters to avoid
-    # dtype promotion of parameters resulting in a dtype mismatch between
-    # parameters and updates.
-    params_dtype = optax.tree.dtype(params, "lowest")
-    if init_estim_sq_dist is None:
-      init_estim_sq_dist_ = eps
-    else:
-      init_estim_sq_dist_ = init_estim_sq_dist
-    return DoWGState(
-        init_params=params,
-        estim_sq_dist=jnp.asarray(init_estim_sq_dist_, dtype=params_dtype),
-        weighted_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
-    )
+    def init_fn(params: base.Params) -> DoWGState:
+        # Define state parameters with the lowest dtype of the parameters to avoid
+        # dtype promotion of parameters resulting in a dtype mismatch between
+        # parameters and updates.
+        params_dtype = optax.tree.dtype(params, "lowest")
+        if init_estim_sq_dist is None:
+            init_estim_sq_dist_ = eps
+        else:
+            init_estim_sq_dist_ = init_estim_sq_dist
+        return DoWGState(
+            init_params=params,
+            estim_sq_dist=jnp.asarray(init_estim_sq_dist_, dtype=params_dtype),
+            weighted_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
+        )
 
-  def update_fn(
-      updates: base.Updates, state: DoWGState, params: base.Params
-  ) -> tuple[base.Updates, DoWGState]:
-    curr_sq_dist = optax.tree.norm(
-        optax.tree.sub(state.init_params, params), squared=True
-    )
-    estim_sq_dist = jnp.maximum(state.estim_sq_dist, curr_sq_dist)
-    step_sq_norm_grads = optax.tree.norm(updates, squared=True)
-    weighted_sq_norm_grads = (
-        estim_sq_dist * step_sq_norm_grads + state.weighted_sq_norm_grads
-    )
-    learning_rate = estim_sq_dist / (jnp.sqrt(weighted_sq_norm_grads) + eps)
+    def update_fn(
+        updates: base.Updates, state: DoWGState, params: base.Params
+    ) -> tuple[base.Updates, DoWGState]:
+        curr_sq_dist = optax.tree.norm(
+            optax.tree.sub(state.init_params, params), squared=True
+        )
+        estim_sq_dist = jnp.maximum(state.estim_sq_dist, curr_sq_dist)
+        step_sq_norm_grads = optax.tree.norm(updates, squared=True)
+        weighted_sq_norm_grads = (
+            estim_sq_dist * step_sq_norm_grads + state.weighted_sq_norm_grads
+        )
+        learning_rate = estim_sq_dist / (jnp.sqrt(weighted_sq_norm_grads) + eps)
 
-    new_updates = optax.tree.scale(learning_rate, updates)
-    return new_updates, state._replace(
-        estim_sq_dist=estim_sq_dist,
-        weighted_sq_norm_grads=weighted_sq_norm_grads,
-    )
+        new_updates = optax.tree.scale(learning_rate, updates)
+        return new_updates, state._replace(
+            estim_sq_dist=estim_sq_dist,
+            weighted_sq_norm_grads=weighted_sq_norm_grads,
+        )
 
-  return base.GradientTransformation(init_fn, update_fn)
+    return base.GradientTransformation(init_fn, update_fn)
 
 
 def dowg(
@@ -288,58 +289,198 @@ def dowg(
     weight_decay: Optional[jax.typing.ArrayLike] = None,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ):
-  r"""Distance over weighted Gradients optimizer.
+    r"""Distance over weighted Gradients optimizer.
 
-  Examples:
-    >>> import optax
-    >>> from optax import contrib
-    >>> import jax
-    >>> import jax.numpy as jnp
-    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = contrib.dowg()
-    >>> params = jnp.array([1., 2., 3.])
-    >>> print('Objective function: ', f(params))
-    Objective function:  14.0
-    >>> opt_state = solver.init(params)
-    >>> for _ in range(5):
-    ...  value, grad = jax.value_and_grad(f)(params)
-    ...  updates, opt_state = solver.update(
-    ...    grad, opt_state, params, value=value)
-    ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: ', f(params))
-    Objective function:  13.925367
-    Objective function:  13.872763
-    Objective function:  13.775433
-    Objective function:  13.596172
-    Objective function:  13.268837
+    Examples:
+      >>> import optax
+      >>> from optax import contrib
+      >>> import jax
+      >>> import jax.numpy as jnp
+      >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+      >>> solver = contrib.dowg()
+      >>> params = jnp.array([1., 2., 3.])
+      >>> print('Objective function: ', f(params))
+      Objective function:  14.0
+      >>> opt_state = solver.init(params)
+      >>> for _ in range(5):
+      ...  value, grad = jax.value_and_grad(f)(params)
+      ...  updates, opt_state = solver.update(
+      ...    grad, opt_state, params, value=value)
+      ...  params = optax.apply_updates(params, updates)
+      ...  print('Objective function: ', f(params))
+      Objective function:  13.925367
+      Objective function:  13.872763
+      Objective function:  13.775433
+      Objective function:  13.596172
+      Objective function:  13.268837
 
-  References:
-    Khaled et al., `DoWG Unleashed: An Efficient Universal Parameter-Free
-    Gradient Descent Method <https://arxiv.org/pdf/2305.16284>`_, 2023.
+    References:
+      Khaled et al., `DoWG Unleashed: An Efficient Universal Parameter-Free
+      Gradient Descent Method <https://arxiv.org/pdf/2305.16284>`_, 2023.
 
-  Args:
-    learning_rate: optional learning rate (potentially varying according to some
-      predetermined scheduler).
-    init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
-      the learning rate, also used as initial guess for the distance to solution
-      if ``init_estim_sq_dist`` is None.
-    weight_decay: Strength of the weight decay regularization.
-    mask: A tree with same structure as (or a prefix of) the params PyTree, or a
-      Callable that returns such a pytree given the params/updates. The leaves
-      should be booleans, `True` for leaves/subtrees you want to apply the
-      weight decay to, and `False` for those you want to skip. Note that the
-      gradient transformations is applied to all parameters.
+    Args:
+      learning_rate: optional learning rate (potentially varying according to some
+        predetermined scheduler).
+      init_estim_sq_dist: initial guess of the squared distance to solution.
+      eps: small value to prevent division by zero in the denominator definining,
+        the learning rate, also used as initial guess for the distance to solution
+        if ``init_estim_sq_dist`` is None.
+      weight_decay: Strength of the weight decay regularization.
+      mask: A tree with same structure as (or a prefix of) the params PyTree, or a
+        Callable that returns such a pytree given the params/updates. The leaves
+        should be booleans, `True` for leaves/subtrees you want to apply the
+        weight decay to, and `False` for those you want to skip. Note that the
+        gradient transformations is applied to all parameters.
 
-  Returns:
-    The corresponding :class:`optax.GradientTransformation`.
+    Returns:
+      The corresponding :class:`optax.GradientTransformation`.
 
-  .. versionadded:: 0.2.3
-  """
-  return combine.chain(
-      transform.add_decayed_weights(weight_decay, mask)
-      if weight_decay is not None
-      else base.identity(),
-      scale_by_dowg(init_estim_sq_dist, eps),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+    .. versionadded:: 0.2.3
+    """
+    return combine.chain(
+        transform.add_decayed_weights(weight_decay, mask)
+        if weight_decay is not None
+        else base.identity(),
+        scale_by_dowg(init_estim_sq_dist, eps),
+        transform.scale_by_learning_rate(learning_rate),
+    )
+
+
+class LDoGState(NamedTuple):
+    """State for the Layer-wise DoG (L-DoG) optimizer."""
+
+    max_dist: base.OptState
+    grad_sum_of_squares: base.OptState
+    init_params: base.OptState
+
+
+def scale_by_l_dog(
+    reps_rel: jax.typing.ArrayLike = 1e-6,
+    eps: jax.typing.ArrayLike = 1e-8,
+    param_dtype: jax.typing.DTypeLike = jnp.float32,
+    global_scale: jax.typing.ArrayLike = 1.0,
+) -> base.GradientTransformation:
+    r"""Scale by Layer-wise Distance over Gradients (L-DoG).
+
+    This is the layer-wise variant of :func:`optax.contrib.scale_by_dog`.
+    Each layer gets its own adaptive learning rate, computed from that
+    layer's distance from initialization and gradient sum-of-squares.
+
+    See :func:`optax.contrib.l_dog` for more details.
+
+    Args:
+      reps_rel: Used to compute the initial distance. Recommended values are
+        ``1e-4`` for models using batch norm, ``1e-6`` otherwise.
+      eps: Small constant to avoid divide-by-zero errors.
+      param_dtype: dtype for storing initial parameters.
+      global_scale: Global scale factor, typically ``1.0`` or ``-1.0``.
+
+    Returns:
+      The corresponding :class:`optax.GradientTransformation`.
+
+    References:
+      Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
+      Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
+
+    .. versionadded:: 0.2.4
+
+    .. warning::
+      The authors recommend using model averaging with this optimizer.
+
+    .. seealso::
+      :func:`optax.contrib.scale_by_dog`, :func:`optax.contrib.l_dog`
+    """
+
+    def _l2(x, y=0.0):
+        return jnp.sqrt(jnp.square(x - y).sum())
+
+    def init_fn(params: base.Params) -> LDoGState:
+        return LDoGState(
+            # Initial distance (needed to prevent zero step sizes).
+            max_dist=jax.tree.map(lambda x: reps_rel * (1 + _l2(x)), params),
+            # Initial gradient sum-of-squares (same dtype as params).
+            grad_sum_of_squares=jax.tree.map(
+                lambda x: jnp.zeros(1, dtype=x.dtype), params
+            ),
+            # Initial params, cast to preferred precision.
+            init_params=optax.tree.cast(params, param_dtype),
+        )
+
+    def update_fn(
+        updates: base.Updates, state: LDoGState, params: base.Params
+    ) -> tuple[base.Updates, LDoGState]:
+        # Update max distance per layer.
+        max_dist = jax.tree.map(
+            lambda d, x, y: jnp.maximum(d, _l2(x, y)).astype(d.dtype),
+            state.max_dist,
+            params,
+            state.init_params,
+        )
+
+        # Update gradient sum-of-squares per layer.
+        g_sos = jax.tree.map(
+            lambda x, y: (x + jnp.square(y).sum()).astype(x.dtype),
+            state.grad_sum_of_squares,
+            updates,
+        )
+
+        def _tx(g, d, g_sos):
+            """Apply the layer-wise transformation."""
+            eta = global_scale * (d / jnp.sqrt(g_sos + eps))
+            return (eta * g).astype(g.dtype)
+
+        updates = jax.tree.map(_tx, updates, max_dist, g_sos)
+        new_state = LDoGState(max_dist, g_sos, state.init_params)
+        return updates, new_state
+
+    return base.GradientTransformation(init_fn, update_fn)
+
+
+def l_dog(
+    learning_rate: base.ScalarOrSchedule = 1.0,
+    reps_rel: jax.typing.ArrayLike = 1e-6,
+    eps: jax.typing.ArrayLike = 1e-8,
+    param_dtype: jax.typing.DTypeLike = jnp.float32,
+    weight_decay: Optional[jax.typing.ArrayLike] = None,
+    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+) -> base.GradientTransformation:
+    r"""Layer-wise Distance over Gradients (L-DoG) optimizer.
+
+    L-DoG is the layer-wise variant of :func:`optax.contrib.dog`. Each layer
+    gets its own adaptive learning rate based on that layer's distance from
+    initialization and accumulated gradient norm.
+
+    Args:
+      learning_rate: Optional global learning rate multiplier (potentially
+        varying according to some predetermined scheduler).
+      reps_rel: Used to compute the initial distance. Recommended values are
+        ``1e-4`` for models using batch norm, ``1e-6`` otherwise.
+      eps: Small constant to avoid divide-by-zero errors.
+      param_dtype: dtype for storing initial parameters.
+      weight_decay: Strength of the weight decay regularization.
+      mask: A tree with same structure as (or a prefix of) the params PyTree,
+        or a Callable that returns such a pytree given the params/updates.
+        The leaves should be booleans, ``True`` for leaves/subtrees you want
+        to apply the weight decay to, and ``False`` for those you want to skip.
+
+    Returns:
+      The corresponding :class:`optax.GradientTransformation`.
+
+    References:
+      Ivgi et al., `DoG is SGD's Best Friend: A Parameter-Free Dynamic Step
+      Size Schedule <https://arxiv.org/abs/2302.12022>`_, 2023.
+
+    .. versionadded:: 0.2.4
+
+    .. warning::
+      The authors recommend using model averaging with this optimizer.
+
+    .. seealso:: :func:`optax.contrib.dog`, :func:`optax.contrib.scale_by_l_dog`
+    """
+    return combine.chain(
+        transform.add_decayed_weights(weight_decay, mask)
+        if weight_decay is not None
+        else base.identity(),
+        scale_by_l_dog(reps_rel, eps, param_dtype),
+        transform.scale_by_learning_rate(learning_rate),
+    )
