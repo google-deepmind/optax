@@ -330,8 +330,7 @@ class ContribTest(parameterized.TestCase):
         # GaLore is sensitive to the SVD accuracy and can fail on this example.
         if not (opt_name == 'galore' and platform != 'cpu'):
           test_utils.assert_trees_all_close(
-              params, final_params, rtol=3e-2, atol=3e-2
-          )
+              params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
