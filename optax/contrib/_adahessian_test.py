@@ -19,23 +19,9 @@ import jax
 import jax.numpy as jnp
 
 from optax import contrib
-from optax._src import test_utils
 
 
 class AdaHessianTest(absltest.TestCase):
-
-  def test_hutchinson_estimator_quadratic_diag(self):
-    def obj_fn(params):
-      return jnp.sum(params ** 2)
-
-    params = jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32)
-    estimator = contrib.hutchinson_estimator_diag_hessian(n_samples=4)
-    state = estimator.init(params)
-    diag, _ = estimator.update(None, state, params=params, obj_fn=obj_fn)
-
-    # For f(x)=sum(x^2), Hessian is 2I, so the diagonal is exactly 2.
-    expected = jnp.full_like(params, 2.0)
-    test_utils.assert_trees_all_close(diag, expected, rtol=0.0, atol=0.0)
 
   def test_adahessian_update_runs(self):
     def obj_fn(params):

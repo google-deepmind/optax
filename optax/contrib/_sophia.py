@@ -38,23 +38,6 @@ from optax.contrib import _hutchinson
 HutchinsonState = _hutchinson.HutchinsonState
 
 
-def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
-  """Returns a GradientTransformationExtraArgs computing the Hessian diagonal.
-
-  The Hessian diagonal is estimated using Hutchinson's estimator, which is
-  unbiased but has high variance.
-
-  Args:
-    random_seed: key used to generate random vectors.
-
-  Returns:
-    GradientTransformationExtraArgs
-  """
-  return _hutchinson.hutchinson_estimator_diag_hessian(
-      random_seed=random_seed, n_samples=1
-  )
-
-
 class SophiaState(NamedTuple):
   """State for Sophia Optimizer."""
 
@@ -74,7 +57,7 @@ def scale_by_sophia(
     hessian_diagonal_fn: Union[
         base.GradientTransformation,
         base.GradientTransformationExtraArgs,
-    ] = hutchinson_estimator_diag_hessian(),
+    ] = _hutchinson.hutchinson_estimator_diag_hessian(n_samples=1),
     mu_dtype: Optional[Any] = None,
     verbose: bool = False,
     print_win_rate_every_n_steps: jax.typing.ArrayLike = 0,
@@ -195,7 +178,7 @@ def sophia(
     hessian_diagonal_fn: Union[
         base.GradientTransformation,
         base.GradientTransformationExtraArgs,
-    ] = hutchinson_estimator_diag_hessian(),
+    ] = _hutchinson.hutchinson_estimator_diag_hessian(n_samples=1),
     mu_dtype: Optional[Any] = None,
     verbose: bool = False,
     print_win_rate_every_n_steps: jax.typing.ArrayLike = 0,
@@ -225,7 +208,7 @@ def sophia(
   `updates, state = sophia.update(updates, state, params, obj_fn=sophia_obj_fn)`
 
   Optionally, you can write your own GradientTransformation to compute the
-  hessian diagonal. Use this file's hutchinson_estimator_diag_hessian function
+  hessian diagonal. Use contrib._hutchinson.hutchinson_estimator_diag_hessian
   as an example. If you are using more than one device, be sure the hessian
   diagonal function properly averages the hessian diagonal across devices.
   The default hessian_diagonal_fn does not do this, and would cause params to

@@ -27,28 +27,6 @@ from optax._src import utils
 import optax.tree
 from optax.contrib import _hutchinson
 
-
-def hutchinson_estimator_diag_hessian(
-    random_seed: Optional[jax.Array] = None,
-    n_samples: int = 1,
-):
-  """Returns a GradientTransformationExtraArgs computing the Hessian diagonal.
-
-  The Hessian diagonal is estimated using Hutchinson's estimator, which is
-  unbiased but has high variance. Multiple samples reduce variance.
-
-  Args:
-    random_seed: key used to generate random vectors.
-    n_samples: number of Hutchinson samples to average over per update.
-
-  Returns:
-    GradientTransformationExtraArgs
-  """
-  return _hutchinson.hutchinson_estimator_diag_hessian(
-      random_seed=random_seed, n_samples=n_samples
-  )
-
-
 class AdaHessianState(NamedTuple):
   """State for the AdaHessian optimizer."""
 
@@ -80,7 +58,7 @@ def scale_by_adahessian(
     hessian_diagonal_fn: Union[
         base.GradientTransformation,
         base.GradientTransformationExtraArgs,
-    ] = hutchinson_estimator_diag_hessian(),
+    ] = _hutchinson.hutchinson_estimator_diag_hessian(),
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Rescale updates according to the AdaHessian algorithm.
@@ -174,7 +152,7 @@ def adahessian(
     hessian_diagonal_fn: Union[
         base.GradientTransformation,
         base.GradientTransformationExtraArgs,
-    ] = hutchinson_estimator_diag_hessian(),
+    ] = _hutchinson.hutchinson_estimator_diag_hessian(),
     mu_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
   """AdaHessian optimizer.

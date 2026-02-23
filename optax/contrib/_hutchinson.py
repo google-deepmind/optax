@@ -61,7 +61,8 @@ def hutchinson_estimator_diag_hessian(
       raise ValueError("obj_fn must be provided to hutchinson update function.")
 
     # Split the RNG once per Hutchinson probe.
-    key, *subkeys = jax.random.split(state.key, n_samples + 1)
+    keys = jax.random.split(state.key, n_samples + 1)
+    key, subkeys = keys[0], keys[1:]
 
     def one_sample(subkey):
       # Draw Rademacher vectors and compute v ⊙ (H v) via a JVP.
@@ -77,18 +78,9 @@ def hutchinson_estimator_diag_hessian(
       hvp = jax.jvp(jax.grad(obj_fn), (params,), (random_signs,))[1]
       return jax.tree.map(lambda h, r: h * r, hvp, random_signs)
 
-    # Average multiple unbiased probes to reduce estimator variance.
-    samples = [one_sample(sk) for sk in subkeys]
-
-    def sum_tree(x, y):
-      return jax.tree.map(lambda a, b: a + b, x, y)
-
-    hessian_diag = samples[0]
-    for sample in samples[1:]:
-      hessian_diag = sum_tree(hessian_diag, sample)
-
-    # Normalize by number of samples to keep an unbiased estimator.
-    hessian_diag = jax.tree.map(lambda x: x / n_samples, hessian_diag)
+    # Vectorize probes and average over the sample axis to reduce variance.
+    samples = jax.vmap(one_sample)(subkeys)
+    hessian_diag = jax.tree.map(lambda x: jnp.mean(x, axis=0), samples)
     return hessian_diag, HutchinsonState(key=key)
 
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
