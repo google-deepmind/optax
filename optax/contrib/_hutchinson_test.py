@@ -73,7 +73,9 @@ class HutchinsonTest(absltest.TestCase):
         jax.tree_util.tree_structure(diag), jax.tree_util.tree_structure(params)
     )
     leaves_ok = jax.tree.map(
-        lambda d, p: jnp.all(jnp.isfinite(d)) & (d.shape == p.shape), diag, params
+        lambda d, p: jnp.all(jnp.isfinite(d)) & (d.shape == p.shape),
+        diag,
+        params,
     )
     self.assertTrue(jax.tree.reduce(lambda a, b: a & b, leaves_ok))
 

@@ -27,6 +27,7 @@ from optax._src import utils
 import optax.tree
 from optax.contrib import _hutchinson
 
+
 class AdaHessianState(NamedTuple):
   """State for the AdaHessian optimizer."""
 
