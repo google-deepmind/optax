@@ -38,15 +38,17 @@ class AdaHessianState(NamedTuple):
   hessian_fn_state: Any
 
 
-def _average_conv_kernel_hessian(hessian_diag):
-  """Average per-kernel Hessian values across spatial dims for conv weights."""
-  def maybe_average(h):
+def _postprocess_hessian_diag(hessian_diag):
+  """Apply PyTorch AdaHessian-style postprocessing to Hessian estimates."""
+  def maybe_postprocess(h):
+    if h.ndim <= 2:
+      return jnp.abs(h)
     if h.ndim == 4:
       mean = jnp.mean(jnp.abs(h), axis=(2, 3), keepdims=True)
       return jnp.ones_like(h) * mean
     return h
 
-  return jax.tree.map(maybe_average, hessian_diag)
+  return jax.tree.map(maybe_postprocess, hessian_diag)
 
 
 def scale_by_adahessian(
@@ -100,8 +102,8 @@ def scale_by_adahessian(
           updates, hess_fn_state, params=params, **hess_fn_kwargs
       )
       if average_conv_kernel:
-        # Stabilize conv kernels by averaging across spatial dimensions.
-        hessian_diag = _average_conv_kernel_hessian(hessian_diag)
+        # Match PyTorch AdaHessian postprocessing for tensor rank branches.
+        hessian_diag = _postprocess_hessian_diag(hessian_diag)
       return hess_fn_state, hessian_diag
 
     # Recompute the Hessian diagonal periodically, otherwise reuse the cached
@@ -168,8 +170,8 @@ def adahessian(
     update_interval: Interval for updating the Hessian diagonal estimate.
     weight_decay: Strength of decoupled weight decay regularization.
     weight_decay_mask: mask controlling which params receive weight decay.
-    average_conv_kernel: If True, average Hessian values across spatial
-      dimensions for 4D convolution kernels.
+    average_conv_kernel: If True, apply AdaHessian-style postprocessing:
+      abs values for rank <=2 tensors and spatial averaging for 4D kernels.
     hessian_diagonal_fn: GradientTransformation that computes the diagonal of
       the Hessian. Default is Hutchinson's estimator.
     mu_dtype: dtype of the first moment estimates.
