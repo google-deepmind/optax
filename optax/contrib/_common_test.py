@@ -80,6 +80,12 @@ for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
 _MAIN_OPTIMIZERS_UNDER_TEST += [
     {
         'opt_name': 'sgd',
+        'opt_kwargs': {'learning_rate': 1e-3},
+        'wrapper_name': 'add_cautious_weight_decay',
+        'wrapper_kwargs': {'weight_decay': 1e-2},
+    },
+    {
+        'opt_name': 'sgd',
         'opt_kwargs': {'learning_rate': 1e-1},
         'wrapper_name': 'mechanize',
         'wrapper_kwargs': {'weight_decay': 0.0},
@@ -159,6 +165,11 @@ def _get_opt_factory(opt_name):
 def _wrap_opt(opt, wrapper_name, wrapper_kwargs):
   if wrapper_name == 'reduce_on_plateau':
     return combine.chain(opt, contrib.reduce_on_plateau(**wrapper_kwargs))
+  elif wrapper_name == 'add_cautious_weight_decay':
+    return combine.chain(
+        contrib.add_cautious_weight_decay(**wrapper_kwargs), opt
+    )
+
   return getattr(contrib, wrapper_name)(opt, **wrapper_kwargs)
 
 
@@ -347,6 +358,16 @@ class ContribTest(parameterized.TestCase):
     if wrapper_name is None:
       factory = _get_opt_factory(opt_name)
       hparams = opt_kwargs
+    elif wrapper_name == 'add_cautious_weight_decay':
+      base_opt = _get_opt_factory(opt_name)(**opt_kwargs)
+
+      def factory(weight_decay):
+        return combine.chain(
+            contrib.add_cautious_weight_decay(weight_decay=weight_decay),
+            base_opt,
+        )
+
+      hparams = wrapper_kwargs
     else:
       base_opt = _get_opt_factory(opt_name)(**opt_kwargs)
       factory = getattr(contrib, wrapper_name)
