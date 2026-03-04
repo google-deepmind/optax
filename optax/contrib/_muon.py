@@ -24,6 +24,8 @@ import functools
 import math
 from typing import Any, Callable, NamedTuple, Optional, Union, Sequence, Literal
 
+from absl import logging
+
 import jax
 import jax.numpy as jnp
 
@@ -443,6 +445,9 @@ def scale_by_muon(
       - 'spectral' : Use Spectral norm rescaling before NS.
       - 'aol': Use AOL rescaling to improve orthogonality.
       - 'schatten': Use the Schatten-4 norm for rescaling.
+      - 'polar_express': Use Frobenius norm with a 1.01 safety factor,
+        designed for use with ``ns_coeffs='polar_express'``.
+        See <https://arxiv.org/abs/2505.16932>.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -591,7 +596,8 @@ def muon(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     ns_coeffs: Coefficients for the Newton-schulz method (can be a string
-      indicator for a preset). Existing presets: `muon`, `dion`.
+      indicator for a preset). Existing presets: `standard`, `dion`,
+      `polar_express`.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -623,6 +629,10 @@ def muon(
       - 'schatten': Use the Schatten-4 norm for rescaling,
         allows for better performance with little to no extra cost.
         See <https://arxiv.org/abs/2506.10935>.
+      - 'polar_express': Use Frobenius norm with a 1.01 safety factor
+        for bfloat16 stability, designed for use with
+        ``ns_coeffs='polar_express'``.
+        See <https://arxiv.org/abs/2505.16932>.
     adam_b1: Exponential decay rate for Adam's first moment estimates.
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
@@ -677,10 +687,20 @@ def muon(
   if isinstance(ns_coeffs, str):
     if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
       raise ValueError(f'Unknown ns_coeff preset string: {ns_coeffs}')
-    if ns_coeffs == 'polar_express' and preconditioning != 'polar_express':
-      print("Warning: Using 'polar_express' ns_coeffs without 'polar_express' preconditioning"
-            "is suboptimal.")
+
     ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+
+    if ns_coeffs == 'polar_express' and preconditioning != 'polar_express':
+      logging.warning(
+          'Using polar_express ns_coeffs without polar_express'
+          ' preconditioning is suboptimal and might lead to instability.'
+      )
+    if (preconditioning == 'polar_express'
+        and ns_coeffs != 'polar_express'):
+      logging.warning(
+          'Using polar_express preconditioning without polar_express'
+          ' ns_coeffs is not recommended.'
+      )
 
     if ns_coeffs == 'polar_express' and ns_steps > len(ns_coeffs_):
       n_pad = ns_steps - len(ns_coeffs_)
@@ -756,14 +776,3 @@ def muon(
       },
       param_labels=param_labels,
   )
-
-# %%
-ns_coeffs = 'polar_express'
-ns_steps = 10
-ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
-print(len(ns_coeffs_), ns_coeffs_)
-if ns_coeffs == 'polar_express' and ns_steps > len(ns_coeffs_):
-    n_pad = ns_steps - len(ns_coeffs_)
-    ns_coeffs_ = list(ns_coeffs_) + [ns_coeffs_[-1]] * n_pad
-
-print(len(ns_coeffs_), ns_coeffs_)
