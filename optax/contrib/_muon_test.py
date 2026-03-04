@@ -118,7 +118,8 @@ class MuonTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(reconstructed_x, x)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('polar_express', 'polar_express'),
   )
   def test_callable_weight_dim_nums(self, preconditioning):
     # Case 1: a dim nums for all weights, no matter if they're muon.
@@ -144,7 +145,8 @@ class MuonTest(parameterized.TestCase):
     _, _ = opt.update(params, state, params=params)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('polar_express', 'polar_express'),
   )
   def test_reshape_update_for_square_parameter_matches_muon_without_dim_nums(
       self, preconditioning
@@ -164,7 +166,8 @@ class MuonTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('polar_express', 'polar_express'),
   )
   def test_reshape_and_update_single_param(self, preconditioning):
     # Use 2D parameter (10, 12) with no dimension numbers as groundtruth
@@ -211,7 +214,8 @@ class MuonTest(parameterized.TestCase):
           atol=1e-5)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('polar_express', 'polar_express'),
   )
   def test_dim_nums_combinations(self, preconditioning):
     get_muon_mu = lambda state: state[0]['muon'][0][0][1]
@@ -355,6 +359,9 @@ class MuonTest(parameterized.TestCase):
       ('aol_square', 'aol', (100, 100)),
       ('aol_tall', 'aol', (100, 50)),
       ('aol_wide', 'aol', (50, 100)),
+      ('polar_express_square', 'polar_express', (100, 100)),
+      ('polar_express_tall', 'polar_express', (100, 50)),
+      ('polar_express_wide', 'polar_express', (50, 100)),
   )
   def test_muon_orthogonalization_modes(self, preconditioning, shape):
     """Tests that Muon runs and produces near-orthogonal updates."""
@@ -401,7 +408,8 @@ class MuonTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(u_schatten, u_aol)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('polar_express', 'polar_express'),
   )
   def test_orthogonality(self, preconditioning):
     """Ensures that updates satisfy approximate orthogonality (U^T U ≈ I)."""
@@ -419,6 +427,47 @@ class MuonTest(parameterized.TestCase):
     ortho_error = jnp.linalg.norm(gram - jnp.eye(gram.shape[0]))
     self.assertLess(ortho_error, 1e-3,
                     f'Orthogonality error too high: {ortho_error}')
+
+  def test_polar_express(self):
+    """Tests PolarExpress ns_coeffs with polar_express preconditioning."""
+    params = {'w': jnp.eye(8) * 2.0}
+    opt = _muon.muon(
+        learning_rate=0.1,
+        ns_coeffs='polar_express',
+        preconditioning='polar_express',
+        ns_steps=8,
+    )
+    updates, _ = opt.update(params, opt.init(params), params)
+    w_update = updates['w']
+
+    for leaf in jax.tree_util.tree_leaves(updates):
+      self.assertFalse(jnp.isnan(leaf).any(),
+                       'Found NaN values in polar_express updates')
+
+    # Check orthogonality.
+    gram = jnp.dot(w_update.T, w_update)
+    gram = gram / jnp.max(gram)
+    ortho_error = jnp.linalg.norm(gram - jnp.eye(gram.shape[0]))
+    self.assertLess(ortho_error, 1e-3,
+                    f'Orthogonality error too high: {ortho_error}')
+
+  def test_polar_express_numerical_difference(self):
+    """Ensures PolarExpress produces different updates than standard Muon."""
+    params = {'w': jnp.eye(8) * 2.0}
+
+    opt_std = _muon.muon(learning_rate=0.1, preconditioning='frobenius')
+    u_std, _ = opt_std.update(params, opt_std.init(params), params)
+
+    opt_pe = _muon.muon(
+        learning_rate=0.1,
+        ns_coeffs='polar_express',
+        preconditioning='polar_express',
+        ns_steps=8,
+    )
+    u_pe, _ = opt_pe.update(params, opt_pe.init(params), params)
+
+    with self.assertRaises(AssertionError):
+      test_utils.assert_trees_all_close(u_std, u_pe)
 
 
 if __name__ == '__main__':
