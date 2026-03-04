@@ -489,7 +489,7 @@ def scale_by_muon(
     if ns_coeffs_.ndim == 2:
       if ns_coeffs_.shape[0] < ns_steps:
         raise ValueError(f'Not enough coeffs to perform {ns_steps} steps')
-      ns_coeffs_ = ns_coeffs_[-ns_steps:]
+      ns_coeffs_ = ns_coeffs_[:ns_steps]
 
     return MuonState(
         count=jnp.zeros([], jnp.int32),
@@ -755,3 +755,14 @@ def muon(
       },
       param_labels=param_labels,
   )
+
+# %%
+ns_coeffs = 'polar_express'
+ns_steps = 10
+ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+print(len(ns_coeffs_), ns_coeffs_)
+if ns_coeffs == 'polar_express' and ns_steps > len(ns_coeffs_):
+    n_pad = ns_steps - len(ns_coeffs_)
+    ns_coeffs_ = list(ns_coeffs_) + [ns_coeffs_[-1]] * n_pad
+
+print(len(ns_coeffs_), ns_coeffs_)
