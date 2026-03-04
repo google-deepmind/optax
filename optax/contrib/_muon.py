@@ -38,7 +38,7 @@ import optax.tree
 
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
-_PRECONDITIONINGS = ['frobenius', 'spectral', 'aol', 'schatten']
+_PRECONDITIONINGS = ['frobenius', 'spectral', 'aol', 'schatten', 'polar_express']
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
     (4.0848, -6.8946, 2.9270),
@@ -47,9 +47,30 @@ _DION_NS_COEFFS = [
     (2.8769, -3.1427, 1.2046),
     (2.8366, -3.0525, 1.2012),
 ]
+_POLAR_EXPRESS_RAW_COEFFS = [
+    (8.28721201814563, -23.595886519098837, 17.300387312530933),
+    (4.107059111542203, -2.9478499167379106, 0.5448431082926601),
+    (3.9486908534822946, -2.908902115962949, 0.5518191394370137),
+    (3.3184196573706015, -2.488488024314874, 0.51004894012372),
+    (2.300652019954817, -1.6689039845747493, 0.4188073119525673),
+    (1.891301407787398, -1.2679958271945868, 0.37680408948524835),
+    (1.8750014808534479, -1.2500016453999487, 0.3750001645474248),
+    (1.875, -1.25, 0.375),  # subsequent coeffs equal this numerically
+]
+# Safety factor adjustment for numerical stability
+# See Section 4.4 of Amsel et al., 2025.
+_POLAR_EXPRESS_SAFETY = 1.01
+_POLAR_EXPRESS_NS_COEFFS = [
+    (a / _POLAR_EXPRESS_SAFETY,
+     b / _POLAR_EXPRESS_SAFETY**3,
+     c / _POLAR_EXPRESS_SAFETY**5)
+    for a, b, c in _POLAR_EXPRESS_RAW_COEFFS[:-1]
+] + [_POLAR_EXPRESS_RAW_COEFFS[-1]]
+
 _NS_COEFFS_PRESET_DICT = {
     'standard': _DEFAULT_NS_COEFFS,
     'dion': _DION_NS_COEFFS,
+    'polar_express': _POLAR_EXPRESS_NS_COEFFS,
 }
 
 
@@ -280,7 +301,7 @@ def orthogonalize_via_newton_schulz(
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten'
+        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
     ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
@@ -331,6 +352,7 @@ def orthogonalize_via_newton_schulz(
         'spectral': _base_ns_iterator,
         'aol': _aol_ns_iterator,
         'schatten': _schatten_ns_iterator,
+        'polar_express': _base_ns_iterator,
     }
     if preconditioning not in _PRECONDITIONINGS:
       raise ValueError(f'Unknown preconditioning {preconditioning}')
@@ -340,6 +362,8 @@ def orthogonalize_via_newton_schulz(
       x /= jnp.linalg.norm(x, ord='fro') + eps
     elif preconditioning == 'spectral':
       x /= jnp.linalg.norm(x, ord=2) + eps
+    elif preconditioning == 'polar_express':
+      x /= jnp.linalg.norm(x, ord='fro') * _POLAR_EXPRESS_SAFETY + eps
     else:
       pass
 
@@ -391,7 +415,7 @@ def scale_by_muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten'
+        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
@@ -540,7 +564,7 @@ def muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten'
+        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
     ] = 'frobenius',
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,
@@ -653,6 +677,9 @@ def muon(
   if isinstance(ns_coeffs, str):
     if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
       raise ValueError(f'Unknown ns_coeff preset string: {ns_coeffs}')
+    if ns_coeffs == 'polar_express' and preconditioning != 'polar_express':
+        print("Warning: Using 'polar_express' ns_coeffs without 'polar_express' preconditioning"
+              "is suboptimal.")
     ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
   else:
     ns_coeffs_ = ns_coeffs
