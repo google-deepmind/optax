@@ -695,8 +695,7 @@ def muon(
           'Using polar_express ns_coeffs without polar_express'
           ' preconditioning is suboptimal and might lead to instability.'
       )
-    if (preconditioning == 'polar_express'
-        and ns_coeffs != 'polar_express'):
+    if preconditioning == 'polar_express' and ns_coeffs != 'polar_express':
       logging.warning(
           'Using polar_express preconditioning without polar_express'
           ' ns_coeffs is not recommended.'
