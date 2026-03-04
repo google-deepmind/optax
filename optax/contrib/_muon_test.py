@@ -469,6 +469,31 @@ class MuonTest(parameterized.TestCase):
     with self.assertRaises(AssertionError):
       test_utils.assert_trees_all_close(u_std, u_pe)
 
+  def test_polar_express_coeffs_match_reference(self):
+    """Computed coefficients match the reference implementation."""
+    # Values from github.com/NoahAmsel/PolarExpress:
+    # optimal_composition(l=1e-3, num_iters=8, safety_factor_eps=1e-2,
+    #                     cushion=0.02)
+    expected = [
+        (8.237312490495558, -23.157747414558205, 16.68056841144592),
+        (4.082441999064834, -2.893047735332586, 0.5252849256975647),
+        (3.926347992254655, -2.85474680347653, 0.531802242289499),
+        (3.2982187133085143, -2.424541981026706, 0.48632008358844075),
+        (2.297036943455258, -1.6366255812590327, 0.4002628455953635),
+        (1.8763805351440446, -1.234789657772233, 0.3589188750166889),
+        (1.8564423485588517, -1.2132449880877845, 0.35680034877976435),
+        (1.8750013458595656, -1.2500026917060685, 0.3750013458465025),
+    ]
+    computed = _muon.polar_express_coeffs(
+        l=1e-3, num_iters=8,
+        safety_factor_eps=1e-2, cushion=0.02,
+    )
+    for i, (exp, got) in enumerate(zip(expected, computed)):
+      np.testing.assert_allclose(
+          got, exp, rtol=1e-10,
+          err_msg=f'Coefficient mismatch at iteration {i}',
+      )
+
 
 if __name__ == '__main__':
   absltest.main()
