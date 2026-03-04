@@ -40,7 +40,9 @@ import optax.tree
 
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
-_PRECONDITIONINGS = ['frobenius', 'spectral', 'aol', 'schatten', 'polar_express']
+_PRECONDITIONINGS = [
+    'frobenius', 'spectral', 'aol', 'schatten', 'polar_express',
+]
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
     (4.0848, -6.8946, 2.9270),
