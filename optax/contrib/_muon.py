@@ -678,9 +678,10 @@ def muon(
     if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
       raise ValueError(f'Unknown ns_coeff preset string: {ns_coeffs}')
     if ns_coeffs == 'polar_express' and preconditioning != 'polar_express':
-        print("Warning: Using 'polar_express' ns_coeffs without 'polar_express' preconditioning"
-              "is suboptimal.")
+      print("Warning: Using 'polar_express' ns_coeffs without 'polar_express' preconditioning"
+            "is suboptimal.")
     ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+
     if ns_coeffs == 'polar_express' and ns_steps > len(ns_coeffs_):
       n_pad = ns_steps - len(ns_coeffs_)
       ns_coeffs_ = list(ns_coeffs_) + [ns_coeffs_[-1]] * n_pad
