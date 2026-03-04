@@ -487,7 +487,7 @@ def scale_by_muon(
           f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
       )
     if ns_coeffs_.ndim == 2:
-      if not ns_coeffs_.shape[0] <= ns_steps:
+      if ns_coeffs_.shape[0] < ns_steps:
         raise ValueError(f'Not enough coeffs to perform {ns_steps} steps')
       ns_coeffs_ = ns_coeffs_[-ns_steps:]
 
@@ -681,6 +681,9 @@ def muon(
         print("Warning: Using 'polar_express' ns_coeffs without 'polar_express' preconditioning"
               "is suboptimal.")
     ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+    if ns_coeffs == 'polar_express' and ns_steps > len(ns_coeffs_):
+      n_pad = ns_steps - len(ns_coeffs_)
+      ns_coeffs_ = list(ns_coeffs_) + [ns_coeffs_[-1]] * n_pad
   else:
     ns_coeffs_ = ns_coeffs
 
