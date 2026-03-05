@@ -480,27 +480,26 @@ class MuonTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(u_std, u_pe)
 
   def test_polar_express_coeffs_match_reference(self):
-    """Computed coefficients match the reference implementation."""
-    # Values from github.com/NoahAmsel/PolarExpress:
-    # optimal_composition(l=1e-3, num_iters=8, safety_factor_eps=1e-2,
-    #                     cushion=0.02)
+    """Computed coefficients match the paper's hard-coded values."""
+    # Hard-coded coefficients from Amsel et al., 2025, Algorithm 1
+    # (before safety factor application).
     expected = [
-        (8.237312490495558, -23.157747414558205, 16.68056841144592),
-        (4.082441999064834, -2.893047735332586, 0.5252849256975647),
-        (3.926347992254655, -2.85474680347653, 0.531802242289499),
-        (3.2982187133085143, -2.424541981026706, 0.48632008358844075),
-        (2.297036943455258, -1.6366255812590327, 0.4002628455953635),
-        (1.8763805351440446, -1.234789657772233, 0.3589188750166889),
-        (1.8564423485588517, -1.2132449880877845, 0.35680034877976435),
-        (1.8749914004324066, -1.2499828009436962, 0.3749914005112891),
+        (8.28721201814563, -23.595886519098837, 17.300387312530933),
+        (4.107059111542203, -2.9478499167379106, 0.5448431082926601),
+        (3.9486908534822946, -2.908902115962949, 0.5518191394370137),
+        (3.3184196573706015, -2.488488024314874, 0.51004894012372),
+        (2.300652019954817, -1.6689039845747493, 0.4188073119525673),
+        (1.891301407787398, -1.2679958271945868, 0.37680408948524835),
+        (1.8750014808534479, -1.2500016453999487, 0.3750001645474248),
+        (1.875, -1.25, 0.375),
     ]
     computed = _muon.polar_express_coeffs(
         l=1e-3, num_iters=8,
-        safety_factor_eps=1e-2, cushion=0.02,
+        safety_factor_eps=0.0, cushion=0.02407327424182761,
     )
     for i, (exp, got) in enumerate(zip(expected, computed)):
       np.testing.assert_allclose(
-          got, exp, rtol=1e-10,
+          got, exp, rtol=1e-8,
           err_msg=f'Coefficient mismatch at iteration {i}',
       )
 

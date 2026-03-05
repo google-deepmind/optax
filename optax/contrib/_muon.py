@@ -58,7 +58,7 @@ _DION_NS_COEFFS = [
 # and reference implementation (github.com/NoahAmsel/PolarExpress).
 _POLAR_EXPRESS_SAFETY_EPS = 1e-2
 _POLAR_EXPRESS_SAFETY = 1 + _POLAR_EXPRESS_SAFETY_EPS
-_POLAR_EXPRESS_CUSHION = 0.02
+_POLAR_EXPRESS_CUSHION = 0.02407327424182761
 
 
 def _optimal_quintic(l, u):
