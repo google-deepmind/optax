@@ -35,7 +35,7 @@ class Normal:
   ) -> jax.Array:
     return jax.random.normal(key, sample_shape, dtype)
 
-  def log_prob(self, inputs: jax.Array) -> jax.Array:
+  def unnormalized_log_prob(self, inputs: jax.Array) -> jax.Array:
     return -0.5 * inputs**2
 
 
@@ -50,7 +50,7 @@ class Gumbel:
   ) -> jax.Array:
     return jax.random.gumbel(key, sample_shape, dtype)
 
-  def log_prob(self, inputs: jax.Array) -> jax.Array:
+  def unnormalized_log_prob(self, inputs: jax.Array) -> jax.Array:
     return -inputs - jnp.exp(-inputs)
 
 
@@ -87,7 +87,8 @@ def make_perturbed_fun(
       currently supported is from pytree to pytree, whose leaves are JAX arrays.
     num_samples: an int, the number of perturbed outputs to average over.
     sigma: a float, the scale of the random perturbation.
-    noise: a distribution object that implements ``sample`` and ``log_prob``
+    noise: a distribution object that implements ``sample``
+      and ``unnormalized_log_prob``
       methods, like :class:`optax.perturbations.Gumbel` (which is the default).
     use_baseline: Use the value of the function at the unperturbed input as a
       baseline for variance reduction.
@@ -148,7 +149,9 @@ def make_perturbed_fun(
       shifted_sample = jax.lax.stop_gradient(shifted_sample)
       sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
 
-      log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
+      log_prob_sample = optax.tree.sum(
+          jax.tree.map(noise.unnormalized_log_prob, sample)
+      )
       box = _magicbox(log_prob_sample)
       out = optax.tree.scale(box, fun(shifted_sample))
       if use_baseline:
