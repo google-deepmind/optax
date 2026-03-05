@@ -59,6 +59,7 @@ _DION_NS_COEFFS = [
 _POLAR_EXPRESS_SAFETY_EPS = 1e-2
 _POLAR_EXPRESS_SAFETY = 1 + _POLAR_EXPRESS_SAFETY_EPS
 _POLAR_EXPRESS_CUSHION = 0.02407327424182761
+_POLAR_EXPRESS_LOWER_BOUND = 1e-3
 
 
 def _optimal_quintic(l, u):
@@ -119,15 +120,19 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
   sense for that iteration's interval.
 
   The ``l`` parameter controls the assumed lower bound on normalized singular
-  values after preconditioning. A good default is the machine epsilon of the
-  training dtype (e.g. ``1e-3`` for bfloat16, ``1e-7`` for float32). Smaller
-  values are more conservative but may require more iterations.
+  values after preconditioning. The default ``ns_coeffs='polar_express'``
+  preset uses ``l=1e-3`` (see ``_POLAR_EXPRESS_LOWER_BOUND``), which works
+  well for both bfloat16 and float32 training. Call this function directly
+  to use a different ``l``.
 
   Example::
 
-    # Default coefficients (bfloat16, same as 'polar_express' preset):
-    coeffs = polar_express_coeffs(l=1e-3, num_iters=10,
-                                  safety_factor_eps=1e-2, cushion=0.02)
+    # Custom lower bound (e.g. for float32 with tighter convergence):
+    coeffs = polar_express_coeffs(
+        l=1e-7, num_iters=12,
+        safety_factor_eps=1e-2,
+        cushion=0.02407327424182761,
+    )
 
     # Use with muon:
     optimizer = optax.contrib.muon(
@@ -611,8 +616,8 @@ def scale_by_muon(
     <https://arxiv.org/abs/2506.10935>`_, 2025
 
     Amsel et al., `The Polar Express: Optimal Matrix Sign Methods and Their
-    Application to the Muon Algorithm`,
-    <https://arxiv.org/pdf/2505.16932>`, 2025
+    Application to the Muon Algorithm
+    <https://arxiv.org/abs/2505.16932>`_, 2025
   """
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
@@ -729,8 +734,11 @@ def muon(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     ns_coeffs: Coefficients for the Newton-schulz method (can be a string
-      indicator for a preset). Existing presets: `standard`, `dion`,
-      `polar_express`.
+      indicator for a preset). Existing presets: ``standard``, ``dion``,
+      ``polar_express``. The ``polar_express`` preset uses ``l=1e-3`` and
+      the default cushion; for custom ``l``, ``cushion``, or
+      ``num_iters``, call :func:`polar_express_coeffs` directly and pass
+      the result as ``ns_coeffs``.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -762,8 +770,8 @@ def muon(
       - 'schatten': Use the Schatten-4 norm for rescaling,
         allows for better performance with little to no extra cost.
         See <https://arxiv.org/abs/2506.10935>.
-      - 'polar_express': Use Frobenius norm with a 1.01 safety factor
-        for bfloat16 stability, designed for use with
+      - 'polar_express': Use Frobenius norm with a safety factor for
+        floating-point stability, designed for use with
         ``ns_coeffs='polar_express'``.
         See <https://arxiv.org/abs/2505.16932>.
     adam_b1: Exponential decay rate for Adam's first moment estimates.
@@ -810,8 +818,8 @@ def muon(
     <https://arxiv.org/abs/2506.10935>`_, 2025
 
     Amsel et al., `The Polar Express: Optimal Matrix Sign Methods and Their
-    Application to the Muon Algorithm`,
-    <https://arxiv.org/pdf/2505.16932>`, 2025
+    Application to the Muon Algorithm
+    <https://arxiv.org/abs/2505.16932>`_, 2025
   """
 
   if adam_learning_rate is None:
@@ -831,14 +839,9 @@ def muon(
             ' preconditioning is suboptimal and might lead to'
             ' instability.'
         )
-      if mu_dtype is not None:
-        l = 10 ** math.floor(
-            math.log10(float(jnp.finfo(mu_dtype).eps))
-        )
-      else:
-        l = 1e-3  # default for bfloat16
       ns_coeffs_ = polar_express_coeffs(
-          l, ns_steps,
+          l=_POLAR_EXPRESS_LOWER_BOUND,
+          num_iters=ns_steps,
           safety_factor_eps=_POLAR_EXPRESS_SAFETY_EPS,
           cushion=_POLAR_EXPRESS_CUSHION,
       )
