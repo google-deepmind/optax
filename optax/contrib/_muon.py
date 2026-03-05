@@ -85,7 +85,7 @@ def _optimal_quintic(l, u):
   """
   if not 0 <= l <= u:
     raise ValueError(f'l must be between 0 and u, got {l}.')
-  if 1 - 5e-5 <= l / u:
+  if 1 - 5e-6 <= l / u:
     return (15 / 8) / u, (-10 / 8) / (u**3), (3 / 8) / (u**5)
   q = (3 * l + u) / 4
   r = (l + 3 * u) / 4
@@ -174,9 +174,11 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
   u = 1.0
   if not 0 <= l <= u:
     raise ValueError(f'l must be between 0 and 1, got {l}.')
-  safety_factor = 1 + safety_factor_eps
+  # Compute raw optimal coefficients without safety factor (matches the
+  # paper's approach: safety factor is applied after all coefficients are
+  # computed, so it does not affect the interval evolution).
   coefficients = []
-  for i in range(num_iters):
+  for _ in range(num_iters):
     a, b, c = _optimal_quintic(max(l, cushion * u), u)
     if cushion * u > l:
       pl = a * l + b * l**3 + c * l**5
@@ -185,13 +187,18 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
       a *= rescaler
       b *= rescaler
       c *= rescaler
-    if i < num_iters - 1:
-      a /= safety_factor
-      b /= safety_factor**3
-      c /= safety_factor**5
     coefficients.append((a, b, c))
     l = a * l + b * l**3 + c * l**5
     u = 2 - l
+  # Apply safety factor to all but the last iteration.
+  safety_factor = 1 + safety_factor_eps
+  for i in range(num_iters - 1):
+    a, b, c = coefficients[i]
+    coefficients[i] = (
+        a / safety_factor,
+        b / safety_factor**3,
+        c / safety_factor**5,
+    )
   return coefficients
 
 
