@@ -39,9 +39,7 @@ import optax.tree
 
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
-_PRECONDITIONINGS = [
-    'frobenius', 'spectral', 'aol', 'schatten',
-]
+_PRECONDITIONINGS = ['frobenius', 'spectral', 'aol', 'schatten']
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
     (4.0848, -6.8946, 2.9270),
@@ -426,7 +424,7 @@ def orthogonalize_via_newton_schulz(
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten',
+        'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
@@ -537,7 +535,7 @@ def scale_by_muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten',
+        'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
@@ -687,7 +685,7 @@ def muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten',
+        'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,

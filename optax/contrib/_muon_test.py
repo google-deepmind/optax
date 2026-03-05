@@ -128,7 +128,7 @@ class MuonTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(reconstructed_x, x)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_callable_weight_dim_nums(self, preconditioning):
     # Case 1: a dim nums for all weights, no matter if they're muon.
@@ -154,7 +154,7 @@ class MuonTest(parameterized.TestCase):
     _, _ = opt.update(params, state, params=params)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_reshape_update_for_square_parameter_matches_muon_without_dim_nums(
       self, preconditioning
@@ -174,7 +174,7 @@ class MuonTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_reshape_and_update_single_param(self, preconditioning):
     # Use 2D parameter (10, 12) with no dimension numbers as groundtruth
@@ -221,7 +221,7 @@ class MuonTest(parameterized.TestCase):
           atol=1e-5)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_dim_nums_combinations(self, preconditioning):
     get_muon_mu = lambda state: state[0]['muon'][0][0][1]
@@ -414,7 +414,7 @@ class MuonTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(u_schatten, u_aol)
 
   @parameterized.named_parameters(
-      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_orthogonality(self, preconditioning):
     """Ensures that updates satisfy approximate orthogonality (U^T U ≈ I)."""
