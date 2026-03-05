@@ -65,6 +65,16 @@ def _setup_mixed_tensor_target_complex(dtype):
   return initial_params, final_params, obj_fn
 
 
+def _random_matrix_with_svs(key, shape, singular_values):
+  """Matrix with given singular values and random singular vectors."""
+  m, n = shape
+  k = min(m, n)
+  key1, key2 = jax.random.split(key)
+  u, _ = jnp.linalg.qr(jax.random.normal(key1, (m, k)))
+  v, _ = jnp.linalg.qr(jax.random.normal(key2, (n, k)))
+  return u @ jnp.diag(jnp.asarray(singular_values)) @ v.T
+
+
 class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -493,6 +503,53 @@ class MuonTest(parameterized.TestCase):
           got, exp, rtol=1e-10,
           err_msg=f'Coefficient mismatch at iteration {i}',
       )
+
+  @parameterized.named_parameters(
+      ('frobenius_low_rank', 'frobenius', 'low_rank'),
+      ('spectral_low_rank', 'spectral', 'low_rank'),
+      ('schatten_low_rank', 'schatten', 'low_rank'),
+      ('polar_express_low_rank', 'polar_express', 'low_rank'),
+      ('frobenius_binary', 'frobenius', 'binary'),
+      ('spectral_binary', 'spectral', 'binary'),
+      ('schatten_binary', 'schatten', 'binary'),
+      ('polar_express_binary', 'polar_express', 'binary'),
+  )
+  def test_polar_express_hard_matrices(self, preconditioning, matrix_type):
+    """PolarExpress coefficients on hard matrices with random singular vectors.
+
+    Tests two cases suggested by Amsel (private communication):
+    - low_rank: exponentially decaying singular values
+    - binary: singular values all 0 or 2 (blowup test; spectral
+      preconditioning is closest to being unstable)
+    """
+    key = jax.random.key(42)
+    shape = (50, 100)
+    k = min(shape)
+
+    if matrix_type == 'low_rank':
+      svs = 2.0 * np.exp(-0.5 * np.arange(k))
+    else:
+      svs = np.array([2.0] * (k // 2) + [0.0] * (k - k // 2))
+    mat = _random_matrix_with_svs(key, shape, svs)
+
+    ns_coeffs = jnp.array(_muon.polar_express_coeffs(
+        l=1e-3, num_iters=10,
+        safety_factor_eps=1e-2, cushion=0.02))
+
+    result = _muon.orthogonalize_via_newton_schulz(
+        mat, ns_coeffs, ns_steps=10,
+        preconditioning=preconditioning,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1))
+
+    self.assertFalse(jnp.any(jnp.isnan(result)).item())
+    self.assertFalse(jnp.any(jnp.isinf(result)).item())
+    self.assertEqual(result.shape, shape)
+    # SVs above l should converge to 1 (orthogonality).
+    n_above_l = int(np.sum(svs > 1e-3))
+    out_svs = jnp.linalg.svd(result, compute_uv=False)[:n_above_l]
+    np.testing.assert_allclose(
+        out_svs, jnp.ones(n_above_l), atol=1e-3,
+        err_msg=f'SVs above l did not converge to 1 ({preconditioning})')
 
 
 if __name__ == '__main__':
