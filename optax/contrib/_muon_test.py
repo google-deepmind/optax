@@ -482,7 +482,7 @@ class MuonTest(parameterized.TestCase):
         (2.297036943455258, -1.6366255812590327, 0.4002628455953635),
         (1.8763805351440446, -1.234789657772233, 0.3589188750166889),
         (1.8564423485588517, -1.2132449880877845, 0.35680034877976435),
-        (1.8750013458595656, -1.2500026917060685, 0.3750013458465025),
+        (1.8749914004324066, -1.2499828009436962, 0.3749914005112891),
     ]
     computed = _muon.polar_express_coeffs(
         l=1e-3, num_iters=8,
@@ -490,7 +490,7 @@ class MuonTest(parameterized.TestCase):
     )
     for i, (exp, got) in enumerate(zip(expected, computed)):
       np.testing.assert_allclose(
-          got, exp, rtol=1e-6,
+          got, exp, rtol=1e-10,
           err_msg=f'Coefficient mismatch at iteration {i}',
       )
 
