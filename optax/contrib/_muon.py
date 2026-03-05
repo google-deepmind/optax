@@ -52,13 +52,6 @@ _DION_NS_COEFFS = [
 ]
 
 
-# Polar Express defaults from Amsel et al., 2025 (Section 4.4)
-# and reference implementation (github.com/NoahAmsel/PolarExpress).
-_POLAR_EXPRESS_SAFETY_EPS = 1e-2
-_POLAR_EXPRESS_CUSHION = 0.02407327424182761
-_POLAR_EXPRESS_LOWER_BOUND = 1e-3
-
-
 def _optimal_quintic(l, u):
   r"""Optimal quintic coefficients for the Newton-Schulz iteration.
 
@@ -67,22 +60,22 @@ def _optimal_quintic(l, u):
   (minimax) approximation error :math:`\max_{x \in [\ell, u]} |1 - p(x)|`.
 
   Args:
-    l: Lower bound on singular values. Must satisfy ``0 <= l <= u``.
-    u: Upper bound on singular values.
+    l: Lower bound on singular values. Must satisfy ``0 < l <= u``.
+    u: Upper bound on singular values. Must be positive.
 
   Returns:
     A tuple ``(a, b, c)`` of quintic iteration coefficients.
 
   Raises:
-    ValueError: If ``l < 0`` or ``l > u``.
+    ValueError: If ``l <= 0``, ``u <= 0``, or ``l > u``.
 
   References:
     Amsel et al., `The Polar Express: Optimal Matrix Sign Methods and Their
     Application to the Muon Algorithm
     <https://arxiv.org/abs/2505.16932>`_, 2025, Section 4.2.
   """
-  if not 0 <= l <= u:
-    raise ValueError(f'l must be between 0 and u, got {l}.')
+  if not 0 < l <= u:
+    raise ValueError(f'l must satisfy 0 < l <= u, got l={l}, u={u}.')
   if 1 - 5e-6 <= l / u:
     return (15 / 8) / u, (-10 / 8) / (u**3), (3 / 8) / (u**5)
   q = (3 * l + u) / 4
@@ -108,7 +101,13 @@ def _optimal_quintic(l, u):
   return float(a), float(b), float(c)
 
 
-def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
+def polar_express_coeffs(
+    l=1e-3,
+    num_iters=8,
+    *,
+    safety_factor_eps=1e-2,
+    cushion=0.02407327424182761,
+):
   r"""Compute PolarExpress optimal Newton-Schulz coefficients.
 
   Computes per-iteration optimal quintic coefficients for the Newton-Schulz
@@ -117,47 +116,42 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
   sense for that iteration's interval.
 
   The ``l`` parameter controls the assumed lower bound on normalized singular
-  values after preconditioning. The default ``ns_coeffs='polar_express'``
-  preset uses ``l=1e-3`` (see ``_POLAR_EXPRESS_LOWER_BOUND``), which works
-  well for both bfloat16 and float32 training. Call this function directly
-  to use a different ``l``.
+  values after preconditioning. The default ``l=1e-3`` works well for both
+  bfloat16 and float32 training.
 
   Example::
 
     # Custom lower bound (e.g. for float32 with tighter convergence):
-    coeffs = polar_express_coeffs(
-        l=1e-7, num_iters=12,
-        safety_factor_eps=1e-2,
-        cushion=0.02407327424182761,
-    )
+    coeffs = polar_express_coeffs(l=1e-7, num_iters=12)
 
-    # Use with muon (Schatten-4 preconditioning recommended):
+    # Use with muon:
     optimizer = optax.contrib.muon(
         learning_rate=0.02,
         ns_coeffs=coeffs,
-        preconditioning='schatten',
     )
 
   Args:
     l: Lower bound on normalized singular values. Must satisfy
-      ``0 <= l <= 1``.
+      ``0 < l <= 1``. Defaults to ``1e-3``.
     num_iters: Number of Newton-Schulz iterations to compute coefficients
-      for.
+      for. Defaults to ``8``.
     safety_factor_eps: Epsilon for the safety factor ``1 + eps`` applied to
       all iterations except the last. Contracts the polynomial slightly to
       ensure convergence under floating-point round-off errors. See
-      Section 4.4 of Amsel et al., 2025.
+      Section 4.4 of Amsel et al., 2025. Defaults to ``1e-2``.
     cushion: Minimum fraction of ``u`` used as the lower bound when
       computing each iteration's optimal polynomial. When
       ``cushion * u > l``, a rescaler is applied to maintain the correct
-      mapping. Helps with numerical stability in early iterations.
+      mapping. Helps with numerical stability of the Remez linear system
+      in early iterations. Defaults to ``0.024`` (from the reference
+      implementation).
 
   Returns:
     A list of ``num_iters`` tuples ``(a, b, c)``, where each tuple contains
     the quintic Newton-Schulz coefficients for that iteration.
 
   Raises:
-    ValueError: If ``l < 0`` or ``l > 1``.
+    ValueError: If ``l <= 0``, ``l > 1``, or ``num_iters < 1``.
 
   References:
     Amsel et al., `The Polar Express: Optimal Matrix Sign Methods and Their
@@ -165,8 +159,10 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
     <https://arxiv.org/abs/2505.16932>`_, 2025
   """
   u = 1.0
-  if not 0 <= l <= u:
-    raise ValueError(f'l must be between 0 and 1, got {l}.')
+  if not 0 < l <= u:
+    raise ValueError(f'l must satisfy 0 < l <= 1, got {l}.')
+  if num_iters < 1:
+    raise ValueError(f'num_iters must be >= 1, got {num_iters}.')
   # Compute raw optimal coefficients without safety factor (matches the
   # paper's approach: safety factor is applied after all coefficients are
   # computed, so it does not affect the interval evolution).
@@ -195,6 +191,8 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
   return coefficients
 
 
+# Note: 'polar_express' is not in this dict because it depends on ns_steps
+# and is handled separately in muon() via polar_express_coeffs().
 _NS_COEFFS_PRESET_DICT = {
     'standard': _DEFAULT_NS_COEFFS,
     'dion': _DION_NS_COEFFS,
@@ -567,6 +565,7 @@ def scale_by_muon(
       - 'spectral' : Use Spectral norm rescaling before NS.
       - 'aol': Use AOL rescaling to improve orthogonality.
       - 'schatten': Use the Schatten-4 norm for rescaling.
+        Recommended when using PolarExpress coefficients.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -805,12 +804,7 @@ def muon(
 
   if isinstance(ns_coeffs, str):
     if ns_coeffs == 'polar_express':
-      ns_coeffs_ = polar_express_coeffs(
-          l=_POLAR_EXPRESS_LOWER_BOUND,
-          num_iters=ns_steps,
-          safety_factor_eps=_POLAR_EXPRESS_SAFETY_EPS,
-          cushion=_POLAR_EXPRESS_CUSHION,
-      )
+      ns_coeffs_ = polar_express_coeffs(num_iters=ns_steps)
     elif ns_coeffs in _NS_COEFFS_PRESET_DICT:
       ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
     else:
