@@ -24,8 +24,6 @@ import functools
 import math
 from typing import Any, Callable, NamedTuple, Optional, Union, Sequence, Literal
 
-from absl import logging
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -42,7 +40,7 @@ import optax.tree
 ReshapeFn = Callable[[jax.Array], jax.Array]
 
 _PRECONDITIONINGS = [
-    'frobenius', 'spectral', 'aol', 'schatten', 'polar_express',
+    'frobenius', 'spectral', 'aol', 'schatten',
 ]
 _DEFAULT_NS_COEFFS = (3.4445, -4.7750, 2.0315)
 _DION_NS_COEFFS = [
@@ -57,7 +55,6 @@ _DION_NS_COEFFS = [
 # Polar Express defaults from Amsel et al., 2025 (Section 4.4)
 # and reference implementation (github.com/NoahAmsel/PolarExpress).
 _POLAR_EXPRESS_SAFETY_EPS = 1e-2
-_POLAR_EXPRESS_SAFETY = 1 + _POLAR_EXPRESS_SAFETY_EPS
 _POLAR_EXPRESS_CUSHION = 0.02407327424182761
 _POLAR_EXPRESS_LOWER_BOUND = 1e-3
 
@@ -134,11 +131,11 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
         cushion=0.02407327424182761,
     )
 
-    # Use with muon:
+    # Use with muon (Schatten-4 preconditioning recommended):
     optimizer = optax.contrib.muon(
         learning_rate=0.02,
         ns_coeffs=coeffs,
-        preconditioning='polar_express',
+        preconditioning='schatten',
     )
 
   Args:
@@ -154,15 +151,6 @@ def polar_express_coeffs(l, num_iters, safety_factor_eps, cushion):
       computing each iteration's optimal polynomial. When
       ``cushion * u > l``, a rescaler is applied to maintain the correct
       mapping. Helps with numerical stability in early iterations.
-
-  .. note::
-    When using ``preconditioning='polar_express'``, the preconditioning
-    normalization divides by ``||X||_F * (1 + safety_factor_eps)``. This
-    factor is hardcoded to match the default ``safety_factor_eps=1e-2``.
-    If you use a custom ``safety_factor_eps``, you should use
-    ``preconditioning='frobenius'`` and handle the safety factor scaling
-    in your own normalization, or pass the coefficients directly to
-    :func:`scale_by_muon` with a custom preconditioning setup.
 
   Returns:
     A list of ``num_iters`` tuples ``(a, b, c)``, where each tuple contains
@@ -440,7 +428,7 @@ def orthogonalize_via_newton_schulz(
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike = 5,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
+        'frobenius', 'spectral', 'aol', 'schatten',
     ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
@@ -491,7 +479,6 @@ def orthogonalize_via_newton_schulz(
         'spectral': _base_ns_iterator,
         'aol': _aol_ns_iterator,
         'schatten': _schatten_ns_iterator,
-        'polar_express': _base_ns_iterator,
     }
     if preconditioning not in _PRECONDITIONINGS:
       raise ValueError(f'Unknown preconditioning {preconditioning}')
@@ -501,8 +488,6 @@ def orthogonalize_via_newton_schulz(
       x /= jnp.linalg.norm(x, ord='fro') + eps
     elif preconditioning == 'spectral':
       x /= jnp.linalg.norm(x, ord=2) + eps
-    elif preconditioning == 'polar_express':
-      x /= jnp.linalg.norm(x, ord='fro') * _POLAR_EXPRESS_SAFETY + eps
     else:
       pass
 
@@ -554,7 +539,7 @@ def scale_by_muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
+        'frobenius', 'spectral', 'aol', 'schatten',
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
 ) -> base.GradientTransformation:
@@ -582,10 +567,6 @@ def scale_by_muon(
       - 'spectral' : Use Spectral norm rescaling before NS.
       - 'aol': Use AOL rescaling to improve orthogonality.
       - 'schatten': Use the Schatten-4 norm for rescaling.
-      - 'polar_express': Use Frobenius norm with a safety factor,
-        designed for use with coefficients from
-        :func:`polar_express_coeffs`.
-        See <https://arxiv.org/abs/2505.16932>.
     weight_dimension_numbers: An optional tree with the same structure as the
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
@@ -707,7 +688,7 @@ def muon(
     nesterov: bool = True,
     adaptive: bool = False,
     preconditioning: Literal[
-        'frobenius', 'spectral', 'aol', 'schatten', 'polar_express'
+        'frobenius', 'spectral', 'aol', 'schatten',
     ] = 'frobenius',
     adam_b1: jax.typing.ArrayLike = 0.9,
     adam_b2: jax.typing.ArrayLike = 0.999,
@@ -769,11 +750,8 @@ def muon(
         See <https://arxiv.org/abs/2512.04632>.
       - 'schatten': Use the Schatten-4 norm for rescaling,
         allows for better performance with little to no extra cost.
+        Recommended when using ``ns_coeffs='polar_express'``.
         See <https://arxiv.org/abs/2506.10935>.
-      - 'polar_express': Use Frobenius norm with a safety factor for
-        floating-point stability, designed for use with
-        ``ns_coeffs='polar_express'``.
-        See <https://arxiv.org/abs/2505.16932>.
     adam_b1: Exponential decay rate for Adam's first moment estimates.
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
@@ -826,19 +804,7 @@ def muon(
     adam_learning_rate = learning_rate
 
   if isinstance(ns_coeffs, str):
-    if preconditioning == 'polar_express' and ns_coeffs != 'polar_express':
-      logging.warning(
-          'Using polar_express preconditioning without polar_express'
-          ' ns_coeffs is not recommended.'
-      )
-
     if ns_coeffs == 'polar_express':
-      if preconditioning != 'polar_express':
-        logging.warning(
-            'Using polar_express ns_coeffs without polar_express'
-            ' preconditioning is suboptimal and might lead to'
-            ' instability.'
-        )
       ns_coeffs_ = polar_express_coeffs(
           l=_POLAR_EXPRESS_LOWER_BOUND,
           num_iters=ns_steps,

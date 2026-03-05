@@ -129,7 +129,6 @@ class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
-      ('polar_express', 'polar_express'),
   )
   def test_callable_weight_dim_nums(self, preconditioning):
     # Case 1: a dim nums for all weights, no matter if they're muon.
@@ -156,7 +155,6 @@ class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
-      ('polar_express', 'polar_express'),
   )
   def test_reshape_update_for_square_parameter_matches_muon_without_dim_nums(
       self, preconditioning
@@ -177,7 +175,6 @@ class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
-      ('polar_express', 'polar_express'),
   )
   def test_reshape_and_update_single_param(self, preconditioning):
     # Use 2D parameter (10, 12) with no dimension numbers as groundtruth
@@ -225,7 +222,6 @@ class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
-      ('polar_express', 'polar_express'),
   )
   def test_dim_nums_combinations(self, preconditioning):
     get_muon_mu = lambda state: state[0]['muon'][0][0][1]
@@ -369,9 +365,9 @@ class MuonTest(parameterized.TestCase):
       ('aol_square', 'aol', (100, 100)),
       ('aol_tall', 'aol', (100, 50)),
       ('aol_wide', 'aol', (50, 100)),
-      ('polar_express_square', 'polar_express', (100, 100)),
-      ('polar_express_tall', 'polar_express', (100, 50)),
-      ('polar_express_wide', 'polar_express', (50, 100)),
+      ('schatten_square', 'schatten', (100, 100)),
+      ('schatten_tall', 'schatten', (100, 50)),
+      ('schatten_wide', 'schatten', (50, 100)),
   )
   def test_muon_orthogonalization_modes(self, preconditioning, shape):
     """Tests that Muon runs and produces near-orthogonal updates."""
@@ -419,7 +415,6 @@ class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten'),
-      ('polar_express', 'polar_express'),
   )
   def test_orthogonality(self, preconditioning):
     """Ensures that updates satisfy approximate orthogonality (U^T U ≈ I)."""
@@ -439,12 +434,11 @@ class MuonTest(parameterized.TestCase):
                     f'Orthogonality error too high: {ortho_error}')
 
   def test_polar_express(self):
-    """Tests PolarExpress ns_coeffs with polar_express preconditioning."""
+    """Tests PolarExpress ns_coeffs with frobenius preconditioning."""
     params = {'w': jnp.eye(8) * 2.0}
     opt = _muon.muon(
         learning_rate=0.1,
         ns_coeffs='polar_express',
-        preconditioning='polar_express',
         ns_steps=8,
     )
     updates, _ = opt.update(params, opt.init(params), params)
@@ -471,7 +465,6 @@ class MuonTest(parameterized.TestCase):
     opt_pe = _muon.muon(
         learning_rate=0.1,
         ns_coeffs='polar_express',
-        preconditioning='polar_express',
         ns_steps=8,
     )
     u_pe, _ = opt_pe.update(params, opt_pe.init(params), params)
@@ -507,11 +500,9 @@ class MuonTest(parameterized.TestCase):
       ('frobenius_low_rank', 'frobenius', 'low_rank'),
       ('spectral_low_rank', 'spectral', 'low_rank'),
       ('schatten_low_rank', 'schatten', 'low_rank'),
-      ('polar_express_low_rank', 'polar_express', 'low_rank'),
       ('frobenius_binary', 'frobenius', 'binary'),
       ('spectral_binary', 'spectral', 'binary'),
       ('schatten_binary', 'schatten', 'binary'),
-      ('polar_express_binary', 'polar_express', 'binary'),
   )
   def test_polar_express_hard_matrices(self, preconditioning, matrix_type):
     """PolarExpress coefficients on hard matrices with random singular vectors.
