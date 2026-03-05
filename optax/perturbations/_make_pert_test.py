@@ -42,14 +42,16 @@ def argmax_tree(x):
   return jax.tree.map(one_hot_argmax, x)
 
 
-def simple_make_perturbed_fun(f, num_samples=1000, sigma=0.1,
-                              noise=_make_pert.Gumbel()):
+def simple_make_perturbed_fun(
+    f, num_samples=1000, sigma=0.1,
+    noise_sampler=_make_pert.gumbel_noise_sampler,
+):
   # a simplified Monte Carlo estimate of E[f(x + σ Z)] where Z ~ noise
   # this simplified reference only works for differentiable f
   @jax.jit
   def g(key, x):
     zs_shape = optax.tree.batch_shape(x, (num_samples,))
-    zs = optax.tree.random_like(key, zs_shape, noise.sample)
+    zs = optax.tree.random_like(key, zs_shape, noise_sampler)
     xs = optax.tree.add_scale(x, sigma, zs)
     ys = jax.vmap(f)(xs)
     ys_mean = jax.tree.map(lambda leaf: jnp.mean(leaf, 0), ys)
@@ -162,9 +164,15 @@ class MakePertTest(parameterized.TestCase):
       list_loss = jax.tree.reduce(operator.add, tree_loss)
       return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
-    loss_pert = jax.jit(_make_pert.make_perturbed_fun(
-        loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
-    ))
+    loss_pert = jax.jit(
+        _make_pert.make_perturbed_fun(
+            loss,
+            num_samples=100,
+            sigma=0.1,
+            noise_sampler=_make_pert.normal_noise_sampler,
+            noise_log_prob=_make_pert.unnormalized_normal_log_prob,
+        )
+    )
     keys = jax.random.split(key, 3)
     low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types # noqa: E501
     high_loss = loss_pert(keys[2],
@@ -194,8 +202,15 @@ class MakePertTest(parameterized.TestCase):
     # pert_linear_fun and its jacobian should be an unbiased estimator of
     # linear_fun and its jacobian
     linear_fun = lambda x: A @ x + b
-    pert_linear_fun = jax.jit(_make_pert.make_perturbed_fun(
-        linear_fun, num_samples, sigma, _make_pert.Normal()))
+    pert_linear_fun = jax.jit(
+        _make_pert.make_perturbed_fun(
+            linear_fun,
+            num_samples,
+            sigma,
+            noise_sampler=_make_pert.normal_noise_sampler,
+            noise_log_prob=_make_pert.unnormalized_normal_log_prob,
+        )
+    )
 
     expected = linear_fun(x)
     got = pert_linear_fun(key, x)
@@ -209,9 +224,19 @@ class MakePertTest(parameterized.TestCase):
   # pylint: enable=invalid-name
 
   @parameterized.product(
-      sigma=[0.5, 1.0], noise=[_make_pert.Gumbel(), _make_pert.Normal()]
+      sigma=[0.5, 1.0],
+      noise_tuple=[
+          (
+              _make_pert.gumbel_noise_sampler,
+              _make_pert.unnormalized_gumbel_log_prob,
+          ),
+          (
+              _make_pert.normal_noise_sampler,
+              _make_pert.unnormalized_normal_log_prob,
+          ),
+      ],
   )
-  def test_pert_differentiable(self, sigma, noise):
+  def test_pert_differentiable(self, sigma, noise_tuple):
     """Ensure the perturbed function jacobian matches for a differentiable function.
 
     In the differentiable function case, test that the jacobian of the
@@ -233,10 +258,22 @@ class MakePertTest(parameterized.TestCase):
       y1 = x2 + x0 * jnp.sin(x1)
       return jnp.stack([y0, y1])
 
-    f1 = jax.jit(_make_pert.make_perturbed_fun(
-        f, num_samples=num_samples, sigma=sigma, noise=noise))
-    f2 = simple_make_perturbed_fun(f, num_samples=num_samples, sigma=sigma,
-                                   noise=noise)
+    noise_sampler, noise_log_prob = noise_tuple
+    f1 = jax.jit(
+        _make_pert.make_perturbed_fun(
+            f,
+            num_samples=num_samples,
+            sigma=sigma,
+            noise_sampler=noise_sampler,
+            noise_log_prob=noise_log_prob,
+        )
+    )
+    f2 = simple_make_perturbed_fun(
+        f,
+        num_samples=num_samples,
+        sigma=sigma,
+        noise_sampler=noise_sampler,
+    )
     x = jnp.array([0.3, 0.4, 0.5])
     key = jax.random.key(seed)
     j1 = jax.jacobian(f1, argnums=1)(key, x)
@@ -269,12 +306,29 @@ class MakePertTest(parameterized.TestCase):
     jax.grad(fp, argnums=1)(key, x)
 
   @parameterized.product(
-      sigma=[0.5, 1.0], noise=[_make_pert.Gumbel(), _make_pert.Normal()]
+      sigma=[0.5, 1.0],
+      noise_tuple=[
+          (
+              _make_pert.gumbel_noise_sampler,
+              _make_pert.unnormalized_gumbel_log_prob,
+          ),
+          (
+              _make_pert.normal_noise_sampler,
+              _make_pert.unnormalized_normal_log_prob,
+          ),
+      ],
   )
-  def test_hessian(self, sigma, noise):
+  def test_hessian(self, sigma, noise_tuple):
     """Test that hessian of perturbed function matches exact hessian."""
     fun = lambda x: 0.5 * jnp.sum(x**2)
-    fun_p = _make_pert.make_perturbed_fun(fun, 10**5, sigma, noise)
+    noise_sampler, noise_log_prob = noise_tuple
+    fun_p = _make_pert.make_perturbed_fun(
+        fun,
+        10**5,
+        sigma,
+        noise_sampler=noise_sampler,
+        noise_log_prob=noise_log_prob,
+    )
     x = jnp.array([0.0, 0.0])
     got = jax.hessian(fun_p, argnums=1)(jax.random.key(0), x)
     expected = jax.hessian(fun)(x)

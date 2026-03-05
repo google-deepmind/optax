@@ -16,7 +16,8 @@
 """Creates a differentiable approximation of a function with perturbations."""
 
 
-from typing import Callable
+from typing import Callable, Optional
+import warnings
 
 import jax
 import jax.numpy as jnp
@@ -24,8 +25,46 @@ from optax._src import base
 import optax.tree
 
 
+def normal_noise_sampler(
+    key: jax.typing.ArrayLike,
+    sample_shape: base.Shape = (),
+    dtype: jax.typing.DTypeLike = float,
+) -> jax.Array:
+  return jax.random.normal(key, sample_shape, dtype)
+
+
+def unnormalized_normal_log_prob(inputs: jax.Array) -> jax.Array:
+  return -0.5 * inputs**2
+
+
+def gumbel_noise_sampler(
+    key: jax.typing.ArrayLike,
+    sample_shape: base.Shape = (),
+    dtype: jax.typing.DTypeLike = float,
+) -> jax.Array:
+  return jax.random.gumbel(key, sample_shape, dtype)
+
+
+def unnormalized_gumbel_log_prob(inputs: jax.Array) -> jax.Array:
+  return -inputs - jnp.exp(-inputs)
+
+
 class Normal:
-  """Normal distribution."""
+  """Normal distribution.
+
+  .. deprecated:: 0.2.4
+    Normal distribution class is deprecated. Use `normal_noise_sampler` and
+    `unnormalized_normal_log_prob` functions instead.
+  """
+
+  def __init__(self):
+    warnings.warn(
+        "Normal distribution class is deprecated. "
+        "Use `normal_noise_sampler` and "
+        "`unnormalized_normal_log_prob` functions instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
   def sample(
       self,
@@ -40,7 +79,21 @@ class Normal:
 
 
 class Gumbel:
-  """Gumbel distribution."""
+  """Gumbel distribution.
+
+  .. deprecated:: 0.2.4
+    Gumbel distribution class is deprecated. Use `gumbel_noise_sampler` and
+    `unnormalized_gumbel_log_prob` functions instead.
+  """
+
+  def __init__(self):
+    warnings.warn(
+        "Gumbel distribution class is deprecated. "
+        "Use `gumbel_noise_sampler` and "
+        "`unnormalized_gumbel_log_prob` functions instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
   def sample(
       self,
@@ -58,8 +111,10 @@ def make_perturbed_fun(
     fun: Callable[[base.ArrayTree], base.ArrayTree],
     num_samples: int = 1000,
     sigma: jax.typing.ArrayLike = 0.1,
-    noise=Gumbel(),
+    noise=None,
     use_baseline=True,
+    noise_sampler: Optional[Callable] = None,
+    noise_log_prob: Optional[Callable] = None,
 ) -> Callable[[base.PRNGKey, base.ArrayTree], base.ArrayTree]:
   r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
@@ -87,11 +142,16 @@ def make_perturbed_fun(
       currently supported is from pytree to pytree, whose leaves are JAX arrays.
     num_samples: an int, the number of perturbed outputs to average over.
     sigma: a float, the scale of the random perturbation.
-    noise: a distribution object that implements ``sample``
-      and ``unnormalized_log_prob``
-      methods, like :class:`optax.perturbations.Gumbel` (which is the default).
+    noise: (Deprecated) a distribution object that implements ``sample``
+      and ``unnormalized_log_prob`` methods. Use ``noise_sampler`` and
+      ``noise_log_prob`` instead.
     use_baseline: Use the value of the function at the unperturbed input as a
       baseline for variance reduction.
+    noise_sampler: A callable that samples from the noise distribution.
+      Defaults to :func:`optax.perturbations.gumbel_noise_sampler`.
+    noise_log_prob: A callable that returns the unnormalized log probability of
+      the noise distribution. Defaults to
+      :func:`optax.perturbations.unnormalized_gumbel_log_prob`.
 
   Returns:
     A new function with the same signature as the original function, but with a
@@ -139,18 +199,38 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """  # noqa: E501
 
+  if noise is not None:
+    warnings.warn(
+        "`noise` parameter is deprecated. Use `noise_sampler` and "
+        "`noise_log_prob` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if noise_sampler is None:
+      noise_sampler = noise.sample
+    if noise_log_prob is None:
+      if hasattr(noise, "unnormalized_log_prob"):
+        noise_log_prob = noise.unnormalized_log_prob
+      else:
+        noise_log_prob = noise.log_prob
+  else:
+    if noise_sampler is None:
+      noise_sampler = gumbel_noise_sampler
+    if noise_log_prob is None:
+      noise_log_prob = unnormalized_gumbel_log_prob
+
   def mc_estimator(key: base.PRNGKey, x: base.ArrayTree) -> base.ArrayTree:
 
     def stoch_estimator(
         key: base.PRNGKey, x: base.ArrayTree, baseline: base.ArrayTree
     ) -> base.ArrayTree:
-      sample = optax.tree.random_like(key, x, sampler=noise.sample)
+      sample = optax.tree.random_like(key, x, sampler=noise_sampler)
       shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
       shifted_sample = jax.lax.stop_gradient(shifted_sample)
       sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
 
       log_prob_sample = optax.tree.sum(
-          jax.tree.map(noise.unnormalized_log_prob, sample)
+          jax.tree.map(noise_log_prob, sample)
       )
       box = _magicbox(log_prob_sample)
       out = optax.tree.scale(box, fun(shifted_sample))

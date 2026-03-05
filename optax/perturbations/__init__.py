@@ -19,3 +19,7 @@
 from optax.perturbations._make_pert import Gumbel
 from optax.perturbations._make_pert import make_perturbed_fun
 from optax.perturbations._make_pert import Normal
+from optax.perturbations._make_pert import normal_noise_sampler
+from optax.perturbations._make_pert import unnormalized_normal_log_prob
+from optax.perturbations._make_pert import gumbel_noise_sampler
+from optax.perturbations._make_pert import unnormalized_gumbel_log_prob
