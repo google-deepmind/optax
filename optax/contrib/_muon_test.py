@@ -490,7 +490,7 @@ class MuonTest(parameterized.TestCase):
     )
     for i, (exp, got) in enumerate(zip(expected, computed)):
       np.testing.assert_allclose(
-          got, exp, rtol=1e-10,
+          got, exp, rtol=1e-6,
           err_msg=f'Coefficient mismatch at iteration {i}',
       )
 

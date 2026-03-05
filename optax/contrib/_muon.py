@@ -89,7 +89,7 @@ def _optimal_quintic(l, u):
     return (15 / 8) / u, (-10 / 8) / (u**3), (3 / 8) / (u**5)
   q = (3 * l + u) / 4
   r = (l + 3 * u) / 4
-  max_iter = 100
+  max_iter = 1000
   e, old_e, n_iter = np.inf, None, 0
   while old_e is None or abs(old_e - e) > 1e-15:
     if n_iter >= max_iter:
