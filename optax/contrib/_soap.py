@@ -93,7 +93,7 @@ def _update_preconditioner(
     # Contract out all dimensions except the one we are tracking for this factor
     axes = list(range(grad.ndim))
     axes.remove(idx)
-    
+
     outer_product = jnp.tensordot(
         grad,
         grad,
@@ -183,7 +183,7 @@ def _get_orthogonal_matrix_qr(
 
     m_mat = m.astype(qr_dtype) if m.dtype != qr_dtype else m
     o_mat = o.astype(qr_dtype) if o.dtype != qr_dtype else o
-    
+
     # Estimate eigenvalues in the current basis
     est_eig = jnp.diag(
         jnp.matmul(
@@ -192,14 +192,14 @@ def _get_orthogonal_matrix_qr(
             precision=precision,
         )
     )
-    
+
     # Sort descending
     sort_idx = jnp.argsort(est_eig)[::-1]
-    
+
     # Keep exp_avg_sq aligned with the sorted basis
     exp_avg_sq = jnp.take(exp_avg_sq, sort_idx, axis=ind)
     o_mat = o_mat[:, sort_idx]
-    
+
     # Power iteration
     power_iter = jnp.matmul(m_mat, o_mat, precision=precision)
     q_new, _ = jnp.linalg.qr(power_iter)
@@ -254,7 +254,7 @@ def scale_by_soap(
   def init_fn(params):
     exp_avg = optax.tree.zeros_like(params, dtype=mu_dtype)
     exp_avg_sq = optax.tree.zeros_like(params, dtype=mu_dtype)
-    
+
     gg = jax.tree.map(
         lambda p: _init_conditioner(
             p, max_precond_dim, precondition_1d, qr_dtype
@@ -267,7 +267,7 @@ def scale_by_soap(
         ),
         params,
     )
-    
+
     return SoapState(
         count=jnp.zeros([], jnp.int32),
         exp_avg=exp_avg,
@@ -375,7 +375,7 @@ def scale_by_soap(
               isinstance(x, tuple) and isinstance(x[0], Preconditioner)
           ),
       )
-      
+
       # Project momentum buffers to the new basis
       new_m = jax.tree.map(
           lambda m, old_q, new_q_pre: _project(

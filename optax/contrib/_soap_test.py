@@ -51,7 +51,7 @@ class SoapTest(parameterized.TestCase):
     }
     opt = _soap.scale_by_soap(max_precond_dim=4, precondition_1d=True)
     state = opt.init(params)
-    
+
     # Check 1d param (exceeds max_precond_dim=4, so it gets None)
     self.assertEqual(state.gg['1d'].matrices, (None,))
     self.assertEqual(state.q['1d'].matrices, (None,))
@@ -74,7 +74,7 @@ class SoapTest(parameterized.TestCase):
   def test_optimization_convergence(self, dtype, precondition_frequency):
     """Tests that the optimizer successfully minimizes a quadratic objective."""
     initial_params, final_params, obj_fn = _setup_quadratic_target(dtype)
-    
+
     learning_rate = 0.1
     opt = _soap.soap(
         learning_rate=learning_rate,
@@ -82,10 +82,10 @@ class SoapTest(parameterized.TestCase):
         b2=0.999,
         precondition_frequency=precondition_frequency,
     )
-    
+
     params = initial_params
     state = jax.jit(opt.init)(params)
-    
+
     @jax.jit
     def step(params, state):
       loss, grads = jax.value_and_grad(obj_fn)(params)
@@ -106,7 +106,7 @@ class SoapTest(parameterized.TestCase):
     qr_dtype = jnp.float64
     opt = _soap.scale_by_soap(qr_dtype=qr_dtype)
     state = opt.init(params)
-    
+
     self.assertEqual(state.gg.matrices[0].dtype, qr_dtype)
     self.assertEqual(state.q.matrices[0].dtype, qr_dtype)
 
