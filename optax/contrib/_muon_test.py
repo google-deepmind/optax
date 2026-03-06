@@ -378,6 +378,33 @@ class MuonTest(parameterized.TestCase):
       self.assertLess(max_s, 2.0, msg=f'Max singular value {max_s} too high')
       self.assertGreater(min_s, 0.1, msg=f'Min singular value {min_s} too low')
 
+  def test_vmap_optimization(self):
+    """Tests that VMap optimization is not affecting the results."""
+    params = {
+        'w1': jax.random.normal(jax.random.key(1), (100, 100)),
+        'w2': jax.random.normal(jax.random.key(2), (100, 100)),
+        'w3': jax.random.normal(jax.random.key(3), (50, 50)),
+        'w4': jax.random.normal(jax.random.key(4), (50, 50)),
+    }
+
+    results = []
+    for threshold in [0, 5000, 1000000]:
+      opt = _muon.muon(
+          learning_rate=1.0,
+          weight_decay=0.0,
+          vmap_optimization_threshold=threshold,
+      )
+      state = opt.init(params)
+      updates, _ = opt.update(params, state, params=params)
+      results.append(updates)
+
+    test_utils.assert_trees_all_close(
+        results[0], results[1], rtol=1e-2, atol=1e-2
+    )
+    test_utils.assert_trees_all_close(
+        results[0], results[2], rtol=1e-2, atol=1e-2
+    )
+
   def test_aol_numerical_difference(self):
     """Ensures that AOL=True produces different updates than Standard Muon."""
     params = {'w': jnp.eye(8) * 2.0}
