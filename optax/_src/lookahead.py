@@ -38,13 +38,13 @@ class LookaheadState(NamedTuple):
 class LookaheadParams(NamedTuple):
   """Holds a pair of slow and fast parameters for the lookahead optimizer.
 
-  Gradients should always be calculated with the fast parameters. The slow
-  parameters should be used for testing and inference as they generalize better.
-  See the reference for a detailed discussion.
+  Gradients should always be calculated with the fast parameters (i.e.,
+  `params.fast`). The slow parameters should be used for testing and inference
+  as they generalize better. See the reference for a detailed discussion.
 
   Attributes:
-    fast: Fast parameters.
-    slow: Slow parameters.
+    fast: Fast parameters (use these for gradient computation).
+    slow: Slow parameters (use these for inference).
 
   References:
     Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
@@ -88,6 +88,23 @@ def lookahead(
     A :class:`optax.GradientTransformation` with init and update functions. The
     updates passed to the update function should be calculated using the fast
     lookahead parameters only.
+
+  Example:
+    >>> import optax
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> fast_opt = optax.sgd(1e-2)
+    >>> opt = optax.lookahead(fast_opt, sync_period=5, slow_step_size=0.5)
+    >>> params = optax.LookaheadParams.init_synced(jnp.ones((2,)))
+    >>> state = opt.init(params)
+    >>> loss_fn = lambda p: jnp.sum(p**2)
+    >>> # Calculate gradients wrt the fast parameters
+    >>> grads = jax.grad(loss_fn)(params.fast)
+    >>> updates, state = opt.update(grads, state, params)
+    >>> params = optax.apply_updates(params, updates)
+    >>> # Calculate the eval loss wrt the slow parameters
+    >>> loss_fn(params.slow)
+    Array(2., dtype=float32)
 
   References:
     Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
