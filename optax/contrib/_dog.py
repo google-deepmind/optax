@@ -234,7 +234,7 @@ def scale_by_dowg(
 
   Args:
     init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
+    eps: small value to prevent division by zero in the denominator defining,
       the learning rate, also used as initial guess for the distance to solution
       if ``init_estim_sq_dist`` is None.
 
@@ -321,7 +321,7 @@ def dowg(
     learning_rate: optional learning rate (potentially varying according to some
       predetermined scheduler).
     init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
+    eps: small value to prevent division by zero in the denominator defining,
       the learning rate, also used as initial guess for the distance to solution
       if ``init_estim_sq_dist`` is None.
     weight_decay: Strength of the weight decay regularization.

@@ -147,7 +147,7 @@ def ademamix(
   AdEMAMix (Adaptive EMA Mixture) is AdamW with a mixture of two momentum
   terms to better take advantage of historical gradients.
 
-  Both SGD with momemtum (SGD+M) and Adam incorporate momentum using
+  Both SGD with momentum (SGD+M) and Adam incorporate momentum using
   Exponential Moving Averages (EMAs) of past gradients
 
   Let :math:`\eta` represent the learning rate and :math:`\beta_1, \beta_2`,

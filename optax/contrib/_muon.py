@@ -603,7 +603,7 @@ def muon(
     adam_b2: Exponential decay rate for Adam's second moment estimates.
     adam_eps_root: Epsilon to stabilize division in Adam, square root version.
     adam_weight_decay: Weight decay factor for Adam.
-    adam_learning_rate: Auxilary learning rate for the Adam optimizer.
+    adam_learning_rate: Auxiliary learning rate for the Adam optimizer.
       If `None`, the learning rate for Adam defaults to the same as Muon.
     muon_weight_dimension_numbers: An optional tree of `MuonDimensionNumbers`s,
       specifying how to reshape the parameters for orthogonalization otherwise

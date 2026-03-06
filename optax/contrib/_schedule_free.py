@@ -87,7 +87,7 @@ def schedule_free(
   buffer + momentum).
 
   In practice, authors recommend tuning :math:`\beta_1`, `warmup_steps` and
-  `peak_lr` for each problem seperately. Default for :math:`\beta_1` is 0.9 but
+  `peak_lr` for each problem separately. Default for :math:`\beta_1` is 0.9 but
   `0.95` and `0.98` may also work well. Schedule-Free can be wrapped on top of
   any optax optimizer. At test time, the parameters should be evaluated using
   :func:`optax.contrib.schedule_free_eval_params` as presented below.
@@ -141,7 +141,7 @@ def schedule_free(
       z = optax.tree.cast(params, dtype=state_dtype)
     else:
       z = params
-    # It's imporant to copy the params here so that z is a distinct array and
+    # It's important to copy the params here so that z is a distinct array and
     # we can donate both z and the params to JITted functions.
     z = jax.tree.map(lambda t: t.copy(), z)
     return ScheduleFreeState(

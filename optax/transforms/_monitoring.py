@@ -96,7 +96,7 @@ def monitor(
 ):
   """Monitors stateful measurements of updates in a chain.
 
-  Extends func::`optax.snaphot` to use stateful measurements, such as using
+  Extends func::`optax.snapshot` to use stateful measurements, such as using
   exponential moving average.
 
   Args:

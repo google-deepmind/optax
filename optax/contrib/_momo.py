@@ -207,8 +207,8 @@ def momo_adam(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
-  MoMo-Adam typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
+  MoMo-Adam typically needs less tuning for value of ``learning_rate``, by
+  exploiting the fact that a lower bound of the loss (or the optimal value) is
   known. For most tasks, zero is a lower bound and an accurate estimate of the
   final loss.
 
