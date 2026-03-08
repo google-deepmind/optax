@@ -103,15 +103,13 @@ def polar_express_coeffs(
     l=1e-3,
     num_iters=8,
     *,
-    safety_factor_eps=1e-2,
+    safety_factor_eps=2e-2,
     cushion=0.02407327424182761,
 ):
   r"""Compute PolarExpress optimal Newton-Schulz coefficients.
 
   Computes per-iteration optimal quintic coefficients for the Newton-Schulz
-  matrix sign iteration. Each iteration refines the singular value interval
-  :math:`[\ell, u]`, producing coefficients that are optimal in the Chebyshev
-  sense for that iteration's interval.
+  matrix sign iteration.
 
   The ``l`` parameter controls the assumed lower bound on normalized singular
   values after preconditioning. The default ``l=1e-3`` works well for both
@@ -161,11 +159,9 @@ def polar_express_coeffs(
     raise ValueError(f'l must satisfy 0 < l <= 1, got {l}.')
   if num_iters < 1:
     raise ValueError(f'num_iters must be >= 1, got {num_iters}.')
-  # Compute raw optimal coefficients without safety factor (matches the
-  # paper's approach: safety factor is applied after all coefficients are
-  # computed, so it does not affect the interval evolution).
+  safety_factor = 1 + safety_factor_eps
   coefficients = []
-  for _ in range(num_iters):
+  for i in range(num_iters):
     a, b, c = _optimal_quintic(max(l, cushion * u), u)
     if cushion * u > l:
       pl = a * l + b * l**3 + c * l**5
@@ -174,18 +170,13 @@ def polar_express_coeffs(
       a *= rescaler
       b *= rescaler
       c *= rescaler
+    if i < num_iters - 1:
+      a /= safety_factor
+      b /= safety_factor**3
+      c /= safety_factor**5
     coefficients.append((a, b, c))
     l = a * l + b * l**3 + c * l**5
     u = 2 - l
-  # Apply safety factor to all but the last iteration.
-  safety_factor = 1 + safety_factor_eps
-  for i in range(num_iters - 1):
-    a, b, c = coefficients[i]
-    coefficients[i] = (
-        a / safety_factor,
-        b / safety_factor**3,
-        c / safety_factor**5,
-    )
   return coefficients
 
 

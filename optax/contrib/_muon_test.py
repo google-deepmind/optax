@@ -465,7 +465,8 @@ class MuonTest(parameterized.TestCase):
     opt_pe = _muon.muon(
         learning_rate=0.1,
         ns_coeffs='polar_express',
-        ns_steps=8,
+        ns_steps=5,
+        preconditioning='frobenius'
     )
     u_pe, _ = opt_pe.update(params, opt_pe.init(params), params)
 
@@ -507,10 +508,9 @@ class MuonTest(parameterized.TestCase):
   def test_polar_express_hard_matrices(self, preconditioning, matrix_type):
     """PolarExpress coefficients on hard matrices with random singular vectors.
 
-    Tests two cases suggested by Amsel (private communication):
+    Tests two cases:
     - low_rank: exponentially decaying singular values
-    - binary: singular values all 0 or 2 (blowup test; spectral
-      preconditioning is closest to being unstable)
+    - binary: singular values all 0 or 2
     """
     key = jax.random.key(42)
     shape = (50, 100)
