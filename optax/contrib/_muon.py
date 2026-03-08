@@ -74,7 +74,7 @@ def _optimal_quintic(l, u):
   """
   if not 0 < l <= u:
     raise ValueError(f'l must satisfy 0 < l <= u, got l={l}, u={u}.')
-  if 1 - 5e-6 <= l / u:
+  if 1 - 1e-5 <= l / u:
     return (15 / 8) / u, (-10 / 8) / (u**3), (3 / 8) / (u**5)
   q = (3 * l + u) / 4
   r = (l + 3 * u) / 4
