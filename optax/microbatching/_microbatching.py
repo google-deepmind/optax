@@ -44,14 +44,14 @@ class Accumulator:
 
   .. code-block:: python
 
-  carry = init(x_0)
-  for i in range(1, n):
+  carry = init(jax.typeof(x_0))
+  for i in range(n):
     carry = update(carry, x_i, i)
   return finalize(carry)
 
   Attributes:
-    init: A function f(value) that initializes the microbatch state from the
-      function evaluation of the fist microbatch.
+    init: A function f(shape_dtype_struct) that initializes the microbatch
+      state from the shape/dtype of a single microbatch evaluation.
     update: A function f(carry, value, index) that updates the microbatch state
       with the function evaluation of the current microbatch.
     finalize: A function f(carry) that returns the final result from the final
@@ -76,10 +76,6 @@ def _with_floating_check(fn: Function) -> Function:
       )
     return fn(*args, **kwargs)
   return wrapper
-
-
-def _identity(value: Any) -> Any:
-  return value
 
 
 def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
@@ -177,9 +173,9 @@ def _sum() -> Accumulator:
   """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
-          init=_identity,
+          init=jnp.zeros_like,
           update=lambda carry, value, _: carry + value,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.sum, axis=0),
       )
   )
@@ -191,7 +187,7 @@ def _mean(num_microbatches: int) -> Accumulator:
     raise ValueError(f'{num_microbatches=} must be positive.')
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=lambda carry, value, _: carry + value,
           finalize=lambda carry: carry / num_microbatches,
           aggregate=functools.partial(jnp.mean, axis=0),
@@ -208,9 +204,9 @@ def _running_mean() -> Accumulator:
 
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=update,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.mean, axis=0),
       )
   )
@@ -239,8 +235,7 @@ def _concat(num_microbatches: int) -> Accumulator:
 
   def init(value):
     shape = (num_microbatches,) + value.shape
-    zeros = jnp.broadcast_to(jnp.zeros_like(value), shape)
-    return zeros.at[0].set(value)
+    return jnp.broadcast_to(jnp.zeros_like(value), shape)
 
   def update(carry, value, index):
     return carry.at[index].set(value)
@@ -249,7 +244,7 @@ def _concat(num_microbatches: int) -> Accumulator:
     kwargs = _get_out_sharding(carry)
     return carry.reshape(-1, *carry.shape[2:], order='F', **kwargs)
 
-  return _lift(Accumulator(init, update, finalize, _identity))
+  return _lift(Accumulator(init, update, finalize, lambda x: x))
 
 
 class AccumulationType(enum.Enum):
@@ -440,9 +435,8 @@ def microbatch(
 
     early_stop = num_real_microbatches is not None
     loop_bound = num_real_microbatches if early_stop else num_microbatches
-    answer = jax.lax.fori_loop(
-        1, loop_bound, body_fun, accumulator_.init(f(0)),
-    )
+    init_carry = accumulator_.init(jax.eval_shape(f, 0))
+    answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
 
     return accumulator_.finalize(answer)
 
