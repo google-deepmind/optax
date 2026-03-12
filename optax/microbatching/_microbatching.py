@@ -21,16 +21,16 @@ import enum
 import functools
 from typing import Any, Callable, Sequence, TypeAlias
 
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import base
 
 
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
 VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
-PyTreeFn: TypeAlias = Callable[[chex.ArrayTree], chex.ArrayTree]
-UpdateFn = Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
+PyTreeFn: TypeAlias = Callable[[base.ArrayTree], base.ArrayTree]
+UpdateFn = Callable[[base.ArrayTree, base.ArrayTree, int], base.ArrayTree]
 IndividualOutputs = collections.namedtuple('Aux', ['values', 'metrics', 'aux'])
 ValueAndGradFn: TypeAlias = Callable[..., tuple[Any, IndividualOutputs]]
 
@@ -44,14 +44,14 @@ class Accumulator:
 
   .. code-block:: python
 
-  carry = init(x_0)
-  for i in range(1, n):
+  carry = init(jax.typeof(x_0))
+  for i in range(n):
     carry = update(carry, x_i, i)
   return finalize(carry)
 
   Attributes:
-    init: A function f(value) that initializes the microbatch state from the
-      function evaluation of the fist microbatch.
+    init: A function f(shape_dtype_struct) that initializes the microbatch
+      state from the shape/dtype of a single microbatch evaluation.
     update: A function f(carry, value, index) that updates the microbatch state
       with the function evaluation of the current microbatch.
     finalize: A function f(carry) that returns the final result from the final
@@ -68,17 +68,14 @@ class Accumulator:
 
 def _with_floating_check(fn: Function) -> Function:
   def wrapper(*args, **kwargs):
-    dtypes, _ = jax.tree.flatten(jax.tree.map(jnp.dtype, (args, kwargs)))
+    dtypes, _ = jax.tree.flatten(
+        jax.tree.map(lambda x: x.dtype, (args, kwargs)))
     if not all(jnp.issubdtype(dtype, jnp.floating) for dtype in dtypes):
       raise ValueError(
           'MEAN and RUNNING_MEAN Accumulators require floating-point values.'
       )
     return fn(*args, **kwargs)
   return wrapper
-
-
-def _identity(value: Any) -> Any:
-  return value
 
 
 def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
@@ -99,7 +96,7 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
     A pytree of reshaped jax.Arrays.
   """
   def reshape_leaf(x):
-    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis+1:]
+    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1:]
     if jax.__version__ < '0.7.0':
       return x.reshape(new_shape, order='F')
 
@@ -114,7 +111,7 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
     if len(spec) < axis:  # The batch axis is not sharded.
       new_spec = spec
     else:
-      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis+1:])
+      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1:])
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
@@ -176,9 +173,9 @@ def _sum() -> Accumulator:
   """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
-          init=_identity,
+          init=jnp.zeros_like,
           update=lambda carry, value, _: carry + value,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.sum, axis=0),
       )
   )
@@ -190,7 +187,7 @@ def _mean(num_microbatches: int) -> Accumulator:
     raise ValueError(f'{num_microbatches=} must be positive.')
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=lambda carry, value, _: carry + value,
           finalize=lambda carry: carry / num_microbatches,
           aggregate=functools.partial(jnp.mean, axis=0),
@@ -207,9 +204,9 @@ def _running_mean() -> Accumulator:
 
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=update,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.mean, axis=0),
       )
   )
@@ -218,7 +215,7 @@ def _running_mean() -> Accumulator:
 def _get_out_sharding(x):
   """Compute the desired sharding of x.reshape(-1, *x.shape[2:], order='F')."""
   # We use dict because jax doesn't have out_sharding in older jax versions.
-  if  jax.__version__ < '0.7.0':
+  if jax.__version__ < '0.7.0':
     return {}
   sharding = jax.typeof(x).sharding
   if sharding.mesh.are_all_axes_explicit:
@@ -238,8 +235,7 @@ def _concat(num_microbatches: int) -> Accumulator:
 
   def init(value):
     shape = (num_microbatches,) + value.shape
-    zeros = jnp.broadcast_to(jnp.zeros_like(value), shape)
-    return zeros.at[0].set(value)
+    return jnp.broadcast_to(jnp.zeros_like(value), shape)
 
   def update(carry, value, index):
     return carry.at[index].set(value)
@@ -248,7 +244,7 @@ def _concat(num_microbatches: int) -> Accumulator:
     kwargs = _get_out_sharding(carry)
     return carry.reshape(-1, *carry.shape[2:], order='F', **kwargs)
 
-  return _lift(Accumulator(init, update, finalize, _identity))
+  return _lift(Accumulator(init, update, finalize, lambda x: x))
 
 
 class AccumulationType(enum.Enum):
@@ -335,7 +331,6 @@ def microbatch(
     *,
     argnames: str | Sequence[str] = (),
     in_axes: int | Sequence[int] = 0,
-    # TODO(mckennar): Document this option via notebook or doctest.
     num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
   """A general microbatching transformation.
@@ -364,16 +359,15 @@ def microbatch(
 
   Example Usage:
     >>> import jax.numpy as jnp
-    >>> from optax.experimental import microbatching
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
     >>> data = jnp.array([1, 2, 3, 4])
     >>> fun(data)
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
     >>> strategy = (
-    ...    microbatching.AccumulationType.CONCAT,
-    ...    microbatching.AccumulationType.SUM
+    ...    optax.microbatching.AccumulationType.CONCAT,
+    ...    optax.microbatching.AccumulationType.SUM
     ... )
-    >>> microbatched_fun = microbatching.microbatch(
+    >>> microbatched_fun = optax.microbatch(
     ...    fun, argnums=0, microbatch_size=2, accumulator=strategy
     ... )
     >>> microbatched_fun(data)
@@ -439,17 +433,16 @@ def microbatch(
     def body_fun(index, carry):
       return accumulator_.update(carry, f(index), index)
 
-    loop_bound = num_real_microbatches or num_microbatches
-    answer = jax.lax.fori_loop(
-        1, loop_bound, body_fun, accumulator_.init(f(0)),
-    )
+    early_stop = num_real_microbatches is not None
+    loop_bound = num_real_microbatches if early_stop else num_microbatches
+    init_carry = accumulator_.init(jax.eval_shape(f, 0))
+    answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
 
     return accumulator_.finalize(answer)
 
   return microbatched_fun
 
 
-# TODO(mckennar): Create a notebook demonstrating useful use-cases.
 def micro_vmap(
     fun: Function,
     in_axes: int | Sequence[int] = 0,
@@ -460,6 +453,7 @@ def micro_vmap(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.CONCAT,
+    num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
   """A generalized version of jax.vmap that supports microbatching.
 
@@ -471,9 +465,9 @@ def micro_vmap(
   and `out_axes`.
 
   Example Usage:
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> import jax.numpy as jnp
-    >>> microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
+    >>> optax.microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
     Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
 
   Args:
@@ -493,6 +487,10 @@ def micro_vmap(
       batch axis is not needed and is too large to fit in memory. This
       accumulator can be any PyTree prefix of the outputs of `fun` to apply
       different reductions to different sub-trees.
+    num_real_microbatches: Optional number of microbatches that are actually
+      executed. If specified, microbatching will terminate early after this
+      many steps. Can be helpful to handle variable batch sizes without
+      recompilation.
 
   Returns:
     A new function with the same args and kwargs having an additional
@@ -505,7 +503,9 @@ def micro_vmap(
   if isinstance(in_axes, int):
     in_axes = (in_axes,)
 
-  def vmap_reduce_fn(*args, **kwargs):
+  # The semantics of vmap require that all kwargs are mapped along the leading
+  # axis. We therefore bundle all kwargs into a single dictionary kwarg below.
+  def vmap_reduce_fn(*args, kwargs):
     output = vmap_fn(fun, in_axes, out_axes)(*args, **kwargs)
     microbatch_size_ = jax.tree.leaves(output)[0].shape[0]
 
@@ -514,13 +514,20 @@ def micro_vmap(
     temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
     return temporary_accumulator.aggregate(output)
 
-  return microbatch(
+  micro_vmap_fn = microbatch(
       vmap_reduce_fn,
       argnums=tuple(x[0] for x in enumerate(in_axes) if x[1] is not None),
+      argnames='kwargs',
       microbatch_size=microbatch_size,
       accumulator=accumulator,
-      in_axes=tuple(ax for ax in in_axes if ax is not None),
+      in_axes=tuple(ax for ax in in_axes if ax is not None) + (0,),
+      num_real_microbatches=num_real_microbatches,
   )
+
+  def wrapped_fn(*args, **kwargs):
+    return micro_vmap_fn(*args, kwargs=kwargs)
+
+  return wrapped_fn
 
 
 def _normalize_fun_to_return_aux(fun, has_aux):
@@ -556,8 +563,9 @@ def micro_grad(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
-    transform_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: x,
-    metrics_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: None
+    transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
+    metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None,
+    num_real_microbatches: int | jax.Array | None = None,
 ) -> ValueAndGradFn:
   """Create a function to compute, transform, and sum per-example gradients.
 
@@ -579,7 +587,7 @@ def micro_grad(
     native jax.value_and_grad due to the built-in microbatching.
 
   Example Usage (see https://arxiv.org/abs/2510.00236):
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> def mean_squared_loss(params, features, targets):
     ...   preds = features @ params
     ...   diff = preds - targets
@@ -587,11 +595,11 @@ def micro_grad(
     >>> params = jnp.zeros(1)
     >>> features = jnp.ones((4, 1))
     >>> targets = jnp.array([0, 2, 4, 6])
-    >>> (grads, squared_grads), aux = microbatching.micro_grad(
+    >>> (grads, squared_grads), aux = optax.microbatching.micro_grad(
     ...     mean_squared_loss,
     ...     argnums=0,
     ...     batch_argnums=(1,2),
-    ...     accumulator=microbatching.AccumulationType.MEAN,
+    ...     accumulator=optax.microbatching.AccumulationType.MEAN,
     ...     transform_fn=lambda x: (x, x**2),
     ...     metrics_fn=jnp.linalg.norm
     ... )(params, features, targets)
@@ -617,6 +625,10 @@ def micro_grad(
     metrics_fn: A function to apply to per-example gradients before
       transforming. Will be returned on a per-example basis as part of the
       auxiliary output, and therefore should be scalar or low-dimensional.
+    num_real_microbatches: Optional number of microbatches that are actually
+      executed. If specified, microbatching will terminate early after this
+      many steps. Can be helpful to handle variable batch sizes without
+      recompilation.
 
   Returns:
     A function that computes the value and gradient of `fun`, averaging the
@@ -641,14 +653,15 @@ def micro_grad(
     )
     return result, aux
 
-  in_axes = [None]*(max(batch_argnums) + 1)
+  in_axes = [None] * (max(batch_argnums) + 1)
   for i in batch_argnums:
     in_axes[i] = 0
   micro_fun = micro_vmap(
       grad_fn,
       in_axes=in_axes,
       accumulator=(accumulator, AccumulationType.CONCAT),
-      microbatch_size=microbatch_size
+      microbatch_size=microbatch_size,
+      num_real_microbatches=num_real_microbatches,
   )
   if keep_batch_dim:
     micro_fun = _with_extra_batch_axis(micro_fun, batch_argnums)

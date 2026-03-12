@@ -15,6 +15,7 @@
 """Tests for methods in `optax.transforms._accumulation.py`."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import flax
 import jax
 import jax.numpy as jnp
@@ -26,6 +27,12 @@ from optax._src import update
 from optax.transforms import _accumulation
 from optax.transforms import _constraining
 
+OPTIMIZERS_TO_TEST = [
+    {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 0.1}},
+    {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 0.1,
+                                        'mu_dtype': jnp.float32}}
+]
+
 
 class Loss(flax.linen.Module):
 
@@ -36,7 +43,7 @@ class Loss(flax.linen.Module):
     )
 
 
-class AccumulationTest(absltest.TestCase):
+class AccumulationTest(parameterized.TestCase):
 
   def test_ema(self):
     values = jnp.array([5.0, 7.0])
@@ -227,6 +234,28 @@ class AccumulationTest(absltest.TestCase):
       _, opt_state = opt_update(grad, opt_state, params)
       self.assertTrue(ms_opt.has_updated(opt_state))
 
+  def test_multi_steps_scan_dtype_stability(self):
+    # Testing if accumulator dtype stays the same under jax.lax.scan
+    # It is important that the dtype is not promoted in the accumulator
+    ms_opt = _accumulation.MultiSteps(
+        alias.sgd(1e-4), 2, accumulator_dtype=jnp.float32)
+    opt_init, opt_update = ms_opt.gradient_transformation()
+    params = {'a': jnp.zeros([], dtype=jnp.bfloat16)}
+
+    # We use bfloat16 to test if gradients of bfloat16 promote the states
+    # to bfloat16 or similar.
+    def train_step(state, _):
+      grad = {'a': jnp.ones([], dtype=jnp.bfloat16)}
+      updates, opt_state = opt_update(grad, state, params)
+      return opt_state, updates
+
+    opt_state = opt_init(params)
+    # This map should succeed without raising dtype errors in lax.scan
+    # if dtype is stable.
+    final_state, _ = jax.lax.scan(train_step, opt_state, jnp.arange(4))
+    # Also ensure actual dtype of accumulator is float32
+    self.assertEqual(final_state.acc_grads['a'].dtype, jnp.float32)
+
   def test_multi_steps_zero_nans(self):
     # Test that MultiStep is compatible with zero_nans
     # https://github.com/google-deepmind/optax/issues/828
@@ -308,7 +337,8 @@ class AccumulationTest(absltest.TestCase):
           params['a'], jnp.negative(jnp.full([], 2.0))
       )
 
-  def test_multi_steps_mixed_precision(self):
+  @parameterized.parameters(OPTIMIZERS_TO_TEST)
+  def test_multi_steps_mixed_precision(self, opt_name, opt_kwargs):
     batch_size = 32
     x_size = 7
     k_steps = 4
@@ -320,11 +350,7 @@ class AccumulationTest(absltest.TestCase):
 
     # Compare optimizer dtypes with and without MultiSteps
     def create_optimizer(k_steps):
-      base_opt = combine.chain(
-          transform.scale_by_adam(),
-          transform.add_decayed_weights(1e-2),
-          transform.scale(-1e-4),
-      )
+      base_opt = getattr(alias, opt_name)(**opt_kwargs)
       ms_opt = _accumulation.MultiSteps(base_opt, k_steps)
       return base_opt, ms_opt
 
@@ -350,6 +376,7 @@ class AccumulationTest(absltest.TestCase):
     dtypes = [jnp.float32, jnp.float16, jnp.bfloat16]
     for upd_dtype in dtypes:
       for param_dtype in dtypes:
+        data = data.astype(param_dtype)
         with self.subTest(
             f'upd_dtype={upd_dtype.__name__}-param_dtype={param_dtype.__name__}'
         ):
@@ -367,9 +394,18 @@ class AccumulationTest(absltest.TestCase):
             ms_updates, ms_opt_state = train_step(
                 data, ms_opt_state, params, ms_opt_update, upd_dtype
             )
-            self.assertTrue(compare_dtypes(updates, ms_updates))
+            get_dtypes = lambda tree: jax.tree.map(lambda x: x.dtype, tree)
+            self.assertTrue(
+                compare_dtypes(updates, ms_updates),
+                f'Underlying optimizer and MultiSteps updates dtype must match.'
+                f' Got ({get_dtypes(updates)}) vs ({get_dtypes(ms_updates)}).'
+            )
             new_params = update.apply_updates(params, ms_updates)
-            self.assertTrue(compare_dtypes(params, new_params))
+            self.assertTrue(
+                compare_dtypes(params, new_params),
+                'Updates parameters dtypes must match.'
+                f' Got ({get_dtypes(params)}) vs ({get_dtypes(new_params)}).'
+            )
             params = new_params
 
 

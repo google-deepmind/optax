@@ -190,7 +190,7 @@ def mechanize(
     )
 
     # We actually want to add the updates, but since optax by default flips
-    # signs when applying the learning rate, we substract instead.
+    # signs when applying the learning rate, we subtract instead.
     delta = jax.tree.map(lambda si, ui: si - ui, delta_prev, new_neg_updates)
 
     # Now we are ready to run the actual Mechanic algorithm.

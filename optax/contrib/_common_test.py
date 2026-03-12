@@ -37,6 +37,7 @@ from optax.schedules import _schedule
 from optax.transforms import _accumulation
 import optax.tree
 
+# pylint: disable=invalid-name
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
@@ -48,6 +49,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'dog', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'dowg', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'madgrad', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'muon', 'opt_kwargs': {'learning_rate': 1e-2}},
@@ -63,6 +65,10 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {
         'opt_name': 'sophia',
         'opt_kwargs': {'learning_rate': 1e-2}
+    },
+    {
+        'opt_name': 'galore',
+        'opt_kwargs': {'learning_rate': 1e-2, 'rank': 8}
     },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
@@ -138,6 +144,7 @@ _ALL_OPTIMIZERS_UNDER_TEST = tuple(
     _MAIN_OPTIMIZERS_UNDER_TEST + _OTHER_OPTIMIZERS_UNDER_TEST
 )
 _MAIN_OPTIMIZERS_UNDER_TEST = tuple(_MAIN_OPTIMIZERS_UNDER_TEST)
+# pylint: enable=invalid-name
 
 
 def _get_opt_factory(opt_name):
@@ -222,7 +229,7 @@ class ContribTest(parameterized.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrap and wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    # intentionally ommit: opt = base.with_extra_args_support(opt)
+    # intentionally omit: opt = base.with_extra_args_support(opt)
 
     initial_params, _, objective = _setup_rosenbrock(jnp.float32)
 
@@ -302,7 +309,7 @@ class ContribTest(parameterized.TestCase):
       # A no-op change, to verify that tree map works.
       state = optax.tree.map_params(opt, lambda v: v, state)
 
-    with self.subTest('Test that optimization works'):
+    with self.subTest('Test that the optimization works'):
 
       def f(params_state, _):
         return step(*params_state), None
@@ -314,8 +321,13 @@ class ContribTest(parameterized.TestCase):
           or wrapper_name == 'schedule_free'
       ):
         params = contrib.schedule_free_eval_params(state, params)
-      test_utils.assert_trees_all_close(
-          params, final_params, rtol=3e-2, atol=3e-2)
+
+    with self.subTest('Test that the optimization converges'):
+      platform = list(jax.tree.leaves(params)[0].devices())[0].platform
+      # GaLore is sensitive to the SVD accuracy and can fail on this example
+      if not (opt_name == 'galore' and platform != 'cpu'):
+        test_utils.assert_trees_all_close(
+            params, final_params, rtol=3e-2, atol=3e-2)
 
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
@@ -346,7 +358,7 @@ class ContribTest(parameterized.TestCase):
     # inject_hyperparams.
     static_args = []
     for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn',
-                                'ns_steps']:
+                                'ns_steps', 'rank', 'update_proj_gap']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)

@@ -20,7 +20,6 @@ from typing import Any, Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
@@ -97,6 +96,22 @@ _OPTIMIZERS_UNDER_TEST = (
 )
 
 
+def _get_opt(self: absltest.TestCase, opt_name: str):
+  if opt_name == 'optimistic_adam':
+    opt_ = getattr(alias, opt_name)
+
+    @functools.wraps(opt_)
+    def opt(*args, **kwargs):
+      with self.assertWarnsRegex(
+          DeprecationWarning, 'use `optimistic_adam_v2` instead'
+      ):
+        return opt_(*args, **kwargs)
+
+    return opt
+
+  return getattr(alias, opt_name)
+
+
 def _setup_parabola(dtype):
   """Quadratic function as an optimization target."""
   initial_params = jnp.array([-1.0, 10.0, 1.0], dtype=dtype)
@@ -162,7 +177,7 @@ class AliasTest(parameterized.TestCase):
           ' Rosenbrockfunction'
       )
 
-    opt = getattr(alias, opt_name)(**opt_kwargs)
+    opt = _get_opt(self, opt_name)(**opt_kwargs)
     initial_params, final_params, objective = target(dtype)
 
     @jax.jit
@@ -217,7 +232,7 @@ class AliasTest(parameterized.TestCase):
 
   @parameterized.product(_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_accept_extra_args(self, opt_name, opt_kwargs):
-    opt = getattr(alias, opt_name)(**opt_kwargs)
+    opt = _get_opt(self, opt_name)(**opt_kwargs)
     # intentionally ommit: opt = base.with_extra_args_support(opt)
     initial_params, _, objective = _setup_rosenbrock(jnp.float32)
 
@@ -244,7 +259,7 @@ class AliasTest(parameterized.TestCase):
   ):
     """Checks that optimizers can be wrapped in inject_hyperparams."""
     # See also https://github.com/google-deepmind/optax/issues/412.
-    opt_factory = getattr(alias, opt_name)
+    opt_factory = _get_opt(self, opt_name)
     opt = opt_factory(**opt_kwargs)
     if opt_name == 'adafactor':
       # Adafactor wrapped in inject_hyperparams currently needs a static
@@ -292,7 +307,7 @@ class AliasTest(parameterized.TestCase):
       opt = alias.sgd(0.1, momentum=0.9, accumulator_dtype=state_dtype)
       attribute_name = 'trace'
     elif opt_name in ['adam', 'adamw']:
-      opt = getattr(alias, opt_name)(0.1, mu_dtype=state_dtype)
+      opt = _get_opt(self, opt_name)(0.1, mu_dtype=state_dtype)
       attribute_name = 'mu'
     else:
       raise ValueError(f'Unsupported optimizer: {opt_name}')
@@ -321,7 +336,7 @@ class AliasTest(parameterized.TestCase):
     # The solution is to fix the dtype of the result to the desired dtype
     # (just as done in optax.tree.bias_correction).
     dtype = jnp.dtype(dtype)
-    opt_factory = getattr(alias, opt_name)
+    opt_factory = _get_opt(self, opt_name)
     opt = opt_factory(**opt_kwargs)
     fun = lambda x: jnp.sum(x**2)
 
@@ -352,7 +367,7 @@ class AliasTest(parameterized.TestCase):
       )
 
     with utils.x64_precision(dtype in (jnp.float64, jnp.complex128)):
-      opt = getattr(alias, opt_name)(**opt_kwargs)
+      opt = _get_opt(self, opt_name)(**opt_kwargs)
       initial_params, _, objective = _setup_parabola(dtype)
 
       @jax.jit
@@ -397,7 +412,8 @@ class AliasTest(parameterized.TestCase):
     """Test that the optimizers can safely be used with optax.MultiSteps."""
     # Checks for issues like https://github.com/google-deepmind/optax/issues/377
     dtype = jnp.dtype(dtype)
-    opt_factory = getattr(alias, opt_name)
+    opt_factory = _get_opt(self, opt_name)
+
     base_opt = opt_factory(**opt_kwargs)
     opt = _accumulation.MultiSteps(base_opt, every_k_schedule=4)
 
@@ -433,11 +449,11 @@ class AliasTest(parameterized.TestCase):
 
 def _run_opt(
     opt: base.GradientTransformationExtraArgs,
-    fun: Callable[[chex.ArrayTree], jnp.ndarray],
-    init_params: chex.ArrayTree,
+    fun: Callable[[base.ArrayTree], jnp.ndarray],
+    init_params: base.ArrayTree,
     maxiter: int = 500,
     tol: float = 1e-3,
-) -> tuple[chex.ArrayTree, base.OptState]:
+) -> tuple[base.ArrayTree, base.OptState]:
   """Run LBFGS solver by iterative calls to grad transform and apply_updates."""
   value_and_grad_fun = jax.value_and_grad(fun)
 

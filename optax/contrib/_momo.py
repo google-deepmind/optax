@@ -122,8 +122,9 @@ def momo(
       value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:
@@ -206,8 +207,8 @@ def momo_adam(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
-  MoMo-Adam typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
+  MoMo-Adam typically needs less tuning for value of ``learning_rate``, by
+  exploiting the fact that a lower bound of the loss (or the optimal value) is
   known. For most tasks, zero is a lower bound and an accurate estimate of the
   final loss.
 
@@ -283,8 +284,9 @@ def momo_adam(
       value: jax.typing.ArrayLike,
       **extra_args,
   ) -> tuple[base.Updates, MomoAdamState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     if value is None:

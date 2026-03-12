@@ -58,8 +58,9 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
     return HutchinsonState(key=key)
 
   def update_fn(updates, state, params=None, obj_fn=None, **extra_args):
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError("params must be provided to hutchinson update function.")
     if obj_fn is None:

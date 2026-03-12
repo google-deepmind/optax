@@ -125,7 +125,7 @@ autodoc_type_aliases = {
     'base.Updates': 'optax.Updates',
     'base.OptState': 'optax.OptState',
     'base.PyTree': 'optax.PyTree',
-    'chex.ArrayTree': 'chex.ArrayTree',
+    'base.ArrayTree': 'optax.ArrayTree',
     'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
 
@@ -201,6 +201,7 @@ nb_execution_excludepatterns = [
     'differentially_private_sgd.ipynb',
     'lookahead_mnist.ipynb',
     'mlp_mnist.ipynb',
+    'gradient_accumulation_and_microbatching.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
@@ -264,7 +265,6 @@ def linkcode_resolve(domain, info):
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
     'flax': ('https://flax.readthedocs.io/en/latest/', None),
-    'chex': ('https://chex.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']

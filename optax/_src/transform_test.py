@@ -126,10 +126,8 @@ class TransformTest(parameterized.TestCase):
       scaled_updates, _ = rescaler.update(updates, {})
 
       # Manually scale updates.
-      def rescale(t):
-        return t * factor  # pylint:disable=cell-var-from-loop  # noqa: B023
+      manual_updates = jax.tree.map(lambda t: t * factor, updates)  # pylint:disable=cell-var-from-loop  # noqa: B023
 
-      manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
       test_utils.assert_trees_all_close(scaled_updates, manual_updates)
 
@@ -173,6 +171,39 @@ class TransformTest(parameterized.TestCase):
 
     with self.subTest('Check third update is correct'):
       test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
+
+  def test_lion_modes_variants(self):
+    updates = jnp.array([0.2, -2.0, 0.5, -0.8])
+    b1 = 0.5
+    smooth_beta = 2.0
+    for mode in ('hard', 'smooth', 'refined'):
+      opt = transform.scale_by_lion(
+          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta
+      )
+      state: transform.ScaleByLionState = opt.init(
+          updates
+      )  # pytype: disable=annotation-type-mismatch
+      out_updates, _ = opt.update(updates, state)
+
+      x = (1.0 - b1) * updates + b1 * state.mu
+
+      if mode == 'hard':
+        expected = jnp.sign(x)
+      elif mode == 'smooth':
+        expected = jnp.tanh(smooth_beta * x)
+      else:
+        expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
+
+      test_utils.assert_trees_all_close(out_updates, expected)
+
+  def test_lion_invalid_mode_raises(self):
+    updates = jnp.array([0.1, -0.2])
+    opt = transform.scale_by_lion(
+        mode='invalid_mode'
+    )  # pytype: disable=wrong-arg-types
+    state = opt.init(updates)
+    with self.assertRaises(ValueError):
+      opt.update(updates, state)
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""

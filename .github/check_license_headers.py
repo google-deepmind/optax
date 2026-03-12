@@ -75,6 +75,7 @@ def _check_license_header(fname):
   except UnicodeDecodeError:
     return True
 
+
 if __name__ == "__main__":
   # check all Python files in the optax directory for license header
   source_files = list(pathlib.Path("./optax").glob("**/*.py"))
