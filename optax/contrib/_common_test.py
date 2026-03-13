@@ -53,6 +53,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'muon', 'opt_kwargs': {'learning_rate': 1e-2}},
+    {'opt_name': 'normuon', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'prodigy', 'opt_kwargs': {'learning_rate': 1e-1}},
     {
         'opt_name': 'schedule_free_sgd',
