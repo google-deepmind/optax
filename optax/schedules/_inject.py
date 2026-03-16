@@ -159,7 +159,7 @@ def inject_hyperparams(
       count = jnp.zeros([], jnp.int32)
       dtype = hyperparam_dtype
       if dtype is None:
-        dtype = optax.tree.dtype(params)
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -179,7 +179,7 @@ def inject_hyperparams(
     def update_fn(updates, state, params=None, **extra_args):
       dtype = hyperparam_dtype
       if dtype is None:
-        dtype = optax.tree.dtype(params)
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
       }
