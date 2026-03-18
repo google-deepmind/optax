@@ -424,9 +424,9 @@ class MuonTest(parameterized.TestCase):
 class AdaMuonTest(parameterized.TestCase):
 
   def test_adamuon_produces_valid_updates(self):
-    "AdaMuon produces finite, correctly-shaped updates."
+    """AdaMuon produces finite, correctly-shaped updates."""
     key = jax.random.key(42)
-    params = {'w' : jax.random.normal(key, (10, 10))}
+    params = {'w': jax.random.normal(key, (10, 10))}
     opt = _muon.adamuon(learning_rate=1e-3)
     state = opt.init(params)
     updates, _ = opt.update(params, state, params=params)
@@ -434,12 +434,12 @@ class AdaMuonTest(parameterized.TestCase):
     self.assertFalse(jnp.isnan(updates['w']).any())
 
   def test_adamuon_matches_muon_adaptive(self):
-    """AdaMuon output is identical to muon(adaptive=True)"""
+    """AdaMuon output is identical to muon(adaptive=True)."""
     key = jax.random.key(0)
-    params = {'w' : jax.random.normal(key, (8, 8))}
+    params = {'w': jax.random.normal(key, (8, 8))}
 
-    opt_adamuon = _muon.adamuon(learning_rate = 1e-3)
-    opt_muon = _muon.muon(learning_rate = 1e-3, adaptive = True)
+    opt_adamuon = _muon.adamuon(learning_rate=1e-3)
+    opt_muon = _muon.muon(learning_rate=1e-3, adaptive=True)
 
     state_a = opt_adamuon.init(params)
     state_m = opt_muon.init(params)
@@ -447,14 +447,15 @@ class AdaMuonTest(parameterized.TestCase):
     updates_a, _ = opt_adamuon.update(params, state_a, params=params)
     updates_m, _ = opt_muon.update(params, state_m, params=params)
 
-    test_utils.assert_trees_all_close(updates_a, updates_m, rtol=1e-8, atol=1e-8)
+    test_utils.assert_trees_all_close(
+        updates_a, updates_m, rtol=1e-8, atol=1e-8)
 
   def test_adamuon_differs_from_non_adaptive_muon(self):
     """AdaMuon updates differ from standard (non-adaptive) Muon."""
     key = jax.random.key(0)
-    params = {'w' : jax.random.normal(key, (8,8))}
+    params = {'w': jax.random.normal(key, (8, 8))}
 
-    opt_adamuon = _muon.adamuon(learning_rate = 1e-3)
+    opt_adamuon = _muon.adamuon(learning_rate=1e-3)
     opt_muon = _muon.muon(learning_rate=1e-3, adaptive=False)
 
     state_a = opt_adamuon.init(params)
@@ -464,7 +465,8 @@ class AdaMuonTest(parameterized.TestCase):
     updates_m, _ = opt_muon.update(params, state_m, params=params)
 
     with self.assertRaises(AssertionError):
-      test_utils.assert_trees_all_close(updates_a, updates_m, rtol=1e-8, atol=1e-8)    
-    
+      test_utils.assert_trees_all_close(
+          updates_a, updates_m, rtol=1e-8, atol=1e-8)
+
 if __name__ == '__main__':
   absltest.main()
