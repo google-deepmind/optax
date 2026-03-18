@@ -175,10 +175,10 @@ def reduce_on_plateau(
     count = state.count
     new_count = numerics.safe_increment(count)
     new_avg_value = (
-        count * state.avg_value + jnp.astype(value, state.avg_value.dtype)
+        count * state.avg_value + jnp.astype(value, state.avg_value.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     ) / new_count
     new_state = state._replace(
-        avg_value=new_avg_value.astype(state.avg_value.dtype), count=new_count
+        avg_value=new_avg_value.astype(state.avg_value.dtype), count=new_count  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     )
 
     new_state = jax.lax.cond(

@@ -88,7 +88,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
-  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)
+  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if a_dim != 3:
     raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
   if new_diags_dim != 2:
@@ -96,7 +96,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
         f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
     )
   n, d, d1 = a.shape
-  n_diags, d_diags = new_diags.shape
+  n_diags, d_diags = new_diags.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if d != d1:
     raise ValueError(
         f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
@@ -113,7 +113,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   indices3 = indices2
 
   # Use numpy array setting
-  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())
+  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return a
 
 

@@ -106,7 +106,7 @@ def dadapt_adamw(
     count_inc = numerics.safe_increment(count)
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = state.estim_lr * sched * bc
-    dlr = dlr.astype(numerator_weighted.dtype)
+    dlr = dlr.astype(numerator_weighted.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )

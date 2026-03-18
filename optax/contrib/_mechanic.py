@@ -201,7 +201,7 @@ def mechanize(
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
     betas = jnp.array(
         [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
-        dtype=state.s.dtype,
+        dtype=state.s.dtype,  # pytype: disable=attribute-error  # jax-arraylike
     )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)

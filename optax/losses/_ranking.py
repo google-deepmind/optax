@@ -103,7 +103,7 @@ def _safe_reduce(
     # `jnp.sum(loss_fn(reduce_fn=None)) == loss_fn(reduce_fn=jnp.sum)`
     output = jnp.where(where, output, 0.0)
 
-  return output
+  return output  # pytype: disable=bad-return-type  # jax-arraylike
 
 
 def ranking_softmax_loss(
@@ -139,7 +139,7 @@ def ranking_softmax_loss(
     The ranking softmax loss.
   """
   utils.check_subdtype(logits, jnp.floating)
-  labels = labels.astype(logits.dtype)
+  labels = labels.astype(logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Applies mask so that masked elements do not count towards the loss.
   if where is not None:

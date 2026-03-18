@@ -162,7 +162,7 @@ def schedule_free(
     lr = learning_rate
     if callable(learning_rate):
       lr = jnp.asarray(
-          learning_rate(state.step_count), dtype=state.max_lr.dtype
+          learning_rate(state.step_count), dtype=state.max_lr.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
     max_lr = jnp.maximum(state.max_lr, lr)
 

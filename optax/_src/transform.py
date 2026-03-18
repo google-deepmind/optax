@@ -1587,7 +1587,7 @@ def _precondition_by_lbfgs(
     , 1999
   """
   rhos = weights_memory
-  memory_size = weights_memory.shape[0]
+  memory_size = weights_memory.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   indices = (memory_idx + jnp.arange(memory_size)) % memory_size
 
   def right_product(vec, idx):

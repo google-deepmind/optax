@@ -52,4 +52,4 @@ def smooth_labels(
     num_categories = jnp.size(labels, axis)
   else:
     num_categories = jnp.sum(where, axis, keepdims=True)
-  return (1.0 - alpha) * labels + alpha / num_categories
+  return (1.0 - alpha) * labels + alpha / num_categories  # pytype: disable=bad-return-type  # jax-arraylike # noqa: E501

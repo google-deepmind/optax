@@ -127,7 +127,7 @@ def prodigy(
     estim_lr = state.estim_lr
     numerator_weighted = state.numerator_weighted
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
-    dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)
+    dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
     numerator_acum = optax.tree.vdot(updates, param_diff)
