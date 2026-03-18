@@ -772,7 +772,7 @@ def adamuon(
     - Standard Muon:  update = NS_orthogonalize(G)  ~ U V^T
     - AdaMuon:        update = <G, U V^T> * U V^T
 
-  This is equivalent to calling `[muon(..., adaptive=True)](cci:1://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:518:0-726:3)`.
+  This is equivalent to calling `[muon(..., adaptive=True)]
 
   Non-2D parameters are passed through an AdamW optimizer, identically to
   standard Muon behavior.
@@ -781,7 +781,7 @@ def adamuon(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     ns_coeffs: Coefficients for the Newton-schulz method (can be a string
-      indicator for a preset). Existing presets: `[muon](cci:1://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:518:0-726:3)`, ``dion``.
+      indicator for a preset). Existing presets: `[muon]`.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if ``ns_coeffs`` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -799,7 +799,7 @@ def adamuon(
     adam_weight_decay: Weight decay factor for Adam.
     adam_learning_rate: Auxiliary learning rate for the Adam optimizer.
       If ``None``, defaults to the same as Muon.
-    muon_weight_dimension_numbers: An optional tree of `[MuonDimensionNumbers](cci:2://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:55:0-74:38)`.
+    muon_weight_dimension_numbers: An optional tree of `[MuonDimensionNumbers]
     consistent_rms: An optional float to activate consistent RMS scaling.
       See <https://arxiv.org/abs/2502.16982>.
 

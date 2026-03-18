@@ -468,5 +468,6 @@ class AdaMuonTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(
           updates_a, updates_m, rtol=1e-8, atol=1e-8)
 
+
 if __name__ == '__main__':
   absltest.main()
