@@ -725,3 +725,121 @@ def muon(
       },
       param_labels=param_labels,
   )
+
+
+def adamuon(
+    learning_rate: base.ScalarOrSchedule,
+    ns_coeffs: Union[
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
+        str,
+    ] = _DEFAULT_NS_COEFFS,
+    ns_steps: jax.typing.ArrayLike = 5,
+    beta: jax.typing.ArrayLike = 0.95,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    nesterov: bool = True,
+    preconditioning: Literal[
+        'frobenius', 'spectral', 'aol', 'schatten'
+    ] = 'frobenius',
+    adam_b1: jax.typing.ArrayLike = 0.9,
+    adam_b2: jax.typing.ArrayLike = 0.999,
+    adam_eps_root: jax.typing.ArrayLike = 0.0,
+    adam_weight_decay: jax.typing.ArrayLike = 0.0,
+    adam_learning_rate: base.ScalarOrSchedule | None = None,
+    muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
+    consistent_rms: jax.typing.ArrayLike | None = None,
+) -> base.GradientTransformation:
+  r"""AdaMuon: Adaptive Momentum Orthogonalized by Newton-Schulz.
+
+  AdaMuon is the adaptive variant of Muon. After orthogonalizing the momentum
+  via Newton-Schulz, the update is scaled by its inner product with the
+  original (pre-orthogonalization) momentum. This inner product equals the
+  nuclear norm (sum of singular values) of the momentum, making the step size
+  adaptive to the gradient magnitude.
+
+  Mathematically, for a single parameter matrix G (the momentum):
+    - Standard Muon:  update = NS_orthogonalize(G)  ~ U V^T
+    - AdaMuon:        update = <G, U V^T> * U V^T
+
+  This is equivalent to calling `[muon(..., adaptive=True)](cci:1://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:518:0-726:3)`.
+
+  Non-2D parameters are passed through an AdamW optimizer, identically to
+  standard Muon behavior.
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    ns_coeffs: Coefficients for the Newton-schulz method (can be a string
+      indicator for a preset). Existing presets: `[muon](cci:1://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:518:0-726:3)`, ``dion``.
+    ns_steps: Number of Newton-schulz iterations.
+      Ignored if ``ns_coeffs`` is a tuple of tuples.
+    beta: Decay rate for the exponentially weighted average of grads.
+    eps: Term added to the denominator to improve numerical stability.
+    weight_decay: Strength of the weight decay regularization.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+    mu_dtype: Data type of the momentum accumulator.
+    nesterov: Whether to use Nesterov momentum.
+    preconditioning: What type of preconditioning to use before NS iterations.
+      Available options: 'frobenius', 'spectral', 'aol', 'schatten'.
+    adam_b1: Exponential decay rate for Adam's first moment estimates.
+    adam_b2: Exponential decay rate for Adam's second moment estimates.
+    adam_eps_root: Epsilon to stabilize division in Adam, square root version.
+    adam_weight_decay: Weight decay factor for Adam.
+    adam_learning_rate: Auxiliary learning rate for the Adam optimizer.
+      If ``None``, defaults to the same as Muon.
+    muon_weight_dimension_numbers: An optional tree of `[MuonDimensionNumbers](cci:2://file:///c:/Users/raghu/OneDrive/Desktop/optax/optax/optax/contrib/_muon.py:55:0-74:38)`.
+    consistent_rms: An optional float to activate consistent RMS scaling.
+      See <https://arxiv.org/abs/2502.16982>.
+
+  Returns:
+    The corresponding ``GradientTransformation``.
+
+  References:
+    Jordan, `modded-nanogpt: Speedrunning the NanoGPT baseline
+    <https://github.com/KellerJordan/modded-nanogpt>`_, 2024
+
+    Jingyuan Liu et al., `Muon is scalable for LLM Training`
+    <https://arxiv.org/abs/2502.16982>`_, 2025
+
+    Bernstein et al., `Old Optimizer, New Norm: An Anthology`
+    <https://arxiv.org/abs/2409.20325>`_, 2024
+
+    Grishina et al., `Accelerating Newton-Schulz Iteration for Orthogonalization
+    via Chebyshev-type Polynomials`,
+    <https://arxiv.org/abs/2506.10935>`_, 2025
+
+    Chongjie Si et al., `AdaMuon: Adaptive Muon Optimizer`
+    <https://arxiv.org/abs/2507.11005>` _, 2025
+  """
+  return muon(
+      learning_rate=learning_rate,
+      ns_coeffs=ns_coeffs,
+      ns_steps=ns_steps,
+      beta=beta,
+      eps=eps,
+      weight_decay=weight_decay,
+      weight_decay_mask=weight_decay_mask,
+      mu_dtype=mu_dtype,
+      nesterov=nesterov,
+      adaptive=True,  # <-- This is what makes it AdaMuon
+      preconditioning=preconditioning,
+      adam_b1=adam_b1,
+      adam_b2=adam_b2,
+      adam_eps_root=adam_eps_root,
+      adam_weight_decay=adam_weight_decay,
+      adam_learning_rate=adam_learning_rate,
+      muon_weight_dimension_numbers=muon_weight_dimension_numbers,
+      consistent_rms=consistent_rms,
+  )
