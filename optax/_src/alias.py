@@ -40,7 +40,7 @@ def adabelief(
     eps: jax.typing.ArrayLike = 1e-16,
     eps_root: jax.typing.ArrayLike = 1e-16,
     weight_decay: Optional[base.ScalarOrSchedule] = None,
-    mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
+    weight_decay_mask: MaskOrFn = None,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -102,10 +102,11 @@ def adabelief(
       consistent with other frameworks such as PyTorch, but different from
       (Loshchilov et al, 2019) where the weight decay is only multiplied with
       the "schedule multiplier", but not the base learning rate.
-    mask: A tree with same structure as (or a prefix of) the params PyTree,
-      or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, ``True`` for leaves/subtrees you want to
-      apply the weight decay to, and ``False`` for those you want to skip.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the
+      params PyTree, or a Callable that returns such a pytree given the
+      params/updates. The leaves should be booleans, ``True`` for
+      leaves/subtrees you want to apply the weight decay to, and ``False``
+      for those you want to skip.
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
@@ -149,7 +150,7 @@ def adabelief(
       ),
   ]
   if weight_decay is not None:
-    chain_args.append(transform.add_decayed_weights(weight_decay, mask))
+    chain_args.append(transform.add_decayed_weights(weight_decay, mask=weight_decay_mask))
   chain_args.append(transform.scale_by_learning_rate(learning_rate))
   return combine.chain(*chain_args)
 
