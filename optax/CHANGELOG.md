@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-03-20
+
+### Changed
+
+- Following the JAX 0.9.2 release, the `jax_pmap_shmap_merge` config flag was
+removed so that the `jax.pmap` implementation is always based on `jax.jit` and
+`jax.shard_map`, and opting into the old `jax.pmap` behavior is no longer an
+option. Optax had opted into the old behavior to give users time to migrate, and
+as of Optax 0.2.8 this is no longer supported. This changed shouldn't impact
+most users, but if you experience errors or performance regressions as a result
+of it, you can update your code following JAX's
+[migration guide](https://docs.jax.dev/en/latest/migrate_pmap.html) (or use
+JAX 0.9.2 or earlier and set
+`jax.config.update("jax_pmap_shmap_merge", False)`).
+
 ## [0.2.7] - 2026-02-05
 
 ### Added
