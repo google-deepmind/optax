@@ -18,7 +18,6 @@
 
 from typing import Callable
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -61,7 +60,7 @@ def make_perturbed_fun(
     scale: jax.typing.ArrayLike = 0.1,
     noise=Gumbel(),
     use_baseline=True,
-) -> Callable[[base.PRNGKey, chex.ArrayTree], chex.ArrayTree]:
+) -> Callable[[base.PRNGKey, base.ArrayTree], base.ArrayTree]:
   r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
   Let :math:`f` be a function, :math:`s` be a scale scalar, :math:`\mu` be a
@@ -139,11 +138,11 @@ def make_perturbed_fun(
     * :doc:`../_collections/examples/perturbations` example.
   """  # noqa: E501
 
-  def mc_estimator(key: base.PRNGKey, x: chex.ArrayTree) -> chex.ArrayTree:
+  def mc_estimator(key: base.PRNGKey, x: base.ArrayTree) -> base.ArrayTree:
 
     def stoch_estimator(
-        key: base.PRNGKey, x: chex.ArrayTree, baseline: chex.ArrayTree
-    ) -> chex.ArrayTree:
+        key: base.PRNGKey, x: base.ArrayTree, baseline: base.ArrayTree
+    ) -> base.ArrayTree:
       sample = optax.tree.random_like(key, x, sampler=noise.sample)
       shifted_sample = jax.tree.map(lambda x, z: x + scale * z, x, sample)
       shifted_sample = jax.lax.stop_gradient(shifted_sample)

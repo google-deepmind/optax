@@ -93,7 +93,7 @@ class ConstraintsTest(absltest.TestCase):
         opt_state, _constraining.ZeroNansState((jnp.array(False),) * 3)
     )
 
-    # Check an upate with nans
+    # Check an update with nans
     grads_with_nans = (
         jnp.ones([3]),
         jnp.array([1.0, float('nan'), float('nan')]),
@@ -111,7 +111,7 @@ class ConstraintsTest(absltest.TestCase):
         (jnp.ones([3]), jnp.array([1.0, 0.0, 0.0]), jnp.array([0.0, 1.0, 1.0])),
     )
 
-    # Check an upate with nans and infs
+    # Check an update with nans and infs
     grads_with_nans_infs = (
         jnp.ones([3]),
         jnp.array([1.0, float('nan'), float('nan')]),

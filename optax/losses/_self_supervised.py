@@ -79,10 +79,10 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
-  if labels.shape[0] != embeddings.shape[0]:
+  if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
-        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'
+        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         ' embeddings.'
     )
 
@@ -90,7 +90,7 @@ def ntxent(
   xcs = (
       _regression.cosine_similarity(
           embeddings[None, :, :], embeddings[:, None, :],
-          epsilon=jnp.finfo(embeddings.dtype).eps
+          epsilon=jnp.finfo(embeddings.dtype).eps  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature
   )
@@ -135,7 +135,7 @@ def triplet_margin_loss(
   """Returns the triplet loss for a batch of embeddings.
 
   Examples:
-    >>> import jax.numpy as jnp, optax, chex
+    >>> import jax.numpy as jnp, optax
     >>> jnp.set_printoptions(precision=4)
     >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
     >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])

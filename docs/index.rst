@@ -66,6 +66,7 @@ for instructions on installing JAX.
    api/losses
    api/stochastic_gradient_estimators
    api/utilities
+   api/microbatching
    api/contrib
    api/experimental
 

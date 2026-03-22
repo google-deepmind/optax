@@ -16,10 +16,8 @@
 """Experimental optax modules."""
 
 from . import _aggregating as aggregating
-from .microbatching import microbatch
 
 
 __all__ = [
     'aggregating',
-    'microbatch',
 ]

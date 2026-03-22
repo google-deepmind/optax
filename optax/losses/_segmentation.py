@@ -143,9 +143,9 @@ def dice_loss(
       Volumetric Medical Image Segmentation" (2016).
   """
 
-  if predictions.ndim == targets.ndim - 1:
+  if predictions.ndim == targets.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     predictions = predictions[..., None]
-  if targets.ndim == predictions.ndim - 1:
+  if targets.ndim == predictions.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     targets = targets[..., None]
   utils.check_shapes_equal(predictions, targets)
 
@@ -166,12 +166,12 @@ def dice_loss(
   if apply_softmax:
     probs = (
         jax.nn.sigmoid(predictions)
-        if predictions.shape[-1] == 1
+        if predictions.shape[-1] == 1  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         else jax.nn.softmax(predictions, axis=-1)
     )
 
   # Default behavior: sum over all spatial dimensions (except first/last)
-  axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis
+  axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Compute intersection and sums over specified axes
   intersection = jnp.sum(probs * targets, axis=axis)
@@ -195,7 +195,7 @@ def dice_loss(
     dice_l = dice_l * class_weights
 
   # Handle background class ignoring
-  if ignore_background and probs.shape[-1] > 1:
+  if ignore_background and probs.shape[-1] > 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     # Exclude the first class (background) from loss computation
     dice_l = dice_l[..., 1:]
 
@@ -237,7 +237,7 @@ def multiclass_generalized_dice_loss(
   utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
-  class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))
+  class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Compute weights as inverse of squared frequencies
   # Add small epsilon to avoid division by zero
@@ -279,7 +279,7 @@ def binary_dice_loss(
       Loss values of shape [...] (batch dimensions only).
   """
   # Ensure both have channel dimension
-  if predictions.ndim == targets.ndim and predictions.shape[-1] != 1:
+  if predictions.ndim == targets.ndim and predictions.shape[-1] != 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     predictions = predictions[..., None]
     targets = targets[..., None]
 

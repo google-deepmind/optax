@@ -23,6 +23,7 @@ from optax import assignment
 from optax import contrib
 from optax import experimental
 from optax import losses
+from optax import microbatching
 from optax import perturbations
 from optax import projections
 from optax import schedules
@@ -158,6 +159,7 @@ from optax.contrib import dpsgd as _deprecated_dpsgd
 
 
 # TODO(mtthss): remove aliases after updates.
+microbatch = microbatching.microbatch
 adaptive_grad_clip = transforms.adaptive_grad_clip
 AdaptiveGradClipState = EmptyState
 clip = transforms.clip
@@ -313,7 +315,7 @@ del _typing
 # pylint: enable=g-importing-member
 
 
-__version__ = "0.2.7.dev"
+__version__ = "0.2.9.dev"
 
 __all__ = (
     "adabelief",
@@ -397,7 +399,9 @@ __all__ = (
     "MaskedState",
     "matrix_inverse_pth_root",
     "measure_with_ema",
+    "microbatch",
     "monitor",
+    "microbatch",
     "MonitorState",
     "multi_normal",
     "multi_transform",  # for backwards compatibility

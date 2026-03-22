@@ -94,7 +94,7 @@ def projection_hypercube(tree: Any, scale: Any = 1) -> Any:
 def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   """Projection onto the unit simplex."""
   s = 1
-  n_features = values.shape[0]
+  n_features = values.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
   ind = jnp.arange(n_features) + 1

@@ -17,7 +17,6 @@
 import contextlib
 from typing import Optional, Sequence
 
-import chex
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
@@ -89,7 +88,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
-  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)
+  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if a_dim != 3:
     raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
   if new_diags_dim != 2:
@@ -97,7 +96,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
         f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
     )
   n, d, d1 = a.shape
-  n_diags, d_diags = new_diags.shape
+  n_diags, d_diags = new_diags.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if d != d1:
     raise ValueError(
         f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
@@ -114,7 +113,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   indices3 = indices2
 
   # Use numpy array setting
-  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())
+  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return a
 
 
@@ -159,21 +158,21 @@ def multi_normal(
 
 @jax.custom_vjp
 def _scale_gradient(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
 
 
 def _scale_gradient_fwd(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike
-) -> tuple[chex.ArrayTree, jax.typing.ArrayLike]:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike
+) -> tuple[base.ArrayTree, jax.typing.ArrayLike]:
   return _scale_gradient(inputs, scale), scale
 
 
 def _scale_gradient_bwd(
-    scale: jax.typing.ArrayLike, g: chex.ArrayTree
-) -> tuple[chex.ArrayTree, None]:
+    scale: jax.typing.ArrayLike, g: base.ArrayTree
+) -> tuple[base.ArrayTree, None]:
   return (jax.tree.map(lambda g_: g_ * scale, g), None)
 
 
@@ -181,7 +180,7 @@ _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
 def scale_gradient(
-    inputs: chex.ArrayTree, scale: jax.typing.ArrayLike) -> chex.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:

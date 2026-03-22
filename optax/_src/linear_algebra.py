@@ -19,7 +19,6 @@ import functools
 from typing import Optional, Union
 import warnings
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -61,14 +60,14 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 def power_iteration(
     matrix: Union[
-        jax.typing.ArrayLike, Callable[[chex.ArrayTree], chex.ArrayTree]],
+        jax.typing.ArrayLike, Callable[[base.ArrayTree], base.ArrayTree]],
     *,
-    v0: Optional[chex.ArrayTree] = None,
+    v0: Optional[base.ArrayTree] = None,
     num_iters: jax.typing.ArrayLike = 100,
     error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
-) -> tuple[jax.typing.ArrayLike, chex.ArrayTree]:
+) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
@@ -188,7 +187,7 @@ def matrix_inverse_pth_root(
 
   # We use float32 for the matrix inverse pth root.
   # Switch to f64 if you have hardware that supports it.
-  matrix_size = matrix.shape[0]
+  matrix_size = matrix.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   alpha = jnp.asarray(-1.0 / p, jnp.float32)
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
   max_ev, _ = power_iteration(
@@ -278,7 +277,7 @@ def matrix_inverse_pth_root(
     error = jnp.max(jnp.abs(mat_m - identity))
     is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
-    resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
+    resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return resultant_mat_h, error
 
 

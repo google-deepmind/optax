@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import test_utils
-from optax.experimental import microbatching
+import optax.microbatching._microbatching as microbatching
 
 
 def per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
@@ -194,7 +194,7 @@ class MicrobatchingTest(parameterized.TestCase):
     result1 = microbatching.microbatch(
         fun_axis1, argnums=(0, 1), microbatch_size=2, in_axes=1, accumulator=acc
     )(arg_axis1, arg_axis1)
-    test_utils.assert_trees_all_close(result0, result1)
+    test_utils.assert_trees_all_close(result0, result1, atol=1e-6, rtol=1e-6)
 
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,

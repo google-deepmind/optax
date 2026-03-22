@@ -18,7 +18,6 @@ from collections.abc import Callable
 import dataclasses
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -81,9 +80,9 @@ class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
 
   count: jax.typing.ArrayLike  # number of update steps.
-  v_row: chex.ArrayTree  # Tree of factored params.
-  v_col: chex.ArrayTree  # Tree of factored params.
-  v: chex.ArrayTree  # Tree for params where factoring is skipped.
+  v_row: base.ArrayTree  # Tree of factored params.
+  v_col: base.ArrayTree  # Tree of factored params.
+  v: base.ArrayTree  # Tree for params where factoring is skipped.
 
 
 def scale_by_factored_rms(
@@ -185,8 +184,8 @@ def scale_by_factored_rms(
         new_v_col = decay_rate_t * v_col + (1.0 - decay_rate_t) * jnp.mean(
             grad_sqr, axis=d1
         )
-        new_v_row = new_v_row.astype(dtype)
-        new_v_col = new_v_col.astype(dtype)
+        new_v_row = new_v_row.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        new_v_col = new_v_col.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         reduced_d1 = d1 - 1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -199,7 +198,7 @@ def scale_by_factored_rms(
       else:
         grad_sqr = numerics.abs_sq(grad) + epsilon
         new_v = decay_rate_t * v + (1.0 - decay_rate_t) * grad_sqr
-        new_v = new_v.astype(dtype)
+        new_v = new_v.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         update = grad * (new_v) ** -0.5
 
       return _UpdateResult(update, new_v_row, new_v_col, new_v)

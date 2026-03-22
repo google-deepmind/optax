@@ -324,7 +324,16 @@ def scale_by_backtracking_linesearch(
     (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
-    del remaining_kwargs
+
+    if remaining_kwargs:
+      raise TypeError(
+          "Unexpected keyword arguments passed to "
+          "`scale_by_backtracking_linesearch.update`. "
+          f"These arguments were not consumed by `value_fn`: "
+          f"{sorted(remaining_kwargs.keys())}. "
+          "Ensure that all extra keyword arguments are accepted "
+          "by `value_fn`."
+      )
 
     # Slope of lr -> value_fn(params + lr * updates) at lr = 0
     # Should be negative to ensure that there exists a lr (potentially
@@ -1546,7 +1555,16 @@ def scale_by_zoom_linesearch(
     (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
-    del remaining_kwargs
+    if remaining_kwargs:
+      raise TypeError(
+          "Unexpected keyword arguments passed to "
+          "`scale_by_zoom_linesearch.update`. "
+          f"These arguments were not consumed by `value_fn`: "
+          f"{sorted(remaining_kwargs.keys())}. "
+          "Ensure that all extra keyword arguments are accepted "
+          "by `value_fn`."
+      )
+
     value_and_grad_fn = jax.value_and_grad(value_fn)
 
     init_state = init_ls(
@@ -1561,7 +1579,9 @@ def scale_by_zoom_linesearch(
     final_state = jax.lax.while_loop(
         cond_step_ls,
         functools.partial(
-            step_ls, value_and_grad_fn=value_and_grad_fn, fn_kwargs=fn_kwargs
+            step_ls,
+            value_and_grad_fn=value_and_grad_fn,
+            fn_kwargs=fn_kwargs,
         ),
         init_state,
     )

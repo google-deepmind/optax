@@ -134,7 +134,7 @@ def momo(
     # initialize at first gradient, and loss
     bt = jnp.where(count == 0, 0.0, beta)
     barf = bt * state.barf + (1 - bt) * jnp.asarray(
-        value, dtype=state.barf.dtype
+        value, dtype=state.barf.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     )
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
@@ -207,8 +207,8 @@ def momo_adam(
 ) -> base.GradientTransformationExtraArgs:
   """Adaptive Learning Rates for Adam(W).
 
-  MoMo-Adam typically needs less tuning for value of ``learning_rate``,
-  by exploting the fact that a lower bound of the loss (or the optimal value) is
+  MoMo-Adam typically needs less tuning for value of ``learning_rate``, by
+  exploiting the fact that a lower bound of the loss (or the optimal value) is
   known. For most tasks, zero is a lower bound and an accurate estimate of the
   final loss.
 
@@ -295,7 +295,7 @@ def momo_adam(
     count = state.count
     count_inc = numerics.safe_increment(count)
     barf = b1 * state.barf + (1 - b1) * jnp.asarray(
-        value, dtype=state.barf.dtype
+        value, dtype=state.barf.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     )
     exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
@@ -305,7 +305,7 @@ def momo_adam(
         state.exp_avg_sq,
         updates,
     )
-    bc2 = jnp.asarray(1 - b2**count_inc, dtype=barf.dtype)
+    bc2 = jnp.asarray(1 - b2**count_inc, dtype=barf.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     precond = jax.tree.map(lambda eas: eps + jnp.sqrt(eas / bc2), exp_avg_sq)
     exp_avg_weighted = jax.tree.map(
         lambda ea, prec: ea / prec, exp_avg, precond
@@ -314,7 +314,7 @@ def momo_adam(
     gamma = b1 * state.gamma + (1 - b1) * optax.tree.vdot(updates, params)
     iprod = optax.tree.vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    bc1 = jnp.asarray(1 - b1**count_inc, dtype=barf.dtype)
+    bc1 = jnp.asarray(1 - b1**count_inc, dtype=barf.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     # Reset lower bound
     if adapt_lower_bound:
       cap = (1 + alpha * weight_decay) * (barf - gamma) + iprod

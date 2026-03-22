@@ -190,7 +190,7 @@ def mechanize(
     )
 
     # We actually want to add the updates, but since optax by default flips
-    # signs when applying the learning rate, we substract instead.
+    # signs when applying the learning rate, we subtract instead.
     delta = jax.tree.map(lambda si, ui: si - ui, delta_prev, new_neg_updates)
 
     # Now we are ready to run the actual Mechanic algorithm.
@@ -201,7 +201,7 @@ def mechanize(
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
     betas = jnp.array(
         [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
-        dtype=state.s.dtype,
+        dtype=state.s.dtype,  # pytype: disable=attribute-error  # jax-arraylike
     )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)

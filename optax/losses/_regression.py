@@ -47,7 +47,7 @@ def squared_error(
     # Avoid broadcasting logic for "-" operator.
     utils.check_shapes_equal(predictions, targets)
   errors = predictions - targets if targets is not None else predictions
-  return errors**2
+  return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
 
 
 def l2_loss(
@@ -130,7 +130,7 @@ def log_cosh(
   utils.check_subdtype(predictions, jnp.floating)
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
 
 def cosine_similarity(

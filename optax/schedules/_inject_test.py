@@ -225,6 +225,37 @@ class InjectHyperparamsTest(parameterized.TestCase):
     self.assertEqual(state.hyperparams['b1'].dtype, hyperparam_dtype)
     self.assertEqual(state.hyperparams['b2'].dtype, hyperparam_dtype)
 
+  @parameterized.named_parameters(
+      ('bf16', jnp.bfloat16),
+      ('f32', jnp.float32),
+  )
+  def test_hyperparam_default_dtype(self, param_dtype):
+    """Tests that default hyperparam dtype follows param dtype."""
+    params = [jnp.ones((1, 2), dtype=param_dtype),
+              jnp.ones(2, dtype=param_dtype)]
+
+    optim = schedules.inject_hyperparams(transform.scale_by_adam)(
+        b1=0.9, b2=0.95
+    )
+    state = jax.jit(optim.init)(params)
+    self.assertEqual(state.hyperparams['b1'].dtype, param_dtype)
+    self.assertEqual(state.hyperparams['b2'].dtype, param_dtype)
+
+    optim = schedules.inject_hyperparams(transform.scale_by_adam)(
+        b1=jnp.asarray(0.9), b2=jnp.asarray(0.95)
+    )
+    state = jax.jit(optim.init)(params)
+    self.assertEqual(state.hyperparams['b1'].dtype, param_dtype)
+    self.assertEqual(state.hyperparams['b2'].dtype, param_dtype)
+
+    optim = schedules.inject_hyperparams(transform.scale_by_adam)(
+        b1=jnp.array(0.9, dtype=jnp.float32),
+        b2=jnp.asarray(0.95, dtype=jnp.bfloat16)
+    )
+    state = jax.jit(optim.init)(params)
+    self.assertEqual(state.hyperparams['b1'].dtype, jnp.float32)
+    self.assertEqual(state.hyperparams['b2'].dtype, jnp.bfloat16)
+
   @parameterized.named_parameters(('string', 'lr'), ('list', ['lr']))
   def test_static_args_error(self, static_args):
     with self.assertRaises(ValueError):

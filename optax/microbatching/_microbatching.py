@@ -21,16 +21,16 @@ import enum
 import functools
 from typing import Any, Callable, Sequence, TypeAlias
 
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import base
 
 
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
 VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
-PyTreeFn: TypeAlias = Callable[[chex.ArrayTree], chex.ArrayTree]
-UpdateFn = Callable[[chex.ArrayTree, chex.ArrayTree, int], chex.ArrayTree]
+PyTreeFn: TypeAlias = Callable[[base.ArrayTree], base.ArrayTree]
+UpdateFn = Callable[[base.ArrayTree, base.ArrayTree, int], base.ArrayTree]
 IndividualOutputs = collections.namedtuple('Aux', ['values', 'metrics', 'aux'])
 ValueAndGradFn: TypeAlias = Callable[..., tuple[Any, IndividualOutputs]]
 
@@ -44,14 +44,14 @@ class Accumulator:
 
   .. code-block:: python
 
-  carry = init(x_0)
-  for i in range(1, n):
+  carry = init(jax.typeof(x_0))
+  for i in range(n):
     carry = update(carry, x_i, i)
   return finalize(carry)
 
   Attributes:
-    init: A function f(value) that initializes the microbatch state from the
-      function evaluation of the fist microbatch.
+    init: A function f(shape_dtype_struct) that initializes the microbatch
+      state from the shape/dtype of a single microbatch evaluation.
     update: A function f(carry, value, index) that updates the microbatch state
       with the function evaluation of the current microbatch.
     finalize: A function f(carry) that returns the final result from the final
@@ -76,10 +76,6 @@ def _with_floating_check(fn: Function) -> Function:
       )
     return fn(*args, **kwargs)
   return wrapper
-
-
-def _identity(value: Any) -> Any:
-  return value
 
 
 def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
@@ -177,9 +173,9 @@ def _sum() -> Accumulator:
   """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
-          init=_identity,
+          init=jnp.zeros_like,
           update=lambda carry, value, _: carry + value,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.sum, axis=0),
       )
   )
@@ -191,7 +187,7 @@ def _mean(num_microbatches: int) -> Accumulator:
     raise ValueError(f'{num_microbatches=} must be positive.')
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=lambda carry, value, _: carry + value,
           finalize=lambda carry: carry / num_microbatches,
           aggregate=functools.partial(jnp.mean, axis=0),
@@ -208,9 +204,9 @@ def _running_mean() -> Accumulator:
 
   return _lift(
       Accumulator(
-          init=_with_floating_check(_identity),
+          init=_with_floating_check(jnp.zeros_like),
           update=update,
-          finalize=_identity,
+          finalize=lambda x: x,
           aggregate=functools.partial(jnp.mean, axis=0),
       )
   )
@@ -239,8 +235,7 @@ def _concat(num_microbatches: int) -> Accumulator:
 
   def init(value):
     shape = (num_microbatches,) + value.shape
-    zeros = jnp.broadcast_to(jnp.zeros_like(value), shape)
-    return zeros.at[0].set(value)
+    return jnp.broadcast_to(jnp.zeros_like(value), shape)
 
   def update(carry, value, index):
     return carry.at[index].set(value)
@@ -249,7 +244,7 @@ def _concat(num_microbatches: int) -> Accumulator:
     kwargs = _get_out_sharding(carry)
     return carry.reshape(-1, *carry.shape[2:], order='F', **kwargs)
 
-  return _lift(Accumulator(init, update, finalize, _identity))
+  return _lift(Accumulator(init, update, finalize, lambda x: x))
 
 
 class AccumulationType(enum.Enum):
@@ -336,7 +331,6 @@ def microbatch(
     *,
     argnames: str | Sequence[str] = (),
     in_axes: int | Sequence[int] = 0,
-    # TODO(mckennar): Document this option via notebook or doctest.
     num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
   """A general microbatching transformation.
@@ -365,16 +359,15 @@ def microbatch(
 
   Example Usage:
     >>> import jax.numpy as jnp
-    >>> from optax.experimental import microbatching
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
     >>> data = jnp.array([1, 2, 3, 4])
     >>> fun(data)
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
     >>> strategy = (
-    ...    microbatching.AccumulationType.CONCAT,
-    ...    microbatching.AccumulationType.SUM
+    ...    optax.microbatching.AccumulationType.CONCAT,
+    ...    optax.microbatching.AccumulationType.SUM
     ... )
-    >>> microbatched_fun = microbatching.microbatch(
+    >>> microbatched_fun = optax.microbatch(
     ...    fun, argnums=0, microbatch_size=2, accumulator=strategy
     ... )
     >>> microbatched_fun(data)
@@ -442,16 +435,14 @@ def microbatch(
 
     early_stop = num_real_microbatches is not None
     loop_bound = num_real_microbatches if early_stop else num_microbatches
-    answer = jax.lax.fori_loop(
-        1, loop_bound, body_fun, accumulator_.init(f(0)),
-    )
+    init_carry = accumulator_.init(jax.eval_shape(f, 0))
+    answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
 
     return accumulator_.finalize(answer)
 
   return microbatched_fun
 
 
-# TODO(mckennar): Create a notebook demonstrating useful use-cases.
 def micro_vmap(
     fun: Function,
     in_axes: int | Sequence[int] = 0,
@@ -474,9 +465,9 @@ def micro_vmap(
   and `out_axes`.
 
   Example Usage:
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> import jax.numpy as jnp
-    >>> microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
+    >>> optax.microbatching.micro_vmap(lambda x: x**2)(jnp.arange(8))
     Array([ 0,  1,  4,  9, 16, 25, 36, 49], dtype=int32)
 
   Args:
@@ -572,8 +563,8 @@ def micro_grad(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
-    transform_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: x,
-    metrics_fn: Callable[[chex.ArrayTree], chex.ArrayTree] = lambda x: None,
+    transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
+    metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None,
     num_real_microbatches: int | jax.Array | None = None,
 ) -> ValueAndGradFn:
   """Create a function to compute, transform, and sum per-example gradients.
@@ -596,7 +587,7 @@ def micro_grad(
     native jax.value_and_grad due to the built-in microbatching.
 
   Example Usage (see https://arxiv.org/abs/2510.00236):
-    >>> from optax.experimental import microbatching
+    >>> import optax
     >>> def mean_squared_loss(params, features, targets):
     ...   preds = features @ params
     ...   diff = preds - targets
@@ -604,11 +595,11 @@ def micro_grad(
     >>> params = jnp.zeros(1)
     >>> features = jnp.ones((4, 1))
     >>> targets = jnp.array([0, 2, 4, 6])
-    >>> (grads, squared_grads), aux = microbatching.micro_grad(
+    >>> (grads, squared_grads), aux = optax.microbatching.micro_grad(
     ...     mean_squared_loss,
     ...     argnums=0,
     ...     batch_argnums=(1,2),
-    ...     accumulator=microbatching.AccumulationType.MEAN,
+    ...     accumulator=optax.microbatching.AccumulationType.MEAN,
     ...     transform_fn=lambda x: (x, x**2),
     ...     metrics_fn=jnp.linalg.norm
     ... )(params, features, targets)

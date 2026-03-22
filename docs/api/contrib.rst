@@ -22,6 +22,10 @@ are not supported by the main library.
     dowg
     DoWGState
     dpsgd
+    galore
+    GaloreState
+    madgrad
+    MadgradState
     mechanize
     MechanicState
     momo
@@ -94,10 +98,21 @@ Distance over Gradients
 .. autofunction:: dowg
 .. autoclass:: DoWGState
 
+Galore
+~~~~~~
+.. autofunction:: galore
+.. autoclass:: GaloreState
+
 Mechanize
 ~~~~~~~~~
 .. autofunction:: mechanize
 .. autoclass:: MechanicState
+
+Madgrad
+~~~~~~~
+.. autofunction:: madgrad
+.. autofunction:: scale_by_madgrad
+.. autoclass:: MadgradState
 
 Momo
 ~~~~
