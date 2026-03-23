@@ -13,9 +13,3 @@
 # limitations under the License.
 # ==============================================================================
 """The second order optimization sub-package."""
-
-# pylint: disable=g-importing-member
-
-from optax.second_order._deprecated import fisher_diag
-from optax.second_order._deprecated import hessian_diag
-from optax.second_order._deprecated import hvp
