@@ -48,6 +48,12 @@ class SquaredErrorTest(parameterized.TestCase):
           self.ys, jnp.expand_dims(self.ts, axis=-1)
       )
 
+  def test_grad(self):
+    grad_fn = jax.grad(lambda y: _regression.squared_error(y, self.ts).sum())
+    grads = grad_fn(self.ys)
+    expected = 2.0 * (self.ys - self.ts)
+    np.testing.assert_allclose(grads, expected, atol=1e-5)
+
 
 class L2LossTest(parameterized.TestCase):
 
@@ -74,6 +80,12 @@ class L2LossTest(parameterized.TestCase):
           self.ys, jnp.expand_dims(self.ts, axis=-1)
       )
 
+  def test_grad(self):
+    grad_fn = jax.grad(lambda y: _regression.l2_loss(y, self.ts).sum())
+    grads = grad_fn(self.ys)
+    expected = self.ys - self.ts
+    np.testing.assert_allclose(grads, expected, atol=1e-5)
+
 
 class HuberLossTest(parameterized.TestCase):
 
@@ -96,8 +108,16 @@ class HuberLossTest(parameterized.TestCase):
         self.exp,
     )
 
+  def test_grad(self):
+    delta = 1.0
+    grad_fn = jax.grad(
+        lambda y: _regression.huber_loss(y, self.ts, delta=delta).sum()
+    )
+    grads = grad_fn(self.ys)
+    expected = jnp.clip(self.ys - self.ts, -delta, delta)
+    np.testing.assert_allclose(grads, expected, atol=1e-5)
 
-# TODO(b/188419459): add test for grad and second order grad.
+
 class LogCoshTest(parameterized.TestCase):
 
   def setUp(self):
@@ -126,6 +146,29 @@ class LogCoshTest(parameterized.TestCase):
   def test_batched_predictions_only(self):
     out = jax.jit(_regression.log_cosh)(self.ys)
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
+
+  def test_grad(self):
+    grad_fn = jax.grad(lambda y: _regression.log_cosh(y, self.ts).sum())
+    grads = grad_fn(self.ys)
+    expected = jnp.tanh(self.ys - self.ts)
+    np.testing.assert_allclose(grads, expected, atol=1e-5)
+
+  def test_second_order_grad(self):
+    hessian_fn = jax.hessian(lambda y: _regression.log_cosh(y, self.ts).sum())
+    hessian_matrix = hessian_fn(self.ys)
+    hessian_diag = jnp.diag(hessian_matrix)
+    errors = self.ys - self.ts
+    expected = 1.0 - jnp.tanh(errors) ** 2
+    np.testing.assert_allclose(hessian_diag, expected, atol=1e-5)
+
+  def test_grad_large_values(self):
+    large_ys = jnp.array([500.0, -500.0])
+    large_ts = jnp.array([0.0, 0.0])
+    grad_fn = jax.grad(lambda y: _regression.log_cosh(y, large_ts).sum())
+    grads = grad_fn(large_ys)
+    self.assertTrue(jnp.all(jnp.isfinite(grads)))
+    expected = jnp.tanh(large_ys - large_ts)
+    np.testing.assert_allclose(grads, expected, atol=1e-5)
 
 
 class CosineDistanceTest(parameterized.TestCase):
