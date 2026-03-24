@@ -158,10 +158,8 @@ def scale_by_sophia(
         lambda m, h: m / jnp.maximum(gamma * h, eps), mu_hat, state.nu
     )
     if clip_threshold is not None:
-      sum_not_clipped = jax.tree.reduce(
-          lambda x, y: x + y,
-          jax.tree.map(lambda u: jnp.sum(jnp.abs(u) < clip_threshold), updates),
-      )
+      not_clipped = jax.tree.map(lambda u: jnp.abs(u) < clip_threshold, updates)
+      sum_not_clipped = optax.tree.sum(not_clipped)
       if verbose:
         win_rate = sum_not_clipped / optax.tree.size(updates)
         jax.lax.cond(
