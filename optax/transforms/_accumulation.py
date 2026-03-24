@@ -180,7 +180,7 @@ def skip_not_finite(
   not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
   num_not_finite = optax.tree.sum(not_finite)
   should_skip = num_not_finite > 0
-  return should_skip, {
+  return should_skip, {  # pytype: disable=bad-return-type
       'should_skip': should_skip,
       'num_not_finite': num_not_finite,
   }
