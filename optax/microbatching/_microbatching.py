@@ -183,8 +183,6 @@ def _sum() -> Accumulator:
 
 def _mean(num_microbatches: int) -> Accumulator:
   """An Accumulator that computes the mean of microbatched outputs."""
-  if num_microbatches <= 0:
-    raise ValueError(f'{num_microbatches=} must be positive.')
   return _lift(
       Accumulator(
           init=_with_floating_check(jnp.zeros_like),
@@ -230,8 +228,6 @@ def _get_out_sharding(x):
 
 def _concat(num_microbatches: int) -> Accumulator:
   """An Accumulator that concatenates microbatched outputs along the axis 0."""
-  if num_microbatches <= 0:
-    raise ValueError(f'{num_microbatches=} must be positive.')
 
   def init(value):
     shape = (num_microbatches,) + value.shape
@@ -319,6 +315,15 @@ def _reshape_all_args(
     new_kwargs[name] = reshape_batch_axis(kwargs[name], microbatch_size, ax)
 
   return tuple(new_args), new_kwargs, tuple(batch_sizes)[0]
+
+
+def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
+  """Returns a function that takes the `index`-th element along the `axis`."""
+  def fun(x):
+    if x.shape[axis] == 0:  # jnp.take doesn't work with zero axis size.
+      return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1:])
+    return jnp.take(x, indices=index, axis=axis)
+  return fun
 
 
 def microbatch(
@@ -421,13 +426,9 @@ def microbatch(
       input_args = list(reshaped_args)
       input_kwargs = dict(reshaped_kwargs)
       for i, ax in zip(argnums, in_axes):
-        input_args[i] = jax.tree.map(
-            functools.partial(jnp.take, indices=index, axis=ax), input_args[i]
-        )
+        input_args[i] = jax.tree.map(_take_fn(index, ax), input_args[i])
       for i, ax in zip(argnames, in_axes[len(argnums) :]):
-        input_kwargs[i] = jax.tree.map(
-            functools.partial(jnp.take, indices=index, axis=ax), input_kwargs[i]
-        )
+        input_kwargs[i] = jax.tree.map(_take_fn(index, ax), input_kwargs[i])
       return fun(*input_args, **input_kwargs)
 
     def body_fun(index, carry):
@@ -436,8 +437,10 @@ def microbatch(
     early_stop = num_real_microbatches is not None
     loop_bound = num_real_microbatches if early_stop else num_microbatches
     init_carry = accumulator_.init(jax.eval_shape(f, 0))
-    answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
+    if num_microbatches == 0:
+      return accumulator_.finalize(init_carry)
 
+    answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
     return accumulator_.finalize(answer)
 
   return microbatched_fun

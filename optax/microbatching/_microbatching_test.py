@@ -333,6 +333,79 @@ class MicrobatchingTest(parameterized.TestCase):
     result, _ = grad_fn(1.0, jnp.ones(16))
     test_utils.assert_trees_all_close(result, 12.0)
 
+  def test_zero_batch_size_microbatch(self):
+    def fun(x):
+      return jnp.sum(x, axis=0)
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.SUM,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (4,))
+    test_utils.assert_trees_all_close(res, jnp.zeros(4))
+
+  def test_zero_batch_size_microbatch_mean(self):
+    def fun(x):
+      return jnp.mean(x, axis=0)
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.MEAN,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (4,))
+    self.assertTrue(jnp.all(jnp.isnan(res)))
+
+  def test_zero_batch_size_microbatch_concat(self):
+    def fun(x):
+      return x * 2
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (0, 4))
+
+  def test_zero_batch_size_micro_vmap(self):
+    m_vmap = microbatching.micro_vmap(lambda x: x * 2, microbatch_size=2)
+    res = m_vmap(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (0, 4))
+
+  def test_zero_batch_size_micro_grad(self):
+    def mean_squared_loss(params, features, targets):
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        transform_fn=lambda x: (x, x**2),
+        metrics_fn=jnp.linalg.norm,
+        keep_batch_dim=True,
+        microbatch_size=1,
+    )
+    params = jnp.zeros(1)
+    features = jnp.zeros((0, 1))
+    targets = jnp.zeros((0,))
+    (grads, squared_grads), aux = grad_fn(params, features, targets)
+
+    self.assertEqual(grads.shape, (1,))
+    test_utils.assert_trees_all_close(grads, jnp.zeros(1))
+    self.assertEqual(squared_grads.shape, (1,))
+    test_utils.assert_trees_all_close(squared_grads, jnp.zeros(1))
+    self.assertEqual(aux.values.shape, (0,))
+    self.assertEqual(aux.metrics.shape, (0,))
+
 
 if __name__ == '__main__':
   absltest.main()
