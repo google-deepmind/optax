@@ -416,6 +416,9 @@ def microbatch(
   if isinstance(in_axes, int):
     in_axes = (in_axes,) * (len(argnums) + len(argnames))
 
+  # jax.named_call is used to aad a span in the profile trace for easier
+  # identification of microbatching.
+  @functools.partial(jax.named_call, name=f'microbatch_size_{microbatch_size}')
   def microbatched_fun(*args, **kwargs):
     reshaped_args, reshaped_kwargs, batch_size = _reshape_all_args(
         microbatch_size, argnums, argnames, in_axes, args, kwargs
@@ -432,6 +435,10 @@ def microbatch(
         input_kwargs[i] = jax.tree.map(_take_fn(index, ax), input_kwargs[i])
       return fun(*input_args, **input_kwargs)
 
+    @functools.partial(
+        jax.named_call,
+        name=f'{num_microbatches}_microbatches',
+    )
     def body_fun(index, carry):
       return accumulator_.update(carry, f(index), index)
 
@@ -507,6 +514,9 @@ def micro_vmap(
   if isinstance(in_axes, int):
     in_axes = (in_axes,)
 
+  # jax.named_call is used to aad a span in the profile trace for easier
+  # identification of microbatching.
+  @functools.partial(jax.named_call, name='micro_vmap_step')
   # The semantics of vmap require that all kwargs are mapped along the leading
   # axis. We therefore bundle all kwargs into a single dictionary kwarg below.
   def vmap_reduce_fn(*args, kwargs):
@@ -528,6 +538,7 @@ def micro_vmap(
       num_real_microbatches=num_real_microbatches,
   )
 
+  @functools.partial(jax.named_call, name=f'micro_vmap_size_{microbatch_size}')
   def wrapped_fn(*args, **kwargs):
     return micro_vmap_fn(*args, kwargs=kwargs)
 
@@ -647,6 +658,9 @@ def micro_grad(
   fun = _normalize_fun_to_return_aux(fun, has_aux)
   value_and_grad_fn = jax.value_and_grad(fun, argnums, has_aux=True)
 
+  # jax.named_call is used produce a span in the jax profile trace for easier
+  # identification microbatching.
+  @functools.partial(jax.named_call, name='micro_grad_step')
   def grad_fn(*args, **kwargs):
     value_and_aux, grad = value_and_grad_fn(*args, **kwargs)
     result = transform_fn(grad)
@@ -669,4 +683,9 @@ def micro_grad(
   )
   if keep_batch_dim:
     micro_fun = _with_extra_batch_axis(micro_fun, batch_argnums)
-  return micro_fun
+
+  @functools.partial(jax.named_call, name=f'micro_grad_size_{microbatch_size}')
+  def final_fn(*args, **kwargs):
+    return micro_fun(*args, **kwargs)
+
+  return final_fn

@@ -14,6 +14,9 @@
 # ==============================================================================
 
 import functools
+import glob
+import os
+import tempfile
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -122,7 +125,8 @@ class MicrobatchingTest(parameterized.TestCase):
         accumulator=microbatching.AccumulationType.SUM,
     )
     test_utils.assert_trees_all_close(
-        fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5)
+        fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5
+    )
     # This split here is an implementation detail that could change:
     # microbatch1 = [0, 2, 4]
     # microbatch2 = [1, 3, 5]
@@ -235,17 +239,25 @@ class MicrobatchingTest(parameterized.TestCase):
       return jnp.sum(a + b + c + d + e + f)
 
     output1 = microbatching.microbatch(
-        fun, argnums=(0, 1), microbatch_size=2,
+        fun,
+        argnums=(0, 1),
+        microbatch_size=2,
     )(jnp.ones(16), jnp.ones(16), 1, d=2, e=3, f=4)
 
     output2 = microbatching.microbatch(
-        fun, argnums=0, argnames='b', microbatch_size=2,
+        fun,
+        argnums=0,
+        argnames='b',
+        microbatch_size=2,
     )(jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
     test_utils.assert_trees_all_close(output1, output2)
 
     output3 = microbatching.microbatch(
-        fun, argnums=(), argnames=('b', 'a'), microbatch_size=2,
+        fun,
+        argnums=(),
+        argnames=('b', 'a'),
+        microbatch_size=2,
     )(a=jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
     test_utils.assert_trees_all_close(output1, output3)
@@ -405,6 +417,120 @@ class MicrobatchingTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(squared_grads, jnp.zeros(1))
     self.assertEqual(aux.values.shape, (0,))
     self.assertEqual(aux.metrics.shape, (0,))
+
+  def test_microbatch_profiling(self):
+    x = jnp.arange(32, dtype=jnp.float32)
+    params = jnp.array(1.0)
+
+    def loss_fn(params, x):
+      return jnp.mean((params * x) ** 2)
+
+    grad_fn = jax.value_and_grad(loss_fn)
+
+    m_fun = microbatching.microbatch(
+        grad_fn,
+        argnums=1,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.MEAN,
+    )
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(m_fun)(params, x)
+        res[0].block_until_ready()
+        res[1].block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'microbatch_size_',
+        profile_content,
+        msg='microbatch_size_ not found in profile',
+    )
+    self.assertIn(
+        b'_microbatches',
+        profile_content,
+        msg='_microbatches not found in profile',
+    )
+
+  def test_micro_vmap_profiling(self):
+    x = jnp.arange(32, dtype=jnp.float32)
+
+    def my_fun(x):
+      return x * 2
+
+    m_vmap = microbatching.micro_vmap(my_fun, microbatch_size=2)
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(m_vmap)(x)
+        res.block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'micro_vmap_size_',
+        profile_content,
+        msg='micro_vmap_size_ not found in profile',
+    )
+    self.assertIn(
+        b'micro_vmap_step',
+        profile_content,
+        msg='micro_vmap_step not found in profile',
+    )
+
+  def test_micro_grad_profiling(self):
+    def mean_squared_loss(params, features, targets):
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    params = jnp.zeros(1)
+    features = jnp.ones((4, 1))
+    targets = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        microbatch_size=2,
+    )
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(grad_fn)(params, features, targets)
+        res[0].block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'micro_grad_size_',
+        profile_content,
+        msg='micro_grad_size_ not found in profile',
+    )
+    self.assertIn(
+        b'micro_grad_step',
+        profile_content,
+        msg='micro_grad_step not found in profile',
+    )
 
 
 if __name__ == '__main__':
