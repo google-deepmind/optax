@@ -24,6 +24,7 @@ from typing import Any, Callable, Sequence, TypeAlias
 import jax
 import jax.numpy as jnp
 from optax._src import base
+from packaging import version
 
 
 AccumulatorTree: TypeAlias = Any
@@ -97,14 +98,14 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """
   def reshape_leaf(x):
     new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1:]
-    if jax.__version__ < '0.7.0':
+    if version.parse(jax.__version__) < version.parse('0.7.0'):
       return x.reshape(new_shape, order='F')
 
     sharding = jax.typeof(x).sharding
     if not sharding.mesh.are_all_axes_explicit:
       return x.reshape(new_shape, order='F')
 
-    assert jax.__version__ >= '0.8.1', (
+    assert version.parse(jax.__version__) >= version.parse('0.8.1'), (
         'microbatching with explicit sharding requires jax version >= 0.8.1.'
     )
     spec = sharding.spec
@@ -213,7 +214,7 @@ def _running_mean() -> Accumulator:
 def _get_out_sharding(x):
   """Compute the desired sharding of x.reshape(-1, *x.shape[2:], order='F')."""
   # We use dict because jax doesn't have out_sharding in older jax versions.
-  if jax.__version__ < '0.7.0':
+  if version.parse(jax.__version__) < version.parse('0.7.0'):
     return {}
   sharding = jax.typeof(x).sharding
   if sharding.mesh.are_all_axes_explicit:
