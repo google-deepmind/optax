@@ -150,7 +150,9 @@ def adabelief(
       ),
   ]
   if weight_decay is not None:
-    chain_args.append(transform.add_decayed_weights(weight_decay, mask=weight_decay_mask))
+    chain_args.append(
+        transform.add_decayed_weights(weight_decay, mask=weight_decay_mask)
+    )
   chain_args.append(transform.scale_by_learning_rate(learning_rate))
   return combine.chain(*chain_args)
 

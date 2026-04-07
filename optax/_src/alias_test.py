@@ -49,6 +49,10 @@ from sklearn import linear_model
 
 _OPTIMIZERS_UNDER_TEST = (
     {'opt_name': 'adabelief', 'opt_kwargs': {'learning_rate': 1e-2}},
+    {
+        'opt_name': 'adabelief',
+        'opt_kwargs': {'learning_rate': 1e-2, 'weight_decay': 1e-4},
+    },
     {'opt_name': 'adadelta', 'opt_kwargs': {'learning_rate': 0.1}},
     {'opt_name': 'adadelta', 'opt_kwargs': {}},
     {'opt_name': 'adafactor', 'opt_kwargs': {'learning_rate': 5e-3}},
