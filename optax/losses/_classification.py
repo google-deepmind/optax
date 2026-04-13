@@ -45,9 +45,9 @@ def canonicalize_axes(axes, ndim) -> tuple[int, ...]:
 
 
 def sigmoid_binary_cross_entropy(
-    logits,
-    labels,
-):
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   """Computes element-wise sigmoid cross entropy given logits and labels.
 
   This function can be used for binary or multiclass classification (where each
@@ -86,7 +86,10 @@ def sigmoid_binary_cross_entropy(
 @functools.partial(
     warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
 )
-def binary_logistic_loss(logits, labels):
+def binary_logistic_loss(
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   return sigmoid_binary_cross_entropy(logits, labels)
 
 
@@ -149,7 +152,10 @@ def sparsemax_loss(
 
 
 @functools.partial(warn_deprecated_function, replacement='sparsemax_loss')
-def binary_sparsemax_loss(logits, labels):
+def binary_sparsemax_loss(
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   return sparsemax_loss(logits, labels)
 
 
@@ -411,7 +417,10 @@ def softmax_cross_entropy_with_integer_labels(
     warn_deprecated_function,
     replacement='softmax_cross_entropy_with_integer_labels',
 )
-def multiclass_logistic_loss(logits, labels):
+def multiclass_logistic_loss(
+    logits: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
+) -> jax.Array:
   return softmax_cross_entropy_with_integer_labels(logits, labels)
 
 
