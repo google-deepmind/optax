@@ -166,6 +166,7 @@ class AliasTest(parameterized.TestCase):
         'polyak_sgd',
         'sign_sgd',
         'signum',
+        'lars',
     ) and jnp.iscomplexobj(dtype):
       raise absltest.SkipTest(
           f'{opt_name} does not support complex parameters.'
