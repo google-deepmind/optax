@@ -14,7 +14,8 @@
 # ==============================================================================
 """Self-Scaled Broyden (SSBroyden/SSBFGS) optimizer.
 
-Ported from the PyTorch implementation provided by SciMBA (https://www.scimba.org/).
+Ported from the PyTorch implementation provided by
+SciMBA (https://www.scimba.org/).
 
 Based on:
   Urbán, J. F., Stefanou, P., & Pons, J. A. (2025).
@@ -97,7 +98,8 @@ def _update_hessian_inv(
         b_k = -alpha_k * sk_dot_gk / safe_yk_dot_sk
         h_k = yk_dot_Hkyk / safe_yk_dot_sk
         a_k = h_k * b_k - 1.0
-        # c_k = sqrt(a_k / (a_k + 1)); guard against negative or zero denominator
+        # c_k = sqrt(a_k / (a_k + 1));
+        # guard against negative or zero denominator
         safe_a_k_ratio = jnp.where(
             (a_k > 0) & (a_k + 1.0 > 0),
             a_k / (a_k + 1.0),
@@ -108,16 +110,30 @@ def _update_hessian_inv(
 
         safe_a_k = jnp.where(jnp.abs(a_k) > 0, a_k, jnp.ones_like(a_k))
         thetam_k = (rhom_k - 1.0) / safe_a_k
-        safe_rhom_k = jnp.where(jnp.abs(rhom_k) > 0, rhom_k, jnp.ones_like(rhom_k))
+        safe_rhom_k = jnp.where(
+            jnp.abs(rhom_k) > 0, rhom_k, jnp.ones_like(rhom_k)
+        )
         thetap_k = 1.0 / safe_rhom_k
 
-        safe_b_k = jnp.where(jnp.abs(b_k) > 0, b_k, jnp.ones_like(b_k))
-        theta_k = jnp.maximum(thetam_k, jnp.minimum(thetap_k, (1.0 - b_k) / safe_b_k))
+        safe_b_k = jnp.where(
+            jnp.abs(b_k) > 0, b_k, jnp.ones_like(b_k)
+        )
+        theta_k = jnp.maximum(
+            thetam_k,
+            jnp.minimum(thetap_k, (1.0 - b_k) / safe_b_k),
+        )
 
         sigma_k = 1.0 + a_k * theta_k
-        sigma_k_pow = jnp.where(n > 1, sigma_k ** (-1.0 / jnp.maximum(n - 1, 1)), 1.0)
+        exp = -1.0 / jnp.maximum(n - 1, 1)
+        sigma_k_pow = jnp.where(
+            n > 1, sigma_k ** exp, 1.0
+        )
 
-        safe_theta_k = jnp.where(jnp.abs(theta_k) > 0, theta_k, jnp.ones_like(theta_k))
+        safe_theta_k = jnp.where(
+            jnp.abs(theta_k) > 0,
+            theta_k,
+            jnp.ones_like(theta_k),
+        )
         tau_k = jnp.where(
             theta_k > 0,
             tau_k * jnp.minimum(sigma_k_pow, 1.0 / safe_theta_k),
@@ -133,7 +149,11 @@ def _update_hessian_inv(
     H_new = (1.0 / safe_tau_k) * (hessian_inv - temp1 + temp2) + temp3
 
     # Guard against NaN or non-positive curvature
-    valid = ~jnp.any(jnp.isnan(H_new)) & ~jnp.any(jnp.isinf(H_new)) & (yk_dot_sk > 0)
+    valid = (
+        ~jnp.any(jnp.isnan(H_new))
+        & ~jnp.any(jnp.isinf(H_new))
+        & (yk_dot_sk > 0)
+    )
     H_new = jnp.where(valid, H_new, hessian_inv)
     return H_new
 
@@ -144,9 +164,10 @@ def scale_by_ss_quasi_newton(
 ) -> base.GradientTransformation:
     r"""Scale updates by the Self-Scaled Broyden/BFGS inverse Hessian.
 
-    This maintains a dense approximation of the inverse Hessian :math:`H_k` and
-    returns the preconditioned gradient :math:`H_k \nabla f(w_k)`. Unlike L-BFGS,
-    the full :math:`n \times n` matrix is stored, so this is suitable only for
+    This maintains a dense approximation of the inverse Hessian
+    :math:`H_k` and returns the preconditioned gradient
+    :math:`H_k \nabla f(w_k)`. Unlike L-BFGS, the full
+    :math:`n \times n` matrix is stored, so this is suitable only for
     small to medium scale problems.
 
     The inverse Hessian is updated using a self-scaled formula:
@@ -164,25 +185,32 @@ def scale_by_ss_quasi_newton(
     :func:`optax.scale_by_zoom_linesearch`.
 
     Args:
-      method: ``'ssbfgs'`` or ``'ssbroyden'``. Controls the self-scaling formula.
-      scale_init_precond: if ``True``, scale the initial identity preconditioner
+      method: ``'ssbfgs'`` or ``'ssbroyden'``.
+        Controls the self-scaling formula.
+      scale_init_precond: if ``True``, scale the initial identity
+        preconditioner
         by a capped reciprocal of the gradient norm at the first step.
 
     Returns:
       A :class:`optax.GradientTransformation` object.
 
     References:
-      Urbán et al, `Unveiling the optimization process of physics informed neural
-      networks: How accurate and competitive can PINNs be?
+      Urbán et al, `Unveiling the optimization process of physics
+      informed neural networks: How accurate and competitive can
+      PINNs be?
       <https://doi.org/10.1016/j.jcp.2024.113656>`_, 2025
 
     .. warning::
-      This optimizer stores a dense :math:`n \\times n` matrix where :math:`n` is
-      the total number of parameters. It is memory intensive and best suited for
-      small to medium scale problems.
+      This optimizer stores a dense :math:`n \\times n` matrix
+      where :math:`n` is the total number of parameters. It is
+      memory intensive and best suited for small to medium scale
+      problems.
     """
     if method not in ("ssbfgs", "ssbroyden"):
-        raise ValueError(f"method must be 'ssbfgs' or 'ssbroyden', got '{method}'")
+        raise ValueError(
+            f"method must be 'ssbfgs' or 'ssbroyden',"
+            f" got '{method}'"
+        )
 
     def init_fn(params: base.Params) -> ScaleBySSQuasiNewtonState:
         flat_params, _ = jax.flatten_util.ravel_pytree(params)
@@ -212,11 +240,17 @@ def scale_by_ss_quasi_newton(
         s_k = jnp.where(state.count > 0, s_k, jnp.zeros_like(s_k))
         y_k = jnp.where(state.count > 0, y_k, jnp.zeros_like(y_k))
 
-        # Recover the effective step size from the previous iteration.
-        # If the chain is scale_by_ssbroyden -> scale(-1) -> linesearch, then
-        # s_k = -alpha * prec_grad, so alpha = -(s_k . prec_grad) / ||prec_grad||^2
+        # Recover the effective step size from the previous
+        # iteration.  If the chain is
+        # scale_by_ss -> scale(-1) -> linesearch, then
+        # s_k = -alpha * prec_grad, so
+        # alpha = -(s_k . prec_grad) / ||prec_grad||^2
         prec_sq = state.flat_prec_grad @ state.flat_prec_grad
-        alpha_k = jnp.where(prec_sq > 0, -(s_k @ state.flat_prec_grad) / prec_sq, 0.0)
+        alpha_k = jnp.where(
+            prec_sq > 0,
+            -(s_k @ state.flat_prec_grad) / prec_sq,
+            0.0,
+        )
 
         hessian_inv = jnp.where(
             state.count > 0,
@@ -234,7 +268,9 @@ def scale_by_ss_quasi_newton(
         # --- 2. Scale the initial preconditioner at the first step ---
         if scale_init_precond:
             update_norm = jnp.linalg.norm(flat_updates_new)
-            capped_inv_norm = jnp.minimum(1.0, 1.0 / jnp.maximum(update_norm, 1e-30))
+            capped_inv_norm = jnp.minimum(
+                1.0, 1.0 / jnp.maximum(update_norm, 1e-30)
+            )
             hessian_inv = jnp.where(
                 state.count == 0, capped_inv_norm * hessian_inv, hessian_inv
             )
@@ -288,12 +324,13 @@ def ssbroyden(
       learning_rate: optional global scaling factor, either fixed or evolving
         along iterations with a scheduler. By default the learning rate is
         handled by the line search.
-      scale_init_precond: whether to scale the initial identity preconditioner by
-        a capped reciprocal of the gradient norm.
-      linesearch: an instance of :class:`optax.GradientTransformationExtraArgs`
-        such as :func:`optax.scale_by_zoom_linesearch` that computes a step size
-        satisfying sufficient decrease and curvature conditions. Pass ``None`` to
-        disable the line search.
+      scale_init_precond: whether to scale the initial identity
+        preconditioner by a capped reciprocal of the gradient norm.
+      linesearch: an instance of
+        :class:`optax.GradientTransformationExtraArgs` such as
+        :func:`optax.scale_by_zoom_linesearch` that computes a
+        step size satisfying sufficient decrease and curvature
+        conditions. Pass ``None`` to disable the line search.
 
     Returns:
       A :class:`optax.GradientTransformationExtraArgs` object.
@@ -312,19 +349,22 @@ def ssbroyden(
       >>> for _ in range(5):
       ...   value, grad = value_and_grad(params, state=opt_state)
       ...   updates, opt_state = solver.update(
-      ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+      ...      grad, opt_state, params,
+      ...      value=value, grad=grad, value_fn=f,
       ...   )
       ...   params = optax.apply_updates(params, updates)
 
     References:
-      Urbán et al, `Unveiling the optimization process of physics informed neural
-      networks: How accurate and competitive can PINNs be?
+      Urbán et al, `Unveiling the optimization process of
+      physics informed neural networks: How accurate and
+      competitive can PINNs be?
       <https://doi.org/10.1016/j.jcp.2024.113656>`_, 2025
 
     .. warning::
-      This optimizer stores a dense :math:`n \\times n` matrix where :math:`n` is
-      the total number of parameters. It is memory intensive and best suited for
-      small to medium scale problems.
+      This optimizer stores a dense :math:`n \\times n` matrix
+      where :math:`n` is the total number of parameters. It is
+      memory intensive and best suited for small to medium
+      scale problems.
 
     .. warning::
       This optimizer works best with a line search (default is a zoom line
@@ -382,12 +422,13 @@ def ssbfgs(
       learning_rate: optional global scaling factor, either fixed or evolving
         along iterations with a scheduler. By default the learning rate is
         handled by the line search.
-      scale_init_precond: whether to scale the initial identity preconditioner by
-        a capped reciprocal of the gradient norm.
-      linesearch: an instance of :class:`optax.GradientTransformationExtraArgs`
-        such as :func:`optax.scale_by_zoom_linesearch` that computes a step size
-        satisfying sufficient decrease and curvature conditions. Pass ``None`` to
-        disable the line search.
+      scale_init_precond: whether to scale the initial identity
+        preconditioner by a capped reciprocal of the gradient norm.
+      linesearch: an instance of
+        :class:`optax.GradientTransformationExtraArgs` such as
+        :func:`optax.scale_by_zoom_linesearch` that computes a
+        step size satisfying sufficient decrease and curvature
+        conditions. Pass ``None`` to disable the line search.
 
     Returns:
       A :class:`optax.GradientTransformationExtraArgs` object.
@@ -406,19 +447,22 @@ def ssbfgs(
       >>> for _ in range(5):
       ...   value, grad = value_and_grad(params, state=opt_state)
       ...   updates, opt_state = solver.update(
-      ...      grad, opt_state, params, value=value, grad=grad, value_fn=f
+      ...      grad, opt_state, params,
+      ...      value=value, grad=grad, value_fn=f,
       ...   )
       ...   params = optax.apply_updates(params, updates)
 
     References:
-      Urbán et al, `Unveiling the optimization process of physics informed neural
-      networks: How accurate and competitive can PINNs be?
+      Urbán et al, `Unveiling the optimization process of
+      physics informed neural networks: How accurate and
+      competitive can PINNs be?
       <https://doi.org/10.1016/j.jcp.2024.113656>`_, 2025
 
     .. warning::
-      This optimizer stores a dense :math:`n \\times n` matrix where :math:`n` is
-      the total number of parameters. It is memory intensive and best suited for
-      small to medium scale problems.
+      This optimizer stores a dense :math:`n \\times n` matrix
+      where :math:`n` is the total number of parameters. It is
+      memory intensive and best suited for small to medium
+      scale problems.
 
     .. warning::
       This optimizer works best with a line search (default is a zoom line

@@ -65,11 +65,17 @@ class SSBroydenTest(parameterized.TestCase):
         """Test convergence on the Rosenbrock function."""
 
         def rosenbrock(x):
-            return jnp.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1.0 - x[:-1]) ** 2)
+            return jnp.sum(
+                100.0 * (x[1:] - x[:-1] ** 2) ** 2
+                + (1.0 - x[:-1]) ** 2
+            )
 
         init_params = jnp.zeros(2)
         opt = getattr(contrib, method)()
-        final_params, _ = _run_opt(opt, rosenbrock, init_params, maxiter=200, tol=1e-3)
+        final_params, _ = _run_opt(
+            opt, rosenbrock, init_params,
+            maxiter=200, tol=1e-3,
+        )
         self.assertLess(rosenbrock(final_params), 1e-3)
 
     def test_invalid_method(self):
@@ -77,7 +83,7 @@ class SSBroydenTest(parameterized.TestCase):
             contrib.scale_by_ss_quasi_newton(method="invalid")
 
     def test_no_linesearch(self):
-        """Test that the optimizer works with a fixed learning rate and no linesearch."""
+        """Optimizer works with fixed lr and no linesearch."""
         fun = lambda x: jnp.sum(x**2)
         init_params = jnp.array([1.0, 2.0, 3.0])
         opt = contrib.ssbroyden(learning_rate=0.1, linesearch=None)
