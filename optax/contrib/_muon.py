@@ -348,7 +348,7 @@ def orthogonalize_via_newton_schulz(
     if ns_coeffs_.ndim == 1:
       x = jax.lax.fori_loop(
           0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
-          unroll=True)  # Unroll to ensure efficient composition with jax.vmap.
+          unroll=False)
     else:
       def _scan_body(carry, coeffs_step):
         i, x = carry
