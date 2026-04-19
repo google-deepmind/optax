@@ -282,7 +282,7 @@ class MakePertTest(parameterized.TestCase):
 
   def test_sigma_deprecation(self):
     """Passing the legacy ``sigma`` kwarg emits a DeprecationWarning."""
-    fun = lambda x: jnp.sum(x)
+    fun = jnp.sum
     x = jnp.array([0.0, 0.0])
     key = jax.random.key(0)
     with warnings.catch_warnings(record=True) as caught:
@@ -297,7 +297,7 @@ class MakePertTest(parameterized.TestCase):
 
   def test_default_num_samples(self):
     """The default ``num_samples=1`` executes without error."""
-    fun = lambda x: jnp.sum(x)
+    fun = jnp.sum
     x = jnp.array([0.0, 0.0])
     key = jax.random.key(0)
     fp = _make_pert.make_perturbed_fun(fun)
