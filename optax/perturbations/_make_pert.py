@@ -16,7 +16,8 @@
 """Creates a differentiable approximation of a function with perturbations."""
 
 
-from typing import Callable
+from typing import Callable, Optional
+import warnings
 
 import jax
 import jax.numpy as jnp
@@ -56,10 +57,12 @@ class Gumbel:
 
 def make_perturbed_fun(
     fun: Callable[[base.ArrayTree], base.ArrayTree],
-    num_samples: int = 1000,
-    sigma: jax.typing.ArrayLike = 0.1,
+    num_samples: int = 1,
+    scale: jax.typing.ArrayLike = 0.1,
     noise=Gumbel(),
     use_baseline=True,
+    *,
+    sigma: Optional[jax.typing.ArrayLike] = None,
 ) -> Callable[[base.PRNGKey, base.ArrayTree], base.ArrayTree]:
   r"""Returns a differentiable approximation of a function, using stochastic perturbations.
 
@@ -86,11 +89,13 @@ def make_perturbed_fun(
     fun: The function to transform into a differentiable function. The signature
       currently supported is from pytree to pytree, whose leaves are JAX arrays.
     num_samples: an int, the number of perturbed outputs to average over.
-    sigma: a float, the scale of the random perturbation.
+    scale: a float, the scale of the random perturbation (denoted
+      :math:`\sigma` in the formula above).
     noise: a distribution object that implements ``sample`` and ``log_prob``
       methods, like :class:`optax.perturbations.Gumbel` (which is the default).
     use_baseline: Use the value of the function at the unperturbed input as a
       baseline for variance reduction.
+    sigma: deprecated alias for ``scale``, kept for backward compatibility.
 
   Returns:
     A new function with the same signature as the original function, but with a
@@ -103,7 +108,7 @@ def make_perturbed_fun(
     >>> key = jax.random.key(0)
     >>> x = jnp.array([0.0, 0.0, 0.0])
     >>> f = lambda x: jnp.sum(jnp.maximum(x, 0.0))
-    >>> fn = make_perturbed_fun(f, 1_000, 0.1)
+    >>> fn = make_perturbed_fun(f, num_samples=1_000, scale=0.1)
     >>> with jnp.printoptions(precision=2):
     ...   print(jax.grad(fn, argnums=1)(key, x))
     [0.69 0.72 0.58]
@@ -137,6 +142,14 @@ def make_perturbed_fun(
   .. seealso::
     * :doc:`../_collections/examples/perturbations` example.
   """  # noqa: E501
+  if sigma is not None:
+    warnings.warn(
+        "The `sigma` argument of `make_perturbed_fun` is deprecated; use"
+        " `scale` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    scale = sigma
 
   def mc_estimator(key: base.PRNGKey, x: base.ArrayTree) -> base.ArrayTree:
 
@@ -144,9 +157,9 @@ def make_perturbed_fun(
         key: base.PRNGKey, x: base.ArrayTree, baseline: base.ArrayTree
     ) -> base.ArrayTree:
       sample = optax.tree.random_like(key, x, sampler=noise.sample)
-      shifted_sample = jax.tree.map(lambda x, z: x + sigma * z, x, sample)
+      shifted_sample = jax.tree.map(lambda x, z: x + scale * z, x, sample)
       shifted_sample = jax.lax.stop_gradient(shifted_sample)
-      sample = jax.tree.map(lambda x, y: (y - x) / sigma, x, shifted_sample)
+      sample = jax.tree.map(lambda x, y: (y - x) / scale, x, shifted_sample)
 
       log_prob_sample = optax.tree.sum(jax.tree.map(noise.log_prob, sample))
       box = _magicbox(log_prob_sample)
