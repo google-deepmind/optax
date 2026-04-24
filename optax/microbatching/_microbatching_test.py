@@ -15,6 +15,7 @@
 
 import functools
 import glob
+import inspect
 import os
 import tempfile
 
@@ -53,7 +54,6 @@ def sum_mean_per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
 
 NONBATCH_SHAPE = ()
 BATCH_SHAPE = (10, 3)
-
 
 FUNCTION_ACCUM_PAIRS = {
     'per_example': (
@@ -262,6 +262,28 @@ class MicrobatchingTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(output1, output3)
 
+  @parameterized.named_parameters(
+      ('pos_num', (np.eye(4), np.eye(4)), {}, (0, 1), ()),
+      ('kw_name', (), {'x': np.eye(4), 'y': np.eye(4)}, (), ('x', 'y')),
+      ('mixed', (np.eye(4),), {'y': np.eye(4)}, (0,), ('y',)),
+      ('pos_as_kw_num', (), {'x': np.eye(4), 'y': np.eye(4)}, (0, 1), ()),
+      ('pos_by_idx_names', (np.eye(4), np.eye(4)), {}, (), ('x', 'y')),
+  )
+  def test_microbatch_arg_combinations(self, args, kwargs, argnums, argnames):
+    def fun(x, y):
+      return x + y
+
+    micro_fun = microbatching.microbatch(
+        fun,
+        argnums=argnums,
+        argnames=argnames,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )
+
+    actual = micro_fun(*args, **kwargs)
+    test_utils.assert_trees_all_close(actual, 2 * np.eye(4))
+
   def test_dynamic_steps(self):
     @jax.jit
     def fun(x, steps):
@@ -292,6 +314,22 @@ class MicrobatchingTest(parameterized.TestCase):
     custom_vmap = microbatching.micro_vmap(fun, in_axes=0, microbatch_size=2)
     normal_vmap = jax.vmap(fun, in_axes=0)
     test_utils.assert_trees_all_equal(normal_vmap(x, y=y), custom_vmap(x, y=y))
+
+  def test_vmap_kwarg_in_axes(self):
+    x = jnp.arange(4 * 8).reshape(4, 8).astype(jnp.float32)
+    scale = jnp.array(2.0)  # Scalar, no batch dim.
+
+    def fun(x, *, scale):
+      return jnp.sum(x) * scale
+
+    custom_vmap = microbatching.micro_vmap(
+        fun, in_axes=0, microbatch_size=2, kwarg_in_axes={'scale': None}
+    )
+    # jax.vmap doesn't map kwargs with in_axes=None by default; we mimic that
+    # by excluding `scale` from vmap entirely and closing over it.
+    expected = jax.vmap(functools.partial(fun, scale=scale), in_axes=0)(x)
+    actual = custom_vmap(x, scale=scale)
+    test_utils.assert_trees_all_close(expected, actual)
 
   def test_vmap_early_stopping(self):
     x = jnp.ones(16)
@@ -531,6 +569,21 @@ class MicrobatchingTest(parameterized.TestCase):
         profile_content,
         msg='micro_grad_step not found in profile',
     )
+
+  def test_signature_preservation(self):
+    """Test that wrapped functions have the same parameter names."""
+
+    def fun(alpha, beta, gamma):
+      return alpha + jnp.sum(beta + gamma)
+
+    micro_fun = microbatching.microbatch(fun, argnums=0, microbatch_size=2)
+    self.assertEqual(inspect.signature(fun), inspect.signature(micro_fun))
+
+    vmap_fun = microbatching.micro_vmap(fun, microbatch_size=2)
+    self.assertEqual(inspect.signature(fun), inspect.signature(vmap_fun))
+
+    grad_fun = microbatching.micro_grad(fun, microbatch_size=2)
+    self.assertEqual(inspect.signature(fun), inspect.signature(grad_fun))
 
 
 if __name__ == '__main__':
