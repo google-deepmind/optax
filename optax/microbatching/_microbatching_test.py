@@ -586,5 +586,130 @@ class MicrobatchingTest(parameterized.TestCase):
     self.assertEqual(inspect.signature(fun), inspect.signature(grad_fun))
 
 
+# All functions compute batch1 * batch2 + nonbatch; they differ only in
+# signature style.  Used to verify that microbatch/micro_vmap handle
+# VAR_POSITIONAL (*args) and VAR_KEYWORD (**kwargs) correctly.
+def _f_pos(nb, b1, b2):
+  return b1 * b2 + nb
+
+
+def _f_star(*args):
+  return args[1] * args[2] + args[0]
+
+
+def _f_star_kw(*args, batch2):
+  return args[1] * batch2 + args[0]
+
+
+def _f_star_vkw(*args, **kwargs):
+  return args[1] * kwargs['batch2'] + args[0]
+
+
+def _f_star_kw_vkw(*args, batch2, **_):
+  return args[1] * batch2 + args[0]
+
+
+def _f_pos_kw(nb, b1, *, batch2):
+  return b1 * batch2 + nb
+
+# Each case: (name, fun, argnums, argnames).
+# The test methods derive positional/keyword args from argnums/argnames.
+_SIGNATURE_CASES = [
+    ('pos', _f_pos, (1, 2), ()),
+    ('star', _f_star, (1, 2), ()),
+    ('star_kw', _f_star_kw, (1,), ('batch2',)),
+    ('star_vkw', _f_star_vkw, (1,), ('batch2',)),
+    ('star_kw_vkw', _f_star_kw_vkw, (1,), ('batch2',)),
+    ('pos_kw', _f_pos_kw, (1,), ('batch2',)),
+]
+
+
+def _make_args(argnums, argnames):
+  """Build (args, kwargs) for the standard (nonbatch, batch1, batch2) inputs."""
+  nonbatch = jnp.array(1.0)
+  batch1 = jnp.array(np.random.normal(size=BATCH_SHAPE))
+  batch2 = jnp.array(np.random.normal(size=BATCH_SHAPE))
+  all_inputs = (nonbatch, batch1, batch2)
+  npos = max(argnums) + 1 if argnums else 0
+  args = all_inputs[:npos]
+  kwargs = {name: batch2 for name in argnames}
+  return args, kwargs
+
+
+class SignatureVariantsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(_SIGNATURE_CASES)
+  def test_microbatch_matches_unbatched(self, fun, argnums, argnames):
+    """microbatch produces the same result regardless of signature style."""
+    args, kwargs = _make_args(argnums, argnames)
+
+    expected = fun(*args, **kwargs)
+    actual = microbatching.microbatch(
+        fun,
+        argnums=argnums,
+        argnames=argnames,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )(*args, **kwargs)
+    test_utils.assert_trees_all_close(expected, actual, atol=1e-6)
+
+  @parameterized.named_parameters(_SIGNATURE_CASES)
+  def test_micro_vmap_matches_unbatched(self, fun, argnums, argnames):
+    """micro_vmap produces the same result regardless of signature style."""
+    args, kwargs = _make_args(argnums, argnames)
+
+    in_axes = [None] * len(args)
+    for i in argnums:
+      in_axes[i] = 0
+    kwarg_in_axes = {k: 0 for k in kwargs}
+
+    expected = microbatching.micro_vmap(  # pytype: disable=wrong-arg-types
+        fun,
+        in_axes=tuple(in_axes),
+        microbatch_size=None,
+        accumulator=microbatching.AccumulationType.CONCAT,
+        kwarg_in_axes=kwarg_in_axes,
+    )(*args, **kwargs)
+    actual = microbatching.micro_vmap(  # pytype: disable=wrong-arg-types
+        fun,
+        in_axes=tuple(in_axes),
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+        kwarg_in_axes=kwarg_in_axes,
+    )(*args, **kwargs)
+    test_utils.assert_trees_all_close(expected, actual, atol=1e-6)
+
+  def test_micro_vmap_var_positional_with_unmapped_kwarg(self):
+    """micro_vmap with kwarg_in_axes=None on a *args function + microbatching."""
+
+    def fun(*args, is_mask, **kwargs):
+      x, y = args
+      scale = kwargs.get('scale', 1.0)
+      return jnp.sum(x * y * is_mask) * scale
+
+    data_x = jnp.arange(6, dtype=jnp.float32) + 1
+    data_y = jnp.ones(6, dtype=jnp.float32) * 2
+    mask = jnp.array([1, 0, 1, 0, 1, 0], dtype=jnp.float32)
+    scale_val = 3.0
+
+    expected = microbatching.micro_vmap(
+        fun,
+        in_axes=(0, 0),
+        microbatch_size=None,
+        accumulator=microbatching.AccumulationType.SUM,
+        kwarg_in_axes={'is_mask': 0, 'scale': None},
+    )(data_x, data_y, is_mask=mask, scale=scale_val)
+
+    actual = microbatching.micro_vmap(
+        fun,
+        in_axes=(0, 0),
+        microbatch_size=3,
+        accumulator=microbatching.AccumulationType.SUM,
+        kwarg_in_axes={'is_mask': 0, 'scale': None},
+    )(data_x, data_y, is_mask=mask, scale=scale_val)
+
+    test_utils.assert_trees_all_close(expected, actual)
+
+
 if __name__ == '__main__':
   absltest.main()
