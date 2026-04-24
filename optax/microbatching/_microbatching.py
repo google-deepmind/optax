@@ -409,18 +409,33 @@ def microbatch(
     argnames = (argnames,)
 
   sig = inspect.signature(fun)
-  param_names = list(sig.parameters.keys())
-  mapped_names = [param_names[i] for i in argnums] + list(argnames)
+  _has_var_positional = any(
+      p.kind == inspect.Parameter.VAR_POSITIONAL
+      for p in sig.parameters.values()
+  )
+
+  if not _has_var_positional:
+    param_names = list(sig.parameters.keys())
+    _static_mapped_names = [param_names[i] for i in argnums] + list(argnames)
+  else:
+    _static_mapped_names = None
 
   if isinstance(in_axes, int):
-    in_axes = (in_axes,) * len(mapped_names)
+    in_axes = (in_axes,) * (len(argnums) + len(argnames))
 
   # jax.named_call is used to add a span in the profile trace for easier
   # identification of microbatching.
   @functools.wraps(fun)
   @functools.partial(jax.named_call, name=f'microbatch_size_{microbatch_size}')
   def microbatched_fun(*args, **kwargs):
-    bound = sig.bind(*args, **kwargs)
+    if _has_var_positional:
+      expanded_sig = _expand_signature(sig, len(args), argnames)
+      expanded_params = list(expanded_sig.parameters.keys())
+      mapped_names = [expanded_params[i] for i in argnums] + list(argnames)
+      bound = expanded_sig.bind(*args, **kwargs)
+    else:
+      mapped_names = _static_mapped_names
+      bound = sig.bind(*args, **kwargs)
     bound.apply_defaults()
 
     reshaped_arguments, batch_size = _reshape_all_args(
@@ -453,13 +468,40 @@ def microbatch(
   return microbatched_fun
 
 
-def _closed_signature(fun, exclude_names):
-  """Returns a signature for `fun` excluding parameters in `exclude_names`."""
-  sig = inspect.signature(fun)
-  new_params = [p for k, p in sig.parameters.items() if k not in exclude_names]
-  return inspect.Signature(
-      parameters=new_params, return_annotation=sig.return_annotation
-  )
+def _expand_signature(sig, num_positional, kwarg_names):
+  """Expands ``*args``/``**kwargs`` into explicit parameters."""
+  # `microbatch` maps `argnums` indices to `list(sig.parameters.keys())`.
+  # With *args, keyword-only params pollute that list, so we expand *args
+  # into N POSITIONAL_OR_KEYWORD params and materialise kwarg_names from
+  # **kwargs so each can be independently tracked by `microbatch`.
+
+  _args = inspect.Parameter.VAR_POSITIONAL
+  _kwargs = inspect.Parameter.VAR_KEYWORD
+  _normal = inspect.Parameter.POSITIONAL_OR_KEYWORD
+  _kw = inspect.Parameter.KEYWORD_ONLY
+
+  if not any(p.kind == _args for p in sig.parameters.values()):
+    return sig
+
+  explicit_names = {
+      p.name for p in sig.parameters.values() if p.kind not in (_args, _kwargs)
+  }
+  new_params = []
+  for name, param in sig.parameters.items():
+    if param.kind == _args:
+      for i in range(num_positional):
+        new_params.append(inspect.Parameter(f'_{name}{i}', _normal))
+
+    elif param.kind == _kwargs:
+      for k in kwarg_names:
+        if k not in explicit_names:
+          new_params.append(inspect.Parameter(k, _kw))
+      new_params.append(param)  # Retain kwargs that are not explicitly mapped.
+
+    else:
+      new_params.append(param)
+
+  return inspect.Signature(new_params, return_annotation=sig.return_annotation)
 
 
 def micro_vmap(
@@ -560,8 +602,6 @@ def micro_vmap(
       # which does not require knowledge of the number of microbatches.
       temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
       return temporary_accumulator.aggregate(output)
-
-    vmap_reduce_fn.__signature__ = _closed_signature(fun, closed_kw)
 
     micro_vmap_fn = microbatch(
         vmap_reduce_fn,
