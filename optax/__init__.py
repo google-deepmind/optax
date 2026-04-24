@@ -63,6 +63,7 @@ from optax._src.alias import sign_sgd
 from optax._src.alias import signum
 from optax._src.alias import sm3
 from optax._src.alias import yogi
+from optax._src.base import ArrayTree
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
 from optax._src.base import GradientTransformationExtraArgs
@@ -339,6 +340,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "ArrayTree",
     "assignment",
     "centralize",
     "chain",
