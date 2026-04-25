@@ -19,8 +19,7 @@ import collections
 import dataclasses
 import enum
 import functools
-import inspect
-from typing import Any, Callable, Mapping, Sequence, TypeAlias
+from typing import Any, Callable, Sequence, TypeAlias
 
 import jax
 import jax.numpy as jnp
@@ -30,7 +29,7 @@ from packaging import version
 
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
-VmapFn: TypeAlias = Callable[[Function, Any, int], Function]
+VmapFn: TypeAlias = Callable[[Function, int | Sequence[int], int], Function]
 PyTreeFn: TypeAlias = Callable[[base.ArrayTree], base.ArrayTree]
 UpdateFn = Callable[[base.ArrayTree, base.ArrayTree, int], base.ArrayTree]
 IndividualOutputs = collections.namedtuple('Aux', ['values', 'metrics', 'aux'])
@@ -285,12 +284,16 @@ def _canonicalize(
 
 def _reshape_all_args(
     microbatch_size: int,
-    mapped_names: Sequence[str],
+    argnums: Sequence[int],
+    argnames: Sequence[str],
     in_axes: Sequence[int],
-    arguments: dict[str, Any],
-) -> tuple[dict[str, Any], int]:
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any]
+) -> tuple[tuple[Any, ...], dict[str, Any], int]:
   """Reshapes all batch arguments to have a microbatch axis."""
-  batch_args = [arguments[name] for name in mapped_names]
+  new_args = list(args)
+  new_kwargs = dict(kwargs)
+  batch_args = [args[i] for i in argnums] + [kwargs[i] for i in argnames]
 
   batch_sizes = jax.tree.flatten(jax.tree.map(
       lambda ax, subtree: jax.tree.map(lambda x: x.shape[ax], subtree),
@@ -306,11 +309,13 @@ def _reshape_all_args(
   if batch_size % microbatch_size != 0:
     raise ValueError(f'{batch_size=} must be divisible by {microbatch_size=}.')
 
-  result = dict(arguments)
-  for name, ax in zip(mapped_names, in_axes):
-    result[name] = reshape_batch_axis(arguments[name], microbatch_size, ax)
+  for i, ax in zip(argnums, in_axes):
+    new_args[i] = reshape_batch_axis(args[i], microbatch_size, ax)
 
-  return result, batch_size
+  for name, ax in zip(argnames, in_axes[len(argnums) :]):
+    new_kwargs[name] = reshape_batch_axis(kwargs[name], microbatch_size, ax)
+
+  return tuple(new_args), new_kwargs, tuple(batch_sizes)[0]
 
 
 def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
@@ -408,36 +413,32 @@ def microbatch(
   if isinstance(argnames, str):
     argnames = (argnames,)
 
-  sig = inspect.signature(fun)
-  param_names = list(sig.parameters.keys())
-  mapped_names = [param_names[i] for i in argnums] + list(argnames)
-
   if isinstance(in_axes, int):
-    in_axes = (in_axes,) * len(mapped_names)
+    in_axes = (in_axes,) * (len(argnums) + len(argnames))
 
-  # jax.named_call is used to add a span in the profile trace for easier
+  # jax.named_call is used to aad a span in the profile trace for easier
   # identification of microbatching.
-  @functools.wraps(fun)
   @functools.partial(jax.named_call, name=f'microbatch_size_{microbatch_size}')
   def microbatched_fun(*args, **kwargs):
-    bound = sig.bind(*args, **kwargs)
-    bound.apply_defaults()
-
-    reshaped_arguments, batch_size = _reshape_all_args(
-        microbatch_size, mapped_names, in_axes, bound.arguments
+    reshaped_args, reshaped_kwargs, batch_size = _reshape_all_args(
+        microbatch_size, argnums, argnames, in_axes, args, kwargs
     )
-
     num_microbatches = batch_size // microbatch_size
     accumulator_ = _canonicalize(accumulator, num_microbatches)
 
     def f(index):
-      input_args = dict(reshaped_arguments)
-      for name, ax in zip(mapped_names, in_axes):
-        input_args[name] = jax.tree.map(_take_fn(index, ax), input_args[name])
-      bound.arguments.update(input_args)
-      return fun(*bound.args, **bound.kwargs)
+      input_args = list(reshaped_args)
+      input_kwargs = dict(reshaped_kwargs)
+      for i, ax in zip(argnums, in_axes):
+        input_args[i] = jax.tree.map(_take_fn(index, ax), input_args[i])
+      for i, ax in zip(argnames, in_axes[len(argnums) :]):
+        input_kwargs[i] = jax.tree.map(_take_fn(index, ax), input_kwargs[i])
+      return fun(*input_args, **input_kwargs)
 
-    @functools.partial(jax.named_call, name=f'{num_microbatches}_microbatches')
+    @functools.partial(
+        jax.named_call,
+        name=f'{num_microbatches}_microbatches',
+    )
     def body_fun(index, carry):
       return accumulator_.update(carry, f(index), index)
 
@@ -453,15 +454,6 @@ def microbatch(
   return microbatched_fun
 
 
-def _closed_signature(fun, exclude_names):
-  """Returns a signature for `fun` excluding parameters in `exclude_names`."""
-  sig = inspect.signature(fun)
-  new_params = [p for k, p in sig.parameters.items() if k not in exclude_names]
-  return inspect.Signature(
-      parameters=new_params, return_annotation=sig.return_annotation
-  )
-
-
 def micro_vmap(
     fun: Function,
     in_axes: int | Sequence[int] = 0,
@@ -473,7 +465,6 @@ def micro_vmap(
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.CONCAT,
     num_real_microbatches: int | jax.Array | None = None,
-    kwarg_in_axes: Mapping[str, int | None] | None = None,
 ) -> Function:
   """A generalized version of jax.vmap that supports microbatching.
 
@@ -511,9 +502,7 @@ def micro_vmap(
       executed. If specified, microbatching will terminate early after this
       many steps. Can be helpful to handle variable batch sizes without
       recompilation.
-    kwarg_in_axes: A mapping from keyword argument names to the axis to map
-      over. Kwargs not listed in this mapping default to mapping over axis 0.
-      If a kwarg is mapped to ``None``, that argument will not be vmapped over.
+
   Returns:
     A new function with the same args and kwargs having an additional
     batch axis (according to in_axes).
@@ -525,55 +514,33 @@ def micro_vmap(
   if isinstance(in_axes, int):
     in_axes = (in_axes,)
 
-  kwarg_in_axes_ = kwarg_in_axes or {}
-
-  # jax.named_call is used to add a span in the profile trace for easier
+  # jax.named_call is used to aad a span in the profile trace for easier
   # identification of microbatching.
-  @functools.wraps(fun)
+  @functools.partial(jax.named_call, name='micro_vmap_step')
+  # The semantics of vmap require that all kwargs are mapped along the leading
+  # axis. We therefore bundle all kwargs into a single dictionary kwarg below.
+  def vmap_reduce_fn(*args, kwargs):
+    output = vmap_fn(fun, in_axes, out_axes)(*args, **kwargs)
+    microbatch_size_ = jax.tree.leaves(output)[0].shape[0]
+
+    # We are only relying on the `aggregate` attribute of the accumulator, which
+    # does not require knowledge of the number of microbatches.
+    temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
+    return temporary_accumulator.aggregate(output)
+
+  micro_vmap_fn = microbatch(
+      vmap_reduce_fn,
+      argnums=tuple(x[0] for x in enumerate(in_axes) if x[1] is not None),
+      argnames='kwargs',
+      microbatch_size=microbatch_size,
+      accumulator=accumulator,
+      in_axes=tuple(ax for ax in in_axes if ax is not None) + (0,),
+      num_real_microbatches=num_real_microbatches,
+  )
+
   @functools.partial(jax.named_call, name=f'micro_vmap_size_{microbatch_size}')
   def wrapped_fn(*args, **kwargs):
-    closed_kw = {
-        k: kwargs.pop(k)
-        for k, ax in kwarg_in_axes_.items()
-        if ax is None and k in kwargs
-    }
-
-    kw_axes = [kwarg_in_axes_.get(k, 0) for k in kwargs]
-    target_fun = functools.partial(fun, **closed_kw)
-
-    @functools.partial(jax.named_call, name='micro_vmap_step')
-    def vmap_reduce_fn(*args_micro, **kwargs_micro):
-
-      # Pad in_axes with None to match defaults filled by BoundArguments.
-      # These extra arguments are static and should not be mapped over.
-      in_axes_pos = tuple(in_axes) + (None,) * (len(args_micro) - len(in_axes))
-      in_axes_kw = {k: kwarg_in_axes_.get(k, 0) for k in kwargs_micro}
-
-      output = vmap_fn(
-          lambda pos, kw: target_fun(*pos, **kw),
-          (in_axes_pos, in_axes_kw),
-          out_axes
-      )(args_micro, kwargs_micro)
-      microbatch_size_ = jax.tree.leaves(output)[0].shape[0]
-
-      # We are only relying on the `aggregate` attribute of the accumulator,
-      # which does not require knowledge of the number of microbatches.
-      temporary_accumulator = _canonicalize(accumulator, microbatch_size_)
-      return temporary_accumulator.aggregate(output)
-
-    vmap_reduce_fn.__signature__ = _closed_signature(fun, closed_kw)
-
-    micro_vmap_fn = microbatch(
-        vmap_reduce_fn,
-        argnums=tuple(x[0] for x in enumerate(in_axes) if x[1] is not None),
-        argnames=tuple(kwargs.keys()),
-        microbatch_size=microbatch_size,
-        accumulator=accumulator,
-        in_axes=tuple(ax for ax in in_axes if ax is not None) + tuple(kw_axes),
-        num_real_microbatches=num_real_microbatches,
-    )
-
-    return micro_vmap_fn(*args, **kwargs)
+    return micro_vmap_fn(*args, kwargs=kwargs)
 
   return wrapped_fn
 
@@ -589,17 +556,13 @@ def _with_extra_batch_axis(
     fun: Function, batch_argnums: Sequence[int]
 ) -> Function:
   """Wraps a function to add an extra batch axis to the batch_argnums."""
-  sig = inspect.signature(fun)
-  names = list(sig.parameters.keys())
-
   def wrapped_fun(*args, **kwargs):
-    bound = sig.bind(*args, **kwargs)
-    bound.apply_defaults()
+    args_with_group_axis = list(args)
     for i in batch_argnums:
-      bound.arguments[names[i]] = jax.tree.map(
-          lambda x: jnp.expand_dims(x, axis=1), bound.arguments[names[i]]
+      args_with_group_axis[i] = jax.tree.map(
+          lambda x: jnp.expand_dims(x, axis=1), args[i]
       )
-    return fun(*bound.args, **bound.kwargs)
+    return fun(*args_with_group_axis, **kwargs)
 
   return wrapped_fun
 
@@ -692,13 +655,11 @@ def micro_grad(
   if isinstance(batch_argnums, int):
     batch_argnums = (batch_argnums,)
 
-  original_fun = fun
   fun = _normalize_fun_to_return_aux(fun, has_aux)
   value_and_grad_fn = jax.value_and_grad(fun, argnums, has_aux=True)
 
   # jax.named_call is used produce a span in the jax profile trace for easier
   # identification microbatching.
-  @functools.wraps(original_fun)
   @functools.partial(jax.named_call, name='micro_grad_step')
   def grad_fn(*args, **kwargs):
     value_and_aux, grad = value_and_grad_fn(*args, **kwargs)
@@ -713,10 +674,9 @@ def micro_grad(
   in_axes = [None] * (max(batch_argnums) + 1)
   for i in batch_argnums:
     in_axes[i] = 0
-
   micro_fun = micro_vmap(
       grad_fn,
-      in_axes=tuple(in_axes),
+      in_axes=in_axes,
       accumulator=(accumulator, AccumulationType.CONCAT),
       microbatch_size=microbatch_size,
       num_real_microbatches=num_real_microbatches,
@@ -724,7 +684,6 @@ def micro_grad(
   if keep_batch_dim:
     micro_fun = _with_extra_batch_axis(micro_fun, batch_argnums)
 
-  @functools.wraps(original_fun)
   @functools.partial(jax.named_call, name=f'micro_grad_size_{microbatch_size}')
   def final_fn(*args, **kwargs):
     return micro_fun(*args, **kwargs)
