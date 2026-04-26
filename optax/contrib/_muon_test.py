@@ -146,6 +146,41 @@ class MuonTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
+  def test_mask_callable_weight_dim_nums(self, preconditioning):
+    """Test weight_dimension_numbers as a tree of callables."""
+    params = {'w1': jnp.ones((10, 10)), 'w2': jnp.ones((2, 10))}
+
+    # A tree where each leaf is a callable returning MuonDimensionNumbers.
+    weight_dim_nums_tree = {
+        'w1': lambda updates: _muon.MuonDimensionNumbers(0, 1),
+        'w2': lambda updates: None,
+    }
+    opt = _muon.muon(
+        learning_rate=1e-3,
+        preconditioning=preconditioning,
+        muon_weight_dimension_numbers=weight_dim_nums_tree,
+    )
+    state = opt.init(params)
+    updates, _ = opt.update(params, state, params=params)
+
+    # Compare against a single callable that returns the same tree.
+    def weight_dim_nums_fn(updates):
+      return {'w1': _muon.MuonDimensionNumbers(0, 1), 'w2': None}
+
+    opt_ref = _muon.muon(
+        learning_rate=1e-3,
+        preconditioning=preconditioning,
+        muon_weight_dimension_numbers=weight_dim_nums_fn,
+    )
+    state_ref = opt_ref.init(params)
+    updates_ref, _ = opt_ref.update(params, state_ref, params=params)
+
+    test_utils.assert_trees_all_close(updates, updates_ref, rtol=1e-8,
+                                      atol=1e-8)
+
+  @parameterized.named_parameters(
+      ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
+  )
   def test_reshape_update_for_square_parameter_matches_muon_without_dim_nums(
       self, preconditioning
   ):

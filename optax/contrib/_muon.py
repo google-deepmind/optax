@@ -182,6 +182,10 @@ def scale_by_shape(
       # Populate weight_dim_nums if it's a callable. Use updates instead of
       # actual params since only shapes matter and params may not be provided.
       resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    elif _masking._mask_callable(weight_dimension_numbers):
+      resolved_weight_dim_nums = jax.tree.map(
+          lambda fn: fn(updates), weight_dimension_numbers
+      )
     else:
       resolved_weight_dim_nums = weight_dimension_numbers
 
@@ -475,11 +479,14 @@ def scale_by_muon(
 
   def update_fn(updates, state, params=None):
     del params
-    # TODO(rdyro): extend to _masking._mask_callable
     if callable(weight_dimension_numbers):
       # Populate weight_dim_nums if it's a callable. Use updates instead of
       # actual params since only shapes matter and params may not be provided.
       resolved_weight_dim_nums = weight_dimension_numbers(updates)
+    elif _masking._mask_callable(weight_dimension_numbers):
+      resolved_weight_dim_nums = jax.tree.map(
+          lambda fn: fn(updates), weight_dimension_numbers
+      )
     else:
       resolved_weight_dim_nums = weight_dimension_numbers
 
