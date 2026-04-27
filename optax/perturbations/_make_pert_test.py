@@ -16,6 +16,7 @@
 """Tests for optax.perturbations, checking values and gradients."""
 
 from functools import partial  # pylint: disable=g-importing-member
+import warnings
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -162,7 +163,7 @@ class MakePertTest(parameterized.TestCase):
       return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
     loss_pert = jax.jit(_make_pert.make_perturbed_fun(
-        loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
+        loss, num_samples=100, scale=0.1, noise=_make_pert.Normal()
     ))
     keys = jax.random.split(key, 3)
     low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types # noqa: E501
@@ -233,7 +234,7 @@ class MakePertTest(parameterized.TestCase):
       return jnp.stack([y0, y1])
 
     f1 = jax.jit(_make_pert.make_perturbed_fun(
-        f, num_samples=num_samples, sigma=sigma, noise=noise))
+        f, num_samples=num_samples, scale=sigma, noise=noise))
     f2 = simple_make_perturbed_fun(f, num_samples=num_samples, sigma=sigma,
                                    noise=noise)
     x = jnp.array([0.3, 0.4, 0.5])
@@ -278,6 +279,29 @@ class MakePertTest(parameterized.TestCase):
     got = jax.hessian(fun_p, argnums=1)(jax.random.key(0), x)
     expected = jax.hessian(fun)(x)
     test_utils.assert_trees_all_close(got, expected, atol=1e-1)
+
+  def test_sigma_deprecation(self):
+    """Passing the legacy ``sigma`` kwarg emits a DeprecationWarning."""
+    fun = jnp.sum
+    x = jnp.array([0.0, 0.0])
+    key = jax.random.key(0)
+    with warnings.catch_warnings(record=True) as caught:
+      warnings.simplefilter('always')
+      fp = _make_pert.make_perturbed_fun(fun, num_samples=2, sigma=0.1)
+      fp(key, x)
+    deprecation_warnings = [
+        w for w in caught if issubclass(w.category, DeprecationWarning)
+    ]
+    self.assertTrue(deprecation_warnings)
+    self.assertIn('sigma', str(deprecation_warnings[0].message))
+
+  def test_default_num_samples(self):
+    """The default ``num_samples=1`` executes without error."""
+    fun = jnp.sum
+    x = jnp.array([0.0, 0.0])
+    key = jax.random.key(0)
+    fp = _make_pert.make_perturbed_fun(fun)
+    fp(key, x)
 
 
 if __name__ == '__main__':
