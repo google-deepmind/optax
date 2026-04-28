@@ -343,3 +343,104 @@ def dowg(
       scale_by_dowg(init_estim_sq_dist, eps),
       transform.scale_by_learning_rate(learning_rate),
   )
+# -----------------------------------------------------------------------
+# Layer-wise DoG (LDoG) -- per-leaf distance and gradient norm
+# -----------------------------------------------------------------------
+
+
+class LDoGState(NamedTuple):
+    """State for scale_by_l_dog (layer-wise DoG)."""
+    max_dist: base.OptState
+    grad_sum_of_squares: base.OptState
+    init_params: base.OptState
+
+
+def scale_by_l_dog(
+    reps_rel: float = 1e-6,
+    eps: float = 1e-8,
+    param_dtype=jnp.float32,
+    global_scale: float = 1.0,
+) -> base.GradientTransformation:
+    """Scale by Layer-wise Distance over Gradients (LDoG).
+
+    Layer-wise variant of DoG: distance and gradient norm per leaf.
+    Replaces deprecated scale_by_distance_over_gradients.
+
+    Args:
+        reps_rel: initial distance. 1e-4 with batch norm, 1e-6 otherwise.
+        eps: small constant to avoid division by zero.
+        param_dtype: dtype for storing initial params.
+        global_scale: scale factor, typically 1.0 or -1.0.
+
+    Returns:
+        The corresponding :class:`optax.GradientTransformation`.
+
+    References:
+        Ivgi et al., "DoG is SGD's Best Friend",
+        https://arxiv.org/pdf/2302.12022.pdf, 2023.
+    """
+    def _l2(x, y=0.0):
+        return jnp.sqrt(jnp.square(x - y).sum())
+
+    def init_fn(params: base.Params) -> LDoGState:
+        return LDoGState(
+            jax.tree.map(lambda x: reps_rel * (1 + _l2(x)), params),
+            jax.tree.map(lambda x: jnp.zeros(1), params),
+            optax.tree.cast(params, param_dtype),
+        )
+
+    def update_fn(
+        updates: base.Updates, state: LDoGState, params: base.Params
+    ) -> tuple[base.Updates, LDoGState]:
+        max_dist = jax.tree.map(
+            lambda d, x, y: jnp.maximum(d, _l2(x, y)),
+            state.max_dist, params, state.init_params,
+        )
+        g_sos = jax.tree.map(
+            lambda x, y: x + jnp.square(y).sum(),
+            state.grad_sum_of_squares, updates,
+        )
+
+        def _tx(g, d, g_sos):
+            return global_scale * (d / jnp.sqrt(g_sos + eps)) * g
+
+        updates = jax.tree.map(_tx, updates, max_dist, g_sos)
+        return updates, LDoGState(max_dist, g_sos, state.init_params)
+
+    return base.GradientTransformation(init_fn, update_fn)
+
+
+def l_dog(
+    learning_rate: base.ScalarOrSchedule = 1.0,
+    reps_rel: float = 1e-6,
+    eps: float = 1e-8,
+    param_dtype=jnp.float32,
+    weight_decay=None,
+    mask=None,
+):
+    """Layer-wise Distance over Gradients (LDoG) optimizer.
+
+    Layer-wise variant of :func:`optax.contrib.dog`.
+
+    Args:
+        learning_rate: optional learning rate multiplier.
+        reps_rel: initial distance. 1e-4 for batch norm, 1e-6 otherwise.
+        eps: small constant to avoid division by zero.
+        param_dtype: dtype for storing initial params.
+        weight_decay: optional weight decay strength.
+        mask: optional mask for weight decay.
+
+    Returns:
+        The corresponding :class:`optax.GradientTransformation`.
+
+    References:
+        Ivgi et al., "DoG is SGD's Best Friend",
+        https://arxiv.org/pdf/2302.12022.pdf, 2023.
+    """
+    return combine.chain(
+        transform.add_decayed_weights(weight_decay, mask)
+        if weight_decay is not None
+        else base.identity(),
+        scale_by_l_dog(reps_rel, eps, param_dtype),
+        transform.scale_by_learning_rate(learning_rate),
+    )
