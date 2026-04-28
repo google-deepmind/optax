@@ -65,6 +65,16 @@ def _setup_mixed_tensor_target_complex(dtype):
   return initial_params, final_params, obj_fn
 
 
+def _random_matrix_with_svs(key, shape, singular_values):
+  """Matrix with given singular values and random singular vectors."""
+  m, n = shape
+  k = min(m, n)
+  key1, key2 = jax.random.split(key)
+  u, _ = jnp.linalg.qr(jax.random.normal(key1, (m, k)))
+  v, _ = jnp.linalg.qr(jax.random.normal(key2, (n, k)))
+  return u @ jnp.diag(jnp.asarray(singular_values)) @ v.T
+
+
 class MuonTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -355,6 +365,9 @@ class MuonTest(parameterized.TestCase):
       ('aol_square', 'aol', (100, 100)),
       ('aol_tall', 'aol', (100, 50)),
       ('aol_wide', 'aol', (50, 100)),
+      ('schatten_square', 'schatten', (100, 100)),
+      ('schatten_tall', 'schatten', (100, 50)),
+      ('schatten_wide', 'schatten', (50, 100)),
   )
   def test_muon_orthogonalization_modes(self, preconditioning, shape):
     """Tests that Muon runs and produces near-orthogonal updates."""
@@ -419,6 +432,114 @@ class MuonTest(parameterized.TestCase):
     ortho_error = jnp.linalg.norm(gram - jnp.eye(gram.shape[0]))
     self.assertLess(ortho_error, 1e-3,
                     f'Orthogonality error too high: {ortho_error}')
+
+  def test_polar_express(self):
+    """Tests PolarExpress ns_coeffs with frobenius preconditioning."""
+    params = {'w': jnp.eye(8) * 2.0}
+    opt = _muon.muon(
+        learning_rate=0.1,
+        ns_coeffs='polar_express',
+        ns_steps=8,
+    )
+    updates, _ = opt.update(params, opt.init(params), params)
+    w_update = updates['w']
+
+    for leaf in jax.tree_util.tree_leaves(updates):
+      self.assertFalse(jnp.isnan(leaf).any(),
+                       'Found NaN values in polar_express updates')
+
+    # Check orthogonality.
+    gram = jnp.dot(w_update.T, w_update)
+    gram = gram / jnp.max(gram)
+    ortho_error = jnp.linalg.norm(gram - jnp.eye(gram.shape[0]))
+    self.assertLess(ortho_error, 1e-3,
+                    f'Orthogonality error too high: {ortho_error}')
+
+  def test_polar_express_numerical_difference(self):
+    """Ensures PolarExpress produces different updates than standard Muon."""
+    params = {'w': jnp.eye(8) * 2.0}
+
+    opt_std = _muon.muon(learning_rate=0.1, preconditioning='frobenius')
+    u_std, _ = opt_std.update(params, opt_std.init(params), params)
+
+    opt_pe = _muon.muon(
+        learning_rate=0.1,
+        ns_coeffs='polar_express',
+        ns_steps=5,
+        preconditioning='frobenius'
+    )
+    u_pe, _ = opt_pe.update(params, opt_pe.init(params), params)
+
+    with self.assertRaises(AssertionError):
+      test_utils.assert_trees_all_close(u_std, u_pe)
+
+  def test_polar_express_coeffs_match_reference(self):
+    """Computed coefficients match the paper's hard-coded values."""
+    # Hard-coded coefficients from Amsel et al., 2025, Algorithm 1
+    # (before safety factor application).
+    expected = [
+        (8.28721201814563, -23.595886519098837, 17.300387312530933),
+        (4.107059111542203, -2.9478499167379106, 0.5448431082926601),
+        (3.9486908534822946, -2.908902115962949, 0.5518191394370137),
+        (3.3184196573706015, -2.488488024314874, 0.51004894012372),
+        (2.300652019954817, -1.6689039845747493, 0.4188073119525673),
+        (1.891301407787398, -1.2679958271945868, 0.37680408948524835),
+        (1.8750014808534479, -1.2500016453999487, 0.3750001645474248),
+        (1.875, -1.25, 0.375),
+    ]
+    computed = _muon.polar_express_coeffs(
+        l=1e-3, num_iters=8,
+        safety_factor_eps=0.0, cushion=0.02407327424182761,
+    )
+    for i, (exp, got) in enumerate(zip(expected, computed)):
+      np.testing.assert_allclose(
+          got, exp, rtol=1e-8,
+          err_msg=f'Coefficient mismatch at iteration {i}',
+      )
+
+  @parameterized.named_parameters(
+      ('frobenius_low_rank', 'frobenius', 'low_rank'),
+      ('spectral_low_rank', 'spectral', 'low_rank'),
+      ('schatten_low_rank', 'schatten', 'low_rank'),
+      ('frobenius_binary', 'frobenius', 'binary'),
+      ('spectral_binary', 'spectral', 'binary'),
+      ('schatten_binary', 'schatten', 'binary'),
+  )
+  def test_polar_express_hard_matrices(self, preconditioning, matrix_type):
+    """PolarExpress coefficients on hard matrices with random singular vectors.
+
+    Tests two cases:
+    - low_rank: exponentially decaying singular values
+    - binary: singular values all 0 or 2
+    """
+    key = jax.random.key(42)
+    shape = (50, 100)
+    k = min(shape)
+
+    if matrix_type == 'low_rank':
+      svs = 2.0 * np.exp(-0.5 * np.arange(k))
+    else:
+      svs = np.array([2.0] * (k // 2) + [0.0] * (k - k // 2))
+    mat = _random_matrix_with_svs(key, shape, svs)
+
+    ns_coeffs = jnp.array(_muon.polar_express_coeffs(
+        l=1e-3, num_iters=10,
+        safety_factor_eps=1e-2, cushion=0.02))
+
+    result = _muon.orthogonalize_via_newton_schulz(
+        mat, ns_coeffs, ns_steps=10,
+        preconditioning=preconditioning,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1))
+
+    self.assertFalse(jnp.any(jnp.isnan(result)).item())
+    self.assertFalse(jnp.any(jnp.isinf(result)).item())
+    self.assertEqual(result.shape, shape)
+    # SVs above l should converge to 1 (orthogonality).
+    n_above_l = int(np.sum(svs > 1e-3))
+    out_svs = jnp.linalg.svd(result, compute_uv=False)[:n_above_l]
+    np.testing.assert_allclose(
+        out_svs, jnp.ones(n_above_l), atol=1e-3,
+        err_msg=f'SVs above l did not converge to 1 ({preconditioning})')
 
 
 if __name__ == '__main__':
