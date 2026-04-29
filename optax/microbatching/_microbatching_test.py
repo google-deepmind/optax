@@ -533,5 +533,117 @@ class MicrobatchingTest(parameterized.TestCase):
     )
 
 
+def _named_fun(a, b, c):
+  return jnp.sum(a + b + c, axis=0)
+
+
+def _kwonly_fun(a, b, *, c):
+  return jnp.sum(a + b + c, axis=0)
+
+
+def _wrapped_fun(*args, **kwargs):
+  return _named_fun(*args, **kwargs)
+
+
+def _mixed_fun1(*args, b, **kwargs):
+  """b is keyword-only (after *args), must be specified as argname."""
+  total = b + sum(args) + sum(kwargs.values())
+  return jnp.sum(total, axis=0)
+
+
+def _mixed_fun2(a, *args, **kwargs):
+  """a is positional-or-keyword, can be specified as argnum or argname."""
+  total = a + sum(args) + sum(kwargs.values())
+  return jnp.sum(total, axis=0)
+
+
+# Each case is (fun, argnums, argnames, call_fn) where call_fn invokes the
+# microbatched function with a specific positional/keyword calling convention.
+_CALLING_CONVENTION_CASES = [
+    # Normal functions should work with all calling conventions.
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_named_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a, b, c)),
+    (_named_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+
+    # Keyword-only functions should work if kw_only args are in argnames.
+    (_kwonly_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_kwonly_fun, (0, 1), ('c',), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_kwonly_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a, b, c=c)),
+
+    # Wrapped functions require argnums/argnames to match calling convention.
+    (_wrapped_fun, (0, 1, 2), (), lambda f, a, b, c: f(a, b, c)),
+    (_wrapped_fun, (0,), ('b', 'c'), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_wrapped_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+
+    # Mixed functions work if argnums/argnames match calling convention.
+    (_mixed_fun1, (0,), ('b', 'c'), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_mixed_fun1, (0, 1), ('b',), lambda f, a, b, c: f(a, c, b=b)),
+    (_mixed_fun1, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_mixed_fun2, (0, 1, 2), (), lambda f, a, b, c: f(a, b, c)),
+    (_mixed_fun2, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_mixed_fun2, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    # This case also works because a is a positional-or-keyword argument.
+    (_mixed_fun2, (0,), ('b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+]
+
+
+class CallingConventionTest(parameterized.TestCase):
+  """Tests that microbatching works with arbitrary calling conventions."""
+
+  @parameterized.parameters(_CALLING_CONVENTION_CASES)
+  def test_microbatch(self, fun, argnums, argnames, call_fn):
+    a = jnp.ones((4, 3))
+    b = jnp.ones((4, 3)) * 2
+    c = jnp.ones((4, 3)) * 3
+    expected = _named_fun(a, b, c)
+
+    mb = microbatching.microbatch(
+        fun, argnums=argnums, argnames=argnames, microbatch_size=2,
+    )
+    result = call_fn(mb, a, b, c)
+    test_utils.assert_trees_all_close(result, expected, atol=1e-6)
+
+  @parameterized.parameters(
+      lambda f, a, b: f(a, b),
+      lambda f, a, b: f(a, b=b),
+      lambda f, a, b: f(a=a, b=b),
+  )
+  def test_micro_vmap(self, call_fn):
+    a = jnp.ones((4, 3))
+    b = jnp.ones((4, 3)) * 2
+    expected = a + b
+
+    mv = microbatching.micro_vmap(
+        lambda a, b: a + b,
+        in_axes=(0, 0),
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )
+    result = call_fn(mv, a, b)
+    test_utils.assert_trees_all_close(result, expected)
+
+  @parameterized.parameters(
+      lambda f, p, x: f(p, x),
+      lambda f, p, x: f(p, x=x),
+      lambda f, p, x: f(params=p, x=x),
+  )
+  def test_micro_grad(self, call_fn):
+    def loss(params, x):
+      return jnp.sum(params * x)
+
+    params = jnp.ones(3)
+    x = jnp.ones((4, 3))
+
+    mg = microbatching.micro_grad(
+        loss, argnums=0, batch_argnums=1, microbatch_size=2,
+    )
+    baseline, _ = mg(params, x)
+    result, _ = call_fn(mg, params, x)
+    test_utils.assert_trees_all_close(result, baseline)
+
+
 if __name__ == '__main__':
   absltest.main()

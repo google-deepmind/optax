@@ -19,6 +19,7 @@ import collections
 import dataclasses
 import enum
 import functools
+import inspect
 from typing import Any, Callable, Sequence, TypeAlias
 
 import jax
@@ -282,6 +283,38 @@ def _canonicalize(
   return _compose(jax.tree.map(fun, tree))
 
 
+def _normalize_call(sig, args, kwargs):
+  """Normalize a function call so positional params are always positional."""
+  bound = sig.bind(*args, **kwargs)
+  return bound.args, bound.kwargs
+
+
+def _resolve_batch_args(sig, argnums, argnames, in_axes):
+  """Resolve ``argnames`` for positional parameters into ``argnums``."""
+  positional_kinds = {
+      inspect.Parameter.POSITIONAL_ONLY,
+      inspect.Parameter.POSITIONAL_OR_KEYWORD,
+  }
+  param_list = list(sig.parameters.keys())
+
+  new_argnums = list(argnums)
+  new_argnames = []
+  argnum_ax = list(in_axes[:len(argnums)])
+  argname_ax = []
+
+  for i, name in enumerate(argnames):
+    axis = in_axes[len(argnums) + i]
+    param = sig.parameters.get(name)
+    if param is not None and param.kind in positional_kinds:
+      new_argnums.append(param_list.index(name))
+      argnum_ax.append(axis)
+    else:
+      new_argnames.append(name)
+      argname_ax.append(axis)
+
+  return tuple(new_argnums), tuple(new_argnames), tuple(argnum_ax + argname_ax)
+
+
 def _reshape_all_args(
     microbatch_size: int,
     argnums: Sequence[int],
@@ -363,6 +396,15 @@ def microbatch(
   results should be combined back together (SUM, MEAN, or CONCAT). See the
   accumulator argument for more details.
 
+  Note: For standard functions that do not unpack their positional or keyword
+  arguments like f(a, b), one can specify to microbatch either argument via
+  ``argnums`` or ``argnames``, and the microbatched function can be called using
+  the same conventions as the input function (passing args by position or name),
+  independent of whether the args with batch axes are specified in ``argnums``
+  or ``argnames``. For wrapped functions like f(*args, **kwargs), the positional
+  and keyword arguments passed to the microbatched function must match argnums
+  and argnames respectively. See CallingConventionTest for more details.
+
   Example Usage:
     >>> import jax.numpy as jnp
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
@@ -393,8 +435,8 @@ def microbatch(
       argnames: A sequence of keyword argument names that have a batch axis.
       in_axes: An integer or sequence of integers indicating the batch axis
         index for each argument in `argnums` and `argnames` should be aligned
-        with the list `argnums + argnames`. The default value of 0 assumes
-        that all arguments have a batch axis on the 0th dimension of the array.
+        with the list `argnums + argnames`. The default value of 0 assumes that
+        all arguments have a batch axis on the 0th dimension of the array.
       num_real_microbatches: Optional number of microbatches that are actually
         executed. If specified, microbatching will terminate early after this
         many steps. Can be helpful to handle variable batch sizes without
@@ -407,6 +449,8 @@ def microbatch(
   if microbatch_size is None:
     return fun
 
+  sig = inspect.signature(fun)
+
   if isinstance(argnums, int):
     argnums = (argnums,)
 
@@ -416,10 +460,15 @@ def microbatch(
   if isinstance(in_axes, int):
     in_axes = (in_axes,) * (len(argnums) + len(argnames))
 
+  argnums, argnames, in_axes = _resolve_batch_args(
+      sig, argnums, argnames, in_axes
+  )
+
   # jax.named_call is used to aad a span in the profile trace for easier
   # identification of microbatching.
   @functools.partial(jax.named_call, name=f'microbatch_size_{microbatch_size}')
   def microbatched_fun(*args, **kwargs):
+    args, kwargs = _normalize_call(sig, args, kwargs)
     reshaped_args, reshaped_kwargs, batch_size = _reshape_all_args(
         microbatch_size, argnums, argnames, in_axes, args, kwargs
     )
@@ -538,8 +587,11 @@ def micro_vmap(
       num_real_microbatches=num_real_microbatches,
   )
 
+  sig = inspect.signature(fun)
+
   @functools.partial(jax.named_call, name=f'micro_vmap_size_{microbatch_size}')
   def wrapped_fn(*args, **kwargs):
+    args, kwargs = _normalize_call(sig, args, kwargs)
     return micro_vmap_fn(*args, kwargs=kwargs)
 
   return wrapped_fn
@@ -655,6 +707,7 @@ def micro_grad(
   if isinstance(batch_argnums, int):
     batch_argnums = (batch_argnums,)
 
+  original_sig = inspect.signature(fun)
   fun = _normalize_fun_to_return_aux(fun, has_aux)
   value_and_grad_fn = jax.value_and_grad(fun, argnums, has_aux=True)
 
@@ -686,6 +739,7 @@ def micro_grad(
 
   @functools.partial(jax.named_call, name=f'micro_grad_size_{microbatch_size}')
   def final_fn(*args, **kwargs):
+    args, kwargs = _normalize_call(original_sig, args, kwargs)
     return micro_fun(*args, **kwargs)
 
   return final_fn
