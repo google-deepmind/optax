@@ -20,13 +20,13 @@ by Keller Jordan
 """
 
 
+import collections
 import functools
 import math
-from typing import Any, Callable, NamedTuple, Optional, Union, Sequence, Literal
+from typing import Any, Callable, Literal, NamedTuple, Optional, Sequence, Union
 
 import jax
 import jax.numpy as jnp
-
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
@@ -394,6 +394,7 @@ def scale_by_muon(
         'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
+    vmap_optimization_threshold: int = 0,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
 
@@ -423,6 +424,9 @@ def scale_by_muon(
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
       such a tree. None implies that all parameters are 2D matrices.
+    vmap_optimization_threshold: Parameters smaller than this threshold will be
+      concatenated and orthogonalized together. A value of 2**20 showed good
+      performance.
 
   Returns:
     A `GradientTransformation` object.
@@ -496,10 +500,55 @@ def scale_by_muon(
     else:
       mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
     # Apply Newton-schulz orthogonalization.
-    updates = jax.tree.map(
-        lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num),
-        mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
+    # In order to better utilize parallel computation, we batch together small
+    # updates with the same reduction and output shape.
+    # This is done by:
+    # 1. Reshape all updates to 3 dimensions: (batch, reduction, output),
+    #    flattening multiple axes if necessary.
+    # 2. Group all small updates with the same (reduction, output) shape.
+    # 3. Concatenate all updates within each group on the batch dimension, apply
+    #    orthogonalization on the concatenated tensors, and then split them back
+    #    into their original batch sizes.
+    # 4. Reshape all updates to their original shapes.
+    bucket_updates = collections.defaultdict(list)
+
+    def bucket_fn(
+        mu_hat_i: jax.Array, dim_nums: MuonDimensionNumbers
+    ) -> Callable[[], jax.Array]:
+      # Reshape to (batch, reduction, output), put in the right bucket, and
+      # return a fetch+inverse reshape function.
+      reshape_fn, inverse_fn = _compute_muon_reshape(mu_hat_i, dim_nums)
+      mu_hat_i = reshape_fn(mu_hat_i)
+      b, i, o = mu_hat_i.shape
+      if b * i * o >= vmap_optimization_threshold:
+        bucket_id = 'no_opt'
+      else:
+        bucket_id = (i, o)
+      pos = len(bucket_updates[bucket_id])
+      bucket_updates[bucket_id].append(mu_hat_i)
+      return lambda: inverse_fn(bucket_updates[bucket_id][pos])
+
+    inverse_fns = jax.tree.map(
+        bucket_fn, mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums
+    )
+    ortho = functools.partial(
+        orthogonalize_via_newton_schulz,
+        ns_coeffs=state.ns_coeffs,
+        ns_steps=ns_steps,
+        preconditioning=preconditioning,
+        eps=eps,
+        dimension_numbers=MuonDimensionNumbers(reduction_axis=1, output_axis=2),
+    )
+    for k, tensors in bucket_updates.items():
+      if k == 'no_opt':
+        bucket_updates[k] = [ortho(mu_hat_i) for mu_hat_i in tensors]
+      else:
+        offsets = [0]
+        for t in tensors[:-1]:
+          offsets.append(offsets[-1] + t.shape[0])
+        tensors = ortho(jnp.concatenate(tensors, axis=0))
+        bucket_updates[k] = jnp.split(tensors, offsets[1:], axis=0)
+    updates = jax.tree.map(lambda inverse_fn: inverse_fn(), inverse_fns)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
@@ -549,6 +598,7 @@ def muon(
     adam_learning_rate: base.ScalarOrSchedule | None = None,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
     consistent_rms: jax.typing.ArrayLike | None = None,
+    vmap_optimization_threshold: int = 0,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -617,6 +667,9 @@ def muon(
       root mean square (RMS) shape-independent, like AdamW. `0.2` is recommended
       to match AdamW's empirical RMS. See <https://arxiv.org/abs/2502.16982>.
       If `None`, uses width scaling `sqrt(max(1, fan_out / fan_in))`.
+    vmap_optimization_threshold: If set, parameters smaller than this threshold
+      will be concatenated and orthogonalized together. A value of 2**20 showed
+      good speedups on TPU.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -704,6 +757,7 @@ def muon(
                   adaptive=adaptive,
                   preconditioning=preconditioning,
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
+                  vmap_optimization_threshold=vmap_optimization_threshold,
               ),
               scale_by_shape(
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
