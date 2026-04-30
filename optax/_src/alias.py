@@ -39,6 +39,8 @@ def adabelief(
     b2: jax.typing.ArrayLike = 0.999,
     eps: jax.typing.ArrayLike = 1e-16,
     eps_root: jax.typing.ArrayLike = 1e-16,
+    weight_decay: Optional[base.ScalarOrSchedule] = None,
+    weight_decay_mask: MaskOrFn = None,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -95,6 +97,16 @@ def adabelief(
     eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
+    weight_decay: Optional strength of the weight decay regularization. Note
+      that this weight decay is multiplied with the learning rate. This is
+      consistent with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the
+      params PyTree, or a Callable that returns such a pytree given the
+      params/updates. The leaves should be booleans, ``True`` for
+      leaves/subtrees you want to apply the weight decay to, and ``False``
+      for those you want to skip.
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
@@ -128,7 +140,7 @@ def adabelief(
   .. note::
     The default epsilon values in the paper are ``eps=1e-8``, ``eps_root=0.``.
   """
-  return combine.chain(
+  chain_args = [
       transform.scale_by_belief(
           b1=b1,
           b2=b2,
@@ -136,8 +148,13 @@ def adabelief(
           eps_root=eps_root,
           nesterov=nesterov,
       ),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+  ]
+  if weight_decay is not None:
+    chain_args.append(
+        transform.add_decayed_weights(weight_decay, mask=weight_decay_mask)
+    )
+  chain_args.append(transform.scale_by_learning_rate(learning_rate))
+  return combine.chain(*chain_args)
 
 
 def adadelta(
