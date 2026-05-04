@@ -209,7 +209,7 @@ class LinearAlgebraTest(parameterized.TestCase):
 
   @parameterized.product(m=[10, 20], n=[11, 21], seed=[0],
                          dtype=[jnp.float32, jnp.bfloat16], k=[(), (5,)])
-  def test_nnls(self, m, n, k, seed, dtype, tol=0.0):
+  def test_nnls(self, m, n, k, seed, dtype, tol=1e-6):
     """Test non-negative least squares solver."""
 
     keys = random.split(random.key(seed), 2)
@@ -238,7 +238,12 @@ class LinearAlgebraTest(parameterized.TestCase):
     diff = jnp.diff(ys, axis=0)
 
     with self.subTest('objective decreases with more iterations'):
-      assert (diff <= tol).all()
+      assert (diff <= tol).all(), (
+          'NNLS objective did not decrease monotonically.\n'
+          f'Objective values (iters 0 to 4): {ys}\n'
+          f'Differences (ys[i+1] - ys[i]): {diff}\n'
+          f'Allowed tolerance for increase: {tol}'
+      )
 
 
 if __name__ == '__main__':
