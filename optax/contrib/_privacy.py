@@ -110,7 +110,7 @@ def dpsgd(
     learning_rate: base.ScalarOrSchedule,
     l2_norm_clip: float,
     noise_multiplier: float,
-    seed: int,
+    key: jax.Array | int | None = None,
     momentum: Optional[float] = None,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
@@ -125,7 +125,7 @@ def dpsgd(
     learning_rate: A fixed global scaling factor.
     l2_norm_clip: Maximum L2 norm of the per-example gradients.
     noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
+    key: random generator key for noise generation.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
@@ -152,7 +152,7 @@ def dpsgd(
       differentially_private_aggregate(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
-          seed=seed,
+          key=key,
       ),
       (
           transform.trace(decay=momentum, nesterov=nesterov)
