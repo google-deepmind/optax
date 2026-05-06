@@ -103,6 +103,13 @@ def inject_hyperparams(
   Manually overriding scheduled hyperparameters will have no effect (e.g.
   in the code sample above, you cannot manually adjust ``b1``).
 
+  For mixed precision training, you may want hyperparameters to match a
+  specific dtype. To avoid automatic casting to the parameter's highest
+  precision dtype, pass the hyperparameter as a strongly typed JAX array::
+
+    >>> scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+    ...     b1=linear_schedule, b2=jnp.array(0.99, jnp.float32))
+
   Args:
     inner_factory: a function that returns the inner
       ``optax.GradientTransformation`` with dynamic hyperparameters.
