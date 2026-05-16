@@ -458,7 +458,7 @@ class LBFGSTest(parameterized.TestCase):
     opt = alias.lbfgs()
     sol_arr, _ = _run_opt(opt, fun, init_array, maxiter=3)
     sol_tree, _ = _run_opt(opt, fun, init_tree, maxiter=3)
-    sol_tree = jnp.stack((sol_tree[0], sol_tree[1]))
+    sol_tree = jnp.asarray(sol_tree)
     test_utils.assert_trees_all_close(
         sol_arr, sol_tree, rtol=5 * 1e-5, atol=5 * 1e-5
     )

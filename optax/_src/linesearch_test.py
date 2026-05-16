@@ -87,12 +87,11 @@ def get_problem(name: str):
 class BacktrackingLinesearchTest(parameterized.TestCase):
 
   def _check_decrease_conditions(
-      self, fun, init_params, descent_dir, final_params, final_state, opt_args
+      self, fun, init_params, descent_dir, final_params, final_lr, opt_args
   ):
     """Check decrease conditions."""
     init_value, init_grad = jax.value_and_grad(fun)(init_params)
     final_value = fun(final_params)
-    final_lr = final_state[0]
 
     slope = optax.tree.vdot(descent_dir, init_grad)
     slope_rtol, atol, rtol = (
@@ -176,12 +175,11 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
     params = update.apply_updates(init_params, updates)
 
     self._check_decrease_conditions(
-        # pyrefly: ignore[bad-index]
         fn,
         init_params,
         descent_dir,
         params,
-        state[-1],
+        optax.tree.get(state, 'learning_rate'),
         opt_args,
     )
 
