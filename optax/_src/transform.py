@@ -1713,7 +1713,7 @@ def scale_by_lbfgs(
     # represented by e.g. diff_params_memory through the ith stacked
     # element in the leaves, see update_fn below for practical examples.
     stacked_zero_params = jax.tree.map(
-        lambda leaf: jnp.zeros((memory_size,) + leaf.shape, dtype=leaf.dtype),
+        lambda x: jnp.broadcast_to(jnp.zeros_like(x), (memory_size,) + x.shape),
         params,
     )
     return ScaleByLBFGSState(

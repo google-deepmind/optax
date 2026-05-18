@@ -226,6 +226,10 @@ def x64_precision(enable_x64_precision: bool = True):
     jax.config.update('jax_enable_x64', old_config)
 
 
+def parse_version(version_str):
+  return tuple(int(i) for i in version_str.split('.') if i.isdigit())
+
+
 # TODO(b/183800387): remove legacy aliases.
 safe_norm = numerics.safe_norm
 safe_int32_increment = numerics.safe_int32_increment

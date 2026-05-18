@@ -20,10 +20,10 @@
 import functools
 import operator
 from typing import Any, Optional
-
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
+from optax._src import utils
 
 
 def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
@@ -124,7 +124,7 @@ def tree_add_scale(
 
 def _vdot(a, b, precision=jax.lax.Precision.HIGHEST):
   """Compute the inner product between two (possibly complex) arrays."""
-  if jax.__version__ < '0.7.2':
+  if utils.parse_version(jax.__version__) < utils.parse_version('0.7.2'):
     return jnp.vdot(a, b, precision=precision)
   assert a.shape == b.shape
   if jax.dtypes.issubdtype(a.dtype, jnp.complexfloating):
