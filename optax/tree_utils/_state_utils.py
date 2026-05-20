@@ -437,13 +437,13 @@ def tree_set(
       ...  )
       >>> state = opt.init(params)
       >>> print(state)
-      InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'learning_rate': Array(1., dtype=float32)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState()))
+      InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'weight_decay': Array(0., dtype=float32), 'learning_rate': Array(1., dtype=float32)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState(), EmptyState()))
       >>> filtering = lambda path, value: isinstance(value, jnp.ndarray)
       >>> new_state = optax.tree_utils.tree_set(
       ...   state, filtering, learning_rate=jnp.asarray(0.1)
       ... )
       >>> print(new_state)
-      InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'learning_rate': Array(0.1, dtype=float32, weak_type=True)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState()))
+      InjectStatefulHyperparamsState(count=Array(0, dtype=int32), hyperparams={'weight_decay': Array(0., dtype=float32), 'learning_rate': Array(0.1, dtype=float32, weak_type=True)}, hyperparams_states={'learning_rate': WrappedScheduleState(count=Array(0, dtype=int32))}, inner_state=(EmptyState(), EmptyState(), EmptyState()))
 
   .. note:: The recommended usage to inject hyperparameters schedules is through
     :func:`optax.inject_hyperparams`. This function is a helper for other

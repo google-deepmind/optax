@@ -195,6 +195,7 @@ class StateUtilsTest(absltest.TestCase):
         (
             transform.ScaleByRssState(sum_of_squares={'a': None}),
             base.EmptyState(),
+            base.EmptyState(),
         ),
     )
 
@@ -378,7 +379,7 @@ class StateUtilsTest(absltest.TestCase):
 
       for i in range(4):
         # we simply update state, we don't care about updates.
-        _, state = opt.update(params, state)
+        _, state = opt.update(params, state, params)
         lr = get_learning_rate(state)
         self.assertEqual(lr, 1 / (i + 1))
 
@@ -465,7 +466,7 @@ class StateUtilsTest(absltest.TestCase):
       for i in range(4):
         modified_state = set_learning_rate(modified_state, lr / (i + 1))
         # we simply update state, we don't care about updates.
-        _, modified_state = opt.update(params, modified_state)
+        _, modified_state = opt.update(params, modified_state, params)
         modified_lr = _state_utils.tree_get(modified_state, 'learning_rate')
         self.assertEqual(modified_lr, lr / (i + 1))
 

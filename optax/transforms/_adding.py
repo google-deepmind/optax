@@ -57,8 +57,6 @@ def add_decayed_weights(
       return base.EmptyState()
 
   def update_fn(updates, state, params):
-    if params is None:
-      raise ValueError(base.NO_PARAMS_MSG)
     if callable(weight_decay):
       new_state = WeightDecaySchedule(numerics.safe_increment(state.count))
     else:
@@ -67,6 +65,9 @@ def add_decayed_weights(
     # If weight decay is a zero constant, we can skip the update.
     if isinstance(weight_decay, (int, float)) and weight_decay == 0.0:
       return updates, new_state
+
+    if params is None:
+      raise ValueError(base.NO_PARAMS_MSG)
 
     s = weight_decay(state.count) if callable(weight_decay) else weight_decay
     updates = jax.tree.map(
