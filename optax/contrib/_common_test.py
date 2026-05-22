@@ -19,6 +19,7 @@ Additional specific tests are implemented in additional files
 
 import functools
 import inspect
+from typing import Any, cast
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -352,7 +353,7 @@ class ContribTest(parameterized.TestCase):
       factory = getattr(contrib, wrapper_name)
       factory = functools.partial(factory, base_opt)
       hparams = wrapper_kwargs
-    opt = factory(**hparams)  # pyrefly: ignore[bad-unpacking]
+    opt = factory(**cast(dict[str, Any], hparams))
 
     # Add here the hyperparameters that cannot be injected with
     # inject_hyperparams.

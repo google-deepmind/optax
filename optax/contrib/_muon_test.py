@@ -368,15 +368,14 @@ class MuonTest(parameterized.TestCase):
                      preconditioning=preconditioning)
     state = opt.init(params)
     updates, _ = opt.update(params, state, params=params)
+    w_update = jax.tree.leaves(updates)[0]
 
     # Check shape preservation
-    # pyrefly: ignore[bad-index, missing-attribute]
-    self.assertEqual(updates['w'].shape, shape)
+    self.assertEqual(w_update.shape, shape)
 
     # Check Near-Orthogonality (Spectral Norm Constraint)
     if shape[0] == shape[1]:
-      # pyrefly: ignore[bad-index, no-matching-overload]
-      s = jnp.linalg.svd(updates['w'], compute_uv=False)
+      s = jnp.linalg.svd(w_update, compute_uv=False)
       max_s = jnp.max(s)
       min_s = jnp.min(s)
       self.assertLess(max_s, 2.0, msg=f'Max singular value {max_s} too high')
@@ -412,7 +411,7 @@ class MuonTest(parameterized.TestCase):
     params = {'w': jnp.eye(8) * 2.0}
     opt = _muon.muon(learning_rate=0.1, preconditioning=preconditioning)
     updates, _ = opt.update(params, opt.init(params), params)
-    w_update = updates['w']  # pyrefly: ignore[bad-index]
+    w_update = jax.tree.leaves(updates)[0]
 
     for leaf in jax.tree_util.tree_leaves(updates):
       self.assertFalse(jnp.isnan(leaf).any(), 'Found NaN values in updates')

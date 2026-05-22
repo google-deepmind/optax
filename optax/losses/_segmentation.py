@@ -14,7 +14,7 @@
 # ==============================================================================
 """Segmentation losses."""
 
-from typing import Optional
+from typing import Optional, Sequence, Union
 
 import jax
 import jax.numpy as jnp
@@ -35,17 +35,17 @@ def _reduce_loss(
 
 
 def dice_loss(
-    predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    predictions: jax.Array,
+    targets: jax.Array,
     *,
     class_weights: Optional[jax.typing.ArrayLike] = None,
-    smooth: jax.typing.ArrayLike = 1.,
+    smooth: jax.typing.ArrayLike = 1.0,
     alpha: jax.typing.ArrayLike = 0.5,
     beta: jax.typing.ArrayLike = 0.5,
     apply_softmax: bool = True,
     reduction: str = "mean",
     ignore_background: bool = False,
-    axis: Optional[jax.typing.ArrayLike] = None,
+    axis: Optional[Union[int, Sequence[int]]] = None,
 ) -> jax.Array:
   r"""Computes the Dice Loss for multi-class segmentation.
 
@@ -143,10 +143,10 @@ def dice_loss(
       Volumetric Medical Image Segmentation" (2016).
   """
 
-  if predictions.ndim == targets.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
-  if targets.ndim == predictions.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    targets = targets[..., None]  # pyrefly: ignore[bad-index]
+  if jnp.ndim(predictions) == jnp.ndim(targets) - 1:
+    predictions = predictions[..., None]
+  if jnp.ndim(targets) == jnp.ndim(predictions) - 1:
+    targets = targets[..., None]
   utils.check_shapes_equal(predictions, targets)
 
   # Input validation for probability distributions
@@ -166,12 +166,12 @@ def dice_loss(
   if apply_softmax:
     probs = (
         jax.nn.sigmoid(predictions)
-        if predictions.shape[-1] == 1  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        if jnp.shape(predictions)[-1] == 1
         else jax.nn.softmax(predictions, axis=-1)
     )
 
   # Default behavior: sum over all spatial dimensions (except first/last)
-  axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  axis = tuple(range(1, jnp.ndim(probs) - 1)) if axis is None else axis
 
   # Compute intersection and sums over specified axes
   # pyrefly: ignore[bad-argument-type]
@@ -196,7 +196,7 @@ def dice_loss(
     dice_l = dice_l * class_weights
 
   # Handle background class ignoring
-  if ignore_background and probs.shape[-1] > 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  if ignore_background and jnp.shape(probs)[-1] > 1:
     # Exclude the first class (background) from loss computation
     dice_l = dice_l[..., 1:]
 
@@ -207,10 +207,10 @@ def dice_loss(
 
 
 def multiclass_generalized_dice_loss(
-    predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    predictions: jax.Array,
+    targets: jax.Array,
     *,
-    smooth: jax.typing.ArrayLike = 1.,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_softmax: bool = True,
     ignore_background: bool = False,
 ) -> jax.Array:
@@ -238,7 +238,7 @@ def multiclass_generalized_dice_loss(
   utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
-  class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  class_frequencies = jnp.sum(targets, axis=tuple(range(jnp.ndim(targets) - 1)))
 
   # Compute weights as inverse of squared frequencies
   # Add small epsilon to avoid division by zero
@@ -262,10 +262,10 @@ def multiclass_generalized_dice_loss(
 
 
 def binary_dice_loss(
-    predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    predictions: jax.Array,
+    targets: jax.Array,
     *,
-    smooth: jax.typing.ArrayLike = 1.,
+    smooth: jax.typing.ArrayLike = 1.0,
     apply_sigmoid: bool = True,
 ) -> jax.Array:
   """Binary Dice Loss convenience function.
@@ -280,9 +280,12 @@ def binary_dice_loss(
       Loss values of shape [...] (batch dimensions only).
   """
   # Ensure both have channel dimension
-  if predictions.ndim == targets.ndim and predictions.shape[-1] != 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
-    targets = targets[..., None]  # pyrefly: ignore[bad-index]
+  if (
+      jnp.ndim(predictions) == jnp.ndim(targets)
+      and jnp.shape(predictions)[-1] != 1
+  ):
+    predictions = predictions[..., None]
+    targets = targets[..., None]
 
   return dice_loss(
       predictions,
