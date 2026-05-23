@@ -164,7 +164,7 @@ def schedule_free(
       lr = jnp.asarray(
           learning_rate(state.step_count), dtype=state.max_lr.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
-    max_lr = jnp.maximum(state.max_lr, lr)
+    max_lr = jnp.maximum(state.max_lr, lr)  # pyrefly: ignore[bad-argument-type]
 
     next_step_count = numerics.safe_increment(state.step_count)
 
@@ -218,6 +218,7 @@ def schedule_free(
 
     return updates, next_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -276,19 +277,22 @@ def schedule_free_sgd(
     Objective function: 2.41E-01
   """
   if warmup_steps is not None:
+    # pyrefly: ignore[bad-assignment]
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,
         warmup_steps=warmup_steps,
     )
-  optimizer = alias.sgd(learning_rate)
+  optimizer = alias.sgd(learning_rate)  # pyrefly: ignore[bad-argument-type]
   if weight_decay is not None:
     optimizer = combine.chain(
-        _adding.add_decayed_weights(weight_decay), optimizer
+        # pyrefly: ignore[bad-argument-type]
+        _adding.add_decayed_weights(weight_decay),
+        optimizer,
     )
   return schedule_free(
       optimizer,
-      learning_rate=learning_rate,
+      learning_rate=learning_rate,  # pyrefly: ignore[bad-argument-type]
       b1=b1,
       weight_lr_power=weight_lr_power,
       state_dtype=state_dtype,
@@ -359,6 +363,7 @@ def schedule_free_adamw(
 
   """
   if warmup_steps is not None:
+    # pyrefly: ignore[bad-assignment]
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,
@@ -369,12 +374,14 @@ def schedule_free_adamw(
       transform.scale_by_rms(
           decay=b2, eps=eps, eps_in_sqrt=False, bias_correction=True
       ),
+      # pyrefly: ignore[bad-argument-type]
       _adding.add_decayed_weights(weight_decay),
+      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_learning_rate(learning_rate),
   )
   return schedule_free(
       optimizer,
-      learning_rate=learning_rate,
+      learning_rate=learning_rate,  # pyrefly: ignore[bad-argument-type]
       b1=b1,
       weight_lr_power=weight_lr_power,
       state_dtype=state_dtype,

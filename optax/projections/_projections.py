@@ -287,6 +287,7 @@ def projection_linf_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   Returns:
     projected tree, with the same structure as ``tree``.
   """
+  # pyrefly: ignore[unsupported-operation]
   lower = optax.tree.full_like(tree, -scale)
   upper = optax.tree.full_like(tree, scale)
   return projection_box(tree, lower=lower, upper=upper)
@@ -333,6 +334,7 @@ def projection_hyperplane(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
+  # pyrefly: ignore[unsupported-operation]
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   return optax.tree.add_scale(x, scalar, a)
 
@@ -357,6 +359,7 @@ def projection_halfspace(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
+  # pyrefly: ignore[unsupported-operation]
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   scalar = jnp.clip(scalar, max=0)
   return optax.tree.add_scale(x, scalar, a)

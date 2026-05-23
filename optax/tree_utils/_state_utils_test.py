@@ -41,6 +41,7 @@ class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
   count: jax.typing.ArrayLike
+  # pyrefly: ignore[invalid-annotation]
   params: TypedDict('Params', {'mu': base.ArrayTree, 'nu': base.ArrayTree})
 
 
@@ -89,7 +90,7 @@ class StateUtilsTest(absltest.TestCase):
     opt_state = opt.init(params)
 
     opt_state_sharding_spec = _state_utils.tree_map_params(
-        opt,
+        opt,  # pyrefly: ignore[bad-argument-type]
         lambda _, spec: spec,
         opt_state,
         params_sharding_spec,
@@ -135,7 +136,7 @@ class StateUtilsTest(absltest.TestCase):
     opt_state = opt.init(params)
 
     opt_state_sharding_spec = _state_utils.tree_map_params(
-        opt,
+        opt,  # pyrefly: ignore[bad-argument-type]
         lambda _, spec: spec,
         opt_state,
         params_sharding_spec,
@@ -144,6 +145,7 @@ class StateUtilsTest(absltest.TestCase):
 
     expected = (
         transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+            # pyrefly: ignore[bad-argument-type]
             count=FakeShardSpec(sharding_axis=None),
             mu={
                 'my/fake/module': {
@@ -176,12 +178,13 @@ class StateUtilsTest(absltest.TestCase):
 
     params = _fake_params()
     state = opt.init(params)
+    # pyrefly: ignore[bad-argument-type]
     state = _state_utils.tree_map_params(opt, lambda v: v + 1, state)
     state = cast(_inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree.map(lambda v: v + 1, params)
-    mu = getattr(state.inner_state[0], 'mu')
+    mu = getattr(state.inner_state[0], 'mu')  # pyrefly: ignore[bad-index]
     test_utils.assert_trees_all_close(mu, params_plus_one)
 
   def test_map_params_to_none(self):
@@ -189,6 +192,7 @@ class StateUtilsTest(absltest.TestCase):
 
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
+    # pyrefly: ignore[bad-argument-type]
     state = _state_utils.tree_map_params(opt, lambda _: None, state)
     self.assertEqual(
         state,
@@ -207,17 +211,21 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
 
     state = _state_utils.tree_map_params(
-        opt, lambda v: 1, state, transform_non_params=lambda _: None
+        # pyrefly: ignore[bad-argument-type]
+        opt,
+        lambda v: 1,
+        state,
+        transform_non_params=lambda _: None,
     )
 
     expected = (
         transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
-            count=None,
+            count=None,  # pyrefly: ignore[bad-argument-type]
             mu={'a': 1},
             nu={'a': 1},
         ),
         transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
-            count=None
+            count=None  # pyrefly: ignore[bad-argument-type]
         ),
     )
     self.assertEqual(state, expected)

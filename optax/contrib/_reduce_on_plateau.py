@@ -189,4 +189,5 @@ def reduce_on_plateau(
 
     return updates, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

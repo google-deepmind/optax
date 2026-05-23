@@ -100,6 +100,7 @@ class ExtraArgsTest(absltest.TestCase):
       assert loss == 1
       return updates, state
 
+    # pyrefly: ignore[bad-argument-type]
     t = base.GradientTransformationExtraArgs(init_fn, update_fn)
     result = combine.chain(alias.adam(1e-3), t)
     self.assertIsInstance(result, base.GradientTransformationExtraArgs)
@@ -166,6 +167,7 @@ class PartitionTest(parameterized.TestCase):
     param_labels = _map_keys_fn(lambda k, _: k[0])
     if not use_fn:
       param_labels = param_labels(params)
+    # pyrefly: ignore[bad-argument-type]
     tx = combine.partition(tx_dict, param_labels)
     update_fn = jax.jit(tx.update)
     state = jax.jit(tx.init)(params)
@@ -202,6 +204,7 @@ class PartitionTest(parameterized.TestCase):
       return updates, state
 
     opt_no_arg = base.GradientTransformation(init, update_without_arg)
+    # pyrefly: ignore[bad-argument-type]
     opt_extra_arg = base.GradientTransformationExtraArgs(init, update_with_arg)
 
     opt = combine.partition(
@@ -247,7 +250,9 @@ class PartitionTest(parameterized.TestCase):
         2: transform.trace(1.0),
     }
     init_fn, update_fn = combine.partition(
-        transforms, (lambda _: label_tree) if use_fn else label_tree
+        # pyrefly: ignore[bad-argument-type]
+        transforms,
+        (lambda _: label_tree) if use_fn else label_tree,
     )
 
     if use_extra_label:
@@ -271,6 +276,7 @@ def scale_by_loss():
     updates = jax.tree.map(lambda u: u / loss, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 

@@ -275,6 +275,7 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
 
     key = jax.random.key(42)
     keys = jax.random.split(key, 2)
+    # pyrefly: ignore[bad-argument-type]
     logits = jax.random.uniform(keys[0], labels_shape + (num_classes,))
     labels = jax.random.randint(keys[1], labels_shape, 0, num_classes - 1)
 

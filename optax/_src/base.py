@@ -213,7 +213,7 @@ class GradientTransformationExtraArgs(GradientTransformation):
       accept extra arguments.
   """
 
-  update: TransformUpdateExtraArgsFn
+  update: TransformUpdateExtraArgsFn  # pyrefly: ignore[bad-override]
 
 
 class EmptyState(NamedTuple):

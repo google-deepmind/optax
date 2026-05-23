@@ -46,6 +46,7 @@ def squared_error(
   if targets is not None:
     # Avoid broadcasting logic for "-" operator.
     utils.check_shapes_equal(predictions, targets)
+  # pyrefly: ignore[unsupported-operation]
   errors = predictions - targets if targets is not None else predictions
   return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
 
@@ -96,6 +97,7 @@ def huber_loss(
     `Huber loss <https://en.wikipedia.org/wiki/Huber_loss>`_, Wikipedia.
   """
   utils.check_subdtype(predictions, jnp.floating)
+  # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # 0.5 * err^2                  if |err| <= d
   # 0.5 * d^2 + d * (|err| - d)  if |err| > d
@@ -128,6 +130,7 @@ def log_cosh(
     <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
   utils.check_subdtype(predictions, jnp.floating)
+  # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
@@ -180,6 +183,7 @@ def cosine_similarity(
   b_norm = jnp.sqrt(b_norm2.clip(epsilon))
   a_unit = a / a_norm
   b_unit = b / b_norm
+  # pyrefly: ignore[no-matching-overload]
   return (a_unit * b_unit).sum(axis=axis, where=where)
 
 

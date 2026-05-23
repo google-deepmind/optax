@@ -50,6 +50,7 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     updates = jax.tree.map(lambda u: step_size * u, updates)
     return updates, OptimizerTestState(aggregate_grads)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -75,7 +76,7 @@ class MechanicTest(absltest.TestCase):
       print(updates)
       params = update.apply_updates(params, updates)
 
-    return params, opt_state
+    return params, opt_state  # pyrefly: ignore[bad-return]
 
   def test_mechanized(self):
     params = self.initial_params

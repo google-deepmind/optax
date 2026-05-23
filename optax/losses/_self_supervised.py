@@ -89,8 +89,9 @@ def ntxent(
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :], embeddings[:, None, :],
-          epsilon=jnp.finfo(embeddings.dtype).eps  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+          embeddings[None, :, :],  # pyrefly: ignore[bad-index]
+          embeddings[:, None, :],  # pyrefly: ignore[bad-index]
+          epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature
   )
@@ -171,9 +172,23 @@ def triplet_margin_loss(
   utils.check_subdtype(anchors, jnp.floating)
   utils.check_subdtype(positives, jnp.floating)
   utils.check_subdtype(negatives, jnp.floating)
-  positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree)
-                                .sum(axis) + eps, 1 / norm_degree)
-  negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree)
-                                .sum(axis) + eps, 1 / norm_degree)
+  positive_distance = jnp.power(
+      jnp.power(
+          # pyrefly: ignore[unsupported-operation]
+          anchors - positives,
+          norm_degree,
+      ).sum(axis)
+      + eps,
+      1 / norm_degree,
+  )
+  negative_distance = jnp.power(
+      jnp.power(
+          # pyrefly: ignore[unsupported-operation]
+          anchors - negatives,
+          norm_degree,
+      ).sum(axis)
+      + eps,
+      1 / norm_degree,
+  )
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
   return loss

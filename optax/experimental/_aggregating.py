@@ -72,8 +72,8 @@ class Aggregator(base.GradientTransformationExtraArgs):
       (optionally) and returns updates and updated state.
   """
 
-  init: base.TransformInitFn
-  update: AggregatorUpdateFn
+  init: base.TransformInitFn  # pyrefly: ignore[bad-override]
+  update: AggregatorUpdateFn  # pyrefly: ignore[bad-override]
 
 
 def process(
@@ -151,7 +151,8 @@ def process(
     )
 
     if aggregator_has_aux:
-      avg_updates, agg_aux = aggregated
+      avg_updates, agg_aux = aggregated  # pyrefly: ignore[not-iterable]
+      # pyrefly: ignore[unsupported-operation]
       extra_args = extra_args | agg_aux
     else:
       avg_updates = aggregated
@@ -174,8 +175,9 @@ def process(
     )
 
   if isinstance(aggregator, Aggregator):
-    return Aggregator(init_fn, update_fn)
+    return Aggregator(init_fn, update_fn)  # pyrefly: ignore[bad-argument-type]
   else:
+    # pyrefly: ignore[bad-argument-type]
     return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -202,6 +204,7 @@ def average_per_element_updates(
     )
     return avg_updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return Aggregator(base.init_empty_state, update_fn)
 
 
@@ -332,6 +335,7 @@ def average_incrementally_updates(
         average_per_element_updates(per_elt_axis),
         accumulate_avg_updates(accumulation_steps),
     )
+    # pyrefly: ignore[bad-argument-type]
     return Aggregator(agg.init, agg.update)
 
 
@@ -400,7 +404,7 @@ def get_per_element_mean_and_sum_sq_diff_grads(
   ) -> tuple[base.Updates, base.Updates]:
     del params
     batch_size = get_batch_size_from_per_elt_updates(
-        per_elt_udpates, per_elt_axis
+        per_elt_udpates, per_elt_axis  # pyrefly: ignore[bad-argument-type]
     )
     mean_grads = jax.tree.map(
         lambda x: jnp.mean(x, axis=per_elt_axis, keepdims=True),
@@ -421,6 +425,7 @@ def get_per_element_mean_and_sum_sq_diff_grads(
     return (mean_grads, aux_data), state
 
   if accumulation_steps == 1:
+    # pyrefly: ignore[bad-argument-type]
     return Aggregator(base.init_empty_state, compute_avg_and_sum_sq_diff)
 
   def init_fn(params):
@@ -434,7 +439,7 @@ def get_per_element_mean_and_sum_sq_diff_grads(
   def update_fn(per_elt_udpates, state, params=None):
     del params
     batch_size = get_batch_size_from_per_elt_updates(
-        per_elt_udpates, per_elt_axis
+        per_elt_udpates, per_elt_axis  # pyrefly: ignore[bad-argument-type]
     )
     new_micro_step = state.micro_step + 1
 
@@ -493,7 +498,7 @@ def get_per_element_mean_and_sum_sq_diff_grads(
     )
     return updates, new_state
 
-  return Aggregator(init_fn, update_fn)
+  return Aggregator(init_fn, update_fn)  # pyrefly: ignore[bad-argument-type]
 
 
 class PerElementMeanAndVarianceEMAState(NamedTuple):
@@ -553,6 +558,7 @@ def track_per_element_mean_and_variance_with_ema(
     )
     return updates, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 

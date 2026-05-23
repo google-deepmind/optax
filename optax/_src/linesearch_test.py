@@ -176,7 +176,13 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
     params = update.apply_updates(init_params, updates)
 
     self._check_decrease_conditions(
-        fn, init_params, descent_dir, params, state[-1], opt_args
+        # pyrefly: ignore[bad-index]
+        fn,
+        init_params,
+        descent_dir,
+        params,
+        state[-1],
+        opt_args,
     )
 
   def test_gradient_descent_with_linesearch(self):
@@ -530,7 +536,13 @@ class ZoomLinesearchTest(parameterized.TestCase):
       )
     with self.subTest('Check linesearch conditions'):
       self._check_linesearch_conditions(
-          fn, init_params, init_updates, final_params, final_state, opt_args
+          # pyrefly: ignore[bad-argument-type]
+          fn,
+          init_params,
+          init_updates,
+          final_params,
+          final_state,
+          opt_args,
       )
     with self.subTest('Check against scipy'):
       stepsize = optax.tree.get(final_state, 'learning_rate')

@@ -87,10 +87,12 @@ def _normalize_axes(x: jax.Array, dim_nums: MuonDimensionNumbers) -> tuple[
   """Normalize axes in dimension numbers to two tuples of non-negative ints."""
   if isinstance(dim_nums.reduction_axis, int):
     dim_nums = dim_nums._replace(reduction_axis=(dim_nums.reduction_axis,))
+  # pyrefly: ignore[not-iterable]
   reduction_axes = tuple(ax % x.ndim for ax in dim_nums.reduction_axis)
 
   if isinstance(dim_nums.output_axis, int):
     dim_nums = dim_nums._replace(output_axis=(dim_nums.output_axis,))
+  # pyrefly: ignore[not-iterable]
   output_axes = tuple(ax % x.ndim for ax in dim_nums.output_axis)
   return reduction_axes, output_axes
 
@@ -362,6 +364,7 @@ def orthogonalize_via_newton_schulz(
       x = x.T
     return x
 
+  # pyrefly: ignore[bad-argument-type]
   reshape_fn, inverse_fn = _compute_muon_reshape(x, dimension_numbers)
   return inverse_fn(jax.vmap(_orthogonalize)(reshape_fn(x)))
 
@@ -463,8 +466,10 @@ def scale_by_muon(
           f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
       )
     if ns_coeffs_.ndim == 2:
+      # pyrefly: ignore[unsupported-operation]
       if not ns_coeffs_.shape[0] <= ns_steps:
         raise ValueError(f'Not enough coeffs to perform {ns_steps} steps')
+      # pyrefly: ignore[unsupported-operation]
       ns_coeffs_ = ns_coeffs_[-ns_steps:]
 
     return MuonState(
@@ -695,7 +700,7 @@ def muon(
       transforms={
           'muon': combine.chain(
               scale_by_muon(
-                  ns_coeffs=ns_coeffs_,
+                  ns_coeffs=ns_coeffs_,  # pyrefly: ignore[bad-argument-type]
                   ns_steps=ns_steps,
                   beta=beta,
                   eps=eps,
@@ -709,6 +714,7 @@ def muon(
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
                   consistent_rms=consistent_rms,
               ),
+              # pyrefly: ignore[bad-argument-type]
               transform.add_decayed_weights(weight_decay, weight_decay_mask),
               transform.scale_by_learning_rate(learning_rate),
           ),
@@ -718,6 +724,7 @@ def muon(
               b2=adam_b2,
               eps=eps,
               eps_root=adam_eps_root,
+              # pyrefly: ignore[bad-argument-type]
               weight_decay=adam_weight_decay,
               mu_dtype=mu_dtype,
               nesterov=nesterov,

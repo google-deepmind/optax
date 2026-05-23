@@ -136,3 +136,7 @@ pyink-use-majority-quotes = true
 pyink-indentation = 2
 line-length = 80
 include = '\.pyi?$'
+
+[tool.pyrefly]
+project-includes = ["optax"]
+python-version = "3.12"

@@ -79,6 +79,7 @@ def sigmoid_binary_cross_entropy(
   labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
+  # pyrefly: ignore[unsupported-operation]
   log_not_p = jax.nn.log_sigmoid(-logits)
   return -labels * log_p - (1.0 - labels) * log_not_p
 
@@ -124,6 +125,7 @@ def perceptron_loss(
     `Perceptron <https://en.wikipedia.org/wiki/Perceptron>`_, Wikipedia
   """
   utils.check_shapes_equal(predictor_outputs, targets)
+  # pyrefly: ignore[unsupported-operation]
   return jnp.maximum(0, -predictor_outputs * targets)
 
 
@@ -148,6 +150,7 @@ def sparsemax_loss(
 
   .. versionadded:: 0.2.3
   """
+  # pyrefly: ignore[unsupported-operation]
   return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
 
 
@@ -297,8 +300,9 @@ def softmax_cross_entropy(
   """
   utils.check_subdtype(logits, jnp.floating)
   if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    where = jnp.expand_dims(where, axis)
+    where = jnp.expand_dims(where, axis)  # pyrefly: ignore[bad-argument-type]
   log_probs = jax.nn.log_softmax(logits, axis, where)
+  # pyrefly: ignore[no-matching-overload]
   return -(labels * log_probs).sum(axis, where=where)
 
 
@@ -599,6 +603,7 @@ def kl_divergence_with_log_targets(
   """
   utils.check_subdtype(log_predictions, jnp.floating)
   utils.check_subdtype(log_targets, jnp.floating)
+  # pyrefly: ignore[unsupported-operation]
   loss = jnp.exp(log_targets) * (log_targets - log_predictions)
   return jnp.sum(loss, axis=axis, where=where)
 
@@ -726,6 +731,7 @@ def ctc_loss_with_forward_probs(
   utils.check_rank(logits, 3)
   utils.check_rank(labels, 2)
   utils.check_shapes_equal(labels, label_paddings)
+  # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(logits[..., 0], logit_paddings)
   batchsize, unused_maxinputlen, num_classes = logits.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   batchsize_of_labels, maxlabellen = labels.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
@@ -739,6 +745,7 @@ def ctc_loss_with_forward_probs(
   labellens = maxlabellen - jnp.sum(label_paddings, axis=1).astype(jnp.int32)
 
   # repeat[b, n] == 1.0 when label[b, n] == label[b, n+1].
+  # pyrefly: ignore[bad-index]
   repeat = (labels[:, :-1] == labels[:, 1:]).astype(jnp.float32)
   repeat = jnp.pad(repeat, ((0, 0), (0, 1)))
 
@@ -917,7 +924,7 @@ def sigmoid_focal_loss(
 
   # Compute log(1-p_t) using logsumexp unconditionally
   log_p = jax.nn.log_sigmoid(logits)
-  log_q = jax.nn.log_sigmoid(-logits)
+  log_q = jax.nn.log_sigmoid(-logits)  # pyrefly: ignore[unsupported-operation]
 
   log_one_minus_p_t = jax.scipy.special.logsumexp(
       jnp.stack([log_p, log_q], axis=-1),
@@ -933,7 +940,7 @@ def sigmoid_focal_loss(
   if alpha is None:
     return loss
   weighted = (alpha * labels + (1.0 - alpha) * (1.0 - labels)) * loss
-  return weighted
+  return weighted  # pyrefly: ignore[bad-return]
 
 
 def _multiclass_sparsemax_loss(

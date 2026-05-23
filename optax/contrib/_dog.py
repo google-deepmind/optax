@@ -116,6 +116,7 @@ def scale_by_dog(
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -208,6 +209,7 @@ def dog(
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),
@@ -278,6 +280,7 @@ def scale_by_dowg(
         weighted_sq_norm_grads=weighted_sq_norm_grads,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -337,6 +340,7 @@ def dowg(
   .. versionadded:: 0.2.3
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),

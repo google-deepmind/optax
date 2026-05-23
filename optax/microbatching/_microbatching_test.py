@@ -91,6 +91,7 @@ class MicrobatchingTest(parameterized.TestCase):
         microbatch_size=microbatch_size,
         accumulator=accumulator,
     )
+    # pyrefly: ignore[unexpected-positional-argument]
     expected_answer = fun(nonbatch_arg, batch_arg1, batch_arg2)
     actual_answer = microbatched_fun(nonbatch_arg, batch_arg1, batch_arg2)
     test_utils.assert_trees_all_close(expected_answer, actual_answer, atol=1e-6)
@@ -321,6 +322,7 @@ class MicrobatchingTest(parameterized.TestCase):
         mean_squared_loss,
         argnums=0,
         batch_argnums=(1, 2),
+        # pyrefly: ignore[unsupported-operation]
         transform_fn=lambda x: (x, x**2),
         metrics_fn=jnp.linalg.norm,
         keep_batch_dim=keep_batch_dim,
@@ -401,6 +403,7 @@ class MicrobatchingTest(parameterized.TestCase):
         mean_squared_loss,
         argnums=0,
         batch_argnums=(1, 2),
+        # pyrefly: ignore[unsupported-operation]
         transform_fn=lambda x: (x, x**2),
         metrics_fn=jnp.linalg.norm,
         keep_batch_dim=True,

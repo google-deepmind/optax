@@ -198,6 +198,7 @@ def mechanize(
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
+    # pyrefly: ignore[unsupported-operation]
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
     betas = jnp.array(
         [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
@@ -228,4 +229,5 @@ def mechanize(
         x0=new_x0,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

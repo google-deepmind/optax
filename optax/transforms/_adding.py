@@ -81,8 +81,11 @@ def add_decayed_weights(
   # E.g. it is common to skip weight decay on bias units and batch stats.
   if mask is not None:
     return wrappers.masked(
-        base.GradientTransformation(init_fn, update_fn), mask
+        # pyrefly: ignore[bad-argument-type]
+        base.GradientTransformation(init_fn, update_fn),
+        mask,
     )
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -170,6 +173,7 @@ def add_noise(
     updates = optax.tree.add_scale(
         tree_x=updates, scalar=standard_deviation, tree_y=noise
     )
+    # pyrefly: ignore[bad-argument-type]
     return updates, AddNoiseState(count=count_inc, rng_key=rng_key)
 
   return base.GradientTransformation(init_fn, update_fn)

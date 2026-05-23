@@ -156,6 +156,7 @@ def inject_hyperparams(
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
+        # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
       elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
@@ -178,7 +179,7 @@ def inject_hyperparams(
       })
       return InjectStatefulHyperparamsState(
           count=count,
-          hyperparams=hparams,
+          hyperparams=hparams,  # pyrefly: ignore[bad-argument-type]
           hyperparams_states=hparams_states,
           inner_state=inner_factory(**other_hps, **hparams).init(params),
       )
@@ -186,6 +187,7 @@ def inject_hyperparams(
     def update_fn(updates, state, params=None, **extra_args):
       dtype = hyperparam_dtype
       if dtype is None:
+        # pyrefly: ignore[bad-argument-type]
         dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
@@ -206,6 +208,7 @@ def inject_hyperparams(
       ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
+          # pyrefly: ignore[bad-argument-type]
           count=numerics.safe_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,

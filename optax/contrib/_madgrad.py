@@ -123,6 +123,7 @@ def scale_by_madgrad(
     final_updates = jax.tree.map(lambda n, o: n - o, x_new, params)
 
     new_state = MadgradState(
+        # pyrefly: ignore[bad-argument-type]
         count=numerics.safe_increment(count),
         grad_sum_sq=grad_sum_sq,
         s=s,

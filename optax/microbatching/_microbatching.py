@@ -175,7 +175,8 @@ def _sum() -> Accumulator:
   """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
-          init=jnp.zeros_like,
+          init=jnp.zeros_like,  # pyrefly: ignore[bad-argument-type]
+          # pyrefly: ignore[unsupported-operation]
           update=lambda carry, value, _: carry + value,
           finalize=lambda x: x,
           aggregate=functools.partial(jnp.sum, axis=0),
@@ -188,7 +189,9 @@ def _mean(num_microbatches: int) -> Accumulator:
   return _lift(
       Accumulator(
           init=_with_floating_check(jnp.zeros_like),
+          # pyrefly: ignore[unsupported-operation]
           update=lambda carry, value, _: carry + value,
+          # pyrefly: ignore[unsupported-operation]
           finalize=lambda carry: carry / num_microbatches,
           aggregate=functools.partial(jnp.mean, axis=0),
       )
@@ -271,13 +274,13 @@ def _canonicalize(
       return acc
     match acc:
       case AccumulationType.MEAN:
-        return _mean(num_microbatches)
+        return _mean(num_microbatches)  # pyrefly: ignore[bad-argument-type]
       case AccumulationType.SUM:
         return _sum()
       case AccumulationType.RUNNING_MEAN:
         return _running_mean()
       case AccumulationType.CONCAT:
-        return _concat(num_microbatches)
+        return _concat(num_microbatches)  # pyrefly: ignore[bad-argument-type]
     raise ValueError(f'Unknown accumulator: {acc}')
 
   return _compose(jax.tree.map(fun, tree))
@@ -631,6 +634,7 @@ def micro_grad(
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
     transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
+    # pyrefly: ignore[bad-function-definition]
     metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None,
     num_real_microbatches: int | jax.Array | None = None,
 ) -> ValueAndGradFn:
@@ -726,10 +730,10 @@ def micro_grad(
 
   in_axes = [None] * (max(batch_argnums) + 1)
   for i in batch_argnums:
-    in_axes[i] = 0
+    in_axes[i] = 0  # pyrefly: ignore[unsupported-operation]
   micro_fun = micro_vmap(
       grad_fn,
-      in_axes=in_axes,
+      in_axes=in_axes,  # pyrefly: ignore[bad-argument-type]
       accumulator=(accumulator, AccumulationType.CONCAT),
       microbatch_size=microbatch_size,
       num_real_microbatches=num_real_microbatches,

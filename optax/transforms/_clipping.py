@@ -40,6 +40,7 @@ def clip(max_delta: jax.typing.ArrayLike) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
+    # pyrefly: ignore[unsupported-operation]
     return optax.tree.clip(updates, -max_delta, max_delta), state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
@@ -306,6 +307,7 @@ def unitwise_clip(
   clipped_grad = grad * (max_norm / jnp.maximum(g_norm, div_eps))
   utils.check_shapes_equal(g_norm, max_norm)
   utils.check_shapes_equal(g_norm, grad)
+  # pyrefly: ignore[unsupported-operation]
   return jnp.where(g_norm < max_norm, grad, clipped_grad)
 
 
@@ -343,4 +345,5 @@ def adaptive_grad_clip(
     updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)

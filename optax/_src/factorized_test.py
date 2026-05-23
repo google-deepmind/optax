@@ -49,7 +49,7 @@ class FactorizedTest(parameterized.TestCase):
   )
   def test_preserve_dtype(self, factorized_dims: bool, dtype: str):
     """Test that the optimizer returns updates of same dtype as params."""
-    dtype = jnp.dtype(dtype)
+    dtype = jnp.dtype(dtype)  # pyrefly: ignore[bad-assignment]
     opt = factorized.scale_by_factored_rms()
     fun = lambda x: jnp.sum(x**2)
 

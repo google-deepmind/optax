@@ -163,13 +163,16 @@ def scale_by_sophia(
       if verbose:
         win_rate = sum_not_clipped / optax.tree.size(updates)
         jax.lax.cond(
+            # pyrefly: ignore[unsupported-operation]
             count_inc % print_win_rate_every_n_steps == 0,
             lambda: jax.debug.print("Sophia optimizer win rate: {}", win_rate),
             lambda: None,
         )
 
       updates = jax.tree.map(
-          lambda u: jnp.clip(u, -clip_threshold, clip_threshold), updates
+          # pyrefly: ignore[unsupported-operation]
+          lambda u: jnp.clip(u, -clip_threshold, clip_threshold),
+          updates,
       )
 
     # Hessian diagonal update
@@ -195,13 +198,14 @@ def scale_by_sophia(
     mu = optax.tree.cast(mu, mu_dtype)
 
     state = SophiaState(
-        count=count_inc,
+        count=count_inc,  # pyrefly: ignore[bad-argument-type]
         mu=mu,
         nu=nu,
         hessian_fn_state=hessian_fn_state,
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -309,6 +313,7 @@ def sophia(
           verbose=verbose,
           print_win_rate_every_n_steps=print_win_rate_every_n_steps,
       ),
+      # pyrefly: ignore[bad-argument-type]
       _adding.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_learning_rate(learning_rate),
   ]

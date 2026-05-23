@@ -129,6 +129,7 @@ def dadapt_adamw(
     d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
     estim_lr = jnp.maximum(state.estim_lr, d_estimate)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, eas, p: -weight_decay * dlr * p - ea / (jnp.sqrt(eas) + eps),
         exp_avg,
         exp_avg_sq,
@@ -144,4 +145,5 @@ def dadapt_adamw(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

@@ -238,6 +238,7 @@ class SelectiveTransformTest(parameterized.TestCase):
                   PARAMS_NESTED["layer1"][0],  # frozen
                   {
                       "bias": (
+                          # pyrefly: ignore[bad-index]
                           PARAMS_NESTED["layer1"][1]["bias"]
                           - GRAD_NESTED["layer1"][1]["bias"]
                       )
@@ -266,9 +267,11 @@ class SelectiveTransformTest(parameterized.TestCase):
           },
           {
               "layer1": [
+                  # pyrefly: ignore[unsupported-operation]
                   PARAMS_NESTED["layer1"][0] - GRAD_NESTED["layer1"][0],
                   {
                       "bias": (
+                          # pyrefly: ignore[bad-index]
                           PARAMS_NESTED["layer1"][1]["bias"]
                           - GRAD_NESTED["layer1"][1]["bias"]
                       )

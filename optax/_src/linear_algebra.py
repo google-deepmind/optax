@@ -123,8 +123,8 @@ def power_iteration(
       # v0 is uniformly distributed in [-1, 1]
       v0 = jax.random.uniform(
           key,
-          shape=matrix.shape[-1:],
-          dtype=matrix.dtype,
+          shape=matrix.shape[-1:],  # pyrefly: ignore[missing-attribute]
+          dtype=matrix.dtype,  # pyrefly: ignore[missing-attribute]
           minval=-1.0,
           maxval=1.0,
       )

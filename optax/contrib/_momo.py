@@ -162,6 +162,7 @@ def momo(
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha, t1)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, p: -(alpha * weight_decay) / (1 + alpha * weight_decay) * p
         - tau * ea,
         exp_avg,
@@ -182,6 +183,7 @@ def momo(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -334,6 +336,7 @@ def momo_adam(
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha / bc1, t1)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, prec, p: -(alpha * weight_decay)
         / (1 + alpha * weight_decay)
         * p
@@ -357,4 +360,5 @@ def momo_adam(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

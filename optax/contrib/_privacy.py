@@ -99,8 +99,9 @@ def differentially_private_aggregate(
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [
+        # pyrefly: ignore[missing-attribute, unsupported-operation]
         (g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
-        for g, r in zip(clipped, rngs)
+        for g, r in zip(clipped, rngs)  # pyrefly: ignore[bad-argument-type]
     ]
     return (
         jax.tree.unflatten(grads_treedef, noised),

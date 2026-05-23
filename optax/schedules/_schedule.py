@@ -140,6 +140,7 @@ def polynomial_schedule(
   def schedule(count):
     count = jnp.clip(count - transition_begin, 0, transition_steps)
     frac = 1 - count / transition_steps
+    # pyrefly: ignore[unsupported-operation]
     return (init_value - end_value) * (frac**power) + end_value
 
   return schedule
@@ -394,7 +395,7 @@ def _linear_interpolate(
     end: jax.typing.ArrayLike,
     pct: jax.typing.ArrayLike):
   """Linearly interpolate between two values."""
-  return (end - start) * pct + start
+  return (end - start) * pct + start  # pyrefly: ignore[unsupported-operation]
 
 
 def _cosine_interpolate(
@@ -402,6 +403,7 @@ def _cosine_interpolate(
     end: jax.typing.ArrayLike,
     pct: jax.typing.ArrayLike):
   """Cosine interpolate between two values (smoother transitions)."""
+  # pyrefly: ignore[unsupported-operation]
   return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 
@@ -696,7 +698,7 @@ def warmup_exponential_decay_schedule(
       exponential_decay(
           init_value=peak_value,
           transition_steps=transition_steps,
-          decay_rate=decay_rate,
+          decay_rate=decay_rate,  # pyrefly: ignore[bad-argument-type]
           transition_begin=transition_begin,
           staircase=staircase,
           end_value=end_value,
@@ -730,6 +732,7 @@ def sgdr_schedule(
   schedules = []
   step = 0
   for kwargs in cosine_kwargs:
+    # pyrefly: ignore[bad-argument-type]
     schedules += [warmup_cosine_decay_schedule(**kwargs)]
     boundaries += [step + kwargs['decay_steps']]
     step += kwargs['decay_steps']

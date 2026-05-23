@@ -144,9 +144,9 @@ def dice_loss(
   """
 
   if predictions.ndim == targets.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]
+    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
   if targets.ndim == predictions.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    targets = targets[..., None]
+    targets = targets[..., None]  # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(predictions, targets)
 
   # Input validation for probability distributions
@@ -174,9 +174,10 @@ def dice_loss(
   axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Compute intersection and sums over specified axes
+  # pyrefly: ignore[bad-argument-type]
   intersection = jnp.sum(probs * targets, axis=axis)
-  pred_sum = jnp.sum(probs, axis=axis)
-  target_sum = jnp.sum(targets, axis=axis)
+  pred_sum = jnp.sum(probs, axis=axis)  # pyrefly: ignore[bad-argument-type]
+  target_sum = jnp.sum(targets, axis=axis)  # pyrefly: ignore[bad-argument-type]
 
   # Generalized Dice calculation
   numerator = intersection + smooth
@@ -280,8 +281,8 @@ def binary_dice_loss(
   """
   # Ensure both have channel dimension
   if predictions.ndim == targets.ndim and predictions.shape[-1] != 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]
-    targets = targets[..., None]
+    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
+    targets = targets[..., None]  # pyrefly: ignore[bad-index]
 
   return dice_loss(
       predictions,

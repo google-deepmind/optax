@@ -215,6 +215,7 @@ def adadelta(
     <https://arxiv.org/pdf/1212.5701.pdf>`_, 2012
   """  # noqa: E501
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_adadelta(rho=rho, eps=eps),
       transform.scale_by_learning_rate(learning_rate),
@@ -1369,6 +1370,7 @@ def noisy_sgd(
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_noise(eta, gamma, key, seed=seed),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -1542,7 +1544,12 @@ def novograd(
   """
   return combine.chain(
       transform.scale_by_novograd(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          # pyrefly: ignore[bad-argument-type]
+          weight_decay=weight_decay,
       ),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -1610,6 +1617,7 @@ def optimistic_gradient_descent(
     :doc:`../_collections/examples/ogda_example`
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -2242,7 +2250,7 @@ def sm3(
   """
   return combine.chain(
       transform.scale_by_sm3(momentum),
-      transform.scale(-learning_rate),
+      transform.scale(-learning_rate),  # pyrefly: ignore[unsupported-operation]
   )
 
 

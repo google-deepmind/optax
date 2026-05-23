@@ -533,6 +533,7 @@ def scale_by_param_block_norm(
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -561,6 +562,7 @@ def scale_by_param_block_rms(
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -875,6 +877,7 @@ def scale_by_radam(
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda t, f: jnp.where(ro >= threshold, t, f),
         _radam_update(ro, mu_hat, nu_hat),
         mu_hat,
@@ -1076,6 +1079,7 @@ def scale_by_trust_ratio(
     updates = jax.tree.map(_scale_update, updates, params)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -1114,6 +1118,7 @@ def apply_every(k: jax.typing.ArrayLike = 1) -> base.GradientTransformation:
     emit = c == (k - 1)
     updates = jax.tree.map(lambda ga: emit * ga, grad_acc)
     count_inc = numerics.safe_increment(state.count)
+    # pyrefly: ignore[unsupported-operation]
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -1324,6 +1329,7 @@ def scale_by_novograd(
     updates = mu
     return updates, ScaleByNovogradState(count=count_inc, mu=mu, nu=nu)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1451,6 +1457,7 @@ def scale_by_distance_over_gradients(
 
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1502,6 +1509,7 @@ def scale_by_polyak(
     # extra_args
     del extra_args
     grad_sq_norm = optax.tree.norm(updates, squared=True)
+    # pyrefly: ignore[unsupported-operation]
     gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
     if variant == 'sps':
       pass
@@ -1518,6 +1526,7 @@ def scale_by_polyak(
     updates = optax.tree.scale(step, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(base.init_empty_state, update_fn)
 
 
@@ -1594,6 +1603,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     alpha = rhos[idx] * optax.tree.real(optax.tree.vdot(dwi, vec))
     vec_new = optax.tree.add_scale(vec, -alpha, dui)
     vec_new = optax.tree.cast_like(vec_new, vec)
@@ -1610,6 +1620,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     beta = rhos[idx] * optax.tree.real(optax.tree.vdot(dui, vec))
     vec_new = optax.tree.add_scale(vec, alpha - beta, dwi)
     vec_new = optax.tree.cast_like(vec_new, vec)
@@ -1730,7 +1741,9 @@ def scale_by_lbfgs(
   ) -> tuple[base.Updates, ScaleByLBFGSState]:
     # Essentially memory_idx is the iteration k (modulo the memory size)
     # and prev_memory_idx is k-1 (modulo the memory size).
+    # pyrefly: ignore[unsupported-operation]
     memory_idx = state.count % memory_size
+    # pyrefly: ignore[unsupported-operation]
     prev_memory_idx = (state.count - 1) % memory_size
 
     # We first update the preconditioner and then preconditon the updates.
@@ -1751,6 +1764,7 @@ def scale_by_lbfgs(
     # that are not defined at the first iteration. Hence we keep them at 0 if
     # state.count = 0.
     diff_params, diff_updates, weight = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda x: jnp.where(state.count > 0, x, jnp.zeros_like(x)),
         (diff_params, diff_updates, weight),
     )
@@ -1778,7 +1792,10 @@ def scale_by_lbfgs(
       update_norm = optax.tree.norm(jax.lax.stop_gradient(updates))
       capped_inv_norm = jnp.minimum(1.0, 1.0 / update_norm)
       identity_scale = jnp.where(
-          state.count > 0, identity_scale, capped_inv_norm
+          # pyrefly: ignore[unsupported-operation]
+          state.count > 0,
+          identity_scale,
+          capped_inv_norm,
       )
     else:
       identity_scale = 1.0
@@ -1802,6 +1819,7 @@ def scale_by_lbfgs(
         weights_memory=weights_memory,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1849,6 +1867,7 @@ def normalize_by_update_norm(
     updates = jax.tree.map(lambda g: g / g_norm, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 

@@ -60,9 +60,9 @@ jobs:
         run: |
           python3 -m pylint $(find optax -name '*.py' | xargs) \
             --disable=R,C,W,E --enable=inconsistent-quotes --check-quote-consistency=y
-  build-and-pytype:
+  build-and-pyrefly:
     needs: [pre-commit, flake8, pylint, ruff-lint]  # do not run tests if linting fails
-    name: "Build and check types with pytype"
+    name: "Build and check types with pyrefly"
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -79,10 +79,10 @@ jobs:
           python3 -m build
           python3 -m pip wheel --no-deps dist/optax-*.tar.gz --wheel-dir "${TEMP_DIR}"
           python3 -m pip install -q "${TEMP_DIR}/optax-"*.whl
-      - name: Check types with pytype
+      - name: Check types with pyrefly
         run: |
-          python3 -m pip install -q pytype
-          python3 -m pytype "optax" -j auto --keep-going --disable import-error
+          python3 -m pip install -q pyrefly
+          python3 -m pyrefly check "optax"
   ruff-lint:
     name: "Lint check with ruff"
     runs-on: "ubuntu-latest"

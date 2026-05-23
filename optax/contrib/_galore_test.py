@@ -332,6 +332,7 @@ class GaLoreTest(parameterized.TestCase):
         weight_dimension_numbers=dim_nums,
     )
     state = opt.init(params)
+    # pyrefly: ignore[bad-index]
     assert isinstance(state[0], _galore.GaLoreState)
     # pytype: disable=annotation-type-mismatch
     galore_state: _galore.GaLoreState = state[0]
@@ -436,7 +437,7 @@ class GaLoreTest(parameterized.TestCase):
         weight_dimension_numbers=dim_nums,
     )
     state = opt.init(params)
-    galore_state = state[0]
+    galore_state = state[0]  # pyrefly: ignore[bad-index]
     # pytype: disable=attribute-error
     base_state = galore_state.base_optimizer_state
 

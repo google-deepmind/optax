@@ -218,7 +218,7 @@ def x64_precision(enable_x64_precision: bool = True):
     ...   print(jnp.float64(1.0).dtype.name)
     float32
   """
-  old_config = jax.config.jax_enable_x64
+  old_config = jax.config.jax_enable_x64  # pyrefly: ignore[missing-attribute]
   try:
     jax.config.update('jax_enable_x64', enable_x64_precision)
     yield

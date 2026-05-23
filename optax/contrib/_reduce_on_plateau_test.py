@@ -64,6 +64,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
       )
 
     # Check that learning rate is reduced
+    # pyrefly: ignore[not-iterable]
     scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
@@ -77,6 +78,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     )
 
     # Check that cooldown_count is decremented
+    # pyrefly: ignore[not-iterable]
     scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
@@ -106,6 +108,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     )
 
     # Check that plateau_count resets
+    # pyrefly: ignore[not-iterable]
     scale, best_value, plateau_count, *_ = new_state
     test_utils.assert_trees_all_close(plateau_count, 0)
     test_utils.assert_trees_all_close(scale, 0.1)
@@ -135,6 +138,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that learning rate is not reduced and
     # plateau_count is not incremented
+    # pyrefly: ignore[not-iterable]
     scale, best_value, plateau_count, cooldown_count, *_ = new_state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
@@ -170,6 +174,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
       )
 
     # Check that learning rate is not reduced
+    # pyrefly: ignore[not-iterable]
     scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.01)
     test_utils.assert_trees_all_close(best_value, 0.1)

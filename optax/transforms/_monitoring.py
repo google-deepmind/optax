@@ -79,6 +79,7 @@ def snapshot(
     del params, state
     return updates, SnapshotState({measure_name: measure(updates)})
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init, update)
 
 
@@ -173,6 +174,7 @@ def monitor(
       new_measure_states.append(measure_state)
     return updates, MonitorState(measurements, tuple(new_measure_states))
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init, update)
 
 
