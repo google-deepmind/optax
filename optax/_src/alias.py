@@ -729,7 +729,7 @@ def adamw(
 
   .. seealso::
     See the related functions :func:`optax.adam`, :func:`optax.nadamw`, as well
-    as the example :doc:`../_collections/examples/nanolm` for a use case.
+    as the example :doc:`/_collections/examples/nanolm` for a use case.
   """
   return combine.chain(
       transform.scale_by_adam(
@@ -1631,7 +1631,7 @@ def optimistic_gradient_descent(
     Point Approach <https://arxiv.org/abs/1901.08511>`_, 2019
 
   .. seealso::
-    :doc:`../_collections/examples/ogda_example`
+    :doc:`/_collections/examples/ogda_example`
   """
   return combine.chain(
       # pyrefly: ignore[bad-argument-type]
@@ -1740,7 +1740,7 @@ def optimistic_adam(
     <https://arxiv.org/abs/1711.00141>`_, 2017
 
   .. seealso::
-    :doc:`../_collections/examples/ogda_example`
+    :doc:`/_collections/examples/ogda_example`
   """
   warnings.warn('`optimistic_adam` is deprecated, please use'
                 ' `optimistic_adam_v2` instead.', category=DeprecationWarning)
@@ -1870,7 +1870,7 @@ def optimistic_adam_v2(
     <https://arxiv.org/abs/1711.00141>`_, 2017
 
   .. seealso::
-    :doc:`../_collections/examples/ogda_example`
+    :doc:`/_collections/examples/ogda_example`
   """
   return combine.chain(
       transform.scale_by_adam(

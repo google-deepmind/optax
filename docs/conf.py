@@ -129,6 +129,13 @@ autodoc_type_aliases = {
     'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
 
+# -- Options for autosummary -------------------------------------------------
+
+# Generate a separate documentation page for every public symbol listed in an
+# ``.. autosummary::`` block that uses the ``:toctree:`` option. The page
+# layout is controlled by the templates in ``_templates/autosummary``.
+autosummary_generate = True
+
 autodoc_default_options = {
     'member-order': 'bysource',
     'special-members': True,
