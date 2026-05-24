@@ -579,7 +579,7 @@ def cosine_onecycle_schedule(
   """
   if transition_steps <= 0:
     raise ValueError(
-        'A linear onecycle schedule was set with a non-positive '
+        'A cosine onecycle schedule was set with a non-positive '
         '`transition_steps`'
     )
 
