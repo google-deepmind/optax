@@ -82,7 +82,7 @@ jobs:
       - name: Check types with pyrefly
         run: |
           python3 -m pip install -q pyrefly
-          python3 -m pyrefly check "optax"
+          python3 -m pyrefly check
   ruff-lint:
     name: "Lint check with ruff"
     runs-on: "ubuntu-latest"

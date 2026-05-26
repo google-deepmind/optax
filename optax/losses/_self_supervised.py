@@ -79,9 +79,11 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
+  # pyrefly: ignore [missing-attribute]
   if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
+        # pyrefly: ignore [missing-attribute]
         f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         ' embeddings.'
     )
@@ -91,6 +93,7 @@ def ntxent(
       _regression.cosine_similarity(
           embeddings[None, :, :],  # pyrefly: ignore[bad-index]
           embeddings[:, None, :],  # pyrefly: ignore[bad-index]
+          # pyrefly: ignore [missing-attribute]
           epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature

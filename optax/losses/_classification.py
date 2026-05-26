@@ -76,6 +76,7 @@ def sigmoid_binary_cross_entropy(
     <http://www.deeplearningbook.org/contents/prob.html>`_, 2016
   """
   utils.check_subdtype(logits, jnp.floating)
+  # pyrefly: ignore [missing-attribute]
   labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
@@ -299,6 +300,7 @@ def softmax_cross_entropy(
     Added ``axis`` and ``where`` arguments.
   """
   utils.check_subdtype(logits, jnp.floating)
+  # pyrefly: ignore [missing-attribute]
   if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     where = jnp.expand_dims(where, axis)  # pyrefly: ignore[bad-argument-type]
   log_probs = jax.nn.log_softmax(logits, axis, where)
@@ -386,19 +388,25 @@ def softmax_cross_entropy_with_integer_labels(
   """
   utils.check_subdtype(logits, jnp.floating)
   utils.check_subdtype(labels, jnp.integer)
+  # pyrefly: ignore [missing-attribute]
   if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     where = jnp.expand_dims(where, axis)
   if isinstance(axis, int):
+    # pyrefly: ignore [missing-attribute]
     axis = canonicalize_axis(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   elif isinstance(axis, tuple):
     # Move all "feature" dimensions to the end preserving axis ordering and
     # subsequent flattening "feature" dimensions to a single one.
+    # pyrefly: ignore [missing-attribute]
     logit_axis = canonicalize_axes(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    # pyrefly: ignore [missing-attribute]
     batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     axis = len(batch_axis)
+    # pyrefly: ignore [missing-attribute]
     logits = logits.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     logits = logits.reshape(logits.shape[:len(batch_axis)] + (-1,))
     if where is not None:
+      # pyrefly: ignore [missing-attribute]
       where = where.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       where = where.reshape(where.shape[:len(batch_axis)] + (-1,))
   else:
@@ -449,6 +457,7 @@ def multiclass_hinge_loss(
 
   .. versionadded:: 0.2.3
   """
+  # pyrefly: ignore [missing-attribute]
   one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - _dot_last_dim(
       scores, one_hot_labels
@@ -474,6 +483,7 @@ def multiclass_perceptron_loss(
 
   .. versionadded:: 0.2.2
   """
+  # pyrefly: ignore [missing-attribute]
   one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
 
@@ -733,7 +743,9 @@ def ctc_loss_with_forward_probs(
   utils.check_shapes_equal(labels, label_paddings)
   # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(logits[..., 0], logit_paddings)
+  # pyrefly: ignore [missing-attribute]
   batchsize, unused_maxinputlen, num_classes = logits.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  # pyrefly: ignore [missing-attribute]
   batchsize_of_labels, maxlabellen = labels.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if batchsize_of_labels != batchsize:
     raise ValueError(
@@ -793,6 +805,7 @@ def ctc_loss_with_forward_probs(
 
     return (next_phi, next_emit), (next_phi, next_emit)
 
+  # pyrefly: ignore [missing-attribute]
   xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   _, (logalpha_phi, logalpha_emit) = jax.lax.scan(
       loop_body, (logalpha_phi_init, logalpha_emit_init), xs
@@ -917,6 +930,7 @@ def sigmoid_focal_loss(
     Added support for continuous labels in `[0, 1]`.
   """
   utils.check_subdtype(logits, jnp.floating)
+  # pyrefly: ignore [missing-attribute]
   labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Cross-entropy loss
