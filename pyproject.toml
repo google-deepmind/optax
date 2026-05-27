@@ -139,4 +139,5 @@ include = '\.pyi?$'
 
 [tool.pyrefly]
 project-includes = ["optax"]
+project-excludes = ["**/*_test.py"]
 python-version = "3.12"

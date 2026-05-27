@@ -23,7 +23,7 @@ are not supported by the main library.
     DoWGState
     dpsgd
     galore
-    GaloreState
+    GaLoreState
     madgrad
     MadgradState
     mechanize
@@ -101,7 +101,7 @@ Distance over Gradients
 Galore
 ~~~~~~
 .. autofunction:: galore
-.. autoclass:: GaloreState
+.. autoclass:: GaLoreState
 
 Mechanize
 ~~~~~~~~~
