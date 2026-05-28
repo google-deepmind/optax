@@ -728,9 +728,9 @@ class OneCycleTest(absltest.TestCase):
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
   def test_nonpositive_transition_steps(self):
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(ValueError, 'cosine onecycle'):
       _schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.0)
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(ValueError, 'linear onecycle'):
       _schedule.linear_onecycle_schedule(transition_steps=0, peak_value=5.0)
 
 
