@@ -65,6 +65,7 @@ class OptaxCoverageCheck(builders.Builder):
   def get_outdated_docs(self) -> str:
     return "coverage_check"
 
+  # pyrefly: ignore[bad-override]
   def write(self, *ignored: Any) -> None:  # pylint: disable=overridden-final-method
     pass
 

@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
+# Copyright 2025 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Import stub."""
+"""Module providing a general `microbatch` transformation."""
+from . import _microbatching
 
-# TODO(mtthss): delete this file asap.
-
-from optax.schedules import _inject
-
-InjectHyperparamsState = _inject.InjectHyperparamsState
-inject_hyperparams = _inject.inject_hyperparams
+Accumulator = _microbatching.Accumulator
+AccumulationType = _microbatching.AccumulationType
+microbatch = _microbatching.microbatch
+micro_grad = _microbatching.micro_grad
+micro_vmap = _microbatching.micro_vmap
+reshape_batch_axis = _microbatching.reshape_batch_axis

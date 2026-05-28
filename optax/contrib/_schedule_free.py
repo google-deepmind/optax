@@ -16,7 +16,6 @@
 
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -32,10 +31,10 @@ import optax.tree
 class ScheduleFreeState(NamedTuple):
   """State for schedule_free."""
 
-  b1: chex.Array
-  weight_sum: chex.Array
-  step_count: chex.Array
-  max_lr: chex.Array
+  b1: jax.typing.ArrayLike
+  weight_sum: jax.typing.ArrayLike
+  step_count: jax.typing.ArrayLike
+  max_lr: jax.typing.ArrayLike
   base_optimizer_state: base.OptState
   z: base.Params
 
@@ -56,8 +55,8 @@ def schedule_free_eval_params(state: base.OptState, params: base.Params):
 def schedule_free(
     base_optimizer: base.GradientTransformation,
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""Turn base_optimizer schedule_free.
@@ -88,7 +87,7 @@ def schedule_free(
   buffer + momentum).
 
   In practice, authors recommend tuning :math:`\beta_1`, `warmup_steps` and
-  `peak_lr` for each problem seperately. Default for :math:`\beta_1` is 0.9 but
+  `peak_lr` for each problem separately. Default for :math:`\beta_1` is 0.9 but
   `0.95` and `0.98` may also work well. Schedule-Free can be wrapped on top of
   any optax optimizer. At test time, the parameters should be evaluated using
   :func:`optax.contrib.schedule_free_eval_params` as presented below.
@@ -142,7 +141,7 @@ def schedule_free(
       z = optax.tree.cast(params, dtype=state_dtype)
     else:
       z = params
-    # It's imporant to copy the params here so that z is a distinct array and
+    # It's important to copy the params here so that z is a distinct array and
     # we can donate both z and the params to JITted functions.
     z = jax.tree.map(lambda t: t.copy(), z)
     return ScheduleFreeState(
@@ -163,9 +162,11 @@ def schedule_free(
     lr = learning_rate
     if callable(learning_rate):
       lr = jnp.asarray(
-          learning_rate(state.step_count), dtype=state.max_lr.dtype
+          learning_rate(state.step_count),
+          # pyrefly: ignore [missing-attribute]
+          dtype=state.max_lr.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
-    max_lr = jnp.maximum(state.max_lr, lr)
+    max_lr = jnp.maximum(state.max_lr, lr)  # pyrefly: ignore[bad-argument-type]
 
     next_step_count = numerics.safe_increment(state.step_count)
 
@@ -219,15 +220,16 @@ def schedule_free(
 
     return updates, next_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
 def schedule_free_sgd(
-    learning_rate: float = 1.0,
+    learning_rate: jax.typing.ArrayLike = 1.0,
     warmup_steps: Optional[int] = None,
-    b1: float = 0.9,
-    weight_decay: Optional[float] = None,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    weight_decay: Optional[jax.typing.ArrayLike] = None,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for SGD.
@@ -277,19 +279,22 @@ def schedule_free_sgd(
     Objective function: 2.41E-01
   """
   if warmup_steps is not None:
+    # pyrefly: ignore[bad-assignment]
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,
         warmup_steps=warmup_steps,
     )
-  optimizer = alias.sgd(learning_rate)
+  optimizer = alias.sgd(learning_rate)  # pyrefly: ignore[bad-argument-type]
   if weight_decay is not None:
     optimizer = combine.chain(
-        _adding.add_decayed_weights(weight_decay), optimizer
+        # pyrefly: ignore[bad-argument-type]
+        _adding.add_decayed_weights(weight_decay),
+        optimizer,
     )
   return schedule_free(
       optimizer,
-      learning_rate=learning_rate,
+      learning_rate=learning_rate,  # pyrefly: ignore[bad-argument-type]
       b1=b1,
       weight_lr_power=weight_lr_power,
       state_dtype=state_dtype,
@@ -297,13 +302,13 @@ def schedule_free_sgd(
 
 
 def schedule_free_adamw(
-    learning_rate: float = 0.0025,
+    learning_rate: jax.typing.ArrayLike = 0.0025,
     warmup_steps: Optional[int] = None,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    weight_decay: float = 0.0,
-    weight_lr_power: float = 2.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_lr_power: jax.typing.ArrayLike = 2.0,
     state_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Schedule-Free wrapper for AdamW.
@@ -360,6 +365,7 @@ def schedule_free_adamw(
 
   """
   if warmup_steps is not None:
+    # pyrefly: ignore[bad-assignment]
     learning_rate = _schedule.warmup_constant_schedule(
         init_value=0,
         peak_value=learning_rate,
@@ -370,12 +376,14 @@ def schedule_free_adamw(
       transform.scale_by_rms(
           decay=b2, eps=eps, eps_in_sqrt=False, bias_correction=True
       ),
+      # pyrefly: ignore[bad-argument-type]
       _adding.add_decayed_weights(weight_decay),
+      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_learning_rate(learning_rate),
   )
   return schedule_free(
       optimizer,
-      learning_rate=learning_rate,
+      learning_rate=learning_rate,  # pyrefly: ignore[bad-argument-type]
       b1=b1,
       weight_lr_power=weight_lr_power,
       state_dtype=state_dtype,

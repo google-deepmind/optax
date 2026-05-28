@@ -15,7 +15,6 @@
 """ADOPT (Adaptive Optimization with Provable Theoretical guarantees)."""
 
 from typing import Any, Callable, Optional
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -27,14 +26,14 @@ import optax.tree
 
 
 def scale_by_adopt(
-    b1: float = 0.9,
-    b2: float = 0.9999,
-    eps: float = 1e-6,
-    mu_dtype: Optional[chex.ArrayDType] = None,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.9999,
+    eps: jax.typing.ArrayLike = 1e-6,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
     *,
     nesterov: bool = False,
     use_clipping: bool = True,
-    clip_value_fn: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: x**0.25,
+    clip_value_fn: Callable[[jax.Array], jax.Array] = lambda x: x**0.25,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the ADOPT algorithm.
 
@@ -98,9 +97,9 @@ def scale_by_adopt(
 
 def adopt(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.9999,
-    eps: float = 1e-6,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.9999,
+    eps: jax.typing.ArrayLike = 1e-6,
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = False,

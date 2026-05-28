@@ -19,6 +19,7 @@
 from optax.losses._classification import convex_kl_divergence
 from optax.losses._classification import ctc_loss
 from optax.losses._classification import ctc_loss_with_forward_probs
+from optax.losses._classification import generalized_kl_divergence
 from optax.losses._classification import hinge_loss
 from optax.losses._classification import kl_divergence
 from optax.losses._classification import kl_divergence_with_log_targets
@@ -43,6 +44,9 @@ from optax.losses._regression import huber_loss
 from optax.losses._regression import l2_loss
 from optax.losses._regression import log_cosh
 from optax.losses._regression import squared_error
+from optax.losses._segmentation import binary_dice_loss
+from optax.losses._segmentation import dice_loss
+from optax.losses._segmentation import multiclass_generalized_dice_loss
 from optax.losses._self_supervised import ntxent
 from optax.losses._self_supervised import triplet_margin_loss
 from optax.losses._smoothing import smooth_labels

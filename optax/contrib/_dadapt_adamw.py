@@ -19,7 +19,6 @@ D-Adaptation" (https://arxiv.org/abs/2301.07733) by Aaron Defazio and Konstantin
 Mishchenko (ICML 2023 Outstanding Paper award).
 """
 from typing import NamedTuple, Optional
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -35,17 +34,17 @@ class DAdaptAdamWState(NamedTuple):
   # Exponential moving average of the sum of gradients.
   grad_sum: base.Updates  # shape=(), dtype=jnp.float32.
   # Distance to solution estimate.
-  estim_lr: chex.Array  # shape=(), dtype=jnp.float32.
-  numerator_weighted: chex.Array  # shape=(), dtype=jnp.float32.
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def dadapt_adamw(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    betas: tuple[float, float] = (0.9, 0.999),
-    eps: float = 1e-8,
-    estim_lr0: float = 1e-6,
-    weight_decay: float = 0.0,
+    betas: tuple[jax.typing.ArrayLike, jax.typing.ArrayLike] = (0.9, 0.999),
+    eps: jax.typing.ArrayLike = 1e-8,
+    estim_lr0: jax.typing.ArrayLike = 1e-6,
+    weight_decay: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """Learning rate free AdamW by D-Adaptation.
 
@@ -93,8 +92,9 @@ def dadapt_adamw(
       params: Optional[base.Params] = None,
       **extra_args,
   ) -> tuple[base.Updates, DAdaptAdamWState]:
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count
@@ -106,7 +106,8 @@ def dadapt_adamw(
     count_inc = numerics.safe_increment(count)
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = state.estim_lr * sched * bc
-    dlr = dlr.astype(numerator_weighted.dtype)
+    # pyrefly: ignore [missing-attribute]
+    dlr = dlr.astype(numerator_weighted.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )
@@ -129,6 +130,7 @@ def dadapt_adamw(
     d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
     estim_lr = jnp.maximum(state.estim_lr, d_estimate)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, eas, p: -weight_decay * dlr * p - ea / (jnp.sqrt(eas) + eps),
         exp_avg,
         exp_avg_sq,
@@ -144,4 +146,5 @@ def dadapt_adamw(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

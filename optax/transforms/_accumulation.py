@@ -18,7 +18,6 @@ from collections.abc import Callable
 import functools
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -35,7 +34,7 @@ class TraceState(NamedTuple):
 
 
 def trace(
-    decay: float,
+    decay: jax.typing.ArrayLike,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformation:
@@ -83,12 +82,14 @@ def trace(
 class EmaState(NamedTuple):
   """Holds an exponential moving average of past updates."""
 
-  count: chex.Array  # shape=(), dtype=jnp.int32.
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
   ema: base.Params
 
 
 def ema(
-    decay: float, debias: bool = True, accumulator_dtype: Optional[Any] = None
+    decay: jax.typing.ArrayLike,  # float
+    debias: bool = True,
+    accumulator_dtype: Optional[Any] = None
 ) -> base.GradientTransformation:
   """Compute an exponential moving average of past updates.
 
@@ -135,9 +136,9 @@ class ShouldSkipUpdateFunction(Protocol):
   def __call__(
       self,
       updates: base.Updates,
-      gradient_step: chex.Array,
+      gradient_step: jax.typing.ArrayLike,
       params: Optional[base.Params],
-  ) -> tuple[chex.Array, chex.ArrayTree]:
+  ) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
     """Returns true to indicate that updates should be skipped in a multi-step.
 
     Args:
@@ -158,9 +159,9 @@ class ShouldSkipUpdateFunction(Protocol):
 
 def skip_not_finite(
     updates: base.Updates,
-    gradient_step: chex.Array,
+    gradient_step: jax.typing.ArrayLike,
     params: Optional[base.Params],
-) -> tuple[chex.Array, chex.ArrayTree]:
+) -> tuple[jax.Array, base.ArrayTree]:
   """Returns True iff any of the `updates` contains an inf or a NaN.
 
   Args:
@@ -176,13 +177,11 @@ def skip_not_finite(
       - `num_not_finite`: total number of inf and NaN found in `updates`.
   """
   del gradient_step, params
-  all_is_finite = [
-      jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-      for p in jax.tree.leaves(updates)
-  ]
-  num_not_finite = jnp.sum(jnp.array(all_is_finite))
-  should_skip = num_not_finite > 0
-  return should_skip, {
+  not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
+  num_not_finite = optax.tree.sum(not_finite)
+  should_skip = num_not_finite > 0  # pyrefly: ignore[unsupported-operation]
+  # pyrefly: ignore [bad-return]
+  return should_skip, {  # pytype: disable=bad-return-type
       'should_skip': should_skip,
       'num_not_finite': num_not_finite,
   }
@@ -190,16 +189,16 @@ def skip_not_finite(
 
 def skip_large_updates(
     updates: base.Updates,
-    gradient_step: chex.Array,
+    gradient_step: jax.typing.ArrayLike,
     params: Optional[base.Params],
-    max_squared_norm: float,
-) -> tuple[chex.Array, chex.ArrayTree]:
+    max_squared_norm: jax.typing.ArrayLike,
+) -> tuple[jax.Array, base.ArrayTree]:
   """Returns True if the global norm square of `updates` is small enough.
 
   Args:
-    updates: see `ShouldSkipUpdateFunction`.
-    gradient_step: see `ShouldSkipUpdateFunction`.
-    params: see `ShouldSkipUpdateFunction`.
+    updates: see :py:class:`.ShouldSkipUpdateFunction`.
+    gradient_step: see :py:class:`.ShouldSkipUpdateFunction`.
+    params: see :py:class:`.ShouldSkipUpdateFunction`.
     max_squared_norm: max square norm that can be accepted in updates.
 
   Returns:
@@ -210,9 +209,7 @@ def skip_large_updates(
       - `norm_squared`: overall norm square of the `updates`.
   """
   del gradient_step, params
-  norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)])
-  )
+  norm_sq = optax.tree.norm(updates, squared=True)
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, {'should_skip': should_skip, 'norm_squared': norm_sq}
@@ -232,11 +229,11 @@ class MultiStepsState(NamedTuple):
       `should_skip_update_fn` to `MultiSteps`.
   """
 
-  mini_step: chex.Array
-  gradient_step: chex.Array
+  mini_step: jax.typing.ArrayLike
+  gradient_step: jax.typing.ArrayLike
   inner_opt_state: Any
   acc_grads: Any
-  skip_state: chex.ArrayTree = ()
+  skip_state: base.ArrayTree = ()
 
 
 class MultiSteps:
@@ -260,9 +257,11 @@ class MultiSteps:
   def __init__(
       self,
       opt: base.GradientTransformation,
-      every_k_schedule: Union[int, Callable[[chex.Array], chex.Array]],
+      every_k_schedule: Union[
+          int, Callable[[jax.typing.ArrayLike], jax.typing.ArrayLike]],
       use_grad_mean: bool = True,
       should_skip_update_fn: Optional[ShouldSkipUpdateFunction] = None,
+      accumulator_dtype: jax.typing.DTypeLike = jnp.float32,
   ):
     """Initializer.
 
@@ -287,14 +286,18 @@ class MultiSteps:
         :class:`optax.MultiStepsState` contains a keyword argument
         ``skip_state`` in which debugging and monitoring information returned by
         ``should_skip_update_fn`` is written.
+      accumulator_dtype: Optional `dtype` to be used for the accumulator;
+        defaults to `float32`.
     """
     self._opt = base.with_extra_args_support(opt)
 
     if isinstance(every_k_schedule, int):
       self._every_k_schedule = lambda step: every_k_schedule
     else:
+      # pyrefly: ignore[bad-assignment]
       self._every_k_schedule = every_k_schedule
     self._use_grad_mean = use_grad_mean
+    self._accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
 
     if self._use_grad_mean:
       # Use Welford algorithm for numerically stable aggregation of mean.
@@ -318,13 +321,14 @@ class MultiSteps:
   def init(self, params: Any) -> MultiStepsState:
     """Builds and returns initial `MultiStepsState`."""
     updates = optax.tree.zeros_like(params)
+    acc_grads = optax.tree.zeros_like(params, dtype=self._accumulator_dtype)
     gradient_step = jnp.zeros([], dtype=jnp.int32)
     _, skip_state = self._should_skip_update_fn(updates, gradient_step, params)
     init_state = MultiStepsState(
         mini_step=jnp.zeros([], dtype=jnp.int32),
         gradient_step=gradient_step,
         inner_opt_state=self._opt.init(params),
-        acc_grads=updates,
+        acc_grads=acc_grads,
         skip_state=skip_state,
     )
     return init_state
@@ -341,10 +345,13 @@ class MultiSteps:
     should_skip_update, skip_state = self._should_skip_update_fn(
         updates, state.gradient_step, params
     )
+    # pyrefly: ignore[missing-attribute]
     if (should_skip_update.dtype, should_skip_update.shape) != (jnp.bool_, ()):
       raise ValueError(
           'The `should_skip_update_fn` function should return a boolean scalar '
+          # pyrefly: ignore[missing-attribute]
           f'array, but it returned an array of dtype {should_skip_update.dtype}'
+          # pyrefly: ignore[missing-attribute]
           f' and shape {should_skip_update.shape}'
       )
 
@@ -357,27 +364,26 @@ class MultiSteps:
       )
 
       final_updates, new_inner_state = self._opt.update(
-          acc_grads, state.inner_opt_state, params=params, **extra_args
-      )
+          optax.tree.cast_like(acc_grads, updates), state.inner_opt_state,
+          params=params, **extra_args)
 
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
+          # pyrefly: ignore[unsupported-operation]
           mini_step=numerics.safe_increment(state.mini_step) % k_steps,
           gradient_step=emit * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
           inner_opt_state=jax.tree.map(
-              lambda st, nst: jnp.where(emit, nst, st),
+              lambda st, nst: jnp.astype(jnp.where(emit, nst, st), st.dtype),
               state.inner_opt_state,
               new_inner_state,
           ),
           acc_grads=jax.tree.map(
-              lambda ga, upd: (1 - emit) * ga.astype(upd.dtype),
+              lambda ga: jnp.astype((1 - emit) * ga, self._accumulator_dtype),
               acc_grads,
-              final_updates,
           ),
           skip_state=skip_state,
       )
-
       final_updates = jax.tree.map(lambda ga: emit * ga, final_updates)
       return final_updates, new_state
 
@@ -388,28 +394,19 @@ class MultiSteps:
       dyn_args = {
           k: v for k, v in extra_args.items() if isinstance(v, jax.Array)}
       eval_fn = functools.partial(self._opt.update, **static_args)
-      zero_updates, new_inner_state = jax.eval_shape(
-          eval_fn, updates, state.inner_opt_state, params=params, **dyn_args)
+
+      acc_grads = optax.tree.cast_like(state.acc_grads, updates)
+      zero_updates, _ = jax.eval_shape(
+          eval_fn, acc_grads, state.inner_opt_state, params=params, **dyn_args)
       zero_updates = optax.tree.zeros_like(zero_updates)
 
       multi_state_when_skip = MultiStepsState(
           mini_step=state.mini_step,
           gradient_step=state.gradient_step,
-          inner_opt_state=jax.tree.map(
-              lambda x, y: (
-                  x.astype(y.dtype) if isinstance(x, jax.Array) else x
-              ),
-              state.inner_opt_state,
-              new_inner_state,
-          ),
-          acc_grads=jax.tree.map(
-              lambda acc, upd: acc.astype(upd.dtype),
-              state.acc_grads,
-              zero_updates,
-          ),
+          inner_opt_state=state.inner_opt_state,
+          acc_grads=state.acc_grads,
           skip_state=skip_state,
       )
-
       return zero_updates, multi_state_when_skip
 
     new_updates, new_state = lax.cond(
@@ -418,12 +415,13 @@ class MultiSteps:
     return new_updates, new_state
 
   def has_updated(
-      self, state: Union[MultiStepsState, chex.ArrayTree]
-  ) -> chex.Array:
+      self, state: Union[MultiStepsState, base.ArrayTree]
+  ) -> jax.typing.ArrayLike:
     # Use `getattr` to bypass pytype checks.
     return jnp.logical_and(
         getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0
     )
 
   def gradient_transformation(self) -> base.GradientTransformation:
+    # pyrefly: ignore[bad-argument-type]
     return base.GradientTransformation(init=self.init, update=self.update)

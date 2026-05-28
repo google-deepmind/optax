@@ -57,6 +57,9 @@ from optax.transforms._layouts import flatten
 from optax.transforms._masking import masked
 from optax.transforms._masking import MaskedNode
 from optax.transforms._masking import MaskedState
+from optax.transforms._monitoring import measure_with_ema
+from optax.transforms._monitoring import monitor
+from optax.transforms._monitoring import MonitorState
 from optax.transforms._monitoring import snapshot
 from optax.transforms._monitoring import SnapshotState
 
@@ -82,6 +85,9 @@ __all__ = (
     "keep_params_nonnegative",
     "masked",
     "MaskedState",
+    "measure_with_ema",
+    "monitor",
+    "MonitorState",
     "MultiSteps",
     "MultiStepsState",
     "named_chain",

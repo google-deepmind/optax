@@ -15,14 +15,13 @@
 """Tests for smoothing functions in `optax.losses._smoothing.py`."""
 
 from absl.testing import absltest
-from absl.testing import parameterized
-import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 from optax.losses import _smoothing
 
 
-class SmoothLabelsTest(parameterized.TestCase):
+class SmoothLabelsTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -32,40 +31,38 @@ class SmoothLabelsTest(parameterized.TestCase):
     self.exp_alpha_zero_point_one = 0.9 * self.ts + 0.1 / self.ts.shape[-1]
     self.exp_alpha_one = jnp.ones_like(self.ts) / self.ts.shape[-1]
 
-  @chex.all_variants
   def test_scalar(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts[0], 0.0),
+        jax.jit(_smoothing.smooth_labels)(self.ts[0], 0.0),
         self.exp_alpha_zero[0],
         atol=1e-4,
     )
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts[0], 0.1),
+        jax.jit(_smoothing.smooth_labels)(self.ts[0], 0.1),
         self.exp_alpha_zero_point_one[0],
         atol=1e-4,
     )
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts[0], 1.0),
+        jax.jit(_smoothing.smooth_labels)(self.ts[0], 1.0),
         self.exp_alpha_one[0],
         atol=1e-4,
     )
 
-  @chex.all_variants
   def test_batched(self):
     """Tests for a full batch."""
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts, 0.0),
+        jax.jit(_smoothing.smooth_labels)(self.ts, 0.0),
         self.exp_alpha_zero,
         atol=1e-4,
     )
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts, 0.1),
+        jax.jit(_smoothing.smooth_labels)(self.ts, 0.1),
         self.exp_alpha_zero_point_one,
         atol=1e-4,
     )
     np.testing.assert_allclose(
-        self.variant(_smoothing.smooth_labels)(self.ts, 1.0),
+        jax.jit(_smoothing.smooth_labels)(self.ts, 1.0),
         self.exp_alpha_one,
         atol=1e-4,
     )

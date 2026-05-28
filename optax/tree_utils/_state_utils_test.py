@@ -18,19 +18,18 @@ import dataclasses
 from typing import Optional, TypedDict, cast
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax.schedules import _inject
 from optax.schedules import _schedule
 from optax.tree_utils import _random
 from optax.tree_utils import _state_utils
-from packaging import version
 
 
 @dataclasses.dataclass
@@ -41,8 +40,9 @@ class FakeShardSpec:
 class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
-  count: chex.Array
-  params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
+  count: jax.typing.ArrayLike
+  # pyrefly: ignore[invalid-annotation]
+  params: TypedDict('Params', {'mu': base.ArrayTree, 'nu': base.ArrayTree})
 
 
 def _scale_by_adam_with_dicts():
@@ -90,7 +90,7 @@ class StateUtilsTest(absltest.TestCase):
     opt_state = opt.init(params)
 
     opt_state_sharding_spec = _state_utils.tree_map_params(
-        opt,
+        opt,  # pyrefly: ignore[bad-argument-type]
         lambda _, spec: spec,
         opt_state,
         params_sharding_spec,
@@ -128,30 +128,6 @@ class StateUtilsTest(absltest.TestCase):
 
     self.assertEqual(expected, opt_state_sharding_spec)
 
-  def test_state_chex_dataclass(self):
-    # TODO(rdyro): revisit if chex can rectify this incompatibility.
-    if version.Version(jax.__version__) >= version.Version('0.6.0'):
-      self.skipTest('chex.dataclass is not supported in jax >= 0.6.0')
-
-    @chex.dataclass
-    class Foo:
-      count: int
-      v: chex.ArrayTree
-
-    def init(params):
-      return Foo(count=0, v=params)
-
-    params = {
-        'w': 0,
-    }
-
-    state = init(params)
-    state = _state_utils.tree_map_params(init, lambda v: v + 1, state)
-    state = cast(Foo, state)
-
-    self.assertEqual(int(state.count), 0)
-    self.assertEqual(state.v, {'w': jnp.array(1)})
-
   def test_adam(self):
     params = _fake_params()
     params_sharding_spec = _fake_param_sharding()
@@ -160,7 +136,7 @@ class StateUtilsTest(absltest.TestCase):
     opt_state = opt.init(params)
 
     opt_state_sharding_spec = _state_utils.tree_map_params(
-        opt,
+        opt,  # pyrefly: ignore[bad-argument-type]
         lambda _, spec: spec,
         opt_state,
         params_sharding_spec,
@@ -169,6 +145,7 @@ class StateUtilsTest(absltest.TestCase):
 
     expected = (
         transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+            # pyrefly: ignore[bad-argument-type]
             count=FakeShardSpec(sharding_axis=None),
             mu={
                 'my/fake/module': {
@@ -201,19 +178,21 @@ class StateUtilsTest(absltest.TestCase):
 
     params = _fake_params()
     state = opt.init(params)
+    # pyrefly: ignore[bad-argument-type]
     state = _state_utils.tree_map_params(opt, lambda v: v + 1, state)
     state = cast(_inject.InjectHyperparamsState, state)
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree.map(lambda v: v + 1, params)
-    mu = getattr(state.inner_state[0], 'mu')
-    chex.assert_trees_all_close(mu, params_plus_one)
+    mu = getattr(state.inner_state[0], 'mu')  # pyrefly: ignore[bad-index]
+    test_utils.assert_trees_all_close(mu, params_plus_one)
 
   def test_map_params_to_none(self):
     opt = alias.adagrad(1e-4)
 
     params = {'a': jnp.zeros((1, 2))}
     state = opt.init(params)
+    # pyrefly: ignore[bad-argument-type]
     state = _state_utils.tree_map_params(opt, lambda _: None, state)
     self.assertEqual(
         state,
@@ -232,17 +211,21 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
 
     state = _state_utils.tree_map_params(
-        opt, lambda v: 1, state, transform_non_params=lambda _: None
+        # pyrefly: ignore[bad-argument-type]
+        opt,
+        lambda v: 1,
+        state,
+        transform_non_params=lambda _: None,
     )
 
     expected = (
         transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
-            count=None,
+            count=None,  # pyrefly: ignore[bad-argument-type]
             mu={'a': 1},
             nu={'a': 1},
         ),
         transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
-            count=None
+            count=None  # pyrefly: ignore[bad-argument-type]
         ),
     )
     self.assertEqual(state, expected)
@@ -446,7 +429,7 @@ class StateUtilsTest(absltest.TestCase):
           count=jnp.asarray(0),
           rng_key=jnp.array([0, 0], dtype=jnp.dtype('uint32')),
       )
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(noise_state),
           _random.tree_unwrap_random_key_data(expected_result)
       )
@@ -565,7 +548,7 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(new_state),
           _random.tree_unwrap_random_key_data(expected_result)
       )
@@ -590,7 +573,7 @@ class StateUtilsTest(absltest.TestCase):
               nu=jnp.array([0.0, 0.0, 0.0]),
           ),
       )
-      chex.assert_trees_all_equal(new_state, expected_result)
+      test_utils.assert_trees_all_equal(new_state, expected_result)
 
 
 def _fake_params():

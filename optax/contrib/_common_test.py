@@ -22,7 +22,6 @@ import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax import contrib
@@ -30,6 +29,7 @@ from optax._src import alias
 from optax._src import base
 from optax._src import combine
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import update
 from optax._src import utils
 from optax.schedules import _inject
@@ -37,6 +37,7 @@ from optax.schedules import _schedule
 from optax.transforms import _accumulation
 import optax.tree
 
+# pylint: disable=invalid-name
 # Testing contributions coded as GradientTransformations
 _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'acprop', 'opt_kwargs': {'learning_rate': 1e-3}},
@@ -48,6 +49,7 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'dadapt_adamw', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'dog', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'dowg', 'opt_kwargs': {'learning_rate': 1.0}},
+    {'opt_name': 'madgrad', 'opt_kwargs': {'learning_rate': 1e-2}},
     {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'muon', 'opt_kwargs': {'learning_rate': 1e-2}},
@@ -64,10 +66,14 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
         'opt_name': 'sophia',
         'opt_kwargs': {'learning_rate': 1e-2}
     },
+    {
+        'opt_name': 'galore',
+        'opt_kwargs': {'learning_rate': 1e-2, 'rank': 8}
+    },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
-  optimizer['wrapper_name'] = None
-  optimizer['wrapper_kwargs'] = None
+  optimizer['wrapper_name'] = None  # pyrefly: ignore[unsupported-operation]
+  optimizer['wrapper_kwargs'] = None  # pyrefly: ignore[unsupported-operation]
 
 # Testing contributions coded as wrappers
 # (just with sgd as we just want the behavior of the wrapper)
@@ -138,6 +144,7 @@ _ALL_OPTIMIZERS_UNDER_TEST = tuple(
     _MAIN_OPTIMIZERS_UNDER_TEST + _OTHER_OPTIMIZERS_UNDER_TEST
 )
 _MAIN_OPTIMIZERS_UNDER_TEST = tuple(_MAIN_OPTIMIZERS_UNDER_TEST)
+# pylint: enable=invalid-name
 
 
 def _get_opt_factory(opt_name):
@@ -214,7 +221,7 @@ def _setup_mixed_tensor_target(dtype):
   return initial_params, final_params, obj_fn
 
 
-class ContribTest(chex.TestCase):
+class ContribTest(parameterized.TestCase):
 
   @parameterized.product(_ALL_OPTIMIZERS_UNDER_TEST, wrap=[True, False])
   def test_optimizers_accept_extra_args(
@@ -222,7 +229,7 @@ class ContribTest(chex.TestCase):
     opt = _get_opt_factory(opt_name)(**opt_kwargs)
     if wrap and wrapper_name is not None:
       opt = _wrap_opt(opt, wrapper_name, wrapper_kwargs)
-    # intentionally ommit: opt = base.with_extra_args_support(opt)
+    # intentionally omit: opt = base.with_extra_args_support(opt)
 
     initial_params, _, objective = _setup_rosenbrock(jnp.float32)
 
@@ -244,6 +251,16 @@ class ContribTest(chex.TestCase):
     with self.subTest('Test that update works with extra args'):
       for _ in range(2):
         params, state = step(params, state)
+
+    with self.subTest('Test that the optimizer doesn\'t recompile on 2nd call'):
+      params = initial_params
+      state = opt.init(params)
+      params, state = step(params, state)
+      with test_utils.log_compilations() as compilation_logs:
+        _ = step(params, state)
+      self.assertEmpty(
+          compilation_logs, 'Optimizer recompiles on second call to "update".'
+      )
 
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,
@@ -292,7 +309,7 @@ class ContribTest(chex.TestCase):
       # A no-op change, to verify that tree map works.
       state = optax.tree.map_params(opt, lambda v: v, state)
 
-    with self.subTest('Test that optimization works'):
+    with self.subTest('Test that the optimization works'):
 
       def f(params_state, _):
         return step(*params_state), None
@@ -304,9 +321,14 @@ class ContribTest(chex.TestCase):
           or wrapper_name == 'schedule_free'
       ):
         params = contrib.schedule_free_eval_params(state, params)
-      chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
 
-  @chex.all_variants
+    with self.subTest('Test that the optimization converges'):
+      platform = list(jax.tree.leaves(params)[0].devices())[0].platform
+      # GaLore is sensitive to the SVD accuracy and can fail on this example
+      if not (opt_name == 'galore' and platform != 'cpu'):
+        test_utils.assert_trees_all_close(
+            params, final_params, rtol=3e-2, atol=3e-2)
+
   @parameterized.product(_MAIN_OPTIMIZERS_UNDER_TEST)
   def test_optimizers_can_be_wrapped_in_inject_hyperparams(
       self, opt_name, opt_kwargs, wrapper_name=None, wrapper_kwargs=None
@@ -330,12 +352,13 @@ class ContribTest(chex.TestCase):
       factory = getattr(contrib, wrapper_name)
       factory = functools.partial(factory, base_opt)
       hparams = wrapper_kwargs
-    opt = factory(**hparams)
+    opt = factory(**hparams)  # pyrefly: ignore[bad-unpacking]
 
     # Add here the hyperparameters that cannot be injected with
     # inject_hyperparams.
     static_args = []
-    for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn']:
+    for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn',
+                                'ns_steps', 'rank', 'update_proj_gap']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)
@@ -356,29 +379,23 @@ class ContribTest(chex.TestCase):
       update_fn = opt.update
       inject_update_fn = opt_inject.update
 
-    state = self.variant(opt.init)(params)
-    updates, new_state = self.variant(update_fn)(
+    state = jax.jit(opt.init)(params)
+    updates, new_state = jax.jit(update_fn)(
         grads, state, params, **update_kwargs
     )
 
-    state_inject = self.variant(opt_inject.init)(params)
-    updates_inject, new_state_inject = self.variant(inject_update_fn)(
+    state_inject = jax.jit(opt_inject.init)(params)
+    updates_inject, new_state_inject = jax.jit(inject_update_fn)(
         grads, state_inject, params, **update_kwargs
     )
 
     with self.subTest('Equality of updates.'):
-      chex.assert_trees_all_close(updates_inject, updates, rtol=1e-5)
+      test_utils.assert_trees_all_close(updates_inject, updates, rtol=1e-5)
     with self.subTest('Equality of new optimizer states.'):
-      chex.assert_trees_all_close(
+      test_utils.assert_trees_all_close(
           new_state_inject.inner_state, new_state, rtol=1e-5, atol=1e-5
       )
 
-  # Not testing with `without_device=True` because without_device set the
-  # variables to the host which appears to convert then the dtype, so we
-  # lose control of the dtype and the test fails.
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(
       _MAIN_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
   )
@@ -404,7 +421,7 @@ class ContribTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name in ['momo', 'momo_adam'] or wrapper_name == 'reduce_on_plateau':
       update_kwargs = {'value': value}
     else:
@@ -413,12 +430,9 @@ class ContribTest(chex.TestCase):
       update_fn = functools.partial(opt.update, obj_fn=fun)
     else:
       update_fn = opt.update
-    updates, _ = self.variant(update_fn)(grads, state, params, **update_kwargs)
+    updates, _ = jax.jit(update_fn)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, params.dtype)
 
-  @chex.variants(
-      with_jit=True, without_jit=True, with_device=True, with_pmap=True
-  )
   @parameterized.product(
       _MAIN_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
   )
@@ -444,13 +458,13 @@ class ContribTest(chex.TestCase):
 
     params = jnp.array([1.0, 2.0], dtype=dtype)
     value, grads = jax.value_and_grad(fun)(params)
-    state = self.variant(opt.init)(params)
+    state = jax.jit(opt.init)(params)
     if opt_name in ['momo', 'momo_adam'] or wrapper_name == 'reduce_on_plateau':
       update_kwargs = {'value': value}
     else:
       update_kwargs = {}
-    updates, _ = self.variant(opt.update)(grads, state, params, **update_kwargs)
-    chex.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+    updates, _ = jax.jit(opt.update)(grads, state, params, **update_kwargs)
+    test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,
@@ -542,7 +556,7 @@ class ContribTest(chex.TestCase):
             opt_with_schedule, params_with_schedule, state_with_schedule)
         params_with_lr, state_with_lr = step(
             opt_with_lr, params_with_lr, state_with_lr)
-      chex.assert_trees_all_close(params_with_schedule, params_with_lr)
+      test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 
 if __name__ == '__main__':

@@ -28,7 +28,6 @@ using Mechanic to be the same for reasonably large batch sizes (>1k).
 
 from typing import NamedTuple, Optional, Any, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -40,20 +39,20 @@ class MechanicState(NamedTuple):
   """State of the `GradientTransformation` returned by `mechanize`."""
 
   base_optimizer_state: base.OptState
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  r: chex.Array
-  m: chex.Array
-  v: chex.Array
-  s: chex.Array
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  r: jax.typing.ArrayLike
+  m: jax.typing.ArrayLike
+  v: jax.typing.ArrayLike
+  s: jax.typing.ArrayLike
   x0: base.Updates
 
 
 def mechanize(
     base_optimizer: Union[base.GradientTransformation,
                           base.GradientTransformationExtraArgs],
-    weight_decay: float = 1e-2,
-    eps: float = 1e-8,
-    s_init: float = 1e-6,
+    weight_decay: jax.typing.ArrayLike = 1e-2,
+    eps: jax.typing.ArrayLike = 1e-8,
+    s_init: jax.typing.ArrayLike = 1e-6,
     num_betas: int = 6,
 ) -> base.GradientTransformationExtraArgs:
   """Mechanic - a black box learning rate tuner/optimizer.
@@ -191,7 +190,7 @@ def mechanize(
     )
 
     # We actually want to add the updates, but since optax by default flips
-    # signs when applying the learning rate, we substract instead.
+    # signs when applying the learning rate, we subtract instead.
     delta = jax.tree.map(lambda si, ui: si - ui, delta_prev, new_neg_updates)
 
     # Now we are ready to run the actual Mechanic algorithm.
@@ -199,10 +198,12 @@ def mechanize(
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
+    # pyrefly: ignore[unsupported-operation]
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
     betas = jnp.array(
         [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
-        dtype=state.s.dtype,
+        # pyrefly: ignore [missing-attribute]
+        dtype=state.s.dtype,  # pytype: disable=attribute-error  # jax-arraylike
     )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)
@@ -229,4 +230,5 @@ def mechanize(
         x0=new_x0,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

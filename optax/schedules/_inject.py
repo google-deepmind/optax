@@ -20,19 +20,24 @@ import inspect
 from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import base
 from optax._src import numerics
+import optax.tree
 
 
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
+  # if the x is already a strong dtype jax.Array, return unchanged
+  if isinstance(x, jax.Array) and not getattr(x, 'weak_type', False):
+    return x
+  # if x is of floating point type, cast to the specified dtype
   current_dtype = x.dtype if hasattr(x, 'dtype') else type(x)
   if jax.dtypes.issubdtype(current_dtype, jnp.floating):
     return jnp.asarray(x, dtype=dtype)
+  # otherwise, pass through unchanged
   return x
 
 
@@ -44,7 +49,7 @@ class InjectHyperparamsState(NamedTuple):
   """
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   inner_state: base.OptState
 
 
@@ -52,7 +57,7 @@ class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
 
   count: jnp.ndarray  # shape=(), dtype=jnp.int32
-  hyperparams: dict[str, chex.Numeric]
+  hyperparams: dict[str, jax.typing.ArrayLike]
   hyperparams_states: dict[str, base.ScheduleState]
   inner_state: base.OptState
 
@@ -87,7 +92,7 @@ def inject_hyperparams(
     ...     b1=linear_schedule, b2=0.99)
 
   You may manually change numeric hyperparameters that were not scheduled
-  through the ``hyperparams`` dict in the ``InjectHyperparamState``::
+  through the ``hyperparams`` dict in the :py:class:`.InjectHyperparamsState`::
 
     >>> params, grads = jnp.array(0.), jnp.array(0.)
     >>> state = scheduled_adam.init(params)
@@ -97,6 +102,13 @@ def inject_hyperparams(
 
   Manually overriding scheduled hyperparameters will have no effect (e.g.
   in the code sample above, you cannot manually adjust ``b1``).
+
+  For mixed precision training, you may want hyperparameters to match a
+  specific dtype. To avoid automatic casting to the parameter's highest
+  precision dtype, pass the hyperparameter as a strongly typed JAX array::
+
+    >>> scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+    ...     b1=linear_schedule, b2=jnp.array(0.99, jnp.float32))
 
   Args:
     inner_factory: a function that returns the inner
@@ -109,9 +121,10 @@ def inject_hyperparams(
       hyperparameters will be cast to this type.
 
   Returns:
-    A callable that returns a ``optax.GradientTransformationExtraArgs``. This
-    callable accepts the same arguments as ``inner_factory``, except you may
-    provide schedules in place of the constant arguments.
+    A callable that returns a
+    :py:class:`.optax.GradientTransformationExtraArgs`. This callable accepts
+    the same arguments as ``inner_factory``, except you may provide schedules
+    in place of the constant arguments.
 
   .. versionchanged:: 0.1.9
     New parameter ``hyperparam_dtype``, the returned callable outputs a
@@ -143,6 +156,7 @@ def inject_hyperparams(
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
+        # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
       elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
@@ -151,12 +165,9 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      if hyperparam_dtype is None:
-        dtype = getattr(
-            next(iter(jax.tree.leaves(params)), None), 'dtype', None
-        )
-      else:
-        dtype = hyperparam_dtype
+      dtype = hyperparam_dtype
+      if dtype is None:
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -168,18 +179,16 @@ def inject_hyperparams(
       })
       return InjectStatefulHyperparamsState(
           count=count,
-          hyperparams=hparams,
+          hyperparams=hparams,  # pyrefly: ignore[bad-argument-type]
           hyperparams_states=hparams_states,
           inner_state=inner_factory(**other_hps, **hparams).init(params),
       )
 
     def update_fn(updates, state, params=None, **extra_args):
-      if hyperparam_dtype is None:
-        dtype = getattr(
-            next(iter(jax.tree.leaves(updates)), None), 'dtype', None
-        )
-      else:
-        dtype = hyperparam_dtype
+      dtype = hyperparam_dtype
+      if dtype is None:
+        # pyrefly: ignore[bad-argument-type]
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
       }
@@ -199,6 +208,7 @@ def inject_hyperparams(
       ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
+          # pyrefly: ignore[bad-argument-type]
           count=numerics.safe_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,
@@ -252,7 +262,7 @@ def inject_stateful_hyperparams(
 class WrappedScheduleState(NamedTuple):
   """The state for a wrapped schedule."""
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
 
 
 class WrappedSchedule:
@@ -279,5 +289,5 @@ class WrappedSchedule:
       self,
       state: WrappedScheduleState,
       **extra_args,
-  ) -> chex.Numeric:
+  ) -> jax.typing.ArrayLike:
     return self.schedule_fn(state.count)

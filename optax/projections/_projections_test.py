@@ -19,11 +19,11 @@ from functools import partial  # pylint: disable=g-importing-member
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from optax import projections as proj
+from optax._src import test_utils
 import optax.tree
 
 
@@ -67,7 +67,7 @@ class ProjectionsTest(parameterized.TestCase):
     with self.subTest('with nested pytree'):
       tree_x = (-1.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
       tree_expected = (0.0, {'k1': 1.0, 'k2': (1.0, 1.0)}, 1.0)
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           proj.projection_non_negative(tree_x), tree_expected
       )
 
@@ -90,7 +90,7 @@ class ProjectionsTest(parameterized.TestCase):
     with self.subTest('lower and upper are tuples of arrays'):
       lower_tuple = (lower, lower)
       upper_tuple = (upper, upper)
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           proj.projection_box((x, x), lower_tuple, upper_tuple),
           (expected, expected),
       )
@@ -100,7 +100,7 @@ class ProjectionsTest(parameterized.TestCase):
       expected = (0.0, {'k1': 2.0, 'k2': (2.0, 2.0)}, 2.0)
       lower_tree = (0.0, {'k1': 0.0, 'k2': (0.0, 0.0)}, 0.0)
       upper_tree = (2.0, {'k1': 2.0, 'k2': (2.0, 2.0)}, 2.0)
-      chex.assert_trees_all_equal(
+      test_utils.assert_trees_all_equal(
           proj.projection_box(tree, lower_tree, upper_tree), expected
       )
 
@@ -244,7 +244,7 @@ class ProjectionsTest(parameterized.TestCase):
     a = (3.0, 4.0)
     y_actual = proj.projection_vector(x, a)
     y_expected = (33 / 25, 44 / 25)
-    assert tree_allclose(y_actual, y_expected)
+    assert optax.tree.allclose(y_actual, y_expected)
 
   def test_projection_hyperplane(self):
     x = (1.0, 2.0)
@@ -252,9 +252,7 @@ class ProjectionsTest(parameterized.TestCase):
     b = 5.0
     y_actual = proj.projection_hyperplane(x, a, b)
     y_expected = (7 / 25, 26 / 25)
-    print(y_actual)
-    print(y_expected)
-    assert tree_allclose(y_actual, y_expected)
+    assert optax.tree.allclose(y_actual, y_expected)
 
   def test_projection_halfspace_1(self):
     x = (1.0, 2.0)
@@ -262,9 +260,7 @@ class ProjectionsTest(parameterized.TestCase):
     b = 5.0
     y_actual = proj.projection_halfspace(x, a, b)
     y_expected = (7 / 25, 26 / 25)
-    print(y_actual)
-    print(y_expected)
-    assert tree_allclose(y_actual, y_expected)
+    assert optax.tree.allclose(y_actual, y_expected)
 
   def test_projection_halfspace_2(self):
     x = (1.0, -2.0)
@@ -272,15 +268,7 @@ class ProjectionsTest(parameterized.TestCase):
     b = 5.0
     y_actual = proj.projection_halfspace(x, a, b)
     y_expected = x
-    print(y_actual)
-    print(y_expected)
-    assert tree_allclose(y_actual, y_expected)
-
-
-def tree_allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
-  # Replace this with optax.tree.allclose, once that's added.
-  return all(jax.tree.leaves(jax.tree.map(lambda a, b: jnp.allclose(
-      a, b, rtol=rtol, atol=atol, equal_nan=equal_nan), a, b)))
+    assert optax.tree.allclose(y_actual, y_expected)
 
 
 if __name__ == '__main__':

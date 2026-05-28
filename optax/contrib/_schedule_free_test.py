@@ -17,11 +17,11 @@
 import functools
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _schedule_free
 
@@ -38,7 +38,7 @@ def _setup_parabola(dtype):
   return initial_params, final_params, get_updates
 
 
-class ScheduleFreeTest(chex.TestCase):
+class ScheduleFreeTest(parameterized.TestCase):
 
   def test_learning_rate_zero(self):
     base_opt = alias.sgd(learning_rate=0.0, momentum=0.0)
@@ -58,7 +58,7 @@ class ScheduleFreeTest(chex.TestCase):
     for _ in range(5):
       params, state = step(params, state)
 
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         _schedule_free.schedule_free_eval_params(state, params),
         initial_params,
     )
@@ -97,7 +97,7 @@ class ScheduleFreeTest(chex.TestCase):
         b1=0.9,
     )
     params_wrapper = run(opt_wrapper)
-    chex.assert_trees_all_close(
+    test_utils.assert_trees_all_close(
         params_shortcut, params_wrapper, atol=1e-6, rtol=1e-6
     )
 
@@ -110,8 +110,8 @@ class ScheduleFreeTest(chex.TestCase):
     params = jnp.ones((), dtype=jnp.float32)
     state = opt.init(params)
     eval_params = _schedule_free.schedule_free_eval_params(state, params)
-    chex.assert_equal_shape([params, eval_params])
-    chex.assert_trees_all_equal_dtypes(params, eval_params)
+    test_utils.assert_trees_all_equal_shapes(params, eval_params)
+    test_utils.assert_trees_all_equal_dtypes(params, eval_params)
 
   def test_buffer_donation(self):
     # Check that you can donate the params and optimizer state when doing a JIT
@@ -134,6 +134,10 @@ class ScheduleFreeTest(chex.TestCase):
       state_dtype=('bfloat16', 'float32', 'complex64', None),
   )
   def test_explicit_dtype(self, params_dtype, state_dtype):
+    if (jnp.issubdtype(params_dtype, jnp.complexfloating) and
+        not jnp.issubdtype(state_dtype, jnp.complexfloating)):
+      self.skipTest('Complex params with non-complex state are not supported.')
+
     base_opt = alias.sgd(learning_rate=1.0, momentum=0.0)
     opt = _schedule_free.schedule_free(
         base_opt, learning_rate=1.0, state_dtype=state_dtype

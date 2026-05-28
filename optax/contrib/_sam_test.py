@@ -16,12 +16,12 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import combine
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import update
 from optax.contrib import _sam
 import optax.tree
@@ -47,7 +47,7 @@ def _setup_parabola(dtype):
   return initial_params, final_params, get_updates
 
 
-class SAMTest(chex.TestCase):
+class SAMTest(parameterized.TestCase):
 
   @parameterized.product(
       _BASE_OPTIMIZERS_UNDER_TEST,
@@ -98,7 +98,8 @@ class SAMTest(chex.TestCase):
     for _ in range(25000 * sync_period):
       params, state = step(params, state)
 
-    chex.assert_trees_all_close(params, final_params, rtol=3e-2, atol=3e-2)
+    test_utils.assert_trees_all_close(
+        params, final_params, rtol=3e-2, atol=3e-2)
 
 
 if __name__ == '__main__':

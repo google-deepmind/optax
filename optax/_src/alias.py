@@ -21,25 +21,26 @@ import warnings
 
 import jax
 import jax.numpy as jnp
+
 from optax._src import base
-from optax._src import clipping
 from optax._src import combine
 from optax._src import factorized
 from optax._src import linesearch as _linesearch
 from optax._src import transform
-from optax._src import utils
 from optax._src import wrappers
-
+from optax.transforms import _clipping
 
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
 def adabelief(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-16,
-    eps_root: float = 1e-16,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-16,
+    eps_root: jax.typing.ArrayLike = 1e-16,
+    weight_decay: Optional[base.ScalarOrSchedule] = None,
+    weight_decay_mask: MaskOrFn = None,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -96,6 +97,16 @@ def adabelief(
     eps_root: Term added to the second moment of the prediction error to
       improve numerical stability. If backpropagating gradients through the
       gradient transformation (e.g. for meta-learning), this must be non-zero.
+    weight_decay: Optional strength of the weight decay regularization. Note
+      that this weight decay is multiplied with the learning rate. This is
+      consistent with other frameworks such as PyTorch, but different from
+      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+      the "schedule multiplier", but not the base learning rate.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the
+      params PyTree, or a Callable that returns such a pytree given the
+      params/updates. The leaves should be booleans, ``True`` for
+      leaves/subtrees you want to apply the weight decay to, and ``False``
+      for those you want to skip.
     nesterov: Whether to use Nesterov momentum.
 
   Returns:
@@ -129,7 +140,7 @@ def adabelief(
   .. note::
     The default epsilon values in the paper are ``eps=1e-8``, ``eps_root=0.``.
   """
-  return combine.chain(
+  chain_args = [
       transform.scale_by_belief(
           b1=b1,
           b2=b2,
@@ -137,15 +148,20 @@ def adabelief(
           eps_root=eps_root,
           nesterov=nesterov,
       ),
-      transform.scale_by_learning_rate(learning_rate),
-  )
+  ]
+  if weight_decay is not None:
+    chain_args.append(
+        transform.add_decayed_weights(weight_decay, mask=weight_decay_mask)
+    )
+  chain_args.append(transform.scale_by_learning_rate(learning_rate))
+  return combine.chain(*chain_args)
 
 
 def adadelta(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
-    rho: float = 0.9,
-    eps: float = 1e-6,
-    weight_decay: float = 0.0,
+    rho: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-6,
+    weight_decay: Union[jax.typing.ArrayLike, base.ScalarOrSchedule] = 0.0,
     weight_decay_mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Adadelta optimizer.
@@ -216,6 +232,7 @@ def adadelta(
     <https://arxiv.org/pdf/1212.5701.pdf>`_, 2012
   """  # noqa: E501
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_adadelta(rho=rho, eps=eps),
       transform.scale_by_learning_rate(learning_rate),
@@ -225,14 +242,14 @@ def adadelta(
 def adafactor(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
-    decay_rate: float = 0.8,
-    decay_offset: int = 0,
-    multiply_by_parameter_scale: float = True,
-    clipping_threshold: Optional[float] = 1.0,
-    momentum: Optional[float] = None,
-    dtype_momentum: Any = jnp.float32,
-    weight_decay_rate: Optional[float] = None,
-    eps: float = 1e-30,
+    decay_rate: jax.typing.ArrayLike = 0.8,
+    decay_offset: jax.typing.ArrayLike = 0,
+    multiply_by_parameter_scale: bool = True,
+    clipping_threshold: Optional[jax.typing.ArrayLike] = 1.0,
+    momentum: Optional[jax.typing.ArrayLike] = None,  # float
+    dtype_momentum: jax.typing.DTypeLike = jnp.float32,
+    weight_decay_rate: Optional[base.ScalarOrSchedule] = None,
+    eps: jax.typing.ArrayLike = 1e-30,
     factored: bool = True,
     weight_decay_mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
@@ -309,7 +326,7 @@ def adafactor(
   # This basic rescaling is typically combined with one or more of the following
   # transformation (all can be disabled via adafactor's constructor args).
   if clipping_threshold is not None:
-    tx.append(clipping.clip_by_block_rms(clipping_threshold))
+    tx.append(_clipping.clip_by_block_rms(clipping_threshold))
   if learning_rate is not None:
     tx.append(transform.scale_by_learning_rate(learning_rate, flip_sign=False))
   if multiply_by_parameter_scale:
@@ -329,8 +346,8 @@ def adafactor(
 
 def adagrad(
     learning_rate: base.ScalarOrSchedule,
-    initial_accumulator_value: float = 0.1,
-    eps: float = 1e-7,
+    initial_accumulator_value: jax.typing.ArrayLike = 0.1,
+    eps: jax.typing.ArrayLike = 1e-7,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Adagrad optimizer.
 
@@ -414,10 +431,10 @@ def adagrad(
 
 def adam(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = False,
@@ -598,12 +615,12 @@ nadam.__doc__ = r"""The NAdam optimizer.
 
 def adamw(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-4,
+    weight_decay: base.ScalarOrSchedule = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
     *,
     nesterov: bool = False,
@@ -809,12 +826,12 @@ nadamw.__doc__ = (
 
 def adan(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.98,
-    b2: float = 0.92,
-    b3: float = 0.99,
-    eps: float = 1e-8,
-    eps_root: float = 1e-8,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.98,
+    b2: jax.typing.ArrayLike = 0.92,
+    b3: jax.typing.ArrayLike = 0.99,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 1e-8,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The ADAptive Nesterov momentum algorithm (Adan).
@@ -927,10 +944,10 @@ def adan(
 
 def lion(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.99,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.99,
     mu_dtype: Optional[Any] = None,
-    weight_decay: float = 1e-3,
+    weight_decay: base.ScalarOrSchedule = 1e-3,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   r"""The Lion optimizer.
@@ -1023,11 +1040,13 @@ def lion(
 
 def amsgrad(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
+    bias_correction_mu: bool = True,
+    bias_correction_nu: bool = True,
 ) -> base.GradientTransformationExtraArgs:
   """The AMSGrad optimizer.
 
@@ -1046,6 +1065,11 @@ def amsgrad(
       instance when computing (meta-)gradients through Adam.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
+    bias_correction_mu: Whether to apply bias correction to the first moment
+      estimate. Set to ``False`` to match the original AMSGrad paper.
+    bias_correction_nu: Whether to apply bias correction to the second moment
+      estimate before taking the elementwise maximum (``nu_max``). Set to
+      ``False`` to match the original AMSGrad paper.
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
@@ -1077,14 +1101,20 @@ def amsgrad(
   """
   return combine.chain(
       transform.scale_by_amsgrad(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          mu_dtype=mu_dtype,
+          bias_correction_mu=bias_correction_mu,
+          bias_correction_nu=bias_correction_nu,
       ),
       transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def fromage(
-    learning_rate: base.ScalarOrSchedule, min_norm: float = 1e-6
+    learning_rate: base.ScalarOrSchedule, min_norm: jax.typing.ArrayLike = 1e-6
 ) -> base.GradientTransformationExtraArgs:
   """The Frobenius matched gradient descent (Fromage) optimizer.
 
@@ -1130,14 +1160,14 @@ def fromage(
     stability of learning <https://arxiv.org/abs/2002.03432>`_, 2020
   """
   if not callable(learning_rate):
-    mult = 1 / jnp.sqrt(1 + learning_rate**2)
+    mult = 1 / (1 + learning_rate**2)**0.5
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(learning_rate * mult),
         transform.add_decayed_weights((mult - 1)),
     )
   else:
-    mult_lr = lambda count: 1 / jnp.sqrt(1 + learning_rate(count)**2)
+    mult_lr = lambda count: 1 / (1 + learning_rate(count)**2)**0.5
     return combine.chain(
         transform.scale_by_trust_ratio(min_norm),
         transform.scale_by_learning_rate(
@@ -1148,12 +1178,12 @@ def fromage(
 
 def lars(
     learning_rate: base.ScalarOrSchedule,
-    weight_decay: float = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     weight_decay_mask: MaskOrFn = True,
-    trust_coefficient: float = 0.001,
-    eps: float = 0.0,
+    trust_coefficient: jax.typing.ArrayLike = 0.001,
+    eps: jax.typing.ArrayLike = 0.0,
     trust_ratio_mask: MaskOrFn = True,
-    momentum: float = 0.9,
+    momentum: jax.typing.ArrayLike = 0.9,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
   """The LARS optimizer.
@@ -1221,11 +1251,11 @@ def lars(
 
 def lamb(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-6,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-6,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
     mask: MaskOrFn = None,
 ) -> base.GradientTransformationExtraArgs:
   """The LAMB optimizer.
@@ -1290,9 +1320,9 @@ def lamb(
 
 def noisy_sgd(
     learning_rate: base.ScalarOrSchedule,
-    eta: float = 0.01,
-    gamma: float = 0.55,
-    key: jax.Array | int | None = None,
+    eta: jax.typing.ArrayLike = 0.01,
+    gamma: jax.typing.ArrayLike = 0.55,
+    key: jax.typing.ArrayLike | None = None,  # int
     *,
     seed: int | None = None,  # deprecated
 ) -> base.GradientTransformationExtraArgs:
@@ -1356,21 +1386,9 @@ def noisy_sgd(
     Neelakantan et al, `Adding Gradient Noise Improves Learning for Very Deep
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
-  if seed is not None:
-    warnings.warn(
-        '"seed" is deprecated and will be removed in optax 0.2.7, use "key".',
-        DeprecationWarning,
-    )
-    if key is not None:
-      raise ValueError('Only one of seed or key can be specified.')
-    key = jax.random.key(seed)
-  if key is None:
-    warnings.warn('Specifying a key will be required in optax 0.2.7.')
-    key = jax.random.key(0)
-  key = utils.canonicalize_key(key)
-
   return combine.chain(
-      transform.add_noise(eta, gamma, key),
+      # pyrefly: ignore[bad-argument-type]
+      transform.add_noise(eta, gamma, key, seed=seed),
       transform.scale_by_learning_rate(learning_rate),
   )
 
@@ -1439,13 +1457,53 @@ def sign_sgd(
   )
 
 
+def signum(
+    learning_rate: base.ScalarOrSchedule,
+    beta: jax.typing.ArrayLike = 0.9,
+    accumulator_dtype: Any | None = None,
+) -> base.GradientTransformationExtraArgs:
+  r"""A variant of SGD using signs of the components of an EMA of the gradient.
+
+  The update :math:`u_t` is defined from the gradients :math:`g_t` as:
+
+  .. math::
+    m_t \leftarrow \beta\, m_t + (1 - \beta)\, g_t \\
+    u_t \leftarrow -\alpha_t\, \text{sign}\,(m_t),
+
+  where :math:`\alpha_t` a given learning rate at iteration :math:`t`,
+  :math:`m_t` is EMA of the gradient.
+
+  Args:
+    learning_rate: A global scaling factor, either fixed or evolving along
+      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+    beta: Exponential moving average decay rate.
+    accumulator_dtype: Data type for the EMA accumulator.
+
+  Returns:
+    The corresponding :class:`optax.GradientTransformationExtraArgs`.
+
+  References:
+    Bernstein et al., `signSGD: Compressed optimization for Non-Convex Problems
+    <https://arxiv.org/abs/1802.04434>`_, 2018
+
+    Zhao et al., 'Deconstructing What Makes a Good Optimizer for Language Models
+    <https://arxiv.org/abs/2407.07972>`_, 2024
+  """
+  return combine.chain(
+      # no need to debias the EMA since we're just taking its sign
+      transform.ema(beta, debias=False, accumulator_dtype=accumulator_dtype),
+      transform.scale_by_sign(),
+      transform.scale_by_learning_rate(learning_rate),
+  )
+
+
 def novograd(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.25,
-    eps: float = 1e-6,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.25,
+    eps: jax.typing.ArrayLike = 1e-6,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    weight_decay: base.ScalarOrSchedule = 0.0,
 ) -> base.GradientTransformationExtraArgs:
   """NovoGrad optimizer.
 
@@ -1503,7 +1561,12 @@ def novograd(
   """
   return combine.chain(
       transform.scale_by_novograd(
-          b1=b1, b2=b2, eps=eps, eps_root=eps_root, weight_decay=weight_decay
+          b1=b1,
+          b2=b2,
+          eps=eps,
+          eps_root=eps_root,
+          # pyrefly: ignore[bad-argument-type]
+          weight_decay=weight_decay,
       ),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -1514,12 +1577,23 @@ def optimistic_gradient_descent(
     alpha: base.ScalarOrSchedule = 1.0,
     beta: base.ScalarOrSchedule = 1.0,
 ) -> base.GradientTransformationExtraArgs:
-  """An Optimistic Gradient Descent optimizer.
+  r"""An Optimistic Gradient Descent optimizer.
 
   Optimistic gradient descent is an approximation of extra-gradient methods
   which require multiple gradient calls to compute the next update. It has
   strong formal guarantees for last-iterate convergence in min-max games, for
   which standard gradient descent can oscillate or even diverge.
+
+  At step :math:`t`, the parameters :math:`w_t` are updated according to the
+  current gradient :math:`g_t` as well as the previous gradient :math:`g_{t-1}`,
+  scaled by the learning rate :math:`\eta_t`:
+
+  .. math::
+
+    \begin{align*}
+      u_t &= (\alpha_t + \beta_t) g_t - \beta_t g_{t-1} \\
+      w_{t+1} &= w_t - \eta_t u_t
+    \end{align*}
 
   Args:
     learning_rate: A global scaling factor, either fixed or evolving along
@@ -1554,24 +1628,25 @@ def optimistic_gradient_descent(
   References:
     Mokhtari et al, `A Unified Analysis of Extra-gradient and
     Optimistic Gradient Methods for Saddle Point Problems: Proximal
-    Point Approach <https://arxiv.org/abs/1901.08511v2>`_, 2019
+    Point Approach <https://arxiv.org/abs/1901.08511>`_, 2019
 
   .. seealso::
     :doc:`../_collections/examples/ogda_example`
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
       transform.scale_by_learning_rate(learning_rate),
   )
 
 
 def optimistic_adam(
-    learning_rate: float,
-    optimism: Optional[float] = None,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-08,
-    eps_root: float = 0.0,
+    learning_rate: jax.typing.ArrayLike,
+    optimism: Optional[jax.typing.ArrayLike] = None,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-08,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     *,
     nesterov: bool = True,
@@ -1692,12 +1767,12 @@ def optimistic_adam(
 def optimistic_adam_v2(
     learning_rate: base.ScalarOrSchedule,
     *,
-    alpha: float = 1.0,
-    beta: float = 1.0,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-08,
-    eps_root: float = 0.0,
+    alpha: jax.typing.ArrayLike = 1.0,
+    beta: jax.typing.ArrayLike = 1.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-08,
+    eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[Any] = None,
     nesterov: bool = True,
 ) -> base.GradientTransformationExtraArgs:
@@ -1813,11 +1888,11 @@ def optimistic_adam_v2(
 
 def radam(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    threshold: float = 5.0,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    eps_root: jax.typing.ArrayLike = 0.0,
+    threshold: jax.typing.ArrayLike = 5.0,
     *,
     nesterov: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -1884,12 +1959,12 @@ def radam(
 
 def rmsprop(
     learning_rate: base.ScalarOrSchedule,
-    decay: float = 0.9,
-    eps: float = 1e-8,
-    initial_scale: float = 0.0,
+    decay: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-8,
+    initial_scale: jax.typing.ArrayLike = 0.0,
     eps_in_sqrt: bool = True,
     centered: bool = False,
-    momentum: Optional[float] = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
     bias_correction: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -1950,7 +2025,7 @@ def rmsprop(
     Graves, `Generating Sequences With Recurrent Neural Networks
     <https://arxiv.org/pdf/1308.0850v5>`_, 2014
 
-    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam`
+    Ziyin, `LaProp: Separating Momentum and Adaptivity in Adam
     <https://arxiv.org/pdf/2002.04839>`_, 2021
 
   .. warning::
@@ -1998,7 +2073,7 @@ def rmsprop(
 
 def sgd(
     learning_rate: base.ScalarOrSchedule,
-    momentum: Optional[float] = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
     accumulator_dtype: Optional[Any] = None,
 ) -> base.GradientTransformationExtraArgs:
@@ -2087,7 +2162,7 @@ def sgd(
 
 
 def sm3(
-    learning_rate: float, momentum: float = 0.9
+    learning_rate: jax.typing.ArrayLike, momentum: jax.typing.ArrayLike = 0.9
 ) -> base.GradientTransformationExtraArgs:
   r"""The SM3 optimizer.
 
@@ -2192,15 +2267,15 @@ def sm3(
   """
   return combine.chain(
       transform.scale_by_sm3(momentum),
-      transform.scale(-learning_rate),
+      transform.scale(-learning_rate),  # pyrefly: ignore[unsupported-operation]
   )
 
 
 def yogi(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-3,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-3,
 ) -> base.GradientTransformationExtraArgs:
   # pylint: disable=line-too-long
   """The Yogi optimizer.
@@ -2257,9 +2332,9 @@ def yogi(
 
 def adamax(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformationExtraArgs:
   r"""A variant of the Adam optimizer that uses the infinity norm.
 
@@ -2342,10 +2417,10 @@ def adamax(
 
 def adamaxw(
     learning_rate: base.ScalarOrSchedule,
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    weight_decay: float = 1e-4,
+    b1: jax.typing.ArrayLike = 0.9,
+    b2: jax.typing.ArrayLike = 0.999,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: base.ScalarOrSchedule = 1e-4,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Adamax with weight decay regularization.
@@ -2416,11 +2491,11 @@ def adamaxw(
 
 
 def rprop(
-    learning_rate: float,
-    eta_minus: float = 0.5,
-    eta_plus: float = 1.2,
-    min_step_size: float = 1e-6,
-    max_step_size: float = 50.0,
+    learning_rate: jax.typing.ArrayLike,
+    eta_minus: jax.typing.ArrayLike = 0.5,
+    eta_plus: jax.typing.ArrayLike = 1.2,
+    min_step_size: jax.typing.ArrayLike = 1e-6,
+    max_step_size: jax.typing.ArrayLike = 50.0,
 ) -> base.GradientTransformationExtraArgs:
   """The Rprop optimizer.
 
@@ -2487,10 +2562,10 @@ def rprop(
 
 
 def polyak_sgd(
-    max_learning_rate: float = 1.0,
+    max_learning_rate: jax.typing.ArrayLike = 1.0,
     scaling: base.ScalarOrSchedule = 1.0,
-    f_min: float = 0.0,
-    eps: float = 0.0,
+    f_min: jax.typing.ArrayLike = 0.0,
+    eps: jax.typing.ArrayLike = 0.0,
     variant: str = 'sps',
 ) -> base.GradientTransformationExtraArgs:
   r"""SGD with Polyak step-size.
@@ -2559,7 +2634,7 @@ def polyak_sgd(
     <https://arxiv.org/abs/2307.14528>`_, 2023
 
   .. warning::
-    This method requires knowledge of an approximate value of the of the
+    This method requires knowledge of an approximate value of the
     objective function minimum, passed through the ``f_min`` argument.
     For models that interpolate the data, this can be set to 0 (default
     value).
@@ -2596,7 +2671,7 @@ def lbfgs(
   the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm. The BFGS algorithm
   requires storing a matrix of size :math:`p \times p` with :math:`p` the
   dimension of the parameters.
-  The limited variant circuments this issue by computing the approximation of
+  The limited variant circumvents this issue by computing the approximation of
   the inverse using only :math:`m` (``memory_size``) past differences of
   parameters/gradients. Namely, the approximation of the Hessian inverse is
   denoted :math:`P_k = P_{k, k}`, where

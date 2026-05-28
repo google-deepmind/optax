@@ -29,7 +29,6 @@ See details at https://github.com/deepmind/optax/issues/196
 
 from typing import NamedTuple, Union
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -38,13 +37,13 @@ from optax._src import base
 class SplitRealAndImaginaryArrays(NamedTuple):
   """A pair of real arrays split from a complex array."""
 
-  real: chex.Array
-  imaginary: chex.Array
+  real: jax.typing.ArrayLike
+  imaginary: jax.typing.ArrayLike
 
 
 def _complex_to_real_pair(
-    x: chex.Array,
-) -> Union[chex.Array, SplitRealAndImaginaryArrays]:
+    x: jax.typing.ArrayLike,
+) -> Union[jax.typing.ArrayLike, SplitRealAndImaginaryArrays]:
   """Splits a complex array into a `SplitRealAndImaginaryArrays`.
 
   Args:
@@ -61,8 +60,8 @@ def _complex_to_real_pair(
 
 
 def _real_pair_to_complex(
-    x: Union[chex.Array, SplitRealAndImaginaryArrays],
-) -> chex.Array:
+    x: Union[jax.typing.ArrayLike, SplitRealAndImaginaryArrays],
+) -> jax.typing.ArrayLike:
   """Merges a `SplitRealAndImaginaryArrays` into a complex array.
 
   Args:

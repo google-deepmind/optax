@@ -16,7 +16,7 @@
 
 from typing import Sequence
 
-import chex
+import jax
 import jax.numpy as jnp
 from optax._src import base
 
@@ -37,9 +37,10 @@ def join_schedules(
     schedule: A function that maps step counts to values.
   """
 
-  def schedule(step: chex.Numeric) -> chex.Numeric:
+  def schedule(step: jax.typing.ArrayLike) -> jax.typing.ArrayLike:
     output = schedules[0](step)
     for boundary, schedule in zip(boundaries, schedules[1:]):
+      # pyrefly: ignore[unsupported-operation]
       output = jnp.where(step < boundary, output, schedule(step - boundary))
     return output
 

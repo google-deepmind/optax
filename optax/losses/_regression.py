@@ -14,17 +14,17 @@
 # ==============================================================================
 """Regression losses."""
 
-import functools
 from typing import Optional, Union
 
-import chex
+import jax
 import jax.numpy as jnp
+from optax._src import utils
 
 
 def squared_error(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the squared error for a set of predictions.
 
   Mean Squared Error can be computed as squared_error(a, b).mean().
@@ -42,18 +42,20 @@ def squared_error(
     "Pattern Recognition and Machine Learning" by Bishop, but not
     "The Elements of Statistical Learning" by Tibshirani.
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
   if targets is not None:
     # Avoid broadcasting logic for "-" operator.
-    chex.assert_equal_shape((predictions, targets))
+    utils.check_shapes_equal(predictions, targets)
+  # pyrefly: ignore[unsupported-operation]
   errors = predictions - targets if targets is not None else predictions
-  return errors**2
+  # pyrefly: ignore [bad-return]
+  return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
 
 
 def l2_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the L2 loss for a set of predictions.
 
   Args:
@@ -68,15 +70,16 @@ def l2_loss(
     the 0.5 term is standard in "Pattern Recognition and Machine Learning"
     by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
   """
+  predictions = jnp.asarray(predictions)
   return 0.5 * squared_error(predictions, targets)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def huber_loss(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-    delta: float = 1.0,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+    *,
+    delta: jax.typing.ArrayLike = 1.0,
+) -> jax.Array:
   """Huber loss, similar to L2 loss close to zero, L1 loss away from zero.
 
   If gradient descent is applied to the `huber loss`, it is equivalent to
@@ -94,7 +97,8 @@ def huber_loss(
   References:
     `Huber loss <https://en.wikipedia.org/wiki/Huber_loss>`_, Wikipedia.
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # 0.5 * err^2                  if |err| <= d
   # 0.5 * d^2 + d * (|err| - d)  if |err| > d
@@ -106,9 +110,9 @@ def huber_loss(
 
 
 def log_cosh(
-    predictions: chex.Array,
-    targets: Optional[chex.Array] = None,
-) -> chex.Array:
+    predictions: jax.typing.ArrayLike,
+    targets: Optional[jax.typing.ArrayLike] = None,
+) -> jax.Array:
   """Calculates the log-cosh loss for a set of predictions.
 
   log(cosh(x)) is approximately `(x**2) / 2` for small x and `abs(x) - log(2)`
@@ -126,20 +130,22 @@ def log_cosh(
     Chen et al, `Log Hyperbolic Cosine Loss Improves Variational Auto-Encoder
     <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
-  chex.assert_type([predictions], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+  # pyrefly: ignore [missing-attribute, unsupported-operation]
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_similarity(
-    predictions: chex.Array,
-    targets: chex.Array,
-    epsilon: float = 0.0,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
+    *,
+    epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes the cosine similarity between targets and predictions.
 
   The cosine **similarity** is a measure of similarity between vectors defined
@@ -163,7 +169,8 @@ def cosine_similarity(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([predictions, targets], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  utils.check_subdtype(targets, jnp.floating)
   a = predictions
   b = targets
 
@@ -178,17 +185,18 @@ def cosine_similarity(
   b_norm = jnp.sqrt(b_norm2.clip(epsilon))
   a_unit = a / a_norm
   b_unit = b / b_norm
+  # pyrefly: ignore[no-matching-overload]
   return (a_unit * b_unit).sum(axis=axis, where=where)
 
 
-@functools.partial(chex.warn_only_n_pos_args_in_future, n=2)
 def cosine_distance(
-    predictions: chex.Array,
-    targets: chex.Array,
-    epsilon: float = 0.0,
+    predictions: jax.typing.ArrayLike,
+    targets: jax.typing.ArrayLike,
+    *,
+    epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[chex.Array, None] = None,
-) -> chex.Array:
+    where: Union[jax.typing.ArrayLike, None] = None,
+) -> jax.Array:
   r"""Computes the cosine distance between targets and predictions.
 
   The cosine **distance**, implemented here, measures the **dissimilarity**
@@ -212,7 +220,8 @@ def cosine_distance(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
-  chex.assert_type([predictions, targets], float)
+  utils.check_subdtype(predictions, jnp.floating)
+  utils.check_subdtype(targets, jnp.floating)
   # cosine distance = 1 - cosine similarity.
   return 1.0 - cosine_similarity(
       predictions, targets, epsilon=epsilon, axis=axis, where=where

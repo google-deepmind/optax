@@ -20,7 +20,6 @@ import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -46,9 +45,8 @@ def _invalid_ord_axis_inputs(ord_axis_keepdims):
   ))
 
 
-class NumericsTest(chex.TestCase):
+class NumericsTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.parameters(*(
       "bfloat16",
       "float16",
@@ -68,7 +66,7 @@ class NumericsTest(chex.TestCase):
     if dtype in ["float64", "int64", "uint64"]:
       jax.config.update("jax_enable_x64", True)
     dtype = jnp.dtype(dtype)
-    inc_fn = self.variant(numerics.safe_increment)
+    inc_fn = jax.jit(numerics.safe_increment)
 
     with self.subTest("Increments correctly"):
       base = jnp.asarray(3, dtype=dtype)
@@ -102,7 +100,6 @@ class NumericsTest(chex.TestCase):
         ValueError, numerics.safe_increment, jnp.asarray(1, dtype=dtype)
     )
 
-  @chex.all_variants
   @parameterized.parameters(
       itertools.filterfalse(
           _invalid_ord_axis_inputs,
@@ -110,7 +107,7 @@ class NumericsTest(chex.TestCase):
       )
   )
   def test_safe_norm(self, ord, axis, keepdims):  # pylint: disable=redefined-builtin
-    dnorm_dx = self.variant(
+    dnorm_dx = jax.jit(
         jax.jacfwd(
             functools.partial(
                 numerics.safe_norm, ord=ord, axis=axis, keepdims=keepdims
@@ -125,9 +122,8 @@ class NumericsTest(chex.TestCase):
     g = dnorm_dx(float32_array(jnp.zeros((3, 4))), float32_array(3.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
-  @chex.all_variants
   def test_safe_rms(self):
-    drms_dx = self.variant(jax.grad(numerics.safe_root_mean_squares))
+    drms_dx = jax.jit(jax.grad(numerics.safe_root_mean_squares))
     # Test gradient is 0. in 0. when zero min rms is used.
     g = drms_dx(float32_array(0.0), float32_array(0.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
@@ -135,32 +131,45 @@ class NumericsTest(chex.TestCase):
     g = drms_dx(float32_array(0.0), float32_array(3.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
 
-  def test_complex_vs_real_abs_sqr(self):
+  @parameterized.product(
+      sq_fn=[lambda x: x**2, lambda x: x * x, jnp.square],
+      x=[
+          3,
+          3.0,
+          np.array([4, 5.2]),
+          1j,
+          3.0 + 1j,
+          np.array([4 + 1j, 5.2 + 1j]),
+      ],
+  )
+  def test_abs_sqr_hlo_equivalence(self, sq_fn, x):
     # Tests that JAX generates the same HLO from `numerics.abs_sq`,
-    # `jnp.square(x)`, `x * x`,  and `x**2`.
-    real_sq_fns = (lambda x: x**2, lambda x: x * x, jnp.square)
+    # `jnp.square(x)`, `x * x`,  and `x**2` if they are real
+    # Check that it does not generate the same hlo if they are complex.
 
     def _get_hlo_repr(f, x):
+      # pyrefly: ignore[missing-attribute]
       hlo_string = jax.jit(f).lower(x).compiler_ir(dialect="hlo").as_hlo_text()
-      return re.sub(
-          "HloModule.*?\n", "", re.sub("ENTRY.*?{", "ENTRY XXXX", hlo_string)
+      hlo_string = re.search(r"ENTRY.*", hlo_string, re.DOTALL)
+      if hlo_string:
+        hlo_string = hlo_string.group()
+      else:
+        raise ValueError(f"No ENTRY found in HLO string: {hlo_string}")
+      hlo_string = re.sub("ENTRY.*?{", "ENTRY XXXX", hlo_string)
+      hlo_string = re.sub("HloModule.*?\n", "", hlo_string)
+      hlo_string = re.sub("ROOT.*?=", "ROOT result.2 =", hlo_string)
+      return hlo_string
+
+    if jnp.issubdtype(jnp.asarray(x).dtype, jnp.complexfloating):
+      self.assertNotEqual(
+          _get_hlo_repr(sq_fn, x),
+          _get_hlo_repr(numerics.abs_sq, x),
       )
-
-    # Real arg (same HLO).
-    for real_sq_fn in real_sq_fns:
-      for real_x in (3, 3.0, np.array([4, 5.2])):
-        self.assertEqual(
-            _get_hlo_repr(real_sq_fn, real_x),
-            _get_hlo_repr(numerics.abs_sq, real_x),
-        )
-
-    # Complex arg (different HLOs).
-    for real_sq_fn in real_sq_fns:
-      for complex_x in (1j, 3.0 + 1j, np.array([4 + 1j, 5.2 + 1j])):
-        self.assertNotEqual(
-            _get_hlo_repr(real_sq_fn, complex_x),
-            _get_hlo_repr(numerics.abs_sq, complex_x),
-        )
+    else:
+      self.assertEqual(
+          _get_hlo_repr(sq_fn, x),
+          _get_hlo_repr(numerics.abs_sq, x),
+      )
 
 
 if __name__ == "__main__":

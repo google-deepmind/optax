@@ -17,13 +17,12 @@
 from collections.abc import Callable
 import functools
 from typing import Optional, Union
+import warnings
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
 from optax._src import base
-from optax._src import numerics
 import optax.tree
 
 
@@ -32,11 +31,21 @@ def _normalize_tree(x):
   return optax.tree.scale(1.0 / optax.tree.norm(x), x)
 
 
-def global_norm(updates: base.PyTree) -> chex.Array:
-  """Compute the global norm across a nested structure of tensors."""
-  return jnp.sqrt(
-      sum(jnp.sum(numerics.abs_sq(x)) for x in jax.tree.leaves(updates))
+def global_norm(updates: base.PyTree) -> jax.Array:
+  """Compute the global norm across a nested structure of tensors.
+
+  .. warning::
+    Deprecated in favor of :func:`optax.tree.norm`.
+  Args:
+    updates: A nested structure of tensors.
+  Returns:
+    The global L2 norm of the updates.
+  """
+  warnings.warn(
+      'optax.global_norm is deprecated in favor of optax.tree.norm',
+      DeprecationWarning
   )
+  return optax.tree.norm(updates)
 
 
 def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
@@ -50,14 +59,15 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 
 def power_iteration(
-    matrix: Union[chex.Array, Callable[[chex.ArrayTree], chex.ArrayTree]],
+    matrix: Union[
+        jax.typing.ArrayLike, Callable[[base.ArrayTree], base.ArrayTree]],
     *,
-    v0: Optional[chex.ArrayTree] = None,
-    num_iters: int = 100,
-    error_tolerance: float = 1e-6,
+    v0: Optional[base.ArrayTree] = None,
+    num_iters: jax.typing.ArrayLike = 100,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
-    key: Optional[chex.PRNGKey] = None,
-) -> tuple[chex.Numeric, chex.ArrayTree]:
+    key: Optional[base.PRNGKey] = None,
+) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
@@ -113,8 +123,8 @@ def power_iteration(
       # v0 is uniformly distributed in [-1, 1]
       v0 = jax.random.uniform(
           key,
-          shape=matrix.shape[-1:],
-          dtype=matrix.dtype,
+          shape=matrix.shape[-1:],  # pyrefly: ignore[missing-attribute]
+          dtype=matrix.dtype,  # pyrefly: ignore[missing-attribute]
           minval=-1.0,
           maxval=1.0,
       )
@@ -143,11 +153,11 @@ def power_iteration(
 
 
 def matrix_inverse_pth_root(
-    matrix: chex.Array,
-    p: int,
-    num_iters: int = 100,
-    ridge_epsilon: float = 1e-6,
-    error_tolerance: float = 1e-6,
+    matrix: jax.typing.ArrayLike,
+    p: jax.typing.ArrayLike,
+    num_iters: jax.typing.ArrayLike = 100,
+    ridge_epsilon: jax.typing.ArrayLike = 1e-6,
+    error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
 ):
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
@@ -177,7 +187,8 @@ def matrix_inverse_pth_root(
 
   # We use float32 for the matrix inverse pth root.
   # Switch to f64 if you have hardware that supports it.
-  matrix_size = matrix.shape[0]
+  # pyrefly: ignore [missing-attribute]
+  matrix_size = matrix.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   alpha = jnp.asarray(-1.0 / p, jnp.float32)
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
   max_ev, _ = power_iteration(
@@ -267,7 +278,8 @@ def matrix_inverse_pth_root(
     error = jnp.max(jnp.abs(mat_m - identity))
     is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
-    resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
+    # pyrefly: ignore [missing-attribute]
+    resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return resultant_mat_h, error
 
 
@@ -285,7 +297,7 @@ def nnls(
     b: jax.Array,
     iters: int,
     unroll: Union[int, bool] = 1,
-    L: Union[jax.Array, float, None] = None,
+    L: Union[jax.typing.ArrayLike, None] = None,
 ) -> jax.Array:
   r"""Solves the non-negative least squares problem.
 

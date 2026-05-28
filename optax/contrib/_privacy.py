@@ -15,12 +15,13 @@
 """Differential Privacy utilities."""
 
 from typing import NamedTuple, Optional
-
 import warnings
 
 import jax
+
+from optax import transforms
+
 from optax._src import base
-from optax._src import clipping
 from optax._src import combine
 from optax._src import transform
 from optax._src import utils
@@ -33,8 +34,8 @@ class DifferentiallyPrivateAggregateState(NamedTuple):
 
 
 def differentially_private_aggregate(
-    l2_norm_clip: float,
-    noise_multiplier: float,
+    l2_norm_clip: jax.typing.ArrayLike,
+    noise_multiplier: jax.typing.ArrayLike,
     key: jax.Array | int | None = None,
     *,
     seed: int | None = None,  # deprecated
@@ -91,12 +92,16 @@ def differentially_private_aggregate(
     del params
     grads_flat, grads_treedef = jax.tree.flatten(updates)
     bsize = grads_flat[0].shape[0]
-    clipped, _ = clipping.per_example_global_norm_clip(grads_flat, l2_norm_clip)
+    clipped, _ = transforms.per_example_global_norm_clip(
+        grads_flat,
+        l2_norm_clip
+    )
 
     new_key, *rngs = jax.random.split(state.rng_key, len(grads_flat) + 1)
     noised = [
+        # pyrefly: ignore[missing-attribute, unsupported-operation]
         (g + noise_std * jax.random.normal(r, g.shape, g.dtype)) / bsize
-        for g, r in zip(clipped, rngs)
+        for g, r in zip(clipped, rngs)  # pyrefly: ignore[bad-argument-type]
     ]
     return (
         jax.tree.unflatten(grads_treedef, noised),
@@ -108,10 +113,10 @@ def differentially_private_aggregate(
 
 def dpsgd(
     learning_rate: base.ScalarOrSchedule,
-    l2_norm_clip: float,
-    noise_multiplier: float,
-    key: jax.Array | int | None = None,
-    momentum: Optional[float] = None,
+    l2_norm_clip: jax.typing.ArrayLike,
+    noise_multiplier: jax.typing.ArrayLike,
+    key: jax.typing.ArrayLike | None = None,
+    momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
 ) -> base.GradientTransformation:
   """The DPSGD optimizer.
@@ -155,7 +160,7 @@ def dpsgd(
           key=key,
       ),
       (
-          transform.trace(decay=momentum, nesterov=nesterov)
+          transforms.trace(decay=momentum, nesterov=nesterov)
           if momentum is not None
           else base.identity()
       ),

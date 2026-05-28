@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -34,9 +33,8 @@ def _loss_fun_real_to_real(params):
   return _loss_fun_complex_to_real(x + y * 1j)
 
 
-class ComplexValuedTest(chex.TestCase):
+class ComplexValuedTest(parameterized.TestCase):
 
-  @chex.all_variants
   @parameterized.named_parameters([
       ('adam', transform.scale_by_adam),
       ('param_block_norm', transform.scale_by_param_block_norm),
@@ -47,7 +45,7 @@ class ComplexValuedTest(chex.TestCase):
       loss, grads = jax.value_and_grad(loss_fun)(params)
       # Complex gradients need to be conjugated before being added to parameters
       grads = jax.tree.map(lambda x: x.conj(), grads)
-      updates, opt_state = self.variant(optimizer.update)(
+      updates, opt_state = jax.jit(optimizer.update)(
           grads, opt_state, params
       )
       params = update.apply_updates(params, updates)
@@ -59,8 +57,8 @@ class ComplexValuedTest(chex.TestCase):
 
     optimizer = scaler_constr()
     optimizer_complex = _complex_valued.split_real_and_imaginary(optimizer)
-    opt_state = self.variant(optimizer.init)((x, y))
-    opt_state_complex = self.variant(optimizer_complex.init)(z)
+    opt_state = jax.jit(optimizer.init)((x, y))
+    opt_state_complex = jax.jit(optimizer_complex.init)(z)
 
     # Check that the loss, the gradients, and the parameters are the same for
     # real-to-real and complex-to-real loss functions in each step

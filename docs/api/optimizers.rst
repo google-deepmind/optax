@@ -30,6 +30,7 @@ Optimizers
     rmsprop
     sgd
     sign_sgd
+    signum
     sm3
     yogi
 
@@ -141,6 +142,10 @@ SGD
 SignSGD
 ~~~~~~~
 .. autofunction:: sign_sgd
+
+Signum
+~~~~~~
+.. autofunction:: signum
 
 SM3
 ~~~

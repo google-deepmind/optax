@@ -14,14 +14,16 @@
 # ==============================================================================
 """Utilities to perform maths on pytrees."""
 
+# pylint: disable=g-wrong-blank-lines
+# pylint: disable=g-inconsistent-quotes
+
 import functools
 import operator
-from typing import Any, Optional, Union
-
-import chex
+from typing import Any, Optional
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
+from optax._src import utils
 
 
 def tree_add(tree_x: Any, tree_y: Any, *other_trees: Any) -> Any:
@@ -82,7 +84,7 @@ def tree_div(tree_x: Any, tree_y: Any) -> Any:
 
 
 def tree_scale(
-    scalar: Union[float, jax.Array],
+    scalar: jax.typing.ArrayLike,
     tree: Any,
 ) -> Any:
   r"""Multiply a tree by a scalar.
@@ -100,7 +102,7 @@ def tree_scale(
 
 
 def tree_add_scale(
-    tree_x: Any, scalar: Union[float, jax.Array], tree_y: Any
+    tree_x: Any, scalar: jax.typing.ArrayLike, tree_y: Any
 ) -> Any:
   r"""Add two trees, where the second tree is scaled by a scalar.
 
@@ -116,19 +118,32 @@ def tree_add_scale(
   """
   scalar = jnp.asarray(scalar)
   return jax.tree.map(
-      lambda x, y: (None if x is None else
-                    (x + jnp.astype(scalar, jnp.asarray(x).dtype) * y)),
+      lambda x, y: (None if x is None else (x + scalar * y)),
       tree_x, tree_y, is_leaf=lambda x: x is None)
 
 
-_vdot = functools.partial(jnp.vdot, precision=jax.lax.Precision.HIGHEST)
+def _vdot(a, b, precision=jax.lax.Precision.HIGHEST):
+  """Compute the inner product between two (possibly complex) arrays."""
+  if utils.parse_version(jax.__version__) < utils.parse_version('0.7.2'):
+    return jnp.vdot(a, b, precision=precision)
+  assert a.shape == b.shape
+  if jax.dtypes.issubdtype(a.dtype, jnp.complexfloating):
+    a = jnp.conj(a)
+  # jnp.vdot internally uses ravel(), which leads to undesirable comms
+  # in distributed setups, and failures when using explicit-sharding.
+  mesh = jax.typeof(a).sharding.mesh
+  if mesh.are_all_axes_explicit:
+    sharding = jax.sharding.NamedSharding(mesh, jax.P())
+  else:
+    sharding = None
+  return jnp.tensordot(a, b, a.ndim, precision=precision, out_sharding=sharding)
 
 
 def _vdot_safe(a, b):
   return _vdot(jnp.asarray(a), jnp.asarray(b))
 
 
-def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
+def tree_vdot(tree_x: Any, tree_y: Any) -> jax.typing.ArrayLike:
   r"""Compute the inner product between two pytrees.
 
   Args:
@@ -151,23 +166,40 @@ def tree_vdot(tree_x: Any, tree_y: Any) -> chex.Numeric:
     numerical issues.
   """
   vdots = jax.tree.map(_vdot_safe, tree_x, tree_y)
-  return jax.tree.reduce(operator.add, vdots, initializer=0)
+  return tree_sum(vdots)
 
 
-def tree_sum(tree: Any) -> chex.Numeric:
+def tree_sum(
+    tree: Any, associative_reduction: bool = False
+) -> jax.typing.ArrayLike:
   """Compute the sum of all the elements in a pytree.
 
   Args:
     tree: pytree.
+    associative_reduction: If True, use reduce_associative for a potential
+      compilation time speedup with large pytrees (requires JAX >= 0.6.0).
+      This changes the order of summation which may result in slightly
+      different floating-point values. Default is False.
 
   Returns:
     a scalar value.
   """
   sums = jax.tree.map(jnp.sum, tree)
-  return jax.tree.reduce(operator.add, sums, initializer=0)
+  if associative_reduction:
+    # Use reduce_associative for a potential compilation time speedup
+    if hasattr(jax.tree, 'reduce_associative'):
+      return jax.tree.reduce_associative(operator.add, sums, identity=0)
+    else:
+      raise ValueError(
+          'associative_reduction=True requires JAX >= 0.6.0 which provides '
+          'tree.reduce_associative. Please upgrade JAX or use '
+          'associative_reduction=False.'
+      )
+  else:
+    return jax.tree.reduce(operator.add, sums, initializer=0)
 
 
-def tree_max(tree: Any) -> chex.Numeric:
+def tree_max(tree: Any) -> jax.typing.ArrayLike:
   """Compute the max of all the elements in a pytree.
 
   Args:
@@ -176,12 +208,16 @@ def tree_max(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  maxes = jax.tree.map(jnp.max, tree)
-  # initializer=-jnp.inf should work but pytype wants a jax.Array.
-  return jax.tree.reduce(jnp.maximum, maxes, initializer=jnp.array(-jnp.inf))
+  def f(array):
+    if jnp.size(array) == 0:
+      return None
+    else:
+      return jnp.max(array)
+  maxes = jax.tree.map(f, tree)
+  return jax.tree.reduce(jnp.maximum, maxes, initializer=-float('inf'))
 
 
-def tree_min(tree: Any) -> chex.Numeric:
+def tree_min(tree: Any) -> jax.typing.ArrayLike:
   """Compute the min of all the elements in a pytree.
 
   Args:
@@ -190,9 +226,13 @@ def tree_min(tree: Any) -> chex.Numeric:
   Returns:
     a scalar value.
   """
-  mins = jax.tree.map(jnp.min, tree)
-  # initializer=jnp.inf should work but pytype wants a jax.Array.
-  return jax.tree.reduce(jnp.minimum, mins, initializer=jnp.array(jnp.inf))
+  def f(array):
+    if jnp.size(array) == 0:
+      return None
+    else:
+      return jnp.min(array)
+  mins = jax.tree.map(f, tree)
+  return jax.tree.reduce(jnp.minimum, mins, initializer=float('inf'))
 
 
 def tree_size(tree: Any) -> int:
@@ -254,10 +294,10 @@ def tree_norm(tree: Any,
     return jnp.array(sqnorm if squared else jnp.sqrt(sqnorm))
   elif ord == 1:
     ret = tree_sum(jax.tree.map(jnp.abs, tree))
-  elif ord == jnp.inf or ord in ("inf", "infinity"):
+  elif ord == jnp.inf or ord in ('inf', 'infinity'):
     ret = tree_max(jax.tree.map(jnp.abs, tree))
   else:
-    raise ValueError(f"Unsupported ord: {ord}")
+    raise ValueError(f'Unsupported ord: {ord}')
   return jnp.array(ret if not squared else _square(ret))
 
 
@@ -450,6 +490,4 @@ def tree_allclose(
   def f(a, b):
     return jnp.allclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
   tree = jax.tree.map(f, a, b)
-  leaves = jax.tree.leaves(tree)
-  result = functools.reduce(operator.and_, leaves, True)
-  return result
+  return jax.tree.reduce(operator.and_, tree, True)

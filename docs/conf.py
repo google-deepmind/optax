@@ -92,7 +92,7 @@ extensions = [
     'coverage_check',
     'myst_nb',  # This is used for the .ipynb notebooks
     'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.collections',
+    'sphinx_collections',
     'sphinx_contributors'
 ]
 
@@ -125,9 +125,8 @@ autodoc_type_aliases = {
     'base.Updates': 'optax.Updates',
     'base.OptState': 'optax.OptState',
     'base.PyTree': 'optax.PyTree',
-    'chex.ArrayTree': 'chex.ArrayTree',
-    'chex.Array': 'chex.Array',
-    'chex.Numeric': 'chex.Numeric'
+    'base.ArrayTree': 'optax.ArrayTree',
+    'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
 
 autodoc_default_options = {
@@ -202,6 +201,7 @@ nb_execution_excludepatterns = [
     'differentially_private_sgd.ipynb',
     'lookahead_mnist.ipynb',
     'mlp_mnist.ipynb',
+    'gradient_accumulation_and_microbatching.ipynb'
 ]
 
 # -- Options for katex ------------------------------------------------------
@@ -265,7 +265,6 @@ def linkcode_resolve(domain, info):
 intersphinx_mapping = {
     'jax': ('https://jax.readthedocs.io/en/latest/', None),
     'flax': ('https://flax.readthedocs.io/en/latest/', None),
-    'chex': ('https://chex.readthedocs.io/en/latest/', None),
 }
 
 source_suffix = ['.rst', '.md', '.ipynb']

@@ -21,8 +21,9 @@ import typing as _typing
 
 from optax import assignment
 from optax import contrib
+from optax import experimental
 from optax import losses
-from optax import monte_carlo
+from optax import microbatching
 from optax import perturbations
 from optax import projections
 from optax import schedules
@@ -59,12 +60,15 @@ from optax._src.alias import rmsprop
 from optax._src.alias import rprop
 from optax._src.alias import sgd
 from optax._src.alias import sign_sgd
+from optax._src.alias import signum
 from optax._src.alias import sm3
 from optax._src.alias import yogi
+from optax._src.base import ArrayTree
 from optax._src.base import EmptyState
 from optax._src.base import GradientTransformation
 from optax._src.base import GradientTransformationExtraArgs
 from optax._src.base import identity
+from optax._src.base import init_empty_state
 from optax._src.base import OptState
 from optax._src.base import Params
 from optax._src.base import ScalarOrSchedule
@@ -87,6 +91,7 @@ from optax._src.linesearch import scale_by_backtracking_linesearch
 from optax._src.linesearch import scale_by_zoom_linesearch
 from optax._src.linesearch import ScaleByBacktrackingLinesearchState
 from optax._src.linesearch import ScaleByZoomLinesearchState
+from optax._src.linesearch import value_and_grad_from_state
 from optax._src.linesearch import ZoomLinesearchInfo
 from optax._src.lookahead import lookahead
 from optax._src.lookahead import LookaheadParams
@@ -144,7 +149,6 @@ from optax._src.update import incremental_update
 from optax._src.update import periodic_update
 from optax._src.utils import multi_normal
 from optax._src.utils import scale_gradient
-from optax._src.utils import value_and_grad_from_state
 
 # TODO(mtthss): remove contrib aliases from flat namespace once users updated.
 # Deprecated modules
@@ -156,6 +160,7 @@ from optax.contrib import dpsgd as _deprecated_dpsgd
 
 
 # TODO(mtthss): remove aliases after updates.
+microbatch = microbatching.microbatch
 adaptive_grad_clip = transforms.adaptive_grad_clip
 AdaptiveGradClipState = EmptyState
 clip = transforms.clip
@@ -197,6 +202,9 @@ selective_transform = transforms.selective_transform
 masked = transforms.masked
 MaskedNode = transforms.MaskedNode
 MaskedState = transforms.MaskedState
+measure_with_ema = transforms.measure_with_ema
+monitor = transforms.monitor
+MonitorState = transforms.MonitorState
 MultiSteps = transforms.MultiSteps
 MultiStepsState = transforms.MultiStepsState
 ShouldSkipUpdateFunction = transforms.ShouldSkipUpdateFunction
@@ -239,6 +247,7 @@ cosine_distance = losses.cosine_distance
 cosine_similarity = losses.cosine_similarity
 ctc_loss = losses.ctc_loss
 ctc_loss_with_forward_probs = losses.ctc_loss_with_forward_probs
+generalized_kl_divergence = losses.generalized_kl_divergence
 hinge_loss = losses.hinge_loss
 huber_loss = losses.huber_loss
 kl_divergence = losses.kl_divergence
@@ -280,6 +289,11 @@ _deprecations = {
         ),
         _deprecated_dpsgd,
     ),
+    # Added Nov 2025
+    "monte_carlo": (
+        "optax.monte_carlo is deprecated. (optax v0.2.7 or newer).",
+        None,
+    ),
 }
 # pylint: disable=g-import-not-at-top
 # pylint: disable=g-bad-import-order
@@ -302,7 +316,7 @@ del _typing
 # pylint: enable=g-importing-member
 
 
-__version__ = "0.2.6.dev"
+__version__ = "0.2.9.dev"
 
 __all__ = (
     "adabelief",
@@ -326,6 +340,7 @@ __all__ = (
     "apply_updates",
     "ApplyEvery",
     "ApplyIfFiniteState",
+    "ArrayTree",
     "assignment",
     "centralize",
     "chain",
@@ -356,6 +371,7 @@ __all__ = (
     "FactoredState",
     "flatten",
     "fromage",
+    "generalized_kl_divergence",
     "global_norm",
     "GradientTransformation",
     "GradientTransformationExtraArgs",
@@ -363,6 +379,7 @@ __all__ = (
     "huber_loss",
     "identity",
     "incremental_update",
+    "init_empty_state",
     "inject_hyperparams",
     "InjectHyperparamsState",
     "join_schedules",
@@ -383,6 +400,11 @@ __all__ = (
     "MaskOrFn",
     "MaskedState",
     "matrix_inverse_pth_root",
+    "measure_with_ema",
+    "microbatch",
+    "monitor",
+    "microbatch",
+    "MonitorState",
     "multi_normal",
     "multi_transform",  # for backwards compatibility
     "MultiSteps",
@@ -467,6 +489,7 @@ __all__ = (
     "ShouldSkipUpdateFunction",
     "sigmoid_binary_cross_entropy",
     "sign_sgd",
+    "signum",
     "skip_large_updates",
     "skip_not_finite",
     "sm3",

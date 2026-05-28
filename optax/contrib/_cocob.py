@@ -40,7 +40,7 @@ class COCOBState(NamedTuple):
 
 
 def scale_by_cocob(
-    alpha: float = 100, eps: float = 1e-8
+    alpha: jax.typing.ArrayLike = 100.0, eps: jax.typing.ArrayLike = 1e-8
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
 
@@ -107,14 +107,15 @@ def scale_by_cocob(
     )
     return new_updates, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
 def cocob(
     learning_rate: base.ScalarOrSchedule = 1.0,
-    alpha: float = 100,
-    eps: float = 1e-8,
-    weight_decay: float = 0,
+    alpha: jax.typing.ArrayLike = 100.0,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
     mask: Optional[Union[Any, Callable[[base.Params], Any]]] = None,
 ) -> base.GradientTransformation:
   """Rescale updates according to the COntinuous COin Betting algorithm.
@@ -138,6 +139,7 @@ def cocob(
     Betting <https://arxiv.org/pdf/1705.07795.pdf>`_, 2017
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate, flip_sign=False),
       scale_by_cocob(alpha, eps),

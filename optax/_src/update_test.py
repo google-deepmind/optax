@@ -16,65 +16,65 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
+from optax._src import test_utils
 from optax._src import update
 
 
-class UpdateTest(chex.TestCase):
+class UpdateTest(parameterized.TestCase):
 
-  @chex.all_variants
   def test_apply_updates(self):
     params = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     grads = jax.tree.map(lambda t: 2 * t, params)
     exp_params = jax.tree.map(lambda t: 3 * t, params)
-    new_params = self.variant(update.apply_updates)(params, grads)
+    new_params = jax.jit(update.apply_updates)(params, grads)
 
-    chex.assert_trees_all_close(exp_params, new_params, atol=1e-10, rtol=1e-5)
+    test_utils.assert_trees_all_close(
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
 
-  @chex.all_variants
   def test_apply_updates_mixed_precision(self):
     params = (
         {'a': jnp.ones((3, 2), dtype=jnp.bfloat16)},
         jnp.ones((1,), dtype=jnp.bfloat16),
     )
     grads = jax.tree.map(lambda t: (2 * t).astype(jnp.float32), params)
-    new_params = self.variant(update.apply_updates)(params, grads)
+    new_params = jax.jit(update.apply_updates)(params, grads)
 
     for leaf in jax.tree.leaves(new_params):
       assert leaf.dtype == jnp.bfloat16
 
-  @chex.all_variants
   def test_incremental_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     params_2 = jax.tree.map(lambda t: 2 * t, params_1)
     exp_params = jax.tree.map(lambda t: 1.5 * t, params_1)
-    new_params = self.variant(update.incremental_update)(
+    new_params = jax.jit(update.incremental_update)(
         params_2, params_1, 0.5
     )
 
-    chex.assert_trees_all_close(exp_params, new_params, atol=1e-10, rtol=1e-5)
+    test_utils.assert_trees_all_close(
+        exp_params, new_params, atol=1e-10, rtol=1e-5)
 
-  @chex.all_variants
   def test_periodic_update(self):
     params_1 = ({'a': jnp.ones((3, 2))}, jnp.ones((1,)))
     params_2 = jax.tree.map(lambda t: 2 * t, params_1)
 
     update_period = 5
-    update_fn = self.variant(update.periodic_update)
+    update_fn = jax.jit(update.periodic_update)
 
     for j in range(3):
       for i in range(1, update_period):
         new_params = update_fn(
             params_2, params_1, j * update_period + i, update_period
         )
-        chex.assert_trees_all_close(params_1, new_params, atol=1e-10, rtol=1e-5)
+        test_utils.assert_trees_all_close(
+            params_1, new_params, atol=1e-10, rtol=1e-5)
 
       new_params = update_fn(
           params_2, params_1, (j + 1) * update_period, update_period
       )
-      chex.assert_trees_all_close(params_2, new_params, atol=1e-10, rtol=1e-5)
+      test_utils.assert_trees_all_close(
+          params_2, new_params, atol=1e-10, rtol=1e-5)
 
   @parameterized.named_parameters(
       {'testcase_name': 'apply_updates', 'operation': update.apply_updates},

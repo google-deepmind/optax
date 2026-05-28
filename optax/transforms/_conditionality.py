@@ -16,7 +16,6 @@
 
 from typing import Any, NamedTuple, Protocol
 
-import chex
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -30,9 +29,9 @@ class ConditionFn(Protocol):
 
   def __call__(
       self,
-      step: chex.Array,
+      step: jax.typing.ArrayLike,
       **extra_args: Any,
-  ) -> chex.Array:
+  ) -> jax.typing.ArrayLike:
     """Update function with optional extra arguments.
 
     Args:
@@ -49,7 +48,7 @@ class ConditionallyTransformState(NamedTuple):
   """Maintains inner transform state and adds a step counter."""
 
   inner_state: Any
-  step: chex.Array
+  step: jax.typing.ArrayLike
 
 
 def conditionally_transform(
@@ -114,7 +113,7 @@ def conditionally_transform(
 
 
 class ConditionallyMaskState(NamedTuple):
-  step: chex.Array
+  step: jax.typing.ArrayLike
   inner_state: base.OptState
 
 

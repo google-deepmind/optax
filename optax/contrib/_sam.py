@@ -54,7 +54,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import update
-from optax._src import utils
+import optax.tree
 
 # As a helper for SAM we need a gradient normalizing transformation.
 
@@ -74,7 +74,7 @@ def normalize() -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = utils.global_norm(updates)
+    g_norm = optax.tree.norm(updates)
     updates = jax.tree.map(lambda g: g / g_norm, updates)
     return updates, state
 
@@ -221,6 +221,7 @@ def sam(
     updates = pick_one(last_step, opt_updates, adv_updates)
 
     if reset_state:
+      # pyrefly: ignore [bad-argument-type]
       initial_state = adv_optimizer.init(params)
       adv_state = pick_one(last_step, initial_state, adv_state)
     else:
@@ -256,12 +257,14 @@ def sam(
       )
       adv_updates = jax.tree.map(lambda x: -x, adv_updates)
 
+      # pyrefly: ignore [bad-argument-type]
       adv_params = update.apply_updates(adv_params, adv_updates)
       adv_updates = grad_fn(adv_params, i)
       if batch_axis_name is not None:
         adv_updates = jax.lax.pmean(adv_updates, axis_name=batch_axis_name)
 
     if reset_state:
+      # pyrefly: ignore [bad-argument-type]
       adv_state = adv_optimizer.init(outer_params)
 
     updates, opt_state = optimizer.update(
@@ -280,4 +283,5 @@ def sam(
   else:
     update_fn = transparent_update_fn
 
+  # pyrefly: ignore [bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

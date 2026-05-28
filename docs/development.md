@@ -32,15 +32,31 @@ for example)
 - Additional notes, warnings
 
 The docs need to be in
-[reStructuredText format](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/index.html)!
+[reStructuredText format](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html)!
 For example references should be written like
 ```Doe et al `Yet another optimizer <link to optimizer>`_, 2042)```
 (so not in markdown format), same for
-[notes and warnings](https://sublime-and-sphinx-guide.readthedocs.io/en/latest/notes_warnings.html).
+notes and warnings.
 
 A longer description, references and additional notes may be optional. But
 examples are generally not, they are the best piece of documentation.
 
+### Can I contribute AI generated code?
+
+All submissions to Google Open Source projects need to follow Google's
+[Contributor License Agreement (CLA)](https://cla.developers.google.com/), in
+which contributors agree that their contribution is an original work of
+authorship. This doesn’t prohibit the use of coding assistance tools, but what’s
+submitted does need to be a contributor's original creation.
+
+In the Optax project, a main concern with AI-generated contributions is that
+**low-quality AI-generated code imposes a disproportionate review cost**.
+Since the team's capacity for code review is limited, we have a higher bar
+for accepting AI-generated contributions compared to those written by a human.
+
+A loose rule of thumb: if the team needs to spend more time reviewing a
+contribution than the contributor spends generating it, then the contribution
+is probably not helpful to the project, and we will likely reject it.
 
 ## Improving the documentation
 

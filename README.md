@@ -81,7 +81,10 @@ You can continue the quick start in [the Optax 🚀 Getting started notebook.](h
 
 ## Development
 
-We welcome new contributors.
+We welcome issues reports and pull requests solving issues or improving
+existing functionalities. If you are interested in adding a feature like a new
+optimizer, **open an issue first**! We are focused on making optax more
+flexible, versatile and easy to use for you to define your own optimizers.
 
 ### Source code
 
@@ -110,24 +113,28 @@ cd docs
 make html
 ```
 
-## Benchmarks
-If you feel lost in the crowd of available optimizers for deep learning, there
-exist some extensive benchmarks:
+### Benchmarking
 
-[Benchmarking Neural Network Training Algorithms, Dahl G. et al, 2023](https://arxiv.org/pdf/2306.07179),
+Some benchmarks
 
-[Descending through a Crowded Valley — Benchmarking Deep Learning Optimizers, Schmidt R. et al, 2021](https://proceedings.mlr.press/v139/schmidt21a).
+- [Benchmarking Neural Network Training Algorithms, Dahl G. et al, 2023](https://arxiv.org/pdf/2306.07179),
 
-If you are interested in developing your own benchmark for some tasks,
-consider the following framework
+- [Descending through a Crowded Valley — Benchmarking Deep Learning Optimizers, Schmidt R. et al, 2021](https://proceedings.mlr.press/v139/schmidt21a).
 
-[Benchopt: Reproducible, efficient and collaborative optimization benchmarks, Moreau T. et al, 2022](https://arxiv.org/abs/2206.13424).
+Making your own benchmark
 
-Finally, if you are searching for some recommendations on tuning optimizers,
-consider taking a look at
+- [Benchopt: Reproducible, efficient and collaborative optimization benchmarks, Moreau T. et al, 2022](https://arxiv.org/abs/2206.13424).
 
-[Deep Learning Tuning Playbook, Godbole V. et al, 2023](https://github.com/google-research/tuning_playbook).
+Optimizer tuning handbook
 
+- [Deep Learning Tuning Playbook, Godbole V. et al, 2023](https://github.com/google-research/tuning_playbook).
+
+### Other optimization-adjacent libraries in JAX
+
+- [optimistix](https://github.com/patrick-kidger/optimistix): nonlinear solvers: root finding, minimisation, fixed points, and least squares.
+
+- [matfree](https://github.com/pnkraemer/matfree):
+matrix free methods useful to study curvature dynamics in deep learning.
 
 ## Citing Optax
 

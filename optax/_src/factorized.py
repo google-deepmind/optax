@@ -18,7 +18,6 @@ from collections.abc import Callable
 import dataclasses
 from typing import NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -26,10 +25,11 @@ from optax._src import base
 from optax._src import numerics
 
 
-def _decay_rate_pow(i: int, exponent: float = 0.8) -> chex.Array:
+def _decay_rate_pow(
+    i: jax.typing.ArrayLike, exponent: jax.typing.ArrayLike = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
-  return 1.0 - t ** (-exponent)
+  return 1.0 - t ** (-exponent)  # pyrefly: ignore[unsupported-operation]
 
 
 def _factored_dims(
@@ -57,32 +57,43 @@ def _factored_dims(
   return int(sorted_dims[-2]), int(sorted_dims[-1])
 
 
+def _zeros_like_no_axis(x, axis: int) -> jax.Array:
+  """Returns an array of zeros like x, with the given axis of `x` removed."""
+  # The logic here is unusual to circumvent sharding-in-types limitations.
+  # We use jax.eval_shape to get the shape/sharding of an array with the given
+  # axis removed.
+  target = jax.eval_shape(lambda x: jnp.sum(x, axis=axis), x)
+  return jnp.zeros_like(target)
+
+
 @dataclasses.dataclass
 class _UpdateResult:
   """Opaque container that is not traversed by jax.tree.map."""
 
-  update: chex.Array  # the update to apply to params
-  v_row: chex.Array  # used for factored params.
-  v_col: chex.Array  # used for factored params.
-  v: chex.Array  # used for params where factoring is skipped.
+  update: jax.typing.ArrayLike  # the update to apply to params
+  v_row: jax.typing.ArrayLike  # used for factored params.
+  v_col: jax.typing.ArrayLike  # used for factored params.
+  v: jax.typing.ArrayLike  # used for params where factoring is skipped.
 
 
 class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
 
-  count: chex.Array  # number of update steps.
-  v_row: chex.ArrayTree  # Tree of factored params.
-  v_col: chex.ArrayTree  # Tree of factored params.
-  v: chex.ArrayTree  # Tree for params where factoring is skipped.
+  count: jax.typing.ArrayLike  # number of update steps.
+  v_row: base.ArrayTree  # Tree of factored params.
+  v_col: base.ArrayTree  # Tree of factored params.
+  v: base.ArrayTree  # Tree for params where factoring is skipped.
 
 
 def scale_by_factored_rms(
     factored: bool = True,
-    decay_rate: float = 0.8,
-    step_offset: int = 0,
+    decay_rate: jax.typing.ArrayLike = 0.8,
+    step_offset: jax.typing.ArrayLike = 0,  # int
     min_dim_size_to_factor: int = 128,
-    epsilon: float = 1e-30,
-    decay_rate_fn: Callable[[int, float], chex.Array] = _decay_rate_pow,
+    epsilon: jax.typing.ArrayLike = 1e-30,
+    decay_rate_fn: Callable[
+        [jax.typing.ArrayLike, jax.typing.ArrayLike],
+        jax.typing.ArrayLike] = _decay_rate_pow,  # arg types [int, float]
 ):
   """Scaling by a factored estimate of the gradient rms (as in Adafactor).
 
@@ -117,7 +128,7 @@ def scale_by_factored_rms(
     <https://arxiv.org/abs/2106.04560>`_, 2021
   """
 
-  def _to_state(count: chex.Array, result_tree):
+  def _to_state(count: jax.typing.ArrayLike, result_tree):
     """Maps from a tree of (factored) values to separate trees of values."""
     return FactoredState(
         count=count,
@@ -134,19 +145,17 @@ def scale_by_factored_rms(
       factored_dims = _factored_dims(shape, factored, min_dim_size_to_factor)
       if factored_dims is not None:
         d1, d0 = factored_dims
-        vr_shape = np.delete(shape, d0)
-        vc_shape = np.delete(shape, d1)
         return _UpdateResult(
             update=jnp.zeros((1,), dtype=dtype),
-            v_row=jnp.zeros(vr_shape, dtype=dtype),
-            v_col=jnp.zeros(vc_shape, dtype=dtype),
+            v_row=_zeros_like_no_axis(param, d0),
+            v_col=_zeros_like_no_axis(param, d1),
             v=jnp.zeros((1,), dtype=dtype),
         )
       return _UpdateResult(
           update=jnp.zeros((1,), dtype=dtype),
           v_row=jnp.zeros((1,), dtype=dtype),
           v_col=jnp.zeros((1,), dtype=dtype),
-          v=jnp.zeros(param.shape, dtype=dtype),
+          v=jnp.zeros_like(param),
       )
 
     return _to_state(jnp.zeros([], jnp.int32), jax.tree.map(_init, params))
@@ -175,8 +184,8 @@ def scale_by_factored_rms(
         new_v_col = decay_rate_t * v_col + (1.0 - decay_rate_t) * jnp.mean(
             grad_sqr, axis=d1
         )
-        new_v_row = new_v_row.astype(dtype)
-        new_v_col = new_v_col.astype(dtype)
+        new_v_row = new_v_row.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        new_v_col = new_v_col.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         reduced_d1 = d1 - 1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -189,13 +198,14 @@ def scale_by_factored_rms(
       else:
         grad_sqr = numerics.abs_sq(grad) + epsilon
         new_v = decay_rate_t * v + (1.0 - decay_rate_t) * grad_sqr
-        new_v = new_v.astype(dtype)
+        new_v = new_v.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         update = grad * (new_v) ** -0.5
 
       return _UpdateResult(update, new_v_row, new_v_col, new_v)
 
     # Transform grad and compute new per-parameter stats.
     output = jax.tree.map(
+        # pyrefly: ignore[bad-argument-count]
         lambda *args: _update(*args, state.count),
         grads,
         state.v_row,
@@ -208,4 +218,5 @@ def scale_by_factored_rms(
     updates = jax.tree.map(lambda o: o.update, output)
     return updates, _to_state(numerics.safe_increment(state.count), output)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)

@@ -37,6 +37,13 @@ from optax.contrib._dog import dog
 from optax.contrib._dog import DoGState
 from optax.contrib._dog import dowg
 from optax.contrib._dog import DoWGState
+from optax.contrib._galore import galore
+from optax.contrib._galore import GaLoreDimensionNumbers
+from optax.contrib._galore import GaLoreState
+from optax.contrib._galore import scale_by_galore
+from optax.contrib._madgrad import madgrad
+from optax.contrib._madgrad import MadgradState
+from optax.contrib._madgrad import scale_by_madgrad
 from optax.contrib._mechanic import MechanicState
 from optax.contrib._mechanic import mechanize
 from optax.contrib._momo import momo
@@ -44,6 +51,7 @@ from optax.contrib._momo import momo_adam
 from optax.contrib._momo import MomoAdamState
 from optax.contrib._momo import MomoState
 from optax.contrib._muon import muon
+from optax.contrib._muon import MuonDimensionNumbers
 from optax.contrib._muon import MuonState
 from optax.contrib._muon import scale_by_muon
 from optax.contrib._privacy import differentially_private_aggregate

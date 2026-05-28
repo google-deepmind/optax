@@ -1,8 +1,8 @@
 🔧 Contrib
 ===============
 
-Experimental features and algorithms that don't meet the
-:ref:`inclusion_criteria`.
+Algorithms or wrappers that don't meet (yet) the :ref:`inclusion_criteria` or
+are not supported by the main library.
 
 .. currentmodule:: optax.contrib
 
@@ -22,6 +22,10 @@ Experimental features and algorithms that don't meet the
     dowg
     DoWGState
     dpsgd
+    galore
+    GaLoreState
+    madgrad
+    MadgradState
     mechanize
     MechanicState
     momo
@@ -94,10 +98,21 @@ Distance over Gradients
 .. autofunction:: dowg
 .. autoclass:: DoWGState
 
+Galore
+~~~~~~
+.. autofunction:: galore
+.. autoclass:: GaLoreState
+
 Mechanize
 ~~~~~~~~~
 .. autofunction:: mechanize
 .. autoclass:: MechanicState
+
+Madgrad
+~~~~~~~
+.. autofunction:: madgrad
+.. autofunction:: scale_by_madgrad
+.. autoclass:: MadgradState
 
 Momo
 ~~~~

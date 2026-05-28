@@ -16,15 +16,14 @@
 """Tests for optax.perturbations, checking values and gradients."""
 
 from functools import partial  # pylint: disable=g-importing-member
-import operator
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 
+from optax._src import test_utils
 from optax.perturbations import _make_pert
 import optax.tree
 
@@ -92,13 +91,13 @@ class MakePertTest(parameterized.TestCase):
 
     expected = softmax_fun(x)
     got = pert_argmax_fun(key, x)
-    chex.assert_trees_all_equal_shapes(got, expected)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_equal_shapes(got, expected)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
 
     expected = jax.jacobian(softmax_fun)(x)
     got = jax.jacobian(pert_argmax_fun, argnums=1)(key, x)
-    chex.assert_trees_all_equal_shapes(got, expected)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_equal_shapes(got, expected)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
 
     # test gradients for losses
 
@@ -115,8 +114,8 @@ class MakePertTest(parameterized.TestCase):
 
     expected = jax.grad(exact_loss)(x)
     got = jax.grad(pert_loss, argnums=1)(key, x)
-    chex.assert_trees_all_equal_shapes(got, expected)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_equal_shapes(got, expected)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
 
   def test_values_on_tree(self):
     """Test that the perturbations are well applied for functions on trees.
@@ -159,7 +158,7 @@ class MakePertTest(parameterized.TestCase):
       pred = apply_element_tree(tree)
       pred_true = apply_element_tree(example_tree)
       tree_loss = jax.tree.map(lambda x, y: (x - y) ** 2, pred, pred_true)
-      list_loss = jax.tree.reduce(operator.add, tree_loss)
+      list_loss = optax.tree.sum(tree_loss)
       return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
     loss_pert = jax.jit(_make_pert.make_perturbed_fun(
@@ -199,13 +198,13 @@ class MakePertTest(parameterized.TestCase):
 
     expected = linear_fun(x)
     got = pert_linear_fun(key, x)
-    chex.assert_trees_all_equal_shapes(got, expected)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_equal_shapes(got, expected)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
 
     expected = jax.jacobian(linear_fun)(x)
     got = jax.jacobian(pert_linear_fun, argnums=1)(key, x)
-    chex.assert_trees_all_equal_shapes(got, expected)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_equal_shapes(got, expected)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
   # pylint: enable=invalid-name
 
   @parameterized.product(
@@ -241,7 +240,7 @@ class MakePertTest(parameterized.TestCase):
     key = jax.random.key(seed)
     j1 = jax.jacobian(f1, argnums=1)(key, x)
     j2 = jax.jacobian(f2, argnums=1)(key, x)
-    chex.assert_trees_all_close(j1, j2, atol=2e-1)
+    test_utils.assert_trees_all_close(j1, j2, atol=2e-1)
 
   def test_fun_derivative_not_used(self):
     # pylint: disable=line-too-long
@@ -273,12 +272,13 @@ class MakePertTest(parameterized.TestCase):
   )
   def test_hessian(self, sigma, noise):
     """Test that hessian of perturbed function matches exact hessian."""
-    fun = lambda x: 0.5*jnp.sum(x**2)
+    fun = lambda x: 0.5 * jnp.sum(x**2)
     fun_p = _make_pert.make_perturbed_fun(fun, 10**5, sigma, noise)
     x = jnp.array([0.0, 0.0])
     got = jax.hessian(fun_p, argnums=1)(jax.random.key(0), x)
     expected = jax.hessian(fun)(x)
-    chex.assert_trees_all_close(got, expected, atol=1e-1)
+    test_utils.assert_trees_all_close(got, expected, atol=1e-1)
+
 
 if __name__ == '__main__':
   absltest.main()

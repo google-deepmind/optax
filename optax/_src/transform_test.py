@@ -18,11 +18,11 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
 from optax._src import combine
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 import optax.tree
@@ -38,7 +38,6 @@ class TransformTest(parameterized.TestCase):
     self.init_params = (jnp.array([1.0, 2.0]), jnp.array([3.0, 4.0]))
     self.per_step_updates = (jnp.array([500.0, 5.0]), jnp.array([300.0, 3.0]))
 
-  @chex.all_variants
   @parameterized.named_parameters([
       ('adadelta', transform.scale_by_adadelta),
       ('adam', transform.scale_by_adam),
@@ -58,11 +57,11 @@ class TransformTest(parameterized.TestCase):
     params = self.init_params
 
     scaler = scaler_constr()
-    init_fn = self.variant(scaler.init)
-    transform_fn = self.variant(scaler.update)
+    init_fn = jax.jit(scaler.init)
+    transform_fn = jax.jit(scaler.update)
 
     state = init_fn(params)
-    chex.assert_tree_all_finite(state)
+    test_utils.assert_tree_all_finite(state)
 
     if scaler_constr.__name__ == 'scale_by_polyak':
       extra_args = {'value': jnp.array(0.0)}
@@ -71,10 +70,9 @@ class TransformTest(parameterized.TestCase):
     updates, state = transform_fn(
         self.per_step_updates, state, params, **extra_args
     )
-    chex.assert_tree_all_finite((params, updates, state))
-    jax.tree.map(lambda *args: chex.assert_equal_shape(args), params, updates)
+    test_utils.assert_tree_all_finite((params, updates, state))
+    test_utils.assert_trees_all_equal_shapes(params, updates)
 
-  @chex.all_variants
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
@@ -93,7 +91,7 @@ class TransformTest(parameterized.TestCase):
         transform.scale(-LR),
     )
     state_sgd_apply_every = sgd_apply_every.init(optax_sgd_apply_every_params)
-    transform_fn = self.variant(sgd_apply_every.update)
+    transform_fn = jax.jit(sgd_apply_every.update)
 
     for i in range(STEPS):
       # Apply a step of sgd
@@ -110,12 +108,12 @@ class TransformTest(parameterized.TestCase):
 
       # Every k steps, check equivalence.
       if i % k == k - 1:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             optax_sgd_apply_every_params, optax_sgd_params, atol=1e-6, rtol=1e-5
         )
       # Otherwise, check update is zero.
       else:
-        chex.assert_trees_all_close(
+        test_utils.assert_trees_all_close(
             updates_sgd_apply_every, zero_update, atol=0.0, rtol=0.0
         )
 
@@ -128,12 +126,10 @@ class TransformTest(parameterized.TestCase):
       scaled_updates, _ = rescaler.update(updates, {})
 
       # Manually scale updates.
-      def rescale(t):
-        return t * factor  # pylint:disable=cell-var-from-loop  # noqa: B023
+      manual_updates = jax.tree.map(lambda t: t * factor, updates)  # pylint:disable=cell-var-from-loop  # noqa: B023
 
-      manual_updates = jax.tree.map(rescale, updates)
       # Check the rescaled updates match.
-      chex.assert_trees_all_close(scaled_updates, manual_updates)
+      test_utils.assert_trees_all_close(scaled_updates, manual_updates)
 
   @parameterized.named_parameters([
       ('1d', [1.0, 2.0], [1.0, 2.0]),
@@ -149,7 +145,7 @@ class TransformTest(parameterized.TestCase):
     outputs = jnp.asarray(outputs)
     centralizer = transform.centralize()
     centralized_inputs, _ = centralizer.update(inputs, {})
-    chex.assert_trees_all_close(centralized_inputs, outputs)
+    test_utils.assert_trees_all_close(centralized_inputs, outputs)
 
   def test_scale_by_optimistic_gradient(self):
     opt = transform.scale_by_optimistic_gradient()
@@ -168,13 +164,48 @@ class TransformTest(parameterized.TestCase):
     with self.subTest('Check initial update is correct'):
       # see https://github.com/google-deepmind/optax/issues/1082
       # initial step should yield 2 * grad_0 - grad_0 = grad_0
-      chex.assert_trees_all_close(opt_grad_0, grad_0)
+      test_utils.assert_trees_all_close(opt_grad_0, grad_0)
 
     with self.subTest('Check second update is correct'):
-      chex.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
+      test_utils.assert_trees_all_close(opt_grad_1, 2 * grad_1 - grad_0)
 
     with self.subTest('Check third update is correct'):
-      chex.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
+      test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
+
+  def test_lion_modes_variants(self):
+    updates = jnp.array([0.2, -2.0, 0.5, -0.8])
+    b1 = 0.5
+    smooth_beta = 2.0
+    for mode in ('hard', 'smooth', 'refined'):
+      opt = transform.scale_by_lion(
+          b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta
+      )
+      # pyrefly: ignore[bad-assignment]
+      state: transform.ScaleByLionState = opt.init(
+          updates
+      )  # pytype: disable=annotation-type-mismatch
+      out_updates, _ = opt.update(updates, state)
+
+      # pyrefly: ignore[unsupported-operation]
+      x = (1.0 - b1) * updates + b1 * state.mu
+
+      if mode == 'hard':
+        expected = jnp.sign(x)
+      elif mode == 'smooth':
+        expected = jnp.tanh(smooth_beta * x)
+      else:
+        expected = jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
+
+      test_utils.assert_trees_all_close(out_updates, expected)
+
+  def test_lion_invalid_mode_raises(self):
+    updates = jnp.array([0.1, -0.2])
+    opt = transform.scale_by_lion(
+        mode='invalid_mode'  # pyrefly: ignore[bad-argument-type]
+    )  # pytype: disable=wrong-arg-types
+    state = opt.init(updates)
+    with self.assertRaises(ValueError):
+      opt.update(updates, state)
 
   def test_scale_by_polyak_l1_norm(self, tol=1e-10):
     """Polyak step-size on L1 norm."""
@@ -193,6 +224,7 @@ class TransformTest(parameterized.TestCase):
     updates, _ = polyak.update(grad, polyak_state, init_params, value=value)
     # check that objective at (init_params - updates) is smaller than tol
     print(grad, value, updates)
+    # pyrefly: ignore[unsupported-operation]
     self.assertLess(objective(init_params - updates), tol)
 
   def test_rms_match_adam(self):
@@ -218,7 +250,7 @@ class TransformTest(parameterized.TestCase):
       adam_updates, adam_state = adam.update(adam_grads, adam_state)
       adam_params = update.apply_updates(adam_params, adam_updates)
 
-    chex.assert_trees_all_close(adam_params, rms_params)
+    test_utils.assert_trees_all_close(adam_params, rms_params)
 
 
 if __name__ == '__main__':

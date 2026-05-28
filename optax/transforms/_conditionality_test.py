@@ -16,7 +16,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import alias
@@ -55,7 +54,6 @@ def _build_sgd_extra_args():
 
 class ConditionalityTest(parameterized.TestCase):
 
-  @chex.variants(with_jit=True, without_jit=True, with_pmap=True)
   @parameterized.named_parameters(
       ('sgd', _build_sgd),
       ('stateful_sgd', _build_stateful_sgd),
@@ -71,7 +69,7 @@ class ConditionalityTest(parameterized.TestCase):
     params = jnp.array(0.0)
     opt = _conditionality.apply_if_finite(opt_builder(), 2)
     state = opt.init(params)
-    grads_fn = jax.grad(self.variant(fn))
+    grads_fn = jax.grad(jax.jit(fn))
     # Do one successful param update
     grads = grads_fn(params, one)
     updates, state = opt.update(grads, state, params)
@@ -155,12 +153,11 @@ class ConditionalityTest(parameterized.TestCase):
     self.assertEqual(5, opt_state.total_notfinite.item())
 
 
-class ConditionallyTransformTest(chex.TestCase):
+class ConditionallyTransformTest(absltest.TestCase):
   """Tests for the conditionally_transform wrapper."""
 
   NUM_STEPS = 3
 
-  @chex.all_variants
   def test_stateless_inner(self):
     params = jnp.zeros([])
     grads = jnp.ones([])
@@ -172,7 +169,7 @@ class ConditionallyTransformTest(chex.TestCase):
         transform.scale(2.0), should_update
     )
     state = opt.init(params)
-    update_fn = self.variant(opt.update)
+    update_fn = jax.jit(opt.update)
     for _ in range(ConditionallyTransformTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.0)
@@ -181,7 +178,6 @@ class ConditionallyTransformTest(chex.TestCase):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 1.0)
 
-  @chex.all_variants
   def test_statefull_inner(self):
     params = jnp.zeros([])
     grads_with_nan = jnp.array(float('nan'))
@@ -194,7 +190,7 @@ class ConditionallyTransformTest(chex.TestCase):
         _constraining.zero_nans(), should_update
     )
     state = opt.init(params)
-    update_fn = self.variant(opt.update)
+    update_fn = jax.jit(opt.update)
     for _ in range(ConditionallyTransformTest.NUM_STEPS - 1):
       updates, state = update_fn(grads_with_nan, state)
       self.assertEqual(updates, 0.0)
@@ -211,13 +207,12 @@ class ConditionallyTransformTest(chex.TestCase):
       self.assertEqual(state.inner_state.found_nan, False)
 
 
-class ConditionallyMaskTest(chex.TestCase):
+class ConditionallyMaskTest(absltest.TestCase):
   """Tests for the conditionally_mask wrapper."""
 
   NUM_STEPS = 3
   MIN_LOSS = 0.1
 
-  @chex.all_variants
   def test_stateless_inner(self):
     params = jnp.zeros([])
     grads = jnp.ones([])
@@ -229,7 +224,7 @@ class ConditionallyMaskTest(chex.TestCase):
         transform.scale(2.0), should_update
     )
     state = opt.init(params)
-    update_fn = self.variant(opt.update)
+    update_fn = jax.jit(opt.update)
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 2.0)
@@ -238,7 +233,6 @@ class ConditionallyMaskTest(chex.TestCase):
       updates, state = update_fn(grads, state)
       self.assertEqual(updates, 0.0)
 
-  @chex.all_variants
   def test_statefull_inner(self):
     params = jnp.zeros([])
     grads_with_nan = jnp.array(float('nan'))
@@ -251,7 +245,7 @@ class ConditionallyMaskTest(chex.TestCase):
         _constraining.zero_nans(), should_update
     )
     state = opt.init(params)
-    update_fn = self.variant(opt.update)
+    update_fn = jax.jit(opt.update)
     for _ in range(ConditionallyMaskTest.NUM_STEPS - 1):
       updates, state = update_fn(grads_with_nan, state)
       self.assertEqual(updates, 0.0)
@@ -266,7 +260,6 @@ class ConditionallyMaskTest(chex.TestCase):
       # Inner state is not be updated.
       self.assertEqual(state.inner_state.found_nan, False)
 
-  @chex.all_variants
   def test_stateless_inner_with_extra_args(self):
     params = jnp.zeros([])
     grads = jnp.ones([])
@@ -279,7 +272,7 @@ class ConditionallyMaskTest(chex.TestCase):
         transform.scale(2.0), should_update, forward_extra_args=True
     )
     state = opt.init(params)
-    update_fn = self.variant(opt.update)
+    update_fn = jax.jit(opt.update)
     for _ in range(ConditionallyMaskTest.NUM_STEPS):
       updates, state = update_fn(grads, state, loss=0.2)
       self.assertEqual(updates, 2.0)

@@ -16,15 +16,19 @@
 
 from collections.abc import Callable
 import functools
-from typing import Any, NamedTuple, Optional, Union
+import inspect
+import operator
+from typing import Any, NamedTuple, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
-from optax._src import utils
 import optax.tree
+
+################################################################################
+# Backtracking linesearch
+################################################################################
 
 
 class BacktrackingLinesearchInfo(NamedTuple):
@@ -33,12 +37,13 @@ class BacktrackingLinesearchInfo(NamedTuple):
   Attributes:
     num_linesearch_steps: number of linesearch steps.
     decrease_error: error of the decrease criterion at the end of the
-      linesearch. A positive value indicates that
-      the linesearch failed to find a stepsize that ensures a sufficient
-      decrease. A null value indicates it succeeded in finding such a stepsize.
+      linesearch. A positive value indicates that the linesearch failed to find
+      a stepsize that ensures a sufficient decrease. A null value indicates it
+      succeeded in finding such a stepsize.
   """
-  num_linesearch_steps: Union[int, chex.Numeric]
-  decrease_error: Union[float, chex.Numeric]
+
+  num_linesearch_steps: jax.typing.ArrayLike  # int
+  decrease_error: jax.typing.ArrayLike  # float
 
 
 class ScaleByBacktrackingLinesearchState(NamedTuple):
@@ -56,8 +61,8 @@ class ScaleByBacktrackingLinesearchState(NamedTuple):
     info: information about the backtracking linesearch step, for debugging.
   """
 
-  learning_rate: Union[float, jax.Array]
-  value: Union[float, jax.Array]
+  learning_rate: jax.typing.ArrayLike  # float
+  value: jax.typing.ArrayLike  # float
   grad: Optional[base.Updates]
   info: BacktrackingLinesearchInfo
 
@@ -65,21 +70,21 @@ class ScaleByBacktrackingLinesearchState(NamedTuple):
 class BacktrackingLineSearchState(NamedTuple):
   """State during the inner loop of a backtracking line-search."""
 
-  learning_rate: Union[float, jax.Array]
-  new_value: Union[float, jax.Array]
+  learning_rate: jax.typing.ArrayLike  # float
+  new_value: jax.typing.ArrayLike  # float
   new_grad: base.Updates
-  decrease_error: chex.Numeric
-  iter_num: Union[int, jax.Array]
+  decrease_error: jax.typing.ArrayLike
+  iter_num: jax.typing.ArrayLike  # int
 
 
 def scale_by_backtracking_linesearch(
-    max_backtracking_steps: int,
-    slope_rtol: float = 1e-4,
-    decrease_factor: float = 0.8,
-    increase_factor: float = 1.5,
-    max_learning_rate: float = 1.0,
-    atol: float = 0.0,
-    rtol: float = 0.0,
+    max_backtracking_steps: jax.typing.ArrayLike,  # int
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    decrease_factor: jax.typing.ArrayLike = 0.8,
+    increase_factor: jax.typing.ArrayLike = 1.5,
+    max_learning_rate: jax.typing.ArrayLike = 1.0,
+    atol: jax.typing.ArrayLike = 0.0,
+    rtol: jax.typing.ArrayLike = 0.0,
     store_grad: bool = False,
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -254,7 +259,8 @@ def scale_by_backtracking_linesearch(
     else:
       grad = None
     # base output type on params type, except only real part if complex
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), dtype=jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).real.dtype
     return ScaleByBacktrackingLinesearchState(
         learning_rate=jnp.array(1.0, dtype=val_dtype),
         value=jnp.array(jnp.inf, dtype=val_dtype),
@@ -266,11 +272,11 @@ def scale_by_backtracking_linesearch(
     )
 
   def _compute_decrease_error(
-      stepsize: chex.Numeric,
-      slope: chex.Numeric,
-      value: chex.Numeric,
-      new_value: chex.Numeric,
-  ) -> chex.Numeric:
+      stepsize: jax.typing.ArrayLike,
+      slope: jax.typing.ArrayLike,
+      value: jax.typing.ArrayLike,
+      new_value: jax.typing.ArrayLike,
+  ) -> jax.typing.ArrayLike:
     decrease_error = (
         new_value - (1.0 + rtol) * value - stepsize * slope_rtol * slope
     )
@@ -284,9 +290,9 @@ def scale_by_backtracking_linesearch(
       state: ScaleByBacktrackingLinesearchState,
       params: base.Params,
       *,
-      value: Union[float, jax.Array],
+      value: jax.typing.ArrayLike,  # float
       grad: base.Updates,
-      value_fn: Callable[..., Union[jax.Array, float]],
+      value_fn: Callable[..., jax.typing.ArrayLike],
       **extra_args: dict[str, Any],
   ) -> tuple[base.Updates, ScaleByBacktrackingLinesearchState]:
     """Compute scaled updates guaranteeing decrease of current objective.
@@ -315,10 +321,19 @@ def scale_by_backtracking_linesearch(
         to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
-    (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
+    (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
-    del remaining_kwargs
+
+    if remaining_kwargs:
+      raise TypeError(
+          "Unexpected keyword arguments passed to "
+          "`scale_by_backtracking_linesearch.update`. "
+          f"These arguments were not consumed by `value_fn`: "
+          f"{sorted(remaining_kwargs.keys())}. "
+          "Ensure that all extra keyword arguments are accepted "
+          "by `value_fn`."
+      )
 
     # Slope of lr -> value_fn(params + lr * updates) at lr = 0
     # Should be negative to ensure that there exists a lr (potentially
@@ -331,6 +346,7 @@ def scale_by_backtracking_linesearch(
       """Whether to stop the line-search inner loop."""
       decrease_error = search_state.decrease_error
       iter_num = search_state.iter_num
+      # pyrefly: ignore[unsupported-operation]
       return (~(decrease_error <= atol)) & (iter_num <= max_backtracking_steps)
 
     def body_fn(
@@ -343,7 +359,10 @@ def scale_by_backtracking_linesearch(
       # We start decreasing the learning rate after the first iteration
       # and up until the criterion is satisfied.
       learning_rate = jnp.where(
-          iter_num > 0, decrease_factor * learning_rate, learning_rate
+          # pyrefly: ignore[unsupported-operation]
+          iter_num > 0,
+          decrease_factor * learning_rate,
+          learning_rate,
       )
       new_params = optax.tree.add_scale(params, learning_rate, updates)
 
@@ -359,6 +378,7 @@ def scale_by_backtracking_linesearch(
         # If the line-search ends, we get the gradient for the new round of
         # line-search.
         new_grad = jax.lax.cond(
+            # pyrefly: ignore[unsupported-operation]
             (decrease_error <= atol) | (iter_num == max_backtracking_steps),
             lambda p: jax.linear_transpose(jvp_value_fn, p)(1.0)[0],
             lambda *_: new_grad,
@@ -400,7 +420,7 @@ def scale_by_backtracking_linesearch(
     # If the decrease error is infinite, we avoid making any step (which would
     # result in nan or infinite values): we set the learning rate to 0.
     new_learning_rate = jnp.where(
-        jnp.isinf(search_state.decrease_error), 0., search_state.learning_rate
+        jnp.isinf(search_state.decrease_error), 0.0, search_state.learning_rate
     )
 
     if verbose:
@@ -433,160 +453,106 @@ def scale_by_backtracking_linesearch(
         learning_rate=new_learning_rate,
         value=new_value,
         grad=new_grad,
-        info=info
+        info=info,
     )
 
+    # pyrefly: ignore[bad-argument-type]
     return new_updates, optax.tree.cast_like(new_state, other_tree=state)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-def _cond_print(condition, message, **kwargs):
-  """Prints message if condition is true."""
-  jax.lax.cond(
-      condition,
-      lambda _: jax.debug.print(message, **kwargs, ordered=True),
-      lambda _: None,
-      None,
-  )
+################################################################################
+# Zoom linesearch
+################################################################################
 
-
-# pylint: disable=invalid-name
-def _cubicmin(a, fa, fpa, b, fb, c, fc):
-  """Cubic interpolation.
-
-  Finds a critical point of a cubic polynomial
-  p(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D, that goes through
-  the points (a,fa), (b,fb), and (c,fc) with derivative at a of fpa.
-  May return NaN (if radical<0), in that case, the point will be ignored.
-  Adapted from scipy.optimize._linesearch.py.
-
-  Args:
-    a: scalar
-    fa: value of a function f at a
-    fpa: slope of a function f at a
-    b: scalar
-    fb: value of a function f at b
-    c: scalar
-    fc: value of a function f at c
-
-  Returns:
-    xmin: point at which p'(xmin) = 0
-  """
-  C = fpa
-  db = b - a
-  dc = c - a
-  denom = (db * dc) ** 2 * (db - dc)
-  d1 = jnp.array([[dc**2, -(db**2)], [-(dc**3), db**3]])
-  A, B = (
-      jnp.dot(
-          d1,
-          jnp.array([fb - fa - C * db, fc - fa - C * dc]),
-          precision=jax.lax.Precision.HIGHEST,
-      )
-      / denom
-  )
-
-  radical = B * B - 3.0 * A * C
-  xmin = a + (-B + jnp.sqrt(radical)) / (3.0 * A)
-
-  return xmin
-
-
-def _quadmin(a, fa, fpa, b, fb):
-  """Quadratic interpolation.
-
-  Finds a critical point of a quadratic polynomial
-  p(x) = B*(x-a)^2 + C*(x-a) + D, that goes through
-  the points (a,fa), (b,fb) with derivative at a of fpa.
-  Adapted from scipy.optimize._linesearch.py.
-
-  Args:
-    a: scalar
-    fa: value of a function f at a
-    fpa: slope of a function f at a
-    b: scalar
-    fb: value of a function f at b
-
-  Returns:
-    xmin: point at which p'(xmin) = 0
-  """
-  D = fa
-  C = fpa
-  db = b - a
-  B = (fb - D - C * db) / (db**2)
-  xmin = a - C / (2.0 * B)
-  return xmin
-
-
-# pylint: enable=invalid-name
+# Flags to print errors, used for debugging, tested
+FLAG_INTERVAL_NOT_FOUND = (
+    "No interval satisfying curvature condition. "
+    "Consider increasing maximal possible stepsize of the linesearch."
+)
+FLAG_INTERVAL_TOO_SMALL = (
+    "Length of searched interval has been reduced below threshold."
+)
+FLAG_CURVATURE_COND_NOT_SATISFIED = (
+    "Returning stepsize with sufficient decrease "
+    "but curvature condition not satisfied."
+)
+FLAG_NO_STEPSIZE_FOUND = (
+    "Linesearch failed, no stepsize satisfying sufficient decrease found."
+)
+FLAG_NOT_A_DESCENT_DIRECTION = (
+    "The linesearch failed because the provided direction "
+    "is not a descent direction. "
+)
 
 
 class ZoomLinesearchState(NamedTuple):
   """State of the zoom linesearch."""
 
-  count: chex.Numeric
+  count: jax.typing.ArrayLike
 
   # Fixed attributes
   params: base.Params  # current parameters
   updates: base.Updates  # update direction
-  stepsize_guess: chex.Numeric  # initial guess on the stepsize
+  stepsize_guess: jax.typing.ArrayLike  # initial guess on the stepsize
 
   # Changing attributes
-  stepsize: chex.Numeric  # current stepsize
-  value: chex.Numeric  # value at current stepsize
+  stepsize: jax.typing.ArrayLike  # current stepsize
+  value: jax.typing.ArrayLike  # value at current stepsize
   grad: base.Updates  # gradient at current stepsize
-  slope: chex.Numeric  # slope of function along updates at current stepsize
+  slope: jax.typing.ArrayLike  # slope of fn along updates at current stepsize
 
   # Initial information stored to compute the errors
-  value_init: chex.Numeric
-  slope_init: chex.Numeric
+  value_init: jax.typing.ArrayLike
+  slope_init: jax.typing.ArrayLike
 
   # Stopping criterions measures
-  decrease_error: chex.Numeric
-  curvature_error: chex.Numeric
-  error: chex.Numeric
+  decrease_error: jax.typing.ArrayLike
+  curvature_error: jax.typing.ArrayLike
+  error: jax.typing.ArrayLike
 
   # Booleans to switch between the two phases of the algorithm or stop the
   # linesearch
-  interval_found: chex.Numeric
-  done: chex.Numeric
-  failed: chex.Numeric
+  interval_found: jax.typing.ArrayLike
+  done: jax.typing.ArrayLike
+  failed: jax.typing.ArrayLike
 
   # Set up after interval search done, modified during zoom
   # Here low, high refer to stepsizes defining an interval where a valid
   # stepsize can be found. However the terms low, high do not refer to
   # low being smaller than high but to value(high) >= value(low).
-  low: chex.Numeric
-  value_low: chex.Numeric
-  slope_low: chex.Numeric
-  high: chex.Numeric
-  value_high: chex.Numeric
-  slope_high: chex.Numeric
-  cubic_ref: chex.Numeric
-  value_cubic_ref: chex.Numeric
+  low: jax.typing.ArrayLike
+  value_low: jax.typing.ArrayLike
+  slope_low: jax.typing.ArrayLike
+  high: jax.typing.ArrayLike
+  value_high: jax.typing.ArrayLike
+  slope_high: jax.typing.ArrayLike
+  cubic_ref: jax.typing.ArrayLike
+  value_cubic_ref: jax.typing.ArrayLike
 
   # Safeguard point: we may not be able to satisfy the curvature criterion
   # but we can still return a point that satisfies the decrease criterion
-  safe_stepsize: chex.Numeric
-  safe_value: chex.Numeric
+  safe_stepsize: jax.typing.ArrayLike
+  safe_value: jax.typing.ArrayLike
   safe_grad: base.Updates
 
 
 def zoom_linesearch(
-    max_linesearch_steps: int,
-    max_stepsize: Optional[float] = None,
-    tol: float = 0.0,
-    increase_factor: float = 2.0,
-    slope_rtol: float = 1e-4,
-    curv_rtol: float = 0.9,
-    approx_dec_rtol: Optional[float] = 1e-6,
-    interval_threshold: float = 1e-5,
+    max_linesearch_steps: jax.typing.ArrayLike,  # int
+    max_stepsize: Optional[jax.typing.ArrayLike] = None,  # float
+    tol: jax.typing.ArrayLike = 0.0,
+    increase_factor: jax.typing.ArrayLike = 2.0,
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    curv_rtol: jax.typing.ArrayLike = 0.9,
+    approx_dec_rtol: Optional[jax.typing.ArrayLike] = 1e-6,
+    interval_threshold: jax.typing.ArrayLike = 1e-5,
     verbose: bool = False,
 ) -> tuple[
     Callable[..., ZoomLinesearchState],
     Callable[..., ZoomLinesearchState],
-    Callable[..., Union[bool, chex.Numeric]],
+    Callable[..., jax.typing.ArrayLike],
 ]:
   r"""Zoom Linesearch ensuring sufficient decrease and small curvature.
 
@@ -657,12 +623,14 @@ def zoom_linesearch(
   """
 
   def _value_and_slope_on_line(
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       params: base.Params,
-      stepsize: chex.Numeric,
+      stepsize: jax.typing.ArrayLike,
       updates: base.Updates,
       fn_kwargs,
-  ) -> tuple[base.Params, chex.Numeric, base.Updates, chex.Numeric]:
+  ) -> tuple[
+      base.Params, jax.typing.ArrayLike, base.Updates, jax.typing.ArrayLike]:
     r"""Compute value and slope on line.
 
     Mathematically, outputs
@@ -703,22 +671,26 @@ def zoom_linesearch(
     """
     step = optax.tree.add_scale(params, stepsize, updates)
     value_step, grad_step = value_and_grad_fn(step, **fn_kwargs)
-    slope_step = optax.tree.real(optax.tree.vdot(optax.tree.conj(grad_step),
-                                                 updates))
+    slope_step = optax.tree.real(
+        optax.tree.vdot(optax.tree.conj(grad_step), updates)
+    )
     return step, value_step, grad_step, slope_step
 
   def _compute_decrease_error(
-      stepsize: chex.Numeric,
-      value_step: chex.Numeric,
-      slope_step: chex.Numeric,
-      value_init: chex.Numeric,
-      slope_init: chex.Numeric,
-  ) -> chex.Numeric:
+      stepsize: jax.typing.ArrayLike,
+      value_step: jax.typing.ArrayLike,
+      slope_step: jax.typing.ArrayLike,
+      value_init: jax.typing.ArrayLike,
+      slope_init: jax.typing.ArrayLike,
+  ) -> jax.typing.ArrayLike:
     """Compute decrease error."""
     # We consider either the usual sufficient decrease (Armijo criterion), see
     # equation (3.7a) of [Nocedal and Wright, 1999]
     decrease_error = (
-        value_step - value_init - slope_rtol * stepsize * slope_init
+        # pyrefly: ignore[unsupported-operation]
+        value_step
+        - value_init
+        - slope_rtol * stepsize * slope_init
     )
     if approx_dec_rtol is not None:
       # or an approximate decrease criterion, see equation (23) of
@@ -736,7 +708,10 @@ def zoom_linesearch(
       # (27) of [Hager and Zhang, 2006] that we simplify using one iterate in
       # equation (26)).
       delta_values = (
-          value_step - value_init - approx_dec_rtol * jnp.abs(value_init)
+          # pyrefly: ignore[unsupported-operation]
+          value_step
+          - value_init
+          - approx_dec_rtol * jnp.abs(value_init)
       )
       approx_decrease_error = jnp.maximum(approx_decrease_error, delta_values)
       # We take then the *minimum* of both errors.
@@ -751,8 +726,8 @@ def zoom_linesearch(
     return decrease_error
 
   def _compute_curvature_error(
-      slope_step: chex.Numeric, slope_init: chex.Numeric
-  ) -> chex.Numeric:
+      slope_step: jax.typing.ArrayLike, slope_init: jax.typing.ArrayLike
+  ) -> jax.typing.ArrayLike:
     """Compute curvature error."""
     # See equation (3.7b) of [Nocedal and Wright, 1999].
     curvature_error = jnp.abs(slope_step) - curv_rtol * jnp.abs(slope_init)
@@ -771,6 +746,7 @@ def zoom_linesearch(
     """Try making a step with stepsize ensuring at least sufficient decrease."""
     outside_domain = jnp.isinf(state.decrease_error)
     final_stepsize, final_value, final_grad = optax.tree.where(
+        # pyrefly: ignore[unsupported-operation]
         (state.safe_stepsize > 0.0) | outside_domain,
         [state.safe_stepsize, state.safe_value, state.safe_grad],
         [state.stepsize, state.value, state.grad],
@@ -790,6 +766,7 @@ def zoom_linesearch(
           curvature_error=state.curvature_error,
           ordered=True,
       )
+      # pyrefly: ignore[unsupported-operation]
       interval_length = jnp.abs(state.low - state.high)
       too_small_int = interval_length <= interval_threshold
       _cond_print(
@@ -798,7 +775,7 @@ def zoom_linesearch(
           interval_length=interval_length,
       )
       jax.lax.cond(
-          state.safe_stepsize > 0.0,
+          state.safe_stepsize > 0.0,  # pyrefly: ignore[unsupported-operation]
           lambda _: jax.debug.print(
               FLAG_CURVATURE_COND_NOT_SATISFIED
               + " Stepsize ensuring sufficient decrease: {safe_stepsize}.",
@@ -814,7 +791,8 @@ def zoom_linesearch(
 
   def _search_interval(
       state: ZoomLinesearchState,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Search initial interval, Algorithm 3.5 of [Nocedal and Wright, 1999]."""
@@ -858,6 +836,7 @@ def zoom_linesearch(
 
     # If the new point satisfies at least the decrease error we keep it
     # in case the curvature error cannot be satisfied.
+    # pyrefly: ignore[unsupported-operation]
     safe_decrease = decrease_error <= tol
     new_safe_stepsize, new_safe_value, new_safe_grad = optax.tree.where(
         safe_decrease,
@@ -867,9 +846,14 @@ def zoom_linesearch(
 
     # If the new point is not good, set high and low values according to
     # conditions described in Algorithm 3.5 of [Nocedal and Wright, 1999]
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_new = (decrease_error > 0.0) | (
-        (new_value_step >= prev_value_step) & (iter_num > 0)
+        # pyrefly: ignore[unsupported-operation]
+        (new_value_step >= prev_value_step)
+        # pyrefly: ignore[unsupported-operation]
+        & (iter_num > 0)
     )
+    # pyrefly: ignore[unsupported-operation]
     set_low_to_new = (new_slope_step >= 0.0) & (~set_high_to_new)
 
     # By default we set high to new and correct if we should have set
@@ -928,6 +912,7 @@ def zoom_linesearch(
           decrease_error=decrease_error,
           curvature_error=curvature_error,
       )
+    # pyrefly: ignore[unsupported-operation]
     failed = (iter_num + 1 >= max_linesearch_steps) & (~done)
 
     new_state = ZoomLinesearchState(
@@ -970,7 +955,8 @@ def zoom_linesearch(
 
   def _zoom_into_interval(
       state: ZoomLinesearchState,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Zoom procedure, Algorithm 3.6 of [Nocedal and Wright, 1999]."""
@@ -997,7 +983,7 @@ def zoom_linesearch(
     safe_grad = state.safe_grad
 
     # Check if interval not too small otherwise fail
-    delta = jnp.abs(high - low)
+    delta = jnp.abs(high - low)  # pyrefly: ignore[unsupported-operation]
     left = jnp.minimum(high, low)
     right = jnp.maximum(high, low)
     cubic_chk = 0.2 * delta
@@ -1043,7 +1029,9 @@ def zoom_linesearch(
     # If the new point satisfies at least the decrease error we keep it in case
     # the curvature error cannot be satisfied.
     # We take the one with the smallest value.
+    # pyrefly: ignore[unsupported-operation]
     safe_decrease = decrease_error <= tol
+    # pyrefly: ignore[unsupported-operation]
     update_safe_stepsize = safe_decrease & (value_middle < safe_value)
     new_safe_stepsize, new_safe_value, new_safe_grad = optax.tree.where(
         update_safe_stepsize,
@@ -1057,8 +1045,11 @@ def zoom_linesearch(
     done = new_error <= tol
 
     # Otherwise, we update high and low values
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_middle = (decrease_error > 0.0) | (value_middle >= value_low)
+    # pyrefly: ignore[unsupported-operation]
     secant_interval = slope_middle * (high - low)
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_low = (secant_interval >= 0.0) & (~set_high_to_middle)
     set_low_to_middle = ~set_high_to_middle
 
@@ -1095,6 +1086,7 @@ def zoom_linesearch(
     # decrease. If no stepsize with sufficient decrease has been found,
     # we keep going on (some extremely steep functions require very small
     # stepsizes, see zakharov test in linesearch_test.py)
+    # pyrefly: ignore[unsupported-operation]
     max_iter_reached = (iter_num + 1) >= max_linesearch_steps
     presumably_failed = jnp.asarray(max_iter_reached) | (
         too_small_int & (new_safe_stepsize > 0.0)
@@ -1144,7 +1136,7 @@ def zoom_linesearch(
     stepsize = state.stepsize
 
     slope_init = state.slope_init
-    is_descent_dir = slope_init < 0.0
+    is_descent_dir = slope_init < 0.0  # pyrefly: ignore[unsupported-operation]
     _cond_print(
         ~is_descent_dir,
         FLAG_NOT_A_DESCENT_DIRECTION
@@ -1195,9 +1187,9 @@ def zoom_linesearch(
       updates: base.Updates,
       params: base.Params,
       *,
-      value: chex.Numeric,
+      value: jax.typing.ArrayLike,
       grad: base.Updates,
-      prev_stepsize: chex.Numeric = 1.0,
+      prev_stepsize: jax.typing.ArrayLike = 1.0,
       initial_guess_strategy: str = "one",
   ) -> ZoomLinesearchState:
     """Initializes the linesearch state."""
@@ -1210,7 +1202,8 @@ def zoom_linesearch(
       raise ValueError(
           f"Unknown initial guess strategy: {initial_guess_strategy}"
       )
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).dtype
     slope = optax.tree.real(optax.tree.vdot(updates, grad))
     return ZoomLinesearchState(
         count=jnp.asarray(0),
@@ -1252,7 +1245,8 @@ def zoom_linesearch(
   def step_fn(
       state: ZoomLinesearchState,
       *,
-      value_and_grad_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_and_grad_fn: Callable[
+          ..., tuple[jax.typing.ArrayLike, base.Updates]],
       fn_kwargs: dict[str, Any],
   ) -> ZoomLinesearchState:
     """Makes a step of the linesearch."""
@@ -1275,8 +1269,9 @@ def zoom_linesearch(
     )
     return optax.tree.cast_like(new_state, other_tree=state)
 
-  def step_cond_fn(state: ZoomLinesearchState) -> Union[bool, chex.Numeric]:
+  def step_cond_fn(state: ZoomLinesearchState) -> jax.typing.ArrayLike:
     """Continuing criterion for the while loop of the linesearch."""
+    # pyrefly: ignore[unsupported-operation]
     return ~(state.done | state.failed)
 
   return init_fn, step_fn, step_cond_fn
@@ -1303,9 +1298,9 @@ class ZoomLinesearchInfo(NamedTuple):
       null value indicates it succeeded in finding such a stepsize.
   """
 
-  num_linesearch_steps: Union[int, chex.Numeric]
-  decrease_error: Union[float, chex.Numeric]
-  curvature_error: Union[float, chex.Numeric]
+  num_linesearch_steps: jax.typing.ArrayLike  # int
+  decrease_error: jax.typing.ArrayLike  # float
+  curvature_error: jax.typing.ArrayLike  # float
 
 
 class ScaleByZoomLinesearchState(NamedTuple):
@@ -1319,24 +1314,24 @@ class ScaleByZoomLinesearchState(NamedTuple):
     grad: gradient of the objective computed at the end of a round of
       line-search. Can be reused using :func:`optax.value_and_grad_from_state`.
     info: Additional information on the status of the linesearch see
-      :class:`otpax.ZoomLinesearchInfo`.
+      :py:class:`.optax.ZoomLinesearchInfo`.
   """
 
-  learning_rate: chex.Numeric
-  value: chex.Numeric
+  learning_rate: jax.typing.ArrayLike
+  value: jax.typing.ArrayLike
   grad: base.Updates
   info: ZoomLinesearchInfo
 
 
 def scale_by_zoom_linesearch(
-    max_linesearch_steps: int,
-    max_learning_rate: Optional[float] = None,
-    tol: float = 0.0,
-    increase_factor: float = 2.0,
-    slope_rtol: float = 1e-4,
-    curv_rtol: float = 0.9,
-    approx_dec_rtol: Optional[float] = 1e-6,
-    stepsize_precision: float = 1e-5,
+    max_linesearch_steps: jax.typing.ArrayLike,  # int
+    max_learning_rate: Optional[jax.typing.ArrayLike] = None,  # float
+    tol: jax.typing.ArrayLike = 0.0,
+    increase_factor: jax.typing.ArrayLike = 2.0,
+    slope_rtol: jax.typing.ArrayLike = 1e-4,
+    curv_rtol: jax.typing.ArrayLike = 0.9,
+    approx_dec_rtol: Optional[jax.typing.ArrayLike] = 1e-6,
+    stepsize_precision: jax.typing.ArrayLike = 1e-5,
     initial_guess_strategy: str = "keep",
     verbose: bool = False,
 ) -> base.GradientTransformationExtraArgs:
@@ -1538,7 +1533,8 @@ def scale_by_zoom_linesearch(
 
   def init_fn(params: base.Params) -> ScaleByZoomLinesearchState:
     """Initializes state of scale_by_zoom_linesearch."""
-    val_dtype = jnp.real(jax.tree.leaves(params)[0]).dtype
+    placeholder = jnp.empty((), jax.tree.leaves(params)[0].dtype)
+    val_dtype = jnp.real(placeholder).dtype
     return ScaleByZoomLinesearchState(
         learning_rate=jnp.asarray(1.0, dtype=val_dtype),
         value=jnp.asarray(jnp.inf, dtype=val_dtype),
@@ -1555,9 +1551,9 @@ def scale_by_zoom_linesearch(
       state: ScaleByZoomLinesearchState,
       params: base.Params,
       *,
-      value: chex.Numeric,
+      value: jax.typing.ArrayLike,
       grad: base.Updates,
-      value_fn: Callable[..., tuple[chex.Numeric, base.Updates]],
+      value_fn: Callable[..., tuple[jax.typing.ArrayLike, base.Updates]],
       **extra_args: dict[str, Any],
   ) -> tuple[base.Updates, ScaleByZoomLinesearchState]:
     """Scales updates using the zoom linesearch.
@@ -1585,10 +1581,19 @@ def scale_by_zoom_linesearch(
         to differentiation in JAX.
     """
     # Fetch arguments to be fed to value_fn from the extra_args
-    (fn_kwargs,), remaining_kwargs = utils._extract_fns_kwargs(  # pylint: disable=protected-access
+    (fn_kwargs,), remaining_kwargs = _extract_fns_kwargs(
         (value_fn,), extra_args
     )
-    del remaining_kwargs
+    if remaining_kwargs:
+      raise TypeError(
+          "Unexpected keyword arguments passed to "
+          "`scale_by_zoom_linesearch.update`. "
+          f"These arguments were not consumed by `value_fn`: "
+          f"{sorted(remaining_kwargs.keys())}. "
+          "Ensure that all extra keyword arguments are accepted "
+          "by `value_fn`."
+      )
+
     value_and_grad_fn = jax.value_and_grad(value_fn)
 
     init_state = init_ls(
@@ -1603,7 +1608,9 @@ def scale_by_zoom_linesearch(
     final_state = jax.lax.while_loop(
         cond_step_ls,
         functools.partial(
-            step_ls, value_and_grad_fn=value_and_grad_fn, fn_kwargs=fn_kwargs
+            step_ls,
+            value_and_grad_fn=value_and_grad_fn,
+            fn_kwargs=fn_kwargs,
         ),
         init_state,
     )
@@ -1622,25 +1629,222 @@ def scale_by_zoom_linesearch(
     )
     return scaled_updates, optax.tree.cast_like(new_state, other_tree=state)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
-# Flags to print errors, used for debugging, tested
-FLAG_INTERVAL_NOT_FOUND = (
-    "No interval satisfying curvature condition. "
-    "Consider increasing maximal possible stepsize of the linesearch."
-)
-FLAG_INTERVAL_TOO_SMALL = (
-    "Length of searched interval has been reduced below threshold."
-)
-FLAG_CURVATURE_COND_NOT_SATISFIED = (
-    "Returning stepsize with sufficient decrease "
-    "but curvature condition not satisfied."
-)
-FLAG_NO_STEPSIZE_FOUND = (
-    "Linesearch failed, no stepsize satisfying sufficient decrease found."
-)
-FLAG_NOT_A_DESCENT_DIRECTION = (
-    "The linesearch failed because the provided direction "
-    "is not a descent direction. "
-)
+################################################################################
+# Utility functions for linesearches
+################################################################################
+
+
+def value_and_grad_from_state(
+    value_fn: Callable[..., jax.typing.ArrayLike],
+) -> Callable[..., tuple[jax.typing.ArrayLike, base.Updates]]:
+  r"""Alternative to :func:`jax.value_and_grad` fetches value, grad from state.
+
+  Line-search methods such as :func:`optax.scale_by_backtracking_linesearch`
+  require to compute the gradient and objective function at the candidate
+  iterate. This objective value and gradient can be re-used in the next
+  iteration to save some computations using this utility function.
+
+  Args:
+    value_fn: function returning a scalar (float or array of dimension 1),
+      amenable to differentiation in jax using :func:`jax.value_and_grad`.
+
+  Returns:
+    A callable akin to :func:`jax.value_and_grad` that fetches value
+    and grad from the state if present. If no value or grad are found or if
+    multiple value and grads are found this function raises an error. If a value
+    is found but is infinite or nan, the value and grad are computed using
+    :func:`jax.value_and_grad`. If the gradient found in the state is None,
+    raises an Error.
+
+
+  Examples:
+    >>> import optax
+    >>> import jax.numpy as jnp
+    >>> def fn(x): return jnp.sum(x ** 2)
+    >>> solver = optax.chain(
+    ...     optax.sgd(learning_rate=1.),
+    ...     optax.scale_by_backtracking_linesearch(
+    ...         max_backtracking_steps=15, store_grad=True
+    ...     )
+    ... )
+    >>> value_and_grad = optax.value_and_grad_from_state(fn)
+    >>> params = jnp.array([1., 2., 3.])
+    >>> print('Objective function: {:.2E}'.format(fn(params)))
+    Objective function: 1.40E+01
+    >>> opt_state = solver.init(params)
+    >>> for _ in range(5):
+    ...   value, grad = value_and_grad(params, state=opt_state)
+    ...   updates, opt_state = solver.update(
+    ...       grad, opt_state, params, value=value, grad=grad, value_fn=fn
+    ...   )
+    ...   params = optax.apply_updates(params, updates)
+    ...   print('Objective function: {:.2E}'.format(fn(params)))
+    Objective function: 5.04E+00
+    Objective function: 1.81E+00
+    Objective function: 6.53E-01
+    Objective function: 2.35E-01
+    Objective function: 8.47E-02
+  """
+
+  def _value_and_grad(
+      params: base.Params,
+      *fn_args: Any,
+      state: base.OptState,
+      **fn_kwargs: dict[str, Any],
+  ):
+    value = optax.tree.get(state, "value")
+    grad = optax.tree.get(state, "grad")
+    if (value is None) or (grad is None):
+      raise ValueError(
+          "Value or gradient not found in the state. "
+          "Make sure that these values are stored in the state by the "
+          "optimizer."
+      )
+    value, grad = jax.lax.cond(
+        (~jnp.isinf(value)) & (~jnp.isnan(value)),
+        lambda *_: (value, grad),
+        lambda p, a, kwa: jax.value_and_grad(value_fn)(p, *a, **kwa),
+        params,
+        fn_args,
+        fn_kwargs,
+    )
+    return value, grad
+
+  return _value_and_grad
+
+
+def _extract_fns_kwargs(
+    fns: tuple[Callable[..., Any], ...],
+    kwargs: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+  """Split ``kwargs`` into sub_kwargs to be fed to each function in ``fns``.
+
+  Given a dictionary of arguments ``kwargs`` and a list of functions
+  ``fns = (fn_1, ..., fn_n)``, this utility splits the ``kwargs`` in several
+  dictionaries ``(fn_1_kwargs, ..., fn_n_kwargs), remaining_kwargs``. Each
+  dictionary ``fn_i_kwargs`` correspond to a subset of ``{key: values}`` pairs
+  from ``kwargs`` such that ``key`` is one possible argument of the function
+  ``fn_i``. The ``remaining_kwargs`` argument consist in all pairs
+  ``{key: values}`` from ``kwargs`` whose ``key`` does not match any argument
+  of any of the functions ``fns``.
+
+  Args:
+    fns: tuple of functions to feed kwargs to.
+    kwargs: dictionary of keyword variables to be fed to funs.
+
+  Returns:
+    (fn_1_kwargs, ..., fn_n_kwargs)
+      Keyword arguments for each function taken from kwargs.
+    remaining_kwargs
+      Keyword arguments present in kwargs but not in any of the input functions.
+
+  Examples:
+    >>> def fn1(a, b): return a+b
+    >>> def fn2(c, d): return c+d
+    >>> kwargs = {'b':1., 'd':2., 'e':3.}
+    >>> fns_kwargs, remaining_kwargs = _extract_fns_kwargs((fn1, fn2), kwargs)
+    >>> print(fns_kwargs)
+    [{'b': 1.0}, {'d': 2.0}]
+    >>> print(remaining_kwargs)
+    {'e': 3.0}
+    >>> # Possible usage
+    >>> def super_fn(a, c, **kwargs):
+    ...  (fn1_kwargs, fn2_kwargs), _ = _extract_fns_kwargs((fn1, fn2), kwargs)
+    ...  return fn1(a, **fn1_kwargs) + fn2(c, **fn2_kwargs)
+    >>> print(super_fn(1., 2., b=3., d=4.))
+    10.0
+  """
+  fns_arg_names = [list(inspect.signature(fn).parameters.keys()) for fn in fns]
+  fns_kwargs = [
+      {k: v for k, v in kwargs.items() if k in fn_arg_names}
+      for fn_arg_names in fns_arg_names
+  ]
+  all_possible_arg_names = functools.reduce(operator.add, fns_arg_names)
+  remaining_keys = [k for k in kwargs.keys() if k not in all_possible_arg_names]
+  remaining_kwargs = {k: v for k, v in kwargs.items() if k in remaining_keys}
+  return fns_kwargs, remaining_kwargs
+
+
+def _cond_print(condition, message, **kwargs):
+  """Prints message if condition is true."""
+  jax.lax.cond(
+      condition,
+      lambda _: jax.debug.print(message, **kwargs, ordered=True),
+      lambda _: None,
+      None,
+  )
+
+
+# pylint: disable=invalid-name
+def _cubicmin(a, fa, fpa, b, fb, c, fc):
+  """Cubic interpolation.
+
+  Finds a critical point of a cubic polynomial
+  p(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D, that goes through
+  the points (a,fa), (b,fb), and (c,fc) with derivative at a of fpa.
+  May return NaN (if radical<0), in that case, the point will be ignored.
+  Adapted from scipy.optimize._linesearch.py.
+
+  Args:
+    a: scalar
+    fa: value of a function f at a
+    fpa: slope of a function f at a
+    b: scalar
+    fb: value of a function f at b
+    c: scalar
+    fc: value of a function f at c
+
+  Returns:
+    xmin: point at which p'(xmin) = 0
+  """
+  C = fpa
+  db = b - a
+  dc = c - a
+  denom = (db * dc) ** 2 * (db - dc)
+  d1 = jnp.array([[dc**2, -(db**2)], [-(dc**3), db**3]])
+  A, B = (
+      jnp.dot(
+          d1,
+          jnp.array([fb - fa - C * db, fc - fa - C * dc]),
+          precision=jax.lax.Precision.HIGHEST,
+      )
+      / denom
+  )
+
+  radical = B * B - 3.0 * A * C
+  xmin = a + (-B + jnp.sqrt(radical)) / (3.0 * A)
+
+  return xmin
+
+
+def _quadmin(a, fa, fpa, b, fb):
+  """Quadratic interpolation.
+
+  Finds a critical point of a quadratic polynomial
+  p(x) = B*(x-a)^2 + C*(x-a) + D, that goes through
+  the points (a,fa), (b,fb) with derivative at a of fpa.
+  Adapted from scipy.optimize._linesearch.py.
+
+  Args:
+    a: scalar
+    fa: value of a function f at a
+    fpa: slope of a function f at a
+    b: scalar
+    fb: value of a function f at b
+
+  Returns:
+    xmin: point at which p'(xmin) = 0
+  """
+  D = fa
+  C = fpa
+  db = b - a
+  B = (fb - D - C * db) / (db**2)
+  xmin = a - C / (2.0 * B)
+  return xmin
+
+
+# pylint: enable=invalid-name

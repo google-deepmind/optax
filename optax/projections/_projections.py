@@ -17,7 +17,6 @@
 
 from typing import Any
 
-import chex
 import jax
 from jax import flatten_util
 import jax.numpy as jnp
@@ -92,10 +91,11 @@ def projection_hypercube(tree: Any, scale: Any = 1) -> Any:
 
 
 @jax.custom_jvp
-def _projection_unit_simplex(values: chex.Array) -> chex.Array:
+def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   """Projection onto the unit simplex."""
   s = 1
-  n_features = values.shape[0]
+  # pyrefly: ignore [missing-attribute]
+  n_features = values.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
   ind = jnp.arange(n_features) + 1
@@ -106,8 +106,8 @@ def _projection_unit_simplex(values: chex.Array) -> chex.Array:
 
 @_projection_unit_simplex.defjvp
 def _projection_unit_simplex_jvp(
-    primals: list[chex.Array], tangents: list[chex.Array]
-) -> tuple[chex.Array, chex.Array]:
+    primals: list[jax.typing.ArrayLike], tangents: list[jax.typing.ArrayLike]
+) -> tuple[jax.Array, jax.Array]:
   (values,) = primals
   (values_dot,) = tangents
   primal_out = _projection_unit_simplex(values)
@@ -117,7 +117,7 @@ def _projection_unit_simplex_jvp(
   return primal_out, tangent_out
 
 
-def projection_simplex(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto a simplex.
 
   This function solves the following constrained optimization problem,
@@ -157,7 +157,7 @@ def projection_simplex(tree: Any, scale: chex.Numeric = 1) -> Any:
   return unravel_fn(new_values)
 
 
-def projection_l1_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l1_sphere(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l1 sphere.
 
   This function solves the following constrained optimization problem,
@@ -181,7 +181,7 @@ def projection_l1_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
   return optax.tree.mul(tree_sign, tree_abs_proj)
 
 
-def projection_l1_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l1_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l1 ball.
 
   This function solves the following constrained optimization problem,
@@ -221,7 +221,7 @@ def projection_l1_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   )
 
 
-def projection_l2_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l2_sphere(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l2 sphere.
 
   This function solves the following constrained optimization problem,
@@ -245,7 +245,7 @@ def projection_l2_sphere(tree: Any, scale: chex.Numeric = 1) -> Any:
   return optax.tree.scale(factor, tree)
 
 
-def projection_l2_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_l2_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l2 ball.
 
   This function solves the following constrained optimization problem,
@@ -266,14 +266,11 @@ def projection_l2_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   .. versionadded:: 0.2.4
   """
   squared_norm = optax.tree.norm(tree, squared=True)
-  positive = squared_norm > 0
-  valid_squared_norm = jnp.where(positive, squared_norm, 1.)
-  norm = jnp.where(positive, jnp.sqrt(valid_squared_norm), 0.)
-  factor = scale / jnp.maximum(norm, scale)
+  factor = scale / jnp.sqrt(jnp.maximum(squared_norm, scale**2))
   return optax.tree.scale(factor, tree)
 
 
-def projection_linf_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
+def projection_linf_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   r"""Projection onto the l-infinity ball.
 
   This function solves the following constrained optimization problem,
@@ -291,6 +288,7 @@ def projection_linf_ball(tree: Any, scale: chex.Numeric = 1) -> Any:
   Returns:
     projected tree, with the same structure as ``tree``.
   """
+  # pyrefly: ignore[unsupported-operation]
   lower = optax.tree.full_like(tree, -scale)
   upper = optax.tree.full_like(tree, scale)
   return projection_box(tree, lower=lower, upper=upper)
@@ -317,7 +315,7 @@ def projection_vector(x: Any, a: Any) -> Any:
   return optax.tree.scale(scalar, a)
 
 
-def projection_hyperplane(x: Any, a: Any, b: chex.Numeric) -> Any:
+def projection_hyperplane(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   r"""Projection onto a hyperplane.
 
   Projects a tree ``x`` onto the hyperplane defined by a tree ``a`` and scalar
@@ -337,11 +335,12 @@ def projection_hyperplane(x: Any, a: Any, b: chex.Numeric) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
+  # pyrefly: ignore[unsupported-operation]
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   return optax.tree.add_scale(x, scalar, a)
 
 
-def projection_halfspace(x: Any, a: Any, b: chex.Numeric) -> Any:
+def projection_halfspace(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   r"""Projection onto a halfspace.
 
   Projects a tree ``x`` onto the halfspace defined by a tree ``a`` and scalar
@@ -361,6 +360,7 @@ def projection_halfspace(x: Any, a: Any, b: chex.Numeric) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
+  # pyrefly: ignore[unsupported-operation]
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   scalar = jnp.clip(scalar, max=0)
   return optax.tree.add_scale(x, scalar, a)
