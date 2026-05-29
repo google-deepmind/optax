@@ -115,9 +115,11 @@ def dpsgd(
     learning_rate: base.ScalarOrSchedule,
     l2_norm_clip: jax.typing.ArrayLike,
     noise_multiplier: jax.typing.ArrayLike,
-    seed: int,
+    key: jax.Array | int | None = None,
     momentum: Optional[jax.typing.ArrayLike] = None,
     nesterov: bool = False,
+    *,
+    seed: Optional[int] = None,
 ) -> base.GradientTransformation:
   """The DPSGD optimizer.
 
@@ -130,10 +132,11 @@ def dpsgd(
     learning_rate: A fixed global scaling factor.
     l2_norm_clip: Maximum L2 norm of the per-example gradients.
     noise_multiplier: Ratio of standard deviation to the clipping norm.
-    seed: Initial seed used for the jax.random.PRNGKey
+    key: random generator key for noise generation.
     momentum: Decay rate used by the momentum term, when it is set to `None`,
       then momentum is not used at all.
     nesterov: Whether Nesterov momentum is used.
+    seed: deprecated, use key instead.
 
   Returns:
     A :class:`optax.GradientTransformation`.
@@ -153,11 +156,22 @@ def dpsgd(
     since the whole point of this transformation is to aggregate gradients in a
     specific way.
   """
+  if seed is not None:
+    warnings.warn(
+        '"seed" is deprecated and will be removed in a future version. Use'
+        ' "key" instead.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if key is not None:
+      raise ValueError('Only one of seed or key can be specified.')
+    key = seed
+
   return combine.chain(
       differentially_private_aggregate(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
-          seed=seed,
+          key=key,
       ),
       (
           transforms.trace(decay=momentum, nesterov=nesterov)
