@@ -65,7 +65,6 @@ class InjectHyperparamsTest(parameterized.TestCase):
     state = jax.jit(optim.init)(params)
 
     # A no-op change, to verify that tree map works.
-    # pyrefly: ignore[bad-argument-type]
     state = optax.tree.map_params(optim, lambda v: v, state)
 
     update_fn = jax.jit(optim.update)
@@ -184,8 +183,6 @@ class InjectHyperparamsTest(parameterized.TestCase):
         )
         new_key = next(keyit)
         return new_updates, (new_key, scale)
-
-      # pyrefly: ignore[bad-argument-type]
       return base.GradientTransformation(init_fn, update_fn)
 
     optim = schedules.inject_hyperparams(random_noise_optimizer)(
@@ -281,7 +278,6 @@ class StatefulTest(absltest.TestCase):
 
     count = jnp.zeros([], dtype=jnp.int32)
     state = my_wrapped_schedule.init()
-    # pyrefly: ignore[no-matching-overload]
     np.testing.assert_allclose(count, state, atol=0.0)
 
     for _ in range(8):
@@ -291,7 +287,6 @@ class StatefulTest(absltest.TestCase):
       count = count + 1
       extra_args = {'loss': jnp.ones([], dtype=jnp.float32)}
       state = my_wrapped_schedule.update(state, **extra_args)
-      # pyrefly: ignore[no-matching-overload]
       np.testing.assert_allclose(count, state, atol=0.0)
 
   def test_inject_stateful_hyperparams(self):

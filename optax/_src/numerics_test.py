@@ -148,7 +148,6 @@ class NumericsTest(parameterized.TestCase):
     # Check that it does not generate the same hlo if they are complex.
 
     def _get_hlo_repr(f, x):
-      # pyrefly: ignore[missing-attribute]
       hlo_string = jax.jit(f).lower(x).compiler_ir(dialect="hlo").as_hlo_text()
       hlo_string = re.search(r"ENTRY.*", hlo_string, re.DOTALL)
       if hlo_string:

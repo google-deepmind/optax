@@ -37,13 +37,11 @@ def get_updates(
     preconditioning='frobenius',
 ):
   if muon_weight_dimension_numbers is UNSPECIFIED:
-    # pyrefly: ignore[bad-argument-type]
     opt = _muon.muon(learning_rate=1e-3, preconditioning=preconditioning)
   else:
     opt = _muon.muon(
         learning_rate=1e-3,
-        preconditioning=preconditioning,  # pyrefly: ignore[bad-argument-type]
-        # pyrefly: ignore[bad-argument-type]
+        preconditioning=preconditioning,
         muon_weight_dimension_numbers=muon_weight_dimension_numbers,
     )
   state = opt.init(params)
@@ -370,12 +368,10 @@ class MuonTest(parameterized.TestCase):
     updates, _ = opt.update(params, state, params=params)
 
     # Check shape preservation
-    # pyrefly: ignore[bad-index, missing-attribute]
     self.assertEqual(updates['w'].shape, shape)
 
     # Check Near-Orthogonality (Spectral Norm Constraint)
     if shape[0] == shape[1]:
-      # pyrefly: ignore[bad-index, no-matching-overload]
       s = jnp.linalg.svd(updates['w'], compute_uv=False)
       max_s = jnp.max(s)
       min_s = jnp.min(s)
@@ -412,13 +408,12 @@ class MuonTest(parameterized.TestCase):
     params = {'w': jnp.eye(8) * 2.0}
     opt = _muon.muon(learning_rate=0.1, preconditioning=preconditioning)
     updates, _ = opt.update(params, opt.init(params), params)
-    w_update = updates['w']  # pyrefly: ignore[bad-index]
+    w_update = updates['w']
 
     for leaf in jax.tree_util.tree_leaves(updates):
       self.assertFalse(jnp.isnan(leaf).any(), 'Found NaN values in updates')
 
     # Check Orthogonality
-    # pyrefly: ignore[bad-argument-type, missing-attribute]
     gram = jnp.dot(w_update.T, w_update)
     gram = gram / jnp.max(gram)
     ortho_error = jnp.linalg.norm(gram - jnp.eye(gram.shape[0]))

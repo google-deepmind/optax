@@ -545,23 +545,18 @@ class WarmupCosineDecayTest(parameterized.TestCase):
 
     with self.subTest('warmup increases'):
       for t in range(warmup_steps):
-        # pyrefly: ignore[bad-index]
         self.assertLess(float(vals[t]), float(vals[t + 1]))
 
     with self.subTest('peak at boundary'):
-      # pyrefly: ignore[bad-index]
       self.assertAlmostEqual(float(vals[warmup_steps]), peak, places=6)
 
     with self.subTest('cosine decay nonincreasing and end value'):
       for t in range(warmup_steps, decay_steps):
-        # pyrefly: ignore[bad-index]
         self.assertGreaterEqual(float(vals[t]), float(vals[t + 1]))
-      # pyrefly: ignore[bad-index]
       self.assertAlmostEqual(float(vals[-1]), end, places=6)
 
     with self.subTest('exponent ordering (p=2 ≤ p=1)'):
       for t in range(warmup_steps, decay_steps + 1):
-        # pyrefly: ignore[bad-index]
         self.assertLessEqual(float(vals2[t]), float(vals[t]) + 1e-12)
 
   def test_raises_when_decay_equals_warmup(self):
@@ -657,14 +652,12 @@ class PiecewiseInterpolateTest(absltest.TestCase):
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
   def test_invalid_type(self):
-    # pytype: disable=wrong-arg-types
     with self.assertRaises(ValueError):
       _schedule.piecewise_interpolate_schedule('linar', 13.0)
     with self.assertRaises(ValueError):
       _schedule.piecewise_interpolate_schedule('', 13.0, {5: 3.0})
     with self.assertRaises(ValueError):
       _schedule.piecewise_interpolate_schedule(None, 13.0, {})
-    # pytype: enable=wrong-arg-types
 
   def test_invalid_scale(self):
     with self.assertRaises(ValueError):
@@ -675,9 +668,7 @@ class PiecewiseInterpolateTest(absltest.TestCase):
         'linear', 13.0, {0: 2.0, 5: 3.0}
     )
     self.assertTrue(all(jnp.isfinite(sched(i)) for i in range(6)))
-    # pyrefly: ignore[no-matching-overload]
     self.assertAlmostEqual(sched(0), 26.0)  # 13.0 * 2.0
-    # pyrefly: ignore[no-matching-overload]
     self.assertAlmostEqual(sched(5), 78.0)  # 26.0 * 3.0
 
 

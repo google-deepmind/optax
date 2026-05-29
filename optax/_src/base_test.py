@@ -42,7 +42,7 @@ class BaseTest(absltest.TestCase):
       f(updates, opt_state, params)
       f(updates, opt_state, params=params)
 
-    g(f)  # pyrefly: ignore[bad-argument-type]
+    g(f)
 
   def test_set_to_zero_returns_tree_of_correct_zero_arrays(self):
     """Tests that zero transform returns a tree of zeros of correct shape."""
@@ -102,8 +102,6 @@ class ExtraArgsTest(absltest.TestCase):
       if metrics_logger:
         metrics_logger('learning_rate', 0.3)
       return updates, state
-
-    # pyrefly: ignore[bad-argument-type]
     t = base.GradientTransformationExtraArgs(init_fn, update_fn)
 
     @jax.jit
@@ -146,7 +144,7 @@ class StatelessTest(absltest.TestCase):
     def opt(g, _):
       return jax.tree.map(lambda g_: g_ * 2, g)
 
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -157,7 +155,7 @@ class StatelessTest(absltest.TestCase):
       return jax.tree.map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     opt = base.stateless(weight_decay)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     self.assertIsInstance(state, base.EmptyState)
 
 
@@ -167,8 +165,6 @@ class StatelessWithTreeMapTest(absltest.TestCase):
   def test_stateless_with_tree_map(self):
     params = {'a': jnp.zeros((1, 2)), 'b': jnp.ones((1,))}
     updates = {'a': jnp.ones((1, 2)), 'b': jnp.full((1,), 2.0)}
-
-    # pyrefly: ignore[unsupported-operation]
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
     state = opt.init(params)
     update_fn = jax.jit(opt.update)
@@ -180,16 +176,15 @@ class StatelessWithTreeMapTest(absltest.TestCase):
     updates = {'linear': jnp.full((5, 3), 3.0)}
 
     opt = base.stateless_with_tree_map(lambda g, _: g * 2.0)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
     test_utils.assert_trees_all_close(new_updates, expected_updates)
 
   def test_init_returns_emptystate(self):
-    # pyrefly: ignore[unsupported-operation]
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     self.assertIsInstance(state, base.EmptyState)
 
 

@@ -79,7 +79,7 @@ class RandomTest(parameterized.TestCase):
   ):
     """Test that tree_random_like matches its flat counterpart."""
     if dtype is not None:
-      dtype = jnp.dtype(dtype)  # pyrefly: ignore[bad-assignment]
+      dtype = jnp.dtype(dtype)
     rng_key = jrd.key(0)
     target_tree = get_variable(type_var)
 

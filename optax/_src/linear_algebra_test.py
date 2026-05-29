@@ -32,16 +32,14 @@ import scipy.stats
 
 class MLP(nn.Module):
   # Multi-layer perceptron (MLP).
-  num_outputs: int  # pyrefly: ignore[bad-class-definition]
-  hidden_sizes: Iterable[int]  # pyrefly: ignore[bad-class-definition]
+  num_outputs: int
+  hidden_sizes: Iterable[int]
 
   @nn.compact
   def __call__(self, x):
     for num_hidden in self.hidden_sizes:
-      # pyrefly: ignore[bad-argument-type, missing-argument]
       x = nn.Dense(num_hidden)(x)
       x = nn.gelu(x)
-    # pyrefly: ignore[bad-argument-type, missing-argument]
     return nn.Dense(self.num_outputs)(x)
 
 
@@ -158,7 +156,7 @@ class LinearAlgebraTest(parameterized.TestCase):
     @jax.jit
     def train_obj(params_):
       z = mlp.apply(params_, x)
-      return jnp.sum((z - y) ** 2)  # pyrefly: ignore[unsupported-operation]
+      return jnp.sum((z - y) ** 2)
 
     def hessian_vector_product(tangents_):
       return jax.jvp(jax.grad(train_obj), (params,), (tangents_,))[1]

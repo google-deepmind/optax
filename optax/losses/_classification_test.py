@@ -275,7 +275,6 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
 
     key = jax.random.key(42)
     keys = jax.random.split(key, 2)
-    # pyrefly: ignore[bad-argument-type]
     logits = jax.random.uniform(keys[0], labels_shape + (num_classes,))
     labels = jax.random.randint(keys[1], labels_shape, 0, num_classes - 1)
 
@@ -805,7 +804,7 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
 
 def _lengths_to_paddings(
     lengths: jax.typing.ArrayLike, maxlength: int) -> np.ndarray:
-  indices = jnp.arange(maxlength).reshape((1,) * lengths.ndim + (maxlength,))  # pytype: disable=attribute-error  # jax-arraylike   # noqa: E501
+  indices = jnp.arange(maxlength).reshape((1,) * lengths.ndim + (maxlength,))
   lengths = jnp.expand_dims(lengths, axis=-1)
   elem_valid = indices < lengths
   return np.logical_not(elem_valid).astype(np.float32)

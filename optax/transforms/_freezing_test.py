@@ -84,9 +84,7 @@ class FreezeTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(updates, expected_updates, atol=0)
     test_utils.assert_trees_all_equal(state, new_state)
-    # pytype: disable=attribute-error
     test_utils.assert_trees_all_equal(state.inner_state, base.EmptyState())
-    # pytype: enable=attribute-error
 
   def test_bad_structure_raises(self):
     bad_mask = {"layer1": {"w": True}}  # missing 'b'

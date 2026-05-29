@@ -72,8 +72,8 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     },
 ]
 for optimizer in _MAIN_OPTIMIZERS_UNDER_TEST:
-  optimizer['wrapper_name'] = None  # pyrefly: ignore[unsupported-operation]
-  optimizer['wrapper_kwargs'] = None  # pyrefly: ignore[unsupported-operation]
+  optimizer['wrapper_name'] = None
+  optimizer['wrapper_kwargs'] = None
 
 # Testing contributions coded as wrappers
 # (just with sgd as we just want the behavior of the wrapper)
@@ -352,7 +352,7 @@ class ContribTest(parameterized.TestCase):
       factory = getattr(contrib, wrapper_name)
       factory = functools.partial(factory, base_opt)
       hparams = wrapper_kwargs
-    opt = factory(**hparams)  # pyrefly: ignore[bad-unpacking]
+    opt = factory(**hparams)
 
     # Add here the hyperparameters that cannot be injected with
     # inject_hyperparams.
