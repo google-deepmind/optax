@@ -250,15 +250,7 @@ class AliasTest(parameterized.TestCase):
     # See also https://github.com/google-deepmind/optax/issues/412.
     opt_factory = _get_opt(self, opt_name)
     opt = opt_factory(**opt_kwargs)
-    if opt_name == 'adafactor':
-      # Adafactor wrapped in inject_hyperparams currently needs a static
-      # argument to be specified in order to be jittable. See issue
-      # https://github.com/google-deepmind/optax/issues/412.
-      opt_inject = _inject.inject_hyperparams(
-          opt_factory, static_args=('min_dim_size_to_factor',)
-      )(**opt_kwargs)
-    else:
-      opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
+    opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
     params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
@@ -285,6 +277,20 @@ class AliasTest(parameterized.TestCase):
           optax.tree.unwrap_random_key_data(new_state),
           rtol=1e-4,
       )
+
+  def test_adafactor_inject_hyperparams_jit_factored(self):
+    """Adafactor with inject_hyperparams must be jittable for factored params.
+
+    Regression test for https://github.com/google-deepmind/optax/issues/412.
+    Uses large params so that the factored second-moment path is triggered
+    (requires both dimensions >= min_dim_size_to_factor=128).
+    """
+    optimizer = _inject.inject_hyperparams(alias.adafactor)(learning_rate=0.01)
+    params = {'w': jnp.ones((200, 200))}
+    grads = {'w': jnp.ones((200, 200))}
+    opt_state = jax.jit(optimizer.init)(params)
+    updates, _ = jax.jit(optimizer.update)(grads, opt_state, params)
+    self.assertEqual(updates['w'].shape, (200, 200))
 
   @parameterized.product(
       params_dtype=('bfloat16', 'float32', 'complex64', None),
