@@ -34,6 +34,8 @@ are not supported by the main library.
     MomoAdamState
     muon
     MuonState
+    normuon
+    NorMuonState
     prodigy
     ProdigyState
     sam
@@ -126,6 +128,12 @@ Muon
 .. autofunction:: muon
 .. autofunction:: scale_by_muon
 .. autoclass:: MuonState
+
+NorMuon
+~~~~~~~
+.. autofunction:: normuon
+.. autofunction:: scale_by_normuon
+.. autoclass:: NorMuonState
 
 Prodigy
 ~~~~~~~
