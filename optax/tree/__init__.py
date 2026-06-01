@@ -48,6 +48,7 @@ ones_like = _tree_math.tree_ones_like
 real = _tree_math.tree_real
 scale = _tree_math.tree_scale
 size = _tree_math.tree_size
+bits = _tree_math.tree_bits
 sub = _tree_math.tree_sub
 sum = _tree_math.tree_sum  # pylint: disable=redefined-builtin
 update_infinity_moment = _tree_math.tree_update_infinity_moment
