@@ -4,6 +4,8 @@ Optimizer Schedules
 .. currentmodule:: optax.schedules
 
 .. autosummary::
+    :toctree: generated/
+
     constant_schedule
     cosine_decay_schedule
     cosine_onecycle_schedule
@@ -22,52 +24,12 @@ Optimizer Schedules
     InjectHyperparamsState
     inject_hyperparams
 
-
-.. autoclass:: Schedule
-
-Constant schedule
-~~~~~~~~~~~~~~~~~
-.. autofunction:: constant_schedule
-.. autofunction:: warmup_constant_schedule
-
-Cosine decay schedule
-~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: cosine_decay_schedule
-.. autofunction:: cosine_onecycle_schedule
-.. autofunction:: warmup_cosine_decay_schedule
-
-Exponential decay schedule
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: exponential_decay
-.. autofunction:: warmup_exponential_decay_schedule
-
-Join schedules
-~~~~~~~~~~~~~~
-.. autofunction:: join_schedules
-
-Inject hyperparameters
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: inject_hyperparams
-.. autoclass:: InjectHyperparamsState
-
-Linear schedules
-~~~~~~~~~~~~~~~~
-.. autofunction:: linear_onecycle_schedule
-.. autofunction:: linear_schedule
-
-Piecewise schedules
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: piecewise_constant_schedule
-.. autofunction:: piecewise_interpolate_schedule
-
-Polynomial schedules
-~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: polynomial_schedule
-
 Reduce on plateau
 ~~~~~~~~~~~~~~~~~
-.. autofunction:: optax.contrib.reduce_on_plateau
 
-Warm restarts
-~~~~~~~~~~~~~
-.. autofunction:: sgdr_schedule
+.. currentmodule:: optax.contrib
+
+.. autosummary::
+    :toctree: generated/
+
+    reduce_on_plateau
