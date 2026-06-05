@@ -130,7 +130,7 @@ def scale_by_mars(
     # ── Adam-style moment updates on c_t ──────────────────────────────────
     mu = optax.tree.update_moment(c_t, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(c_t, state.nu, b2, 2)
-    count_inc = numerics.safe_increment(count)
+    count_inc = jnp.asarray(numerics.safe_increment(count))
 
     mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
