@@ -14,6 +14,8 @@
 # ==============================================================================
 """Tests for the MARS optimizer."""
 
+import statistics
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import jax
@@ -89,7 +91,6 @@ class ScaleByMarsTest(absltest.TestCase):
 
     # Corrected gradient norms should have lower std than raw gradient norms
     # after the first couple of steps.
-    import statistics  # pylint: disable=g-import-not-at-top
     self.assertLess(
         statistics.stdev(c_norms[3:]),
         statistics.stdev(g_norms[3:]) + 1.0,  # generous tolerance
