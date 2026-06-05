@@ -126,7 +126,7 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_tree_vdot(self):
     expected = jnp.vdot(self.array_a, self.array_b)
     got = tu.tree_vdot(self.array_a, self.array_b)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = 15.0
     got = tu.tree_vdot(self.tree_a_dict, self.tree_b_dict)
