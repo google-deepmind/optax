@@ -28,6 +28,22 @@ jobs:
         then
           echo "package ver. ($PACKAGE_VER) != release ver. ($RELEASE_VER)"; exit 1
         fi
+    - name: Check conda-forge dependency sync
+      run: |
+        echo "Checking conda-forge feedstock dependency bounds..."
+        CONDA_META=$(curl -s https://raw.githubusercontent.com/conda-forge/optax-feedstock/main/recipe/meta.yaml 2>/dev/null) || {
+          echo "warning: unable to fetch conda-forge recipe; skipping sync check"
+          exit 0
+        }
+        PYPI_JAX=$(grep -E '^\s+"jax'>=' pyproject.toml | sed 's/.*"jax>=\([^"]*\)".*//')
+        CONDA_JAX=$(echo "$CONDA_META" | grep -E '^\s+\- jax >=' | sed 's/.*jax >=\([^"]*\)//')
+        if [ -n "$PYPI_JAX" ] && [ -n "$CONDA_JAX" ] && [ "$PYPI_JAX" != "$CONDA_JAX" ]; then
+          echo "warning: jax pin mismatch — PyPI: jax>=$PYPI_JAX, conda: jax>=$CONDA_JAX"
+          echo "Please open a PR at https://github.com/conda-forge/optax-feedstock"
+          echo "to update recipe/meta.yaml: jax >=$PYPI_JAX, jaxlib >=$PYPI_JAX"
+        else
+          echo "conda-forge jax pin matches PyPI ($PYPI_JAX)."
+        fi
     - name: Build
       run: |
         python -m build
