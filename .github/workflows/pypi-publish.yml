@@ -35,8 +35,8 @@ jobs:
           echo "warning: unable to fetch conda-forge recipe; skipping sync check"
           exit 0
         }
-        PYPI_JAX=$(grep -E '^\s+"jax'>=' pyproject.toml | sed 's/.*"jax>=\([^"]*\)".*//')
-        CONDA_JAX=$(echo "$CONDA_META" | grep -E '^\s+\- jax >=' | sed 's/.*jax >=\([^"]*\)//')
+        PYPI_JAX=$(grep -E '"jax>=' pyproject.toml | sed 's/.*"jax>=\([^"]*\)".*/\1/')
+        CONDA_JAX=$(echo "$CONDA_META" | grep -E '\- jax >=' | sed 's/.*jax >=\([^"]*\)/\1/')
         if [ -n "$PYPI_JAX" ] && [ -n "$CONDA_JAX" ] && [ "$PYPI_JAX" != "$CONDA_JAX" ]; then
           echo "warning: jax pin mismatch — PyPI: jax>=$PYPI_JAX, conda: jax>=$CONDA_JAX"
           echo "Please open a PR at https://github.com/conda-forge/optax-feedstock"
