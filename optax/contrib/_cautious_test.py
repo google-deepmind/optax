@@ -16,12 +16,12 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
 from optax import contrib
+from optax._src import test_utils
 from optax.contrib._cautious import cautious, CautiousState
 
 
@@ -35,7 +35,7 @@ class CautiousTest(parameterized.TestCase):
     state = tx.init(params)
     self.assertIsInstance(state, CautiousState)
     # The inner state matches what the base optimizer would produce.
-    chex.assert_trees_all_equal_structs(
+    test_utils.assert_trees_all_equal_structs(
         state.base_optimizer_state, base.init(params)
     )
 
@@ -58,7 +58,8 @@ class CautiousTest(parameterized.TestCase):
     state = tx.init(params)
     caut_updates, _ = tx.update(grad, state, params)
 
-    chex.assert_trees_all_close(caut_updates, base_updates, atol=1e-6)
+    test_utils.assert_trees_all_close(
+        caut_updates, base_updates, rtol=1e-6, atol=1e-6)
 
   def test_masks_misaligned_coordinates(self):
     """Coordinates where the update agrees with the gradient sign are zeroed.
@@ -110,7 +111,8 @@ class CautiousTest(parameterized.TestCase):
     caut_updates, _ = tx.update(grad, state, jnp.zeros(4))
 
     expected = jnp.array([-2.0, 0.0, -2.0, 0.0])
-    chex.assert_trees_all_close(caut_updates, expected, atol=1e-6)
+    test_utils.assert_trees_all_close(
+        caut_updates, expected, rtol=1e-6, atol=1e-6)
 
   def test_descent_guarantee(self):
     """The cautious update never points uphill: <update, grad> <= 0.
@@ -205,7 +207,8 @@ class CautiousTest(parameterized.TestCase):
     state = tx.init(jnp.zeros(4))
     caut_updates, _ = tx.update(grad, state, jnp.zeros(4))
     expected = jnp.array([-1.0, -1.0, -1.0, 0.0])  # scale 1.0
-    chex.assert_trees_all_close(caut_updates, expected, atol=1e-6)
+    test_utils.assert_trees_all_close(
+        caut_updates, expected, rtol=1e-6, atol=1e-6)
 
 
 class CautiousExportTest(absltest.TestCase):

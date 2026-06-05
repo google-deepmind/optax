@@ -97,8 +97,10 @@ _MAIN_OPTIMIZERS_UNDER_TEST += [
         'wrapper_kwargs': {},
     },
     {
+        # Momentum so the cautious mask is actually exercised (momentum can
+        # disagree with the current gradient); converges on all test targets.
         'opt_name': 'sgd',
-        'opt_kwargs': {'learning_rate': 1e-2},
+        'opt_kwargs': {'learning_rate': 1e-3, 'momentum': 0.9},
         'wrapper_name': 'cautious',
         'wrapper_kwargs': {},
     },
