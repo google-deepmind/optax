@@ -19,7 +19,7 @@ Reference:
   <https://arxiv.org/abs/2411.16085>`_, 2024.
 """
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -120,11 +120,13 @@ def cautious(
     return CautiousState(base_optimizer_state=base_optimizer.init(params))
 
   def update_fn(
-      grads: base.Updates,
+      updates: base.Updates,
       state: CautiousState,
-      params=None,
+      params: Optional[base.Params] = None,
       **extra_args,
   ):
+    # ``updates`` are the raw gradients fed to the wrapper.
+    grads = updates
     base_updates, new_base_state = base_optimizer.update(
         grads, state.base_optimizer_state, params, **extra_args
     )
@@ -140,4 +142,5 @@ def cautious(
     cautious_updates = jax.tree.map(_mask_leaf, base_updates, grads)
     return cautious_updates, CautiousState(base_optimizer_state=new_base_state)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
