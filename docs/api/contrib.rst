@@ -13,6 +13,8 @@ are not supported by the main library.
     ademamix
     adopt
     simplified_ademamix
+    cautious
+    CautiousState
     cocob
     COCOBState
     dadapt_adamw

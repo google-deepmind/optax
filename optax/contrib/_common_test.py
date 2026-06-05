@@ -96,6 +96,12 @@ _MAIN_OPTIMIZERS_UNDER_TEST += [
         'wrapper_name': 'reduce_on_plateau',
         'wrapper_kwargs': {},
     },
+    {
+        'opt_name': 'sgd',
+        'opt_kwargs': {'learning_rate': 1e-2},
+        'wrapper_name': 'cautious',
+        'wrapper_kwargs': {},
+    },
 ]
 
 # Adding here instantiations of wrappers with any base optimizer
