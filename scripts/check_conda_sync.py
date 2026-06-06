@@ -34,10 +34,11 @@ def main() -> None:
 
     # 2. Fetch conda-forge recipe
     try:
-        req = urllib.request.urlopen(
-            "https://raw.githubusercontent.com/conda-forge/optax-feedstock/main/recipe/meta.yaml",
-            timeout=10,
+        url = (
+            "https://raw.githubusercontent.com/"
+            "conda-forge/optax-feedstock/main/recipe/meta.yaml"
         )
+        req = urllib.request.urlopen(url, timeout=10)
         conda_meta = req.read().decode()
     except Exception as e:
         warn(f"unable to fetch conda-forge recipe ({e}); skipping sync check")
@@ -51,10 +52,12 @@ def main() -> None:
 
     # 3. Compare
     if Version(jax_pin) != Version(conda_jax):
-        warn(f"jax pin mismatch - PyPI: jax>={jax_pin}, conda: jax>={conda_jax}")
+        warn(f"jax pin mismatch - PyPI: {jax_pin}, conda: {conda_jax}")
         print(
-            "Please open a PR at https://github.com/conda-forge/optax-feedstock "
-            f"to update recipe/meta.yaml: jax >={jax_pin}, jaxlib >={jax_pin}"
+            "Please open a PR at "
+            "https://github.com/conda-forge/optax-feedstock "
+            f"to update recipe/meta.yaml: jax >={jax_pin}, "
+            f"jaxlib >={jax_pin}"
         )
         sys.exit(0)
 
