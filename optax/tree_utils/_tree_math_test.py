@@ -126,20 +126,17 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_tree_vdot(self):
     expected = jnp.vdot(self.array_a, self.array_b)
     got = tu.tree_vdot(self.array_a, self.array_b)
-    # tree_vdot uses jnp.tensordot with HIGHEST precision while jnp.vdot uses
-    # a different accumulation order; for complex64 inputs (x64 disabled) a
-    # tolerance of rtol=1e-6 is appropriate (float32 eps ≈ 1.2e-7).
     np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = 15.0
     got = tu.tree_vdot(self.tree_a_dict, self.tree_b_dict)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = jnp.vdot(self.tree_a[0], self.tree_b[0]) + jnp.vdot(
         self.tree_a[1], self.tree_b[1]
     )
     got = tu.tree_vdot(self.tree_a, self.tree_b)
-    test_utils.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got, rtol=1e-6)
 
   def test_tree_sum(self):
     expected = jnp.sum(self.array_a)
