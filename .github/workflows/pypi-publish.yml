@@ -29,7 +29,9 @@ jobs:
           echo "package ver. ($PACKAGE_VER) != release ver. ($RELEASE_VER)"; exit 1
         fi
     - name: Check conda-forge dependency sync
-      run: python3 scripts/check_conda_sync.py
+      run: |
+        python3 -m pip install pyyaml -q
+        python3 .github/check_conda_sync.py
     - name: Build
       run: |
         python -m build
