@@ -438,10 +438,9 @@ def microbatch(
     ``microbatch`` is compatible with other JAX transformations like
     ``jax.grad`` and ``jax.vmap``. However, when computing gradients, it is
     generally **more efficient to microbatch the gradient** than to
-    differentiate
-    through the microbatched function. That is, prefer::
+    differentiate through the microbatched function. That is, prefer::
 
-      micro_grad(loss_fn, ...)(params, batch)
+      microbatch(jax.grad(loss_fn), ...)(params, batch)
 
     over::
 
@@ -451,8 +450,8 @@ def microbatch(
     but ``jax.grad(microbatch(...))`` differentiates through the internal
     ``jax.lax.fori_loop``, which requires JAX to save or rematerialize all
     intermediate loop carries for the backward pass. In contrast,
-    :func:`micro_grad` computes per-microbatch gradients and accumulates them
-    directly, avoiding this overhead. See :func:`micro_grad` for more details.
+    ``microbatch(jax.grad(...))`` computes per-microbatch gradients and
+    accumulates them directly, avoiding this overhead.
 
   Args:
       fun: An arbitrary function.
