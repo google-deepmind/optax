@@ -103,7 +103,7 @@ def safe_root_mean_squares(
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
-def safe_increment(count: jax.typing.ArrayLike) -> jax.typing.ArrayLike:
+def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
   """Increments counter by one while avoiding overflow.
 
   Denote ``max_val``, ``min_val`` as the maximum, minimum, possible values for
