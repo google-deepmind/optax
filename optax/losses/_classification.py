@@ -928,6 +928,8 @@ def sigmoid_focal_loss(
   .. versionchanged:: 0.2.5
     Added numerical stability improvements using log-space computation.
     Added support for continuous labels in `[0, 1]`.
+  .. versionchanged:: 0.2.9
+    Reduced peak memory usage of focal weight computation.
   """
   utils.check_subdtype(logits, jnp.floating)
   # pyrefly: ignore [missing-attribute]
@@ -936,14 +938,16 @@ def sigmoid_focal_loss(
   # Cross-entropy loss
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
 
-  # Compute log(1-p_t) using logsumexp unconditionally
-  log_p = jax.nn.log_sigmoid(logits)
-  log_q = jax.nn.log_sigmoid(-logits)  # pyrefly: ignore[unsupported-operation]
+  # Compute log(1 - p_t) by branching on y >= 0.5 to factor out the
+  # larger of {y, 1-y}, decomposing log(sum) into stable primitives.
+  y_prime = jnp.where(labels >= 0.5, labels, 1.0 - labels)
+  # pyrefly: ignore[unsupported-operation]
+  x_prime = jnp.where(labels >= 0.5, -logits, logits)
 
-  log_one_minus_p_t = jax.scipy.special.logsumexp(
-      jnp.stack([log_p, log_q], axis=-1),
-      axis=-1,
-      b=jnp.stack([1 - labels, labels], axis=-1)
+  log_one_minus_p_t = (
+      jax.nn.log_sigmoid(x_prime)
+      + jnp.log(y_prime)
+      + jax.nn.softplus(-x_prime + jnp.log1p(-y_prime) - jnp.log(y_prime))
   )
 
   # Focal weight and final loss
