@@ -41,6 +41,9 @@ from optax.contrib._galore import galore
 from optax.contrib._galore import GaLoreDimensionNumbers
 from optax.contrib._galore import GaLoreState
 from optax.contrib._galore import scale_by_galore
+from optax.contrib._mars import mars
+from optax.contrib._mars import ScaleByMARSState
+from optax.contrib._mars import scale_by_mars
 from optax.contrib._madgrad import madgrad
 from optax.contrib._madgrad import MadgradState
 from optax.contrib._madgrad import scale_by_madgrad
@@ -70,6 +73,9 @@ from optax.contrib._schedule_free import schedule_free_adamw
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import schedule_free_sgd
 from optax.contrib._schedule_free import ScheduleFreeState
+from optax.contrib._soap import scale_by_soap
+from optax.contrib._soap import ScaleBySOAPState
+from optax.contrib._soap import soap
 from optax.contrib._sophia import hutchinson_estimator_diag_hessian
 from optax.contrib._sophia import HutchinsonState
 from optax.contrib._sophia import sophia
