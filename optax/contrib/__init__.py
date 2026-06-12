@@ -74,3 +74,7 @@ from optax.contrib._sophia import hutchinson_estimator_diag_hessian
 from optax.contrib._sophia import HutchinsonState
 from optax.contrib._sophia import sophia
 from optax.contrib._sophia import SophiaState
+from optax.contrib._ssbroyden import scale_by_ss_quasi_newton
+from optax.contrib._ssbroyden import ScaleBySSQuasiNewtonState
+from optax.contrib._ssbroyden import ssbfgs
+from optax.contrib._ssbroyden import ssbroyden
