@@ -427,5 +427,79 @@ class AliasTest(parameterized.TestCase):
     test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
 
+class GradientTransformationMemoizationTest(absltest.TestCase):
+  """Tests that optimizer factory functions are memoized for stable hashing."""
+
+  def test_same_args_return_same_object(self):
+    opt1 = alias.adam(1e-3)
+    opt2 = alias.adam(1e-3)
+    self.assertIs(opt1, opt2)
+
+  def test_different_args_return_different_objects(self):
+    opt1 = alias.adam(1e-3)
+    opt2 = alias.adam(1e-4)
+    self.assertIsNot(opt1, opt2)
+
+  def test_equal_optimizers_have_equal_hash(self):
+    opt1 = alias.adam(1e-3)
+    opt2 = alias.adam(1e-3)
+    self.assertEqual(hash(opt1), hash(opt2))
+    self.assertEqual(opt1, opt2)
+
+  def test_all_optimizer_aliases_memoize(self):
+    """Spot-check that all major optimizer aliases are memoized."""
+    cases = [
+        (alias.adam, [1e-3], {}),
+        (alias.adamw, [1e-3], {}),
+        (alias.sgd, [1e-3], {}),
+        (alias.adagrad, [1e-3], {}),
+        (alias.rmsprop, [1e-3], {}),
+        (alias.lion, [1e-3], {}),
+        (alias.adamax, [1e-3], {}),
+        (alias.radam, [1e-3], {}),
+        (alias.lamb, [1e-3], {}),
+        (alias.amsgrad, [1e-3], {}),
+    ]
+    for opt_fn, args, kwargs in cases:
+      with self.subTest(opt_fn.__name__):
+        r1 = opt_fn(*args, **kwargs)
+        r2 = opt_fn(*args, **kwargs)
+        self.assertIs(r1, r2,
+                      f'{opt_fn.__name__} is not memoized')
+
+  def test_chain_is_memoized(self):
+    """Test that chain() returns the same object for the same transforms."""
+    from optax._src import combine
+    c1 = combine.chain(
+        alias.adam(1e-3),
+        alias.scale(-1.0),
+        alias.set_to_zero(),
+    )
+    c2 = combine.chain(
+        alias.adam(1e-3),
+        alias.scale(-1.0),
+        alias.set_to_zero(),
+    )
+    self.assertIs(c1, c2)
+
+  def test_memoized_functions_dont_recompile_jit(self):
+    """Test that equal optimizers don't trigger JAX recompilation."""
+    counters = {'traces': 0}
+
+    @functools.partial(jax.jit, static_argnames=('opt',))
+    def train_step(opt, opt_state):
+      counters['traces'] += 1
+      return opt_state
+
+    opt_state = alias.adam(1e-2).init({'x': jnp.zeros((100, 100))})
+    opt_state = jax.block_until_ready(opt_state)
+
+    for _ in range(3):
+      opt_state = train_step(alias.adam(1e-2), opt_state)
+      opt_state = jax.block_until_ready(opt_state)
+
+    self.assertEqual(counters['traces'], 1)
+
+
 if __name__ == '__main__':
   absltest.main()
