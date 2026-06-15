@@ -155,7 +155,10 @@ def cosine_similarity(
   Args:
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
-    epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    epsilon: minimum value used to clip the squared norms in the denominator,
+      for numerical stability. The squared norms (not the norms) are clipped to
+      be at least ``epsilon``, so the effective minimum norm is
+      ``sqrt(epsilon)``.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
@@ -205,7 +208,10 @@ def cosine_distance(
   Args:
     predictions: The predicted vectors, with shape `[..., dim]`.
     targets: Ground truth target vectors, with shape `[..., dim]`.
-    epsilon: minimum norm for terms in the denominator of the cosine similarity.
+    epsilon: minimum value used to clip the squared norms in the denominator,
+      for numerical stability. The squared norms (not the norms) are clipped to
+      be at least ``epsilon``, so the effective minimum norm is
+      ``sqrt(epsilon)``.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
