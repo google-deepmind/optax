@@ -5,5 +5,10 @@
     "aliveStatusCodes": [
         200,
         429
+    ],
+    "ignorePatterns": [
+        {
+            "pattern": "^https://readthedocs\\.org/projects/optax/badge/"
+        }
     ]
 }
