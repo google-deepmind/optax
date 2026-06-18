@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
+from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
 from optax.contrib import _mars
@@ -37,11 +38,15 @@ class ScaleByMARSTest(parameterized.TestCase):
     # state fields themselves rather than by assumed list index.
     param_shapes = [leaf.shape for leaf in jax.tree.leaves(params)]
     for field in ('last_grad', 'mu', 'nu'):
-      field_shapes = [leaf.shape for leaf in jax.tree.leaves(getattr(state, field))]
-      self.assertEqual(field_shapes, param_shapes, msg=f'{field} shapes mismatch')
+      field_shapes = [
+          leaf.shape for leaf in jax.tree.leaves(getattr(state, field))
+      ]
+      self.assertEqual(
+          field_shapes, param_shapes, msg=f'{field} shapes mismatch'
+      )
 
   def test_last_grad_stored_after_update(self):
-    """After an update step the state should hold the gradient from that step."""
+    """After one update, state should hold the gradient from that step."""
     params = jnp.array([1.0, -2.0, 0.5])
     grads = jnp.array([0.3, -0.1, 0.7])
     tx = _mars.scale_by_mars()
@@ -82,7 +87,7 @@ class ScaleByMARSTest(parameterized.TestCase):
     )
 
   def test_clipping_reduces_large_c(self):
-    """When the corrected gradient norm exceeds clip_threshold it is rescaled."""
+    """When corrected gradient norm exceeds clip_threshold it is rescaled."""
     # Use a large gamma so the correction term inflates c well past 1.0.
     params = jnp.ones((4,))
     grads = jnp.ones((4,)) * 10.0  # large gradient, last_grad initialised to 0
@@ -119,7 +124,10 @@ class ScaleByMARSTest(parameterized.TestCase):
     self.assertGreater(
         float(jnp.sum(jnp.abs(u_unclipped))),
         float(jnp.sum(jnp.abs(u_clipped))),
-        msg='disabling clipping should increase update magnitude for large grads',
+        msg=(
+            'disabling clipping should increase update magnitude'
+            ' for large grads'
+        ),
     )
 
   def test_variance_reduction_uses_last_grad(self):
@@ -145,7 +153,10 @@ class ScaleByMARSTest(parameterized.TestCase):
     # for MARS includes -last_grad = -g1, which has a nonzero first component.
     self.assertFalse(
         jnp.allclose(mars_upd, adam_upd),
-        msg='gamma > 0 should cause MARS to differ from Adam on the second step',
+        msg=(
+            'gamma > 0 should cause MARS to differ from Adam'
+            ' on the second step'
+        ),
     )
 
   def test_convergence_on_quadratic(self):
@@ -202,16 +213,17 @@ class ScaleByMARSTest(parameterized.TestCase):
     for _ in range(3000):
       params, state = step(params, state)
 
-    for key in target:
+    for key, val in target.items():
       self.assertTrue(
-          jnp.allclose(params[key], target[key], atol=0.05),
-          msg=f"key={key}, max dev: {jnp.max(jnp.abs(params[key] - target[key])):.4f}",
+          jnp.allclose(params[key], val, atol=0.05),
+          msg=(
+              f"key={key},"
+              f" max dev: {jnp.max(jnp.abs(params[key] - val)):.4f}"
+          ),
       )
 
   def test_jit_no_recompilation(self):
     """mars.update should not retrace on the second call."""
-    from optax._src import test_utils  # pylint: disable=g-import-not-at-top
-
     params = {'w': jnp.ones((3, 3)), 'b': jnp.ones(3)}
     solver = _mars.mars(learning_rate=3e-3)
     state = solver.init(params)
