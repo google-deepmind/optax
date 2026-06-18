@@ -19,6 +19,8 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 from optax._src import numerics
+from optax._src import test_utils
+from optax._src import transform
 from optax._src import update
 from optax.contrib import _soap
 import optax.tree
@@ -222,17 +224,15 @@ class ScaleBySOAPTest(parameterized.TestCase):
     for _ in range(3000):
       params, state = step(params, state)
 
-    for key in target:
+    for key, val in target.items():
       self.assertTrue(
-          jnp.allclose(params[key], target[key], atol=0.05),
+          jnp.allclose(params[key], val, atol=0.05),
           msg=f"key={key}, max deviation:"
-              f" {jnp.max(jnp.abs(params[key] - target[key])):.4f}",
+              f" {jnp.max(jnp.abs(params[key] - val)):.4f}",
       )
 
   def test_jit_no_recompilation(self):
     """optimizer.update should not retrace on the second call."""
-    from optax._src import test_utils  # pylint: disable=g-import-not-at-top
-
     params = {'w': jnp.ones((3, 3)), 'b': jnp.ones(3)}
     solver = _soap.soap(learning_rate=1e-3)
     state = solver.init(params)
@@ -252,8 +252,6 @@ class ScaleBySOAPTest(parameterized.TestCase):
   )
   def test_nond_fallback_matches_adam(self, b1, b2):
     """For 1D params, scale_by_soap should produce the same updates as Adam."""
-    from optax._src import transform  # pylint: disable=g-import-not-at-top
-
     params = jnp.array([-1.0, 2.0, 0.5])
     grads = jnp.array([0.1, -0.2, 0.3])
     eps = 1e-8
