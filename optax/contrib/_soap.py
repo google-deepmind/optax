@@ -283,8 +283,8 @@ def soap(
       v_t &\leftarrow \beta_2 v_{t-1} + (1 - \beta_2) \tilde{G}_t^2 \\
       \hat{m}_t &\leftarrow m_t / (1 - \beta_1^t) \\
       \hat{v}_t &\leftarrow v_t / (1 - \beta_2^t) \\
-      \Delta_t &\leftarrow Q_L \bigl(\hat{m}_t / (\sqrt{\hat{v}_t} + \varepsilon)
-        \bigr) Q_R^\top
+      \Delta_t &\leftarrow Q_L \bigl(
+        \hat{m}_t / (\sqrt{\hat{v}_t} + \varepsilon) \bigr) Q_R^\top
     \end{align*}
 
   Parameters with fewer than 2 dimensions fall back to standard Adam.
