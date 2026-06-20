@@ -29,7 +29,7 @@ def _decay_rate_pow(
     i: jax.typing.ArrayLike, exponent: jax.typing.ArrayLike = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
-  return 1.0 - t ** (-exponent)
+  return 1.0 - t ** (-exponent)  # pyrefly: ignore[unsupported-operation]
 
 
 def _factored_dims(
@@ -205,6 +205,7 @@ def scale_by_factored_rms(
 
     # Transform grad and compute new per-parameter stats.
     output = jax.tree.map(
+        # pyrefly: ignore[bad-argument-count]
         lambda *args: _update(*args, state.count),
         grads,
         state.v_row,
@@ -217,4 +218,5 @@ def scale_by_factored_rms(
     updates = jax.tree.map(lambda o: o.update, output)
     return updates, _to_state(numerics.safe_increment(state.count), output)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)

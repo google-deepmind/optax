@@ -88,6 +88,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
+  # pyrefly: ignore [missing-attribute]
   a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if a_dim != 3:
     raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
@@ -96,6 +97,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
         f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
     )
   n, d, d1 = a.shape
+  # pyrefly: ignore [missing-attribute]
   n_diags, d_diags = new_diags.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   if d != d1:
     raise ValueError(
@@ -113,6 +115,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   indices3 = indices2
 
   # Use numpy array setting
+  # pyrefly: ignore [missing-attribute]
   a = a.at[indices1, indices2, indices3].set(new_diags.flatten())  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   return a
 
@@ -218,12 +221,16 @@ def x64_precision(enable_x64_precision: bool = True):
     ...   print(jnp.float64(1.0).dtype.name)
     float32
   """
-  old_config = jax.config.jax_enable_x64
+  old_config = jax.config.jax_enable_x64  # pyrefly: ignore[missing-attribute]
   try:
     jax.config.update('jax_enable_x64', enable_x64_precision)
     yield
   finally:
     jax.config.update('jax_enable_x64', old_config)
+
+
+def parse_version(version_str):
+  return tuple(int(i) for i in version_str.split('.') if i.isdigit())
 
 
 # TODO(b/183800387): remove legacy aliases.

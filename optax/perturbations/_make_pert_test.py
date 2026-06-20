@@ -165,7 +165,7 @@ class MakePertTest(parameterized.TestCase):
         loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
     ))
     keys = jax.random.split(key, 3)
-    low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types # noqa: E501
+    low_loss = loss_pert(keys[0], example_tree)
     high_loss = loss_pert(keys[2],
                           optax.tree.random_like(keys[1], example_tree))
     np.testing.assert_array_less(low_loss, high_loss)

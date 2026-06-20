@@ -40,6 +40,7 @@ def clip(max_delta: jax.typing.ArrayLike) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
+    # pyrefly: ignore[unsupported-operation]
     return optax.tree.clip(updates, -max_delta, max_delta), state
 
   return base.GradientTransformation(base.init_empty_state, update_fn)
@@ -280,6 +281,7 @@ def unitwise_norm(
   # Note that this assumes parameters with a shape of length 3 are multihead
   # linear parameters--if you wish to apply AGC to 1D convs, you may need
   # to modify this line.
+  # pyrefly: ignore [missing-attribute]
   elif x.ndim in (2, 3):  # Linear layers of shape IO or multihead linear  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=0, keepdims=True)
   elif x.ndim == 4:  # Conv kernels of shape HWIO  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
@@ -288,9 +290,11 @@ def unitwise_norm(
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2, 3), keepdims=True)
   else:
     raise ValueError(
+        # pyrefly: ignore [missing-attribute]
         f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {x.shape}. "  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         "Use axis parameter to specify reduction axes for other shapes."
     )
+  # pyrefly: ignore [missing-attribute]
   return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
 
@@ -306,6 +310,7 @@ def unitwise_clip(
   clipped_grad = grad * (max_norm / jnp.maximum(g_norm, div_eps))
   utils.check_shapes_equal(g_norm, max_norm)
   utils.check_shapes_equal(g_norm, grad)
+  # pyrefly: ignore[unsupported-operation]
   return jnp.where(g_norm < max_norm, grad, clipped_grad)
 
 
@@ -343,4 +348,5 @@ def adaptive_grad_clip(
     updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)

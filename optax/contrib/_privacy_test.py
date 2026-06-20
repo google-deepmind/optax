@@ -29,8 +29,8 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
     super().setUp()
     self.batch_size = 8
     self.params = {
-        'key_a': (jnp.zeros((2, 3, 4)), jnp.zeros([])),
-        'key_b': jnp.zeros((6, 7)),
+        "key_a": (jnp.zeros((2, 3, 4)), jnp.zeros([])),
+        "key_b": jnp.zeros((6, 7)),
     }
     # Example `i`'s grads are full of `i`s. Important to include 0 to ensure
     # there are no divisions by 0 (e.g. in norm clipping)
@@ -104,6 +104,37 @@ class DifferentiallyPrivateAggregateTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       dp_agg.update(mean_grads, state, self.params)
 
+  @parameterized.named_parameters(("int_key", 0), ("none_key", None))
+  def test_dpsgd_accepts_key(self, key):
+    if key is None:
+      key = jax.random.key(0)
+    tx = _privacy.dpsgd(
+        learning_rate=1.0,
+        l2_norm_clip=jnp.finfo(jnp.float32).max,
+        noise_multiplier=0.0,
+        key=key,
+    )
+    state = tx.init(self.params)
+    updates, _ = tx.update(self.per_eg_grads, state, self.params)
+    mean_grads = jax.tree.map(lambda g: -g.mean(0), self.per_eg_grads)
 
-if __name__ == '__main__':
+    test_utils.assert_trees_all_close(updates, mean_grads)
+
+  @parameterized.named_parameters(("int_seed", 0), ("other_seed", 123))
+  def test_dpsgd_accepts_seed(self, seed):
+    with self.assertWarns(DeprecationWarning):
+      tx = _privacy.dpsgd(
+          learning_rate=1.0,
+          l2_norm_clip=jnp.finfo(jnp.float32).max,
+          noise_multiplier=0.0,
+          seed=seed,
+      )
+    state = tx.init(self.params)
+    updates, _ = tx.update(self.per_eg_grads, state, self.params)
+    mean_grads = jax.tree.map(lambda g: -g.mean(0), self.per_eg_grads)
+
+    test_utils.assert_trees_all_close(updates, mean_grads)
+
+
+if __name__ == "__main__":
   absltest.main()

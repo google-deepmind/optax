@@ -110,7 +110,7 @@ def lookahead(
     Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
     <https://arxiv.org/abs/1907.08610>`_, 2019
   """
-  if sync_period < 1:
+  if sync_period < 1:  # pyrefly: ignore[unsupported-operation]
     raise ValueError('Synchronization period must be >= 1.')
 
   def init_fn(params: base.Params) -> LookaheadState:
@@ -151,6 +151,7 @@ def lookahead(
     steps_since_sync = (state.steps_since_sync + 1) % sync_period
     return updates, LookaheadState(fast_state, steps_since_sync)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 

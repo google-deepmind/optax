@@ -183,7 +183,6 @@ class InjectHyperparamsTest(parameterized.TestCase):
         )
         new_key = next(keyit)
         return new_updates, (new_key, scale)
-
       return base.GradientTransformation(init_fn, update_fn)
 
     optim = schedules.inject_hyperparams(random_noise_optimizer)(

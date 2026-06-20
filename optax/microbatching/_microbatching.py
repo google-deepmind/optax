@@ -19,13 +19,13 @@ import collections
 import dataclasses
 import enum
 import functools
+import inspect
 from typing import Any, Callable, Sequence, TypeAlias
 
 import jax
 import jax.numpy as jnp
 from optax._src import base
-from packaging import version
-
+from optax._src import utils
 
 AccumulatorTree: TypeAlias = Any
 Function: TypeAlias = Callable[..., Any]
@@ -51,14 +51,14 @@ class Accumulator:
   return finalize(carry)
 
   Attributes:
-    init: A function f(shape_dtype_struct) that initializes the microbatch
-      state from the shape/dtype of a single microbatch evaluation.
+    init: A function f(shape_dtype_struct) that initializes the microbatch state
+      from the shape/dtype of a single microbatch evaluation.
     update: A function f(carry, value, index) that updates the microbatch state
       with the function evaluation of the current microbatch.
     finalize: A function f(carry) that returns the final result from the final
       state.
-    aggregate: A function f(per_microbatch_value) that aggregates
-      per-microbatch values into a single value. Used by `micro_vmap`.
+    aggregate: A function f(per_microbatch_value) that aggregates per-microbatch
+      values into a single value. Used by `micro_vmap`.
   """
 
   init: PyTreeFn
@@ -70,12 +70,14 @@ class Accumulator:
 def _with_floating_check(fn: Function) -> Function:
   def wrapper(*args, **kwargs):
     dtypes, _ = jax.tree.flatten(
-        jax.tree.map(lambda x: x.dtype, (args, kwargs)))
+        jax.tree.map(lambda x: x.dtype, (args, kwargs))
+    )
     if not all(jnp.issubdtype(dtype, jnp.floating) for dtype in dtypes):
       raise ValueError(
           'MEAN and RUNNING_MEAN Accumulators require floating-point values.'
       )
     return fn(*args, **kwargs)
+
   return wrapper
 
 
@@ -96,23 +98,24 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   Returns:
     A pytree of reshaped jax.Arrays.
   """
+
   def reshape_leaf(x):
-    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1:]
-    if version.parse(jax.__version__) < version.parse('0.7.0'):
+    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1 :]
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.7.0'):
       return x.reshape(new_shape, order='F')
 
     sharding = jax.typeof(x).sharding
     if not sharding.mesh.are_all_axes_explicit:
       return x.reshape(new_shape, order='F')
 
-    assert version.parse(jax.__version__) >= version.parse('0.8.1'), (
-        'microbatching with explicit sharding requires jax version >= 0.8.1.'
-    )
+    assert utils.parse_version(jax.__version__) >= utils.parse_version(
+        '0.8.1'
+    ), 'microbatching with explicit sharding requires jax version >= 0.8.1.'
     spec = sharding.spec
     if len(spec) < axis:  # The batch axis is not sharded.
       new_spec = spec
     else:
-      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1:])
+      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1 :])
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
@@ -174,7 +177,8 @@ def _sum() -> Accumulator:
   """An Accumulator that computes the sum of microbatched outputs."""
   return _lift(
       Accumulator(
-          init=jnp.zeros_like,
+          init=jnp.zeros_like,  # pyrefly: ignore[bad-argument-type]
+          # pyrefly: ignore[unsupported-operation]
           update=lambda carry, value, _: carry + value,
           finalize=lambda x: x,
           aggregate=functools.partial(jnp.sum, axis=0),
@@ -187,7 +191,9 @@ def _mean(num_microbatches: int) -> Accumulator:
   return _lift(
       Accumulator(
           init=_with_floating_check(jnp.zeros_like),
+          # pyrefly: ignore[unsupported-operation]
           update=lambda carry, value, _: carry + value,
+          # pyrefly: ignore[unsupported-operation]
           finalize=lambda carry: carry / num_microbatches,
           aggregate=functools.partial(jnp.mean, axis=0),
       )
@@ -196,6 +202,7 @@ def _mean(num_microbatches: int) -> Accumulator:
 
 def _running_mean() -> Accumulator:
   """An Accumulator that computes the running mean of microbatched outputs."""
+
   def update(carry, value, index):
     p = index / (index + 1)
     new_state = carry * p + value * (1 - p)
@@ -214,7 +221,7 @@ def _running_mean() -> Accumulator:
 def _get_out_sharding(x):
   """Compute the desired sharding of x.reshape(-1, *x.shape[2:], order='F')."""
   # We use dict because jax doesn't have out_sharding in older jax versions.
-  if version.parse(jax.__version__) < version.parse('0.7.0'):
+  if utils.parse_version(jax.__version__) < utils.parse_version('0.7.0'):
     return {}
   sharding = jax.typeof(x).sharding
   if sharding.mesh.are_all_axes_explicit:
@@ -246,6 +253,7 @@ def _concat(num_microbatches: int) -> Accumulator:
 
 class AccumulationType(enum.Enum):
   """The type of accumulation to perform."""
+
   MEAN = enum.auto()
   """Average the microbatch outputs."""
   SUM = enum.auto()
@@ -270,16 +278,48 @@ def _canonicalize(
       return acc
     match acc:
       case AccumulationType.MEAN:
-        return _mean(num_microbatches)
+        return _mean(num_microbatches)  # pyrefly: ignore[bad-argument-type]
       case AccumulationType.SUM:
         return _sum()
       case AccumulationType.RUNNING_MEAN:
         return _running_mean()
       case AccumulationType.CONCAT:
-        return _concat(num_microbatches)
+        return _concat(num_microbatches)  # pyrefly: ignore[bad-argument-type]
     raise ValueError(f'Unknown accumulator: {acc}')
 
   return _compose(jax.tree.map(fun, tree))
+
+
+def _normalize_call(sig, args, kwargs):
+  """Normalize a function call so positional params are always positional."""
+  bound = sig.bind(*args, **kwargs)
+  return bound.args, bound.kwargs
+
+
+def _resolve_batch_args(sig, argnums, argnames, in_axes):
+  """Resolve ``argnames`` for positional parameters into ``argnums``."""
+  positional_kinds = {
+      inspect.Parameter.POSITIONAL_ONLY,
+      inspect.Parameter.POSITIONAL_OR_KEYWORD,
+  }
+  param_list = list(sig.parameters.keys())
+
+  new_argnums = list(argnums)
+  new_argnames = []
+  argnum_ax = list(in_axes[: len(argnums)])
+  argname_ax = []
+
+  for i, name in enumerate(argnames):
+    axis = in_axes[len(argnums) + i]
+    param = sig.parameters.get(name)
+    if param is not None and param.kind in positional_kinds:
+      new_argnums.append(param_list.index(name))
+      argnum_ax.append(axis)
+    else:
+      new_argnames.append(name)
+      argname_ax.append(axis)
+
+  return tuple(new_argnums), tuple(new_argnames), tuple(argnum_ax + argname_ax)
 
 
 def _reshape_all_args(
@@ -288,17 +328,20 @@ def _reshape_all_args(
     argnames: Sequence[str],
     in_axes: Sequence[int],
     args: tuple[Any, ...],
-    kwargs: dict[str, Any]
+    kwargs: dict[str, Any],
 ) -> tuple[tuple[Any, ...], dict[str, Any], int]:
   """Reshapes all batch arguments to have a microbatch axis."""
   new_args = list(args)
   new_kwargs = dict(kwargs)
   batch_args = [args[i] for i in argnums] + [kwargs[i] for i in argnames]
 
-  batch_sizes = jax.tree.flatten(jax.tree.map(
-      lambda ax, subtree: jax.tree.map(lambda x: x.shape[ax], subtree),
-      tuple(in_axes), tuple(batch_args)
-  ))[0]
+  batch_sizes = jax.tree.flatten(
+      jax.tree.map(
+          lambda ax, subtree: jax.tree.map(lambda x: x.shape[ax], subtree),
+          tuple(in_axes),
+          tuple(batch_args),
+      )
+  )[0]
 
   if len(set(batch_sizes)) > 1:
     raise ValueError(
@@ -320,10 +363,12 @@ def _reshape_all_args(
 
 def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
   """Returns a function that takes the `index`-th element along the `axis`."""
+
   def fun(x):
     if x.shape[axis] == 0:  # jnp.take doesn't work with zero axis size.
-      return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1:])
+      return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1 :])
     return jnp.take(x, indices=index, axis=axis)
+
   return fun
 
 
@@ -363,6 +408,15 @@ def microbatch(
   results should be combined back together (SUM, MEAN, or CONCAT). See the
   accumulator argument for more details.
 
+  Note: For standard functions that do not unpack their positional or keyword
+  arguments like f(a, b), one can specify to microbatch either argument via
+  ``argnums`` or ``argnames``, and the microbatched function can be called using
+  the same conventions as the input function (passing args by position or name),
+  independent of whether the args with batch axes are specified in ``argnums``
+  or ``argnames``. For wrapped functions like f(*args, **kwargs), the positional
+  and keyword arguments passed to the microbatched function must match argnums
+  and argnames respectively. See CallingConventionTest for more details.
+
   Example Usage:
     >>> import jax.numpy as jnp
     >>> fun = lambda x: (x+1, jnp.sum(3*x))
@@ -379,6 +433,26 @@ def microbatch(
     >>> microbatched_fun(data)
     (Array([2, 3, 4, 5], dtype=int32), Array(30, dtype=int32))
 
+  .. note::
+
+    ``microbatch`` is compatible with other JAX transformations like
+    ``jax.grad`` and ``jax.vmap``. However, when computing gradients, it is
+    generally **more efficient to microbatch the gradient** than to
+    differentiate through the microbatched function. That is, prefer::
+
+      microbatch(jax.grad(loss_fn), ...)(params, batch)
+
+    over::
+
+      jax.grad(microbatch(loss_fn, ...))(params, batch)
+
+    Both produce equivalent results for linear accumulators (``SUM``, ``MEAN``),
+    but ``jax.grad(microbatch(...))`` differentiates through the internal
+    ``jax.lax.fori_loop``, which requires JAX to save or rematerialize all
+    intermediate loop carries for the backward pass. In contrast,
+    ``microbatch(jax.grad(...))`` computes per-microbatch gradients and
+    accumulates them directly, avoiding this overhead.
+
   Args:
       fun: An arbitrary function.
       argnums: A sequence of argument indices that have a batch axis.
@@ -393,8 +467,8 @@ def microbatch(
       argnames: A sequence of keyword argument names that have a batch axis.
       in_axes: An integer or sequence of integers indicating the batch axis
         index for each argument in `argnums` and `argnames` should be aligned
-        with the list `argnums + argnames`. The default value of 0 assumes
-        that all arguments have a batch axis on the 0th dimension of the array.
+        with the list `argnums + argnames`. The default value of 0 assumes that
+        all arguments have a batch axis on the 0th dimension of the array.
       num_real_microbatches: Optional number of microbatches that are actually
         executed. If specified, microbatching will terminate early after this
         many steps. Can be helpful to handle variable batch sizes without
@@ -407,6 +481,8 @@ def microbatch(
   if microbatch_size is None:
     return fun
 
+  sig = inspect.signature(fun)
+
   if isinstance(argnums, int):
     argnums = (argnums,)
 
@@ -416,10 +492,15 @@ def microbatch(
   if isinstance(in_axes, int):
     in_axes = (in_axes,) * (len(argnums) + len(argnames))
 
+  argnums, argnames, in_axes = _resolve_batch_args(
+      sig, argnums, argnames, in_axes
+  )
+
   # jax.named_call is used to aad a span in the profile trace for easier
   # identification of microbatching.
   @functools.partial(jax.named_call, name=f'microbatch_size_{microbatch_size}')
   def microbatched_fun(*args, **kwargs):
+    args, kwargs = _normalize_call(sig, args, kwargs)
     reshaped_args, reshaped_kwargs, batch_size = _reshape_all_args(
         microbatch_size, argnums, argnames, in_axes, args, kwargs
     )
@@ -487,8 +568,8 @@ def micro_vmap(
     out_axes: Unsupported by optax.vmap, must be set to 0.
     microbatch_size: The number of rows in the overall batch used in each
       microbatch. Smaller values reduces memory overhead, but require more
-      sequential computation. This must evenly divide the batch axis size of
-      the batch arguments.
+      sequential computation. This must evenly divide the batch axis size of the
+      batch arguments.
     vmap_fn: A function with the same signature as jax.vmap.  Can be used to
       e.g., pass in kwargs to vmap.
     accumulator: Specifies what to do with the vmapped outputs.  The default
@@ -499,8 +580,8 @@ def micro_vmap(
       accumulator can be any PyTree prefix of the outputs of `fun` to apply
       different reductions to different sub-trees.
     num_real_microbatches: Optional number of microbatches that are actually
-      executed. If specified, microbatching will terminate early after this
-      many steps. Can be helpful to handle variable batch sizes without
+      executed. If specified, microbatching will terminate early after this many
+      steps. Can be helpful to handle variable batch sizes without
       recompilation.
 
   Returns:
@@ -538,8 +619,11 @@ def micro_vmap(
       num_real_microbatches=num_real_microbatches,
   )
 
+  sig = inspect.signature(fun)
+
   @functools.partial(jax.named_call, name=f'micro_vmap_size_{microbatch_size}')
   def wrapped_fn(*args, **kwargs):
+    args, kwargs = _normalize_call(sig, args, kwargs)
     return micro_vmap_fn(*args, kwargs=kwargs)
 
   return wrapped_fn
@@ -556,6 +640,7 @@ def _with_extra_batch_axis(
     fun: Function, batch_argnums: Sequence[int]
 ) -> Function:
   """Wraps a function to add an extra batch axis to the batch_argnums."""
+
   def wrapped_fun(*args, **kwargs):
     args_with_group_axis = list(args)
     for i in batch_argnums:
@@ -579,6 +664,7 @@ def micro_grad(
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
     transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
+    # pyrefly: ignore[bad-function-definition]
     metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None,
     num_real_microbatches: int | jax.Array | None = None,
 ) -> ValueAndGradFn:
@@ -586,12 +672,14 @@ def micro_grad(
 
   This function is similar to jax.value_and_grad, but works at the level of
   size-1 batches.  This function is defined in terms of general transformations
-  transform_fn and metrics_fn which  can be useful to e.g.,
+  transform_fn and metrics_fn which can be useful to e.g.,
+
   * limit the effect of outlier batch elements by clipping per-example grads.
   * compute moments of the gradients on a per-example basis.
   * computing scalar or low-dimensional gradient metrics on a per-example basis.
 
   Other notable differences between this function and jax.value_and_grad:
+
   * at least one argument to `fun` must have a batch axis, and that argument
     should be passed to `batch_argnums`. The default value of `1` assumes that
     `fun` has the signature `fun(params, batch, ...)`.
@@ -641,8 +729,8 @@ def micro_grad(
       transforming. Will be returned on a per-example basis as part of the
       auxiliary output, and therefore should be scalar or low-dimensional.
     num_real_microbatches: Optional number of microbatches that are actually
-      executed. If specified, microbatching will terminate early after this
-      many steps. Can be helpful to handle variable batch sizes without
+      executed. If specified, microbatching will terminate early after this many
+      steps. Can be helpful to handle variable batch sizes without
       recompilation.
 
   Returns:
@@ -655,6 +743,7 @@ def micro_grad(
   if isinstance(batch_argnums, int):
     batch_argnums = (batch_argnums,)
 
+  original_sig = inspect.signature(fun)
   fun = _normalize_fun_to_return_aux(fun, has_aux)
   value_and_grad_fn = jax.value_and_grad(fun, argnums, has_aux=True)
 
@@ -673,10 +762,10 @@ def micro_grad(
 
   in_axes = [None] * (max(batch_argnums) + 1)
   for i in batch_argnums:
-    in_axes[i] = 0
+    in_axes[i] = 0  # pyrefly: ignore[unsupported-operation]
   micro_fun = micro_vmap(
       grad_fn,
-      in_axes=in_axes,
+      in_axes=in_axes,  # pyrefly: ignore[bad-argument-type]
       accumulator=(accumulator, AccumulationType.CONCAT),
       microbatch_size=microbatch_size,
       num_real_microbatches=num_real_microbatches,
@@ -686,6 +775,7 @@ def micro_grad(
 
   @functools.partial(jax.named_call, name=f'micro_grad_size_{microbatch_size}')
   def final_fn(*args, **kwargs):
+    args, kwargs = _normalize_call(original_sig, args, kwargs)
     return micro_fun(*args, **kwargs)
 
   return final_fn

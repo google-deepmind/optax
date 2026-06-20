@@ -180,11 +180,8 @@ class TransformTest(parameterized.TestCase):
       opt = transform.scale_by_lion(
           b1=b1, b2=0.9, mode=mode, smooth_beta=smooth_beta
       )
-      state: transform.ScaleByLionState = opt.init(
-          updates
-      )  # pytype: disable=annotation-type-mismatch
+      state: transform.ScaleByLionState = opt.init(updates)
       out_updates, _ = opt.update(updates, state)
-
       x = (1.0 - b1) * updates + b1 * state.mu
 
       if mode == 'hard':
@@ -198,9 +195,7 @@ class TransformTest(parameterized.TestCase):
 
   def test_lion_invalid_mode_raises(self):
     updates = jnp.array([0.1, -0.2])
-    opt = transform.scale_by_lion(
-        mode='invalid_mode'
-    )  # pytype: disable=wrong-arg-types
+    opt = transform.scale_by_lion(mode='invalid_mode')
     state = opt.init(updates)
     with self.assertRaises(ValueError):
       opt.update(updates, state)

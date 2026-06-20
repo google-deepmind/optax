@@ -42,7 +42,7 @@ def get_updates(
     opt = _muon.muon(
         learning_rate=1e-3,
         preconditioning=preconditioning,
-        muon_weight_dimension_numbers=muon_weight_dimension_numbers
+        muon_weight_dimension_numbers=muon_weight_dimension_numbers,
     )
   state = opt.init(params)
   # assume loss = 1/2 * sum(params ** 2)

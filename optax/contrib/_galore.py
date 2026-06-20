@@ -317,6 +317,7 @@ def scale_by_galore(
     del params
     count = state.count
     count_inc = numerics.safe_int32_increment(count)
+    # pyrefly: ignore[unsupported-operation]
     should_update_proj = (count % update_proj_gap) == 0
 
     dim_nums = _get_dim_nums(updates)
@@ -426,6 +427,7 @@ def scale_by_galore(
 
     return full_updates, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -559,6 +561,7 @@ def galore(
           base_optimizer=base_optimizer,
           weight_dimension_numbers=weight_dimension_numbers,
       ),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )

@@ -264,6 +264,7 @@ def ademamix(
           eps_root=eps_root,
           mu_dtype=mu_dtype,
       ),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -457,6 +458,7 @@ def simplified_ademamix(
           eps=eps,
           eps_root=eps_root,
       ),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )

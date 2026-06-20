@@ -127,6 +127,7 @@ def prodigy(
     estim_lr = state.estim_lr
     numerator_weighted = state.numerator_weighted
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
+    # pyrefly: ignore [missing-attribute]
     dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
@@ -153,6 +154,7 @@ def prodigy(
     lr_estimate = estim_lr_coef * numerator_weighted / denominator
     estim_lr = jnp.maximum(state.estim_lr, lr_estimate)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, eas, p: -weight_decay * dlr * p
         - dlr * ea / (jnp.sqrt(eas) + estim_lr * eps),
         exp_avg,
@@ -170,4 +172,5 @@ def prodigy(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

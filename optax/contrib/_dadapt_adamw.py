@@ -106,6 +106,7 @@ def dadapt_adamw(
     count_inc = numerics.safe_increment(count)
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = state.estim_lr * sched * bc
+    # pyrefly: ignore [missing-attribute]
     dlr = dlr.astype(numerator_weighted.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
@@ -129,6 +130,7 @@ def dadapt_adamw(
     d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
     estim_lr = jnp.maximum(state.estim_lr, d_estimate)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, eas, p: -weight_decay * dlr * p - ea / (jnp.sqrt(eas) + eps),
         exp_avg,
         exp_avg_sq,
@@ -144,4 +146,5 @@ def dadapt_adamw(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

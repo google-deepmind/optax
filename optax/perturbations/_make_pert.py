@@ -135,7 +135,7 @@ def make_perturbed_fun(
     Reinforcement Learning <https://arxiv.org/abs/1703.03864>`_, 2017
 
   .. seealso::
-    * :doc:`../_collections/examples/perturbations` example.
+    * :doc:`/_collections/examples/perturbations` example.
   """  # noqa: E501
 
   def mc_estimator(key: base.PRNGKey, x: base.ArrayTree) -> base.ArrayTree:

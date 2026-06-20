@@ -134,7 +134,9 @@ def momo(
     # initialize at first gradient, and loss
     bt = jnp.where(count == 0, 0.0, beta)
     barf = bt * state.barf + (1 - bt) * jnp.asarray(
-        value, dtype=state.barf.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        value,
+        # pyrefly: ignore [missing-attribute]
+        dtype=state.barf.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     )
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
@@ -162,6 +164,7 @@ def momo(
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha, t1)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, p: -(alpha * weight_decay) / (1 + alpha * weight_decay) * p
         - tau * ea,
         exp_avg,
@@ -182,6 +185,7 @@ def momo(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -295,7 +299,9 @@ def momo_adam(
     count = state.count
     count_inc = numerics.safe_increment(count)
     barf = b1 * state.barf + (1 - b1) * jnp.asarray(
-        value, dtype=state.barf.dtype  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        value,
+        # pyrefly: ignore [missing-attribute]
+        dtype=state.barf.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     )
     exp_avg = jax.tree.map(
         lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
@@ -334,6 +340,7 @@ def momo_adam(
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha / bc1, t1)
     p_update = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda ea, prec, p: -(alpha * weight_decay)
         / (1 + alpha * weight_decay)
         * p
@@ -357,4 +364,5 @@ def momo_adam(
     )
     return p_update, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)

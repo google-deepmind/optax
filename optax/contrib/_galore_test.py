@@ -31,7 +31,6 @@ def _tree_sum_squares(tree):
 
 
 class GaLoreTest(parameterized.TestCase):
-  # pytype: disable=annotation-type-mismatch
   # pylint: disable=invalid-name
   """Comprehensive tests for GaLore optimizer.
 
@@ -73,8 +72,6 @@ class GaLoreTest(parameterized.TestCase):
 
     m_dim, n_dim = shape
     r_eff = min(rank, m_dim, n_dim)
-
-    # pytype: disable=attribute-error
     if expect_left:
       self.assertEqual(P.shape, (m_dim, r_eff))
       self.assertEqual(mu.shape, (r_eff, n_dim))
@@ -83,7 +80,6 @@ class GaLoreTest(parameterized.TestCase):
       self.assertEqual(P.shape, (n_dim, r_eff))
       self.assertEqual(mu.shape, (m_dim, r_eff))
       self.assertEqual(nu.shape, (m_dim, r_eff))
-    # pytype: enable=attribute-error
 
   def test_rank_is_clipped_to_min_dimension(self):
     params = jnp.zeros((10, 3), dtype=jnp.float32)
@@ -93,11 +89,9 @@ class GaLoreTest(parameterized.TestCase):
     base_state: transform.ScaleByAdamState = galore_state.base_optimizer_state
 
     # min(m,n)=3, m>n => left projection (moments r×n = 3×3)
-    # pytype: disable=attribute-error
     self.assertEqual(galore_state.projector.shape, (10, 3))  # (m, r)
     self.assertEqual(base_state.mu.shape, (3, 3))            # (r, n)
     self.assertEqual(base_state.nu.shape, (3, 3))            # (r, n)
-    # pytype: enable=attribute-error
 
   # ---------------------------------------------------------------------------
   # Memory reduction tests
@@ -111,12 +105,9 @@ class GaLoreTest(parameterized.TestCase):
     state = opt.init(params)
     galore_state: _galore.GaLoreState = state[0]
     base_state: transform.ScaleByAdamState = galore_state.base_optimizer_state
-
-    # pytype: disable=attribute-error
     self.assertEqual(base_state.mu.size, rank * dim)
     self.assertEqual(base_state.nu.size, rank * dim)
     self.assertLess(base_state.mu.size, dim * dim)
-    # pytype: enable=attribute-error
 
   # ---------------------------------------------------------------------------
   # Projector correctness tests
@@ -133,7 +124,7 @@ class GaLoreTest(parameterized.TestCase):
     gstate2: _galore.GaLoreState = state2[0]
 
     P = gstate2.projector["w"]
-    gram = P.T @ P  # pytype: disable=attribute-error
+    gram = P.T @ P
     self.assertTrue(
         jnp.allclose(gram, jnp.eye(r, dtype=gram.dtype), atol=1e-2, rtol=1e-2)
     )
@@ -260,8 +251,6 @@ class GaLoreTest(parameterized.TestCase):
     state = opt.init(params)
     galore_state: _galore.GaLoreState = state[0]
     base_state: transform.ScaleByAdamState = galore_state.base_optimizer_state
-
-    # pytype: disable=attribute-error
     self.assertEqual(base_state.mu.dtype, jnp.float32)
     # Note: nu (second moment) is not controlled by mu_dtype in scale_by_adam
     # It uses the params dtype by default
@@ -270,10 +259,8 @@ class GaLoreTest(parameterized.TestCase):
     grads = jnp.ones_like(params)
     updates, _ = opt.update(grads, state, params)
     self.assertEqual(updates.dtype, jnp.bfloat16)
-    # pytype: enable=attribute-error
 
   # pylint: enable=invalid-name
-  # pytype: enable=annotation-type-mismatch
 
   # ---------------------------------------------------------------------------
   # Non-2D array support (GaLoreDimensionNumbers) tests
@@ -303,7 +290,6 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # Check output shape matches input
-    # pytype: disable=attribute-error
     self.assertEqual(updates["attn"].shape, (embed_dim, num_heads, head_dim))
 
     # Verify projector has correct shape
@@ -311,7 +297,6 @@ class GaLoreTest(parameterized.TestCase):
     galore_state = state[0]
     expected_proj_shape = (embed_dim, 16)  # (m, rank)
     self.assertEqual(galore_state.projector["attn"].shape, expected_proj_shape)
-    # pytype: enable=attribute-error
 
   def test_3d_memory_reduction_with_dimension_numbers(self):
 
@@ -333,14 +318,11 @@ class GaLoreTest(parameterized.TestCase):
     )
     state = opt.init(params)
     assert isinstance(state[0], _galore.GaLoreState)
-    # pytype: disable=annotation-type-mismatch
     galore_state: _galore.GaLoreState = state[0]
-    # pytype: enable=annotation-type-mismatch
     base_state = galore_state.base_optimizer_state
 
     # Reshaped: (256, 512), m < n → right projection
     # Moments should be (m, rank) = (256, 16)
-    # pytype: disable=attribute-error
     self.assertEqual(base_state.mu["w"].shape, (embed_dim, rank))
     self.assertEqual(base_state.nu["w"].shape, (embed_dim, rank))
 
@@ -348,7 +330,6 @@ class GaLoreTest(parameterized.TestCase):
     full_size = embed_dim * num_heads * head_dim
     moment_size = base_state.mu["w"].size
     self.assertLess(moment_size, full_size)
-    # pytype: enable=attribute-error
 
   def test_dimension_numbers_convergence(self):
 
@@ -411,11 +392,9 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # Check all shapes preserved
-    # pytype: disable=attribute-error
     self.assertEqual(updates["attn"].shape, (128, 4, 32))
     self.assertEqual(updates["mlp"].shape, (128, 256))
     self.assertEqual(updates["bias"].shape, (256,))
-    # pytype: enable=attribute-error
 
   def test_dimension_numbers_right_projection(self):
 
@@ -437,7 +416,6 @@ class GaLoreTest(parameterized.TestCase):
     )
     state = opt.init(params)
     galore_state = state[0]
-    # pytype: disable=attribute-error
     base_state = galore_state.base_optimizer_state
 
     # m=32 < n=512 → right projection
@@ -445,7 +423,6 @@ class GaLoreTest(parameterized.TestCase):
     # Moments: (m, rank) = (32, 8)
     self.assertEqual(galore_state.projector["w"].shape, (512, rank))
     self.assertEqual(base_state.mu["w"].shape, (32, rank))
-    # pytype: enable=attribute-error
 
   def test_single_dimension_number_applied_to_all(self):
 
@@ -472,11 +449,9 @@ class GaLoreTest(parameterized.TestCase):
     updates, _ = opt.update(grads, state, params)
 
     # All shapes preserved
-    # pytype: disable=attribute-error
     self.assertEqual(updates["w1"].shape, (64, 4, 16))
     self.assertEqual(updates["w2"].shape, (32, 8, 8))
     self.assertEqual(updates["bias"].shape, (64,))
-    # pytype: enable=attribute-error
 
 
 if __name__ == "__main__":

@@ -79,6 +79,7 @@ def snapshot(
     del params, state
     return updates, SnapshotState({measure_name: measure(updates)})
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init, update)
 
 
@@ -144,6 +145,7 @@ def monitor(
       measures_[measure_name] = base.with_extra_args_support(measure_)
     else:
       measures_[measure_name] = base.with_extra_args_support(measure)
+  # pyrefly: ignore [bad-assignment]
   measures = measures_
   measure_names = tuple(measures.keys())
 
@@ -151,6 +153,7 @@ def monitor(
     measurements = {}
     measure_states = []
     for measure_name in measure_names:
+      # pyrefly: ignore [missing-attribute]
       measure_states.append(measures[measure_name].init(params))
     return MonitorState(measurements, tuple(measure_states))
 
@@ -163,6 +166,7 @@ def monitor(
     measurements = {}
     new_measure_states = []
     for i, measure_name in enumerate(measure_names):
+      # pyrefly: ignore [missing-attribute]
       measurement, measure_state = measures[measure_name].update(
           updates,
           state.measure_states[i],
@@ -173,6 +177,7 @@ def monitor(
       new_measure_states.append(measure_state)
     return updates, MonitorState(measurements, tuple(new_measure_states))
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init, update)
 
 
