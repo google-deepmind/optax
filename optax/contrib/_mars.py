@@ -35,7 +35,7 @@ import optax.tree
 class ScaleByMARSState(NamedTuple):
   """State for the MARS variance-reduction preconditioner."""
 
-  count: jax.Array         # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
   last_grad: base.Updates  # gradient from the previous step, in float32
   mu: base.Updates         # first-moment estimate (projected into EMA)
   nu: base.Updates         # second-moment estimate
@@ -178,6 +178,7 @@ def scale_by_mars(
         nu=nu_stored,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -285,6 +286,7 @@ def mars(
           clip_threshold=clip_threshold,
           mu_dtype=mu_dtype,
       ),
+      # pyrefly: ignore[bad-argument-type]
       _adding.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_learning_rate(learning_rate),
   )
