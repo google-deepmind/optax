@@ -18,6 +18,7 @@ from absl.testing import absltest
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 
@@ -85,8 +86,8 @@ class SPSATest(chex.TestCase):
         val_0 = schedule(0)
         val_10 = schedule(10)
 
-        self.assertAlmostEqual(val_0, 1.0 / (10.0**0.5))
-        self.assertAlmostEqual(val_10, 1.0 / (20.0**0.5))
+        np.testing.assert_allclose(val_0, 1.0 / (10.0**0.5))
+        np.testing.assert_allclose(val_10, 1.0 / (20.0**0.5))
 
 
 if __name__ == "__main__":

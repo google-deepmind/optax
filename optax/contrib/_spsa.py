@@ -17,6 +17,7 @@
 from typing import Any, Callable
 
 import jax
+import jax.numpy as jnp
 import optax.tree
 from optax._src import base
 
@@ -24,7 +25,7 @@ from optax._src import base
 def spsa_standard_schedule(
     init_value: float,
     decay_rate: float,
-    offset: float = 0.0,
+    offset: float = 1.0,
 ) -> optax.schedules.Schedule:
     """Returns a schedule for the SPSA learning rate or perturbation scale.
 
@@ -109,9 +110,9 @@ def spsa_estimator(
         # Note: Since delta_i is either 1 or -1, dividing by delta_i is
         # equivalent
         # to multiplying by delta_i. We multiply for numerical stability.
-        grad_estimate = jax.tree.map(
-            lambda d: (y_plus - y_minus) / (2.0 * c) * d, delta
-        )
+        safe_c = jnp.maximum(c, jnp.finfo(jnp.result_type(c)).eps)
+        scalar_diff = (y_plus - y_minus) / (2.0 * safe_c)
+        grad_estimate = jax.tree.map(lambda d: scalar_diff * d, delta)
         return grad_estimate
 
     return grad_fn
