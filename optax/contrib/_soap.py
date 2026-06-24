@@ -35,7 +35,7 @@ import optax.tree
 class ScaleBySOAPState(NamedTuple):
   """State for the SOAP optimizer."""
 
-  count: jax.Array  # shape=(), dtype=jnp.int32
+  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
   # Kronecker factors and their eigenbases, stored in float32.
   # Leaves have shape (m, m) / (n, n) for 2D params, or (0,) for others.
   left_factor: base.Updates
@@ -245,6 +245,7 @@ def scale_by_soap(
         nu=new_nu,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -346,6 +347,7 @@ def soap(
           precondition_frequency=precondition_frequency,
           mu_dtype=mu_dtype,
       ),
+      # pyrefly: ignore[bad-argument-type]
       _adding.add_decayed_weights(weight_decay, mask=weight_decay_mask),
       transform.scale_by_learning_rate(learning_rate),
   )
