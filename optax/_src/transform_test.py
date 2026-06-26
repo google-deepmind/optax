@@ -85,7 +85,9 @@ class TransformTest(parameterized.TestCase):
         jnp.array([-0.2, 0.7, 1.0]),
     ]
 
-    tx = transform.scale_by_adan(b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root)
+    tx = transform.scale_by_adan(
+        b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root
+    )
     state = tx.init(grads[0])
 
     m = jnp.zeros(3)
