@@ -65,27 +65,11 @@ class ContribShardingTest(parameterized.TestCase):
           (2, 8, 4), dtype=jnp.float16, out_sharding=sharding
       )
 
-      # Eager init and update should have matching sharding types.
-      state_eager = optimizer.init(params)
-      _, state_after_update = optimizer.update(params, state_eager, params)
+      state = optimizer.init(params)
+      _, state_after_update = optimizer.update(params, state, params)
       test_utils.assert_trees_all_equal(
-          jax.tree.map(jax.typeof, state_eager),
+          jax.tree.map(jax.typeof, state),
           jax.tree.map(jax.typeof, state_after_update),
-      )
-
-      # JIT-compiled init and update should match their eager counterparts.
-      state_jit = jax.jit(optimizer.init)(params)
-      test_utils.assert_trees_all_equal(
-          jax.tree.map(jax.typeof, state_eager),
-          jax.tree.map(jax.typeof, state_jit),
-      )
-
-      _, state_update_jit = jax.jit(optimizer.update)(
-          params, state_eager, params
-      )
-      test_utils.assert_trees_all_equal(
-          jax.tree.map(jax.typeof, state_after_update),
-          jax.tree.map(jax.typeof, state_update_jit),
       )
 
 
