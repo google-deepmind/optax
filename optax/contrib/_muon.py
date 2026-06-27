@@ -817,3 +817,268 @@ def muon(
       },
       param_labels=param_labels,
   )
+
+
+# ---------------------------------------------------------------------------
+# SCION: Stochastic Conditional Gradient with Norm-Constrained LMOs
+# ---------------------------------------------------------------------------
+
+_LMO_CHOICES = ('spectral', 'sign', 'frobenius')
+
+
+def _apply_lmo(
+    x: jax.Array,
+    lmo: str,
+    ns_coeffs: jax.Array,
+    ns_steps: jax.typing.ArrayLike,
+    preconditioning: str,
+    eps: jax.typing.ArrayLike,
+    gram: bool,
+) -> jax.Array:
+  """Apply a linear minimization oracle to a single array."""
+  if lmo == 'spectral':
+    dim_nums = (
+        MuonDimensionNumbers(reduction_axis=-2, output_axis=-1)
+        if x.ndim > 2 else None
+    )
+    return orthogonalize_via_newton_schulz(
+        x, ns_coeffs, ns_steps, preconditioning, eps, dim_nums, gram
+    )
+  elif lmo == 'sign':
+    return jnp.sign(x)
+  elif lmo == 'frobenius':
+    return x / (jnp.linalg.norm(x, ord='fro') + eps)
+  else:
+    raise ValueError(f'Unknown lmo {lmo!r}. Choose from {_LMO_CHOICES}')
+
+
+class ScaleByScionsState(NamedTuple):
+  """State for scale_by_scion."""
+  count: jax.typing.ArrayLike
+  mu: base.Updates
+  ns_coeffs: jax.typing.ArrayLike
+
+
+def scale_by_scion(
+    lmo: Literal['spectral', 'sign', 'frobenius'] = 'spectral',
+    beta: jax.typing.ArrayLike = 0.95,
+    ns_coeffs: Union[
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
+    ] = _DEFAULT_NS_COEFFS,
+    ns_steps: jax.typing.ArrayLike = 5,
+    eps: jax.typing.ArrayLike = 1e-8,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    nesterov: bool = True,
+    preconditioning: Literal[
+        'frobenius', 'spectral', 'aol', 'schatten'
+    ] = 'frobenius',
+    gram: bool = False,
+) -> base.GradientTransformation:
+  r"""Rescale updates via a norm-constrained linear minimization oracle.
+
+  This is the inner optimizer primitive for SCION (Pethick et al., 2025).
+  Each step computes Nesterov momentum and then applies the chosen LMO:
+
+  - ``'spectral'``: returns the polar factor :math:`UV^\top`, identical to
+    Muon. Uses Newton-Schulz iteration (parameters ``ns_coeffs``,
+    ``ns_steps``, ``preconditioning``, ``gram``).
+  - ``'sign'``: returns :math:`\operatorname{sign}(G)` element-wise, i.e.
+    steepest descent under the :math:`\ell_\infty` norm. Equivalent to the
+    Lion update rule for 1-D parameters.
+  - ``'frobenius'``: returns :math:`G / \|G\|_F`, normalised gradient.
+
+  Args:
+    lmo: Which linear minimization oracle to apply. One of
+      ``'spectral'``, ``'sign'``, or ``'frobenius'``.
+    beta: Momentum decay rate.
+    ns_coeffs: Newton-Schulz coefficients; only used when
+      ``lmo='spectral'``. See :func:`scale_by_muon` for details.
+    ns_steps: Newton-Schulz iteration count; ignored when
+      ``ns_coeffs`` is 2-D.
+    eps: Numerical stability term.
+    mu_dtype: Optional dtype for the momentum buffer.
+    nesterov: Whether to use Nesterov-style momentum.
+    preconditioning: Preconditioning variant for Newton-Schulz;
+      only used when ``lmo='spectral'``.
+    gram: Use Gram Newton-Schulz when ``lmo='spectral'``.
+
+  Returns:
+    A :class:`GradientTransformation`.
+
+  References:
+    Pethick et al., `Training Deep Learning Models with
+    Norm-Constrained LMOs <https://arxiv.org/abs/2502.07529>`_, 2025
+  """
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = optax.tree.zeros_like(params, dtype=mu_dtype)
+    ns_coeffs_ = jnp.asarray(ns_coeffs)
+    if ns_coeffs_.ndim > 2 or ns_coeffs_.shape[-1] != 3:
+      raise ValueError(
+          f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
+      )
+    if ns_coeffs_.ndim == 2:
+      # pyrefly: ignore[unsupported-operation]
+      ns_coeffs_ = ns_coeffs_[-ns_steps:]
+    return ScaleByScionsState(
+        count=jnp.zeros([], jnp.int32),
+        mu=mu,
+        ns_coeffs=ns_coeffs_,
+    )
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = optax.tree.update_moment(updates, state.mu, beta, 1)
+    count_inc = numerics.safe_increment(state.count)
+    if nesterov:
+      mu_hat = jax.tree.map(
+          lambda m, g: beta * m + (1 - beta) * g,
+          optax.tree.bias_correction(
+              mu, beta, numerics.safe_increment(count_inc)
+          ),
+          optax.tree.bias_correction(updates, beta, count_inc),
+      )
+    else:
+      mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
+
+    updates = jax.tree.map(
+        lambda x: _apply_lmo(
+            x, lmo, state.ns_coeffs, ns_steps, preconditioning, eps, gram
+        ),
+        mu_hat,
+    )
+    mu = optax.tree.cast(mu, mu_dtype)
+    return updates, ScaleByScionsState(
+        count=count_inc, mu=mu, ns_coeffs=state.ns_coeffs
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scion(
+    learning_rate: base.ScalarOrSchedule,
+    lmo: Union[
+        Literal['auto', 'spectral', 'sign', 'frobenius'], str
+    ] = 'auto',
+    beta: jax.typing.ArrayLike = 0.95,
+    ns_coeffs: Union[
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
+        str,
+    ] = _DEFAULT_NS_COEFFS,
+    ns_steps: jax.typing.ArrayLike = 5,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    nesterov: bool = True,
+    preconditioning: Literal[
+        'frobenius', 'spectral', 'aol', 'schatten'
+    ] = 'frobenius',
+    gram: bool = False,
+) -> base.GradientTransformation:
+  r"""SCION: Stochastic Conditional Gradient with Norm-Constrained LMOs.
+
+  SCION (Pethick et al., 2025) is a generalisation of Muon that selects
+  the update direction via a linear minimization oracle (LMO) over a
+  norm ball rather than always using the spectral-norm LMO (polar factor).
+
+  The theoretical connection is: Muon performs steepest descent under the
+  spectral norm :math:`\|W\|_2`, whose dual is the nuclear norm. SCION
+  makes the norm choice explicit and extends it to embeddings, biases, and
+  other parameter types that benefit from a different geometry.
+
+  With ``lmo='auto'`` (default):
+
+  - Parameters with ``ndim >= 2`` use ``'spectral'`` (Newton-Schulz,
+    same as Muon).
+  - Parameters with ``ndim == 1`` use ``'sign'`` (element-wise, same
+    as Lion for biases and layer-norm scales).
+
+  Args:
+    learning_rate: Global step size, fixed or scheduled.
+    lmo: Linear minimization oracle. ``'auto'`` routes by parameter
+      rank (see above). ``'spectral'``, ``'sign'``, or ``'frobenius'``
+      apply the same LMO to every parameter.
+    beta: Momentum decay rate.
+    ns_coeffs: Newton-Schulz coefficients for the spectral LMO.
+      Accepts a preset string: ``'standard'``, ``'dion'``,
+      ``'polar_express'``.
+    ns_steps: Newton-Schulz iteration count.
+    eps: Numerical stability term.
+    weight_decay: L2 regularisation coefficient.
+    weight_decay_mask: Mask controlling which parameters receive
+      weight decay.
+    mu_dtype: Optional dtype for the momentum buffer.
+    nesterov: Whether to use Nesterov-style momentum.
+    preconditioning: Preconditioning variant for Newton-Schulz.
+    gram: Use Gram Newton-Schulz for the spectral LMO.
+
+  Returns:
+    The corresponding :class:`GradientTransformation`.
+
+  References:
+    Pethick et al., `Training Deep Learning Models with
+    Norm-Constrained LMOs <https://arxiv.org/abs/2502.07529>`_, 2025
+
+    Jordan, `modded-nanogpt: Speedrunning the NanoGPT baseline
+    <https://github.com/KellerJordan/modded-nanogpt>`_, 2024
+
+    Amsel et al., `The Polar Express: Optimal Matrix Sign Methods
+    and Their Application to the Muon Algorithm
+    <https://arxiv.org/abs/2505.16932>`_, 2025
+  """
+  if isinstance(ns_coeffs, str):
+    if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
+      raise ValueError(f'Unknown ns_coeffs preset: {ns_coeffs!r}')
+    ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+  else:
+    ns_coeffs_ = ns_coeffs
+
+  def _make_scale(lmo_choice):
+    return combine.chain(
+        scale_by_scion(
+            lmo=lmo_choice,
+            beta=beta,
+            ns_coeffs=ns_coeffs_,  # pyrefly: ignore[bad-argument-type]
+            ns_steps=ns_steps,
+            eps=eps,
+            mu_dtype=mu_dtype,
+            nesterov=nesterov,
+            preconditioning=preconditioning,
+            gram=gram,
+        ),
+        # pyrefly: ignore[bad-argument-type]
+        transform.add_decayed_weights(weight_decay, weight_decay_mask),
+        transform.scale_by_learning_rate(learning_rate),
+    )
+
+  if lmo == 'auto':
+    param_labels = lambda params: jax.tree.map(
+        lambda x: 'matrix' if x.ndim >= 2 else 'vector', params
+    )
+    return combine.partition(
+        transforms={
+            'matrix': _make_scale('spectral'),
+            'vector': _make_scale('sign'),
+        },
+        param_labels=param_labels,
+    )
+  else:
+    return _make_scale(lmo)

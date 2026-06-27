@@ -487,5 +487,72 @@ class MuonTest(parameterized.TestCase):
     )
 
 
+class ScionTest(absltest.TestCase):
+
+  def test_scale_by_scion_spectral_runs(self):
+    x = jax.random.normal(jax.random.key(0), (8, 16))
+    opt = _muon.scale_by_scion(lmo='spectral')
+    state = opt.init(x)
+    updates, _ = opt.update(x, state)
+    self.assertEqual(updates.shape, x.shape)
+    self.assertFalse(jnp.isnan(updates).any())
+
+  def test_scale_by_scion_sign_runs(self):
+    x = jax.random.normal(jax.random.key(1), (16,))
+    opt = _muon.scale_by_scion(lmo='sign')
+    state = opt.init(x)
+    updates, _ = opt.update(x, state)
+    np.testing.assert_allclose(
+        np.abs(np.array(updates)), np.ones(16), atol=1e-6,
+    )
+
+  def test_scale_by_scion_frobenius_runs(self):
+    x = jax.random.normal(jax.random.key(2), (8, 8))
+    opt = _muon.scale_by_scion(lmo='frobenius')
+    state = opt.init(x)
+    updates, _ = opt.update(x, state)
+    self.assertAlmostEqual(float(jnp.linalg.norm(updates, ord='fro')), 1.0, places=4)
+
+  def test_scion_auto_routes_by_rank(self):
+    params = {
+        'weight': jnp.ones((8, 16)),
+        'bias': jnp.ones((16,)),
+    }
+    grads = jax.tree.map(jnp.ones_like, params)
+    opt = _muon.scion(learning_rate=0.1)
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+    # 2D param goes through spectral LMO, 1D through sign
+    self.assertEqual(updates['weight'].shape, params['weight'].shape)
+    self.assertEqual(updates['bias'].shape, params['bias'].shape)
+    self.assertFalse(jnp.isnan(updates['weight']).any())
+    self.assertFalse(jnp.isnan(updates['bias']).any())
+
+  def test_scion_preset_string(self):
+    x = jax.random.normal(jax.random.key(3), (8, 8))
+    opt = _muon.scion(learning_rate=0.01, ns_coeffs='dion')
+    state = opt.init({'w': x})
+    updates, _ = opt.update({'w': x}, state, {'w': x})
+    self.assertFalse(jnp.isnan(updates['w']).any())
+
+  def test_scion_matches_muon_spectral(self):
+    """scion with lmo='spectral' should agree with muon on 2D params."""
+    params = {'w': jnp.eye(8) * 1.5}
+    grads = {'w': jax.random.normal(jax.random.key(7), (8, 8))}
+    opt_scion = _muon.scion(
+        learning_rate=1.0, lmo='spectral', weight_decay=0.0,
+        ns_coeffs='dion', beta=0.95, nesterov=True,
+    )
+    opt_muon = _muon.muon(
+        learning_rate=1.0, weight_decay=0.0,
+        ns_coeffs='dion', beta=0.95, nesterov=True,
+    )
+    u_scion, _ = opt_scion.update(grads, opt_scion.init(params), params)
+    u_muon, _ = opt_muon.update(grads, opt_muon.init(params), params)
+    np.testing.assert_allclose(
+        np.array(u_scion['w']), np.array(u_muon['w']), atol=1e-5,
+    )
+
+
 if __name__ == '__main__':
   absltest.main()
