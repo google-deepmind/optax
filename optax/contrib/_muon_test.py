@@ -511,7 +511,8 @@ class ScionTest(absltest.TestCase):
     opt = _muon.scale_by_scion(lmo='frobenius')
     state = opt.init(x)
     updates, _ = opt.update(x, state)
-    self.assertAlmostEqual(float(jnp.linalg.norm(updates, ord='fro')), 1.0, places=4)
+    norm = float(jnp.linalg.norm(updates, ord='fro'))
+    self.assertAlmostEqual(norm, 1.0, places=4)
 
   def test_scion_auto_routes_by_rank(self):
     params = {
