@@ -47,9 +47,23 @@ _DION_NS_COEFFS = [
     (2.8769, -3.1427, 1.2046),
     (2.8366, -3.0525, 1.2012),
 ]
+_sf = 1.05  # safety factor applied to Polar Express coefficients
+_POLAR_EXPRESS_NS_COEFFS = [
+    (a / _sf, b / _sf**3, c / _sf**5)
+    for a, b, c in (
+        (8.28721201814563, -23.595886519098837, 17.300387312530933),
+        (4.107059111542203, -2.9478499167379106, 0.5448431082926601),
+        (3.9486908534822946, -2.908902115962949, 0.5518191394370137),
+        (3.3184196573706015, -2.488488024314874, 0.51004894012372),
+        (2.300652019954817, -1.6689039845747493, 0.4188073119525673),
+    )
+]
+del _sf
+
 _NS_COEFFS_PRESET_DICT = {
     'standard': _DEFAULT_NS_COEFFS,
     'dion': _DION_NS_COEFFS,
+    'polar_express': _POLAR_EXPRESS_NS_COEFFS,
 }
 
 
@@ -286,6 +300,7 @@ def orthogonalize_via_newton_schulz(
     ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
+    gram: bool = False,
 ) -> jax.Array:
   r"""Orthogonalize via Newton-Schulz iteration.
 
@@ -304,10 +319,17 @@ def orthogonalize_via_newton_schulz(
       Must have shape (n, 3) where n is the number of iterations.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a 2D array.
-    preconditioning: Which preconditioning method to use.
+    preconditioning: Which preconditioning method to use. Ignored when
+      ``gram=True``.
     eps: Term added to denominators to improve numerical stability.
     dimension_numbers: Optional spec for reshaping a tensor before and after the
       orthogonalization, to support non-2D parameters.
+    gram: If True, use the Gram Newton-Schulz method (Amsel et al., 2025).
+      Rather than repeatedly computing :math:`XX^\top` each iteration, it
+      accumulates the Gram matrix :math:`R = XX^\top` and an orthogonal
+      transform :math:`Q` in :math:`n \times n` space, saving FLOPs when
+      the aspect ratio :math:`m/n` is large. Recommended with
+      ``ns_coeffs='polar_express'`` or ``ns_coeffs='dion'``.
 
   Returns:
     The orthogonalized matrix.
@@ -328,37 +350,88 @@ def orthogonalize_via_newton_schulz(
       x = x.T
       transposed = True
 
-    ns_iterators = {
-        'frobenius': _base_ns_iterator,
-        'spectral': _base_ns_iterator,
-        'aol': _aol_ns_iterator,
-        'schatten': _schatten_ns_iterator,
-    }
-    if preconditioning not in _PRECONDITIONINGS:
-      raise ValueError(f'Unknown preconditioning {preconditioning}')
-    _ns_iterator = ns_iterators[preconditioning]
-
-    if preconditioning == 'frobenius':
-      x /= jnp.linalg.norm(x, ord='fro') + eps
-    elif preconditioning == 'spectral':
-      x /= jnp.linalg.norm(x, ord=2) + eps
-    else:
-      pass
-
     ns_coeffs_ = ns_coeffs.astype(x.dtype)
 
-    if ns_coeffs_.ndim == 1:
-      x = jax.lax.fori_loop(
-          0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
-          unroll=False)
-    else:
-      def _scan_body(carry, coeffs_step):
-        i, x = carry
-        x_new = _ns_iterator(i, x, coeffs_step)
-        return (i + 1, x_new), None
+    if gram:
+      n = x.shape[0]
+      x = x / (jnp.linalg.norm(x, ord='fro') + eps)
+      R = x @ x.T
+      Q = jnp.eye(n, dtype=x.dtype)
+      # Restart at step 2 (0-indexed) materialises Q back into X, which
+      # keeps the Gram matrix condition number bounded. See Amsel et al.,
+      # The Polar Express (2025).
+      _restart_at = 2
 
-      init_carry = (jnp.asarray(0, dtype=jnp.int32), x)
-      (_, x), _ = jax.lax.scan(_scan_body, init_carry, ns_coeffs_)
+      def _gram_body(carry, do_restart, a, b, c):
+        x, Q, R = carry
+
+        def _restart(tup):
+          xq, Qq, _ = tup
+          xq = Qq @ xq
+          return xq, jnp.eye(n, dtype=Qq.dtype), xq @ xq.T
+
+        x, Q, R = jax.lax.cond(
+            do_restart, _restart, lambda tup: tup, (x, Q, R)
+        )
+        Z = b * R + c * (R @ R)
+        RZ = R @ Z + a * R
+        return x, Q @ Z + a * Q, Z @ RZ + a * RZ
+
+      if ns_coeffs_.ndim == 1:
+        a, b, c = ns_coeffs_[0], ns_coeffs_[1], ns_coeffs_[2]
+
+        def _fori_body(t, carry):
+          return _gram_body(carry, t == _restart_at, a, b, c)
+
+        x, Q, _ = jax.lax.fori_loop(
+            0, ns_steps, _fori_body, (x, Q, R)
+        )
+      else:
+        restart_mask = jnp.arange(ns_coeffs_.shape[0]) == _restart_at
+
+        def _scan_body(carry, inputs):
+          coeff_row, do_restart = inputs
+          carry = _gram_body(
+              carry, do_restart, coeff_row[0], coeff_row[1], coeff_row[2]
+          )
+          return carry, None
+
+        (x, Q, _), _ = jax.lax.scan(
+            _scan_body, (x, Q, R), (ns_coeffs_, restart_mask)
+        )
+
+      x = Q @ x
+
+    else:
+      ns_iterators = {
+          'frobenius': _base_ns_iterator,
+          'spectral': _base_ns_iterator,
+          'aol': _aol_ns_iterator,
+          'schatten': _schatten_ns_iterator,
+      }
+      if preconditioning not in _PRECONDITIONINGS:
+        raise ValueError(f'Unknown preconditioning {preconditioning}')
+      _ns_iterator = ns_iterators[preconditioning]
+
+      if preconditioning == 'frobenius':
+        x /= jnp.linalg.norm(x, ord='fro') + eps
+      elif preconditioning == 'spectral':
+        x /= jnp.linalg.norm(x, ord=2) + eps
+      else:
+        pass
+
+      if ns_coeffs_.ndim == 1:
+        x = jax.lax.fori_loop(
+            0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
+            unroll=False)
+      else:
+        def _scan_body(carry, coeffs_step):
+          i, x = carry
+          x_new = _ns_iterator(i, x, coeffs_step)
+          return (i + 1, x_new), None
+
+        init_carry = (jnp.asarray(0, dtype=jnp.int32), x)
+        (_, x), _ = jax.lax.scan(_scan_body, init_carry, ns_coeffs_)
 
     if transposed:
       x = x.T
@@ -397,6 +470,7 @@ def scale_by_muon(
         'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
+    gram: bool = False,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
 
@@ -426,6 +500,8 @@ def scale_by_muon(
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
       such a tree. None implies that all parameters are 2D matrices.
+    gram: If True, use the Gram Newton-Schulz method. See
+      :func:`orthogonalize_via_newton_schulz` for details.
 
   Returns:
     A `GradientTransformation` object.
@@ -503,7 +579,8 @@ def scale_by_muon(
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num),
+            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num, gram
+        ),
         mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
@@ -554,6 +631,7 @@ def muon(
     adam_learning_rate: base.ScalarOrSchedule | None = None,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
     consistent_rms: jax.typing.ArrayLike | None = None,
+    gram: bool = False,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -572,7 +650,8 @@ def muon(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     ns_coeffs: Coefficients for the Newton-schulz method (can be a string
-      indicator for a preset). Existing presets: `muon`, `dion`.
+      indicator for a preset). Existing presets: `standard`, `dion`,
+      `polar_express`. `polar_express` is recommended when ``gram=True``.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -622,6 +701,11 @@ def muon(
       root mean square (RMS) shape-independent, like AdamW. `0.2` is recommended
       to match AdamW's empirical RMS. See <https://arxiv.org/abs/2502.16982>.
       If `None`, uses width scaling `sqrt(max(1, fan_out / fan_in))`.
+    gram: If True, orthogonalize via the Gram Newton-Schulz method
+      (Amsel et al., 2025) which works on the :math:`n \times n` Gram matrix
+      :math:`XX^\top` rather than :math:`X` directly, reducing per-iteration
+      cost when the matrix aspect ratio is large. Pair with
+      ``ns_coeffs='polar_express'`` for best results.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -709,6 +793,7 @@ def muon(
                   adaptive=adaptive,
                   preconditioning=preconditioning,
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
+                  gram=gram,
               ),
               scale_by_shape(
                   weight_dimension_numbers=muon_weight_dim_nums_fn,

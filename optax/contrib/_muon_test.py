@@ -420,6 +420,72 @@ class MuonTest(parameterized.TestCase):
     self.assertLess(ortho_error, 1e-3,
                     f'Orthogonality error too high: {ortho_error}')
 
+  @parameterized.named_parameters(
+      ('wide', (8, 32)),
+      ('tall', (32, 8)),
+      ('square', (8, 8)),
+  )
+  def test_gram_ns_matches_standard(self, shape):
+    """Gram NS and standard NS agree when given the same per-step coeffs."""
+    x = jax.random.normal(jax.random.key(1), shape)
+    coeffs = jnp.array(_muon._DION_NS_COEFFS)
+
+    out_std = _muon.orthogonalize_via_newton_schulz(
+        x, coeffs, gram=False,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+    out_gram = _muon.orthogonalize_via_newton_schulz(
+        x, coeffs, gram=True,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+    np.testing.assert_allclose(
+        np.array(out_gram), np.array(out_std), atol=1e-5,
+        err_msg='Gram NS output should match standard NS for the same coeffs',
+    )
+
+  def test_gram_ns_polar_express_preset(self):
+    """polar_express preset resolves correctly and runs without error."""
+    x = jax.random.normal(jax.random.key(2), (8, 32))
+    coeffs = jnp.array(_muon._POLAR_EXPRESS_NS_COEFFS)
+    out = _muon.orthogonalize_via_newton_schulz(
+        x, coeffs, gram=True,
+        dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
+    )
+    self.assertEqual(out.shape, x.shape)
+    self.assertFalse(jnp.isnan(out).any(), 'NaN values in Gram+PE output')
+
+  def test_gram_muon_preset_string(self):
+    """muon(ns_coeffs='polar_express', gram=True) runs end-to-end."""
+    params = {'w': jax.random.normal(jax.random.key(3), (8, 32))}
+    grads = {'w': jax.random.normal(jax.random.key(4), (8, 32))}
+    opt = _muon.muon(
+        learning_rate=1e-3, ns_coeffs='polar_express', gram=True
+    )
+    state = opt.init(params)
+    updates, _ = opt.update(grads, state, params)
+    self.assertEqual(updates['w'].shape, (8, 32))
+    self.assertFalse(
+        jnp.isnan(updates['w']).any(), 'NaN in gram muon updates'
+    )
+
+  def test_gram_muon_orthogonality(self):
+    """gram=True produces near-orthogonal updates, matching gram=False."""
+    params = {'w': jnp.eye(8) * 2.0}
+    grads = {'w': jnp.eye(8) * 2.0}
+    opt_gram = _muon.muon(
+        learning_rate=1.0, ns_coeffs='dion', gram=True, weight_decay=0.0
+    )
+    opt_std = _muon.muon(
+        learning_rate=1.0, ns_coeffs='dion', gram=False, weight_decay=0.0
+    )
+    u_gram, _ = opt_gram.update(grads, opt_gram.init(params), params)
+    u_std, _ = opt_std.update(grads, opt_std.init(params), params)
+
+    np.testing.assert_allclose(
+        np.array(u_gram['w']), np.array(u_std['w']), atol=1e-5,
+        err_msg='gram=True and gram=False should agree with the same coeffs',
+    )
+
 
 if __name__ == '__main__':
   absltest.main()
