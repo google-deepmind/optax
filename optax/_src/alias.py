@@ -921,8 +921,8 @@ def adan(
     Objective function: 1.28E+01
     Objective function: 1.17E+01
     Objective function: 1.07E+01
-    Objective function: 9.68E+00
-    Objective function: 8.76E+00
+    Objective function: 9.69E+00
+    Objective function: 8.77E+00
 
   References:
     Xie et al, `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing
