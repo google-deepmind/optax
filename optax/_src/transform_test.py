@@ -74,10 +74,8 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
   def test_adan_matches_documented_update(self):
-    # Reference implementation of the equations documented in `optax.adan`,
-    # where the gradient-difference term in both `n` and the update is scaled
-    # by (1 - beta_2), which equals `b2` in optax's (1 - beta) parameterization.
-    b1, b2, b3 = 0.98, 0.92, 0.99
+    # Reference implementation of the equations documented in `optax.adan`.
+    b1, b2, b3 = 0.02, 0.08, 0.01
     eps, eps_root = 1e-8, 0.0
     grads = [
         jnp.array([0.5, -1.5, 2.0]),
@@ -96,13 +94,13 @@ class TransformTest(parameterized.TestCase):
     g_prev = jnp.zeros(3)
     for step, g in enumerate(grads, start=1):
       diff = jnp.zeros(3) if step == 1 else g - g_prev
-      m = b1 * m + (1 - b1) * g
-      v = b2 * v + (1 - b2) * diff
-      n = b3 * n + (1 - b3) * (g + b2 * diff) ** 2
-      m_hat = m / (1 - b1**step)
-      v_hat = v / (1 - b2**step)
-      n_hat = n / (1 - b3**step)
-      expected = (m_hat + b2 * v_hat) / (jnp.sqrt(n_hat + eps_root) + eps)
+      m = (1 - b1) * m + b1 * g
+      v = (1 - b2) * v + b2 * diff
+      n = (1 - b3) * n + b3 * (g + (1 - b2) * diff) ** 2
+      m_hat = m / (1 - (1 - b1) ** step)
+      v_hat = v / (1 - (1 - b2) ** step)
+      n_hat = n / (1 - (1 - b3) ** step)
+      expected = (m_hat + (1 - b2) * v_hat) / (jnp.sqrt(n_hat + eps_root) + eps)
       g_prev = g
 
       updates, state = tx.update(g, state, None)
