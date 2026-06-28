@@ -831,7 +831,7 @@ def _apply_lmo(
     lmo: str,
     ns_coeffs: jax.Array,
     ns_steps: jax.typing.ArrayLike,
-    preconditioning: str,
+    preconditioning: Literal['frobenius', 'spectral', 'aol', 'schatten'],
     eps: jax.typing.ArrayLike,
     gram: bool,
 ) -> jax.Array:
