@@ -20,13 +20,14 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 
+from optax import tree
 from optax._src import transform
 from optax._src import update
 from optax.contrib import _galore
 
 
-def _tree_sum_squares(tree):
-  leaves = jax.tree.leaves(tree)
+def _tree_sum_squares(pytree):
+  leaves = jax.tree.leaves(pytree)
   return sum(jnp.sum(jnp.square(x.astype(jnp.float32))) for x in leaves)
 
 
@@ -317,18 +318,17 @@ class GaLoreTest(parameterized.TestCase):
         weight_dimension_numbers=dim_nums,
     )
     state = opt.init(params)
-    assert isinstance(state[0], _galore.GaLoreState)
-    galore_state: _galore.GaLoreState = state[0]
-    base_state = galore_state.base_optimizer_state
 
     # Reshaped: (256, 512), m < n → right projection
     # Moments should be (m, rank) = (256, 16)
-    self.assertEqual(base_state.mu["w"].shape, (embed_dim, rank))
-    self.assertEqual(base_state.nu["w"].shape, (embed_dim, rank))
+    mu = tree.get(state, "mu")
+    nu = tree.get(state, "nu")
+    self.assertEqual(mu["w"].shape, (embed_dim, rank))
+    self.assertEqual(nu["w"].shape, (embed_dim, rank))
 
     # Verify memory savings
     full_size = embed_dim * num_heads * head_dim
-    moment_size = base_state.mu["w"].size
+    moment_size = mu["w"].size
     self.assertLess(moment_size, full_size)
 
   def test_dimension_numbers_convergence(self):
@@ -415,14 +415,14 @@ class GaLoreTest(parameterized.TestCase):
         weight_dimension_numbers=dim_nums,
     )
     state = opt.init(params)
-    galore_state = state[0]
-    base_state = galore_state.base_optimizer_state
 
     # m=32 < n=512 → right projection
     # Projector: (n, rank) = (512, 8)
     # Moments: (m, rank) = (32, 8)
-    self.assertEqual(galore_state.projector["w"].shape, (512, rank))
-    self.assertEqual(base_state.mu["w"].shape, (32, rank))
+    projector = tree.get(state, "projector")
+    mu = tree.get(state, "mu")
+    self.assertEqual(projector["w"].shape, (512, rank))
+    self.assertEqual(mu["w"].shape, (32, rank))
 
   def test_single_dimension_number_applied_to_all(self):
 

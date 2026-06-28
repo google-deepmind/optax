@@ -85,15 +85,15 @@ _is_weight_dim_nums = lambda x: isinstance(x, MuonDimensionNumbers)
 def _normalize_axes(x: jax.Array, dim_nums: MuonDimensionNumbers) -> tuple[
     tuple[int, ...], tuple[int, ...]]:
   """Normalize axes in dimension numbers to two tuples of non-negative ints."""
-  if isinstance(dim_nums.reduction_axis, int):
-    dim_nums = dim_nums._replace(reduction_axis=(dim_nums.reduction_axis,))
-  # pyrefly: ignore[not-iterable]
-  reduction_axes = tuple(ax % x.ndim for ax in dim_nums.reduction_axis)
+  reduction_axis = dim_nums.reduction_axis
+  if isinstance(reduction_axis, int):
+    reduction_axis = (reduction_axis,)
+  reduction_axes = tuple(ax % x.ndim for ax in reduction_axis)
 
-  if isinstance(dim_nums.output_axis, int):
-    dim_nums = dim_nums._replace(output_axis=(dim_nums.output_axis,))
-  # pyrefly: ignore[not-iterable]
-  output_axes = tuple(ax % x.ndim for ax in dim_nums.output_axis)
+  output_axis = dim_nums.output_axis
+  if isinstance(output_axis, int):
+    output_axis = (output_axis,)
+  output_axes = tuple(ax % x.ndim for ax in output_axis)
   return reduction_axes, output_axes
 
 

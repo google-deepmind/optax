@@ -540,8 +540,8 @@ class WarmupCosineDecayTest(parameterized.TestCase):
         end_value=end, exponent=2.0)
 
     steps = np.arange(decay_steps + 1)
-    vals = regular(steps)
-    vals2 = steep(steps)
+    vals = jnp.asarray(regular(steps))
+    vals2 = jnp.asarray(steep(steps))
 
     with self.subTest('warmup increases'):
       for t in range(warmup_steps):

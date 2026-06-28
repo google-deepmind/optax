@@ -181,7 +181,7 @@ class StateUtilsTest(absltest.TestCase):
 
     self.assertEqual(1e-3, state.hyperparams['learning_rate'])
     params_plus_one = jax.tree.map(lambda v: v + 1, params)
-    mu = getattr(state.inner_state[0], 'mu')
+    mu = _state_utils.tree_get(state, 'mu')
     test_utils.assert_trees_all_close(mu, params_plus_one)
 
   def test_map_params_to_none(self):
