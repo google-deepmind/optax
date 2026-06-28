@@ -22,8 +22,8 @@ from optax.losses import _regression
 
 
 def ntxent(
-    embeddings: jax.Array,
-    labels: jax.Array,
+    embeddings: jax.typing.ArrayLike,
+    labels: jax.typing.ArrayLike,
     temperature: jax.typing.ArrayLike = 0.07,
 ) -> jax.Array:
   """Normalized temperature scaled cross entropy loss (NT-Xent).
@@ -79,19 +79,22 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
-  if labels.shape[0] != embeddings.shape[0]:
+  # pyrefly: ignore [missing-attribute]
+  if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
-        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'
+        # pyrefly: ignore [missing-attribute]
+        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         ' embeddings.'
     )
 
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :],
-          embeddings[:, None, :],
-          epsilon=jnp.finfo(embeddings.dtype).eps,
+          embeddings[None, :, :],  # pyrefly: ignore[bad-index]
+          embeddings[:, None, :],  # pyrefly: ignore[bad-index]
+          # pyrefly: ignore [missing-attribute]
+          epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature
   )

@@ -1552,14 +1552,14 @@ class ScaleByLBFGSState(NamedTuple):
   updates: base.Params
   diff_params_memory: base.ArrayTree
   diff_updates_memory: base.ArrayTree
-  weights_memory: jax.Array
+  weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
     diff_params_memory: base.ArrayTree,
     diff_updates_memory: base.ArrayTree,
-    weights_memory: jax.Array,
+    weights_memory: jax.typing.ArrayLike,
     identity_scale: jax.typing.ArrayLike,  # float
     memory_idx: jax.typing.ArrayLike,  # int
 ) -> base.Updates:
@@ -1596,13 +1596,15 @@ def _precondition_by_lbfgs(
     , 1999
   """
   rhos = weights_memory
-  memory_size = weights_memory.shape[0]
+  # pyrefly: ignore [missing-attribute]
+  memory_size = weights_memory.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   indices = (memory_idx + jnp.arange(memory_size)) % memory_size
 
   def right_product(vec, idx):
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     alpha = rhos[idx] * optax.tree.real(optax.tree.vdot(dwi, vec))
     vec_new = optax.tree.add_scale(vec, -alpha, dui)
     vec_new = optax.tree.cast_like(vec_new, vec)
@@ -1619,6 +1621,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     beta = rhos[idx] * optax.tree.real(optax.tree.vdot(dui, vec))
     vec_new = optax.tree.add_scale(vec, alpha - beta, dwi)
     vec_new = optax.tree.cast_like(vec_new, vec)

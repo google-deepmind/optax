@@ -18,7 +18,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
-from optax import tree
 from optax._src import test_utils
 from optax.contrib import _reduce_on_plateau
 
@@ -65,10 +64,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
       )
 
     # Check that learning rate is reduced
-    scale = tree.get(state, 'scale')
-    best_value = tree.get(state, 'best_value')
-    plateau_count = tree.get(state, 'plateau_count')
-    cooldown_count = tree.get(state, 'cooldown_count')
+    scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
     test_utils.assert_trees_all_close(plateau_count, 0)
@@ -81,10 +77,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     )
 
     # Check that cooldown_count is decremented
-    scale = tree.get(state, 'scale')
-    best_value = tree.get(state, 'best_value')
-    plateau_count = tree.get(state, 'plateau_count')
-    cooldown_count = tree.get(state, 'cooldown_count')
+    scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
     test_utils.assert_trees_all_close(plateau_count, 0)
@@ -113,9 +106,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     )
 
     # Check that plateau_count resets
-    scale = tree.get(new_state, 'scale')
-    best_value = tree.get(new_state, 'best_value')
-    plateau_count = tree.get(new_state, 'plateau_count')
+    scale, best_value, plateau_count, *_ = new_state
     test_utils.assert_trees_all_close(plateau_count, 0)
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 0.1)
@@ -144,10 +135,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
 
     # Check that learning rate is not reduced and
     # plateau_count is not incremented
-    scale = tree.get(new_state, 'scale')
-    best_value = tree.get(new_state, 'best_value')
-    plateau_count = tree.get(new_state, 'plateau_count')
-    cooldown_count = tree.get(new_state, 'cooldown_count')
+    scale, best_value, plateau_count, cooldown_count, *_ = new_state
     test_utils.assert_trees_all_close(scale, 0.1)
     test_utils.assert_trees_all_close(best_value, 1.0)
     test_utils.assert_trees_all_close(plateau_count, 0)
@@ -182,10 +170,7 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
       )
 
     # Check that learning rate is not reduced
-    scale = tree.get(state, 'scale')
-    best_value = tree.get(state, 'best_value')
-    plateau_count = tree.get(state, 'plateau_count')
-    cooldown_count = tree.get(state, 'cooldown_count')
+    scale, best_value, plateau_count, cooldown_count, *_ = state
     test_utils.assert_trees_all_close(scale, 0.01)
     test_utils.assert_trees_all_close(best_value, 0.1)
     test_utils.assert_trees_all_close(plateau_count, 0)
