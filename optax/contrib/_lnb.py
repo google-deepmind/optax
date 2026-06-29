@@ -319,8 +319,9 @@ def scale_by_lnb(
             nu_state=cast(transforms.EmaState, nu_ema.init(zeros_neurons)),
         )
 
-    def update_fn(updates, state, params=None, *, xs_neurons):
+    def update_fn(updates, state, params=None, *, xs_neurons, **extra_args):
         del params
+        del extra_args
         # Update feature moments.
         mu_neurons = list(map(_compute_mu, xs_neurons))
         nu_neurons = list(map(_compute_mu, map(jnp.square, xs_neurons)))
