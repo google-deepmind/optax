@@ -361,15 +361,20 @@ def scale_by_lnb(
         # Rescale under the metric (adaptive step size).
         if min_norm > 0.0:
             norm = jnp.maximum(min_norm, jnp.sqrt(otu.tree_vdot(h, updates)))
-            h = otu.tree_scalar_mul(1.0 / norm, h)
+            new_updates = otu.tree_scalar_mul(1.0 / norm, h)
+        else:
+            new_updates = h
 
-        return h, ScaleByLNBState(
+        new_state = ScaleByLNBState(
             h_neurons,
             cast(transforms.EmaState, mu_state),
             cast(transforms.EmaState, nu_state),
         )
+        return new_updates, new_state
 
-    return base.GradientTransformationExtraArgs(init_fn, update_fn)
+    return base.GradientTransformationExtraArgs(
+        init_fn, cast(base.TransformUpdateExtraArgsFn, update_fn)
+    )
 
 
 def lnb(
