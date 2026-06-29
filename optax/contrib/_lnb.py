@@ -21,7 +21,16 @@ is noted in the code via "AA".
 
 import functools
 import itertools
-from typing import Any, Callable, NamedTuple, Optional, Tuple, TypeAlias, Union
+from typing import (
+    Any,
+    Callable,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeAlias,
+    Union,
+    cast,
+)
 
 import jax
 import jax.numpy as jnp
@@ -70,9 +79,7 @@ def _get_array(
 
 
 def _set_array(
-    neuron: Neuron,
-    predicate: Union[IsWeight, IsBias],
-    new_array: Union[jax.Array, float],
+    neuron: Neuron, predicate: Union[IsWeight, IsBias], new_array: jax.Array
 ) -> Neuron:
     """Assigns `new_array` for the leaf where the predicate evaluates True."""
 
@@ -211,8 +218,8 @@ def project(
 
     # Create a pytree with same shape as the neuron and use scalar broadcasting
     # to implement ridge regression while ignoring bias, if present.
-    ridge_neuron = _set_array(init, is_weight, ridge)
-    ridge_neuron = _set_array(ridge_neuron, is_bias, 0.0)
+    ridge_neuron = _set_array(init, is_weight, jnp.array(ridge))
+    ridge_neuron = _set_array(ridge_neuron, is_bias, jnp.array(0.0))
 
     def mvp_ridge(v: Neuron) -> Neuron:
         return otu.tree_add(mvp(v), otu.tree_mul(ridge_neuron, v))
@@ -233,7 +240,7 @@ class ScaleByLNBState(NamedTuple):
 def scale_by_lnb(
     b_mu: jax.typing.ArrayLike = 0.9,
     b_nu: jax.typing.ArrayLike = 0.999,
-    min_norm: jax.typing.ArrayLike = 1e-2,
+    min_norm: float = 1e-2,
     *,
     cov_shrinkage: float = 0.1,
     cg_maxiter: int = 2,
@@ -305,16 +312,18 @@ def scale_by_lnb(
             filter(is_neuron, jtu.tree_leaves(params, is_leaf=is_neuron))
         )
         assert all(map(callable, neurons)), "Each Neuron must be callable."
+        zeros_neurons = list(map(_make_zero_vector, neurons))
         return ScaleByLNBState(
             h_neurons=list(map(otu.tree_zeros_like, neurons)),
-            mu_state=mu_ema.init(list(map(_make_zero_vector, neurons))),
-            nu_state=nu_ema.init(list(map(_make_zero_vector, neurons))),
+            mu_state=cast(transforms.EmaState, mu_ema.init(zeros_neurons)),
+            nu_state=cast(transforms.EmaState, nu_ema.init(zeros_neurons)),
         )
 
     def update_fn(
         updates: base.Updates,
         state: ScaleByLNBState,
-        params: base.Params,
+        params: Optional[base.Params] = None,
+        *,
         xs_neurons: list[jax.Array],
     ) -> Tuple[base.Updates, ScaleByLNBState]:
         del params
@@ -358,7 +367,12 @@ def scale_by_lnb(
         if min_norm > 0.0:
             norm = jnp.maximum(min_norm, jnp.sqrt(otu.tree_vdot(h, updates)))
             h = otu.tree_scalar_mul(1.0 / norm, h)
-        return h, ScaleByLNBState(h_neurons, mu_state, nu_state)
+
+        return h, ScaleByLNBState(
+            h_neurons,
+            cast(transforms.EmaState, mu_state),
+            cast(transforms.EmaState, nu_state),
+        )
 
     return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -367,7 +381,7 @@ def lnb(
     b_g: jax.typing.ArrayLike = 0.9,
     b_mu: jax.typing.ArrayLike = 0.9,
     b_nu: jax.typing.ArrayLike = 0.999,
-    min_norm: jax.typing.ArrayLike = 1e-2,
+    min_norm: float = 1e-2,
     weight_decay: base.ScalarOrSchedule = 1e-4,
     *,
     cov_shrinkage: float = 0.1,
