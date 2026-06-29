@@ -129,6 +129,7 @@ def scale_by_rms(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
       count_inc = numerics.safe_increment(state.count)
@@ -141,6 +142,7 @@ def scale_by_rms(
     else:
       scaling = jax.tree.map(lambda n: 1 / (jnp.sqrt(n) + eps), nu_hat)
     updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+    updates = optax.tree.cast_like(updates, grads)
     if bias_correction:
       new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
     else:
@@ -202,6 +204,7 @@ def scale_by_stddev(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     mu = optax.tree.update_moment(updates, state.mu, decay, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
@@ -226,6 +229,7 @@ def scale_by_stddev(
           nu_hat,
       )
     updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+    updates = optax.tree.cast_like(updates, grads)
     if bias_correction:
       new_state = ScaleByRStdDevWithCountState(count=count_inc, mu=mu, nu=nu)
     else:
@@ -280,6 +284,7 @@ def scale_by_adam(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates  # keep a reference to the original grads to cast back later
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -302,6 +307,7 @@ def scale_by_adam(
         nu_hat,
         is_leaf=lambda x: x is None,
     )
+    updates = optax.tree.cast_like(updates, grads)
     mu = optax.tree.cast(mu, mu_dtype)
     nu = optax.tree.cast_like(nu, state.nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
@@ -361,6 +367,7 @@ def scale_by_amsgrad(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -382,6 +389,7 @@ def scale_by_amsgrad(
         nu_max,
         is_leaf=lambda x: x is None,
     )
+    updates = optax.tree.cast_like(updates, grads)
     mu = optax.tree.cast(mu, mu_dtype)
     return updates, ScaleByAmsgradState(
         count=count_inc, mu=mu, nu=nu, nu_max=nu_max
@@ -415,12 +423,14 @@ def scale_by_adamax(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     count_inc = numerics.safe_increment(state.count)
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_infinity_moment(updates, state.nu, b2, eps)
     # Bias correction for mean. No bias correction needed for infinity moment.
     mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     updates = jax.tree.map(lambda m, v: m / v, mu_hat, nu)
+    updates = optax.tree.cast_like(updates, grads)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -467,6 +477,7 @@ def scale_by_lion(
   def update_fn(updates, state, params=None):
 
     del params
+    grads = updates
 
     def _comb(g, m):
       x = (1.0 - b1) * g + b1 * m
@@ -484,6 +495,7 @@ def scale_by_lion(
         )
 
     updates_new = jax.tree.map(_comb, updates, state.mu)
+    updates_new = optax.tree.cast_like(updates_new, grads)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)
     mu = optax.tree.cast(mu, mu_dtype)
     count_inc = numerics.safe_increment(state.count)
@@ -655,6 +667,7 @@ def scale_by_adan(
   def update_fn(updates, state, params=None):
     """Based on Algorithm 1 in https://arxiv.org/pdf/2208.06677v4#page=6."""
     del params
+    grads = updates
     g = updates
 
     diff = optax.tree.where(
@@ -676,6 +689,7 @@ def scale_by_adan(
     u = optax.tree.add_scale(m_hat, 1 - b2, v_hat)
     denom = jax.tree.map(lambda n_hat: jnp.sqrt(n_hat + eps_root) + eps, n_hat)
     u = optax.tree.div(u, denom)
+    u = optax.tree.cast_like(u, grads)
 
     new_state = ScaleByAdanState(
         m=m,
@@ -730,6 +744,7 @@ def scale_by_belief(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     prediction_error = optax.tree.sub(updates, mu)
     nu = optax.tree.update_moment_per_elem_norm(prediction_error, state.nu, b2,
@@ -751,6 +766,7 @@ def scale_by_belief(
         nu_hat,
         is_leaf=lambda x: x is None,
     )
+    updates = optax.tree.cast_like(updates, grads)
     return updates, ScaleByBeliefState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -792,6 +808,7 @@ def scale_by_yogi(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = jax.tree.map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - abs_sq(g)) * abs_sq(g),
@@ -807,6 +824,7 @@ def scale_by_yogi(
         nu_hat,
         is_leaf=lambda x: x is None,
     )
+    updates = optax.tree.cast_like(updates, grads)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -861,6 +879,7 @@ def scale_by_radam(
 
   def update_fn(updates, state, params=None):
     del params
+    grads = updates
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -882,6 +901,7 @@ def scale_by_radam(
         _radam_update(ro, mu_hat, nu_hat),
         mu_hat,
     )
+    updates = optax.tree.cast_like(updates, grads)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -1318,6 +1338,7 @@ def scale_by_novograd(
     )
 
   def update_fn(updates, state, params):
+    grads = updates
     count_inc = numerics.safe_increment(state.count)
 
     nu = jax.lax.cond(count_inc == 1, init_nu, update_nu, updates, state.nu)
@@ -1327,6 +1348,7 @@ def scale_by_novograd(
 
     mu = optax.tree.cast(mu, mu_dtype)
     updates = mu
+    updates = optax.tree.cast_like(updates, grads)
     return updates, ScaleByNovogradState(count=count_inc, mu=mu, nu=nu)
 
   # pyrefly: ignore[bad-argument-type]
