@@ -27,7 +27,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy
 import jax.tree_util as jtu
-import optax
+from optax import transforms
 from optax._src import base
 from optax._src import combine
 from optax._src import utils
@@ -70,7 +70,9 @@ def _get_array(
 
 
 def _set_array(
-    neuron: Neuron, predicate: Union[IsWeight, IsBias], new_array: jax.Array
+    neuron: Neuron,
+    predicate: Union[IsWeight, IsBias],
+    new_array: Union[jax.Array, float],
 ) -> Neuron:
     """Assigns `new_array` for the leaf where the predicate evaluates True."""
 
@@ -80,25 +82,25 @@ def _set_array(
     return jtu.tree_map_with_path(_replace, neuron)
 
 
-def _last_name_is_str(key_path: jtu.KeyPath, query: str) -> bool:
-    """Returns True if the last EntryName in `key_path` matches `query`."""
-    last_entry = key_path[-1]
-    entry_name = getattr(last_entry, "key", getattr(last_entry, "name", None))
-    return entry_name == query
-
-
 def _compute_mu(xs: jax.Array) -> Vector:
     """Returns the mean feature vector across the spatial dimensions."""
     return jnp.mean(xs, axis=(0, *tuple(range(2, xs.ndim))))  # AA
 
 
-def _shrink(diag: Vector, shrinkage: jax.typing.ArrayLike) -> Vector:
+def _shrink(diag: Vector, shrinkage: float) -> Vector:
     """See https://scikit-learn.org/stable/modules/covariance.html#basic-shrinkage."""
     assert 0.0 <= shrinkage
     assert shrinkage < 1.0
     return (1.0 - shrinkage) * diag + (
         shrinkage * jnp.sum(diag) / jnp.size(diag)
     )
+
+
+def _last_name_is_str(key_path: jtu.KeyPath, query: str) -> bool:
+    """Returns True if the last EntryName in `key_path` matches `query`."""
+    last_entry = key_path[-1]
+    entry_name = getattr(last_entry, "key", getattr(last_entry, "name", None))
+    return entry_name == query
 
 
 def default_is_weight(key_path: jtu.KeyPath) -> bool:
@@ -114,7 +116,7 @@ def default_is_bias(key_path: jtu.KeyPath) -> bool:
 def make_pvp(
     mu: Vector,
     nu: Vector,
-    shrinkage: jax.typing.ArrayLike,
+    shrinkage: float,
     is_weight: IsWeight,
     is_bias: IsBias,
 ) -> Callable[[Neuron], Neuron]:
@@ -224,19 +226,18 @@ class ScaleByLNBState(NamedTuple):
 
     # Each state is a list of length number of neurons, in leaf traversal order
     h_neurons: list[Neuron]  # The previous conjugate gradient solution
-    mu_state: optax.EmaState  # Mean input features (first moment)
-    nu_state: optax.EmaState  # Mean squared input features (second moment)
+    mu_state: transforms.EmaState  # Mean input features (first moment)
+    nu_state: transforms.EmaState  # Mean squared input features (second moment)
 
 
 def scale_by_lnb(
     b_mu: jax.typing.ArrayLike = 0.9,
     b_nu: jax.typing.ArrayLike = 0.999,
     min_norm: jax.typing.ArrayLike = 1e-2,
-    cov_shrinkage: jax.typing.ArrayLike = 0.1,
     *,
-    cg_ridge: float = 0.1,
+    cov_shrinkage: float = 0.1,
     cg_maxiter: int = 2,
-    approx_metric: bool = False,
+    cg_ridge: float = 0.1,
     is_neuron: IsNeuron = lambda node: hasattr(node, "weight"),
     is_weight: IsWeight = default_is_weight,
     is_bias: IsBias = default_is_bias,
@@ -254,14 +255,14 @@ def scale_by_lnb(
     Args:
       b_mu: EMA decay for input features' first moment.
       b_nu: EMA decay for input features' second momment.
-      min_norm: The minimum norm to use to avoid dividing by zero.
-      cov_shrinkage: Covariance shrinkage, in [0, 1), to ensure positive
-        definiteness.
+      min_norm: The minimum norm (under the metric) to use to avoid dividing by
+        zero. Non-positive value implies to not normalize the solution.
+      cov_shrinkage: Covariance shrinkage, in [0, 1), to avoid non-singular
+        matrices before inverting.
+      cg_maxiter: Number of conjugate gradient iterations for solving the linear
+        system. Negative values to skip the solve and instead approximates the
+        metric with the incomplete Cholesky factorization.
       cg_ridge: Ridge regularizer for conjugate gradient.
-      cg_maxiter: Number of conjugate gradient iterations.
-      approx_metric: Approximate the metric with the incomplete Cholesky
-        factorization, instead of using conjugate gradient to solve the linear
-        system.
       is_neuron: See type definition.
       is_weight: See type definition.
       is_bias: See type definition.
@@ -277,8 +278,12 @@ def scale_by_lnb(
       <https://arxiv.org/abs/2502.01131>`_, 2025
     """
     accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
-    mu_ema = optax.ema(b_mu, debias=True, accumulator_dtype=accumulator_dtype)
-    nu_ema = optax.ema(b_nu, debias=True, accumulator_dtype=accumulator_dtype)
+    mu_ema = transforms.ema(
+        b_mu, debias=True, accumulator_dtype=accumulator_dtype
+    )
+    nu_ema = transforms.ema(
+        b_nu, debias=True, accumulator_dtype=accumulator_dtype
+    )
     _make_pvp = functools.partial(
         make_pvp, shrinkage=cov_shrinkage, is_weight=is_weight, is_bias=is_bias
     )
@@ -329,7 +334,7 @@ def scale_by_lnb(
         )
 
         # Precondition the gradient vector and then update its neurons.
-        if approx_metric:
+        if cg_maxiter < 0:
             h_neurons = [
                 pvp(grad) for grad, pvp in _zip(grad_neurons, pvp_neurons)
             ]
@@ -350,9 +355,10 @@ def scale_by_lnb(
         h = jtu.tree_unflatten(treedef, leaves)
 
         # Rescale under the metric (adaptive step size).
-        norm = jnp.maximum(min_norm, jnp.sqrt(otu.tree_vdot(h, updates)))
-        h_unit = otu.tree_scalar_mul(1.0 / norm, h)
-        return h_unit, ScaleByLNBState(h_neurons, mu_state, nu_state)
+        if min_norm > 0.0:
+            norm = jnp.maximum(min_norm, jnp.sqrt(otu.tree_vdot(h, updates)))
+            h = otu.tree_scalar_mul(1.0 / norm, h)
+        return h, ScaleByLNBState(h_neurons, mu_state, nu_state)
 
     return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
@@ -362,12 +368,11 @@ def lnb(
     b_mu: jax.typing.ArrayLike = 0.9,
     b_nu: jax.typing.ArrayLike = 0.999,
     min_norm: jax.typing.ArrayLike = 1e-2,
-    cov_shrinkage: jax.typing.ArrayLike = 0.1,
     weight_decay: base.ScalarOrSchedule = 1e-4,
     *,
-    cg_ridge: float = 0.1,
+    cov_shrinkage: float = 0.1,
     cg_maxiter: int = 2,
-    approx_metric: bool = False,
+    cg_ridge: float = 0.1,
     is_neuron: IsNeuron = lambda node: hasattr(node, "weight"),
     is_weight: IsWeight = default_is_weight,
     is_bias: IsBias = default_is_bias,
@@ -386,15 +391,15 @@ def lnb(
       b_g: EMA decay for the gradient vector.
       b_mu: EMA decay for input features' first moment.
       b_nu: EMA decay for input features' second momment.
-      min_norm: The minimum norm to use to avoid dividing by zero.
-      cov_shrinkage: Covariance shrinkage, in [0, 1), to ensure positive
-        definiteness.
+      min_norm: The minimum norm (under the metric) to use to avoid dividing by
+        zero. Non-positive value implies to not normalize the solution.
       weight_decay: Weight decay factor or schedule.
+      cov_shrinkage: Covariance shrinkage, in [0, 1), to avoid non-singular
+        matrices before inverting.
+      cg_maxiter: Number of conjugate gradient iterations for solving the linear
+        system. Negative values to skip the solve and instead approximates the
+        metric with the incomplete Cholesky factorization.
       cg_ridge: Ridge regularizer for conjugate gradient.
-      cg_maxiter: Number of conjugate gradient iterations.
-      approx_metric: Approximate the metric with the incomplete Cholesky
-        factorization, instead of using conjugate gradient to solve the linear
-        system.
       is_neuron: See type definition.
       is_weight: See type definition.
       is_bias: See type definition.
@@ -411,19 +416,18 @@ def lnb(
     """
     accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
     return combine.chain(
-        optax.ema(b_g, debias=True, accumulator_dtype=accumulator_dtype),
+        transforms.ema(b_g, debias=True, accumulator_dtype=accumulator_dtype),
         scale_by_lnb(
             b_mu,
             b_nu,
             min_norm,
-            cov_shrinkage,
-            cg_ridge=cg_ridge,
+            cov_shrinkage=cov_shrinkage,
             cg_maxiter=cg_maxiter,
-            approx_metric=approx_metric,
+            cg_ridge=cg_ridge,
             is_neuron=is_neuron,
             is_weight=is_weight,
             is_bias=is_bias,
             accumulator_dtype=accumulator_dtype,
         ),
-        optax.add_decayed_weights(weight_decay),
+        transforms.add_decayed_weights(weight_decay),
     )
