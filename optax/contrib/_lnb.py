@@ -302,7 +302,7 @@ def scale_by_lnb(
         maxiter=cg_maxiter,
     )
 
-    def init_fn(params: base.Params) -> ScaleByLNBState:
+    def init_fn(params):
         def _make_zero_vector(neuron: Neuron) -> Vector:
             weight = _get_array(neuron, is_weight)
             assert weight is not None
@@ -319,13 +319,7 @@ def scale_by_lnb(
             nu_state=cast(transforms.EmaState, nu_ema.init(zeros_neurons)),
         )
 
-    def update_fn(
-        updates: base.Updates,
-        state: ScaleByLNBState,
-        params: Optional[base.Params] = None,
-        *,
-        xs_neurons: list[jax.Array],
-    ) -> Tuple[base.Updates, ScaleByLNBState]:
+    def update_fn(updates, state, params=None, *, xs_neurons):
         del params
         # Update feature moments.
         mu_neurons = list(map(_compute_mu, xs_neurons))
