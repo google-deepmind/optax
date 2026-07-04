@@ -1395,8 +1395,8 @@ class ScaleByDistanceOverGradientsState(NamedTuple):
 
 @functools.partial(
     warn_deprecated_function,
-    replacement="scale_by_l_dog",
-    version_removed="0.2.3",
+    replacement='scale_by_l_dog',
+    version_removed='0.2.3',
 )
 def scale_by_distance_over_gradients(
     reps_rel=1e-6, eps=1e-8, param_dtype=jnp.float32, global_scale=1.0

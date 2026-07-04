@@ -42,7 +42,7 @@ class DoGTest(parameterized.TestCase):
   def test_scalers(self, scaler_constr):
     params = self.init_params
     if scaler_constr is dog.scale_by_dog:
-        scaler = scaler_constr(init_step=("heuristic", 1e-6))
+        scaler = scaler_constr(init_step=('heuristic', 1e-6))
     elif scaler_constr is dog.scale_by_l_dog:
         scaler = scaler_constr(reps_rel=1e-6)
     else:
@@ -67,7 +67,7 @@ class DoGTest(parameterized.TestCase):
 
     # Global DoG
     scaler_global = dog.scale_by_dog(
-        init_step=("heuristic", 1e-6)
+        init_step=('heuristic', 1e-6)
     )
     state_global = scaler_global.init(params)
     updates_global, _ = scaler_global.update(
@@ -93,7 +93,7 @@ class DoGTest(parameterized.TestCase):
 
     # Legacy
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+        warnings.simplefilter('ignore')
         legacy_scaler = transform.scale_by_distance_over_gradients(
             reps_rel=reps_rel, global_scale=global_scale
         )
