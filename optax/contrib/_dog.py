@@ -96,7 +96,7 @@ def scale_by_l_dog(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoGState, params: base.Params
+      updates: base.Updates, state: DoGState, params: Optional[base.Params] = None
   ) -> tuple[base.Updates, DoGState]:
     dist = jax.tree.map(
         lambda p, i: numerics.safe_norm(p - i, 0.0),
@@ -121,6 +121,7 @@ def scale_by_l_dog(
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -179,10 +180,12 @@ def scale_by_dog(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoGState, params: base.Params
+      updates: base.Updates, state: DoGState, params: Optional[base.Params] = None
   ) -> tuple[base.Updates, DoGState]:
     dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
+    # pyrefly: ignore[bad-argument-type]
     max_dist = jnp.maximum(state.max_dist, dist)
+    # pyrefly: ignore[unsupported-operation]
     sum_sq_norm_grads = state.sum_sq_norm_grads + optax.tree.norm(
         updates, squared=True
     )
@@ -347,7 +350,7 @@ def scale_by_dowg(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoWGState, params: base.Params
+      updates: base.Updates, state: DoWGState, params: Optional[base.Params] = None
   ) -> tuple[base.Updates, DoWGState]:
     curr_sq_dist = optax.tree.norm(
         optax.tree.sub(state.init_params, params), squared=True
