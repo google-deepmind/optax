@@ -18,7 +18,6 @@ import dataclasses
 from typing import Optional, TypedDict, cast
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
@@ -42,7 +41,7 @@ class ScaleByAdamStateDict(TypedDict):
   """An opt state that uses dictionaries instead of classes."""
 
   count: jax.typing.ArrayLike
-  params: TypedDict('Params', {'mu': chex.ArrayTree, 'nu': chex.ArrayTree})
+  params: TypedDict('Params', {'mu': base.ArrayTree, 'nu': base.ArrayTree})
 
 
 def _scale_by_adam_with_dicts():
@@ -144,7 +143,7 @@ class StateUtilsTest(absltest.TestCase):
     )
 
     expected = (
-        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+        transform.ScaleByAdamState(
             count=FakeShardSpec(sharding_axis=None),
             mu={
                 'my/fake/module': {
@@ -208,18 +207,19 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
 
     state = _state_utils.tree_map_params(
-        opt, lambda v: 1, state, transform_non_params=lambda _: None
+        opt,
+        lambda v: 1,
+        state,
+        transform_non_params=lambda _: None,
     )
 
     expected = (
-        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+        transform.ScaleByAdamState(
             count=None,
             mu={'a': 1},
             nu={'a': 1},
         ),
-        transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
-            count=None
-        ),
+        transform.ScaleByScheduleState(count=None),
     )
     self.assertEqual(state, expected)
 

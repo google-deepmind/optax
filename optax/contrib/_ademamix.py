@@ -147,7 +147,7 @@ def ademamix(
   AdEMAMix (Adaptive EMA Mixture) is AdamW with a mixture of two momentum
   terms to better take advantage of historical gradients.
 
-  Both SGD with momemtum (SGD+M) and Adam incorporate momentum using
+  Both SGD with momentum (SGD+M) and Adam incorporate momentum using
   Exponential Moving Averages (EMAs) of past gradients
 
   Let :math:`\eta` represent the learning rate and :math:`\beta_1, \beta_2`,
@@ -264,6 +264,7 @@ def ademamix(
           eps_root=eps_root,
           mu_dtype=mu_dtype,
       ),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )
@@ -325,6 +326,8 @@ def scale_by_simplified_ademamix(
 
   def update_fn(updates, state, params=None):
     del params
+    c_alpha = alpha(state.t) if callable(alpha) else alpha
+
     g = updates
     m = optax.tree.add_scale(g, b1, state.m)
     n = lerp(b2, optax.tree.mul(g, g), state.n)
@@ -333,7 +336,7 @@ def scale_by_simplified_ademamix(
 
     n_hat = optax.tree.bias_correction(n, b2, t)
 
-    u_num = optax.tree.add_scale(m, alpha, g)
+    u_num = optax.tree.add_scale(m, c_alpha, g)
     u_den = jax.tree.map(lambda n: jnp.sqrt(n + eps_root) + eps, n_hat)
 
     u = optax.tree.div(u_num, u_den)
@@ -455,6 +458,7 @@ def simplified_ademamix(
           eps=eps,
           eps_root=eps_root,
       ),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )

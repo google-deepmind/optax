@@ -15,6 +15,9 @@
 
 """Experimental optax modules."""
 
-from optax.experimental import _aggregating as aggregating
-from optax.experimental import _microbatching as microbatching
-microbatch = microbatching.microbatch
+from . import _aggregating as aggregating
+
+
+__all__ = [
+    'aggregating',
+]

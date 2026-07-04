@@ -631,7 +631,9 @@ class GeneralizedKLDivergenceTest(parameterized.TestCase):
     np.testing.assert_allclose(x, y, atol=1e-4)
 
   def test_deprecated_alias(self):
-    x = _classification.convex_kl_divergence(self.log_ps[0], self.qs[0])
+    with self.assertWarnsRegex(DeprecationWarning,
+                               'use generalized_kl_divergence'):
+      x = _classification.convex_kl_divergence(self.log_ps[0], self.qs[0])
     y = _classification.generalized_kl_divergence(self.log_ps[0], self.qs[0])
     np.testing.assert_allclose(x, y, atol=1e-4)
 
@@ -1084,6 +1086,7 @@ class SigmoidFocalLossTest(parameterized.TestCase):
 
     # Test with gamma < 1 which is most problematic for numerical stability
     gamma = 0.5
+
     def loss_fn(logits):
       return jnp.sum(jax.jit(_classification.sigmoid_focal_loss)(
           logits, labels, gamma=gamma

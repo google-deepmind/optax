@@ -176,7 +176,12 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
     params = update.apply_updates(init_params, updates)
 
     self._check_decrease_conditions(
-        fn, init_params, descent_dir, params, state[-1], opt_args
+        fn,
+        init_params,
+        descent_dir,
+        params,
+        state[-1],
+        opt_args,
     )
 
   def test_gradient_descent_with_linesearch(self):
@@ -309,11 +314,9 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
     kw = ['slope_rtol', 'decrease_factor', 'increase_factor',
           'max_learning_rate', 'atol', 'rtol']
     with utils.x64_precision(True):
-      # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_backtracking_linesearch(
           max_backtracking_steps=5,
           **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
-      # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)
       value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
@@ -322,6 +325,39 @@ class BacktrackingLinesearchTest(parameterized.TestCase):
       jax.lax.cond(cond, lambda x: opt.update(x, state, x, value=1.0, grad=x,
                                               value_fn=value_fn)[1],
                    lambda x: state, x)
+
+  def test_linesearch_raises_on_unused_extra_args(self):
+    """Unused extra kwargs passed to update should raise an error."""
+
+    def value_fn(params, batch):
+      return jnp.sum(params * batch)
+
+    params = jnp.array([1.0, 2.0])
+    updates = jnp.array([-0.1, -0.1])
+    grad = jnp.array([1.0, 1.0])
+    batch = jnp.ones_like(params)
+
+    value = value_fn(params, batch)
+
+    opt = _linesearch.scale_by_backtracking_linesearch(
+        max_backtracking_steps=5
+    )
+    state = opt.init(params)
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'Unexpected keyword arguments',
+    ):
+      opt.update(
+          updates,
+          state,
+          params,
+          value=value,
+          grad=grad,
+          value_fn=value_fn,
+          batch=batch,
+          unused_arg=42,  # ← must trigger error
+      )
 
 
 def _run_linesearch(
@@ -497,7 +533,12 @@ class ZoomLinesearchTest(parameterized.TestCase):
       )
     with self.subTest('Check linesearch conditions'):
       self._check_linesearch_conditions(
-          fn, init_params, init_updates, final_params, final_state, opt_args
+          fn,
+          init_params,
+          init_updates,
+          final_params,
+          final_state,
+          opt_args,
       )
     with self.subTest('Check against scipy'):
       stepsize = optax.tree.get(final_state, 'learning_rate')
@@ -700,11 +741,9 @@ class ZoomLinesearchTest(parameterized.TestCase):
     kw = ['tol', 'increase_factor', 'slope_rtol', 'curv_rtol',
           'approx_dec_rtol', 'stepsize_precision']
     with utils.x64_precision(True):
-      # pytype: disable=wrong-arg-types
       opt = _linesearch.scale_by_zoom_linesearch(
           max_linesearch_steps=5,
           **{k: jnp.array(1e-5, dtype=confuse_dtype) for k in kw})
-      # pytype: enable=wrong-arg-types
       x = jnp.array([1.0, 2.0], dtype=dtype)
       state = opt.init(x)
       value_fn = lambda x: jnp.sum(x**2).astype(confuse_dtype)
@@ -763,6 +802,39 @@ class ZoomLinesearchTest(parameterized.TestCase):
     value, _ = false_value_and_grad(params, state=state)
     self.assertNotEqual(value, 1.0)
 
+  def test_zoom_linesearch_raises_on_unused_extra_args(self):
+    """Unused extra kwargs passed to update should raise an error."""
+
+    def value_fn(params, batch):
+      return jnp.sum(params * batch)
+
+    params = jnp.array([1.0, 2.0])
+    updates = jnp.array([-0.1, -0.1])
+    grad = jnp.array([1.0, 1.0])
+    batch = jnp.ones_like(params)
+
+    value = value_fn(params, batch)
+
+    opt = _linesearch.scale_by_zoom_linesearch(
+        max_linesearch_steps=5
+    )
+    state = opt.init(params)
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'Unexpected keyword arguments',
+    ):
+      opt.update(
+          updates,
+          state,
+          params,
+          value=value,
+          grad=grad,
+          value_fn=value_fn,
+          batch=batch,
+          unused_arg=42,  # must trigger error
+      )
+
   def test_extract_fns_kwargs(self):
     def fn1(a, b):
       return a + b
@@ -776,6 +848,7 @@ class ZoomLinesearchTest(parameterized.TestCase):
     )
     self.assertEqual(fns_kwargs, [{'b': 1.0}, {'d': 2.0}])
     self.assertEqual(remaining_kwargs, {'e': 3.0})
+
 
 if __name__ == '__main__':
   absltest.main()

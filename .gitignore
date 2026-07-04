@@ -10,6 +10,7 @@ _testing/
 # Building the documentation
 docs/_autosummary
 docs/_collections
+docs/api/generated
 docs/modules/generated
 docs/sg_execution_times.rst
 

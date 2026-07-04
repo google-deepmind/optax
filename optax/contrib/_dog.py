@@ -25,7 +25,6 @@ References:
 from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union, Literal
 
-import chex
 import jax
 import jax.numpy as jnp
 from optax._src import base
@@ -40,9 +39,9 @@ class DoGState(NamedTuple):
   """State for DoG optimizer."""
 
   is_init_step: jax.Array  # bool
-  init_params: chex.ArrayTree
-  max_dist: chex.ArrayTree
-  sum_sq_norm_grads: chex.ArrayTree
+  init_params: base.ArrayTree
+  max_dist: base.ArrayTree
+  sum_sq_norm_grads: base.ArrayTree
 
 
 def scale_by_l_dog(
@@ -202,6 +201,7 @@ def scale_by_dog(
         sum_sq_norm_grads=sum_sq_norm_grads,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -294,6 +294,7 @@ def dog(
     just dummy parameters) when the ``heuristic`` initial step is used.
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),
@@ -305,7 +306,7 @@ def dog(
 class DoWGState(NamedTuple):
   """State for DoWG optimizer."""
 
-  init_params: chex.ArrayTree
+  init_params: base.ArrayTree
   weighted_sq_norm_grads: jax.Array
   estim_sq_dist: jax.Array
 
@@ -320,7 +321,7 @@ def scale_by_dowg(
 
   Args:
     init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
+    eps: small value to prevent division by zero in the denominator defining,
       the learning rate, also used as initial guess for the distance to solution
       if ``init_estim_sq_dist`` is None.
 
@@ -364,6 +365,7 @@ def scale_by_dowg(
         weighted_sq_norm_grads=weighted_sq_norm_grads,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -407,7 +409,7 @@ def dowg(
     learning_rate: optional learning rate (potentially varying according to some
       predetermined scheduler).
     init_estim_sq_dist: initial guess of the squared distance to solution.
-    eps: small value to prevent division by zero in the denominator definining,
+    eps: small value to prevent division by zero in the denominator defining,
       the learning rate, also used as initial guess for the distance to solution
       if ``init_estim_sq_dist`` is None.
     weight_decay: Strength of the weight decay regularization.
@@ -423,6 +425,7 @@ def dowg(
   .. versionadded:: 0.2.3
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask)
       if weight_decay is not None
       else base.identity(),

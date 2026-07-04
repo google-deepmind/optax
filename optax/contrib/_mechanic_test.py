@@ -49,7 +49,6 @@ def _test_optimizer(step_size: float) -> base.GradientTransformation:
     aggregate_grads = update.apply_updates(state.aggregate_grads, updates)
     updates = jax.tree.map(lambda u: step_size * u, updates)
     return updates, OptimizerTestState(aggregate_grads)
-
   return base.GradientTransformation(init_fn, update_fn)
 
 

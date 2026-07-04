@@ -170,5 +170,6 @@ class NumericsTest(parameterized.TestCase):
           _get_hlo_repr(numerics.abs_sq, x),
       )
 
+
 if __name__ == "__main__":
   absltest.main()

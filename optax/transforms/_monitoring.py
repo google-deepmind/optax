@@ -16,7 +16,6 @@
 
 from typing import Any, NamedTuple, Callable
 
-import chex
 import jax
 from optax._src import base
 from optax.transforms import _accumulation
@@ -28,7 +27,7 @@ class SnapshotState(NamedTuple):
 
 
 def snapshot(
-    measure_name: str, measure: Callable[[base.Updates], chex.ArrayTree]
+    measure_name: str, measure: Callable[[base.Updates], base.ArrayTree]
 ) -> base.GradientTransformation:
   """Takes a snapshot of updates and stores it in the state.
 
@@ -80,11 +79,12 @@ def snapshot(
     del params, state
     return updates, SnapshotState({measure_name: measure(updates)})
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init, update)
 
 
 class MonitorState(NamedTuple):
-  measurements: dict[str, chex.ArrayTree]
+  measurements: dict[str, base.ArrayTree]
   measure_states: tuple[base.OptState, ...]
 
 
@@ -92,12 +92,12 @@ def monitor(
     measures: dict[
         str,
         base.GradientTransformationExtraArgs
-        | Callable[[base.Updates], chex.ArrayTree],
+        | Callable[[base.Updates], base.ArrayTree],
     ],
 ):
   """Monitors stateful measurements of updates in a chain.
 
-  Extends func::`optax.snaphot` to use stateful measurements, such as using
+  Extends func::`optax.snapshot` to use stateful measurements, such as using
   exponential moving average.
 
   Args:
@@ -145,6 +145,7 @@ def monitor(
       measures_[measure_name] = base.with_extra_args_support(measure_)
     else:
       measures_[measure_name] = base.with_extra_args_support(measure)
+  # pyrefly: ignore [bad-assignment]
   measures = measures_
   measure_names = tuple(measures.keys())
 
@@ -152,6 +153,7 @@ def monitor(
     measurements = {}
     measure_states = []
     for measure_name in measure_names:
+      # pyrefly: ignore [missing-attribute]
       measure_states.append(measures[measure_name].init(params))
     return MonitorState(measurements, tuple(measure_states))
 
@@ -164,6 +166,7 @@ def monitor(
     measurements = {}
     new_measure_states = []
     for i, measure_name in enumerate(measure_names):
+      # pyrefly: ignore [missing-attribute]
       measurement, measure_state = measures[measure_name].update(
           updates,
           state.measure_states[i],
@@ -174,11 +177,12 @@ def monitor(
       new_measure_states.append(measure_state)
     return updates, MonitorState(measurements, tuple(new_measure_states))
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init, update)
 
 
 def measure_with_ema(
-    measure: Callable[[base.Updates], chex.ArrayTree],
+    measure: Callable[[base.Updates], base.ArrayTree],
     decay: jax.typing.ArrayLike,  # float
     debias: bool = True,
     accumulator_dtype: Any | None = None
@@ -203,11 +207,13 @@ def measure_with_ema(
   .. versionadded: 0.2.7
   """
   base_ema = _accumulation.ema(decay, debias, accumulator_dtype)
+
   def init_for_measurement(params):
     # ema needs to be initialized with a variable of the shape it will be
     # accumulated in. In this case, it is the shape of the measurement that can
     # be inferred from applying the measure to params.
     return base_ema.init(measure(params))
+
   measurement_ema = base_ema._replace(init=init_for_measurement)
   return _combining.chain(
       base.stateless(lambda updates, _: measure(updates)),

@@ -6,6 +6,7 @@
 line-length = 80
 
 [tool.ruff.lint]
+preview = false
 select = [
     "F",
     "E",

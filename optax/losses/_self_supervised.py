@@ -79,18 +79,22 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
-  if labels.shape[0] != embeddings.shape[0]:
+  # pyrefly: ignore [missing-attribute]
+  if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
-        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'
+        # pyrefly: ignore [missing-attribute]
+        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         ' embeddings.'
     )
 
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :], embeddings[:, None, :],
-          epsilon=jnp.finfo(embeddings.dtype).eps
+          embeddings[None, :, :],  # pyrefly: ignore[bad-index]
+          embeddings[:, None, :],  # pyrefly: ignore[bad-index]
+          # pyrefly: ignore [missing-attribute]
+          epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature
   )
@@ -118,7 +122,7 @@ def ntxent(
   denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
   denom += numer_exp
   log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum()/matches.sum()
+  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
 
   return loss
 
@@ -135,7 +139,7 @@ def triplet_margin_loss(
   """Returns the triplet loss for a batch of embeddings.
 
   Examples:
-    >>> import jax.numpy as jnp, optax, chex
+    >>> import jax.numpy as jnp, optax
     >>> jnp.set_printoptions(precision=4)
     >>> anchors = jnp.array([[0.0, 0.0], [1.0, 1.0]])
     >>> positives = jnp.array([[0.1, 0.1], [1.1, 1.1]])
@@ -171,9 +175,23 @@ def triplet_margin_loss(
   utils.check_subdtype(anchors, jnp.floating)
   utils.check_subdtype(positives, jnp.floating)
   utils.check_subdtype(negatives, jnp.floating)
-  positive_distance = jnp.power(jnp.power(anchors - positives, norm_degree)
-                                .sum(axis) + eps, 1/norm_degree)
-  negative_distance = jnp.power(jnp.power(anchors - negatives, norm_degree)
-                                .sum(axis) + eps, 1/norm_degree)
+  positive_distance = jnp.power(
+      jnp.power(
+          # pyrefly: ignore[unsupported-operation]
+          anchors - positives,
+          norm_degree,
+      ).sum(axis)
+      + eps,
+      1 / norm_degree,
+  )
+  negative_distance = jnp.power(
+      jnp.power(
+          # pyrefly: ignore[unsupported-operation]
+          anchors - negatives,
+          norm_degree,
+      ).sum(axis)
+      + eps,
+      1 / norm_degree,
+  )
   loss = jnp.maximum(positive_distance - negative_distance + margin, 0)
   return loss

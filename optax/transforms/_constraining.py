@@ -55,6 +55,7 @@ def keep_params_nonnegative() -> base.GradientTransformation:
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -99,4 +100,5 @@ def zero_nans() -> base.GradientTransformation:
     )
     return updates, opt_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init=init_fn, update=update_fn)

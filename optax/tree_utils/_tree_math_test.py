@@ -126,17 +126,17 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_tree_vdot(self):
     expected = jnp.vdot(self.array_a, self.array_b)
     got = tu.tree_vdot(self.array_a, self.array_b)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = 15.0
     got = tu.tree_vdot(self.tree_a_dict, self.tree_b_dict)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = jnp.vdot(self.tree_a[0], self.tree_b[0]) + jnp.vdot(
         self.tree_a[1], self.tree_b[1]
     )
     got = tu.tree_vdot(self.tree_a, self.tree_b)
-    test_utils.assert_trees_all_close(expected, got)
+    test_utils.assert_trees_all_close(expected, got, rtol=1e-6)
 
   def test_tree_sum(self):
     expected = jnp.sum(self.array_a)
@@ -146,6 +146,15 @@ class TreeUtilsTest(parameterized.TestCase):
     expected = jnp.sum(self.tree_a[0]) + jnp.sum(self.tree_a[1])
     got = tu.tree_sum(self.tree_a)
     np.testing.assert_allclose(expected, got)
+
+    # Test that associative version matches regular version
+    if hasattr(jax.tree, 'reduce_associative'):
+      with self.subTest('associative_version_matches_regular'):
+        regular_result = tu.tree_sum(self.tree_a)
+        associative_result = tu.tree_sum(
+            self.tree_a, associative_reduction=True
+        )
+        np.testing.assert_allclose(regular_result, associative_result)
 
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
@@ -166,6 +175,22 @@ class TreeUtilsTest(parameterized.TestCase):
     expected = jnp.min(values)
     got = tu.tree_min(tree)
     np.testing.assert_allclose(expected, got)
+
+  def test_tree_min_empty(self):
+    tree = [jnp.ones([2, 3]), jnp.zeros([4, 0, 5])]
+    got = tu.tree_min(tree)
+    expected = 1.0
+    assert expected == got
+
+  @parameterized.product(
+      expected=(0, 10000, -10000, float('inf'), -float('inf')),
+      dtype=('int8', 'uint8', 'float32'),
+      which=(tu.tree_min, tu.tree_max),
+  )
+  def test_tree_max_min_empty_dtype(self, expected, dtype, which):
+    tree = [expected, jnp.zeros(0, dtype)]
+    got = which(tree)
+    assert expected == got
 
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'

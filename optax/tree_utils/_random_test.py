@@ -18,7 +18,6 @@ from collections.abc import Callable
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import chex
 import jax
 import jax.numpy as jnp
 import jax.random as jrd
@@ -107,7 +106,7 @@ class RandomTest(parameterized.TestCase):
         for x in jax.tree.leaves(rand_tree):
           self.assertEqual(x.dtype, dtype)
       else:
-        chex.assert_trees_all_equal_dtypes(rand_tree, target_tree)
+        test_utils.assert_trees_all_equal_dtypes(rand_tree, target_tree)
 
 
 if __name__ == '__main__':

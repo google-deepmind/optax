@@ -42,7 +42,7 @@ def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
   """
   if not isinstance(x, (np.ndarray, jnp.ndarray)):
     raise ValueError(f'`abs_sq` accepts only NDarrays, got: {x}.')
-  return (x.conj() * x).real
+  return (x.conj() * x).real  # pyrefly: ignore[bad-return]
 
 
 def safe_norm(
@@ -103,7 +103,7 @@ def safe_root_mean_squares(
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
-def safe_increment(count: jax.typing.ArrayLike) -> jax.typing.ArrayLike:
+def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
   """Increments counter by one while avoiding overflow.
 
   Denote ``max_val``, ``min_val`` as the maximum, minimum, possible values for

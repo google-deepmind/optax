@@ -15,9 +15,8 @@
 """Gradient transformations."""
 
 import functools
-from typing import NamedTuple, Optional
+from typing import Literal, NamedTuple, Optional
 
-import chex
 import jax
 from jax import nn
 import jax.numpy as jnp
@@ -307,6 +306,7 @@ def scale_by_adam(
         is_leaf=lambda x: x is None,
     )
     mu = optax.tree.cast(mu, mu_dtype)
+    nu = optax.tree.cast_like(nu, state.nu)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -327,6 +327,8 @@ def scale_by_amsgrad(
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    bias_correction_mu: bool = True,
+    bias_correction_nu: bool = True,
 ) -> base.GradientTransformation:
   """Rescale updates according to the AMSGrad algorithm.
 
@@ -340,6 +342,11 @@ def scale_by_amsgrad(
       numerical stability when backpropagating gradients through the rescaling.
     mu_dtype: Optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
+    bias_correction_mu: Whether to apply bias correction to the first moment
+      estimate. Set to ``False`` to match the original AMSGrad paper.
+    bias_correction_nu: Whether to apply bias correction to the second moment
+      estimate before taking the elementwise maximum (``nu_max``). Set to
+      ``False`` to match the original AMSGrad paper.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -360,9 +367,18 @@ def scale_by_amsgrad(
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
-    mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
-    nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
-    nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_hat)
+
+    if bias_correction_mu:
+      mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
+    else:
+      mu_hat = mu
+
+    if bias_correction_nu:
+      nu_eff = optax.tree.bias_correction(nu, b2, count_inc)
+    else:
+      nu_eff = nu
+
+    nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_eff)
     updates = jax.tree.map(
         lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
         mu_hat,
@@ -424,6 +440,9 @@ def scale_by_lion(
     b1: jax.typing.ArrayLike = 0.9,
     b2: jax.typing.ArrayLike = 0.99,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    mode: Literal['hard', 'smooth', 'refined'] = 'hard',
+    smooth_beta: float = 1.0,
 ) -> base.GradientTransformation:
   """Rescale updates according to the Lion algorithm.
 
@@ -434,6 +453,9 @@ def scale_by_lion(
     b2: Decay rate for the exponentially weighted average of grads.
     mu_dtype: Optional `dtype` to be used for the momentum; if `None` then the
       `dtype is inferred from `params` and `updates`.
+    mode : Which sign variant to use: "Hard (sign)", "smooth (tanh smoothing),"
+      or "refined" (linear around 0, saturate to sign for a large value).
+    smooth_beta: Smoothing factor used when mode == "smooth"
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -446,10 +468,25 @@ def scale_by_lion(
     return ScaleByLionState(count=jnp.zeros([], jnp.int32), mu=mu)
 
   def update_fn(updates, state, params=None):
+
     del params
-    updates_new = jax.tree.map(
-        lambda g, m: jnp.sign((1.0 - b1) * g + b1 * m), updates, state.mu
-    )
+
+    def _comb(g, m):
+      x = (1.0 - b1) * g + b1 * m
+      if mode == 'hard':
+        return jnp.sign(x)
+      elif mode == 'smooth':
+        return jnp.tanh(smooth_beta * x)
+      elif mode == 'refined':
+        # Keep small values linear, saturate to sign for large values.
+        return jnp.where(jnp.abs(x) < 1.0, x, jnp.sign(x))
+      else:
+        raise ValueError(
+            f'Unknown lion mode: {mode}. '
+            'It needs to be one of ["hard", "smooth", "refined"].'
+        )
+
+    updates_new = jax.tree.map(_comb, updates, state.mu)
     mu = optax.tree.update_moment(updates, state.mu, b2, 1)
     mu = optax.tree.cast(mu, mu_dtype)
     count_inc = numerics.safe_increment(state.count)
@@ -499,6 +536,7 @@ def scale_by_param_block_norm(
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -527,6 +565,7 @@ def scale_by_param_block_rms(
     )
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -841,6 +880,7 @@ def scale_by_radam(
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda t, f: jnp.where(ro >= threshold, t, f),
         _radam_update(ro, mu_hat, nu_hat),
         mu_hat,
@@ -1042,6 +1082,7 @@ def scale_by_trust_ratio(
     updates = jax.tree.map(_scale_update, updates, params)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
@@ -1080,6 +1121,7 @@ def apply_every(k: jax.typing.ArrayLike = 1) -> base.GradientTransformation:
     emit = c == (k - 1)
     updates = jax.tree.map(lambda ga: emit * ga, grad_acc)
     count_inc = numerics.safe_increment(state.count)
+    # pyrefly: ignore[unsupported-operation]
     return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
 
   return base.GradientTransformation(init_fn, update_fn)
@@ -1290,6 +1332,7 @@ def scale_by_novograd(
     updates = mu
     return updates, ScaleByNovogradState(count=count_inc, mu=mu, nu=nu)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1422,6 +1465,7 @@ def scale_by_distance_over_gradients(
 
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1469,9 +1513,11 @@ def scale_by_polyak(
       The scaled updates and the state of the transformation.
     """
     del params
-    del extra_args  # complies with signature of GradientTransformationExtraArgs
-                    # but ignores the extra_args
+    # complies with signature of GradientTransformationExtraArgs but ignores the
+    # extra_args
+    del extra_args
     grad_sq_norm = optax.tree.norm(updates, squared=True)
+    # pyrefly: ignore[unsupported-operation]
     gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
     if variant == 'sps':
       pass
@@ -1488,6 +1534,7 @@ def scale_by_polyak(
     updates = optax.tree.scale(step, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(base.init_empty_state, update_fn)
 
 
@@ -1511,15 +1558,15 @@ class ScaleByLBFGSState(NamedTuple):
   count: jax.typing.ArrayLike
   params: base.Params
   updates: base.Params
-  diff_params_memory: chex.ArrayTree
-  diff_updates_memory: chex.ArrayTree
+  diff_params_memory: base.ArrayTree
+  diff_updates_memory: base.ArrayTree
   weights_memory: jax.typing.ArrayLike
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
-    diff_params_memory: chex.ArrayTree,
-    diff_updates_memory: chex.ArrayTree,
+    diff_params_memory: base.ArrayTree,
+    diff_updates_memory: base.ArrayTree,
     weights_memory: jax.typing.ArrayLike,
     identity_scale: jax.typing.ArrayLike,  # float
     memory_idx: jax.typing.ArrayLike,  # int
@@ -1557,13 +1604,15 @@ def _precondition_by_lbfgs(
     , 1999
   """
   rhos = weights_memory
-  memory_size = weights_memory.shape[0]
+  # pyrefly: ignore [missing-attribute]
+  memory_size = weights_memory.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   indices = (memory_idx + jnp.arange(memory_size)) % memory_size
 
   def right_product(vec, idx):
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     alpha = rhos[idx] * optax.tree.real(optax.tree.vdot(dwi, vec))
     vec_new = optax.tree.add_scale(vec, -alpha, dui)
     vec_new = optax.tree.cast_like(vec_new, vec)
@@ -1580,6 +1629,7 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
+    # pyrefly: ignore[bad-index]
     beta = rhos[idx] * optax.tree.real(optax.tree.vdot(dui, vec))
     vec_new = optax.tree.add_scale(vec, alpha - beta, dwi)
     vec_new = optax.tree.cast_like(vec_new, vec)
@@ -1683,7 +1733,7 @@ def scale_by_lbfgs(
     # represented by e.g. diff_params_memory through the ith stacked
     # element in the leaves, see update_fn below for practical examples.
     stacked_zero_params = jax.tree.map(
-        lambda leaf: jnp.zeros((memory_size,) + leaf.shape, dtype=leaf.dtype),
+        lambda x: jnp.broadcast_to(jnp.zeros_like(x), (memory_size,) + x.shape),
         params,
     )
     return ScaleByLBFGSState(
@@ -1700,7 +1750,9 @@ def scale_by_lbfgs(
   ) -> tuple[base.Updates, ScaleByLBFGSState]:
     # Essentially memory_idx is the iteration k (modulo the memory size)
     # and prev_memory_idx is k-1 (modulo the memory size).
+    # pyrefly: ignore[unsupported-operation]
     memory_idx = state.count % memory_size
+    # pyrefly: ignore[unsupported-operation]
     prev_memory_idx = (state.count - 1) % memory_size
 
     # We first update the preconditioner and then preconditon the updates.
@@ -1721,6 +1773,7 @@ def scale_by_lbfgs(
     # that are not defined at the first iteration. Hence we keep them at 0 if
     # state.count = 0.
     diff_params, diff_updates, weight = jax.tree.map(
+        # pyrefly: ignore[unsupported-operation]
         lambda x: jnp.where(state.count > 0, x, jnp.zeros_like(x)),
         (diff_params, diff_updates, weight),
     )
@@ -1748,7 +1801,10 @@ def scale_by_lbfgs(
       update_norm = optax.tree.norm(jax.lax.stop_gradient(updates))
       capped_inv_norm = jnp.minimum(1.0, 1.0 / update_norm)
       identity_scale = jnp.where(
-          state.count > 0, identity_scale, capped_inv_norm
+          # pyrefly: ignore[unsupported-operation]
+          state.count > 0,
+          identity_scale,
+          capped_inv_norm,
       )
     else:
       identity_scale = 1.0
@@ -1772,6 +1828,7 @@ def scale_by_lbfgs(
         weights_memory=weights_memory,
     )
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -1819,10 +1876,11 @@ def normalize_by_update_norm(
     updates = jax.tree.map(lambda g: g / g_norm, updates)
     return updates, state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
 
 
-### Legacy symbols to be removed. ###
+# Legacy symbols to be removed.
 
 trace = _accumulation.trace
 TraceState = _accumulation.TraceState

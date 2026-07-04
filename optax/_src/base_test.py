@@ -102,7 +102,6 @@ class ExtraArgsTest(absltest.TestCase):
       if metrics_logger:
         metrics_logger('learning_rate', 0.3)
       return updates, state
-
     t = base.GradientTransformationExtraArgs(init_fn, update_fn)
 
     @jax.jit
@@ -145,7 +144,7 @@ class StatelessTest(absltest.TestCase):
     def opt(g, _):
       return jax.tree.map(lambda g_: g_ * 2, g)
 
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -156,7 +155,7 @@ class StatelessTest(absltest.TestCase):
       return jax.tree.map(lambda g_, p_: g_ + 0.1 * p_, g, p)
 
     opt = base.stateless(weight_decay)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     self.assertIsInstance(state, base.EmptyState)
 
 
@@ -166,7 +165,6 @@ class StatelessWithTreeMapTest(absltest.TestCase):
   def test_stateless_with_tree_map(self):
     params = {'a': jnp.zeros((1, 2)), 'b': jnp.ones((1,))}
     updates = {'a': jnp.ones((1, 2)), 'b': jnp.full((1,), 2.0)}
-
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
     state = opt.init(params)
     update_fn = jax.jit(opt.update)
@@ -178,7 +176,7 @@ class StatelessWithTreeMapTest(absltest.TestCase):
     updates = {'linear': jnp.full((5, 3), 3.0)}
 
     opt = base.stateless_with_tree_map(lambda g, _: g * 2.0)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     update_fn = jax.jit(opt.update)
     new_updates, _ = update_fn(updates, state)
     expected_updates = {'linear': jnp.full((5, 3), 6.0)}
@@ -186,7 +184,7 @@ class StatelessWithTreeMapTest(absltest.TestCase):
 
   def test_init_returns_emptystate(self):
     opt = base.stateless_with_tree_map(lambda g, p: g + 0.1 * p)
-    state = opt.init(None)  # pytype: disable=wrong-arg-types  # numpy-scalars
+    state = opt.init(None)
     self.assertIsInstance(state, base.EmptyState)
 
 

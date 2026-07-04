@@ -40,6 +40,13 @@ from optax.contrib._dog import DoWGState
 from optax.contrib._dog import scale_by_dog
 from optax.contrib._dog import scale_by_dowg
 from optax.contrib._dog import scale_by_l_dog
+from optax.contrib._galore import galore
+from optax.contrib._galore import GaLoreDimensionNumbers
+from optax.contrib._galore import GaLoreState
+from optax.contrib._galore import scale_by_galore
+from optax.contrib._madgrad import madgrad
+from optax.contrib._madgrad import MadgradState
+from optax.contrib._madgrad import scale_by_madgrad
 from optax.contrib._mechanic import MechanicState
 from optax.contrib._mechanic import mechanize
 from optax.contrib._momo import momo

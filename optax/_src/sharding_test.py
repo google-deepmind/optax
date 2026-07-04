@@ -23,7 +23,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from optax._src import test_utils
-from optax.experimental import _microbatching as microbatching
+from optax._src import utils
 
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
@@ -69,7 +69,7 @@ class ShardingTest(parameterized.TestCase):
 
   @parameterized.named_parameters(OPTIMIZERS.items())
   def test_state_sharding_type_init_match_update(self, optimizer):
-    if jax.__version__ < '0.7.2':
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.7.2'):
       self.skipTest('Skipping sharding-in-types test')
     mesh = jax.make_mesh(
         (8,), ('x',), axis_types=(jax.sharding.AxisType.Explicit,)
@@ -88,7 +88,7 @@ class ShardingTest(parameterized.TestCase):
 
   @parameterized.named_parameters(OPTIMIZERS.items())
   def test_state_sharding_type_preserved_with_jit(self, optimizer):
-    if jax.__version__ < '0.7.2':
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.7.2'):
       self.skipTest('Skipping sharding-in-types test')
     mesh = jax.make_mesh(
         (8,), ('x',), axis_types=(jax.sharding.AxisType.Explicit,)
@@ -115,7 +115,7 @@ class ShardingTest(parameterized.TestCase):
       ('sharded', jax.sharding.PartitionSpec('x'))
   )
   def test_microbatch_with_explicit_sharding(self, spec):
-    if jax.__version__ < '0.8.1':
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.8.1'):
       self.skipTest('Skipping sharding-in-types test.')
     mesh = jax.make_mesh(
         (8,), ('x',), axis_types=(jax.sharding.AxisType.Explicit,)
@@ -127,10 +127,10 @@ class ShardingTest(parameterized.TestCase):
       data = jnp.arange(16, out_sharding=sharding)
 
       strategy = (
-          microbatching.AccumulationType.CONCAT,
-          microbatching.AccumulationType.SUM,
+          optax.microbatching.AccumulationType.CONCAT,
+          optax.microbatching.AccumulationType.SUM,
       )
-      microbatched_fun = microbatching.microbatch(
+      microbatched_fun = optax.microbatching.microbatch(
           fun, argnums=0, microbatch_size=8, accumulator=strategy
       )
 
