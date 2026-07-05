@@ -96,7 +96,9 @@ def scale_by_l_dog(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoGState, params: Optional[base.Params] = None
+      updates: base.Updates,
+      state: DoGState,
+      params: Optional[base.Params] = None,
   ) -> tuple[base.Updates, DoGState]:
     dist = jax.tree.map(
         lambda p, i: numerics.safe_norm(p - i, 0.0),
@@ -180,7 +182,9 @@ def scale_by_dog(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoGState, params: Optional[base.Params] = None
+      updates: base.Updates,
+      state: DoGState,
+      params: Optional[base.Params] = None,
   ) -> tuple[base.Updates, DoGState]:
     dist = optax.tree.norm(optax.tree.sub(state.init_params, params))
     # pyrefly: ignore[bad-argument-type]
@@ -350,7 +354,9 @@ def scale_by_dowg(
     )
 
   def update_fn(
-      updates: base.Updates, state: DoWGState, params: Optional[base.Params] = None
+      updates: base.Updates,
+      state: DoWGState,
+      params: Optional[base.Params] = None,
   ) -> tuple[base.Updates, DoWGState]:
     curr_sq_dist = optax.tree.norm(
         optax.tree.sub(state.init_params, params), squared=True
