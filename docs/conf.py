@@ -111,6 +111,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+maximum_signature_line_length = 1
+
 # -- Options for autodoc -----------------------------------------------------
 
 # The following typenames are re-written for public-facing type annotations.
