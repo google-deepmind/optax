@@ -949,12 +949,10 @@ def scale_by_rprop(
         updates,
         step_sizes,
     )
-    updates = jax.tree.map(
-        lambda s, g, prev_g: jnp.where(s < 0, jnp.zeros_like(prev_g), prev_g),
-        sign,
-        prev_updates,
-        state.prev_updates,
-    )
+    # `prev_updates` is the update for this step (already zeroed where the sign
+    # changed). The emitted update must use it; using `state.prev_updates` (the
+    # previous step's update) instead makes every update lag one step behind.
+    updates = prev_updates
     return updates, ScaleByRpropState(step_sizes, prev_updates)
 
   return base.GradientTransformation(init_fn, update_fn)
