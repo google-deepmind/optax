@@ -118,9 +118,8 @@ jobs:
       - name: Build docs and run doctests
         run: |
           python3 -m pip install -q -e ".[docs]"
-          cd docs
-          make html
-          make doctest # run doctests
+          make html -C docs
+          make doctest -C docs # run doctests
         shell: bash
   pytest-tests:
     needs: [pre-commit, flake8, pylint, ruff-lint]  # do not run tests if linting fails
