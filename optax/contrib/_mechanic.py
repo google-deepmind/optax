@@ -39,11 +39,11 @@ class MechanicState(NamedTuple):
   """State of the `GradientTransformation` returned by `mechanize`."""
 
   base_optimizer_state: base.OptState
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
-  r: jax.typing.ArrayLike
-  m: jax.typing.ArrayLike
-  v: jax.typing.ArrayLike
-  s: jax.typing.ArrayLike
+  count: jax.Array  # shape=(), dtype=jnp.int32.
+  r: jax.Array
+  m: jax.Array
+  v: jax.Array
+  s: jax.Array
   x0: base.Updates
 
 
@@ -198,12 +198,10 @@ def mechanize(
 
     # This clipping was not part of the original paper but we introduced it
     # a little later.
-    # pyrefly: ignore[unsupported-operation]
     clipped_h = jax.lax.clamp(-state.m, jnp.ones_like(state.m) * h, state.m)
     betas = jnp.array(
         [1.0 - 0.1**betai for betai in range(1, num_betas + 1)],
-        # pyrefly: ignore [missing-attribute]
-        dtype=state.s.dtype,  # pytype: disable=attribute-error  # jax-arraylike
+        dtype=state.s.dtype,
     )
 
     m = jnp.maximum(betas * state.m, jnp.abs(h) + eps)
@@ -211,7 +209,7 @@ def mechanize(
     r = betas * state.r + clipped_h * state.s
     rc = jnp.maximum(0.0, r)
     wealth = (s_init / jnp.size(betas)) * m + rc
-    s = wealth / (jnp.sqrt(v) + eps)
+    s = jnp.asarray(wealth / (jnp.sqrt(v) + eps))
 
     # Once we have the scale factor s, we produce new params with it.
     new_x0 = x0

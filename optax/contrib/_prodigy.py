@@ -39,9 +39,9 @@ class ProdigyState(NamedTuple):
   # Initial point.
   params0: base.Updates
   # Distance to solution estimate.
-  estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  count: jax.typing.ArrayLike  # shape=(), dtype=int32.
+  estim_lr: jax.Array  # shape=(), dtype=jnp.float32.
+  numerator_weighted: jax.Array  # shape=(), dtype=jnp.float32.
+  count: jax.Array  # shape=(), dtype=int32.
 
 
 def prodigy(
@@ -136,8 +136,7 @@ def prodigy(
     estim_lr = state.estim_lr
     numerator_weighted = state.numerator_weighted
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
-    # pyrefly: ignore [missing-attribute]
-    dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
     numerator_acum = optax.tree.vdot(updates, param_diff)
@@ -159,6 +158,7 @@ def prodigy(
       )
     numerator_weighted = beta3 * numerator_weighted
     numerator_weighted += (estim_lr / estim_lr0) * dlr * numerator_acum
+    numerator_weighted = jnp.asarray(numerator_weighted)
     denominator = optax.tree.sum(jax.tree.map(jnp.abs, grad_sum))
     lr_estimate = estim_lr_coef * numerator_weighted / denominator
     estim_lr = jnp.maximum(state.estim_lr, lr_estimate)

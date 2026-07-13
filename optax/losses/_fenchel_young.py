@@ -22,7 +22,7 @@ import jax.numpy as jnp
 
 class MaxFun(Protocol):
 
-  def __call__(self, scores, *args, **kwargs: Any) -> jax.typing.ArrayLike:
+  def __call__(self, scores, *args, **kwargs: Any) -> jax.Array:
     ...
 
 

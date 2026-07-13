@@ -371,9 +371,9 @@ def orthogonalize_via_newton_schulz(
 
 class MuonState(NamedTuple):
   """State for the Muon algorithm."""
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
-  ns_coeffs: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  ns_coeffs: jax.Array  # shape=(), dtype=jnp.int32.
 
 
 def scale_by_muon(
