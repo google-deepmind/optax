@@ -219,6 +219,36 @@ class TransformTest(parameterized.TestCase):
     print(grad, value, updates)
     self.assertLess(objective(init_params - updates), tol)
 
+  @parameterized.named_parameters([
+      ('scale_by_adam', transform.scale_by_adam, {}),
+      ('scale_by_amsgrad', transform.scale_by_amsgrad, {}),
+      ('scale_by_adamax', transform.scale_by_adamax, {}),
+      ('scale_by_rms', transform.scale_by_rms, {}),
+      ('scale_by_stddev', transform.scale_by_stddev, {}),
+      ('scale_by_belief', transform.scale_by_belief, {}),
+      ('scale_by_yogi', transform.scale_by_yogi, {}),
+      ('scale_by_radam', transform.scale_by_radam, {}),
+      ('scale_by_lion', transform.scale_by_lion, {}),
+      ('scale_by_adan', transform.scale_by_adan, {}),
+      ('scale_by_novograd', transform.scale_by_novograd, {}),
+  ])
+  def test_mixed_precision_dtype(self, transform_constr, transform_kwargs):
+    """Test that transforms output updates with the same dtype as the grads.
+
+    In mixed-precision training params are float32 while grads are bfloat16.
+    Accumulator states are initialized from params, so without an explicit
+    cast the outputs get promoted to float32.  The cast to param dtype should
+    happen at the apply_updates step, not inside the transform.
+
+    See https://github.com/google-deepmind/optax/issues/1098.
+    """
+    params = jnp.array([1.0, 2.0], dtype=jnp.float32)
+    grads = jnp.array([2.0, 4.0], dtype=jnp.bfloat16)
+    tx = transform_constr(**transform_kwargs)
+    state = tx.init(params)
+    updates, _ = tx.update(grads, state, params)
+    self.assertEqual(updates.dtype, grads.dtype)
+
   def test_rms_match_adam(self):
     """Test scale_by_rms add_eps_in_sqrt=False matches scale_by_adam(b1=0)."""
     fun = lambda x: optax.tree.norm(x, squared=True)
