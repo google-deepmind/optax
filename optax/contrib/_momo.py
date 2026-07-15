@@ -34,10 +34,10 @@ class MomoState(NamedTuple):
   """State of the `GradientTransformation` returned by `momo`."""
 
   exp_avg: base.Updates
-  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  barf: jax.Array  # shape=(), dtype=jnp.float32.
+  gamma: jax.Array  # shape=(), dtype=jnp.float32.
+  lb: jax.Array  # shape=(), dtype=jnp.float32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
 
 
 def momo(
@@ -135,8 +135,7 @@ def momo(
     bt = jnp.where(count == 0, 0.0, beta)
     barf = bt * state.barf + (1 - bt) * jnp.asarray(
         value,
-        # pyrefly: ignore [missing-attribute]
-        dtype=state.barf.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        dtype=state.barf.dtype,
     )
     exp_avg = jax.tree.map(
         lambda ea, g: bt * ea + (1 - bt) * g, state.exp_avg, updates
@@ -194,10 +193,10 @@ class MomoAdamState(NamedTuple):
 
   exp_avg: base.Updates
   exp_avg_sq: base.Updates
-  barf: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  gamma: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  lb: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  barf: jax.Array  # shape=(), dtype=jnp.float32.
+  gamma: jax.Array  # shape=(), dtype=jnp.float32.
+  lb: jax.Array  # shape=(), dtype=jnp.float32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
 
 
 def momo_adam(
@@ -253,12 +252,12 @@ def momo_adam(
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
     ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
-    ...  print('Objective function: ', f(params))
-    Objective function:  0.00029999594
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
+    ...  print(f'Objective function: {f(params):.4e}')
+    Objective function: 3.0000e-04
+    Objective function: 0.0000e+00
+    Objective function: 0.0000e+00
+    Objective function: 0.0000e+00
+    Objective function: 0.0000e+00
 
   References:
     Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
@@ -296,31 +295,32 @@ def momo_adam(
     if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
                        Use ``jax.value_and_grad`` for this.""")
+    b1_ = jnp.asarray(b1)
+    b2_ = jnp.asarray(b2)
     count = state.count
     count_inc = numerics.safe_increment(count)
-    barf = b1 * state.barf + (1 - b1) * jnp.asarray(
+    barf = b1_ * state.barf + (1 - b1_) * jnp.asarray(
         value,
-        # pyrefly: ignore [missing-attribute]
-        dtype=state.barf.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        dtype=state.barf.dtype,
     )
     exp_avg = jax.tree.map(
-        lambda ea, g: b1 * ea + (1 - b1) * g, state.exp_avg, updates
+        lambda ea, g: b1_ * ea + (1 - b1_) * g, state.exp_avg, updates
     )
     exp_avg_sq = jax.tree.map(
-        lambda eas, g: b2 * eas + (1 - b2) * g * g,
+        lambda eas, g: b2_ * eas + (1 - b2_) * g * g,
         state.exp_avg_sq,
         updates,
     )
-    bc2 = jnp.asarray(1 - b2**count_inc, dtype=barf.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    bc2 = jnp.asarray(1 - b2_**count_inc, dtype=barf.dtype)
     precond = jax.tree.map(lambda eas: eps + jnp.sqrt(eas / bc2), exp_avg_sq)
     exp_avg_weighted = jax.tree.map(
         lambda ea, prec: ea / prec, exp_avg, precond
     )
     exp_avg_norm = optax.tree.vdot(exp_avg, exp_avg_weighted)
-    gamma = b1 * state.gamma + (1 - b1) * optax.tree.vdot(updates, params)
+    gamma = b1_ * state.gamma + (1 - b1_) * optax.tree.vdot(updates, params)
     iprod = optax.tree.vdot(exp_avg, params)
     alpha = learning_rate(count) if callable(learning_rate) else learning_rate
-    bc1 = jnp.asarray(1 - b1**count_inc, dtype=barf.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    bc1 = jnp.asarray(1 - b1_**count_inc, dtype=barf.dtype)
     # Reset lower bound
     if adapt_lower_bound:
       cap = (1 + alpha * weight_decay) * (barf - gamma) + iprod

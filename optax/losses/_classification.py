@@ -45,8 +45,8 @@ def canonicalize_axes(axes, ndim) -> tuple[int, ...]:
 
 
 def sigmoid_binary_cross_entropy(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Computes element-wise sigmoid cross entropy given logits and labels.
 
@@ -76,8 +76,7 @@ def sigmoid_binary_cross_entropy(
     <http://www.deeplearningbook.org/contents/prob.html>`_, 2016
   """
   utils.check_subdtype(logits, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
-  labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = jnp.astype(labels, logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   # pyrefly: ignore[unsupported-operation]
@@ -89,15 +88,13 @@ def sigmoid_binary_cross_entropy(
     warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
 )
 def binary_logistic_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   return sigmoid_binary_cross_entropy(logits, labels)
 
 
-def hinge_loss(
-    predictor_outputs: jax.typing.ArrayLike, targets: jax.typing.ArrayLike
-) -> jax.Array:
+def hinge_loss(predictor_outputs: jax.Array, targets: jax.Array) -> jax.Array:
   """Computes the hinge loss for binary classification.
 
   Args:
@@ -111,7 +108,7 @@ def hinge_loss(
 
 
 def perceptron_loss(
-    predictor_outputs: jax.typing.ArrayLike, targets: jax.typing.ArrayLike
+    predictor_outputs: jax.Array, targets: jax.Array
 ) -> jax.Array:
   """Binary perceptron loss.
 
@@ -131,8 +128,8 @@ def perceptron_loss(
 
 
 def sparsemax_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Binary sparsemax loss.
 
@@ -157,15 +154,14 @@ def sparsemax_loss(
 
 @functools.partial(warn_deprecated_function, replacement='sparsemax_loss')
 def binary_sparsemax_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   return sparsemax_loss(logits, labels)
 
 
 @jax.custom_jvp
-def weighted_logsoftmax(
-    x: jax.typing.ArrayLike, weights: jax.typing.ArrayLike) -> jax.Array:
+def weighted_logsoftmax(x: jax.Array, weights: jax.Array) -> jax.Array:
   r"""Weighted logsoftmax.
 
   Computes
@@ -211,8 +207,8 @@ weighted_logsoftmax.defjvp(_weighted_logsoftmax_jvp)
 
 
 def safe_softmax_cross_entropy(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Computes the softmax cross entropy between sets of logits and labels.
 
@@ -235,10 +231,10 @@ def safe_softmax_cross_entropy(
 
 
 def softmax_cross_entropy(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   r"""Computes the softmax cross entropy between sets of logits and labels.
 
@@ -300,19 +296,20 @@ def softmax_cross_entropy(
     Added ``axis`` and ``where`` arguments.
   """
   utils.check_subdtype(logits, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
-  if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    where = jnp.expand_dims(where, axis)  # pyrefly: ignore[bad-argument-type]
+  if where is not None and where.ndim != logits.ndim:
+    if axis is None:
+      raise ValueError("Cannot expand 'where' when 'axis' is None.")
+    where = jnp.expand_dims(where, axis)
   log_probs = jax.nn.log_softmax(logits, axis, where)
   # pyrefly: ignore[no-matching-overload]
   return -(labels * log_probs).sum(axis, where=where)
 
 
 def softmax_cross_entropy_with_integer_labels(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
     axis: Union[int, tuple[int, ...]] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   r"""Computes softmax cross entropy between the logits and integer labels.
 
@@ -388,26 +385,20 @@ def softmax_cross_entropy_with_integer_labels(
   """
   utils.check_subdtype(logits, jnp.floating)
   utils.check_subdtype(labels, jnp.integer)
-  # pyrefly: ignore [missing-attribute]
-  if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  if where is not None and where.ndim != logits.ndim:
     where = jnp.expand_dims(where, axis)
   if isinstance(axis, int):
-    # pyrefly: ignore [missing-attribute]
-    axis = canonicalize_axis(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    axis = canonicalize_axis(axis, logits.ndim)
   elif isinstance(axis, tuple):
     # Move all "feature" dimensions to the end preserving axis ordering and
     # subsequent flattening "feature" dimensions to a single one.
-    # pyrefly: ignore [missing-attribute]
-    logit_axis = canonicalize_axes(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    # pyrefly: ignore [missing-attribute]
-    batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    logit_axis = canonicalize_axes(axis, logits.ndim)
+    batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)
     axis = len(batch_axis)
-    # pyrefly: ignore [missing-attribute]
-    logits = logits.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    logits = logits.transpose(batch_axis + logit_axis)
     logits = logits.reshape(logits.shape[:len(batch_axis)] + (-1,))
     if where is not None:
-      # pyrefly: ignore [missing-attribute]
-      where = where.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+      where = where.transpose(batch_axis + logit_axis)
       where = where.reshape(where.shape[:len(batch_axis)] + (-1,))
   else:
     raise ValueError('Keyword argument \'axis\' must be of type \'int\' or '
@@ -430,8 +421,8 @@ def softmax_cross_entropy_with_integer_labels(
     replacement='softmax_cross_entropy_with_integer_labels',
 )
 def multiclass_logistic_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   return softmax_cross_entropy_with_integer_labels(logits, labels)
 
@@ -440,8 +431,8 @@ _dot_last_dim = jnp.vectorize(jnp.dot, signature='(n),(n)->()')
 
 
 def multiclass_hinge_loss(
-    scores: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    scores: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Multiclass hinge loss.
 
@@ -457,16 +448,15 @@ def multiclass_hinge_loss(
 
   .. versionadded:: 0.2.3
   """
-  # pyrefly: ignore [missing-attribute]
-  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
   return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - _dot_last_dim(
       scores, one_hot_labels
   )
 
 
 def multiclass_perceptron_loss(
-    scores: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    scores: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Multiclass perceptron loss.
 
@@ -483,18 +473,17 @@ def multiclass_perceptron_loss(
 
   .. versionadded:: 0.2.2
   """
-  # pyrefly: ignore [missing-attribute]
-  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
   return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
 
 
 def poly_loss_cross_entropy(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
     *,
     epsilon: jax.typing.ArrayLike = 2.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   r"""Computes PolyLoss between logits and labels.
 
@@ -549,10 +538,10 @@ def poly_loss_cross_entropy(
 
 
 def kl_divergence(
-    log_predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    log_predictions: jax.Array,
+    targets: jax.Array,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -587,10 +576,10 @@ def kl_divergence(
 
 
 def kl_divergence_with_log_targets(
-    log_predictions: jax.typing.ArrayLike,
-    log_targets: jax.typing.ArrayLike,
+    log_predictions: jax.Array,
+    log_targets: jax.Array,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Computes the Kullback-Leibler divergence (relative entropy) loss.
 
@@ -619,10 +608,10 @@ def kl_divergence_with_log_targets(
 
 
 def generalized_kl_divergence(
-    log_predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    log_predictions: jax.Array,
+    targets: jax.Array,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Computes the generalized Kullback-Leibler divergence loss.
 
@@ -666,10 +655,10 @@ def generalized_kl_divergence(
     warn_deprecated_function, replacement='generalized_kl_divergence'
 )
 def convex_kl_divergence(
-    log_predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    log_predictions: jax.Array,
+    targets: jax.Array,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   return generalized_kl_divergence(
       log_predictions, targets, axis=axis, where=where
@@ -677,10 +666,10 @@ def convex_kl_divergence(
 
 
 def ctc_loss_with_forward_probs(
-    logits: jax.typing.ArrayLike,
-    logit_paddings: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
-    label_paddings: jax.typing.ArrayLike,
+    logits: jax.Array,
+    logit_paddings: jax.Array,
+    labels: jax.Array,
+    label_paddings: jax.Array,
     *,
     blank_id: int = 0,
     log_epsilon: jax.typing.ArrayLike = -1e5,
@@ -743,10 +732,8 @@ def ctc_loss_with_forward_probs(
   utils.check_shapes_equal(labels, label_paddings)
   # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(logits[..., 0], logit_paddings)
-  # pyrefly: ignore [missing-attribute]
-  batchsize, unused_maxinputlen, num_classes = logits.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-  # pyrefly: ignore [missing-attribute]
-  batchsize_of_labels, maxlabellen = labels.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  batchsize, unused_maxinputlen, num_classes = logits.shape
+  batchsize_of_labels, maxlabellen = labels.shape
   if batchsize_of_labels != batchsize:
     raise ValueError(
         f'Expected `labels` to have batch size {batchsize}, got'
@@ -805,8 +792,7 @@ def ctc_loss_with_forward_probs(
 
     return (next_phi, next_emit), (next_phi, next_emit)
 
-  # pyrefly: ignore [missing-attribute]
-  xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))
   _, (logalpha_phi, logalpha_emit) = jax.lax.scan(
       loop_body, (logalpha_phi_init, logalpha_emit_init), xs
   )
@@ -823,10 +809,10 @@ def ctc_loss_with_forward_probs(
 
 
 def ctc_loss(
-    logits: jax.typing.ArrayLike,
-    logit_paddings: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
-    label_paddings: jax.typing.ArrayLike,
+    logits: jax.Array,
+    logit_paddings: jax.Array,
+    labels: jax.Array,
+    label_paddings: jax.Array,
     *,
     blank_id: int = 0,
     log_epsilon: jax.typing.ArrayLike = -1e5,
@@ -869,8 +855,8 @@ def ctc_loss(
 
 
 def sigmoid_focal_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
     *,
     alpha: Optional[jax.typing.ArrayLike] = None,
     gamma: jax.typing.ArrayLike = 2.0,
@@ -932,8 +918,7 @@ def sigmoid_focal_loss(
     Reduced peak memory usage of focal weight computation.
   """
   utils.check_subdtype(logits, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
-  labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = jnp.astype(labels, logits.dtype)
 
   # Cross-entropy loss
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
@@ -962,7 +947,7 @@ def sigmoid_focal_loss(
 
 
 def _multiclass_sparsemax_loss(
-    scores: jax.typing.ArrayLike, label: jax.typing.ArrayLike
+    scores: jax.Array, label: jax.Array
 ) -> jax.Array:
   scores = jnp.asarray(scores)
   proba = projections.projection_simplex(scores)
@@ -975,8 +960,8 @@ def _multiclass_sparsemax_loss(
 
 
 def multiclass_sparsemax_loss(
-    scores: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    scores: jax.Array,
+    labels: jax.Array,
 ) -> jax.Array:
   """Multiclass sparsemax loss.
 

@@ -29,7 +29,7 @@ import optax.tree
 
 class WeightDecaySchedule(NamedTuple):
   """Maintains count for weight decay scheduling."""
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
 
 
 def add_decayed_weights(

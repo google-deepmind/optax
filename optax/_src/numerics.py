@@ -28,7 +28,7 @@ import numpy as np
 # TODO(jscholz) Promote these functions to jax core lib?
 
 
-def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
+def abs_sq(x: jax.Array) -> jax.Array:
   """Returns the squared absolute value of a (maybe complex) array.
 
   For real `x`, JAX generates the same HLO from this, `jnp.square(x)`, `x * x`,
@@ -46,7 +46,7 @@ def abs_sq(x: jax.typing.ArrayLike) -> jax.Array:
 
 
 def safe_norm(
-    x: jax.typing.ArrayLike,
+    x: jax.Array,
     min_norm: jax.typing.ArrayLike,
     ord: Optional[Union[int, float, str]] = None,  # pylint: disable=redefined-builtin
     axis: Union[None, tuple[int, ...], int] = None,
@@ -84,7 +84,8 @@ def safe_norm(
 
 
 def safe_root_mean_squares(
-    x: jax.typing.ArrayLike, min_rms: jax.typing.ArrayLike) -> jax.Array:
+    x: jax.Array, min_rms: jax.typing.ArrayLike
+) -> jax.Array:
   """Returns `maximum(sqrt(mean(abs_sq(x))), min_norm)` with correct grads.
 
   The gradients of `maximum(sqrt(mean(abs_sq(x))), min_norm)` at 0.0
@@ -103,7 +104,7 @@ def safe_root_mean_squares(
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
-def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
+def safe_increment(count: jax.Array) -> jax.Array:
   """Increments counter by one while avoiding overflow.
 
   Denote ``max_val``, ``min_val`` as the maximum, minimum, possible values for
@@ -128,7 +129,7 @@ def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
 
   .. versionadded:: 0.2.4
   """
-  count_dtype = jnp.asarray(count).dtype
+  count_dtype = count.dtype
   if jnp.issubdtype(count_dtype, jnp.integer):
     max_value = jnp.iinfo(count_dtype).max
   elif jnp.issubdtype(count_dtype, jnp.floating):

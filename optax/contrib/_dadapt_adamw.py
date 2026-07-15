@@ -34,9 +34,9 @@ class DAdaptAdamWState(NamedTuple):
   # Exponential moving average of the sum of gradients.
   grad_sum: base.Updates  # shape=(), dtype=jnp.float32.
   # Distance to solution estimate.
-  estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  estim_lr: jax.Array  # shape=(), dtype=jnp.float32.
+  numerator_weighted: jax.Array  # shape=(), dtype=jnp.float32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
 
 
 def dadapt_adamw(
@@ -98,7 +98,8 @@ def dadapt_adamw(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count
-    beta1, beta2 = betas
+    beta1 = jnp.asarray(betas[0])
+    beta2 = jnp.asarray(betas[1])
     sb2 = beta2 ** (0.5)
     sched = learning_rate(count) if callable(learning_rate) else learning_rate
     grad_sum = state.grad_sum
@@ -106,8 +107,7 @@ def dadapt_adamw(
     count_inc = numerics.safe_increment(count)
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     dlr = state.estim_lr * sched * bc
-    # pyrefly: ignore [missing-attribute]
-    dlr = dlr.astype(numerator_weighted.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    dlr = dlr.astype(numerator_weighted.dtype)
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )

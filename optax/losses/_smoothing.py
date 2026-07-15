@@ -14,7 +14,7 @@
 # ==============================================================================
 """Smoothing functions."""
 
-from typing import Union
+from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp
@@ -22,11 +22,11 @@ from optax._src import utils
 
 
 def smooth_labels(
-    labels: jax.typing.ArrayLike,
+    labels: jax.Array,
     alpha: jax.typing.ArrayLike,
     *,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Apply label smoothing.
 
@@ -48,9 +48,9 @@ def smooth_labels(
     <https://arxiv.org/abs/1906.02629>`_, 2019
   """
   utils.check_subdtype(labels, jnp.floating)
+  alpha = jnp.asarray(alpha)
   if where is None:
     num_categories = jnp.size(labels, axis)
   else:
     num_categories = jnp.sum(where, axis, keepdims=True)
-  # pyrefly: ignore [bad-return]
-  return (1.0 - alpha) * labels + alpha / num_categories  # pytype: disable=bad-return-type  # jax-arraylike # noqa: E501
+  return (1.0 - alpha) * labels + alpha / num_categories

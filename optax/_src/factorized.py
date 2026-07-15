@@ -70,16 +70,16 @@ def _zeros_like_no_axis(x, axis: int) -> jax.Array:
 class _UpdateResult:
   """Opaque container that is not traversed by jax.tree.map."""
 
-  update: jax.typing.ArrayLike  # the update to apply to params
-  v_row: jax.typing.ArrayLike  # used for factored params.
-  v_col: jax.typing.ArrayLike  # used for factored params.
-  v: jax.typing.ArrayLike  # used for params where factoring is skipped.
+  update: jax.Array  # the update to apply to params
+  v_row: jax.Array  # used for factored params.
+  v_col: jax.Array  # used for factored params.
+  v: jax.Array  # used for params where factoring is skipped.
 
 
 class FactoredState(NamedTuple):
   """Overall state of the gradient transformation."""
 
-  count: jax.typing.ArrayLike  # number of update steps.
+  count: jax.Array  # number of update steps.
   v_row: base.ArrayTree  # Tree of factored params.
   v_col: base.ArrayTree  # Tree of factored params.
   v: base.ArrayTree  # Tree for params where factoring is skipped.
@@ -92,8 +92,8 @@ def scale_by_factored_rms(
     min_dim_size_to_factor: int = 128,
     epsilon: jax.typing.ArrayLike = 1e-30,
     decay_rate_fn: Callable[
-        [jax.typing.ArrayLike, jax.typing.ArrayLike],
-        jax.typing.ArrayLike] = _decay_rate_pow,  # arg types [int, float]
+        [jax.typing.ArrayLike, jax.typing.ArrayLike], jax.Array
+    ] = _decay_rate_pow,  # arg types [int, float]
 ):
   """Scaling by a factored estimate of the gradient rms (as in Adafactor).
 
@@ -128,7 +128,7 @@ def scale_by_factored_rms(
     <https://arxiv.org/abs/2106.04560>`_, 2021
   """
 
-  def _to_state(count: jax.typing.ArrayLike, result_tree):
+  def _to_state(count: jax.Array, result_tree):
     """Maps from a tree of (factored) values to separate trees of values."""
     return FactoredState(
         count=count,
@@ -165,7 +165,14 @@ def scale_by_factored_rms(
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
 
-    def _update(grad, v_row, v_col, v, param, step):
+    def _update(
+        grad: jax.Array,
+        v_row: jax.Array,
+        v_col: jax.Array,
+        v: jax.Array,
+        param: jax.Array,
+        step: jax.Array,
+    ):
       shape, dtype = param.shape, param.dtype
       decay_rate_t = decay_rate_fn(step - step_offset, decay_rate)
 
@@ -184,8 +191,8 @@ def scale_by_factored_rms(
         new_v_col = decay_rate_t * v_col + (1.0 - decay_rate_t) * jnp.mean(
             grad_sqr, axis=d1
         )
-        new_v_row = new_v_row.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-        new_v_col = new_v_col.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        new_v_row = new_v_row.astype(dtype)
+        new_v_col = new_v_col.astype(dtype)
         reduced_d1 = d1 - 1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -198,7 +205,7 @@ def scale_by_factored_rms(
       else:
         grad_sqr = numerics.abs_sq(grad) + epsilon
         new_v = decay_rate_t * v + (1.0 - decay_rate_t) * grad_sqr
-        new_v = new_v.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        new_v = new_v.astype(dtype)
         update = grad * (new_v) ** -0.5
 
       return _UpdateResult(update, new_v_row, new_v_col, new_v)

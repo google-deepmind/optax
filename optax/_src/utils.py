@@ -25,7 +25,7 @@ from optax._src import base
 from optax._src import numerics
 
 
-def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
+def tile_second_to_last_dim(a: jax.Array) -> jax.Array:
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
@@ -77,7 +77,7 @@ def check_rank(array: jax.typing.ArrayLike, rank: int):
     )
 
 
-def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
+def set_diags(a: jax.Array, new_diags: jax.Array) -> jax.Array:
   """Set the diagonals of every DxD matrix in an input of shape NxDxD.
 
   Args:
@@ -88,8 +88,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
-  # pyrefly: ignore [missing-attribute]
-  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)
   if a_dim != 3:
     raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
   if new_diags_dim != 2:
@@ -97,8 +96,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
         f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
     )
   n, d, d1 = a.shape
-  # pyrefly: ignore [missing-attribute]
-  n_diags, d_diags = new_diags.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  n_diags, d_diags = new_diags.shape
   if d != d1:
     raise ValueError(
         f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
@@ -115,8 +113,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   indices3 = indices2
 
   # Use numpy array setting
-  # pyrefly: ignore [missing-attribute]
-  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())
   return a
 
 
@@ -161,7 +158,8 @@ def multi_normal(
 
 @jax.custom_vjp
 def _scale_gradient(
-    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike
+) -> base.ArrayTree:
   """Internal gradient scaling implementation."""
   del scale  # Only used for the backward pass defined in _scale_gradient_bwd.
   return inputs
@@ -183,7 +181,8 @@ _scale_gradient.defvjp(_scale_gradient_fwd, _scale_gradient_bwd)
 
 
 def scale_gradient(
-    inputs: base.ArrayTree, scale: jax.typing.ArrayLike) -> base.ArrayTree:
+    inputs: base.ArrayTree, scale: jax.typing.ArrayLike
+) -> base.ArrayTree:
   """Scales gradients for the backwards pass.
 
   Args:
