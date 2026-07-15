@@ -358,7 +358,8 @@ class ContribTest(parameterized.TestCase):
     # inject_hyperparams.
     static_args = []
     for uninjectable_hparam in ['warmup_steps', 'num_betas', 'clip_value_fn',
-                                'ns_steps', 'rank', 'update_proj_gap']:
+                                'ns_steps', 'rank', 'update_proj_gap',
+                                'vmap_optimization_threshold']:
       if uninjectable_hparam in inspect.signature(factory).parameters.keys():
         static_args.append(uninjectable_hparam)
     static_args = tuple(static_args)
