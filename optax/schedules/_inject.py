@@ -152,13 +152,21 @@ def inject_hyperparams(
     sched_hps, numeric_hps, other_hps = {}, {}, {}
     for name, value in bound_arguments.arguments.items():
       if name in static_args or isinstance(value, bool):
+        # booleans and explicitly-declared static args are never traced
         other_hps[name] = value
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
         # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
-      elif isinstance(value, (int, float, jax.Array, np.ndarray)):
+      elif isinstance(value, int):
+        # Plain Python ints (e.g. min_dim_size_to_factor, memory_size) are
+        # used in Python-level control flow and shape decisions inside many
+        # optimizers. Tracing them as JAX arrays causes ConcretizationTypeError
+        # under jit. Users who want to pass a schedulable integer should use a
+        # JAX array (e.g. jnp.int32(10)), which is handled by the branch below.
+        other_hps[name] = value
+      elif isinstance(value, (float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
