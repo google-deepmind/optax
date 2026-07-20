@@ -112,6 +112,20 @@ improved
 [complex numbers](https://optax.readthedocs.io/en/latest/api/contrib.html?complex-valued-optimization#complex-valued-optimization) support in Optax.
 
 
+## Pre-commit hooks
+
+The repository uses [pre-commit](https://pre-commit.com/) hooks, including
+nbstripout to normalize notebook metadata. nbstripout runs with
+`--keep-output`, so cell outputs and figures are preserved (they render in
+the docs); only execution counts and cell ids are normalized. To run the
+hooks locally:
+
+```bash
+pip install pre-commit
+pre-commit run --all-files
+```
+
+
 ## Contributor License Agreement
 
 Contributions to this project must be accompanied by a Contributor License
