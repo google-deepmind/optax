@@ -169,7 +169,7 @@ class MultiNormalDiagFromLogScale:
 def multi_normal(
     loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike
 ) -> MultiNormalDiagFromLogScale:
-  """Construct a diagonal multivariate normal distribution from location and log-scale.
+    """Construct a diagonal multivariate normal from location and log-scale.
 
   Args:
     loc: Mean of the distribution, with shape ``(..., d)``.
