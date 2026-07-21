@@ -26,6 +26,19 @@ from optax._src import numerics
 
 
 def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
+  """Tile an array along a new second-to-last axis so it becomes a 2-D block.
+
+  Expands *a* by one axis at position ``-1`` and tiles a matching ones array
+  at position ``-2``, producing a shape ``(*a.shape, a.shape[-1])`` output
+  where each row is a copy of the last dimension of *a*.
+
+  Args:
+    a: Input array to tile.
+
+  Returns:
+    An array with one additional dimension compared to *a*, with the
+    last dimension tiled across the second-to-last axis.
+  """
   ones = jnp.ones_like(a)
   a = jnp.expand_dims(a, axis=-1)
   return jnp.expand_dims(ones, axis=-2) * a
@@ -156,6 +169,15 @@ class MultiNormalDiagFromLogScale:
 def multi_normal(
     loc: jax.typing.ArrayLike, log_scale: jax.typing.ArrayLike
 ) -> MultiNormalDiagFromLogScale:
+    """Construct a diagonal multivariate normal from location and log-scale.
+
+  Args:
+    loc: Mean of the distribution, with shape ``(..., d)``.
+    log_scale: Log of the standard deviation, with shape ``(..., d)``.
+
+  Returns:
+    A :class:`MultiNormalDiagFromLogScale` distribution object.
+  """
   return MultiNormalDiagFromLogScale(loc=loc, log_scale=log_scale)
 
 
@@ -230,6 +252,17 @@ def x64_precision(enable_x64_precision: bool = True):
 
 
 def parse_version(version_str):
+  """Parse a version string into a tuple of integers.
+
+  Splits *version_str* on ``'.'`` and converts each digit-only segment to
+  an integer, ignoring non-numeric segments (e.g. pre-release labels).
+
+  Args:
+    version_str: Version string such as ``"1.2.3"`` or ``"2.0.0rc1"``.
+
+  Returns:
+    A tuple of integers representing the numeric version components.
+  """
   return tuple(int(i) for i in version_str.split('.') if i.isdigit())
 
 
