@@ -84,7 +84,7 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
         dtype=jnp.float32,
     )
     random_signs = optax.tree.cast(random_signs,
-                                   optax.tree.dtype(params, "lowest"))
+                                   optax.tree.dtype(params, 'lowest'))
     hvp = jax.jvp(jax.grad(obj_fn), (params,), (random_signs,))[1]
     product = jax.tree.map(lambda h, r: h * r, hvp, random_signs)
     return product, HutchinsonState(key=key)
