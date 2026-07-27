@@ -22,6 +22,7 @@ Percy Liang, and Tengyu Ma.
 This contribution is heavily based on the implementation of Sophia by levanter
 (https://github.com/stanford-crfm/levanter) with some changes.
 """
+import logging
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 import jax
@@ -54,7 +55,16 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
 
   def init_fn(params):
     del params
-    key = random_seed if random_seed is not None else jax.random.PRNGKey(0)
+    if random_seed is not None:
+      key = random_seed
+    else:
+      logging.warning(
+          'hutchinson_estimator_diag_hessian: no random_seed provided. '
+          'Using fixed PRNGKey(0) which produces identical random vectors '
+          'across all runs. Pass a unique random_seed for independent '
+          'experiments.'
+      )
+      key = jax.random.PRNGKey(0)
     return HutchinsonState(key=key)
 
   def update_fn(updates, state, params=None, obj_fn=None, **extra_args):
