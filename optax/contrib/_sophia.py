@@ -72,9 +72,9 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
     # extra_args
     del extra_args
     if params is None:
-      raise ValueError("params must be provided to hutchinson update function.")
+      raise ValueError('params must be provided to hutchinson update function.')
     if obj_fn is None:
-      raise ValueError("obj_fn must be provided to hutchinson update function.")
+      raise ValueError('obj_fn must be provided to hutchinson update function.')
     del updates
     key, subkey = jax.random.split(state.key)
     random_signs = optax.tree.random_like(
@@ -156,7 +156,7 @@ def scale_by_sophia(
 
   def update_fn(updates, state: SophiaState, params=None, **hess_fn_kwargs):
     if params is None:
-      raise ValueError("params must be provided to sophia's update function.")
+      raise ValueError('params must be provided to sophia\'s update function.')
     count_inc = numerics.safe_int32_increment(state.count)
 
     grads = updates
@@ -175,7 +175,7 @@ def scale_by_sophia(
         jax.lax.cond(
             # pyrefly: ignore[unsupported-operation]
             count_inc % print_win_rate_every_n_steps == 0,
-            lambda: jax.debug.print("Sophia optimizer win rate: {}", win_rate),
+            lambda: jax.debug.print('Sophia optimizer win rate: {}', win_rate),
             lambda: None,
         )
 
