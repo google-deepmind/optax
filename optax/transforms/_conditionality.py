@@ -238,10 +238,13 @@ def apply_if_finite(
     isfinite = jnp.all(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates])
     )
+    give_up = jnp.logical_and(
+      jnp.logical_not(isfinite), state.notfinite_count >= max_consecutive_errors
+    )
     notfinite_count = jnp.where(
         isfinite,
         jnp.zeros([], jnp.int32),
-        numerics.safe_increment(state.notfinite_count),
+      jnp.where(give_up, jnp.zeros([], jnp.int32), numerics.safe_increment(state.notfinite_count)),
     )
 
     def do_update(_):
@@ -251,7 +254,7 @@ def apply_if_finite(
       return optax.tree.zeros_like(updates), inner_state
 
     updates, new_inner_state = lax.cond(
-        jnp.logical_or(isfinite, notfinite_count > max_consecutive_errors),
+      jnp.logical_or(isfinite, give_up),
         do_update,
         reject_update,
         operand=None,
