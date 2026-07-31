@@ -147,7 +147,7 @@ def schedule_free(
     return ScheduleFreeState(
         b1=jnp.asarray(b1, dtype=params_dtype),
         weight_sum=jnp.zeros([], dtype=params_dtype),
-        step_count=jnp.ones([], dtype=jnp.int32),
+      step_count=jnp.zeros([], dtype=jnp.int32),
         max_lr=jnp.zeros([], dtype=params_dtype),
         base_optimizer_state=base_optimizer.init(params),
         z=z,
