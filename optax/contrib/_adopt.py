@@ -136,6 +136,11 @@ def adopt(
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
+  .. note::
+    The first update step warms up the second moment estimate (``nu``),
+    so the objective may not decrease on the very first step. Convergence
+    becomes visible from the second step onwards.
+
   Examples:
     >>> import optax
     >>> import jax
