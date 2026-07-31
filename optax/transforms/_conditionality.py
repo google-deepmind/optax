@@ -239,12 +239,17 @@ def apply_if_finite(
         jnp.array([jnp.all(jnp.isfinite(p)) for p in flat_updates])
     )
     give_up = jnp.logical_and(
-      jnp.logical_not(isfinite), state.notfinite_count >= max_consecutive_errors
+        jnp.logical_not(isfinite),
+        state.notfinite_count >= max_consecutive_errors,
     )
     notfinite_count = jnp.where(
         isfinite,
         jnp.zeros([], jnp.int32),
-      jnp.where(give_up, jnp.zeros([], jnp.int32), numerics.safe_increment(state.notfinite_count)),
+        jnp.where(
+            give_up,
+            jnp.zeros([], jnp.int32),
+            numerics.safe_increment(state.notfinite_count),
+        ),
     )
 
     def do_update(_):
