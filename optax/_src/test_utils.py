@@ -64,6 +64,34 @@ def assert_trees_all_close(actual, desired, rtol=1e-6, atol=0.0, err_msg=None):
     np.testing.assert_allclose(x, y, rtol=rtol, atol=atol, err_msg=err_msg)
 
 
+def _shaped_arrays_equal(x, y):
+  """Lenient equality for ShapedArrays."""
+  # Unpack if they are scalar numpy arrays of ShapedArray
+  if isinstance(x, np.ndarray) and x.dtype == object and x.ndim == 0:
+    x = x.item()
+  if isinstance(y, np.ndarray) and y.dtype == object and y.ndim == 0:
+    y = y.item()
+
+  if not (isinstance(x, jax.core.ShapedArray) and
+          isinstance(y, jax.core.ShapedArray)):
+    return False
+
+  # Basic fields equality
+  if (x.shape != y.shape or x.dtype != y.dtype or
+      x.weak_type != y.weak_type or
+      (hasattr(x, "vma") and hasattr(y, "vma") and x.vma != y.vma) or
+      x.memory_space != y.memory_space):
+    return False
+
+  # For PRNG keys, we are lenient on sharding because jax.random.split/key can
+  # produce different shardings (e.g. host-local vs mesh-sharded)
+  # that are functionally equivalent for optax state tracking.
+  if jax.dtypes.issubdtype(x.dtype, jax.dtypes.prng_key):
+    return True
+
+  return x.sharding == y.sharding
+
+
 def assert_trees_all_equal(actual, desired, err_msg=None):
   """Asserts that two pytrees of arrays are equal."""
   flat_a, tree_def_a = jax.tree_util.tree_flatten(actual)
@@ -73,6 +101,8 @@ def assert_trees_all_equal(actual, desired, err_msg=None):
         f"Trees have different structures:\n{tree_def_a}\n{tree_def_d}"
     )
   for x, y in zip(flat_a, flat_d):
+    if _shaped_arrays_equal(x, y):
+      continue
     np.testing.assert_array_equal(x, y, err_msg=err_msg)
 
 
