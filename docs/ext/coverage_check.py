@@ -52,12 +52,14 @@ def optax_public_symbols():
   """Collect all optax public symbols."""
   names = set()
   for module_name, module in find_internal_python_modules(optax):
-    for name in module.__all__:
-      names.add(module_name + "." + name)
+    module_all = getattr(module, "__all__", None)
+    if module_all is not None:
+      for name in module_all:
+        names.add(module_name + "." + name)
   return names
 
 
-class OptaxCoverageCheck(builders.Builder):
+class OptaxCoverageCheck(builders.Builder):  # pytype: disable=final-error
   """Builder that checks all public symbols are included."""
 
   name = "coverage_check"
