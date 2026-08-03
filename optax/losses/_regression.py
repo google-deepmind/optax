@@ -22,8 +22,8 @@ from optax._src import utils
 
 
 def squared_error(
-    predictions: jax.typing.ArrayLike,
-    targets: Optional[jax.typing.ArrayLike] = None,
+    predictions: jax.Array,
+    targets: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Calculates the squared error for a set of predictions.
 
@@ -48,13 +48,12 @@ def squared_error(
     utils.check_shapes_equal(predictions, targets)
   # pyrefly: ignore[unsupported-operation]
   errors = predictions - targets if targets is not None else predictions
-  # pyrefly: ignore [bad-return]
-  return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
+  return errors**2
 
 
 def l2_loss(
-    predictions: jax.typing.ArrayLike,
-    targets: Optional[jax.typing.ArrayLike] = None,
+    predictions: jax.Array,
+    targets: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Calculates the L2 loss for a set of predictions.
 
@@ -75,8 +74,8 @@ def l2_loss(
 
 
 def huber_loss(
-    predictions: jax.typing.ArrayLike,
-    targets: Optional[jax.typing.ArrayLike] = None,
+    predictions: jax.Array,
+    targets: Optional[jax.Array] = None,
     *,
     delta: jax.typing.ArrayLike = 1.0,
 ) -> jax.Array:
@@ -110,8 +109,8 @@ def huber_loss(
 
 
 def log_cosh(
-    predictions: jax.typing.ArrayLike,
-    targets: Optional[jax.typing.ArrayLike] = None,
+    predictions: jax.Array,
+    targets: Optional[jax.Array] = None,
 ) -> jax.Array:
   """Calculates the log-cosh loss for a set of predictions.
 
@@ -134,17 +133,16 @@ def log_cosh(
   # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  # pyrefly: ignore [missing-attribute, unsupported-operation]
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
 
 
 def cosine_similarity(
-    predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    predictions: jax.Array,
+    targets: jax.Array,
     *,
     epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   r"""Computes the cosine similarity between targets and predictions.
 
@@ -193,12 +191,12 @@ def cosine_similarity(
 
 
 def cosine_distance(
-    predictions: jax.typing.ArrayLike,
-    targets: jax.typing.ArrayLike,
+    predictions: jax.Array,
+    targets: jax.Array,
     *,
     epsilon: jax.typing.ArrayLike = 0.0,
     axis: Union[int, tuple[int, ...], None] = -1,
-    where: Union[jax.typing.ArrayLike, None] = None,
+    where: Optional[jax.Array] = None,
 ) -> jax.Array:
   r"""Computes the cosine distance between targets and predictions.
 

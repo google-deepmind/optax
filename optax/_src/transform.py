@@ -88,7 +88,7 @@ class ScaleByRmsState(NamedTuple):
 class ScaleByRmsWithCountState(NamedTuple):
   """State for exponential root mean-squared (RMS)-normalized updates."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   nu: base.Updates
 
 
@@ -162,7 +162,7 @@ class ScaleByRStdDevState(NamedTuple):
 class ScaleByRStdDevWithCountState(NamedTuple):
   """State for centered exponential moving average of squares of updates."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -238,7 +238,7 @@ def scale_by_stddev(
 class ScaleByAdamState(NamedTuple):
   """State for the Adam algorithm."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -312,7 +312,7 @@ def scale_by_adam(
 class ScaleByAmsgradState(NamedTuple):
   """State for the AMSGrad algorithm."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
   nu_max: base.Updates
@@ -429,7 +429,7 @@ def scale_by_adamax(
 class ScaleByLionState(NamedTuple):
   """State for the Lion algorithm."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
 
 
@@ -617,7 +617,7 @@ class ScaleByAdanState(NamedTuple):
   v: base.Updates
   n: base.Updates
   g: base.Updates
-  t: jax.typing.ArrayLike
+  t: jax.Array
 
 
 def scale_by_adan(
@@ -693,7 +693,7 @@ def scale_by_adan(
 class ScaleByBeliefState(NamedTuple):
   """State for the rescaling by AdaBelief algorithm."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   mu: base.Updates
   nu: base.Updates
 
@@ -979,7 +979,7 @@ def scale_by_sign() -> base.GradientTransformation:
 class ScaleByScheduleState(NamedTuple):
   """Maintains count for scale scheduling."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
 
 
 def scale_by_learning_rate(
@@ -1086,7 +1086,7 @@ def scale_by_trust_ratio(
 class ApplyEvery(NamedTuple):
   """Contains a counter and a gradient accumulator."""
 
-  count: jax.typing.ArrayLike
+  count: jax.Array
   grad_acc: base.Updates
 
 
@@ -1253,7 +1253,7 @@ def scale_by_sm3(
 class ScaleByNovogradState(NamedTuple):
   """State for Novograd."""
 
-  count: jax.typing.ArrayLike
+  count: jax.Array
   mu: base.Updates
   nu: base.Updates
 
@@ -1334,7 +1334,7 @@ def scale_by_novograd(
 
 
 class ScaleByOptimisticGradientState(NamedTuple):
-  is_initial_step: jax.typing.ArrayLike
+  is_initial_step: jax.Array
   previous_gradient: base.Updates
 
 
@@ -1547,21 +1547,21 @@ class ScaleByLBFGSState(NamedTuple):
       :func:`optax.scale_by_lbfgs` for more details.
   """
 
-  count: jax.typing.ArrayLike
+  count: jax.Array
   params: base.Params
   updates: base.Params
   diff_params_memory: base.ArrayTree
   diff_updates_memory: base.ArrayTree
-  weights_memory: jax.typing.ArrayLike
+  weights_memory: jax.Array
 
 
 def _precondition_by_lbfgs(
     updates: base.Updates,
     diff_params_memory: base.ArrayTree,
     diff_updates_memory: base.ArrayTree,
-    weights_memory: jax.typing.ArrayLike,
-    identity_scale: jax.typing.ArrayLike,  # float
-    memory_idx: jax.typing.ArrayLike,  # int
+    weights_memory: jax.Array,
+    identity_scale: jax.Array,  # float
+    memory_idx: jax.Array,  # int
 ) -> base.Updates:
   r"""Multiplies updates by an approximation of the inverse Hessian.
 
@@ -1596,8 +1596,7 @@ def _precondition_by_lbfgs(
     , 1999
   """
   rhos = weights_memory
-  # pyrefly: ignore [missing-attribute]
-  memory_size = weights_memory.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  memory_size = weights_memory.shape[0]
   indices = (memory_idx + jnp.arange(memory_size)) % memory_size
 
   def right_product(vec, idx):
@@ -1799,7 +1798,7 @@ def scale_by_lbfgs(
           capped_inv_norm,
       )
     else:
-      identity_scale = 1.0
+      identity_scale = jnp.array(1.0)
 
     # 3. Computes the matrix vector product P_k u_k by decomposing P_k in the
     # associated rank one matrices and perform the associated vector operations

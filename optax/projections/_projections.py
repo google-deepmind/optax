@@ -91,11 +91,10 @@ def projection_hypercube(tree: Any, scale: Any = 1) -> Any:
 
 
 @jax.custom_jvp
-def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
+def _projection_unit_simplex(values: jax.Array) -> jax.Array:
   """Projection onto the unit simplex."""
   s = 1
-  # pyrefly: ignore [missing-attribute]
-  n_features = values.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  n_features = values.shape[0]
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
   ind = jnp.arange(n_features) + 1
@@ -106,7 +105,7 @@ def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
 
 @_projection_unit_simplex.defjvp
 def _projection_unit_simplex_jvp(
-    primals: list[jax.typing.ArrayLike], tangents: list[jax.typing.ArrayLike]
+    primals: list[jax.Array], tangents: list[jax.Array]
 ) -> tuple[jax.Array, jax.Array]:
   (values,) = primals
   (values_dot,) = tangents

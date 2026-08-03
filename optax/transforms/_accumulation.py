@@ -82,7 +82,7 @@ def trace(
 class EmaState(NamedTuple):
   """Holds an exponential moving average of past updates."""
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  count: jax.Array  # shape=(), dtype=jnp.int32.
   ema: base.Params
 
 
@@ -229,8 +229,8 @@ class MultiStepsState(NamedTuple):
       `should_skip_update_fn` to `MultiSteps`.
   """
 
-  mini_step: jax.typing.ArrayLike
-  gradient_step: jax.typing.ArrayLike
+  mini_step: jax.Array
+  gradient_step: jax.Array
   inner_opt_state: Any
   acc_grads: Any
   skip_state: base.ArrayTree = ()

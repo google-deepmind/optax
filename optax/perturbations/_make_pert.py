@@ -29,7 +29,7 @@ class Normal:
 
   def sample(
       self,
-      key: jax.typing.ArrayLike,
+      key: jax.Array,
       sample_shape: base.Shape = (),
       dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:
@@ -44,7 +44,7 @@ class Gumbel:
 
   def sample(
       self,
-      key: jax.typing.ArrayLike,
+      key: jax.Array,
       sample_shape: base.Shape = (),
       dtype: jax.typing.DTypeLike = float,
   ) -> jax.Array:

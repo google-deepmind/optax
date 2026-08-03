@@ -79,10 +79,8 @@ def base_hungarian_algorithm(cost_matrix):
     >>> i, j = optax.assignment.hungarian_algorithm(cost)
     >>> print("cost:", cost[i, j].sum())
     cost: 15
-    >>> print("i:", i)
-    i: [0 1 3]
-    >>> print("j:", j)
-    j: [0 2 1]
+    >>> print("pairs:", sorted(list(zip(i.tolist(), j.tolist()))))
+    pairs: [(0, 0), (1, 2), (3, 1)]
     >>> cost = jnp.array(
     ...  [
     ...    [90, 80, 75, 70],
@@ -94,10 +92,8 @@ def base_hungarian_algorithm(cost_matrix):
     >>> i, j = optax.assignment.hungarian_algorithm(cost)
     >>> print("cost:", cost[i, j].sum())
     cost: 265
-    >>> print("i:", i)
-    i: [0 1 2 3]
-    >>> print("j:", j)
-    j: [3 2 1 0]
+    >>> print("pairs:", sorted(list(zip(i.tolist(), j.tolist()))))
+    pairs: [(0, 3), (1, 2), (2, 1), (3, 0)]
 
   References:
     David F. Crouse, `On implementing 2D rectangular assignment algorithms
