@@ -281,6 +281,7 @@ class AliasTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(updates_inject, updates, rtol=1e-3)
     with self.subTest('Equality of new optimizer states.'):
       test_utils.assert_trees_all_close(
+          # pyrefly: ignore[missing-attribute]
           optax.tree.unwrap_random_key_data(new_state_inject.inner_state),
           optax.tree.unwrap_random_key_data(new_state),
           rtol=1e-4,
