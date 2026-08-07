@@ -6,13 +6,16 @@ Losses
 .. autosummary::
     :toctree: generated/
 
+    barlow_twins_loss
     binary_dice_loss
+    byol_loss
     convex_kl_divergence
     cosine_distance
     cosine_similarity
     ctc_loss
     ctc_loss_with_forward_probs
     dice_loss
+    dino_loss
     generalized_kl_divergence
     hinge_loss
     huber_loss
@@ -32,6 +35,7 @@ Losses
     safe_softmax_cross_entropy
     sigmoid_binary_cross_entropy
     sigmoid_focal_loss
+    simsiam_loss
     smooth_labels
     softmax_cross_entropy
     softmax_cross_entropy_with_integer_labels

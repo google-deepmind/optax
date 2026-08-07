@@ -47,6 +47,10 @@ from optax.losses._regression import squared_error
 from optax.losses._segmentation import binary_dice_loss
 from optax.losses._segmentation import dice_loss
 from optax.losses._segmentation import multiclass_generalized_dice_loss
+from optax.losses._self_supervised import barlow_twins_loss
+from optax.losses._self_supervised import byol_loss
+from optax.losses._self_supervised import dino_loss
 from optax.losses._self_supervised import ntxent
+from optax.losses._self_supervised import simsiam_loss
 from optax.losses._self_supervised import triplet_margin_loss
 from optax.losses._smoothing import smooth_labels
