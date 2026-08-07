@@ -74,3 +74,6 @@ from optax.contrib._sophia import hutchinson_estimator_diag_hessian
 from optax.contrib._sophia import HutchinsonState
 from optax.contrib._sophia import sophia
 from optax.contrib._sophia import SophiaState
+from optax.contrib._dog import l_dog
+from optax.contrib._dog import LDoGState
+from optax.contrib._dog import scale_by_l_dog
