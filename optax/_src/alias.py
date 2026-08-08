@@ -2534,10 +2534,10 @@ def rprop(
     ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: {:.2E}'.format(f(params)))
     Objective function: 1.40E+01
-    Objective function: 1.40E+01
     Objective function: 1.39E+01
     Objective function: 1.39E+01
     Objective function: 1.38E+01
+    Objective function: 1.37E+01
 
   References:
     Riedmiller et al. `A direct adaptive method for faster backpropagation
