@@ -130,12 +130,15 @@ def log_cosh(
     Chen et al, `Log Hyperbolic Cosine Loss Improves Variational Auto-Encoder
     <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
+  predictions = jnp.asarray(predictions)
+  if targets is not None:
+    targets = jnp.asarray(targets)
   utils.check_subdtype(predictions, jnp.floating)
-  # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  # pyrefly: ignore [missing-attribute, unsupported-operation]
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(
+      jnp.asarray(errors).dtype
+  )
 
 
 def cosine_similarity(
