@@ -27,6 +27,7 @@ import numpy as np
 from optax import schedules
 from optax import transforms
 
+from optax._src import alias
 from optax._src import base
 from optax._src import test_utils
 from optax._src import transform
@@ -158,6 +159,29 @@ class InjectHyperparamsTest(parameterized.TestCase):
     _, state = jax.jit(optim.update)(grads, state)
 
     assert not set(state.hyperparams.keys()).intersection(set(static_args))
+
+  def test_integer_hyperparams_are_static(self):
+    """Integer hyperparameters are not injected (kept static)."""
+    optim = schedules.inject_hyperparams(alias.adafactor)(learning_rate=0.1)
+
+    params = jnp.ones((4, 4))
+    state = jax.jit(optim.init)(params)
+
+    # `min_dim_size_to_factor` is a structural int and must not be injected.
+    self.assertNotIn('min_dim_size_to_factor', state.hyperparams)
+    self.assertIn('learning_rate', state.hyperparams)
+
+  @parameterized.named_parameters(
+      ('adafactor', alias.adafactor),  # int `min_dim_size_to_factor`
+      ('lbfgs', alias.lbfgs),  # int `memory_size`
+  )
+  def test_jit_init_with_integer_hyperparams(self, opt_factory):
+    """Optimizers with integer hyperparams jit without `static_args` (#412)."""
+    optim = schedules.inject_hyperparams(opt_factory)(learning_rate=0.1)
+
+    params = jnp.ones((4, 4))
+    # Prior to treating ints as static this raised a TracerBoolConversionError.
+    jax.jit(optim.init)(params)
 
   def test_prng_key_not_hyperparameter(self):
     """Check that random.key can be handled by :func:``inject_hyperparams``."""

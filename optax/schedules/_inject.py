@@ -116,7 +116,10 @@ def inject_hyperparams(
     static_args: a string or iterable of strings specifying which callable
       parameters are not schedules. inject_hyperparams treats all callables as
       schedules by default, so if a hyperparameter is a non-schedule callable,
-      you must specify that using this argument.
+      you must specify that using this argument. Boolean and integer
+      hyperparameters are always treated as static (they are not injected),
+      since tracing them would break inner factories that use them for
+      structural control flow.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
@@ -151,14 +154,19 @@ def inject_hyperparams(
 
     sched_hps, numeric_hps, other_hps = {}, {}, {}
     for name, value in bound_arguments.arguments.items():
-      if name in static_args or isinstance(value, bool):
+      # Python `bool`/`int` values are treated as static. Turning them into
+      # traced arrays would break inner factories that use them for structural
+      # control flow (e.g. `min_dim_size_to_factor` in `adafactor` or
+      # `memory_size` in `lbfgs`), causing a `TracerBoolConversionError` when
+      # the resulting transform is jitted. Note `bool` is a subclass of `int`.
+      if name in static_args or isinstance(value, int):
         other_hps[name] = value
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
         # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
-      elif isinstance(value, (int, float, jax.Array, np.ndarray)):
+      elif isinstance(value, (float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
@@ -238,7 +246,10 @@ def inject_stateful_hyperparams(
     static_args: a string or iterable of strings specifying which callable
       parameters are not schedules. inject_hyperparams treats all callables as
       schedules by default, so if a hyperparameter is a non-schedule callable,
-      you must specify that using this argument.
+      you must specify that using this argument. Boolean and integer
+      hyperparameters are always treated as static (they are not injected),
+      since tracing them would break inner factories that use them for
+      structural control flow.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
