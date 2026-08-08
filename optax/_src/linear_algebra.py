@@ -284,7 +284,19 @@ def matrix_inverse_pth_root(
 
 
 def get_spectral_radius_upper_bound(matrix):
-  # Get an upper bound on the spectral radius of a matrix.
+  """Return an upper bound on the spectral radius of a square matrix.
+
+  Computes ``min(‖matrix‖_F, ‖matrix‖_1)`` where ``‖·‖_F`` is the Frobenius
+  norm and ``‖·‖_1`` is the column-sum (max) norm.  Both are valid upper bounds
+  on the largest singular value (and hence on the spectral radius), and their
+  minimum gives a tighter estimate.
+
+  Args:
+    matrix: A 2-D array for which the spectral radius bound is computed.
+
+  Returns:
+    A scalar JAX array with an upper bound on the spectral radius of *matrix*.
+  """
   a = jnp.linalg.matrix_norm(matrix, ord='fro')
   # TODO(rdyro): https://github.com/jax-ml/jax/issues/26555
   b = jnp.linalg.matrix_norm(matrix, ord=1) if matrix.size != 0 else 0
