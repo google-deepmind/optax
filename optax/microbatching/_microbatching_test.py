@@ -200,6 +200,20 @@ class MicrobatchingTest(parameterized.TestCase):
     )(arg_axis1, arg_axis1)
     test_utils.assert_trees_all_close(result0, result1, atol=1e-6, rtol=1e-6)
 
+  def test_negative_in_axis(self):
+    x = jnp.arange(12).reshape(3, 4)
+    fun = functools.partial(jnp.sum, axis=-1)
+
+    result = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        in_axes=-1,
+        accumulator=microbatching.AccumulationType.SUM,
+    )(x)
+
+    test_utils.assert_trees_all_equal(result, fun(x))
+
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,
       microbatching.AccumulationType.MEAN,

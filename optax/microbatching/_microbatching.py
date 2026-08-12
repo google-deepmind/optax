@@ -100,7 +100,12 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """
 
   def reshape_leaf(x):
-    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1 :]
+    axis_ = axis if axis >= 0 else axis + x.ndim
+    new_shape = (
+        x.shape[:axis_]
+        + (-1, microbatch_size)
+        + x.shape[axis_ + 1 :]
+    )
     if utils.parse_version(jax.__version__) < utils.parse_version('0.7.0'):
       return x.reshape(new_shape, order='F')
 
@@ -112,14 +117,16 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
         '0.8.1'
     ), 'microbatching with explicit sharding requires jax version >= 0.8.1.'
     spec = sharding.spec
-    if len(spec) < axis:  # The batch axis is not sharded.
+    if len(spec) < axis_:  # The batch axis is not sharded.
       new_spec = spec
     else:
-      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1 :])
+      new_spec = jax.P(
+          *spec[:axis_], None, spec[axis_], *spec[axis_ + 1 :]
+      )
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
-    nshards = x.shape[axis] // local_shape[axis]
+    nshards = x.shape[axis_] // local_shape[axis_]
     if microbatch_size % nshards != 0:
       raise ValueError(f'{nshards=} must evenly divide {microbatch_size=}.')
 
@@ -365,9 +372,10 @@ def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
   """Returns a function that takes the `index`-th element along the `axis`."""
 
   def fun(x):
-    if x.shape[axis] == 0:  # jnp.take doesn't work with zero axis size.
-      return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1 :])
-    return jnp.take(x, indices=index, axis=axis)
+    axis_ = axis if axis >= 0 else axis + x.ndim - 1
+    if x.shape[axis_] == 0:  # jnp.take doesn't work with zero axis size.
+      return jnp.empty_like(x, shape=x.shape[:axis_] + x.shape[axis_ + 1 :])
+    return jnp.take(x, indices=index, axis=axis_)
 
   return fun
 
