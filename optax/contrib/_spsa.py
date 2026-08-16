@@ -152,9 +152,9 @@ def spsa(
     params = optax.apply_updates(params, updates)
 
   Args:
-    learning_rate: The step size :math:`a_k`, either fixed or a schedule. Spall's
-      classic decaying choice ``a / (A + k + 1) ** alpha`` can be built with
-      :func:`optax.polynomial_schedule`.
+    learning_rate: The step size :math:`a_k`, either fixed or a schedule.
+      Spall's classic decaying choice ``a / (A + k + 1) ** alpha`` can be built
+      with :func:`optax.polynomial_schedule`.
     c: Base perturbation size; must be positive.
     gamma: Decay exponent for the perturbation size.
     seed: Optional PRNG key used to draw the perturbation vectors.
