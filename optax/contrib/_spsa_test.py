@@ -15,7 +15,6 @@
 """Tests for the SPSA optimizer in `optax.contrib._spsa`."""
 
 from absl.testing import absltest
-import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -115,7 +114,7 @@ class SPSATest(absltest.TestCase):
         params, state, params, obj_fn=jnp.sum
     )
     self.assertEqual(int(state.count), 1)
-    chex.assert_trees_all_equal_dtypes(state.count, jnp.zeros([], jnp.int32))
+    self.assertEqual(state.count.dtype, jnp.int32)
 
 
 if __name__ == '__main__':
