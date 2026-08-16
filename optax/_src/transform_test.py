@@ -73,6 +73,23 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
+  def test_adam_no_nan_on_float16_zero_grad(self):
+    """A zero-gradient float16 step must not produce NaN updates.
+
+    `eps` (default 1e-8) rounds to exactly 0.0 in float16, whose smallest
+    subnormal is ~6e-8. That used to turn the `sqrt(v) + eps` safety
+    denominator into a hard 0, so `m / 0` produced NaN whenever `m` and `v`
+    were also 0, as on this all-zero-gradient step.
+    """
+    params = jnp.array([1.0, -2.0, 0.5], dtype=jnp.float16)
+    zero_grads = jnp.zeros_like(params)
+    scaler = transform.scale_by_adam()
+    state = scaler.init(params)
+    for _ in range(3):
+      updates, state = scaler.update(zero_grads, state, params)
+      test_utils.assert_tree_all_finite(updates)
+      params = update.apply_updates(params, updates)
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4

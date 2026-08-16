@@ -296,8 +296,22 @@ def scale_by_adam(
     # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
     # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      # `eps`/`eps_root` are added in at least float32 precision so they do
+      # not silently underflow to zero when `v` has a low precision dtype
+      # (e.g. float16, whose smallest subnormal is ~6e-8). Otherwise the
+      # denominator can become exactly 0, turning this safety term into a
+      # 0/0 NaN whenever `m` and `v` are also 0 (e.g. on a zero-gradient
+      # step).
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      denom = jnp.sqrt(v.astype(safe_dtype) + eps_root) + eps
+      return (m.astype(safe_dtype) / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
