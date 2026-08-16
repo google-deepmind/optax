@@ -104,7 +104,7 @@ class SPSATest(absltest.TestCase):
     with self.assertRaises(ValueError):
       estimator.update(params, state, params)  # missing obj_fn
     with self.assertRaises(ValueError):
-      estimator.update(params, state, obj_fn=lambda p: jnp.sum(p))  # no params
+      estimator.update(params, state, obj_fn=jnp.sum)  # no params
 
   def test_state_count_increments(self):
     estimator = _spsa.spsa_gradient()
@@ -112,7 +112,7 @@ class SPSATest(absltest.TestCase):
     state = estimator.init(params)
     self.assertEqual(int(state.count), 0)
     _, state = estimator.update(
-        params, state, params, obj_fn=lambda p: jnp.sum(p)
+        params, state, params, obj_fn=jnp.sum
     )
     self.assertEqual(int(state.count), 1)
     chex.assert_trees_all_equal_dtypes(state.count, jnp.zeros([], jnp.int32))
