@@ -154,6 +154,7 @@ def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   """
   values, unravel_fn = flatten_util.ravel_pytree(tree)
   new_values = scale * _projection_unit_simplex(values / scale)
+  # pyrefly: ignore[bad-argument-type]
   return unravel_fn(new_values)
 
 

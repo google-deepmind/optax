@@ -161,7 +161,10 @@ def make_perturbed_fun(
       baseline = None
 
     out = jax.vmap(stoch_estimator, in_axes=(0, None, None), out_axes=0)(
-        jax.random.split(key, num_samples), x, baseline
+        jax.random.split(key, num_samples),
+        x,
+        # pyrefly: ignore[bad-argument-type]
+        baseline,
     )
     return jax.tree.map(lambda x: jnp.mean(x, axis=0), out)
 
