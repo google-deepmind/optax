@@ -397,8 +397,8 @@ def microbatch(
         accumulator += fun(microbatch)
       return accumulator
 
-  where under the hood the ``for`` is implemented via a :func:`jax.lax.fori_loop`
-  and hence forced to be sequential.
+  where under the hood the ``for`` is implemented via a
+  :func:`jax.lax.fori_loop` and hence forced to be sequential.
 
   This function is useful when evaluating ``fun`` on the full input batch
   exceeds available device memory. By splitting the batch into smaller
@@ -570,8 +570,8 @@ def micro_vmap(
       microbatch. Smaller values reduces memory overhead, but require more
       sequential computation. This must evenly divide the batch axis size of the
       batch arguments.
-    vmap_fn: A function with the same signature as :func:`jax.vmap`.  Can be used to
-      e.g., pass in kwargs to vmap.
+    vmap_fn: A function with the same signature as :func:`jax.vmap`.  Can be
+      used to, e.g., pass in kwargs to vmap.
     accumulator: Specifies what to do with the vmapped outputs.  The default
       value (CONCAT) returns each output with a batch axis, matching the
       behavior of :func:`jax.vmap`. Reductions over the batch axis are also
@@ -678,7 +678,8 @@ def micro_grad(
   * compute moments of the gradients on a per-example basis.
   * computing scalar or low-dimensional gradient metrics on a per-example basis.
 
-  Other notable differences between this function and :func:`jax.value_and_grad`:
+  Other notable differences between this function and
+  :func:`jax.value_and_grad`:
 
   * at least one argument to `fun` must have a batch axis, and that argument
     should be passed to `batch_argnums`. The default value of `1` assumes that
