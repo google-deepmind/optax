@@ -200,19 +200,35 @@ class MicrobatchingTest(parameterized.TestCase):
     )(arg_axis1, arg_axis1)
     test_utils.assert_trees_all_close(result0, result1, atol=1e-6, rtol=1e-6)
 
-  def test_negative_in_axis(self):
-    x = jnp.arange(12).reshape(3, 4)
-    fun = functools.partial(jnp.sum, axis=-1)
+  @parameterized.parameters(
+      ((3, 4), -1, 2),
+      ((2, 3, 4), -1, 2),
+      ((2, 6, 4), -2, 2),
+      ((2, 3, 8, 5), -2, 4),
+      ((8, 3, 4), -3, 2),
+  )
+  def test_negative_in_axis(self, shape, in_axes, microbatch_size):
+    x = jnp.arange(np.prod(shape)).reshape(shape).astype(jnp.float32)
+    pos_axis = in_axes + x.ndim
+    fun = functools.partial(jnp.sum, axis=in_axes)
 
-    result = microbatching.microbatch(
+    result_neg = microbatching.microbatch(
         fun,
         argnums=0,
-        microbatch_size=2,
-        in_axes=-1,
+        microbatch_size=microbatch_size,
+        in_axes=in_axes,
+        accumulator=microbatching.AccumulationType.SUM,
+    )(x)
+    result_pos = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=microbatch_size,
+        in_axes=pos_axis,
         accumulator=microbatching.AccumulationType.SUM,
     )(x)
 
-    test_utils.assert_trees_all_equal(result, fun(x))
+    test_utils.assert_trees_all_equal(result_neg, fun(x))
+    test_utils.assert_trees_all_equal(result_neg, result_pos)
 
   @parameterized.parameters(
       microbatching.AccumulationType.SUM,
