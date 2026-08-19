@@ -2019,7 +2019,7 @@ def rmsprop(
     Objective function: 1.36E+01
 
   References:
-    Hinton, `Overview of mini-batch gradient descent`
+    Hinton, `Overview of mini-batch gradient descent
     <www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>`_, 2012
 
     Graves, `Generating Sequences With Recurrent Neural Networks

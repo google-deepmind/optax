@@ -112,7 +112,7 @@ def inject_hyperparams(
 
   Args:
     inner_factory: a function that returns the inner
-      ``optax.GradientTransformation`` with dynamic hyperparameters.
+      :py:class:`.optax.GradientTransformation` with dynamic hyperparameters.
     static_args: a string or iterable of strings specifying which callable
       parameters are not schedules. inject_hyperparams treats all callables as
       schedules by default, so if a hyperparameter is a non-schedule callable,
