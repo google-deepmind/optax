@@ -45,10 +45,10 @@ class Accumulator:
 
   .. code-block:: python
 
-  carry = init(jax.typeof(x_0))
-  for i in range(n):
-    carry = update(carry, x_i, i)
-  return finalize(carry)
+    carry = init(jax.typeof(x_0))
+    for i in range(n):
+      carry = update(carry, x_i, i)
+    return finalize(carry)
 
   Attributes:
     init: A function f(shape_dtype_struct) that initializes the microbatch state
@@ -397,8 +397,8 @@ def microbatch(
         accumulator += fun(microbatch)
       return accumulator
 
-  where under the hood the ``for`` is implemented via a ``lax.fori_loop`` and
-  hence forced to be sequential.
+  where under the hood the ``for`` is implemented via a
+  :func:`jax.lax.fori_loop` and hence forced to be sequential.
 
   This function is useful when evaluating ``fun`` on the full input batch
   exceeds available device memory. By splitting the batch into smaller
@@ -436,8 +436,8 @@ def microbatch(
   .. note::
 
     ``microbatch`` is compatible with other JAX transformations like
-    ``jax.grad`` and ``jax.vmap``. However, when computing gradients, it is
-    generally **more efficient to microbatch the gradient** than to
+    :func:`jax.grad` and :func:`jax.vmap`. However, when computing gradients,
+    it is generally **more efficient to microbatch the gradient** than to
     differentiate through the microbatched function. That is, prefer::
 
       microbatch(jax.grad(loss_fn), ...)(params, batch)
@@ -448,7 +448,7 @@ def microbatch(
 
     Both produce equivalent results for linear accumulators (``SUM``, ``MEAN``),
     but ``jax.grad(microbatch(...))`` differentiates through the internal
-    ``jax.lax.fori_loop``, which requires JAX to save or rematerialize all
+    :func:`jax.lax.fori_loop`, which requires JAX to save or rematerialize all
     intermediate loop carries for the backward pass. In contrast,
     ``microbatch(jax.grad(...))`` computes per-microbatch gradients and
     accumulates them directly, avoiding this overhead.
@@ -547,10 +547,10 @@ def micro_vmap(
     ) = AccumulationType.CONCAT,
     num_real_microbatches: int | jax.Array | None = None,
 ) -> Function:
-  """A generalized version of jax.vmap that supports microbatching.
+  """A generalized version of :func:`jax.vmap` that supports microbatching.
 
   Because this function incorporates microbatching, you can vmap over
-  arrays with much larger batch axis sizes than jax.vmap without running
+  arrays with much larger batch axis sizes than :func:`jax.vmap` without running
   out of memory. This function generalizes vmap by introducing new keyword
   arguments `microbatch_size` and `accumulator` to control microbatching
   behavior. It specializes vmap by imposing stricter requirements on `in_axes`
@@ -564,19 +564,19 @@ def micro_vmap(
 
   Args:
     fun: Function to be mapped over additional axes.
-    in_axes: Array axis to map over.  See jax.vmap for more details.
+    in_axes: Array axis to map over.  See :func:`jax.vmap` for more details.
     out_axes: Unsupported by optax.vmap, must be set to 0.
     microbatch_size: The number of rows in the overall batch used in each
       microbatch. Smaller values reduces memory overhead, but require more
       sequential computation. This must evenly divide the batch axis size of the
       batch arguments.
-    vmap_fn: A function with the same signature as jax.vmap.  Can be used to
-      e.g., pass in kwargs to vmap.
+    vmap_fn: A function with the same signature as :func:`jax.vmap`.  Can be
+      used to, e.g., pass in kwargs to vmap.
     accumulator: Specifies what to do with the vmapped outputs.  The default
       value (CONCAT) returns each output with a batch axis, matching the
-      behavior of jax.vmap. Reductions over the batch axis are also possible,
-      including MEAN and SUM, and can be used when the the full output with a
-      batch axis is not needed and is too large to fit in memory. This
+      behavior of :func:`jax.vmap`. Reductions over the batch axis are also
+      possible, including MEAN and SUM, and can be used when the the full output
+      with a batch axis is not needed and is too large to fit in memory. This
       accumulator can be any PyTree prefix of the outputs of `fun` to apply
       different reductions to different sub-trees.
     num_real_microbatches: Optional number of microbatches that are actually
@@ -670,15 +670,16 @@ def micro_grad(
 ) -> ValueAndGradFn:
   """Create a function to compute, transform, and sum per-example gradients.
 
-  This function is similar to jax.value_and_grad, but works at the level of
-  size-1 batches.  This function is defined in terms of general transformations
-  transform_fn and metrics_fn which can be useful to e.g.,
+  This function is similar to :func:`jax.value_and_grad`, but works at the level
+  of size-1 batches.  This function is defined in terms of general
+  transformations `transform_fn` and `metrics_fn` which can be useful to e.g.,
 
   * limit the effect of outlier batch elements by clipping per-example grads.
   * compute moments of the gradients on a per-example basis.
   * computing scalar or low-dimensional gradient metrics on a per-example basis.
 
-  Other notable differences between this function and jax.value_and_grad:
+  Other notable differences between this function and
+  :func:`jax.value_and_grad`:
 
   * at least one argument to `fun` must have a batch axis, and that argument
     should be passed to `batch_argnums`. The default value of `1` assumes that
@@ -687,7 +688,7 @@ def micro_grad(
     first output, while all auxiliary outputs are returned as a namedtuple in
     the second output (including values, function aux, and metrics).
   * This function may be able to work for far larger batch sizes than
-    native jax.value_and_grad due to the built-in microbatching.
+    native :func:`jax.value_and_grad` due to the built-in microbatching.
 
   Example Usage (see https://arxiv.org/abs/2510.00236):
     >>> import optax
