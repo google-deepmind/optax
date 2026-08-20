@@ -50,7 +50,10 @@ def smooth_labels(
   utils.check_subdtype(labels, jnp.floating)
   if where is None:
     num_categories = jnp.size(labels, axis)
+    smoothing = alpha / num_categories
   else:
     num_categories = jnp.sum(where, axis, keepdims=True)
+    num_categories = jnp.maximum(num_categories, 1)
+    smoothing = jnp.where(where, alpha / num_categories, 0.0)
   # pyrefly: ignore [bad-return]
-  return (1.0 - alpha) * labels + alpha / num_categories  # pytype: disable=bad-return-type  # jax-arraylike # noqa: E501
+  return (1.0 - alpha) * labels + smoothing  # pytype: disable=bad-return-type  # jax-arraylike # noqa: E501
