@@ -426,6 +426,7 @@ def scale_by_backtracking_linesearch(
     if verbose:
       # We print information only if the linesearch failed.
       _cond_print(
+          # pyrefly: ignore [unsupported-operation]
           search_state.decrease_error > atol,
           "INFO: optax.scale_by_backtracking_linesearch:\n"
           "Backtracking linesearch failed to find a stepsize ensuring sufficent"

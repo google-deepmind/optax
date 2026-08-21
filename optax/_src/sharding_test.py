@@ -15,6 +15,7 @@
 
 """Module for testing sharding and related behavior of the optax public API."""
 
+import math
 import os
 
 from absl.testing import absltest
@@ -132,6 +133,47 @@ class ShardingTest(parameterized.TestCase):
       )
       microbatched_fun = optax.microbatching.microbatch(
           fun, argnums=0, microbatch_size=8, accumulator=strategy
+      )
+
+      actual = microbatched_fun(data)
+      expected = fun(data)
+
+      test_utils.assert_trees_all_equal(
+          jax.tree.map(jax.typeof, actual), jax.tree.map(jax.typeof, expected)
+      )
+      test_utils.assert_trees_all_equal(actual, expected)
+
+  @parameterized.named_parameters(
+      ('axis_neg1', -1, (2, 16), jax.sharding.PartitionSpec(None, 'x')),
+      (
+          'axis_neg2',
+          -2,
+          (2, 16, 4),
+          jax.sharding.PartitionSpec(None, 'x', None),
+      ),
+  )
+  def test_microbatch_negative_axis_with_explicit_sharding(
+      self, in_axes, shape, spec
+  ):
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.8.1'):
+      self.skipTest('Skipping sharding-in-types test.')
+    mesh = jax.make_mesh(
+        (8,), ('x',), axis_types=(jax.sharding.AxisType.Explicit,)
+    )
+    with jax.set_mesh(mesh):
+      sharding = jax.sharding.NamedSharding(mesh, spec)
+      fun = lambda x: jnp.sum(x, axis=in_axes)
+      data = jax.device_put(
+          jnp.arange(math.prod(shape), dtype=jnp.float32).reshape(shape),
+          sharding,
+      )
+
+      microbatched_fun = optax.microbatching.microbatch(
+          fun,
+          argnums=0,
+          microbatch_size=8,
+          in_axes=in_axes,
+          accumulator=optax.microbatching.AccumulationType.SUM,
       )
 
       actual = microbatched_fun(data)
