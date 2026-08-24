@@ -274,7 +274,8 @@ class MuonTest(parameterized.TestCase):
     self.assertIsInstance(get_muon_mu(state)['w2']['a'], _masking.MaskedNode)
     self.assertIsInstance(get_muon_mu(state)['w2']['b'], _masking.MaskedNode)
 
-  def test_newton_schulz(self):
+  @parameterized.parameters('frobenius', 'aol', 'schatten')
+  def test_newton_schulz(self, preconditioning):
     """Test that Newton--Schulz orhogonalizes/unitiarizes correctly."""
     mat_real = jax.random.normal(jax.random.key(0), (4, 3), dtype=jnp.float32)
     mat_complex = jax.random.normal(jax.random.key(0), (4, 3),
@@ -289,6 +290,7 @@ class MuonTest(parameterized.TestCase):
     # For real matrices, Newton--Schulz should produce an orthonormal matrix
     mat_real_orth = _muon.orthogonalize_via_newton_schulz(
         mat_real, ns_coeffs, ns_steps=20, eps=1e-12,
+        preconditioning=preconditioning,
         dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
     )
 
@@ -301,6 +303,7 @@ class MuonTest(parameterized.TestCase):
     # For complex matrices, Newton--Schulz should produce a unitary matrix
     mat_complex_orth = _muon.orthogonalize_via_newton_schulz(
         mat_complex, ns_coeffs, ns_steps=10, eps=1e-8,
+        preconditioning=preconditioning,
         dimension_numbers=_muon.MuonDimensionNumbers(0, 1),
     )
 
