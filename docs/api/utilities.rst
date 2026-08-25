@@ -7,16 +7,10 @@ General
 .. currentmodule:: optax
 
 .. autosummary::
+    :toctree: generated/
+
     scale_gradient
     value_and_grad_from_state
-
-Scale gradient
-~~~~~~~~~~~~~~
-.. autofunction:: scale_gradient
-
-Value and grad from state
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: value_and_grad_from_state
 
 
 Numerical Stability
@@ -25,21 +19,11 @@ Numerical Stability
 .. currentmodule:: optax
 
 .. autosummary::
+    :toctree: generated/
+
     safe_increment
     safe_norm
     safe_root_mean_squares
-
-Safe increment
-~~~~~~~~~~~~~~
-.. autofunction:: safe_increment
-
-Safe norm
-~~~~~~~~~
-.. autofunction:: safe_norm
-
-Safe root mean squares
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: safe_root_mean_squares
 
 
 Linear Algebra Operators
@@ -48,21 +32,11 @@ Linear Algebra Operators
 .. currentmodule:: optax
 
 .. autosummary::
+    :toctree: generated/
+
     matrix_inverse_pth_root
     power_iteration
     nnls
-
-Matrix inverse pth root
-~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: matrix_inverse_pth_root
-
-Power iteration
-~~~~~~~~~~~~~~~
-.. autofunction:: power_iteration
-
-Non-negative least squares
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: nnls
 
 
 Second Order Optimization
@@ -71,21 +45,11 @@ Second Order Optimization
 .. currentmodule:: optax.second_order
 
 .. autosummary::
+    :toctree: generated/
+
     fisher_diag
     hessian_diag
     hvp
-
-Fisher diagonal
-~~~~~~~~~~~~~~~
-.. autofunction:: fisher_diag
-
-Hessian diagonal
-~~~~~~~~~~~~~~~~
-.. autofunction:: hessian_diag
-
-Hessian vector product
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: hvp
 
 
 Tree
@@ -94,6 +58,8 @@ Tree
 .. currentmodule:: optax.tree_utils
 
 .. autosummary::
+    :toctree: generated/
+
     NamedTupleKey
     tree_add
     tree_add_scale
@@ -125,127 +91,3 @@ Tree
     tree_vdot
     tree_where
     tree_zeros_like
-
-NamedTupleKey
-~~~~~~~~~~~~~
-.. autoclass:: NamedTupleKey
-
-Tree add
-~~~~~~~~
-.. autofunction:: tree_add
-
-Tree add and scalar multiply
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_add_scale
-
-Tree all close
-~~~~~~~~~~~~~~
-.. autofunction:: tree_allclose
-
-Tree batch reshaping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_batch_shape
-
-Tree cast
-~~~~~~~~~
-.. autofunction:: tree_cast
-
-Tree cast like
-~~~~~~~~~~~~~~
-.. autofunction:: tree_cast_like
-
-Tree clip
-~~~~~~~~~
-.. autofunction:: tree_clip
-
-Tree conjugate
-~~~~~~~~~~~~~~
-.. autofunction:: tree_conj
-
-Tree data type
-~~~~~~~~~~~~~~
-.. autofunction:: tree_dtype
-
-Tree full like
-~~~~~~~~~~~~~~
-.. autofunction:: tree_full_like
-
-Tree divide
-~~~~~~~~~~~
-.. autofunction:: tree_div
-
-Fetch single value that match a given key
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_get
-
-Fetch all values that match a given key
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_get_all_with_path
-
-Tree norm
-~~~~~~~~~
-.. autofunction:: tree_norm
-
-Tree map parameters
-~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_map_params
-
-Tree max
-~~~~~~~~
-.. autofunction:: tree_max
-
-Tree min
-~~~~~~~~
-.. autofunction:: tree_min
-
-Tree multiply
-~~~~~~~~~~~~~
-.. autofunction:: tree_mul
-
-Tree ones like
-~~~~~~~~~~~~~~
-.. autofunction:: tree_ones_like
-
-Split key according to structure of a tree
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_split_key_like
-
-Tree with random values
-~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_random_like
-
-Tree real part
-~~~~~~~~~~~~~~
-.. autofunction:: tree_real
-
-Tree scalar multiply
-~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_scale
-
-Set values in a tree
-~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_set
-
-Tree size
-~~~~~~~~~
-.. autofunction:: tree_size
-
-Tree subtract
-~~~~~~~~~~~~~
-.. autofunction:: tree_sub
-
-Tree sum
-~~~~~~~~
-.. autofunction:: tree_sum
-
-Tree inner product
-~~~~~~~~~~~~~~~~~~
-.. autofunction:: tree_vdot
-
-Tree where
-~~~~~~~~~~
-.. autofunction:: tree_where
-
-Tree zeros like
-~~~~~~~~~~~~~~~
-.. autofunction:: tree_zeros_like

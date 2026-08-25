@@ -99,7 +99,6 @@ class ExtraArgsTest(absltest.TestCase):
       del extra_args, params
       assert loss == 1
       return updates, state
-
     t = base.GradientTransformationExtraArgs(init_fn, update_fn)
     result = combine.chain(alias.adam(1e-3), t)
     self.assertIsInstance(result, base.GradientTransformationExtraArgs)
@@ -247,7 +246,8 @@ class PartitionTest(parameterized.TestCase):
         2: transform.trace(1.0),
     }
     init_fn, update_fn = combine.partition(
-        transforms, (lambda _: label_tree) if use_fn else label_tree
+        transforms,
+        (lambda _: label_tree) if use_fn else label_tree,
     )
 
     if use_extra_label:
@@ -270,7 +270,6 @@ def scale_by_loss():
     del params, extra_args
     updates = jax.tree.map(lambda u: u / loss, updates)
     return updates, state
-
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 

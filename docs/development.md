@@ -66,9 +66,9 @@ Our documentation is written in [Sphinx](https://www.sphinx-doc.org/en/master/).
 build the documentation locally as follows:
 
 1. **Install Requirements**: `pip install -e ".[docs]"`
-2. **Build the Docs**: From the `docs` folder, run:
-   * `make html` (builds everything)
-   * `make html-noplot` (faster, skips running examples)
+2. **Build the Docs**: Run:
+   * `make html -C docs` (builds everything)
+   * `make html-noplot -C docs` (faster, skips running examples)
 
 
 ### Running doctest

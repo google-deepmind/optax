@@ -14,6 +14,9 @@
 # ==============================================================================
 
 import functools
+import glob
+import os
+import tempfile
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -122,7 +125,8 @@ class MicrobatchingTest(parameterized.TestCase):
         accumulator=microbatching.AccumulationType.SUM,
     )
     test_utils.assert_trees_all_close(
-        fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5)
+        fun(x), 0 * 1 + 1 * 2 + 2 * 3 + 3 * 4 + 4 * 5
+    )
     # This split here is an implementation detail that could change:
     # microbatch1 = [0, 2, 4]
     # microbatch2 = [1, 3, 5]
@@ -235,17 +239,25 @@ class MicrobatchingTest(parameterized.TestCase):
       return jnp.sum(a + b + c + d + e + f)
 
     output1 = microbatching.microbatch(
-        fun, argnums=(0, 1), microbatch_size=2,
+        fun,
+        argnums=(0, 1),
+        microbatch_size=2,
     )(jnp.ones(16), jnp.ones(16), 1, d=2, e=3, f=4)
 
     output2 = microbatching.microbatch(
-        fun, argnums=0, argnames='b', microbatch_size=2,
+        fun,
+        argnums=0,
+        argnames='b',
+        microbatch_size=2,
     )(jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
     test_utils.assert_trees_all_close(output1, output2)
 
     output3 = microbatching.microbatch(
-        fun, argnums=(), argnames=('b', 'a'), microbatch_size=2,
+        fun,
+        argnums=(),
+        argnames=('b', 'a'),
+        microbatch_size=2,
     )(a=jnp.ones(16), b=jnp.ones(16), c=1, d=2, e=3, f=4)
 
     test_utils.assert_trees_all_close(output1, output3)
@@ -332,6 +344,305 @@ class MicrobatchingTest(parameterized.TestCase):
     )
     result, _ = grad_fn(1.0, jnp.ones(16))
     test_utils.assert_trees_all_close(result, 12.0)
+
+  def test_zero_batch_size_microbatch(self):
+    def fun(x):
+      return jnp.sum(x, axis=0)
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.SUM,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (4,))
+    test_utils.assert_trees_all_close(res, jnp.zeros(4))
+
+  def test_zero_batch_size_microbatch_mean(self):
+    def fun(x):
+      return jnp.mean(x, axis=0)
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.MEAN,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (4,))
+    self.assertTrue(jnp.all(jnp.isnan(res)))
+
+  def test_zero_batch_size_microbatch_concat(self):
+    def fun(x):
+      return x * 2
+
+    m_fun = microbatching.microbatch(
+        fun,
+        argnums=0,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )
+    res = m_fun(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (0, 4))
+
+  def test_zero_batch_size_micro_vmap(self):
+    m_vmap = microbatching.micro_vmap(lambda x: x * 2, microbatch_size=2)
+    res = m_vmap(jnp.zeros((0, 4)))
+    self.assertEqual(res.shape, (0, 4))
+
+  def test_zero_batch_size_micro_grad(self):
+    def mean_squared_loss(params, features, targets):
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        transform_fn=lambda x: (x, x**2),
+        metrics_fn=jnp.linalg.norm,
+        keep_batch_dim=True,
+        microbatch_size=1,
+    )
+    params = jnp.zeros(1)
+    features = jnp.zeros((0, 1))
+    targets = jnp.zeros((0,))
+    (grads, squared_grads), aux = grad_fn(params, features, targets)
+
+    self.assertEqual(grads.shape, (1,))
+    test_utils.assert_trees_all_close(grads, jnp.zeros(1))
+    self.assertEqual(squared_grads.shape, (1,))
+    test_utils.assert_trees_all_close(squared_grads, jnp.zeros(1))
+    self.assertEqual(aux.values.shape, (0,))
+    self.assertEqual(aux.metrics.shape, (0,))
+
+  def test_microbatch_profiling(self):
+    x = jnp.arange(32, dtype=jnp.float32)
+    params = jnp.array(1.0)
+
+    def loss_fn(params, x):
+      return jnp.mean((params * x) ** 2)
+
+    grad_fn = jax.value_and_grad(loss_fn)
+
+    m_fun = microbatching.microbatch(
+        grad_fn,
+        argnums=1,
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.MEAN,
+    )
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(m_fun)(params, x)
+        res[0].block_until_ready()
+        res[1].block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'microbatch_size_',
+        profile_content,
+        msg='microbatch_size_ not found in profile',
+    )
+    self.assertIn(
+        b'_microbatches',
+        profile_content,
+        msg='_microbatches not found in profile',
+    )
+
+  def test_micro_vmap_profiling(self):
+    x = jnp.arange(32, dtype=jnp.float32)
+
+    def my_fun(x):
+      return x * 2
+
+    m_vmap = microbatching.micro_vmap(my_fun, microbatch_size=2)
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(m_vmap)(x)
+        res.block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'micro_vmap_size_',
+        profile_content,
+        msg='micro_vmap_size_ not found in profile',
+    )
+    self.assertIn(
+        b'micro_vmap_step',
+        profile_content,
+        msg='micro_vmap_step not found in profile',
+    )
+
+  def test_micro_grad_profiling(self):
+    def mean_squared_loss(params, features, targets):
+      preds = features @ params
+      diff = preds - targets
+      return 0.5 * jnp.mean(diff**2)
+
+    params = jnp.zeros(1)
+    features = jnp.ones((4, 1))
+    targets = jnp.array([0, 1, 2, 3], dtype=jnp.float32)
+
+    grad_fn = microbatching.micro_grad(
+        mean_squared_loss,
+        argnums=0,
+        batch_argnums=(1, 2),
+        microbatch_size=2,
+    )
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+      with jax.profiler.trace(profile_dir):
+        res = jax.jit(grad_fn)(params, features, targets)
+        res[0].block_until_ready()
+
+      profile_files = glob.glob(
+          os.path.join(profile_dir, 'plugins', 'profile', '*', '*.xplane.pb')
+      )
+      self.assertTrue(profile_files)
+
+      with open(profile_files[0], 'rb') as f:
+        profile_content = f.read()
+
+    self.assertIn(
+        b'micro_grad_size_',
+        profile_content,
+        msg='micro_grad_size_ not found in profile',
+    )
+    self.assertIn(
+        b'micro_grad_step',
+        profile_content,
+        msg='micro_grad_step not found in profile',
+    )
+
+
+def _named_fun(a, b, c):
+  return jnp.sum(a + b + c, axis=0)
+
+
+def _kwonly_fun(a, b, *, c):
+  return jnp.sum(a + b + c, axis=0)
+
+
+def _wrapped_fun(*args, **kwargs):
+  return _named_fun(*args, **kwargs)
+
+
+def _mixed_fun1(*args, b, **kwargs):
+  """b is keyword-only (after *args), must be specified as argname."""
+  total = b + sum(args) + sum(kwargs.values())
+  return jnp.sum(total, axis=0)
+
+
+def _mixed_fun2(a, *args, **kwargs):
+  """a is positional-or-keyword, can be specified as argnum or argname."""
+  total = a + sum(args) + sum(kwargs.values())
+  return jnp.sum(total, axis=0)
+
+
+# Each case is (fun, argnums, argnames, call_fn) where call_fn invokes the
+# microbatched function with a specific positional/keyword calling convention.
+_CALLING_CONVENTION_CASES = [
+    # Normal functions should work with all calling conventions.
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_named_fun, (0, 1), ('c',), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_named_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a, b, c)),
+    (_named_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+
+    # Keyword-only functions should work if kw_only args are in argnames.
+    (_kwonly_fun, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_kwonly_fun, (0, 1), ('c',), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_kwonly_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a, b, c=c)),
+
+    # Wrapped functions require argnums/argnames to match calling convention.
+    (_wrapped_fun, (0, 1, 2), (), lambda f, a, b, c: f(a, b, c)),
+    (_wrapped_fun, (0,), ('b', 'c'), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_wrapped_fun, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+
+    # Mixed functions work if argnums/argnames match calling convention.
+    (_mixed_fun1, (0,), ('b', 'c'), lambda f, a, b, c: f(a, b=b, c=c)),
+    (_mixed_fun1, (0, 1), ('b',), lambda f, a, b, c: f(a, c, b=b)),
+    (_mixed_fun1, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    (_mixed_fun2, (0, 1, 2), (), lambda f, a, b, c: f(a, b, c)),
+    (_mixed_fun2, (0, 1), ('c',), lambda f, a, b, c: f(a, b, c=c)),
+    (_mixed_fun2, (), ('a', 'b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+    # This case also works because a is a positional-or-keyword argument.
+    (_mixed_fun2, (0,), ('b', 'c'), lambda f, a, b, c: f(a=a, b=b, c=c)),
+]
+
+
+class CallingConventionTest(parameterized.TestCase):
+  """Tests that microbatching works with arbitrary calling conventions."""
+
+  @parameterized.parameters(_CALLING_CONVENTION_CASES)
+  def test_microbatch(self, fun, argnums, argnames, call_fn):
+    a = jnp.ones((4, 3))
+    b = jnp.ones((4, 3)) * 2
+    c = jnp.ones((4, 3)) * 3
+    expected = _named_fun(a, b, c)
+
+    mb = microbatching.microbatch(
+        fun, argnums=argnums, argnames=argnames, microbatch_size=2,
+    )
+    result = call_fn(mb, a, b, c)
+    test_utils.assert_trees_all_close(result, expected, atol=1e-6)
+
+  @parameterized.parameters(
+      lambda f, a, b: f(a, b),
+      lambda f, a, b: f(a, b=b),
+      lambda f, a, b: f(a=a, b=b),
+  )
+  def test_micro_vmap(self, call_fn):
+    a = jnp.ones((4, 3))
+    b = jnp.ones((4, 3)) * 2
+    expected = a + b
+
+    mv = microbatching.micro_vmap(
+        lambda a, b: a + b,
+        in_axes=(0, 0),
+        microbatch_size=2,
+        accumulator=microbatching.AccumulationType.CONCAT,
+    )
+    result = call_fn(mv, a, b)
+    test_utils.assert_trees_all_close(result, expected)
+
+  @parameterized.parameters(
+      lambda f, p, x: f(p, x),
+      lambda f, p, x: f(p, x=x),
+      lambda f, p, x: f(params=p, x=x),
+  )
+  def test_micro_grad(self, call_fn):
+    def loss(params, x):
+      return jnp.sum(params * x)
+
+    params = jnp.ones(3)
+    x = jnp.ones((4, 3))
+
+    mg = microbatching.micro_grad(
+        loss, argnums=0, batch_argnums=1, microbatch_size=2,
+    )
+    baseline, _ = mg(params, x)
+    result, _ = call_fn(mg, params, x)
+    test_utils.assert_trees_all_close(result, baseline)
 
 
 if __name__ == '__main__':

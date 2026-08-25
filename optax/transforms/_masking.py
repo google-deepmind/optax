@@ -122,6 +122,7 @@ def masked(
     # as tree_map_params is being called on a tree with the correct structure.
     # See wrappers_test for proof that this works!
     if isinstance(params, _state_utils._ParamsPlaceholder):  # pylint:disable=protected-access
+      # pyrefly: ignore[bad-argument-type]
       return MaskedState(inner_state=inner.init(params))
 
     mask_tree = mask(params) if _mask_callable(mask) else mask

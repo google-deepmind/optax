@@ -143,7 +143,7 @@ class StateUtilsTest(absltest.TestCase):
     )
 
     expected = (
-        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+        transform.ScaleByAdamState(
             count=FakeShardSpec(sharding_axis=None),
             mu={
                 'my/fake/module': {
@@ -207,18 +207,19 @@ class StateUtilsTest(absltest.TestCase):
     state = opt.init(params)
 
     state = _state_utils.tree_map_params(
-        opt, lambda v: 1, state, transform_non_params=lambda _: None
+        opt,
+        lambda v: 1,
+        state,
+        transform_non_params=lambda _: None,
     )
 
     expected = (
-        transform.ScaleByAdamState(  # pytype:disable=wrong-arg-types
+        transform.ScaleByAdamState(
             count=None,
             mu={'a': 1},
             nu={'a': 1},
         ),
-        transform.ScaleByScheduleState(  # pytype:disable=wrong-arg-types
-            count=None
-        ),
+        transform.ScaleByScheduleState(count=None),
     )
     self.assertEqual(state, expected)
 

@@ -258,6 +258,7 @@ def partition(
       raise ValueError(
           'Some parameters have no corresponding transformation.\n'
           f'Parameter labels: {list(sorted(label_set))} \n'
+          # pyrefly: ignore[bad-specialization]
           f'Transforms keys: {list(sorted(transforms.keys()))} \n'
       )
 

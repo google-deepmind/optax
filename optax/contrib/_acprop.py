@@ -156,6 +156,7 @@ def acprop(
   """
   return combine.chain(
       scale_by_acprop(b1=b1, b2=b2, eps=eps, eps_root=eps_root),
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate),
   )

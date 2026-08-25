@@ -4,16 +4,9 @@ Combining Optimizers
 .. currentmodule:: optax
 
 .. autosummary::
+    :toctree: generated/
+
     chain
     named_chain
     partition
-
-Chain
-~~~~~
-.. autofunction:: chain
-.. autofunction:: named_chain
-
-Partition
-~~~~~~~~~
-.. autofunction:: partition
-.. autoclass::  PartitionState
+    PartitionState

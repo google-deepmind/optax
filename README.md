@@ -109,8 +109,7 @@ pip install -e ".[docs]"
 ```
 Then, execute the following.
 ```sh
-cd docs
-make html
+make html -C docs
 ```
 
 ### Benchmarking

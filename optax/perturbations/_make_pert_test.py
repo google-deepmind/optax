@@ -16,7 +16,6 @@
 """Tests for optax.perturbations, checking values and gradients."""
 
 from functools import partial  # pylint: disable=g-importing-member
-import operator
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -159,14 +158,14 @@ class MakePertTest(parameterized.TestCase):
       pred = apply_element_tree(tree)
       pred_true = apply_element_tree(example_tree)
       tree_loss = jax.tree.map(lambda x, y: (x - y) ** 2, pred, pred_true)
-      list_loss = jax.tree.reduce(operator.add, tree_loss)
+      list_loss = optax.tree.sum(tree_loss)
       return jax.tree.map(lambda *leaves: sum(leaves) / len(leaves), list_loss)
 
     loss_pert = jax.jit(_make_pert.make_perturbed_fun(
         loss, num_samples=100, sigma=0.1, noise=_make_pert.Normal()
     ))
     keys = jax.random.split(key, 3)
-    low_loss = loss_pert(keys[0], example_tree)  # pytype: disable=wrong-arg-types # noqa: E501
+    low_loss = loss_pert(keys[0], example_tree)
     high_loss = loss_pert(keys[2],
                           optax.tree.random_like(keys[1], example_tree))
     np.testing.assert_array_less(low_loss, high_loss)

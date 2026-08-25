@@ -32,6 +32,7 @@ classifiers = [
 dependencies = [
   "absl-py>=0.7.1",
   # Keep jax, jaxlib versions in sync with .github/workflows/tests.yml
+  # and conda-forge/optax-feedstock (recipe/meta.yaml).
   "jax>=0.5.3",
   "jaxlib>=0.5.3",
   "numpy>=1.18.0",
@@ -136,3 +137,8 @@ pyink-use-majority-quotes = true
 pyink-indentation = 2
 line-length = 80
 include = '\.pyi?$'
+
+[tool.pyrefly]
+project-includes = ["optax"]
+project-excludes = ["**/*_test.py"]
+python-version = "3.12"

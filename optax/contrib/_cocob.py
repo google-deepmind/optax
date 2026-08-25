@@ -107,6 +107,7 @@ def scale_by_cocob(
     )
     return new_updates, new_state
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)
 
 
@@ -138,6 +139,7 @@ def cocob(
     Betting <https://arxiv.org/pdf/1705.07795.pdf>`_, 2017
   """
   return combine.chain(
+      # pyrefly: ignore[bad-argument-type]
       transform.add_decayed_weights(weight_decay, mask),
       transform.scale_by_learning_rate(learning_rate, flip_sign=False),
       scale_by_cocob(alpha, eps),

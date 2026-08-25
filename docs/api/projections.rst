@@ -31,6 +31,8 @@ For instance, here is an example how we can project parameters to the non-negati
 Available projections
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
+    :toctree: generated/
+
     projection_box
     projection_hypercube
     projection_l1_ball
@@ -43,51 +45,3 @@ Available projections
     projection_vector
     projection_hyperplane
     projection_halfspace
-
-Projection onto a box
-~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_box
-
-Projection onto a hypercube
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_hypercube
-
-Projection onto the L1 ball
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_l1_ball
-
-Projection onto the L1 sphere
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_l1_sphere
-
-Projection onto the L2 ball
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_l2_ball
-
-Projection onto the L2 sphere
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_l2_sphere
-
-Projection onto the L-infinity ball
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_linf_ball
-
-Projection onto the non-negative orthant
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_non_negative
-
-Projection onto a simplex
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_simplex
-
-Projection onto a vector
-~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_vector
-
-Projection onto a hyperplane
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_hyperplane
-
-Projection onto a halfspace
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: projection_halfspace

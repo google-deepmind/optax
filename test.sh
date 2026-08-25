@@ -81,9 +81,7 @@ cd "${REPO_DIR}"
 
 # Build Sphinx docs.
 python3 -m uv pip install --quiet --editable ".[docs]"
-cd docs
-make html
-make doctest # run doctests
-cd ..
+make html -C docs
+make doctest -C docs # run doctests
 
 echo "All tests passed. Congrats!"

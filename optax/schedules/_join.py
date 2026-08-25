@@ -40,6 +40,7 @@ def join_schedules(
   def schedule(step: jax.typing.ArrayLike) -> jax.typing.ArrayLike:
     output = schedules[0](step)
     for boundary, schedule in zip(boundaries, schedules[1:]):
+      # pyrefly: ignore[unsupported-operation]
       output = jnp.where(step < boundary, output, schedule(step - boundary))
     return output
 

@@ -59,7 +59,7 @@ class CastingTest(parameterized.TestCase):
     jax.tree.map(np.testing.assert_array_equal, tree, target_tree)
 
   def test_tree_dtype(self):
-    """Test fecthing data type of a tree."""
+    """Test fetching data type of a tree."""
 
     with self.subTest('Check that it returns the right dtype'):
       tree = {

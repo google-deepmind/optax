@@ -25,13 +25,19 @@ import jax.numpy as jnp
 import numpy as np
 from optax._src import base
 from optax._src import numerics
+import optax.tree
 
 
 def _convert_floats(x, dtype):
   """Convert float-like inputs to dtype, rest pass through."""
+  # if the x is already a strong dtype jax.Array, return unchanged
+  if isinstance(x, jax.Array) and not getattr(x, 'weak_type', False):
+    return x
+  # if x is of floating point type, cast to the specified dtype
   current_dtype = x.dtype if hasattr(x, 'dtype') else type(x)
   if jax.dtypes.issubdtype(current_dtype, jnp.floating):
     return jnp.asarray(x, dtype=dtype)
+  # otherwise, pass through unchanged
   return x
 
 
@@ -97,6 +103,13 @@ def inject_hyperparams(
   Manually overriding scheduled hyperparameters will have no effect (e.g.
   in the code sample above, you cannot manually adjust ``b1``).
 
+  For mixed precision training, you may want hyperparameters to match a
+  specific dtype. To avoid automatic casting to the parameter's highest
+  precision dtype, pass the hyperparameter as a strongly typed JAX array::
+
+    >>> scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
+    ...     b1=linear_schedule, b2=jnp.array(0.99, jnp.float32))
+
   Args:
     inner_factory: a function that returns the inner
       ``optax.GradientTransformation`` with dynamic hyperparameters.
@@ -143,6 +156,7 @@ def inject_hyperparams(
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
+        # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
       elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
@@ -151,12 +165,9 @@ def inject_hyperparams(
 
     def init_fn(params):
       count = jnp.zeros([], jnp.int32)
-      if hyperparam_dtype is None:
-        dtype = getattr(
-            next(iter(jax.tree.leaves(params)), None), 'dtype', None
-        )
-      else:
-        dtype = hyperparam_dtype
+      dtype = hyperparam_dtype
+      if dtype is None:
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -168,18 +179,16 @@ def inject_hyperparams(
       })
       return InjectStatefulHyperparamsState(
           count=count,
-          hyperparams=hparams,
+          hyperparams=hparams,  # pyrefly: ignore[bad-argument-type]
           hyperparams_states=hparams_states,
           inner_state=inner_factory(**other_hps, **hparams).init(params),
       )
 
     def update_fn(updates, state, params=None, **extra_args):
-      if hyperparam_dtype is None:
-        dtype = getattr(
-            next(iter(jax.tree.leaves(updates)), None), 'dtype', None
-        )
-      else:
-        dtype = hyperparam_dtype
+      dtype = hyperparam_dtype
+      if dtype is None:
+        # pyrefly: ignore[bad-argument-type]
+        dtype = optax.tree.dtype(params, 'highest')
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
       }
@@ -199,6 +208,7 @@ def inject_hyperparams(
       ).update(updates, state.inner_state, params, **extra_args)
 
       return updates, InjectStatefulHyperparamsState(
+          # pyrefly: ignore[bad-argument-type]
           count=numerics.safe_increment(state.count),
           hyperparams=hparams,
           hyperparams_states=hyperparams_states,

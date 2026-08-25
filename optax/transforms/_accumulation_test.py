@@ -253,7 +253,7 @@ class AccumulationTest(parameterized.TestCase):
     # This map should succeed without raising dtype errors in lax.scan
     # if dtype is stable.
     final_state, _ = jax.lax.scan(train_step, opt_state, jnp.arange(4))
-    # Also ensure acutal dtype of accumulator is float32
+    # Also ensure actual dtype of accumulator is float32
     self.assertEqual(final_state.acc_grads['a'].dtype, jnp.float32)
 
   def test_multi_steps_zero_nans(self):

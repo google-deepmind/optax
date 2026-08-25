@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Utilites for freezing parameters."""
+"""Utilities for freezing parameters."""
 
 from typing import Union
 

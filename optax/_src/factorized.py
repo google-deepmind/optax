@@ -29,7 +29,7 @@ def _decay_rate_pow(
     i: jax.typing.ArrayLike, exponent: jax.typing.ArrayLike = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
   t = jnp.array(i + 1, jnp.float32)
-  return 1.0 - t ** (-exponent)
+  return 1.0 - t ** (-exponent)  # pyrefly: ignore[unsupported-operation]
 
 
 def _factored_dims(
@@ -184,8 +184,8 @@ def scale_by_factored_rms(
         new_v_col = decay_rate_t * v_col + (1.0 - decay_rate_t) * jnp.mean(
             grad_sqr, axis=d1
         )
-        new_v_row = new_v_row.astype(dtype)
-        new_v_col = new_v_col.astype(dtype)
+        new_v_row = new_v_row.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        new_v_col = new_v_col.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         reduced_d1 = d1 - 1 if d1 > d0 else d1
         row_col_mean = jnp.mean(new_v_row, axis=reduced_d1, keepdims=True)
         row_factor = (new_v_row / row_col_mean) ** -0.5
@@ -198,13 +198,14 @@ def scale_by_factored_rms(
       else:
         grad_sqr = numerics.abs_sq(grad) + epsilon
         new_v = decay_rate_t * v + (1.0 - decay_rate_t) * grad_sqr
-        new_v = new_v.astype(dtype)
+        new_v = new_v.astype(dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         update = grad * (new_v) ** -0.5
 
       return _UpdateResult(update, new_v_row, new_v_col, new_v)
 
     # Transform grad and compute new per-parameter stats.
     output = jax.tree.map(
+        # pyrefly: ignore[bad-argument-count]
         lambda *args: _update(*args, state.count),
         grads,
         state.v_row,
@@ -217,4 +218,5 @@ def scale_by_factored_rms(
     updates = jax.tree.map(lambda o: o.update, output)
     return updates, _to_state(numerics.safe_increment(state.count), output)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(init_fn, update_fn)

@@ -495,10 +495,12 @@ def tree_set(
           if isinstance(child, (dict, list, tuple)):
             # If the child is itself a pytree, further search in the child to
             # replace the given value
+            # pyrefly: ignore [no-matching-overload]
             new_children_with_keys.update({key: _replace(child_path, child)})
           else:
             # If the child is just a leaf that does not contain the key or
             # satisfies the filtering operation, just return the child.
+            # pyrefly: ignore [no-matching-overload]
             new_children_with_keys.update({key: child})
       return _set_children(node, new_children_with_keys)
 

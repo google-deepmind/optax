@@ -111,6 +111,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+maximum_signature_line_length = 1
+
 # -- Options for autodoc -----------------------------------------------------
 
 # The following typenames are re-written for public-facing type annotations.
@@ -128,6 +130,13 @@ autodoc_type_aliases = {
     'base.ArrayTree': 'optax.ArrayTree',
     'jax.typing.ArrayLike': 'jax.typing.ArrayLike'
 }
+
+# -- Options for autosummary -------------------------------------------------
+
+# Generate a separate documentation page for every public symbol listed in an
+# ``.. autosummary::`` block that uses the ``:toctree:`` option. The page
+# layout is controlled by the templates in ``_templates/autosummary``.
+autosummary_generate = True
 
 autodoc_default_options = {
     'member-order': 'bysource',

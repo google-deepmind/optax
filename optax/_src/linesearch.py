@@ -346,6 +346,7 @@ def scale_by_backtracking_linesearch(
       """Whether to stop the line-search inner loop."""
       decrease_error = search_state.decrease_error
       iter_num = search_state.iter_num
+      # pyrefly: ignore[unsupported-operation]
       return (~(decrease_error <= atol)) & (iter_num <= max_backtracking_steps)
 
     def body_fn(
@@ -358,7 +359,10 @@ def scale_by_backtracking_linesearch(
       # We start decreasing the learning rate after the first iteration
       # and up until the criterion is satisfied.
       learning_rate = jnp.where(
-          iter_num > 0, decrease_factor * learning_rate, learning_rate
+          # pyrefly: ignore[unsupported-operation]
+          iter_num > 0,
+          decrease_factor * learning_rate,
+          learning_rate,
       )
       new_params = optax.tree.add_scale(params, learning_rate, updates)
 
@@ -374,6 +378,7 @@ def scale_by_backtracking_linesearch(
         # If the line-search ends, we get the gradient for the new round of
         # line-search.
         new_grad = jax.lax.cond(
+            # pyrefly: ignore[unsupported-operation]
             (decrease_error <= atol) | (iter_num == max_backtracking_steps),
             lambda p: jax.linear_transpose(jvp_value_fn, p)(1.0)[0],
             lambda *_: new_grad,
@@ -451,8 +456,10 @@ def scale_by_backtracking_linesearch(
         info=info,
     )
 
+    # pyrefly: ignore[bad-argument-type]
     return new_updates, optax.tree.cast_like(new_state, other_tree=state)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 
@@ -680,7 +687,10 @@ def zoom_linesearch(
     # We consider either the usual sufficient decrease (Armijo criterion), see
     # equation (3.7a) of [Nocedal and Wright, 1999]
     decrease_error = (
-        value_step - value_init - slope_rtol * stepsize * slope_init
+        # pyrefly: ignore[unsupported-operation]
+        value_step
+        - value_init
+        - slope_rtol * stepsize * slope_init
     )
     if approx_dec_rtol is not None:
       # or an approximate decrease criterion, see equation (23) of
@@ -698,7 +708,10 @@ def zoom_linesearch(
       # (27) of [Hager and Zhang, 2006] that we simplify using one iterate in
       # equation (26)).
       delta_values = (
-          value_step - value_init - approx_dec_rtol * jnp.abs(value_init)
+          # pyrefly: ignore[unsupported-operation]
+          value_step
+          - value_init
+          - approx_dec_rtol * jnp.abs(value_init)
       )
       approx_decrease_error = jnp.maximum(approx_decrease_error, delta_values)
       # We take then the *minimum* of both errors.
@@ -733,6 +746,7 @@ def zoom_linesearch(
     """Try making a step with stepsize ensuring at least sufficient decrease."""
     outside_domain = jnp.isinf(state.decrease_error)
     final_stepsize, final_value, final_grad = optax.tree.where(
+        # pyrefly: ignore[unsupported-operation]
         (state.safe_stepsize > 0.0) | outside_domain,
         [state.safe_stepsize, state.safe_value, state.safe_grad],
         [state.stepsize, state.value, state.grad],
@@ -752,6 +766,7 @@ def zoom_linesearch(
           curvature_error=state.curvature_error,
           ordered=True,
       )
+      # pyrefly: ignore[unsupported-operation]
       interval_length = jnp.abs(state.low - state.high)
       too_small_int = interval_length <= interval_threshold
       _cond_print(
@@ -760,7 +775,7 @@ def zoom_linesearch(
           interval_length=interval_length,
       )
       jax.lax.cond(
-          state.safe_stepsize > 0.0,
+          state.safe_stepsize > 0.0,  # pyrefly: ignore[unsupported-operation]
           lambda _: jax.debug.print(
               FLAG_CURVATURE_COND_NOT_SATISFIED
               + " Stepsize ensuring sufficient decrease: {safe_stepsize}.",
@@ -821,6 +836,7 @@ def zoom_linesearch(
 
     # If the new point satisfies at least the decrease error we keep it
     # in case the curvature error cannot be satisfied.
+    # pyrefly: ignore[unsupported-operation]
     safe_decrease = decrease_error <= tol
     new_safe_stepsize, new_safe_value, new_safe_grad = optax.tree.where(
         safe_decrease,
@@ -830,9 +846,14 @@ def zoom_linesearch(
 
     # If the new point is not good, set high and low values according to
     # conditions described in Algorithm 3.5 of [Nocedal and Wright, 1999]
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_new = (decrease_error > 0.0) | (
-        (new_value_step >= prev_value_step) & (iter_num > 0)
+        # pyrefly: ignore[unsupported-operation]
+        (new_value_step >= prev_value_step)
+        # pyrefly: ignore[unsupported-operation]
+        & (iter_num > 0)
     )
+    # pyrefly: ignore[unsupported-operation]
     set_low_to_new = (new_slope_step >= 0.0) & (~set_high_to_new)
 
     # By default we set high to new and correct if we should have set
@@ -891,6 +912,7 @@ def zoom_linesearch(
           decrease_error=decrease_error,
           curvature_error=curvature_error,
       )
+    # pyrefly: ignore[unsupported-operation]
     failed = (iter_num + 1 >= max_linesearch_steps) & (~done)
 
     new_state = ZoomLinesearchState(
@@ -961,7 +983,7 @@ def zoom_linesearch(
     safe_grad = state.safe_grad
 
     # Check if interval not too small otherwise fail
-    delta = jnp.abs(high - low)
+    delta = jnp.abs(high - low)  # pyrefly: ignore[unsupported-operation]
     left = jnp.minimum(high, low)
     right = jnp.maximum(high, low)
     cubic_chk = 0.2 * delta
@@ -1007,7 +1029,9 @@ def zoom_linesearch(
     # If the new point satisfies at least the decrease error we keep it in case
     # the curvature error cannot be satisfied.
     # We take the one with the smallest value.
+    # pyrefly: ignore[unsupported-operation]
     safe_decrease = decrease_error <= tol
+    # pyrefly: ignore[unsupported-operation]
     update_safe_stepsize = safe_decrease & (value_middle < safe_value)
     new_safe_stepsize, new_safe_value, new_safe_grad = optax.tree.where(
         update_safe_stepsize,
@@ -1021,8 +1045,11 @@ def zoom_linesearch(
     done = new_error <= tol
 
     # Otherwise, we update high and low values
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_middle = (decrease_error > 0.0) | (value_middle >= value_low)
+    # pyrefly: ignore[unsupported-operation]
     secant_interval = slope_middle * (high - low)
+    # pyrefly: ignore[unsupported-operation]
     set_high_to_low = (secant_interval >= 0.0) & (~set_high_to_middle)
     set_low_to_middle = ~set_high_to_middle
 
@@ -1059,6 +1086,7 @@ def zoom_linesearch(
     # decrease. If no stepsize with sufficient decrease has been found,
     # we keep going on (some extremely steep functions require very small
     # stepsizes, see zakharov test in linesearch_test.py)
+    # pyrefly: ignore[unsupported-operation]
     max_iter_reached = (iter_num + 1) >= max_linesearch_steps
     presumably_failed = jnp.asarray(max_iter_reached) | (
         too_small_int & (new_safe_stepsize > 0.0)
@@ -1108,7 +1136,7 @@ def zoom_linesearch(
     stepsize = state.stepsize
 
     slope_init = state.slope_init
-    is_descent_dir = slope_init < 0.0
+    is_descent_dir = slope_init < 0.0  # pyrefly: ignore[unsupported-operation]
     _cond_print(
         ~is_descent_dir,
         FLAG_NOT_A_DESCENT_DIRECTION
@@ -1243,6 +1271,7 @@ def zoom_linesearch(
 
   def step_cond_fn(state: ZoomLinesearchState) -> jax.typing.ArrayLike:
     """Continuing criterion for the while loop of the linesearch."""
+    # pyrefly: ignore[unsupported-operation]
     return ~(state.done | state.failed)
 
   return init_fn, step_fn, step_cond_fn
@@ -1600,6 +1629,7 @@ def scale_by_zoom_linesearch(
     )
     return scaled_updates, optax.tree.cast_like(new_state, other_tree=state)
 
+  # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformationExtraArgs(init_fn, update_fn)
 
 

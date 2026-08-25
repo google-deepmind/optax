@@ -177,13 +177,11 @@ def skip_not_finite(
       - `num_not_finite`: total number of inf and NaN found in `updates`.
   """
   del gradient_step, params
-  all_is_finite = [
-      jnp.sum(jnp.logical_not(jnp.isfinite(p)))
-      for p in jax.tree.leaves(updates)
-  ]
-  num_not_finite = jnp.sum(jnp.array(all_is_finite))
-  should_skip = num_not_finite > 0
-  return should_skip, {
+  not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
+  num_not_finite = optax.tree.sum(not_finite)
+  should_skip = num_not_finite > 0  # pyrefly: ignore[unsupported-operation]
+  # pyrefly: ignore [bad-return]
+  return should_skip, {  # pytype: disable=bad-return-type
       'should_skip': should_skip,
       'num_not_finite': num_not_finite,
   }
@@ -211,9 +209,7 @@ def skip_large_updates(
       - `norm_squared`: overall norm square of the `updates`.
   """
   del gradient_step, params
-  norm_sq = jnp.sum(
-      jnp.array([jnp.sum(p**2) for p in jax.tree.leaves(updates)])
-  )
+  norm_sq = optax.tree.norm(updates, squared=True)
   # This will also return True if `norm_sq` is NaN.
   should_skip = jnp.logical_not(norm_sq < max_squared_norm)
   return should_skip, {'should_skip': should_skip, 'norm_squared': norm_sq}
@@ -298,6 +294,7 @@ class MultiSteps:
     if isinstance(every_k_schedule, int):
       self._every_k_schedule = lambda step: every_k_schedule
     else:
+      # pyrefly: ignore[bad-assignment]
       self._every_k_schedule = every_k_schedule
     self._use_grad_mean = use_grad_mean
     self._accumulator_dtype = utils.canonicalize_dtype(accumulator_dtype)
@@ -348,10 +345,13 @@ class MultiSteps:
     should_skip_update, skip_state = self._should_skip_update_fn(
         updates, state.gradient_step, params
     )
+    # pyrefly: ignore[missing-attribute]
     if (should_skip_update.dtype, should_skip_update.shape) != (jnp.bool_, ()):
       raise ValueError(
           'The `should_skip_update_fn` function should return a boolean scalar '
+          # pyrefly: ignore[missing-attribute]
           f'array, but it returned an array of dtype {should_skip_update.dtype}'
+          # pyrefly: ignore[missing-attribute]
           f' and shape {should_skip_update.shape}'
       )
 
@@ -369,6 +369,7 @@ class MultiSteps:
 
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
+          # pyrefly: ignore[unsupported-operation]
           mini_step=numerics.safe_increment(state.mini_step) % k_steps,
           gradient_step=emit * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,
@@ -422,4 +423,5 @@ class MultiSteps:
     )
 
   def gradient_transformation(self) -> base.GradientTransformation:
+    # pyrefly: ignore[bad-argument-type]
     return base.GradientTransformation(init=self.init, update=self.update)
