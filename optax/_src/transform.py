@@ -136,11 +136,27 @@ def scale_by_rms(
     else:
       count_inc = jnp.asarray(0)
       nu_hat = nu
+    # `eps` is added in at least float32 precision (see
+    # `numerics.add_eps_in_safe_dtype`) so it does not silently underflow to
+    # zero under a low precision dtype like float16, which would otherwise
+    # turn `rsqrt(0)`/`1 / (0 + eps)` into `inf`, and then `inf * 0` (e.g. on
+    # a zero-gradient step) into a NaN update.
     if eps_in_sqrt:
-      scaling = jax.tree.map(lambda n: jax.lax.rsqrt(n + eps), nu_hat)
+      scaling = jax.tree.map(
+          lambda n: jax.lax.rsqrt(numerics.add_eps_in_safe_dtype(n, eps)),
+          nu_hat,
+      )
     else:
-      scaling = jax.tree.map(lambda n: 1 / (jnp.sqrt(n) + eps), nu_hat)
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+      def _scaling(n):
+        denom = jnp.sqrt(numerics.add_eps_in_safe_dtype(n, 0.0)) + eps
+        return 1 / denom
+      scaling = jax.tree.map(_scaling, nu_hat)
+    # `scaling` is now at least float32 even if `updates`/`g` is float16;
+    # upcast `g` for the multiply, then cast the product back down to `g`'s
+    # original dtype so this transformation's output dtype is unchanged.
+    updates = jax.tree.map(
+        lambda s, g: (s * g.astype(s.dtype)).astype(g.dtype), scaling, updates
+    )
     if bias_correction:
       new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
     else:
@@ -213,19 +229,28 @@ def scale_by_stddev(
       mu_hat = mu
       nu_hat = nu
 
+    # See the matching comment in `scale_by_rms` -- `eps` is added in at
+    # least float32 precision so it does not silently underflow to zero
+    # under a low precision dtype like float16.
     if eps_in_sqrt:
       scaling = jax.tree.map(
-          lambda m, n: jax.lax.rsqrt(n - abs_sq(m) + eps),
+          lambda m, n: jax.lax.rsqrt(
+              numerics.add_eps_in_safe_dtype(n - abs_sq(m), eps)
+          ),
           mu_hat,
           nu_hat,
       )
     else:
-      scaling = jax.tree.map(
-          lambda m, n: 1 / (jnp.sqrt(n - abs_sq(m)) + eps),
-          mu_hat,
-          nu_hat,
-      )
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+      def _scaling(m, n):
+        denom = jnp.sqrt(numerics.add_eps_in_safe_dtype(n - abs_sq(m), 0.0))
+        return 1 / (denom + eps)
+      scaling = jax.tree.map(_scaling, mu_hat, nu_hat)
+    # `scaling` is now at least float32 even if `updates`/`g` is float16;
+    # upcast `g` for the multiply, then cast the product back down to `g`'s
+    # original dtype so this transformation's output dtype is unchanged.
+    updates = jax.tree.map(
+        lambda s, g: (s * g.astype(s.dtype)).astype(g.dtype), scaling, updates
+    )
     if bias_correction:
       new_state = ScaleByRStdDevWithCountState(count=count_inc, mu=mu, nu=nu)
     else:
@@ -300,15 +325,14 @@ def scale_by_adam(
     def _update(m, v):
       if m is None:
         return None
-      # `eps`/`eps_root` are added in at least float32 precision so they do
-      # not silently underflow to zero when `v` has a low precision dtype
-      # (e.g. float16, whose smallest subnormal is ~6e-8). Otherwise the
-      # denominator can become exactly 0, turning this safety term into a
-      # 0/0 NaN whenever `m` and `v` are also 0 (e.g. on a zero-gradient
-      # step).
-      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
-      denom = jnp.sqrt(v.astype(safe_dtype) + eps_root) + eps
-      return (m.astype(safe_dtype) / denom).astype(m.dtype)
+      # `eps_root`/`eps` are added in at least float32 precision (see
+      # `numerics.add_eps_in_safe_dtype`) so they do not silently underflow
+      # to zero when `v` has a low precision dtype (e.g. float16, whose
+      # smallest subnormal is ~6e-8). Otherwise the denominator can become
+      # exactly 0, turning this safety term into a 0/0 NaN whenever `m` and
+      # `v` are also 0 (e.g. on a zero-gradient step).
+      denom = jnp.sqrt(numerics.add_eps_in_safe_dtype(v, eps_root)) + eps
+      return (m.astype(denom.dtype) / denom).astype(m.dtype)
 
     updates = jax.tree.map(
         _update,
@@ -390,8 +414,18 @@ def scale_by_amsgrad(
       nu_eff = nu
 
     nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_eff)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      # See the matching comment in `scale_by_adam` -- `eps_root`/`eps` are
+      # added in at least float32 precision so they do not silently
+      # underflow to zero under a low precision dtype like float16.
+      denom = jnp.sqrt(numerics.add_eps_in_safe_dtype(v, eps_root)) + eps
+      return (m.astype(denom.dtype) / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_max,
         is_leaf=lambda x: x is None,
@@ -759,8 +793,20 @@ def scale_by_belief(
     else:
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      # See the matching comment in `scale_by_adam` -- `eps` is added in at
+      # least float32 precision so it does not silently underflow to zero
+      # under a low precision dtype like float16. `eps_root` was already
+      # folded into `v` above (before bias correction), so it needs no
+      # separate handling here.
+      denom = jnp.sqrt(numerics.add_eps_in_safe_dtype(v, 0.0)) + eps
+      return (m.astype(denom.dtype) / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
