@@ -276,26 +276,23 @@ def unitwise_norm(
   if axis is not None:
     # Use provided axes for reduction
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=axis, keepdims=True)
-  elif jnp.squeeze(x).ndim <= 1:  # Scalars and vectors
+  elif jnp.ndim(jnp.squeeze(x)) <= 1:  # Scalars and vectors
     squared_norm = jnp.sum(numerics.abs_sq(x), keepdims=True)
   # Note that this assumes parameters with a shape of length 3 are multihead
   # linear parameters--if you wish to apply AGC to 1D convs, you may need
   # to modify this line.
-  # pyrefly: ignore [missing-attribute]
-  elif x.ndim in (2, 3):  # Linear layers of shape IO or multihead linear  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif jnp.ndim(x) in (2, 3):  # Linear layers of shape IO or multihead linear
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=0, keepdims=True)
-  elif x.ndim == 4:  # Conv kernels of shape HWIO  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif jnp.ndim(x) == 4:  # Conv kernels of shape HWIO
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2), keepdims=True)
-  elif x.ndim == 5:  # Conv3D kernels of shape DHWIO  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif jnp.ndim(x) == 5:  # Conv3D kernels of shape DHWIO
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2, 3), keepdims=True)
   else:
     raise ValueError(
-        # pyrefly: ignore [missing-attribute]
-        f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {x.shape}. "  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-        "Use axis parameter to specify reduction axes for other shapes."
+        f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {jnp.shape(x)}."
+        " Use axis parameter to specify reduction axes for other shapes."
     )
-  # pyrefly: ignore [missing-attribute]
-  return jnp.broadcast_to(jnp.sqrt(squared_norm), x.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  return jnp.broadcast_to(jnp.sqrt(squared_norm), jnp.shape(x))
 
 
 def unitwise_clip(
