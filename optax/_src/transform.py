@@ -1680,6 +1680,8 @@ def scale_by_lbfgs(
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
   a memory buffer.
+  Pairs whose curvature :math:`\delta u_k^\top \delta w_k` is not positive are
+  skipped to preserve a positive-definite inverse Hessian approximation.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
@@ -1758,15 +1760,18 @@ def scale_by_lbfgs(
     vdot_diff_params_updates = optax.tree.real(
         optax.tree.vdot(diff_updates, diff_params)
     )
-    weight = jnp.where(
-        vdot_diff_params_updates == 0.0, 0.0, 1.0 / vdot_diff_params_updates
+    update_memory = jnp.logical_and(
+        jnp.greater(state.count, 0), jnp.greater(vdot_diff_params_updates, 0.0)
     )
+    safe_vdot_diff_params_updates = jnp.where(
+        update_memory, vdot_diff_params_updates, 1.0
+    )
+    weight = 1.0 / safe_vdot_diff_params_updates
     # params_diff, updates_diff, weight depend on differences of parameters
-    # that are not defined at the first iteration. Hence we keep them at 0 if
-    # state.count = 0.
+    # that are not defined at the first iteration. We also skip memory updates
+    # when the curvature condition is not satisfied.
     diff_params, diff_updates, weight = jax.tree.map(
-        # pyrefly: ignore[unsupported-operation]
-        lambda x: jnp.where(state.count > 0, x, jnp.zeros_like(x)),
+        lambda x: jnp.where(update_memory, x, jnp.zeros_like(x)),
         (diff_params, diff_updates, weight),
     )
     diff_params_memory, diff_updates_memory, weights_memory = jax.tree.map(

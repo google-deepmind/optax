@@ -2703,7 +2703,9 @@ def lbfgs(
   preconditioning matrix subject to some secant condition, see references
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
-  a memory bufffer.
+  a memory buffer.
+  Pairs whose curvature :math:`\delta u_k^\top \delta w_k` is not positive are
+  skipped to preserve a positive-definite inverse Hessian approximation.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
