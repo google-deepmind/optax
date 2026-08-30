@@ -276,6 +276,7 @@ def matrix_inverse_pth_root(
         _iter_condition, _iter_body, init_state
     )
     error = jnp.max(jnp.abs(mat_m - identity))
+    # pyrefly: ignore [missing-attribute]
     is_converged = jnp.asarray(convergence, old_mat_h.dtype)  # pytype: disable=attribute-error  # lax-types # noqa: E501
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
     # pyrefly: ignore [missing-attribute]
