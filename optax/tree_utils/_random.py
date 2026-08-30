@@ -49,6 +49,8 @@ def tree_random_like(
                   jax.sharding.Sharding],
                  jax.typing.ArrayLike]] = jax.random.normal,
     dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    shape: tuple[int, ...] = (),
 ) -> base.ArrayTree:
   """Create tree with random entries of the same shape as target tree.
 
@@ -58,6 +60,7 @@ def tree_random_like(
     sampler: the noise sampling function, by default ``jax.random.normal``.
     dtype: the desired dtype for the random numbers, passed to ``sampler``. If
       None, the dtype of the target tree is used if possible.
+    shape: a shape indicating what leading batch dimensions to add.
 
   Returns:
     a random tree with the same structure as ``target_tree``, whose leaves have
@@ -82,8 +85,8 @@ def tree_random_like(
       # pytype: disable=wrong-keyword-args
       lambda leaf, key: sampler_(
           key,
-          leaf.shape,
-          dtype or leaf.dtype,
+          (*shape, *jax.numpy.shape(leaf)),
+          dtype or jax.numpy.result_type(leaf),
           # pyrefly: ignore [bad-argument-count, unexpected-keyword]
           out_sharding=jax.typeof(leaf).sharding,
       ),
