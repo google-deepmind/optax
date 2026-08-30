@@ -31,12 +31,12 @@ import optax.tree
 class ReduceLROnPlateauState(NamedTuple):
   """State for the ReduceLROnPlateau callback."""
 
-  scale: jax.typing.ArrayLike
-  best_value: jax.typing.ArrayLike
-  plateau_count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
-  cooldown_count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
-  avg_value: jax.typing.ArrayLike
+  scale: jax.Array
+  best_value: jax.Array
+  plateau_count: jax.Array  # shape=(), dtype=jnp.int32
+  cooldown_count: jax.Array  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
+  avg_value: jax.Array
 
 
 def reduce_on_plateau(

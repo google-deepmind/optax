@@ -31,10 +31,10 @@ import optax.tree
 class ScheduleFreeState(NamedTuple):
   """State for schedule_free."""
 
-  b1: jax.typing.ArrayLike
-  weight_sum: jax.typing.ArrayLike
-  step_count: jax.typing.ArrayLike
-  max_lr: jax.typing.ArrayLike
+  b1: jax.Array
+  weight_sum: jax.Array
+  step_count: jax.Array
+  max_lr: jax.Array
   base_optimizer_state: base.OptState
   z: base.Params
 

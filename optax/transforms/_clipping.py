@@ -251,7 +251,7 @@ def per_example_layer_norm_clip(
 
 
 def unitwise_norm(
-    x: jax.typing.ArrayLike, axis: Optional[Union[int, tuple[int, ...]]] = None
+    x: jax.Array, axis: Optional[Union[int, tuple[int, ...]]] = None
 ) -> jax.Array:
   """Computes the L2 norm of each unit separately.
 
@@ -281,17 +281,15 @@ def unitwise_norm(
   # Note that this assumes parameters with a shape of length 3 are multihead
   # linear parameters--if you wish to apply AGC to 1D convs, you may need
   # to modify this line.
-  # pyrefly: ignore [missing-attribute]
-  elif x.ndim in (2, 3):  # Linear layers of shape IO or multihead linear  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif x.ndim in (2, 3):  # Linear layers of shape IO or multihead linear
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=0, keepdims=True)
-  elif x.ndim == 4:  # Conv kernels of shape HWIO  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif x.ndim == 4:  # Conv kernels of shape HWIO
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2), keepdims=True)
-  elif x.ndim == 5:  # Conv3D kernels of shape DHWIO  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  elif x.ndim == 5:  # Conv3D kernels of shape DHWIO
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=(0, 1, 2, 3), keepdims=True)
   else:
     raise ValueError(
-        # pyrefly: ignore [missing-attribute]
-        f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {x.shape}. "  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        f"Expected parameter with shape in {1, 2, 3, 4, 5}, got {x.shape}. "
         "Use axis parameter to specify reduction axes for other shapes."
     )
   # pyrefly: ignore [missing-attribute]

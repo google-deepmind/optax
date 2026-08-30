@@ -48,7 +48,7 @@ class ConditionallyTransformState(NamedTuple):
   """Maintains inner transform state and adds a step counter."""
 
   inner_state: Any
-  step: jax.typing.ArrayLike
+  step: jax.Array
 
 
 def conditionally_transform(
@@ -113,7 +113,7 @@ def conditionally_transform(
 
 
 class ConditionallyMaskState(NamedTuple):
-  step: jax.typing.ArrayLike
+  step: jax.Array
   inner_state: base.OptState
 
 

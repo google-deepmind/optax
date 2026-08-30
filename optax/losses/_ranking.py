@@ -56,9 +56,9 @@ from optax._src import utils
 
 
 def _safe_reduce(
-    a: jax.typing.ArrayLike,
-    where: Optional[jax.typing.ArrayLike] = None,
-    reduce_fn: Optional[Callable[..., jax.typing.ArrayLike]] = None,
+    a: jax.Array,
+    where: Optional[jax.Array] = None,
+    reduce_fn: Optional[Callable[..., jax.Array]] = None,
 ) -> jax.Array:
   """Reduces the values of given array while preventing NaN in the output.
 
@@ -103,17 +103,16 @@ def _safe_reduce(
     # `jnp.sum(loss_fn(reduce_fn=None)) == loss_fn(reduce_fn=jnp.sum)`
     output = jnp.where(where, output, 0.0)
 
-  # pyrefly: ignore [bad-return]
-  return output  # pytype: disable=bad-return-type  # jax-arraylike
+  return output
 
 
 def ranking_softmax_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
+    logits: jax.Array,
+    labels: jax.Array,
     *,
-    where: Optional[jax.typing.ArrayLike] = None,
-    weights: Optional[jax.typing.ArrayLike] = None,
-    reduce_fn: Optional[Callable[..., jax.typing.ArrayLike]] = jnp.mean
+    where: Optional[jax.Array] = None,
+    weights: Optional[jax.Array] = None,
+    reduce_fn: Optional[Callable[..., jax.Array]] = jnp.mean
 ) -> jax.Array:
   r"""Ranking softmax loss.
 
@@ -140,8 +139,7 @@ def ranking_softmax_loss(
     The ranking softmax loss.
   """
   utils.check_subdtype(logits, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
-  labels = labels.astype(logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = labels.astype(logits.dtype)
 
   # Applies mask so that masked elements do not count towards the loss.
   if where is not None:

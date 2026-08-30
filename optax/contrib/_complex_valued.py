@@ -37,13 +37,13 @@ from optax._src import base
 class SplitRealAndImaginaryArrays(NamedTuple):
   """A pair of real arrays split from a complex array."""
 
-  real: jax.typing.ArrayLike
-  imaginary: jax.typing.ArrayLike
+  real: jax.Array
+  imaginary: jax.Array
 
 
 def _complex_to_real_pair(
-    x: jax.typing.ArrayLike,
-) -> Union[jax.typing.ArrayLike, SplitRealAndImaginaryArrays]:
+    x: jax.Array,
+) -> Union[jax.Array, SplitRealAndImaginaryArrays]:
   """Splits a complex array into a `SplitRealAndImaginaryArrays`.
 
   Args:
@@ -60,8 +60,8 @@ def _complex_to_real_pair(
 
 
 def _real_pair_to_complex(
-    x: Union[jax.typing.ArrayLike, SplitRealAndImaginaryArrays],
-) -> jax.typing.ArrayLike:
+    x: Union[jax.Array, SplitRealAndImaginaryArrays],
+) -> jax.Array:
   """Merges a `SplitRealAndImaginaryArrays` into a complex array.
 
   Args:

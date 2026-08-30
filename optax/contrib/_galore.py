@@ -149,7 +149,7 @@ class GaLoreState(NamedTuple):
 
   """
 
-  count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
   base_optimizer_state: base.OptState
   projector: base.Updates  # Projection matrices P
 

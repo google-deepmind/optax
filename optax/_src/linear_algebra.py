@@ -59,15 +59,14 @@ def _power_iteration_cond_fun(error_tolerance, num_iters, loop_vars):
 
 
 def power_iteration(
-    matrix: Union[
-        jax.typing.ArrayLike, Callable[[base.ArrayTree], base.ArrayTree]],
+    matrix: Union[jax.Array, Callable[[base.ArrayTree], base.ArrayTree]],
     *,
     v0: Optional[base.ArrayTree] = None,
     num_iters: jax.typing.ArrayLike = 100,
     error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
     key: Optional[base.PRNGKey] = None,
-) -> tuple[jax.typing.ArrayLike, base.ArrayTree]:
+) -> tuple[jax.Array, base.ArrayTree]:
   r"""Power iteration algorithm.
 
   This algorithm computes the dominant eigenvalue (i.e. the spectral radius) and
@@ -123,8 +122,8 @@ def power_iteration(
       # v0 is uniformly distributed in [-1, 1]
       v0 = jax.random.uniform(
           key,
-          shape=matrix.shape[-1:],  # pyrefly: ignore[missing-attribute]
-          dtype=matrix.dtype,  # pyrefly: ignore[missing-attribute]
+          shape=matrix.shape[-1:],
+          dtype=matrix.dtype,
           minval=-1.0,
           maxval=1.0,
       )
@@ -153,13 +152,13 @@ def power_iteration(
 
 
 def matrix_inverse_pth_root(
-    matrix: jax.typing.ArrayLike,
+    matrix: jax.Array,
     p: jax.typing.ArrayLike,
     num_iters: jax.typing.ArrayLike = 100,
     ridge_epsilon: jax.typing.ArrayLike = 1e-6,
     error_tolerance: jax.typing.ArrayLike = 1e-6,
     precision: lax.Precision = lax.Precision.HIGHEST,
-):
+) -> tuple[jax.Array, jax.Array]:
   """Computes `matrix^(-1/p)`, where `p` is a positive integer.
 
   This function uses the Coupled newton iterations algorithm for
@@ -187,8 +186,7 @@ def matrix_inverse_pth_root(
 
   # We use float32 for the matrix inverse pth root.
   # Switch to f64 if you have hardware that supports it.
-  # pyrefly: ignore [missing-attribute]
-  matrix_size = matrix.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  matrix_size = matrix.shape[0]
   alpha = jnp.asarray(-1.0 / p, jnp.float32)
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
   max_ev, _ = power_iteration(
@@ -261,7 +259,7 @@ def matrix_inverse_pth_root(
 
   if matrix_size == 1:
     resultant_mat_h = (matrix + ridge_epsilon) ** alpha
-    error = 0
+    error = jnp.zeros((), dtype=matrix.dtype)
   else:
     damped_matrix = matrix + ridge_epsilon * identity
 

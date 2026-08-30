@@ -48,7 +48,7 @@ class InjectHyperparamsState(NamedTuple):
     Use :class:`InjectStatefulHyperparamsState` instead.
   """
 
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
   hyperparams: dict[str, jax.typing.ArrayLike]
   inner_state: base.OptState
 
@@ -56,7 +56,7 @@ class InjectHyperparamsState(NamedTuple):
 class InjectStatefulHyperparamsState(NamedTuple):
   """Maintains inner transform state, hyperparameters, and step count."""
 
-  count: jnp.ndarray  # shape=(), dtype=jnp.int32
+  count: jax.Array  # shape=(), dtype=jnp.int32
   hyperparams: dict[str, jax.typing.ArrayLike]
   hyperparams_states: dict[str, base.ScheduleState]
   inner_state: base.OptState
@@ -85,7 +85,7 @@ def inject_hyperparams(
     >>> import optax
     >>> import jax.numpy as jnp
     >>> # create a learning rate that increases linearly from 0.1 to 1.0
-    ... # over 100 iterations
+    >>> # over 100 iterations
     >>> linear_schedule = optax.piecewise_interpolate_schedule(
     ...    'linear', init_value=0.1, boundaries_and_scales={100: 1.})
     >>> scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
@@ -262,7 +262,7 @@ def inject_stateful_hyperparams(
 class WrappedScheduleState(NamedTuple):
   """The state for a wrapped schedule."""
 
-  count: jax.typing.ArrayLike
+  count: jax.Array
 
 
 class WrappedSchedule:
