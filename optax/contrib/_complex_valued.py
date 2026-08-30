@@ -34,6 +34,12 @@ import jax.numpy as jnp
 from optax._src import base
 
 
+if 'jax_pmap_smap_merge' in jax.config.values:
+  # TODO(rdyro): Remove. This is a check that was temporarily necessary in JAX,
+  # we maintain it here for wide version compatibility between JAX and optax.
+  jax.config.update('jax_pmap_shmap_merge', False)
+
+
 class SplitRealAndImaginaryArrays(NamedTuple):
   """A pair of real arrays split from a complex array."""
 
