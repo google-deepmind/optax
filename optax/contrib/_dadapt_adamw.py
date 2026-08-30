@@ -18,11 +18,14 @@ A contributed implementation of the method from "Learning-Rate-Free Learning by
 D-Adaptation" (https://arxiv.org/abs/2301.07733) by Aaron Defazio and Konstantin
 Mishchenko (ICML 2023 Outstanding Paper award).
 """
-from typing import NamedTuple, Optional
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
+
 import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
+from optax.transforms import _adding
 import optax.tree
 
 
@@ -45,6 +48,9 @@ def dadapt_adamw(
     eps: jax.typing.ArrayLike = 1e-8,
     estim_lr0: jax.typing.ArrayLike = 1e-6,
     weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
 ) -> base.GradientTransformationExtraArgs:
   """Learning rate free AdamW by D-Adaptation.
 
@@ -62,6 +68,12 @@ def dadapt_adamw(
     estim_lr0: Initial (under-)estimate of the learning rate.
     weight_decay: AdamW style weight-decay. To use Regular Adam decay, chain
       with add_decayed_weights.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, ``True`` for leaves/subtrees you want to
+      apply the weight decay to, and ``False`` for those you want to skip. The
+      mask must be static for the gradient transformation to be jit-compilable.
+      Passed through to :func:`optax.add_decayed_weights`.
 
   Returns:
     The corresponding :class:`optax.GradientTransformation`.
@@ -130,12 +142,17 @@ def dadapt_adamw(
     d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
     estim_lr = jnp.maximum(state.estim_lr, d_estimate)
     p_update = jax.tree.map(
-        # pyrefly: ignore[unsupported-operation]
-        lambda ea, eas, p: -weight_decay * dlr * p - ea / (jnp.sqrt(eas) + eps),
+        lambda ea, eas: -ea / (jnp.sqrt(eas) + eps),
         exp_avg,
         exp_avg_sq,
-        params,
     )
+    # Unlike in prodigy, `dlr` cannot be factored out of `p_update` (`exp_avg`
+    # already accumulates it), so the decay scale is dynamic. It is negated
+    # because `p_update` is a descent direction.
+    decay_tx = _adding.add_decayed_weights(
+        -jnp.asarray(weight_decay * dlr), weight_decay_mask
+    )
+    p_update, _ = decay_tx.update(p_update, decay_tx.init(params), params)
     new_state = DAdaptAdamWState(
         exp_avg,
         exp_avg_sq,

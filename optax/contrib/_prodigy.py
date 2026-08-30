@@ -26,6 +26,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import base
 from optax._src import numerics
+from optax.transforms import _adding
 import optax.tree
 
 
@@ -81,8 +82,9 @@ def prodigy(
     weight_decay_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, ``True`` for leaves/subtrees you want to
-      apply the weight decay to, and ``False`` for those you want to skip. Note
-      that the Adam gradient transformations are applied to all parameters.
+      apply the weight decay to, and ``False`` for those you want to skip. The
+      mask must be static for the gradient transformation to be jit-compilable.
+      Passed through to :func:`optax.add_decayed_weights`.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -94,6 +96,10 @@ def prodigy(
   beta1, beta2 = betas
   if beta3 is None:
     beta3 = beta2**0.5
+  # Applies (masked) decoupled weight decay. This is stateless, so it can be
+  # applied inline within `update_fn`.
+  # pyrefly: ignore[bad-argument-type]
+  decay_tx = _adding.add_decayed_weights(weight_decay, weight_decay_mask)
 
   def init_fn(params: base.Params) -> ProdigyState:
     # Define state parameters with the lowest dtype of the parameters to avoid
@@ -163,36 +169,15 @@ def prodigy(
     lr_estimate = estim_lr_coef * numerator_weighted / denominator
     estim_lr = jnp.maximum(state.estim_lr, lr_estimate)
 
-    p_update = jax.tree.map(
-        lambda ea, eas: -dlr * ea / (jnp.sqrt(eas) + estim_lr * eps),
+    # Factor out `-dlr` so that the decay scale is the plain `weight_decay`,
+    # letting us reuse `add_decayed_weights` (which also handles the masking).
+    ascent_dir = jax.tree.map(
+        lambda ea, eas: ea / (jnp.sqrt(eas) + estim_lr * eps),
         exp_avg,
         exp_avg_sq,
     )
-
-    # Resolve weight decay mask.
-    if weight_decay_mask is not None:
-      # pyrefly: ignore[not-callable]
-      mask_tree = (
-          weight_decay_mask(params)
-          if callable(weight_decay_mask)
-          else weight_decay_mask
-      )
-      p_update = jax.tree.map(
-          lambda u, p, m: jnp.where(
-              # pyrefly: ignore[unsupported-operation]
-              m, u - weight_decay * dlr * p, u
-          ),
-          p_update,
-          params,
-          mask_tree,
-      )
-    else:
-      p_update = jax.tree.map(
-          # pyrefly: ignore[unsupported-operation]
-          lambda u, p: u - weight_decay * dlr * p,
-          p_update,
-          params,
-      )
+    ascent_dir, _ = decay_tx.update(ascent_dir, decay_tx.init(params), params)
+    p_update = optax.tree.scale(-dlr, ascent_dir)
 
     new_state = ProdigyState(
         exp_avg,
