@@ -77,7 +77,7 @@ def power_iteration(
   Args:
     matrix: a square matrix, either as an array or a callable implementing a
       matrix-vector product.
-    v0: initial vector approximating the dominiant eigenvector. If ``matrix`` is
+    v0: initial vector approximating the dominant eigenvector. If ``matrix`` is
       an array of size (n, n), v0 must be a vector of size (n,). If instead
       ``matrix`` is a callable, then v0 must be a tree with the same structure
       as the input of this callable. If this argument is None and ``matrix`` is
