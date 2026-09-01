@@ -230,7 +230,7 @@ def _schatten_first_newton_schulz_iteration(
   """Schatten-4 Preconditioning with Newton-Schulz iteration."""
   # Implements the first Newton-Schulz step with Schatten-4 norm
   # preconditioning which allows for better orthogonalization performance.
-  a = x @ x.T
+  a = x @ x.T.conj()
   rescaling = jnp.clip(jnp.linalg.norm(a, ord='fro', axis=(-2, -1)), min=eps)
   s = jnp.expand_dims(jax.lax.rsqrt(rescaling), (0, -1))
   x, a = x * s, a * s ** 2
