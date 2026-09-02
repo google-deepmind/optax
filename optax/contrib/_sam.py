@@ -61,8 +61,11 @@ import optax.tree
 NormalizeState = base.EmptyState
 
 
-def normalize() -> base.GradientTransformation:
+def normalize(eps: float = 1e-8) -> base.GradientTransformation:
   """Normalizes the gradient.
+
+  Args:
+    eps: Small value added to the gradient norm to avoid division by zero.
 
   Returns:
     An (init_fn, update_fn) tuple.
@@ -75,7 +78,7 @@ def normalize() -> base.GradientTransformation:
   def update_fn(updates, state, params=None):
     del params
     g_norm = optax.tree.norm(updates)
-    updates = jax.tree.map(lambda g: g / g_norm, updates)
+    updates = jax.tree.map(lambda g: g / (g_norm + eps), updates)
     return updates, state
 
   return base.GradientTransformation(init_fn, update_fn)
