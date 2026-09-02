@@ -84,6 +84,57 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown - 1)
 
   @parameterized.parameters(False, True)
+  def test_learning_rate_reduced_on_flat_negative_value(self, enable_x64):
+    """Test that a flat negative value counts as a plateau."""
+
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    state = self.transform.init(self.updates['params'])
+
+    # Wait until patience runs out
+    updates = self.updates
+    for _ in range(self.patience + 1):
+      updates, state = self.transform.update(
+          updates=self.updates,
+          state=state,
+          value=jnp.asarray(-1.0, dtype=float),
+      )
+
+    scale, best_value, plateau_count, cooldown_count, *_ = state
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, -1.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
+    test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
+
+  @parameterized.parameters(False, True)
+  def test_negative_value_within_rtol_is_not_an_improvement(self, enable_x64):
+    """Test that a worse negative value does not become the new best."""
+
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    state = _reduce_on_plateau.ReduceLROnPlateauState(
+        best_value=jnp.array(-1.0),
+        plateau_count=jnp.array(0, dtype=jnp.int32),
+        scale=jnp.array(1.0),
+        cooldown_count=jnp.array(0, dtype=jnp.int32),
+        count=jnp.array(0, dtype=jnp.int32),
+        avg_value=jnp.array(0.0),
+    )
+
+    # Worse than the current best by less than rtol * abs(best_value).
+    _, new_state = self.transform.update(
+        updates=self.updates,
+        state=state,
+        value=jnp.asarray(-1.0 + 1e-5, dtype=float),
+    )
+
+    scale, best_value, plateau_count, *_ = new_state
+    test_utils.assert_trees_all_close(scale, 1.0)
+    test_utils.assert_trees_all_close(best_value, -1.0)
+    test_utils.assert_trees_all_close(plateau_count, 1)
+
+  @parameterized.parameters(False, True)
   def test_learning_rate_is_not_reduced(self, enable_x64):
     """Test that plateau_count resets after a new best_value is found."""
 
