@@ -205,8 +205,6 @@ def scale_by_stddev(
     A :class:`optax.GradientTransformation` object.
   """
 
-  _check_valid_eps(eps)
-
   def init_fn(params):
     mu = optax.tree.zeros_like(params)  # First moment
     nu = optax.tree.full_like(params, initial_scale)  # second moment
@@ -378,6 +376,7 @@ def scale_by_amsgrad(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
@@ -763,6 +762,8 @@ def scale_by_belief(
   Returns:
     A :class:`optax.GradientTransformation` object.
   """
+
+  _check_valid_eps(eps)
 
   def init_fn(params):
     mu = optax.tree.zeros_like(params)  # First moment
