@@ -31,17 +31,17 @@ import optax.tree
 abs_sq = numerics.abs_sq
 
 
-def _check_valid_eps(eps: jax.typing.ArrayLike, name: str = "eps") -> None:
+def _check_valid_eps(eps: jax.typing.ArrayLike, name: str = 'eps') -> None:
   if isinstance(eps, (int, float)):
     if eps <= 0:
       raise ValueError(
-          f"`{name}` must be positive and representable, got {eps}."
+          f'`{name}` must be positive and representable, got {eps}.'
       )
   elif not isinstance(eps, jax.core.Tracer):
     arr = jnp.asarray(eps)
     if (arr <= 0).any():
       raise ValueError(
-          f"`{name}` must be positive and representable, got {eps}."
+          f'`{name}` must be positive and representable, got {eps}.'
       )
 
 
