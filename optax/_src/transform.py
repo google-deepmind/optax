@@ -879,6 +879,7 @@ def scale_by_radam(
         * ro_inf
         / ((ro_inf - 4.0) * (ro_inf - 2.0) * ro)
     )
+
     def _update(m, v):
       safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
       denom = jnp.sqrt(safe_v + eps_root) + eps
