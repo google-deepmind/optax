@@ -271,6 +271,12 @@ def scale_by_adam(
     A :class:`optax.GradientTransformation` object.
   """
 
+  if jnp.any(jnp.asarray(eps) <= 0):
+    raise ValueError(f"`eps` must be positive and representable, got {eps}.")
+
+  if jnp.any(jnp.asarray(eps) <= 0):
+    raise ValueError(f"`eps` must be positive and representable, got {eps}.")
+
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
@@ -300,8 +306,11 @@ def scale_by_adam(
     def _update(m, v):
       if m is None:
         return None
-      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
-      denom = jnp.sqrt(safe_v + eps_root) + eps
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
       return (m / denom).astype(m.dtype)
 
     updates = jax.tree.map(
@@ -388,8 +397,11 @@ def scale_by_amsgrad(
     def _update(m, v):
       if m is None:
         return None
-      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
-      denom = jnp.sqrt(safe_v + eps_root) + eps
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
       return (m / denom).astype(m.dtype)
 
     updates = jax.tree.map(
@@ -765,8 +777,10 @@ def scale_by_belief(
     def _update(m, v):
       if m is None:
         return None
-      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
-      denom = jnp.sqrt(safe_v) + eps
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v) + safe_eps
       return (m / denom).astype(m.dtype)
 
     updates = jax.tree.map(
@@ -807,6 +821,9 @@ def scale_by_yogi(
     A :class:`optax.GradientTransformation` object.
   """
 
+  if jnp.any(jnp.asarray(eps) <= 0):
+    raise ValueError(f"`eps` must be positive and representable, got {eps}.")
+
   def init_fn(params):
     # First moment
     mu = optax.tree.full_like(params, initial_accumulator_value)
@@ -829,8 +846,11 @@ def scale_by_yogi(
     def _update(m, v):
       if m is None:
         return None
-      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
-      denom = jnp.sqrt(safe_v + eps_root) + eps
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
       return (m / denom).astype(m.dtype)
 
     updates = jax.tree.map(
@@ -870,6 +890,9 @@ def scale_by_radam(
     A :class:`optax.GradientTransformation` object.
   """
 
+  if jnp.any(jnp.asarray(eps) <= 0):
+    raise ValueError(f"`eps` must be positive and representable, got {eps}.")
+
   ro_inf = 2.0 / (1.0 - b2) - 1.0
 
   def _radam_update(ro, mu_hat, nu_hat):
@@ -881,8 +904,11 @@ def scale_by_radam(
     )
 
     def _update(m, v):
-      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
-      denom = jnp.sqrt(safe_v + eps_root) + eps
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
       return ((r.astype(m.dtype) * m) / denom).astype(m.dtype)
 
     updates = jax.tree.map(

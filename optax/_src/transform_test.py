@@ -282,6 +282,38 @@ class TransformTest(parameterized.TestCase):
       self.assertFalse(jnp.isnan(updates).any())
       self.assertTrue((jnp.imag(updates) != 0.0).all())
 
+  def test_adam_family_array_epsilon(self):
+    """Test Adam optimizers support ArrayLike eps and reject invalid eps."""
+    arr_eps = jnp.asarray(1e-4, dtype=jnp.float32)
+    optimizers = [
+        transform.scale_by_adam(eps=arr_eps),
+        transform.scale_by_amsgrad(eps=arr_eps),
+        transform.scale_by_belief(eps=arr_eps),
+        transform.scale_by_yogi(eps=arr_eps),
+        transform.scale_by_radam(eps=arr_eps),
+    ]
+    params = jnp.zeros((3, 3), dtype=jnp.float16)
+    grads = jnp.zeros((3, 3), dtype=jnp.float16)
+
+    for opt in optimizers:
+      state = opt.init(params)
+      updates, _ = opt.update(grads, state, params)
+      self.assertEqual(updates.dtype, jnp.float16)
+      self.assertFalse(jnp.isnan(updates).any())
+      self.assertFalse(jnp.isinf(updates).any())
+
+    underflowed_eps = jnp.asarray(1e-8, dtype=jnp.float16)
+    with self.assertRaises(ValueError):
+      transform.scale_by_adam(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_amsgrad(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_belief(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_yogi(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_radam(eps=underflowed_eps)
+
 
 if __name__ == '__main__':
   absltest.main()
