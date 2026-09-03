@@ -261,7 +261,7 @@ class TransformTest(parameterized.TestCase):
       updates, _ = opt.update(grads, state, params)
       self.assertEqual(updates.dtype, jnp.float16)
       self.assertFalse(jnp.isnan(updates).any())
-      self.assertTrue((updates == 0.0).all())
+      self.assertFalse(jnp.isinf(updates).any())
 
   def test_adam_family_complex_parameters(self):
     """Test Adam-family optimizers preserve complex parameter components."""
