@@ -41,6 +41,50 @@ def _convert_floats(x, dtype):
   return x
 
 
+def _is_static_hyperparam(value) -> bool:
+  """Whether a hyperparameter must be kept static instead of injected.
+
+  Integer and boolean hyperparameters are used by inner factories to make
+  structural decisions, for example ``min_dim_size_to_factor`` in
+  :func:`optax.adafactor` or ``memory_size`` in :func:`optax.lbfgs`. Injecting
+  them turns them into traced values and the factory then fails with a
+  ``TracerBoolConversionError`` under :func:`jax.jit`.
+
+  This covers Python ``bool`` and ``int`` as well as zero-dimensional NumPy and
+  JAX values of integer or boolean dtype, which are passed for the same
+  purpose. Values with one or more dimensions are left dynamic, so a raw
+  ``uint32`` PRNG key from :func:`jax.random.PRNGKey` is unaffected.
+  """
+  # Note `bool` is a subclass of `int`.
+  if isinstance(value, int):
+    return True
+  dtype = getattr(value, 'dtype', None)
+  if dtype is None or getattr(value, 'ndim', None) != 0:
+    return False
+  return jnp.issubdtype(dtype, jnp.integer) or jnp.issubdtype(dtype, jnp.bool_)
+
+
+def _as_static_scalar(value):
+  """Return a static integer/boolean hyperparameter as a Python scalar.
+
+  Keeping such a value out of the injected hyperparameters is not enough on its
+  own. A ``jax.Array`` that a jitted function closes over is staged out as a
+  constant of the trace, so using one for structural control flow still raises
+  ``TracerBoolConversionError``. Converting it to a Python scalar makes it a
+  real compile-time constant. NumPy values already stay concrete under
+  :func:`jax.jit`; they are converted too so both behave the same.
+
+  A traced value cannot be made concrete. It is returned unchanged so the inner
+  factory reports the problem itself rather than this raising a less clear one.
+  """
+  if not hasattr(value, 'item'):
+    return value
+  try:
+    return value.item()
+  except jax.errors.ConcretizationTypeError:
+    return value
+
+
 class InjectHyperparamsState(NamedTuple):
   """Deprecated class kept for backwards compatibility.
 
@@ -119,7 +163,8 @@ def inject_hyperparams(
       you must specify that using this argument. Boolean and integer
       hyperparameters are always treated as static (they are not injected),
       since tracing them would break inner factories that use them for
-      structural control flow.
+      structural control flow. This includes zero-dimensional NumPy and JAX
+      values of integer or boolean dtype.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
@@ -154,13 +199,11 @@ def inject_hyperparams(
 
     sched_hps, numeric_hps, other_hps = {}, {}, {}
     for name, value in bound_arguments.arguments.items():
-      # Python `bool`/`int` values are treated as static. Turning them into
-      # traced arrays would break inner factories that use them for structural
-      # control flow (e.g. `min_dim_size_to_factor` in `adafactor` or
-      # `memory_size` in `lbfgs`), causing a `TracerBoolConversionError` when
-      # the resulting transform is jitted. Note `bool` is a subclass of `int`.
-      if name in static_args or isinstance(value, int):
+      # Integer and boolean values are static; see `_is_static_hyperparam`.
+      if name in static_args:
         other_hps[name] = value
+      elif _is_static_hyperparam(value):
+        other_hps[name] = _as_static_scalar(value)
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
@@ -249,7 +292,8 @@ def inject_stateful_hyperparams(
       you must specify that using this argument. Boolean and integer
       hyperparameters are always treated as static (they are not injected),
       since tracing them would break inner factories that use them for
-      structural control flow.
+      structural control flow. This includes zero-dimensional NumPy and JAX
+      values of integer or boolean dtype.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 

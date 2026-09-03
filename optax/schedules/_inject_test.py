@@ -183,6 +183,54 @@ class InjectHyperparamsTest(parameterized.TestCase):
     # Prior to treating ints as static this raised a TracerBoolConversionError.
     jax.jit(optim.init)(params)
 
+  @parameterized.named_parameters(
+      ('python_int', lambda: 10),
+      ('python_bool', lambda: True),
+      ('numpy_scalar', lambda: np.int64(10)),
+      ('numpy_array', lambda: np.asarray(10)),
+      ('jax_array', lambda: jnp.asarray(10)),
+      ('jax_bool_array', lambda: jnp.asarray(True)),
+  )
+  def test_integer_scalars_of_any_type_are_static(self, make_value):
+    """Zero-dim integer/bool values are static, not just Python ints."""
+    optim = schedules.inject_hyperparams(transform.scale_by_lbfgs)(
+        memory_size=make_value()
+    )
+
+    params = {'w': jnp.ones((3,))}
+    state = optim.init(params)
+
+    self.assertNotIn('memory_size', state.hyperparams)
+    # A traced `memory_size` raises TracerBoolConversionError here. A static
+    # `jax.Array` is not enough on its own either, since one closed over by a
+    # jitted function is staged out as a constant of the trace.
+    jax.jit(lambda p, s: optim.update(p, s, p))(params, state)
+
+  @parameterized.named_parameters(
+      ('typed_key', lambda: random.key(0)),
+      ('raw_uint32_key', lambda: random.PRNGKey(0)),
+  )
+  def test_prng_keys_are_not_treated_as_static(self, make_key):
+    """A raw uint32 key has integer dtype but must stay injected."""
+
+    def random_noise_optimizer(key, scale):
+      def init_fn(params_like):
+        del params_like
+        return (key, scale)
+
+      def update_fn(updates, state, params=None):
+        del params
+        return updates, state
+
+      return base.GradientTransformation(init_fn, update_fn)
+
+    optim = schedules.inject_hyperparams(random_noise_optimizer)(
+        key=make_key(), scale=1e-3
+    )
+    state = optim.init({'w': jnp.ones((3,))})
+
+    self.assertIn('key', state.hyperparams)
+
   def test_prng_key_not_hyperparameter(self):
     """Check that random.key can be handled by :func:``inject_hyperparams``."""
 
