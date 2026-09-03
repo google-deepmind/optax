@@ -420,7 +420,20 @@ def scale_by_adamax(
     nu = optax.tree.update_infinity_moment(updates, state.nu, b2, eps)
     # Bias correction for mean. No bias correction needed for infinity moment.
     mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
-    updates = jax.tree.map(lambda m, v: m / v, mu_hat, nu)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      # `eps` is applied in at least float32 precision so it does not
+      # silently underflow to zero when `v` has a low precision dtype
+      # (e.g. float16, whose smallest subnormal is ~6e-8). Otherwise the
+      # denominator can become exactly 0, turning this into a 0/0 NaN
+      # whenever `m` and `v` are also 0 (e.g. on a zero-gradient step).
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.maximum(safe_v, eps)
+      return (m / denom).astype(m.dtype)
+
+    updates = jax.tree.map(_update, mu_hat, nu, is_leaf=lambda x: x is None)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)
 
   return base.GradientTransformation(init_fn, update_fn)

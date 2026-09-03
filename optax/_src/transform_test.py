@@ -73,6 +73,36 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
+  def test_adamax_no_nan_on_float16_zero_grad(self):
+    """A zero-gradient float16 step must not produce NaN in scale_by_adamax.
+
+    `eps` defaults to `1e-8`, which rounds to exactly 0.0 in float16 (whose
+    smallest subnormal is ~6e-8). When moment estimates are zero (e.g. on a
+    masked-token or zero-gradient step), the infinity moment denominator
+    collapses to zero in float16, producing a 0 / 0 NaN. The division must
+    guard the denominator in at least float32 precision before downcasting.
+    """
+    params = jnp.array([1.0, -2.0, 0.5], dtype=jnp.float16)
+    zero_grads = jnp.zeros_like(params)
+    scaler = transform.scale_by_adamax()
+    state = scaler.init(params)
+    for _ in range(3):
+      updates, state = scaler.update(zero_grads, state, params)
+      test_utils.assert_tree_all_finite(updates)
+      test_utils.assert_trees_all_equal_dtypes(updates, zero_grads)
+      params = update.apply_updates(params, updates)
+
+  def test_adamax_complex_parameters(self):
+    """Complex parameters must retain imaginary part in scale_by_adamax."""
+    params = jnp.array([1.0 + 2.0j, -3.0 + 4.0j], dtype=jnp.complex64)
+    grads = jnp.array([0.5 - 1.0j, 2.0 + 0.5j], dtype=jnp.complex64)
+    scaler = transform.scale_by_adamax()
+    state = scaler.init(params)
+    updates, state = scaler.update(grads, state, params)
+    test_utils.assert_tree_all_finite(updates)
+    test_utils.assert_trees_all_equal_dtypes(updates, grads)
+    self.assertTrue(jnp.any(jnp.imag(updates) != 0))
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
