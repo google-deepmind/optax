@@ -296,8 +296,16 @@ def scale_by_adam(
     # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
     # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.sqrt(safe_v + eps_root) + eps
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -376,8 +384,16 @@ def scale_by_amsgrad(
       nu_eff = nu
 
     nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_eff)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.sqrt(safe_v + eps_root) + eps
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_max,
         is_leaf=lambda x: x is None,
@@ -745,8 +761,16 @@ def scale_by_belief(
     else:
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.sqrt(safe_v) + eps
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -801,8 +825,16 @@ def scale_by_yogi(
     count_inc = numerics.safe_increment(state.count)
     mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.sqrt(safe_v + eps_root) + eps
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -847,8 +879,13 @@ def scale_by_radam(
         * ro_inf
         / ((ro_inf - 4.0) * (ro_inf - 2.0) * ro)
     )
+    def _update(m, v):
+      safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
+      denom = jnp.sqrt(safe_v + eps_root) + eps
+      return ((r.astype(m.dtype) * m) / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: r.astype(m.dtype) * m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
     )
