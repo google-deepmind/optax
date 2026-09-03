@@ -31,6 +31,20 @@ import optax.tree
 abs_sq = numerics.abs_sq
 
 
+def _check_valid_eps(eps: jax.typing.ArrayLike, name: str = 'eps') -> None:
+  if isinstance(eps, (int, float)):
+    if eps <= 0:
+      raise ValueError(
+          f'`{name}` must be positive and representable, got {eps}.'
+      )
+  elif not isinstance(eps, jax.core.Tracer):
+    arr = jnp.asarray(eps)
+    if (arr <= 0).any():
+      raise ValueError(
+          f'`{name}` must be positive and representable, got {eps}.'
+      )
+
+
 def _reject_complex(params):
   if any(jnp.iscomplexobj(x) for x in jax.tree.leaves(params)):
     raise ValueError('This transformation does not support complex parameters.')
@@ -271,6 +285,7 @@ def scale_by_adam(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
@@ -296,8 +311,20 @@ def scale_by_adam(
     # Algorithm 2 further multiplies Adam's standard nu_hat by b2. It is
     # unclear why. Other Nadam implementations also omit the extra b2 factor.
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
+      denom = jnp.maximum(denom, jnp.finfo(safe_dtype).tiny)
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -349,6 +376,7 @@ def scale_by_amsgrad(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
   mu_dtype = utils.canonicalize_dtype(mu_dtype)
 
   def init_fn(params):
@@ -376,8 +404,20 @@ def scale_by_amsgrad(
       nu_eff = nu
 
     nu_max = jax.tree.map(jnp.maximum, state.nu_max, nu_eff)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
+      denom = jnp.maximum(denom, jnp.finfo(safe_dtype).tiny)
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_max,
         is_leaf=lambda x: x is None,
@@ -723,6 +763,8 @@ def scale_by_belief(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
+
   def init_fn(params):
     mu = optax.tree.zeros_like(params)  # First moment
     s = optax.tree.zeros_like(params)  # Second Central moment
@@ -745,8 +787,19 @@ def scale_by_belief(
     else:
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v) + safe_eps
+      denom = jnp.maximum(denom, jnp.finfo(safe_dtype).tiny)
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -783,6 +836,8 @@ def scale_by_yogi(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
+
   def init_fn(params):
     # First moment
     mu = optax.tree.full_like(params, initial_accumulator_value)
@@ -801,8 +856,20 @@ def scale_by_yogi(
     count_inc = numerics.safe_increment(state.count)
     mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
+
+    def _update(m, v):
+      if m is None:
+        return None
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
+      denom = jnp.maximum(denom, jnp.finfo(safe_dtype).tiny)
+      return (m / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: None if m is None else m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
         is_leaf=lambda x: x is None,
@@ -838,6 +905,7 @@ def scale_by_radam(
     A :class:`optax.GradientTransformation` object.
   """
 
+  _check_valid_eps(eps)
   ro_inf = 2.0 / (1.0 - b2) - 1.0
 
   def _radam_update(ro, mu_hat, nu_hat):
@@ -847,8 +915,18 @@ def scale_by_radam(
         * ro_inf
         / ((ro_inf - 4.0) * (ro_inf - 2.0) * ro)
     )
+
+    def _update(m, v):
+      safe_dtype = jnp.promote_types(v.dtype, jnp.float32)
+      safe_v = v.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      safe_eps_root = jnp.asarray(eps_root, dtype=safe_dtype)
+      denom = jnp.sqrt(safe_v + safe_eps_root) + safe_eps
+      denom = jnp.maximum(denom, jnp.finfo(safe_dtype).tiny)
+      return ((r.astype(m.dtype) * m) / denom).astype(m.dtype)
+
     updates = jax.tree.map(
-        lambda m, v: r.astype(m.dtype) * m / (jnp.sqrt(v + eps_root) + eps),
+        _update,
         mu_hat,
         nu_hat,
     )
