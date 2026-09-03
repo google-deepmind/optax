@@ -431,7 +431,7 @@ def scale_by_adamax(
       # whenever `m` and `v` are also 0 (e.g. on a zero-gradient step).
       safe_v = v.astype(jnp.promote_types(v.dtype, jnp.float32))
       denom = jnp.maximum(safe_v, eps)
-      return (m.astype(denom.dtype) / denom).astype(m.dtype)
+      return (m / denom).astype(m.dtype)
 
     updates = jax.tree.map(_update, mu_hat, nu, is_leaf=lambda x: x is None)
     return updates, ScaleByAdamState(count=count_inc, mu=mu, nu=nu)

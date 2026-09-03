@@ -92,6 +92,17 @@ class TransformTest(parameterized.TestCase):
       test_utils.assert_trees_all_equal_dtypes(updates, zero_grads)
       params = update.apply_updates(params, updates)
 
+  def test_adamax_complex_parameters(self):
+    """Complex parameters must retain imaginary part in scale_by_adamax."""
+    params = jnp.array([1.0 + 2.0j, -3.0 + 4.0j], dtype=jnp.complex64)
+    grads = jnp.array([0.5 - 1.0j, 2.0 + 0.5j], dtype=jnp.complex64)
+    scaler = transform.scale_by_adamax()
+    state = scaler.init(params)
+    updates, state = scaler.update(grads, state, params)
+    test_utils.assert_tree_all_finite(updates)
+    test_utils.assert_trees_all_equal_dtypes(updates, grads)
+    self.assertTrue(jnp.any(jnp.imag(updates) != 0))
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
