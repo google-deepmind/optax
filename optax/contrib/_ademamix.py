@@ -72,7 +72,7 @@ def scale_by_ademamix(
     b1: Exponential decay rate to track the fast EMA.
     b2: Exponential decay rate to track the second moment of past gradients.
     b3: Exponential decay rate to track the slow EMA.
-    alpha: Mixing coefficient in the linear combination for the fast and slow
+    alpha: Mixing coefficient in the linear combination of the fast and slow
       EMAs.
     eps: A small constant applied to denominator outside of the square root (as
       in the Adam paper) to avoid dividing by zero when rescaling.
