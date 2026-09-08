@@ -116,6 +116,7 @@ def power_iteration(
       # v0 must be given as we don't know the underlying pytree structure.
       raise ValueError('v0 must be provided when `matrix` is a callable.')
   else:
+    matrix = jnp.asarray(matrix)
     mvp = lambda v: jnp.matmul(matrix, v, precision=precision)
     if v0 is None:
       if key is None:
@@ -123,8 +124,8 @@ def power_iteration(
       # v0 is uniformly distributed in [-1, 1]
       v0 = jax.random.uniform(
           key,
-          shape=matrix.shape[-1:],  # pyrefly: ignore[missing-attribute]
-          dtype=matrix.dtype,  # pyrefly: ignore[missing-attribute]
+          shape=matrix.shape[-1:],
+          dtype=matrix.dtype,
           minval=-1.0,
           maxval=1.0,
       )
@@ -187,7 +188,7 @@ def matrix_inverse_pth_root(
 
   # We use float32 for the matrix inverse pth root.
   # Switch to f64 if you have hardware that supports it.
-  # pyrefly: ignore [missing-attribute]
+  matrix = jnp.asarray(matrix)
   matrix_size = matrix.shape[0]
   alpha = jnp.asarray(-1.0 / p, jnp.float32)
   identity = jnp.eye(matrix_size, dtype=jnp.float32)
@@ -279,7 +280,6 @@ def matrix_inverse_pth_root(
     # pyrefly: ignore [missing-attribute]
     is_converged = jnp.asarray(convergence, old_mat_h.dtype)
     resultant_mat_h = is_converged * mat_h + (1 - is_converged) * old_mat_h
-    # pyrefly: ignore [missing-attribute]
     resultant_mat_h = jnp.asarray(resultant_mat_h, matrix.dtype)
   return resultant_mat_h, error
 
