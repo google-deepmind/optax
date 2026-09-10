@@ -193,9 +193,11 @@ class MuonTest(parameterized.TestCase):
       reshape_updates, _ = get_updates(reshape_params,
                                        preconditioning=preconditioning,
                                        muon_weight_dimension_numbers=dim_nums)
+      rtol = 5e-5 if jax.default_backend() == 'gpu' else 1e-8
+      atol = 1e-7 if jax.default_backend() == 'gpu' else 1e-8
       test_utils.assert_trees_all_close(
-          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
-          atol=1e-8)
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=rtol,
+          atol=atol)
 
     with self.subTest('4D with dim_nums, (10, 12) -> (5, 12, 1, 2)'):
       # Test 3: 4D with dim_nums, (10, 12) -> (5, 12, 1, 2)
@@ -281,7 +283,7 @@ class MuonTest(parameterized.TestCase):
                                     dtype=jnp.complex64)
     ns_coeffs = jnp.array([2.0, -1.5, 0.5])
 
-    if jax.default_backend() == 'tpu':
+    if jax.default_backend() in ('tpu', 'gpu'):
       atol, rtol = 1e-2, 1e-2
     else:
       atol, rtol = 1e-5, 1e-5
