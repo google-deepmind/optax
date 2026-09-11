@@ -28,8 +28,9 @@ from optax._src import numerics
 def _decay_rate_pow(
     i: jax.typing.ArrayLike, exponent: jax.typing.ArrayLike = 0.8) -> jax.Array:
   """Second-order moment decay schedule."""
+  exponent = jnp.asarray(exponent)
   t = jnp.array(i + 1, jnp.float32)
-  return 1.0 - t ** (-exponent)  # pyrefly: ignore[unsupported-operation]
+  return 1.0 - t ** (-exponent)
 
 
 def _factored_dims(

@@ -79,11 +79,11 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
+  embeddings = jnp.asarray(embeddings)
+  labels = jnp.asarray(labels)
   if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
-        # pyrefly: ignore [missing-attribute]
         f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
         ' embeddings.'
     )
@@ -91,9 +91,8 @@ def ntxent(
   # cosine similarity matrix
   xcs = (
       _regression.cosine_similarity(
-          embeddings[None, :, :],  # pyrefly: ignore[bad-index]
-          embeddings[:, None, :],  # pyrefly: ignore[bad-index]
-          # pyrefly: ignore [missing-attribute]
+          embeddings[None, :, :],
+          embeddings[:, None, :],
           epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       )
       / temperature
@@ -175,9 +174,11 @@ def triplet_margin_loss(
   utils.check_subdtype(anchors, jnp.floating)
   utils.check_subdtype(positives, jnp.floating)
   utils.check_subdtype(negatives, jnp.floating)
+  anchors = jnp.asarray(anchors)
+  positives = jnp.asarray(positives)
+  negatives = jnp.asarray(negatives)
   positive_distance = jnp.power(
       jnp.power(
-          # pyrefly: ignore[unsupported-operation]
           anchors - positives,
           norm_degree,
       ).sum(axis)
@@ -186,7 +187,6 @@ def triplet_margin_loss(
   )
   negative_distance = jnp.power(
       jnp.power(
-          # pyrefly: ignore[unsupported-operation]
           anchors - negatives,
           norm_degree,
       ).sum(axis)

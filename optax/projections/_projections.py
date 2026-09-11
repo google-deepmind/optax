@@ -93,8 +93,8 @@ def projection_hypercube(tree: Any, scale: Any = 1) -> Any:
 @jax.custom_jvp
 def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   """Projection onto the unit simplex."""
+  values = jnp.asarray(values)
   s = 1
-  # pyrefly: ignore [missing-attribute]
   n_features = values.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
@@ -288,7 +288,7 @@ def projection_linf_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   Returns:
     projected tree, with the same structure as ``tree``.
   """
-  # pyrefly: ignore[unsupported-operation]
+  scale = jnp.asarray(scale)
   lower = optax.tree.full_like(tree, -scale)
   upper = optax.tree.full_like(tree, scale)
   return projection_box(tree, lower=lower, upper=upper)
@@ -335,7 +335,7 @@ def projection_hyperplane(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
-  # pyrefly: ignore[unsupported-operation]
+  b = jnp.asarray(b)
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   return optax.tree.add_scale(x, scalar, a)
 
@@ -360,7 +360,7 @@ def projection_halfspace(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
-  # pyrefly: ignore[unsupported-operation]
+  b = jnp.asarray(b)
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   scalar = jnp.clip(scalar, max=0)
   return optax.tree.add_scale(x, scalar, a)

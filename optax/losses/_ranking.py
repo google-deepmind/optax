@@ -140,7 +140,8 @@ def ranking_softmax_loss(
     The ranking softmax loss.
   """
   utils.check_subdtype(logits, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
+  logits = jnp.asarray(logits)
+  labels = jnp.asarray(labels)
   labels = labels.astype(logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Applies mask so that masked elements do not count towards the loss.
