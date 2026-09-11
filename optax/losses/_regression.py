@@ -43,12 +43,12 @@ def squared_error(
     "The Elements of Statistical Learning" by Tibshirani.
   """
   utils.check_subdtype(predictions, jnp.floating)
+  predictions = jnp.asarray(predictions)
   if targets is not None:
+    targets = jnp.asarray(targets)
     # Avoid broadcasting logic for "-" operator.
     utils.check_shapes_equal(predictions, targets)
-  # pyrefly: ignore[unsupported-operation]
   errors = predictions - targets if targets is not None else predictions
-  # pyrefly: ignore [bad-return]
   return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
 
 
@@ -98,7 +98,9 @@ def huber_loss(
     `Huber loss <https://en.wikipedia.org/wiki/Huber_loss>`_, Wikipedia.
   """
   utils.check_subdtype(predictions, jnp.floating)
-  # pyrefly: ignore[unsupported-operation]
+  predictions = jnp.asarray(predictions)
+  if targets is not None:
+    targets = jnp.asarray(targets)
   errors = (predictions - targets) if (targets is not None) else predictions
   # 0.5 * err^2                  if |err| <= d
   # 0.5 * d^2 + d * (|err| - d)  if |err| > d
@@ -131,10 +133,11 @@ def log_cosh(
     <https://openreview.net/pdf?id=rkglvsC9Ym>`, 2019
   """
   utils.check_subdtype(predictions, jnp.floating)
-  # pyrefly: ignore[unsupported-operation]
+  predictions = jnp.asarray(predictions)
+  if targets is not None:
+    targets = jnp.asarray(targets)
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  # pyrefly: ignore [missing-attribute, unsupported-operation]
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
 

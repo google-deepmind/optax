@@ -178,10 +178,9 @@ def skip_not_finite(
   """
   del gradient_step, params
   not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
-  num_not_finite = optax.tree.sum(not_finite)
-  should_skip = num_not_finite > 0  # pyrefly: ignore[unsupported-operation]
-  # pyrefly: ignore [bad-return]
-  return should_skip, {  # pytype: disable=bad-return-type
+  num_not_finite = jnp.asarray(optax.tree.sum(not_finite))
+  should_skip = num_not_finite > 0
+  return should_skip, {
       'should_skip': should_skip,
       'num_not_finite': num_not_finite,
   }
@@ -341,17 +340,15 @@ class MultiSteps:
       **extra_args: Any,
   ) -> tuple[base.Updates, MultiStepsState]:
     """Accumulates gradients and proposes non-zero updates every `k_steps`."""
-    k_steps = self._every_k_schedule(state.gradient_step)
+    k_steps = jnp.asarray(self._every_k_schedule(state.gradient_step))
     should_skip_update, skip_state = self._should_skip_update_fn(
         updates, state.gradient_step, params
     )
-    # pyrefly: ignore[missing-attribute]
+    should_skip_update = jnp.asarray(should_skip_update)
     if (should_skip_update.dtype, should_skip_update.shape) != (jnp.bool_, ()):
       raise ValueError(
           'The `should_skip_update_fn` function should return a boolean scalar '
-          # pyrefly: ignore[missing-attribute]
           f'array, but it returned an array of dtype {should_skip_update.dtype}'
-          # pyrefly: ignore[missing-attribute]
           f' and shape {should_skip_update.shape}'
       )
 
@@ -369,7 +366,6 @@ class MultiSteps:
 
       emit = state.mini_step == (k_steps - 1)
       new_state = MultiStepsState(
-          # pyrefly: ignore[unsupported-operation]
           mini_step=numerics.safe_increment(state.mini_step) % k_steps,
           gradient_step=emit * numerics.safe_increment(state.gradient_step)
           + (1 - emit) * state.gradient_step,

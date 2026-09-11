@@ -138,10 +138,11 @@ def polynomial_schedule(
     transition_begin = 0
 
   def schedule(count):
+    init_val = jnp.asarray(init_value)
+    end_val = jnp.asarray(end_value)
     count = jnp.clip(count - transition_begin, 0, transition_steps)
     frac = 1 - count / transition_steps
-    # pyrefly: ignore[unsupported-operation]
-    return (init_value - end_value) * (frac**power) + end_value
+    return (init_val - end_val) * (frac**power) + end_val
 
   return schedule
 
@@ -395,7 +396,10 @@ def _linear_interpolate(
     end: jax.typing.ArrayLike,
     pct: jax.typing.ArrayLike):
   """Linearly interpolate between two values."""
-  return (end - start) * pct + start  # pyrefly: ignore[unsupported-operation]
+  start = jnp.asarray(start)
+  end = jnp.asarray(end)
+  pct = jnp.asarray(pct)
+  return (end - start) * pct + start
 
 
 def _cosine_interpolate(
@@ -403,7 +407,9 @@ def _cosine_interpolate(
     end: jax.typing.ArrayLike,
     pct: jax.typing.ArrayLike):
   """Cosine interpolate between two values (smoother transitions)."""
-  # pyrefly: ignore[unsupported-operation]
+  start = jnp.asarray(start)
+  end = jnp.asarray(end)
+  pct = jnp.asarray(pct)
   return end + (start - end) / 2.0 * (jnp.cos(jnp.pi * pct) + 1)
 
 

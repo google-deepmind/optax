@@ -143,12 +143,12 @@ def dice_loss(
       Volumetric Medical Image Segmentation" (2016).
   """
 
-  # pyrefly: ignore [missing-attribute]
+  predictions = jnp.asarray(predictions)
+  targets = jnp.asarray(targets)
   if predictions.ndim == targets.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
-  # pyrefly: ignore [missing-attribute]
+    predictions = predictions[..., None]
   if targets.ndim == predictions.ndim - 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    targets = targets[..., None]  # pyrefly: ignore[bad-index]
+    targets = targets[..., None]
   utils.check_shapes_equal(predictions, targets)
 
   # Input validation for probability distributions
@@ -166,14 +166,13 @@ def dice_loss(
   # Convert logits to probabilities
   probs = predictions
   if apply_softmax:
-    # pyrefly: ignore [missing-attribute]
     if predictions.shape[-1] == 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
       probs = jax.nn.sigmoid(predictions)
     else:
       probs = jax.nn.softmax(predictions, axis=-1)
 
   # Default behavior: sum over all spatial dimensions (except first/last)
-  # pyrefly: ignore [bad-assignment, missing-attribute]
+  # pyrefly: ignore [bad-assignment]
   axis = tuple(range(1, probs.ndim - 1)) if axis is None else axis  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Compute intersection and sums over specified axes
@@ -199,7 +198,6 @@ def dice_loss(
     dice_l = dice_l * class_weights
 
   # Handle background class ignoring
-  # pyrefly: ignore [missing-attribute]
   if ignore_background and probs.shape[-1] > 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
     # Exclude the first class (background) from loss computation
     dice_l = dice_l[..., 1:]
@@ -242,7 +240,7 @@ def multiclass_generalized_dice_loss(
   utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
-  # pyrefly: ignore [missing-attribute]
+  targets = jnp.asarray(targets)
   class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
 
   # Compute weights as inverse of squared frequencies
@@ -285,10 +283,11 @@ def binary_dice_loss(
       Loss values of shape [...] (batch dimensions only).
   """
   # Ensure both have channel dimension
-  # pyrefly: ignore [missing-attribute]
+  predictions = jnp.asarray(predictions)
+  targets = jnp.asarray(targets)
   if predictions.ndim == targets.ndim and predictions.shape[-1] != 1:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    predictions = predictions[..., None]  # pyrefly: ignore[bad-index]
-    targets = targets[..., None]  # pyrefly: ignore[bad-index]
+    predictions = predictions[..., None]
+    targets = targets[..., None]
 
   return dice_loss(
       predictions,

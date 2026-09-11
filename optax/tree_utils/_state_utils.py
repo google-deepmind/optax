@@ -757,18 +757,21 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:
   """Convert a ``KeyEntry``` to a usual type."""
+  # NamedTupleKey is checked first so that it is removed from the union of
+  # possible key types in the branches below, which lets the type checker
+  # resolve the jax key attributes without suppressions.
+  if isinstance(key, NamedTupleKey):
+    return key.name  # str.
+  # pylint: disable=attribute-error
   if isinstance(key, jax.tree_util.DictKey):
     if isinstance(key.key, (str, int)):
       return key.key
     raise KeyError("Hashable keys not supported")
-  # pylint: disable=attribute-error
   if isinstance(key, jax.tree_util.FlattenedIndexKey):
     return key.key  # int.
   if isinstance(key, jax.tree_util.GetAttrKey):
     return key.name  # str.
   if isinstance(key, jax.tree_util.SequenceKey):
     return key.idx  # int.
-  if isinstance(key, NamedTupleKey):
-    return key.name  # str.
   # pylint: enable=attribute-error
   raise KeyError(f"Tree key '{key}' of type '{type(key)}' not valid.")

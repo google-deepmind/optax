@@ -344,9 +344,8 @@ def scale_by_backtracking_linesearch(
         search_state: BacktrackingLineSearchState,
     ):
       """Whether to stop the line-search inner loop."""
-      decrease_error = search_state.decrease_error
-      iter_num = search_state.iter_num
-      # pyrefly: ignore[unsupported-operation]
+      decrease_error = jnp.asarray(search_state.decrease_error)
+      iter_num = jnp.asarray(search_state.iter_num)
       return (~(decrease_error <= atol)) & (iter_num <= max_backtracking_steps)
 
     def body_fn(
@@ -355,11 +354,10 @@ def scale_by_backtracking_linesearch(
       """Line-search inner loop step."""
       learning_rate = search_state.learning_rate
       new_grad = search_state.new_grad
-      iter_num = search_state.iter_num
+      iter_num = jnp.asarray(search_state.iter_num)
       # We start decreasing the learning rate after the first iteration
       # and up until the criterion is satisfied.
       learning_rate = jnp.where(
-          # pyrefly: ignore[unsupported-operation]
           iter_num > 0,
           decrease_factor * learning_rate,
           learning_rate,
@@ -372,13 +370,12 @@ def scale_by_backtracking_linesearch(
         # compute the gradient by transposing the jvp.
         new_value, jvp_value_fn = jax.linearize(value_fn_, new_params)
 
-        decrease_error = _compute_decrease_error(
-            learning_rate, slope, value, new_value
+        decrease_error = jnp.asarray(
+            _compute_decrease_error(learning_rate, slope, value, new_value)
         )
         # If the line-search ends, we get the gradient for the new round of
         # line-search.
         new_grad = jax.lax.cond(
-            # pyrefly: ignore[unsupported-operation]
             (decrease_error <= atol) | (iter_num == max_backtracking_steps),
             lambda p: jax.linear_transpose(jvp_value_fn, p)(1.0)[0],
             lambda *_: new_grad,
@@ -426,8 +423,7 @@ def scale_by_backtracking_linesearch(
     if verbose:
       # We print information only if the linesearch failed.
       _cond_print(
-          # pyrefly: ignore[unsupported-operation]
-          search_state.decrease_error > atol,
+          jnp.asarray(search_state.decrease_error) > atol,
           "INFO: optax.scale_by_backtracking_linesearch:\n"
           "Backtracking linesearch failed to find a stepsize ensuring sufficent"
           " decrease.\n"
@@ -687,8 +683,11 @@ def zoom_linesearch(
     """Compute decrease error."""
     # We consider either the usual sufficient decrease (Armijo criterion), see
     # equation (3.7a) of [Nocedal and Wright, 1999]
+    value_step = jnp.asarray(value_step)
+    value_init = jnp.asarray(value_init)
+    stepsize = jnp.asarray(stepsize)
+    slope_init = jnp.asarray(slope_init)
     decrease_error = (
-        # pyrefly: ignore[unsupported-operation]
         value_step
         - value_init
         - slope_rtol * stepsize * slope_init
@@ -709,7 +708,6 @@ def zoom_linesearch(
       # (27) of [Hager and Zhang, 2006] that we simplify using one iterate in
       # equation (26)).
       delta_values = (
-          # pyrefly: ignore[unsupported-operation]
           value_step
           - value_init
           - approx_dec_rtol * jnp.abs(value_init)
@@ -747,8 +745,7 @@ def zoom_linesearch(
     """Try making a step with stepsize ensuring at least sufficient decrease."""
     outside_domain = jnp.isinf(state.decrease_error)
     final_stepsize, final_value, final_grad = optax.tree.where(
-        # pyrefly: ignore[unsupported-operation]
-        (state.safe_stepsize > 0.0) | outside_domain,
+        (jnp.asarray(state.safe_stepsize) > 0.0) | outside_domain,
         [state.safe_stepsize, state.safe_value, state.safe_grad],
         [state.stepsize, state.value, state.grad],
     )
@@ -767,8 +764,9 @@ def zoom_linesearch(
           curvature_error=state.curvature_error,
           ordered=True,
       )
-      # pyrefly: ignore[unsupported-operation]
-      interval_length = jnp.abs(state.low - state.high)
+      interval_length = jnp.abs(
+          jnp.asarray(state.low) - jnp.asarray(state.high)
+      )
       too_small_int = interval_length <= interval_threshold
       _cond_print(
           too_small_int,
@@ -776,7 +774,7 @@ def zoom_linesearch(
           interval_length=interval_length,
       )
       jax.lax.cond(
-          state.safe_stepsize > 0.0,  # pyrefly: ignore[unsupported-operation]
+          jnp.asarray(state.safe_stepsize) > 0.0,
           lambda _: jax.debug.print(
               FLAG_CURVATURE_COND_NOT_SATISFIED
               + " Stepsize ensuring sufficient decrease: {safe_stepsize}.",

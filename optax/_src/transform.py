@@ -877,8 +877,7 @@ def scale_by_radam(
       mu_hat = optax.tree.bias_correction(mu, b1, count_inc)
     nu_hat = optax.tree.bias_correction(nu, b2, count_inc)
     updates = jax.tree.map(
-        # pyrefly: ignore[unsupported-operation]
-        lambda t, f: jnp.where(ro >= threshold, t, f),
+        lambda t, f: jnp.where(ro >= jnp.asarray(threshold), t, f),
         _radam_update(ro, mu_hat, nu_hat),
         mu_hat,
     )
@@ -1112,14 +1111,14 @@ def apply_every(k: jax.typing.ArrayLike = 1) -> base.GradientTransformation:
 
   def update_fn(updates, state, params=None):
     del params
-    c = state.count % k
+    k_ = jnp.asarray(k)
+    c = state.count % k_
     acc = c != 0
     grad_acc = jax.tree.map(lambda g, ga: acc * ga + g, updates, state.grad_acc)
-    emit = c == (k - 1)
+    emit = c == (k_ - 1)
     updates = jax.tree.map(lambda ga: emit * ga, grad_acc)
     count_inc = numerics.safe_increment(state.count)
-    # pyrefly: ignore[unsupported-operation]
-    return updates, ApplyEvery(count=count_inc % k, grad_acc=grad_acc)
+    return updates, ApplyEvery(count=count_inc % k_, grad_acc=grad_acc)
 
   return base.GradientTransformation(init_fn, update_fn)
 
@@ -1509,8 +1508,9 @@ def scale_by_polyak(
     # extra_args
     del extra_args
     grad_sq_norm = optax.tree.norm(updates, squared=True)
-    # pyrefly: ignore[unsupported-operation]
-    gap = jnp.array(value - f_min).astype(grad_sq_norm.dtype)
+    value = jnp.asarray(value)
+    f_min_ = jnp.asarray(f_min)
+    gap = jnp.array(value - f_min_).astype(grad_sq_norm.dtype)
     if variant == 'sps':
       pass
     elif variant == 'sps+':
@@ -1595,8 +1595,8 @@ def _precondition_by_lbfgs(
     <https://www.math.uci.edu/~qnie/Publications/NumericalOptimization.pdf>_`
     , 1999
   """
+  weights_memory = jnp.asarray(weights_memory)
   rhos = weights_memory
-  # pyrefly: ignore [missing-attribute]
   memory_size = weights_memory.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
   indices = (memory_idx + jnp.arange(memory_size)) % memory_size
 
@@ -1604,7 +1604,6 @@ def _precondition_by_lbfgs(
     dwi, dui = jax.tree.map(
         lambda x: x[idx], (diff_params_memory, diff_updates_memory)
     )
-    # pyrefly: ignore[bad-index]
     alpha = rhos[idx] * optax.tree.real(optax.tree.vdot(dwi, vec))
     vec_new = optax.tree.add_scale(vec, -alpha, dui)
     vec_new = optax.tree.cast_like(vec_new, vec)

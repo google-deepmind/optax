@@ -110,7 +110,8 @@ def lookahead(
     Zhang et al, `Lookahead Optimizer: k steps forward, 1 step back
     <https://arxiv.org/abs/1907.08610>`_, 2019
   """
-  if sync_period < 1:  # pyrefly: ignore[unsupported-operation]
+  sync_period = jnp.asarray(sync_period)
+  if sync_period < 1:
     raise ValueError('Synchronization period must be >= 1.')
 
   def init_fn(params: base.Params) -> LookaheadState:
