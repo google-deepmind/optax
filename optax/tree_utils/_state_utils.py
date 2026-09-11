@@ -757,6 +757,8 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:
   """Convert a ``KeyEntry``` to a usual type."""
+  if isinstance(key, NamedTupleKey):
+    return key.name  # str.
   if isinstance(key, jax.tree_util.DictKey):
     if isinstance(key.key, (str, int)):
       return key.key
@@ -768,7 +770,5 @@ def _get_key(key: _KeyEntry) -> Union[int, str]:
     return key.name  # str.
   if isinstance(key, jax.tree_util.SequenceKey):
     return key.idx  # int.
-  if isinstance(key, NamedTupleKey):
-    return key.name  # str.
   # pylint: enable=attribute-error
   raise KeyError(f"Tree key '{key}' of type '{type(key)}' not valid.")
