@@ -244,6 +244,20 @@ class TransformTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
+  def test_scale_by_rprop_step_values(self):
+    """Rprop emits the current step's update, not the previous step's."""
+    tx = transform.scale_by_rprop(
+        learning_rate=0.1, eta_minus=0.5, eta_plus=1.2
+    )
+    state = tx.init(jnp.zeros((1,)))
+    grads = [1.0, 1.0, 1.0, -1.0, 1.0]
+    # The step size grows by eta_plus while the gradient sign is stable, the
+    # update is zeroed on a sign flip, then the (shrunk) step size is held.
+    expected = [0.1, 0.12, 0.144, 0.0, 0.072]
+    for grad, want in zip(grads, expected):
+      updates, state = tx.update(jnp.array([grad]), state)
+      test_utils.assert_trees_all_close(updates, jnp.array([want]), atol=1e-6)
+
 
 if __name__ == '__main__':
   absltest.main()
