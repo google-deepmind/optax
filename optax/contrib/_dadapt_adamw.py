@@ -39,7 +39,12 @@ class DAdaptAdamWState(NamedTuple):
   # Distance to solution estimate.
   estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
   numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  # Number of steps that made progress. Frozen on steps that do not, and so
+  # indexes the bias correction only.
   count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
+  # Number of calls to `update_fn`. Unlike `count`, this advances
+  # unconditionally, and indexes `learning_rate` when it is a schedule.
+  sched_count: jax.typing.ArrayLike  # shape=(), dtype=jnp.int32.
 
 
 def dadapt_adamw(
@@ -62,7 +67,10 @@ def dadapt_adamw(
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
       is a linear_schedule with init_value=1.0 and end_value=0, combined with a
-      0-20% learning rate warmup.
+      0-20% learning rate warmup. A schedule is indexed by the number of calls
+      to the update function, so it advances even on steps that make no
+      progress, and may therefore start at zero. While it is zero no step is
+      taken and no state is accumulated.
     betas: Betas for the underlying AdamW Optimizer.
     eps: eps for the underlying AdamW Optimizer.
     estim_lr0: Initial (under-)estimate of the learning rate.
@@ -94,8 +102,15 @@ def dadapt_adamw(
     estim_lr = jnp.asarray(estim_lr0, dtype=params_dtype)
     numerator_weighted = jnp.zeros([], dtype=params_dtype)
     count = jnp.zeros([], jnp.int32)
+    sched_count = jnp.zeros([], jnp.int32)
     return DAdaptAdamWState(
-        exp_avg, exp_avg_sq, grad_sum, estim_lr, numerator_weighted, count
+        exp_avg,
+        exp_avg_sq,
+        grad_sum,
+        estim_lr,
+        numerator_weighted,
+        count,
+        sched_count,
     )
 
   def update_fn(
@@ -112,7 +127,15 @@ def dadapt_adamw(
     count = state.count
     beta1, beta2 = betas
     sb2 = beta2 ** (0.5)
-    sched = learning_rate(count) if callable(learning_rate) else learning_rate
+    # NOTE: the schedule is indexed by `sched_count`, which advances on every
+    # call, rather than by `count`, which freezes on steps that make no
+    # progress. A schedule starting at zero would otherwise wedge itself: it
+    # would freeze `count`, and so keep returning zero forever.
+    sched = (
+        learning_rate(state.sched_count)
+        if callable(learning_rate)
+        else learning_rate
+    )
     grad_sum = state.grad_sum
     numerator_weighted = state.numerator_weighted
     count_inc = numerics.safe_increment(count)
@@ -120,27 +143,52 @@ def dadapt_adamw(
     dlr = state.estim_lr * sched * bc
     # pyrefly: ignore [missing-attribute]
     dlr = dlr.astype(numerator_weighted.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    # A zero learning rate contributes nothing to the estimate of `D`, so the
+    # momenta and `grad_sum` are left untouched while it is zero rather than
+    # being decayed towards zero by steps that were never taken.
+    is_active = jnp.asarray(sched) > 0
     s_weighted = jax.tree.map(
         lambda sk, eas: sk / (jnp.sqrt(eas) + eps), grad_sum, state.exp_avg_sq
     )
     numerator_acum = optax.tree.vdot(updates, s_weighted)
     exp_avg = jax.tree.map(
-        lambda ea, g: beta1 * ea + (1 - beta1) * dlr * g, state.exp_avg, updates
+        lambda ea, g: jnp.where(
+            is_active, beta1 * ea + (1 - beta1) * dlr * g, ea
+        ),
+        state.exp_avg,
+        updates,
     )
     exp_avg_sq = jax.tree.map(
-        lambda eas, g: beta2 * eas + (1 - beta2) * g * g,
+        lambda eas, g: jnp.where(
+            is_active, beta2 * eas + (1 - beta2) * g * g, eas
+        ),
         state.exp_avg_sq,
         updates,
     )
     grad_sum = jax.tree.map(
-        lambda sk, g: sb2 * sk + (1 - sb2) * dlr * g, grad_sum, updates
+        lambda sk, g: jnp.where(is_active, sb2 * sk + (1 - sb2) * dlr * g, sk),
+        grad_sum,
+        updates,
     )
-    grad_sum_l1 = optax.tree.sum(jax.tree.map(jnp.abs, grad_sum))
-    numerator_weighted = (
+    grad_sum_l1 = jnp.asarray(optax.tree.sum(jax.tree.map(jnp.abs, grad_sum)))
+    new_numerator_weighted = (
         sb2 * numerator_weighted + (1 - sb2) * dlr * numerator_acum
     )
-    d_estimate = numerator_weighted / ((1 - sb2) * grad_sum_l1)
-    estim_lr = jnp.maximum(state.estim_lr, d_estimate)
+    # `grad_sum_l1` is a sum of absolute values, so it is zero iff every
+    # gradient seen so far has been zero, or the learning rate has been zero
+    # throughout (in which case `grad_sum` has never been accumulated into).
+    # Dividing by it would yield NaN, and because `estim_lr` is a running
+    # maximum, that NaN would persist for the rest of training. Freeze the
+    # estimate and take no step instead.
+    is_progressing = jnp.logical_and(is_active, grad_sum_l1 > 0)
+    safe_grad_sum_l1 = jnp.where(is_progressing, grad_sum_l1, 1.0)
+    d_estimate = new_numerator_weighted / ((1 - sb2) * safe_grad_sum_l1)
+    estim_lr = jnp.where(
+        is_progressing, jnp.maximum(state.estim_lr, d_estimate), state.estim_lr
+    )
+    numerator_weighted = jnp.where(
+        is_progressing, new_numerator_weighted, state.numerator_weighted
+    )
     p_update = jax.tree.map(
         lambda ea, eas: -ea / (jnp.sqrt(eas) + eps),
         exp_avg,
@@ -153,13 +201,19 @@ def dadapt_adamw(
         -jnp.asarray(weight_decay * dlr), weight_decay_mask
     )
     p_update, _ = decay_tx.update(p_update, decay_tx.init(params), params)
+    # Masked after the decay so that the weight decay is skipped too, as it is
+    # when no step is taken.
+    p_update = jax.tree.map(
+        lambda u: jnp.where(is_progressing, u, 0.0), p_update
+    )
     new_state = DAdaptAdamWState(
         exp_avg,
         exp_avg_sq,
         grad_sum,
         estim_lr,
         numerator_weighted,
-        count_inc,
+        jnp.where(is_progressing, count_inc, count),
+        numerics.safe_increment(state.sched_count),
     )
     return p_update, new_state
 
