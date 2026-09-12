@@ -47,9 +47,23 @@ _DION_NS_COEFFS = [
     (2.8769, -3.1427, 1.2046),
     (2.8366, -3.0525, 1.2012),
 ]
+_sf = 1.05  # safety factor applied to Polar Express coefficients
+_POLAR_EXPRESS_NS_COEFFS = [
+    (a / _sf, b / _sf**3, c / _sf**5)
+    for a, b, c in (
+        (8.28721201814563, -23.595886519098837, 17.300387312530933),
+        (4.107059111542203, -2.9478499167379106, 0.5448431082926601),
+        (3.9486908534822946, -2.908902115962949, 0.5518191394370137),
+        (3.3184196573706015, -2.488488024314874, 0.51004894012372),
+        (2.300652019954817, -1.6689039845747493, 0.4188073119525673),
+    )
+]
+del _sf
+
 _NS_COEFFS_PRESET_DICT = {
     'standard': _DEFAULT_NS_COEFFS,
     'dion': _DION_NS_COEFFS,
+    'polar_express': _POLAR_EXPRESS_NS_COEFFS,
 }
 
 
@@ -286,6 +300,7 @@ def orthogonalize_via_newton_schulz(
     ] = 'frobenius',
     eps: jax.typing.ArrayLike = 1e-8,
     dimension_numbers: MuonDimensionNumbers | None = None,
+    gram: bool = False,
 ) -> jax.Array:
   r"""Orthogonalize via Newton-Schulz iteration.
 
@@ -304,10 +319,17 @@ def orthogonalize_via_newton_schulz(
       Must have shape (n, 3) where n is the number of iterations.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a 2D array.
-    preconditioning: Which preconditioning method to use.
+    preconditioning: Which preconditioning method to use. Ignored when
+      ``gram=True``.
     eps: Term added to denominators to improve numerical stability.
     dimension_numbers: Optional spec for reshaping a tensor before and after the
       orthogonalization, to support non-2D parameters.
+    gram: If True, use the Gram Newton-Schulz method (Amsel et al., 2025).
+      Rather than repeatedly computing :math:`XX^\top` each iteration, it
+      accumulates the Gram matrix :math:`R = XX^\top` and an orthogonal
+      transform :math:`Q` in :math:`n \times n` space, saving FLOPs when
+      the aspect ratio :math:`m/n` is large. Recommended with
+      ``ns_coeffs='polar_express'`` or ``ns_coeffs='dion'``.
 
   Returns:
     The orthogonalized matrix.
@@ -328,37 +350,88 @@ def orthogonalize_via_newton_schulz(
       x = x.T
       transposed = True
 
-    ns_iterators = {
-        'frobenius': _base_ns_iterator,
-        'spectral': _base_ns_iterator,
-        'aol': _aol_ns_iterator,
-        'schatten': _schatten_ns_iterator,
-    }
-    if preconditioning not in _PRECONDITIONINGS:
-      raise ValueError(f'Unknown preconditioning {preconditioning}')
-    _ns_iterator = ns_iterators[preconditioning]
-
-    if preconditioning == 'frobenius':
-      x /= jnp.linalg.norm(x, ord='fro') + eps
-    elif preconditioning == 'spectral':
-      x /= jnp.linalg.norm(x, ord=2) + eps
-    else:
-      pass
-
     ns_coeffs_ = ns_coeffs.astype(x.dtype)
 
-    if ns_coeffs_.ndim == 1:
-      x = jax.lax.fori_loop(
-          0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
-          unroll=False)
-    else:
-      def _scan_body(carry, coeffs_step):
-        i, x = carry
-        x_new = _ns_iterator(i, x, coeffs_step)
-        return (i + 1, x_new), None
+    if gram:
+      n = x.shape[0]
+      x = x / (jnp.linalg.norm(x, ord='fro') + eps)
+      R = x @ x.T
+      Q = jnp.eye(n, dtype=x.dtype)
+      # Restart at step 2 (0-indexed) materialises Q back into X, which
+      # keeps the Gram matrix condition number bounded. See Amsel et al.,
+      # The Polar Express (2025).
+      _restart_at = 2
 
-      init_carry = (jnp.asarray(0, dtype=jnp.int32), x)
-      (_, x), _ = jax.lax.scan(_scan_body, init_carry, ns_coeffs_)
+      def _gram_body(carry, do_restart, a, b, c):
+        x, Q, R = carry
+
+        def _restart(tup):
+          xq, Qq, _ = tup
+          xq = Qq @ xq
+          return xq, jnp.eye(n, dtype=Qq.dtype), xq @ xq.T
+
+        x, Q, R = jax.lax.cond(
+            do_restart, _restart, lambda tup: tup, (x, Q, R)
+        )
+        Z = b * R + c * (R @ R)
+        RZ = R @ Z + a * R
+        return x, Q @ Z + a * Q, Z @ RZ + a * RZ
+
+      if ns_coeffs_.ndim == 1:
+        a, b, c = ns_coeffs_[0], ns_coeffs_[1], ns_coeffs_[2]
+
+        def _fori_body(t, carry):
+          return _gram_body(carry, t == _restart_at, a, b, c)
+
+        x, Q, _ = jax.lax.fori_loop(
+            0, ns_steps, _fori_body, (x, Q, R)
+        )
+      else:
+        restart_mask = jnp.arange(ns_coeffs_.shape[0]) == _restart_at
+
+        def _scan_body(carry, inputs):
+          coeff_row, do_restart = inputs
+          carry = _gram_body(
+              carry, do_restart, coeff_row[0], coeff_row[1], coeff_row[2]
+          )
+          return carry, None
+
+        (x, Q, _), _ = jax.lax.scan(
+            _scan_body, (x, Q, R), (ns_coeffs_, restart_mask)
+        )
+
+      x = Q @ x
+
+    else:
+      ns_iterators = {
+          'frobenius': _base_ns_iterator,
+          'spectral': _base_ns_iterator,
+          'aol': _aol_ns_iterator,
+          'schatten': _schatten_ns_iterator,
+      }
+      if preconditioning not in _PRECONDITIONINGS:
+        raise ValueError(f'Unknown preconditioning {preconditioning}')
+      _ns_iterator = ns_iterators[preconditioning]
+
+      if preconditioning == 'frobenius':
+        x /= jnp.linalg.norm(x, ord='fro') + eps
+      elif preconditioning == 'spectral':
+        x /= jnp.linalg.norm(x, ord=2) + eps
+      else:
+        pass
+
+      if ns_coeffs_.ndim == 1:
+        x = jax.lax.fori_loop(
+            0, ns_steps, lambda i, x: _ns_iterator(i, x, ns_coeffs_), x,
+            unroll=False)
+      else:
+        def _scan_body(carry, coeffs_step):
+          i, x = carry
+          x_new = _ns_iterator(i, x, coeffs_step)
+          return (i + 1, x_new), None
+
+        init_carry = (jnp.asarray(0, dtype=jnp.int32), x)
+        (_, x), _ = jax.lax.scan(_scan_body, init_carry, ns_coeffs_)
 
     if transposed:
       x = x.T
@@ -397,6 +470,7 @@ def scale_by_muon(
         'frobenius', 'spectral', 'aol', 'schatten'
     ] = 'frobenius',
     weight_dimension_numbers: WeightDimNumOrFn | None = None,
+    gram: bool = False,
 ) -> base.GradientTransformation:
   r"""Rescale updates according to the Muon algorithm.
 
@@ -426,6 +500,8 @@ def scale_by_muon(
       params of `MuonDimensionNumbers`s, specifying how to reshape the
       parameters before and after the orthogonalization OR a callable returning
       such a tree. None implies that all parameters are 2D matrices.
+    gram: If True, use the Gram Newton-Schulz method. See
+      :func:`orthogonalize_via_newton_schulz` for details.
 
   Returns:
     A `GradientTransformation` object.
@@ -503,7 +579,8 @@ def scale_by_muon(
     # Apply Newton-schulz orthogonalization.
     updates = jax.tree.map(
         lambda x, dim_num: orthogonalize_via_newton_schulz(
-            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num),
+            x, state.ns_coeffs, ns_steps, preconditioning, eps, dim_num, gram
+        ),
         mu_hat, resolved_weight_dim_nums, is_leaf=_is_weight_dim_nums)
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
@@ -554,6 +631,7 @@ def muon(
     adam_learning_rate: base.ScalarOrSchedule | None = None,
     muon_weight_dimension_numbers: WeightDimNumOrFn | None = None,
     consistent_rms: jax.typing.ArrayLike | None = None,
+    gram: bool = False,
 ) -> base.GradientTransformation:
   r"""Muon: Momentum Orthogonalized by Newton-schulz.
 
@@ -572,7 +650,8 @@ def muon(
     learning_rate: A global scaling factor, either fixed or evolving along
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     ns_coeffs: Coefficients for the Newton-schulz method (can be a string
-      indicator for a preset). Existing presets: `muon`, `dion`.
+      indicator for a preset). Existing presets: `standard`, `dion`,
+      `polar_express`. `polar_express` is recommended when ``gram=True``.
     ns_steps: Number of Newton-schulz iterations.
       Ignored if `ns_coeffs` is a tuple of tuples.
     beta: Decay rate for the exponentially weighted average of grads.
@@ -622,6 +701,11 @@ def muon(
       root mean square (RMS) shape-independent, like AdamW. `0.2` is recommended
       to match AdamW's empirical RMS. See <https://arxiv.org/abs/2502.16982>.
       If `None`, uses width scaling `sqrt(max(1, fan_out / fan_in))`.
+    gram: If True, orthogonalize via the Gram Newton-Schulz method
+      (Amsel et al., 2025) which works on the :math:`n \times n` Gram matrix
+      :math:`XX^\top` rather than :math:`X` directly, reducing per-iteration
+      cost when the matrix aspect ratio is large. Pair with
+      ``ns_coeffs='polar_express'`` for best results.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -709,6 +793,7 @@ def muon(
                   adaptive=adaptive,
                   preconditioning=preconditioning,
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
+                  gram=gram,
               ),
               scale_by_shape(
                   weight_dimension_numbers=muon_weight_dim_nums_fn,
@@ -732,3 +817,268 @@ def muon(
       },
       param_labels=param_labels,
   )
+
+
+# ---------------------------------------------------------------------------
+# SCION: Stochastic Conditional Gradient with Norm-Constrained LMOs
+# ---------------------------------------------------------------------------
+
+_LMO_CHOICES = ('spectral', 'sign', 'frobenius')
+
+
+def _apply_lmo(
+    x: jax.Array,
+    lmo: str,
+    ns_coeffs: jax.Array,
+    ns_steps: jax.typing.ArrayLike,
+    preconditioning: Literal['frobenius', 'spectral', 'aol', 'schatten'],
+    eps: jax.typing.ArrayLike,
+    gram: bool,
+) -> jax.Array:
+  """Apply a linear minimization oracle to a single array."""
+  if lmo == 'spectral':
+    dim_nums = (
+        MuonDimensionNumbers(reduction_axis=-2, output_axis=-1)
+        if x.ndim > 2 else None
+    )
+    return orthogonalize_via_newton_schulz(
+        x, ns_coeffs, ns_steps, preconditioning, eps, dim_nums, gram
+    )
+  elif lmo == 'sign':
+    return jnp.sign(x)
+  elif lmo == 'frobenius':
+    return x / (jnp.linalg.norm(x, ord='fro') + eps)
+  else:
+    raise ValueError(f'Unknown lmo {lmo!r}. Choose from {_LMO_CHOICES}')
+
+
+class ScaleByScionsState(NamedTuple):
+  """State for scale_by_scion."""
+  count: jax.typing.ArrayLike
+  mu: base.Updates
+  ns_coeffs: jax.typing.ArrayLike
+
+
+def scale_by_scion(
+    lmo: Literal['spectral', 'sign', 'frobenius'] = 'spectral',
+    beta: jax.typing.ArrayLike = 0.95,
+    ns_coeffs: Union[
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
+    ] = _DEFAULT_NS_COEFFS,
+    ns_steps: jax.typing.ArrayLike = 5,
+    eps: jax.typing.ArrayLike = 1e-8,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    nesterov: bool = True,
+    preconditioning: Literal[
+        'frobenius', 'spectral', 'aol', 'schatten'
+    ] = 'frobenius',
+    gram: bool = False,
+) -> base.GradientTransformation:
+  r"""Rescale updates via a norm-constrained linear minimization oracle.
+
+  This is the inner optimizer primitive for SCION (Pethick et al., 2025).
+  Each step computes Nesterov momentum and then applies the chosen LMO:
+
+  - ``'spectral'``: returns the polar factor :math:`UV^\top`, identical to
+    Muon. Uses Newton-Schulz iteration (parameters ``ns_coeffs``,
+    ``ns_steps``, ``preconditioning``, ``gram``).
+  - ``'sign'``: returns :math:`\operatorname{sign}(G)` element-wise, i.e.
+    steepest descent under the :math:`\ell_\infty` norm. Equivalent to the
+    Lion update rule for 1-D parameters.
+  - ``'frobenius'``: returns :math:`G / \|G\|_F`, normalised gradient.
+
+  Args:
+    lmo: Which linear minimization oracle to apply. One of
+      ``'spectral'``, ``'sign'``, or ``'frobenius'``.
+    beta: Momentum decay rate.
+    ns_coeffs: Newton-Schulz coefficients; only used when
+      ``lmo='spectral'``. See :func:`scale_by_muon` for details.
+    ns_steps: Newton-Schulz iteration count; ignored when
+      ``ns_coeffs`` is 2-D.
+    eps: Numerical stability term.
+    mu_dtype: Optional dtype for the momentum buffer.
+    nesterov: Whether to use Nesterov-style momentum.
+    preconditioning: Preconditioning variant for Newton-Schulz;
+      only used when ``lmo='spectral'``.
+    gram: Use Gram Newton-Schulz when ``lmo='spectral'``.
+
+  Returns:
+    A :class:`GradientTransformation`.
+
+  References:
+    Pethick et al., `Training Deep Learning Models with
+    Norm-Constrained LMOs <https://arxiv.org/abs/2502.07529>`_, 2025
+  """
+  mu_dtype = utils.canonicalize_dtype(mu_dtype)
+
+  def init_fn(params):
+    mu = optax.tree.zeros_like(params, dtype=mu_dtype)
+    ns_coeffs_ = jnp.asarray(ns_coeffs)
+    if ns_coeffs_.ndim > 2 or ns_coeffs_.shape[-1] != 3:
+      raise ValueError(
+          f'ns_coeffs must have shape (3,) or (n, 3), got {ns_coeffs_.shape}'
+      )
+    if ns_coeffs_.ndim == 2:
+      # pyrefly: ignore[unsupported-operation]
+      ns_coeffs_ = ns_coeffs_[-ns_steps:]
+    return ScaleByScionsState(
+        count=jnp.zeros([], jnp.int32),
+        mu=mu,
+        ns_coeffs=ns_coeffs_,
+    )
+
+  def update_fn(updates, state, params=None):
+    del params
+    mu = optax.tree.update_moment(updates, state.mu, beta, 1)
+    count_inc = numerics.safe_increment(state.count)
+    if nesterov:
+      mu_hat = jax.tree.map(
+          lambda m, g: beta * m + (1 - beta) * g,
+          optax.tree.bias_correction(
+              mu, beta, numerics.safe_increment(count_inc)
+          ),
+          optax.tree.bias_correction(updates, beta, count_inc),
+      )
+    else:
+      mu_hat = optax.tree.bias_correction(mu, beta, count_inc)
+
+    updates = jax.tree.map(
+        lambda x: _apply_lmo(
+            x, lmo, state.ns_coeffs, ns_steps, preconditioning, eps, gram
+        ),
+        mu_hat,
+    )
+    mu = optax.tree.cast(mu, mu_dtype)
+    return updates, ScaleByScionsState(
+        count=count_inc, mu=mu, ns_coeffs=state.ns_coeffs
+    )
+
+  return base.GradientTransformation(init_fn, update_fn)
+
+
+def scion(
+    learning_rate: base.ScalarOrSchedule,
+    lmo: Union[
+        Literal['auto', 'spectral', 'sign', 'frobenius'], str
+    ] = 'auto',
+    beta: jax.typing.ArrayLike = 0.95,
+    ns_coeffs: Union[
+        tuple[jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike],
+        tuple[
+            tuple[
+                jax.typing.ArrayLike, jax.typing.ArrayLike, jax.typing.ArrayLike
+            ],
+            ...,
+        ],
+        str,
+    ] = _DEFAULT_NS_COEFFS,
+    ns_steps: jax.typing.ArrayLike = 5,
+    eps: jax.typing.ArrayLike = 1e-8,
+    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_decay_mask: Optional[
+        Union[Any, Callable[[base.Params], Any]]
+    ] = None,
+    mu_dtype: Optional[jax.typing.DTypeLike] = None,
+    *,
+    nesterov: bool = True,
+    preconditioning: Literal[
+        'frobenius', 'spectral', 'aol', 'schatten'
+    ] = 'frobenius',
+    gram: bool = False,
+) -> base.GradientTransformation:
+  r"""SCION: Stochastic Conditional Gradient with Norm-Constrained LMOs.
+
+  SCION (Pethick et al., 2025) is a generalisation of Muon that selects
+  the update direction via a linear minimization oracle (LMO) over a
+  norm ball rather than always using the spectral-norm LMO (polar factor).
+
+  The theoretical connection is: Muon performs steepest descent under the
+  spectral norm :math:`\|W\|_2`, whose dual is the nuclear norm. SCION
+  makes the norm choice explicit and extends it to embeddings, biases, and
+  other parameter types that benefit from a different geometry.
+
+  With ``lmo='auto'`` (default):
+
+  - Parameters with ``ndim >= 2`` use ``'spectral'`` (Newton-Schulz,
+    same as Muon).
+  - Parameters with ``ndim == 1`` use ``'sign'`` (element-wise, same
+    as Lion for biases and layer-norm scales).
+
+  Args:
+    learning_rate: Global step size, fixed or scheduled.
+    lmo: Linear minimization oracle. ``'auto'`` routes by parameter
+      rank (see above). ``'spectral'``, ``'sign'``, or ``'frobenius'``
+      apply the same LMO to every parameter.
+    beta: Momentum decay rate.
+    ns_coeffs: Newton-Schulz coefficients for the spectral LMO.
+      Accepts a preset string: ``'standard'``, ``'dion'``,
+      ``'polar_express'``.
+    ns_steps: Newton-Schulz iteration count.
+    eps: Numerical stability term.
+    weight_decay: L2 regularisation coefficient.
+    weight_decay_mask: Mask controlling which parameters receive
+      weight decay.
+    mu_dtype: Optional dtype for the momentum buffer.
+    nesterov: Whether to use Nesterov-style momentum.
+    preconditioning: Preconditioning variant for Newton-Schulz.
+    gram: Use Gram Newton-Schulz for the spectral LMO.
+
+  Returns:
+    The corresponding :class:`GradientTransformation`.
+
+  References:
+    Pethick et al., `Training Deep Learning Models with
+    Norm-Constrained LMOs <https://arxiv.org/abs/2502.07529>`_, 2025
+
+    Jordan, `modded-nanogpt: Speedrunning the NanoGPT baseline
+    <https://github.com/KellerJordan/modded-nanogpt>`_, 2024
+
+    Amsel et al., `The Polar Express: Optimal Matrix Sign Methods
+    and Their Application to the Muon Algorithm
+    <https://arxiv.org/abs/2505.16932>`_, 2025
+  """
+  if isinstance(ns_coeffs, str):
+    if ns_coeffs not in _NS_COEFFS_PRESET_DICT:
+      raise ValueError(f'Unknown ns_coeffs preset: {ns_coeffs!r}')
+    ns_coeffs_ = _NS_COEFFS_PRESET_DICT[ns_coeffs]
+  else:
+    ns_coeffs_ = ns_coeffs
+
+  def _make_scale(lmo_choice):
+    return combine.chain(
+        scale_by_scion(
+            lmo=lmo_choice,
+            beta=beta,
+            ns_coeffs=ns_coeffs_,  # pyrefly: ignore[bad-argument-type]
+            ns_steps=ns_steps,
+            eps=eps,
+            mu_dtype=mu_dtype,
+            nesterov=nesterov,
+            preconditioning=preconditioning,
+            gram=gram,
+        ),
+        # pyrefly: ignore[bad-argument-type]
+        transform.add_decayed_weights(weight_decay, weight_decay_mask),
+        transform.scale_by_learning_rate(learning_rate),
+    )
+
+  if lmo == 'auto':
+    param_labels = lambda params: jax.tree.map(
+        lambda x: 'matrix' if x.ndim >= 2 else 'vector', params
+    )
+    return combine.partition(
+        transforms={
+            'matrix': _make_scale('spectral'),
+            'vector': _make_scale('sign'),
+        },
+        param_labels=param_labels,
+    )
+  else:
+    return _make_scale(lmo)
