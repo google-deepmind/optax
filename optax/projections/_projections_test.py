@@ -270,6 +270,95 @@ class ProjectionsTest(parameterized.TestCase):
     y_expected = x
     assert optax.tree.allclose(y_actual, y_expected)
 
+  def test_projection_affine_set(self):
+    rng = np.random.RandomState(0)
+    a = jnp.asarray(rng.randn(3, 7).astype(np.float32))
+    b = jnp.asarray(rng.randn(3).astype(np.float32))
+    x = jnp.asarray(rng.randn(7).astype(np.float32))
+    p = proj.projection_affine_set(x, a, b)
+
+    with self.subTest('Check feasibility'):
+      np.testing.assert_array_almost_equal(a @ p, b)
+
+    with self.subTest('Check optimality'):
+      # p is the projection iff a @ p = b and x - p is orthogonal to the
+      # null space of a.
+      null_space = np.linalg.svd(a)[2][a.shape[0]:]
+      np.testing.assert_array_almost_equal(
+          null_space @ (x - p), jnp.zeros(null_space.shape[0])
+      )
+
+    with self.subTest('Check idempotence'):
+      np.testing.assert_array_almost_equal(
+          proj.projection_affine_set(p, a, b), p, decimal=5
+      )
+
+    with self.subTest('Check consistency with projection_hyperplane'):
+      p_affine = proj.projection_affine_set(x, a[:1], b[:1])
+      p_hyperplane = proj.projection_hyperplane(x, a[0], b[0])
+      np.testing.assert_array_almost_equal(p_affine, p_hyperplane)
+
+  def test_projection_box_section(self):
+    rng = np.random.RandomState(0)
+    x = jnp.asarray(rng.randn(8).astype(np.float32))
+    w = jnp.asarray(rng.uniform(0.5, 2.0, size=8).astype(np.float32))
+    lower = jnp.asarray(rng.randn(8).astype(np.float32) - 1.0)
+    upper = lower + jnp.asarray(rng.uniform(0.5, 2.0, size=8).astype(
+        np.float32))
+    c = 0.7 * jnp.dot(w, lower) + 0.3 * jnp.dot(w, upper)
+    p = proj.projection_box_section(x, lower, upper, w, c)
+
+    with self.subTest('Check feasibility'):
+      np.testing.assert_almost_equal(jnp.dot(w, p), c, decimal=4)
+      self.assertTrue(jnp.all(p >= lower))
+      self.assertTrue(jnp.all(p <= upper))
+
+    with self.subTest('Check idempotence'):
+      np.testing.assert_array_almost_equal(
+          proj.projection_box_section(p, lower, upper, w, c), p, decimal=5
+      )
+
+    with self.subTest('Check under jit'):
+      p_jit = jax.jit(proj.projection_box_section)(x, lower, upper, w, c)
+      np.testing.assert_array_almost_equal(p_jit, p)
+
+    with self.subTest('Check consistency with projection_simplex'):
+      # With lower=0, an inactive upper bound and unit weights, the box
+      # section is the unit simplex.
+      ones = jnp.ones_like(x)
+      np.testing.assert_array_almost_equal(
+          proj.projection_box_section(x, 0.0, 10.0, ones, 1.0),
+          proj.projection_simplex(x),
+      )
+
+  def test_projection_box_section_jacobian(self):
+    rng = np.random.RandomState(0)
+    x = jnp.asarray(rng.randn(8).astype(np.float32))
+    w = jnp.asarray(rng.uniform(0.5, 2.0, size=8).astype(np.float32))
+    lower = jnp.asarray(rng.randn(8).astype(np.float32) - 1.0)
+    upper = lower + jnp.asarray(rng.uniform(0.5, 2.0, size=8).astype(
+        np.float32))
+    c = 0.7 * jnp.dot(w, lower) + 0.3 * jnp.dot(w, upper)
+    v = jnp.asarray(rng.randn(8).astype(np.float32))
+
+    fun = lambda x: proj.projection_box_section(x, lower, upper, w, c)
+
+    with self.subTest('Check against finite difference'):
+      jvp = jax.jvp(fun, (x,), (v,))[1]
+      eps = 1e-3
+      jvp_finite_diff = (fun(x + eps * v) - fun(x - eps * v)) / (2 * eps)
+      np.testing.assert_array_almost_equal(jvp, jvp_finite_diff, decimal=3)
+
+    with self.subTest('Check gradient with respect to c'):
+      fun_c = lambda c: jnp.sum(
+          proj.projection_box_section(x, lower, upper, w, c) ** 2
+      )
+      eps = 1e-2
+      grad_finite_diff = (fun_c(c + eps) - fun_c(c - eps)) / (2 * eps)
+      np.testing.assert_almost_equal(
+          jax.grad(fun_c)(c), grad_finite_diff, decimal=3
+      )
+
 
 if __name__ == '__main__':
   absltest.main()

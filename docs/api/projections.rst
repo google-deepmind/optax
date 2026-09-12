@@ -33,7 +33,9 @@ Available projections
 .. autosummary::
     :toctree: generated/
 
+    projection_affine_set
     projection_box
+    projection_box_section
     projection_hypercube
     projection_l1_ball
     projection_l1_sphere
