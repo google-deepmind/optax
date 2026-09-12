@@ -1,0 +1,34 @@
+name: Generate Markdown from Notebooks
+
+on:
+  pull_request:
+    paths:
+      - '**/*.ipynb'
+
+permissions:
+  contents: write # Needed to push changes back to the PR
+
+jobs:
+  convert-notebooks:
+    name: "Convert Notebooks to Markdown"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
+        with:
+          ref: ${{ github.head_ref }} # Checkout the PR branch
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v5
+        with:
+            python-version: "3.12"
+      - name: Install Jupytext
+        run: pip install jupytext
+      - name: Convert Notebooks to Markdown
+        # Find all notebooks and convert them to markdown
+        run: |
+          find . -name "*.ipynb" -exec jupytext --to md {} +
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+        with:
+          commit_message: "Auto-generate markdown from Jupyter notebooks"
+          file_pattern: "*.md"
