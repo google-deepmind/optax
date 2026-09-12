@@ -386,28 +386,26 @@ def softmax_cross_entropy_with_integer_labels(
   .. versionchanged:: 0.2.4
     Added ``axis`` and ``where`` arguments.
   """
+  logits = jnp.asarray(logits)
+  labels = jnp.asarray(labels)
   utils.check_subdtype(logits, jnp.floating)
   utils.check_subdtype(labels, jnp.integer)
-  # pyrefly: ignore [missing-attribute]
-  if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    where = jnp.expand_dims(where, axis)
+  if where is not None:
+    where = jnp.asarray(where)
+    if where.ndim != logits.ndim:
+      where = jnp.expand_dims(where, axis)
   if isinstance(axis, int):
-    # pyrefly: ignore [missing-attribute]
-    axis = canonicalize_axis(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    axis = canonicalize_axis(axis, logits.ndim)
   elif isinstance(axis, tuple):
     # Move all "feature" dimensions to the end preserving axis ordering and
     # subsequent flattening "feature" dimensions to a single one.
-    # pyrefly: ignore [missing-attribute]
-    logit_axis = canonicalize_axes(axis, logits.ndim)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
-    # pyrefly: ignore [missing-attribute]
-    batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    logit_axis = canonicalize_axes(axis, logits.ndim)
+    batch_axis = tuple(x for x in range(logits.ndim) if x not in logit_axis)
     axis = len(batch_axis)
-    # pyrefly: ignore [missing-attribute]
-    logits = logits.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    logits = logits.transpose(batch_axis + logit_axis)
     logits = logits.reshape(logits.shape[:len(batch_axis)] + (-1,))
     if where is not None:
-      # pyrefly: ignore [missing-attribute]
-      where = where.transpose(batch_axis + logit_axis)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+      where = where.transpose(batch_axis + logit_axis)
       where = where.reshape(where.shape[:len(batch_axis)] + (-1,))
   else:
     raise ValueError('Keyword argument \'axis\' must be of type \'int\' or '

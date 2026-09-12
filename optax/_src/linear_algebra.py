@@ -26,7 +26,7 @@ from optax._src import base
 import optax.tree
 
 
-def _normalize_tree(x):
+def _normalize_tree(x: base.ArrayTree) -> base.ArrayTree:
   # divide by the L2 norm of the tree weights.
   return optax.tree.scale(1.0 / optax.tree.norm(x), x)
 
