@@ -42,7 +42,12 @@ class ProdigyState(NamedTuple):
   # Distance to solution estimate.
   estim_lr: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
   numerator_weighted: jax.typing.ArrayLike  # shape=(), dtype=jnp.float32.
+  # Number of steps that made progress. Frozen on steps that do not, and so
+  # indexes the bias correction only.
   count: jax.typing.ArrayLike  # shape=(), dtype=int32.
+  # Number of calls to `update_fn`. Unlike `count`, this advances
+  # unconditionally, and indexes `learning_rate` when it is a schedule.
+  sched_count: jax.typing.ArrayLike  # shape=(), dtype=int32.
 
 
 def prodigy(
@@ -69,7 +74,10 @@ def prodigy(
   Args:
     learning_rate: Learning rate scheduling parameter. The recommended schedule
       is a linear_schedule with init_value=1.0 and end_value=0, combined with a
-      0-20% learning rate warmup.
+      0-20% learning rate warmup. A schedule is indexed by the number of calls
+      to the update function, so it advances even on steps that make no
+      progress, and may therefore start at zero. While it is zero no step is
+      taken and no state is accumulated.
     betas: Betas for the underlying AdamW Optimizer.
     beta3: Optional momentum parameter for estimation of D.
     eps: eps for the underlying AdamW Optimizer.
@@ -113,6 +121,7 @@ def prodigy(
     estim_lr = jnp.asarray(estim_lr0, dtype=params_dtype)
     numerator_weighted = jnp.zeros((), dtype=params_dtype)
     count = jnp.zeros((), jnp.int32)
+    sched_count = jnp.zeros((), jnp.int32)
     return ProdigyState(
         exp_avg,
         exp_avg_sq,
@@ -121,6 +130,7 @@ def prodigy(
         estim_lr,
         numerator_weighted,
         count,
+        sched_count,
     )
 
   def update_fn(
@@ -136,7 +146,15 @@ def prodigy(
       raise ValueError(base.NO_PARAMS_MSG)
     count = state.count
     count_inc = numerics.safe_increment(count)
-    sched = learning_rate(count) if callable(learning_rate) else learning_rate
+    # NOTE: the schedule is indexed by `sched_count`, which advances on every
+    # call, rather than by `count`, which freezes on steps that make no
+    # progress. A schedule starting at zero would otherwise wedge itself: it
+    # would freeze `count`, and so keep returning zero forever.
+    sched = (
+        learning_rate(state.sched_count)
+        if callable(learning_rate)
+        else learning_rate
+    )
     grad_sum = state.grad_sum
     params0 = state.params0
     estim_lr = state.estim_lr
@@ -144,30 +162,54 @@ def prodigy(
     bc = ((1 - beta2**count_inc) ** 0.5) / (1 - beta1**count_inc)
     # pyrefly: ignore [missing-attribute]
     dlr = jnp.asarray(estim_lr * sched * bc, dtype=estim_lr.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+    is_active = jnp.asarray(sched) > 0
     dg = jax.tree.map(lambda g: estim_lr * g, updates)
     param_diff = jax.tree.map(lambda p0, p: p0 - p, params0, params)
     numerator_acum = optax.tree.vdot(updates, param_diff)
     exp_avg = jax.tree.map(
-        lambda ea, dgk: beta1 * ea + (1 - beta1) * dgk, state.exp_avg, dg
+        lambda ea, dgk: jnp.where(
+            is_active, beta1 * ea + (1 - beta1) * dgk, ea
+        ),
+        state.exp_avg,
+        dg,
     )
     exp_avg_sq = jax.tree.map(
-        lambda eas, dgk: beta2 * eas + (1 - beta2) * dgk * dgk,
+        lambda eas, dgk: jnp.where(
+            is_active, beta2 * eas + (1 - beta2) * dgk * dgk, eas
+        ),
         state.exp_avg_sq,
         dg,
     )
     if safeguard_warmup:
       grad_sum = jax.tree.map(
-          lambda sk, dgk: beta3 * sk + estim_lr * dgk / estim_lr0, grad_sum, dg
+          lambda sk, dgk: jnp.where(
+              is_active, beta3 * sk + estim_lr * dgk / estim_lr0, sk
+          ),
+          grad_sum,
+          dg,
       )
     else:
       grad_sum = jax.tree.map(
-          lambda sk, dgk: beta3 * sk + dlr * dgk / estim_lr0, grad_sum, dg
+          lambda sk, dgk: jnp.where(
+              is_active, beta3 * sk + dlr * dgk / estim_lr0, sk
+          ),
+          grad_sum,
+          dg,
       )
-    numerator_weighted = beta3 * numerator_weighted
-    numerator_weighted += (estim_lr / estim_lr0) * dlr * numerator_acum
-    denominator = optax.tree.sum(jax.tree.map(jnp.abs, grad_sum))
-    lr_estimate = estim_lr_coef * numerator_weighted / denominator
-    estim_lr = jnp.maximum(state.estim_lr, lr_estimate)
+    new_numerator_weighted = (
+        beta3 * numerator_weighted
+        + (estim_lr / estim_lr0) * dlr * numerator_acum
+    )
+    denominator = jnp.asarray(optax.tree.sum(jax.tree.map(jnp.abs, grad_sum)))
+    is_progressing = jnp.logical_and(is_active, denominator > 0)
+    safe_denominator = jnp.where(is_progressing, denominator, 1.0)
+    lr_estimate = estim_lr_coef * new_numerator_weighted / safe_denominator
+    estim_lr = jnp.where(
+        is_progressing, jnp.maximum(state.estim_lr, lr_estimate), state.estim_lr
+    )
+    numerator_weighted = jnp.where(
+        is_progressing, new_numerator_weighted, state.numerator_weighted
+    )
 
     # Factor out `-dlr` so that the decay scale is the plain `weight_decay`,
     # letting us reuse `add_decayed_weights` (which also handles the masking).
@@ -178,6 +220,9 @@ def prodigy(
     )
     ascent_dir, _ = decay_tx.update(ascent_dir, decay_tx.init(params), params)
     p_update = optax.tree.scale(-dlr, ascent_dir)
+    p_update = jax.tree.map(
+        lambda u: jnp.where(is_progressing, u, 0.0), p_update
+    )
 
     new_state = ProdigyState(
         exp_avg,
@@ -186,7 +231,8 @@ def prodigy(
         params0,
         estim_lr,
         numerator_weighted,
-        count_inc,
+        jnp.where(is_progressing, count_inc, count),
+        numerics.safe_increment(state.sched_count),
     )
     return p_update, new_state
 
