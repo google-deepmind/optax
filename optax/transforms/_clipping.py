@@ -99,7 +99,11 @@ def clip_by_global_norm(
     # once analyzed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
     # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
-    trigger = jnp.squeeze(g_norm < max_norm)
+    # Non-strict comparison: clipping updates to their own norm is the identity,
+    # and taking the pass-through branch at equality avoids computing 0/0 = NaN
+    # when the global norm and max_norm are both zero (e.g. all-zero gradients
+    # under a schedule-driven max_norm that reaches zero).
+    trigger = jnp.squeeze(g_norm <= max_norm)
     utils.check_rank(trigger, 0)  # A scalar.
 
     def clip_fn(t):
