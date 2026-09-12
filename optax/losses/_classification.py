@@ -379,6 +379,14 @@ def softmax_cross_entropy_with_integer_labels(
     `Multinomial Logistic Regression
     <https://en.wikipedia.org/wiki/Multinomial_logistic_regression>`_, Wikipedia
 
+  .. note::
+    ``logits``, ``labels`` and ``where`` are annotated as
+    :obj:`jax.typing.ArrayLike` for backwards compatibility, but this function
+    operates on them as :class:`jax.Array` (it relies on ``ndim``, ``shape``,
+    ``transpose`` and ``reshape``), so they should have been denoted as
+    :class:`jax.Array`. Inputs are converted with :func:`jax.numpy.asarray`
+    wherever array operations are required.
+
   .. seealso:: This function is similar to
     :func:`optax.losses.softmax_cross_entropy`, but accepts integer labels
     instead of one-hot labels.
