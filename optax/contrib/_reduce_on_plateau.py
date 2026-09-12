@@ -117,7 +117,9 @@ def reduce_on_plateau(
         avg_value < (1 - rtol) * state.best_value - atol, 1, 0
     )
     new_best_value: jax.Array = jnp.where(
-        has_improved, avg_value.astype(state.best_value.dtype), state.best_value
+        has_improved,
+        jnp.astype(avg_value, jnp.asarray(state.best_value).dtype),
+        state.best_value,
     )
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_increment(state.plateau_count)
@@ -154,11 +156,13 @@ def reduce_on_plateau(
     )
     new_state = ReduceLROnPlateauState(
         plateau_count=new_plateau_count,
-        best_value=new_best_value.astype(state.best_value.dtype),
+        best_value=jnp.astype(
+            new_best_value, jnp.asarray(state.best_value).dtype
+        ),
         scale=new_scale,
         cooldown_count=new_cooldown_count,
         count=jnp.asarray(0, dtype=jnp.int32),
-        avg_value=jnp.asarray(0.0, avg_value.dtype),
+        avg_value=jnp.asarray(0.0, jnp.asarray(avg_value).dtype),
     )
     return new_state
 
@@ -176,13 +180,11 @@ def reduce_on_plateau(
     new_count = numerics.safe_increment(count)
     new_avg_value = (
         count * state.avg_value
-        # pyrefly: ignore [missing-attribute]
-        + jnp.astype(value, state.avg_value.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        + jnp.astype(value, jnp.asarray(state.avg_value).dtype)
     ) / new_count
     new_state = state._replace(
-        # pyrefly: ignore [missing-attribute]
-        avg_value=new_avg_value.astype(state.avg_value.dtype),
-        count=new_count,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        avg_value=jnp.astype(new_avg_value, jnp.asarray(state.avg_value).dtype),
+        count=new_count,
     )
 
     new_state = jax.lax.cond(

@@ -51,7 +51,7 @@ def canonicalize_key(key_or_seed: jax.Array | int) -> jax.Array:
 
 def check_subdtype(array: jax.typing.ArrayLike, subdtype: jax.typing.DTypeLike):
   """Check that `array`'s dtype is a subdtype of `subdtype`."""
-  dtype = jax.dtypes.result_type(array)
+  dtype = jnp.asarray(array).dtype
   if not jnp.issubdtype(dtype, subdtype):
     raise TypeError(
         f'Expected the input to have a dtype that is a subdtype of {subdtype}, '
@@ -88,17 +88,15 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
     NxDxD tensor, with the same contents as `a` but with the diagonal
       changed to `new_diags`.
   """
-  # pyrefly: ignore [missing-attribute]
-  a_dim, new_diags_dim = len(a.shape), len(new_diags.shape)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  a_dim, new_diags_dim = jnp.ndim(a), jnp.ndim(new_diags)
   if a_dim != 3:
     raise ValueError(f'Expected `a` to be a 3D tensor, got {a_dim}D instead')
   if new_diags_dim != 2:
     raise ValueError(
         f'Expected `new_diags` to be a 2D array, got {new_diags_dim}D instead'
     )
-  n, d, d1 = a.shape
-  # pyrefly: ignore [missing-attribute]
-  n_diags, d_diags = new_diags.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  n, d, d1 = jnp.shape(a)
+  n_diags, d_diags = jnp.shape(new_diags)
   if d != d1:
     raise ValueError(
         f'Shape mismatch: expected `a.shape` to be {(n, d, d)}, '
@@ -115,8 +113,7 @@ def set_diags(a: jax.Array, new_diags: jax.typing.ArrayLike) -> jax.Array:
   indices3 = indices2
 
   # Use numpy array setting
-  # pyrefly: ignore [missing-attribute]
-  a = a.at[indices1, indices2, indices3].set(new_diags.flatten())  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  a = a.at[indices1, indices2, indices3].set(jnp.ravel(new_diags))
   return a
 
 
