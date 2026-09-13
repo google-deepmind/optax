@@ -18,6 +18,9 @@
 
 from optax.contrib._acprop import acprop
 from optax.contrib._acprop import scale_by_acprop
+from optax.contrib._adahessian import adahessian
+from optax.contrib._adahessian import AdaHessianState
+from optax.contrib._adahessian import scale_by_adahessian
 from optax.contrib._ademamix import ademamix
 from optax.contrib._ademamix import scale_by_ademamix
 from optax.contrib._ademamix import scale_by_simplified_ademamix
@@ -70,7 +73,7 @@ from optax.contrib._schedule_free import schedule_free_adamw
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import schedule_free_sgd
 from optax.contrib._schedule_free import ScheduleFreeState
-from optax.contrib._sophia import hutchinson_estimator_diag_hessian
-from optax.contrib._sophia import HutchinsonState
+from optax.contrib._hutchinson import hutchinson_estimator_diag_hessian
+from optax.contrib._hutchinson import HutchinsonState
 from optax.contrib._sophia import sophia
 from optax.contrib._sophia import SophiaState
