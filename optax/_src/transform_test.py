@@ -244,6 +244,76 @@ class TransformTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
+  def test_adam_family_no_nan_on_float16_zero_grad(self):
+    """Test Adam-family optimizers produce zero updates on float16 zero-grad."""
+    optimizers = [
+        transform.scale_by_adam(),
+        transform.scale_by_amsgrad(),
+        transform.scale_by_belief(),
+        transform.scale_by_yogi(),
+        transform.scale_by_radam(),
+    ]
+    params = jnp.zeros((3, 3), dtype=jnp.float16)
+    grads = jnp.zeros((3, 3), dtype=jnp.float16)
+
+    for opt in optimizers:
+      state = opt.init(params)
+      updates, _ = opt.update(grads, state, params)
+      self.assertEqual(updates.dtype, jnp.float16)
+      self.assertFalse(jnp.isnan(updates).any())
+      self.assertFalse(jnp.isinf(updates).any())
+
+  def test_adam_family_complex_parameters(self):
+    """Test Adam-family optimizers preserve complex parameter components."""
+    optimizers = [
+        transform.scale_by_adam(),
+        transform.scale_by_amsgrad(),
+        transform.scale_by_belief(),
+        transform.scale_by_yogi(),
+        transform.scale_by_radam(),
+    ]
+    params = jnp.array([1.0 + 2.0j, 3.0 - 4.0j], dtype=jnp.complex64)
+    grads = jnp.array([0.1 + 0.2j, -0.3 + 0.4j], dtype=jnp.complex64)
+
+    for opt in optimizers:
+      state = opt.init(params)
+      updates, _ = opt.update(grads, state, params)
+      self.assertEqual(updates.dtype, jnp.complex64)
+      self.assertFalse(jnp.isnan(updates).any())
+      self.assertTrue((jnp.imag(updates) != 0.0).all())
+
+  def test_adam_family_array_epsilon(self):
+    """Test Adam optimizers support ArrayLike eps and reject invalid eps."""
+    arr_eps = jnp.asarray(1e-4, dtype=jnp.float32)
+    optimizers = [
+        transform.scale_by_adam(eps=arr_eps),
+        transform.scale_by_amsgrad(eps=arr_eps),
+        transform.scale_by_belief(eps=arr_eps),
+        transform.scale_by_yogi(eps=arr_eps),
+        transform.scale_by_radam(eps=arr_eps),
+    ]
+    params = jnp.zeros((3, 3), dtype=jnp.float16)
+    grads = jnp.zeros((3, 3), dtype=jnp.float16)
+
+    for opt in optimizers:
+      state = opt.init(params)
+      updates, _ = opt.update(grads, state, params)
+      self.assertEqual(updates.dtype, jnp.float16)
+      self.assertFalse(jnp.isnan(updates).any())
+      self.assertFalse(jnp.isinf(updates).any())
+
+    underflowed_eps = jnp.asarray(1e-8, dtype=jnp.float16)
+    with self.assertRaises(ValueError):
+      transform.scale_by_adam(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_amsgrad(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_belief(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_yogi(eps=underflowed_eps)
+    with self.assertRaises(ValueError):
+      transform.scale_by_radam(eps=underflowed_eps)
+
 
 if __name__ == '__main__':
   absltest.main()
