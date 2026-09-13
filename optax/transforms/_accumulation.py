@@ -181,7 +181,7 @@ def skip_not_finite(
   num_not_finite = optax.tree.sum(not_finite)
   should_skip = num_not_finite > 0  # pyrefly: ignore[unsupported-operation]
   # pyrefly: ignore [bad-return]
-  return should_skip, {  # pytype: disable=bad-return-type
+  return should_skip, {
       'should_skip': should_skip,
       'num_not_finite': num_not_finite,
   }
@@ -417,7 +417,6 @@ class MultiSteps:
   def has_updated(
       self, state: Union[MultiStepsState, base.ArrayTree]
   ) -> jax.typing.ArrayLike:
-    # Use `getattr` to bypass pytype checks.
     return jnp.logical_and(
         getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0
     )

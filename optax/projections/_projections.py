@@ -95,7 +95,7 @@ def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   """Projection onto the unit simplex."""
   s = 1
   # pyrefly: ignore [missing-attribute]
-  n_features = values.shape[0]  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  n_features = values.shape[0]
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
   ind = jnp.arange(n_features) + 1

@@ -37,7 +37,7 @@ import warnings
 # del _deprecation_getattr
 
 
-# Note that type checkers such as Pytype will not know about the deprecated
+# Note that type checkers will not know about the deprecated
 # names. If it is desirable that a deprecated name is known to the type checker,
 # add:
 # import typing

@@ -140,11 +140,11 @@ def tree_map_params(
     optional extra arguments.
   """
 
-  # Cast for pytype checks (no-op for other usages).
+  # Cast for type checks (no-op for other usages).
   placeholder = cast(base.ArrayTree, _ParamsPlaceholder())
 
   if isinstance(initable, Initable):
-    initable = cast(Initable, initable)  # for pytype checks
+    initable = cast(Initable, initable)  # for type checks
     state_with_placeholders = initable.init(placeholder)
   else:
     state_with_placeholders = initable(placeholder)

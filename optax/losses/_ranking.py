@@ -104,7 +104,7 @@ def _safe_reduce(
     output = jnp.where(where, output, 0.0)
 
   # pyrefly: ignore [bad-return]
-  return output  # pytype: disable=bad-return-type  # jax-arraylike
+  return output
 
 
 def ranking_softmax_loss(
@@ -141,7 +141,7 @@ def ranking_softmax_loss(
   """
   utils.check_subdtype(logits, jnp.floating)
   # pyrefly: ignore [missing-attribute]
-  labels = labels.astype(logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = labels.astype(logits.dtype)
 
   # Applies mask so that masked elements do not count towards the loss.
   if where is not None:

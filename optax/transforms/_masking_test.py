@@ -156,7 +156,6 @@ class MaskedTest(parameterized.TestCase):
           },
       }
 
-      # Required to make pytype happy
       new_state = cast(_masking.MaskedState, new_state)
 
       self.assertIsNone(new_state.inner_state['count'])

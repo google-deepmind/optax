@@ -177,12 +177,12 @@ def reduce_on_plateau(
     new_avg_value = (
         count * state.avg_value
         # pyrefly: ignore [missing-attribute]
-        + jnp.astype(value, state.avg_value.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        + jnp.astype(value, state.avg_value.dtype)
     ) / new_count
     new_state = state._replace(
         # pyrefly: ignore [missing-attribute]
         avg_value=new_avg_value.astype(state.avg_value.dtype),
-        count=new_count,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        count=new_count,
     )
 
     new_state = jax.lax.cond(

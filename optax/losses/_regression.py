@@ -49,7 +49,7 @@ def squared_error(
   # pyrefly: ignore[unsupported-operation]
   errors = predictions - targets if targets is not None else predictions
   # pyrefly: ignore [bad-return]
-  return errors**2  # pytype: disable=bad-return-type  # jax-arraylike
+  return errors**2
 
 
 def l2_loss(
@@ -135,7 +135,7 @@ def log_cosh(
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
   # pyrefly: ignore [missing-attribute, unsupported-operation]
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
 
 
 def cosine_similarity(

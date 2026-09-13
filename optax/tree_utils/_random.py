@@ -77,9 +77,8 @@ def tree_random_like(
     # pyrefly: ignore[bad-argument-count]
     sampler_ = lambda key, shape, dtype, *, out_sharding: sampler(  # pylint: disable=unnecessary-lambda
         key, shape, dtype
-    )  # pytype: disable=wrong-arg-count
+    )
   return jax.tree.map(
-      # pytype: disable=wrong-keyword-args
       lambda leaf, key: sampler_(
           key,
           leaf.shape,
@@ -87,7 +86,6 @@ def tree_random_like(
           # pyrefly: ignore [bad-argument-count, unexpected-keyword]
           out_sharding=jax.typeof(leaf).sharding,
       ),
-      # pytype: enable=wrong-keyword-args
       target_tree,
       keys_tree,
   )

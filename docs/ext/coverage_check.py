@@ -70,7 +70,7 @@ class OptaxCoverageCheck(builders.Builder):
     pass
 
   def finish(self) -> None:
-    documented_objects = frozenset(self.env.domaindata["py"]["objects"])  # pytype: disable=attribute-error
+    documented_objects = frozenset(self.env.domaindata["py"]["objects"])
     undocumented_objects = set(optax_public_symbols()) - documented_objects
     if undocumented_objects:
       undocumented_objects = tuple(sorted(undocumented_objects))

@@ -77,7 +77,7 @@ def sigmoid_binary_cross_entropy(
   """
   utils.check_subdtype(logits, jnp.floating)
   # pyrefly: ignore [missing-attribute]
-  labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = jnp.astype(labels, logits.dtype)
   log_p = jax.nn.log_sigmoid(logits)
   # log(1 - sigmoid(x)) = log_sigmoid(-x), the latter more numerically stable
   # pyrefly: ignore[unsupported-operation]
@@ -301,7 +301,7 @@ def softmax_cross_entropy(
   """
   utils.check_subdtype(logits, jnp.floating)
   # pyrefly: ignore [missing-attribute]
-  if where is not None and where.ndim != logits.ndim:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  if where is not None and where.ndim != logits.ndim:
     where = jnp.expand_dims(where, axis)  # pyrefly: ignore[bad-argument-type]
   log_probs = jax.nn.log_softmax(logits, axis, where)
   # pyrefly: ignore[no-matching-overload]
@@ -464,7 +464,7 @@ def multiclass_hinge_loss(
   .. versionadded:: 0.2.3
   """
   # pyrefly: ignore [missing-attribute]
-  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
   return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - _dot_last_dim(
       scores, one_hot_labels
   )
@@ -490,7 +490,7 @@ def multiclass_perceptron_loss(
   .. versionadded:: 0.2.2
   """
   # pyrefly: ignore [missing-attribute]
-  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
   return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
 
 
@@ -750,9 +750,9 @@ def ctc_loss_with_forward_probs(
   # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(logits[..., 0], logit_paddings)
   # pyrefly: ignore [missing-attribute]
-  batchsize, unused_maxinputlen, num_classes = logits.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  batchsize, unused_maxinputlen, num_classes = logits.shape
   # pyrefly: ignore [missing-attribute]
-  batchsize_of_labels, maxlabellen = labels.shape  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  batchsize_of_labels, maxlabellen = labels.shape
   if batchsize_of_labels != batchsize:
     raise ValueError(
         f'Expected `labels` to have batch size {batchsize}, got'
@@ -812,7 +812,7 @@ def ctc_loss_with_forward_probs(
     return (next_phi, next_emit), (next_phi, next_emit)
 
   # pyrefly: ignore [missing-attribute]
-  xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  xs = (logprobs_emit, logprobs_phi, logit_paddings.transpose((1, 0)))
   _, (logalpha_phi, logalpha_emit) = jax.lax.scan(
       loop_body, (logalpha_phi_init, logalpha_emit_init), xs
   )
@@ -939,7 +939,7 @@ def sigmoid_focal_loss(
   """
   utils.check_subdtype(logits, jnp.floating)
   # pyrefly: ignore [missing-attribute]
-  labels = jnp.astype(labels, logits.dtype)  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  labels = jnp.astype(labels, logits.dtype)
 
   # Cross-entropy loss
   ce_loss = sigmoid_binary_cross_entropy(logits, labels)
