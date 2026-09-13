@@ -113,8 +113,12 @@ def reduce_on_plateau(
   def _update_scale(state):
     # Update plateau count and check if plateaued
     avg_value = state.avg_value
+    # The margin is rtol * abs(best_value), so the factor follows the sign of
+    # best_value. Kept multiplicative so the initial infinite best_value stays
+    # infinite instead of becoming inf - inf = nan.
+    rel_factor = jnp.where(state.best_value >= 0, 1 - rtol, 1 + rtol)
     has_improved = jnp.where(
-        avg_value < (1 - rtol) * state.best_value - atol, 1, 0
+        avg_value < rel_factor * state.best_value - atol, 1, 0
     )
     new_best_value: jax.Array = jnp.where(
         has_improved, avg_value.astype(state.best_value.dtype), state.best_value
