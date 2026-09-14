@@ -33,6 +33,7 @@ from optax.transforms import _clipping
 MaskOrFn = Optional[Union[Any, Callable[[base.Params], Any]]]
 
 
+@functools.lru_cache(maxsize=None)
 def adabelief(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -157,6 +158,7 @@ def adabelief(
   return combine.chain(*chain_args)
 
 
+@functools.lru_cache(maxsize=None)
 def adadelta(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     rho: jax.typing.ArrayLike = 0.9,
@@ -239,6 +241,7 @@ def adadelta(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def adafactor(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     min_dim_size_to_factor: int = 128,
@@ -344,6 +347,7 @@ def adafactor(
   return combine.chain(*tx)
 
 
+@functools.lru_cache(maxsize=None)
 def adagrad(
     learning_rate: base.ScalarOrSchedule,
     initial_accumulator_value: jax.typing.ArrayLike = 0.1,
@@ -429,6 +433,7 @@ def adagrad(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def adam(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -613,6 +618,7 @@ nadam.__doc__ = r"""The NAdam optimizer.
 """
 
 
+@functools.lru_cache(maxsize=None)
 def adamw(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -824,6 +830,7 @@ nadamw.__doc__ = (
 )
 
 
+@functools.lru_cache(maxsize=None)
 def adan(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.98,
@@ -942,6 +949,7 @@ def adan(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def lion(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -1038,6 +1046,7 @@ def lion(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def amsgrad(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -1113,6 +1122,7 @@ def amsgrad(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def fromage(
     learning_rate: base.ScalarOrSchedule, min_norm: jax.typing.ArrayLike = 1e-6
 ) -> base.GradientTransformationExtraArgs:
@@ -1176,6 +1186,7 @@ def fromage(
     )
 
 
+@functools.lru_cache(maxsize=None)
 def lars(
     learning_rate: base.ScalarOrSchedule,
     weight_decay: base.ScalarOrSchedule = 0.0,
@@ -1249,6 +1260,7 @@ def lars(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def lamb(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -1318,6 +1330,7 @@ def lamb(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def noisy_sgd(
     learning_rate: base.ScalarOrSchedule,
     eta: jax.typing.ArrayLike = 0.01,
@@ -1393,6 +1406,7 @@ def noisy_sgd(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def sign_sgd(
     learning_rate: base.ScalarOrSchedule,
 ) -> base.GradientTransformationExtraArgs:
@@ -1457,6 +1471,7 @@ def sign_sgd(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def signum(
     learning_rate: base.ScalarOrSchedule,
     beta: jax.typing.ArrayLike = 0.9,
@@ -1497,6 +1512,7 @@ def signum(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def novograd(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -1572,6 +1588,7 @@ def novograd(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def optimistic_gradient_descent(
     learning_rate: base.ScalarOrSchedule,
     alpha: base.ScalarOrSchedule = 1.0,
@@ -1640,6 +1657,7 @@ def optimistic_gradient_descent(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def optimistic_adam(
     learning_rate: jax.typing.ArrayLike,
     optimism: Optional[jax.typing.ArrayLike] = None,
@@ -1764,6 +1782,7 @@ def optimistic_adam(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def optimistic_adam_v2(
     learning_rate: base.ScalarOrSchedule,
     *,
@@ -1886,6 +1905,7 @@ def optimistic_adam_v2(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def radam(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -1957,6 +1977,7 @@ def radam(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def rmsprop(
     learning_rate: base.ScalarOrSchedule,
     decay: jax.typing.ArrayLike = 0.9,
@@ -2071,6 +2092,7 @@ def rmsprop(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def sgd(
     learning_rate: base.ScalarOrSchedule,
     momentum: Optional[jax.typing.ArrayLike] = None,
@@ -2161,6 +2183,7 @@ def sgd(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def sm3(
     learning_rate: jax.typing.ArrayLike, momentum: jax.typing.ArrayLike = 0.9
 ) -> base.GradientTransformationExtraArgs:
@@ -2271,6 +2294,7 @@ def sm3(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def yogi(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -2330,6 +2354,7 @@ def yogi(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def adamax(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -2415,6 +2440,7 @@ def adamax(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def adamaxw(
     learning_rate: base.ScalarOrSchedule,
     b1: jax.typing.ArrayLike = 0.9,
@@ -2490,6 +2516,7 @@ def adamaxw(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def rprop(
     learning_rate: jax.typing.ArrayLike,
     eta_minus: jax.typing.ArrayLike = 0.5,
@@ -2561,6 +2588,7 @@ def rprop(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def polyak_sgd(
     max_learning_rate: jax.typing.ArrayLike = 1.0,
     scaling: base.ScalarOrSchedule = 1.0,
@@ -2652,6 +2680,7 @@ def polyak_sgd(
   )
 
 
+@functools.lru_cache(maxsize=None)
 def lbfgs(
     learning_rate: Optional[base.ScalarOrSchedule] = None,
     memory_size: int = 10,
