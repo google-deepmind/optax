@@ -50,6 +50,8 @@ _MAIN_OPTIMIZERS_UNDER_TEST = [
     {'opt_name': 'dog', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'dowg', 'opt_kwargs': {'learning_rate': 1.0}},
     {'opt_name': 'madgrad', 'opt_kwargs': {'learning_rate': 1e-2}},
+    {'opt_name': 'mars', 'opt_kwargs': {'learning_rate': 1e-3}},
+    {'opt_name': 'mars', 'opt_kwargs': {'learning_rate': 1e-3, 'gamma': 1.0}},
     {'opt_name': 'momo', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'momo_adam', 'opt_kwargs': {'learning_rate': 1e-1}},
     {'opt_name': 'muon', 'opt_kwargs': {'learning_rate': 1e-2}},
