@@ -22,6 +22,7 @@ Percy Liang, and Tengyu Ma.
 This contribution is heavily based on the implementation of Sophia by levanter
 (https://github.com/stanford-crfm/levanter) with some changes.
 """
+import logging
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 import jax
@@ -54,7 +55,16 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
 
   def init_fn(params):
     del params
-    key = random_seed if random_seed is not None else jax.random.PRNGKey(0)
+    if random_seed is not None:
+      key = random_seed
+    else:
+      logging.warning(
+          'hutchinson_estimator_diag_hessian: no random_seed provided. '
+          'Using fixed PRNGKey(0) which produces identical random vectors '
+          'across all runs. Pass a unique random_seed for independent '
+          'experiments.'
+      )
+      key = jax.random.PRNGKey(0)
     return HutchinsonState(key=key)
 
   def update_fn(updates, state, params=None, obj_fn=None, **extra_args):
@@ -62,9 +72,9 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
     # extra_args
     del extra_args
     if params is None:
-      raise ValueError("params must be provided to hutchinson update function.")
+      raise ValueError('params must be provided to hutchinson update function.')
     if obj_fn is None:
-      raise ValueError("obj_fn must be provided to hutchinson update function.")
+      raise ValueError('obj_fn must be provided to hutchinson update function.')
     del updates
     key, subkey = jax.random.split(state.key)
     random_signs = optax.tree.random_like(
@@ -74,7 +84,7 @@ def hutchinson_estimator_diag_hessian(random_seed: Optional[jax.Array] = None):
         dtype=jnp.float32,
     )
     random_signs = optax.tree.cast(random_signs,
-                                   optax.tree.dtype(params, "lowest"))
+                                   optax.tree.dtype(params, 'lowest'))
     hvp = jax.jvp(jax.grad(obj_fn), (params,), (random_signs,))[1]
     product = jax.tree.map(lambda h, r: h * r, hvp, random_signs)
     return product, HutchinsonState(key=key)
@@ -146,7 +156,7 @@ def scale_by_sophia(
 
   def update_fn(updates, state: SophiaState, params=None, **hess_fn_kwargs):
     if params is None:
-      raise ValueError("params must be provided to sophia's update function.")
+      raise ValueError('params must be provided to sophia\'s update function.')
     count_inc = numerics.safe_int32_increment(state.count)
 
     grads = updates
@@ -165,7 +175,7 @@ def scale_by_sophia(
         jax.lax.cond(
             # pyrefly: ignore[unsupported-operation]
             count_inc % print_win_rate_every_n_steps == 0,
-            lambda: jax.debug.print("Sophia optimizer win rate: {}", win_rate),
+            lambda: jax.debug.print('Sophia optimizer win rate: {}', win_rate),
             lambda: None,
         )
 
