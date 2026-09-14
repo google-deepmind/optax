@@ -826,9 +826,9 @@ nadamw.__doc__ = (
 
 def adan(
     learning_rate: base.ScalarOrSchedule,
-    b1: jax.typing.ArrayLike = 0.98,
-    b2: jax.typing.ArrayLike = 0.92,
-    b3: jax.typing.ArrayLike = 0.99,
+    b1: jax.typing.ArrayLike = 0.02,
+    b2: jax.typing.ArrayLike = 0.08,
+    b3: jax.typing.ArrayLike = 0.01,
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 1e-8,
     weight_decay: base.ScalarOrSchedule = 0.0,
@@ -921,8 +921,8 @@ def adan(
     Objective function: 1.28E+01
     Objective function: 1.17E+01
     Objective function: 1.07E+01
-    Objective function: 9.68E+00
-    Objective function: 8.76E+00
+    Objective function: 9.69E+00
+    Objective function: 8.77E+00
 
   References:
     Xie et al, `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing
