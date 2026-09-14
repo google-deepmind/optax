@@ -207,6 +207,29 @@ class LinearAlgebraTest(parameterized.TestCase):
         # No guarantee of success after e >= 7
         pass
 
+  @parameterized.product(p=[1, 2, 3, 4, 5, 6, 7, 8])
+  def test_matrix_inverse_pth_root_arbitrary_p(self, p):
+    """The result must match the eigendecomposition M^(-1/p) for every p.
+
+    The previous implementation rounded p to the nearest power of two when
+    raising the iteration matrix, silently returning results with up to ~19%
+    relative error for p not in {1, 2, 4, 8} while reporting convergence.
+    p = 6 arises in practice as 2 * ndim when preconditioning rank-3 tensors.
+    """
+    rng = np.random.RandomState(0)
+    a = rng.randn(16, 16).astype(np.float64)
+    matrix = (a @ a.T + 1e-3 * np.eye(16)).astype(np.float32)
+
+    result, error = linear_algebra.matrix_inverse_pth_root(
+        matrix, p, ridge_epsilon=1e-12
+    )
+    self.assertLess(error, 1e-4)
+
+    eigval, eigvec = np.linalg.eigh(matrix.astype(np.float64))
+    expected = (eigvec * eigval ** (-1.0 / p)) @ eigvec.T
+    rel_error = np.max(np.abs(result - expected)) / np.max(np.abs(expected))
+    self.assertLess(rel_error, 1e-3)
+
   @parameterized.product(m=[10, 20], n=[11, 21], seed=[0],
                          dtype=[jnp.float32, jnp.bfloat16], k=[(), (5,)])
   def test_nnls(self, m, n, k, seed, dtype):
