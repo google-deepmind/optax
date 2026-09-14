@@ -122,7 +122,9 @@ def cocob(
 
   Algorithm for stochastic subgradient descent. Uses a gambling algorithm to
   find the minimizer of a non-smooth objective function by accessing its
-  subgradients. All we need is a good gambling strategy. See Algorithm 2 of:
+  subgradients. All we need is a good gambling strategy. See Algorithm 2 of
+  `Training Deep Networks without Learning Rates Through Coin Betting
+  <https://arxiv.org/pdf/1705.07795.pdf>`_.
 
   Args:
     learning_rate: optional learning rate to e.g. inject some scheduler
@@ -135,7 +137,7 @@ def cocob(
     A `GradientTransformation` object.
 
   References:
-    Orabana et al, `Training Deep Networks without Learning Rates Through Coin
+    Orabona et al, `Training Deep Networks without Learning Rates Through Coin
     Betting <https://arxiv.org/pdf/1705.07795.pdf>`_, 2017
   """
   return combine.chain(
