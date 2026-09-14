@@ -40,6 +40,26 @@ def _setup_parabola(dtype):
 
 class ScheduleFreeTest(parameterized.TestCase):
 
+  def test_step_count_starts_at_zero(self):
+    seen_counts = []
+
+    def learning_rate(count):
+      seen_counts.append(int(count))
+      return 1.0
+
+    base_opt = alias.sgd(learning_rate=0.0, momentum=0.0)
+    opt = _schedule_free.schedule_free(base_opt, learning_rate=learning_rate)
+    params = jnp.array([1.0, 2.0], dtype=jnp.float32)
+    state = opt.init(params)
+
+    self.assertEqual(int(state.step_count), 0)
+
+    updates = jnp.zeros_like(params)
+    _, state = opt.update(updates, state, params)
+
+    self.assertEqual(seen_counts, [0])
+    self.assertEqual(int(state.step_count), 1)
+
   def test_learning_rate_zero(self):
     base_opt = alias.sgd(learning_rate=0.0, momentum=0.0)
     opt = _schedule_free.schedule_free(base_opt, learning_rate=0.0)
