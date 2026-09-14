@@ -103,6 +103,48 @@ def safe_root_mean_squares(
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
 
 
+def add_eps_in_safe_dtype(
+    x: jax.typing.ArrayLike,
+    eps: jax.typing.ArrayLike,
+    min_dtype: jax.typing.DTypeLike = jnp.float32,
+) -> jax.Array:
+  """Returns ``x + eps``, computed in at least ``min_dtype`` precision.
+
+  ``eps`` is typically a small constant (e.g. the default ``1e-8`` used by
+  several optimizers) added to a value before taking its square root, to
+  keep a downstream division safe from a zero denominator. If ``x`` has a
+  low precision dtype (e.g. ``float16``, whose smallest representable
+  subnormal is ``~6e-8``), adding such an ``eps`` directly can silently
+  round to exactly ``x`` -- typically ``0.0`` when ``x`` is itself ``0``,
+  which defeats the purpose of the safety term and can turn it into a
+  ``0 / 0`` NaN. This function instead promotes ``x`` to at least
+  ``min_dtype`` before the addition, so ``eps`` is preserved.
+
+  This is a no-op change in behavior (bit-for-bit identical) when ``x`` is
+  already at least ``min_dtype`` precision (e.g. the default ``float32``
+  or ``float64``); only lower-precision dtypes (``float16``, ``bfloat16``)
+  are affected.
+
+  Callers that need the *result* of a computation built on top of this sum
+  back in ``x``'s original dtype (e.g. to keep an optimizer's returned
+  updates at the same precision as the incoming gradients) must cast back
+  explicitly -- this function only fixes the addition itself.
+
+  Args:
+    x: array the (possibly too-small-to-represent) ``eps`` is added to.
+    eps: term to add, typically a small non-negative constant.
+    min_dtype: the minimum floating point precision to compute the addition
+      in. Defaults to ``float32``.
+
+  Returns:
+    ``x.astype(safe_dtype) + eps``, where ``safe_dtype =
+    jnp.promote_types(x.dtype, min_dtype)``.
+  """
+  x = jnp.asarray(x)
+  safe_dtype = jnp.promote_types(x.dtype, min_dtype)
+  return x.astype(safe_dtype) + eps
+
+
 def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
   """Increments counter by one while avoiding overflow.
 
