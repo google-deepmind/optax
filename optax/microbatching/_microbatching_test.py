@@ -532,6 +532,21 @@ class MicrobatchingTest(parameterized.TestCase):
         msg='micro_grad_step not found in profile',
     )
 
+  def test_microbatch_eval_shape(self):
+    loss_fn = lambda params, batch: jnp.sum(params)
+
+    def init_fn():
+      params = jnp.zeros((5,), jnp.float32)
+      batch = jnp.zeros((8, 5), jnp.float32)
+      return params, batch
+
+    params_spec, batch_spec = jax.eval_shape(init_fn)
+    mb_grad = microbatching.microbatch(
+        jax.grad(loss_fn), argnums=1, microbatch_size=2
+    )
+    out = mb_grad(params_spec, batch_spec)
+    self.assertEqual(out.shape, (5,))
+
 
 def _named_fun(a, b, c):
   return jnp.sum(a + b + c, axis=0)
