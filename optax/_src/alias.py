@@ -888,9 +888,14 @@ def adan(
 
   Args:
     learning_rate: this is a fixed global scaling factor.
-    b1: Decay rate for the EWMA of gradients.
-    b2: Decay rate for the EWMA of differences of gradients.
-    b3: Decay rate for the EMWA of the algorithm's squared term.
+    b1: Weight given to the newest gradient in its EWMA, that is
+      :math:`\beta_1` above. The average decays at rate ``1 - b1``.
+    b2: Weight given to the newest difference of gradients in its EWMA,
+      that is :math:`\beta_2` above. The average decays at rate
+      ``1 - b2``.
+    b3: Weight given to the newest value of the squared term in its EWMA,
+      that is :math:`\beta_3` above. The average decays at rate
+      ``1 - b3``.
     eps: Term added to the denominator to improve numerical stability.
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
