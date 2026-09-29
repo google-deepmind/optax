@@ -140,11 +140,11 @@ def tree_map_params(
     optional extra arguments.
   """
 
-  # Cast for pytype checks (no-op for other usages).
+  # Cast for type checks (no-op for other usages).
   placeholder = cast(base.ArrayTree, _ParamsPlaceholder())
 
   if isinstance(initable, Initable):
-    initable = cast(Initable, initable)  # for pytype checks
+    initable = cast(Initable, initable)  # for type checks
     state_with_placeholders = initable.init(placeholder)
   else:
     state_with_placeholders = initable(placeholder)
@@ -757,18 +757,17 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:
   """Convert a ``KeyEntry``` to a usual type."""
+  if isinstance(key, NamedTupleKey):
+    return key.name  # str.
   if isinstance(key, jax.tree_util.DictKey):
     if isinstance(key.key, (str, int)):
       return key.key
     raise KeyError("Hashable keys not supported")
-  # pylint: disable=attribute-error
   if isinstance(key, jax.tree_util.FlattenedIndexKey):
     return key.key  # int.
   if isinstance(key, jax.tree_util.GetAttrKey):
     return key.name  # str.
   if isinstance(key, jax.tree_util.SequenceKey):
     return key.idx  # int.
-  if isinstance(key, NamedTupleKey):
-    return key.name  # str.
   # pylint: enable=attribute-error
   raise KeyError(f"Tree key '{key}' of type '{type(key)}' not valid.")

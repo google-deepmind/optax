@@ -41,7 +41,7 @@ class ScheduleFreeState(NamedTuple):
 
 def schedule_free_eval_params(state: base.OptState, params: base.Params):
   """Params for evaluation of :func:`optax.contrib.schedule_free`."""
-  # Using ScheduleFreeState as a type hint above results in pytype errors in
+  # Using ScheduleFreeState as a type hint above results in type errors in
   # tests.
   b1 = getattr(state, 'b1')
   z = getattr(state, 'z')
@@ -164,7 +164,7 @@ def schedule_free(
       lr = jnp.asarray(
           learning_rate(state.step_count),
           # pyrefly: ignore [missing-attribute]
-          dtype=state.max_lr.dtype,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+          dtype=state.max_lr.dtype,
       )
     max_lr = jnp.maximum(state.max_lr, lr)  # pyrefly: ignore[bad-argument-type]
 

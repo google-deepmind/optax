@@ -45,7 +45,6 @@ optimizer, here SGD with a normalized gradient and then wrap them both with SAM.
 
 This is the simple drop-in SAM optimizer from the paper.
 """
-# pytype: skip-file
 
 from collections.abc import Callable
 from typing import NamedTuple, Optional

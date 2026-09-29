@@ -80,11 +80,11 @@ def ntxent(
   """
   utils.check_subdtype(embeddings, jnp.floating)
   # pyrefly: ignore [missing-attribute]
-  if labels.shape[0] != embeddings.shape[0]:  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+  if labels.shape[0] != embeddings.shape[0]:
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
         # pyrefly: ignore [missing-attribute]
-        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+        f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'
         ' embeddings.'
     )
 
@@ -94,7 +94,7 @@ def ntxent(
           embeddings[None, :, :],  # pyrefly: ignore[bad-index]
           embeddings[:, None, :],  # pyrefly: ignore[bad-index]
           # pyrefly: ignore [missing-attribute]
-          epsilon=jnp.finfo(embeddings.dtype).eps,  # pytype: disable=attribute-error  # jax-arraylike # noqa: E501
+          epsilon=jnp.finfo(embeddings.dtype).eps,
       )
       / temperature
   )

@@ -53,4 +53,4 @@ def smooth_labels(
   else:
     num_categories = jnp.sum(where, axis, keepdims=True)
   # pyrefly: ignore [bad-return]
-  return (1.0 - alpha) * labels + alpha / num_categories  # pytype: disable=bad-return-type  # jax-arraylike # noqa: E501
+  return (1.0 - alpha) * labels + alpha / num_categories

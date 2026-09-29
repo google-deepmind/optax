@@ -146,6 +146,7 @@ class MuonTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
+  @jax.default_matmul_precision('highest')
   def test_reshape_update_for_square_parameter_matches_muon_without_dim_nums(
       self, preconditioning
   ):
@@ -160,12 +161,13 @@ class MuonTest(parameterized.TestCase):
                                         preconditioning=preconditioning,
                                         muon_weight_dimension_numbers=dim_nums)
     test_utils.assert_trees_all_close(
-        updates_sq, reshape_updates_sq, rtol=1e-8, atol=1e-8
+        updates_sq, reshape_updates_sq, rtol=2e-7, atol=2e-7
     )
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
+  @jax.default_matmul_precision('highest')
   def test_reshape_and_update_single_param(self, preconditioning):
     # Use 2D parameter (10, 12) with no dimension numbers as groundtruth
     key = jax.random.key(0)
@@ -181,8 +183,8 @@ class MuonTest(parameterized.TestCase):
       reshape_updates, _ = get_updates(params,
                                        preconditioning=preconditioning,
                                        muon_weight_dimension_numbers=dim_nums)
-      test_utils.assert_trees_all_close(updates, reshape_updates, rtol=1e-8,
-                                        atol=1e-8)
+      test_utils.assert_trees_all_close(updates, reshape_updates, rtol=2e-7,
+                                        atol=2e-7)
 
     with self.subTest('4D with dim nums, (10, 12) -> (4, 1, 10, 3)'):
       # Test 2: 4D with dim nums, (10, 12) -> (4, 1, 10, 3)
@@ -194,8 +196,8 @@ class MuonTest(parameterized.TestCase):
                                        preconditioning=preconditioning,
                                        muon_weight_dimension_numbers=dim_nums)
       test_utils.assert_trees_all_close(
-          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-8,
-          atol=1e-8)
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=2e-7,
+          atol=2e-7)
 
     with self.subTest('4D with dim_nums, (10, 12) -> (5, 12, 1, 2)'):
       # Test 3: 4D with dim_nums, (10, 12) -> (5, 12, 1, 2)
@@ -207,8 +209,8 @@ class MuonTest(parameterized.TestCase):
                                        preconditioning=preconditioning,
                                        muon_weight_dimension_numbers=dim_nums)
       test_utils.assert_trees_all_close(
-          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=1e-5,
-          atol=1e-5)
+          jax.tree.map(reshape_fn, updates), reshape_updates, rtol=2e-7,
+          atol=2e-7)
 
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
@@ -274,17 +276,14 @@ class MuonTest(parameterized.TestCase):
     self.assertIsInstance(get_muon_mu(state)['w2']['a'], _masking.MaskedNode)
     self.assertIsInstance(get_muon_mu(state)['w2']['b'], _masking.MaskedNode)
 
+  @jax.default_matmul_precision('highest')
   def test_newton_schulz(self):
     """Test that Newton--Schulz orhogonalizes/unitiarizes correctly."""
     mat_real = jax.random.normal(jax.random.key(0), (4, 3), dtype=jnp.float32)
     mat_complex = jax.random.normal(jax.random.key(0), (4, 3),
                                     dtype=jnp.complex64)
     ns_coeffs = jnp.array([2.0, -1.5, 0.5])
-
-    if jax.default_backend() == 'tpu':
-      atol, rtol = 1e-2, 1e-2
-    else:
-      atol, rtol = 1e-5, 1e-5
+    atol, rtol = 2e-7, 2e-7
 
     # For real matrices, Newton--Schulz should produce an orthonormal matrix
     mat_real_orth = _muon.orthogonalize_via_newton_schulz(
