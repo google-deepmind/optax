@@ -427,6 +427,18 @@ class AliasTest(parameterized.TestCase):
         grads, state, params, **dyn_kwargs)
     test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
+  @parameterized.parameters(1.0, 0.5, 0.1)
+  def test_polyak_sgd_scaling(self, scaling):
+    """Checks that `scaling` multiplies the Polyak step-size."""
+    fun = lambda x: jnp.sum(x**2)
+    params = jnp.array([1.0, 2.0, 3.0])
+    value, grads = jax.value_and_grad(fun)(params)
+    opt = alias.polyak_sgd(max_learning_rate=10.0, scaling=scaling)
+    updates, _ = opt.update(grads, opt.init(params), params, value=value)
+    # step = scaling * min((f(x) - f_min) / ||g||^2, max_learning_rate)
+    step = scaling * jnp.minimum(value / jnp.sum(grads**2), 10.0)
+    test_utils.assert_trees_all_close(updates, -step * grads)
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -2642,13 +2642,13 @@ def polyak_sgd(
     divergence or convergence to a suboptimal solution.
   """
   return combine.chain(
-      sgd(learning_rate=scaling),
       transform.scale_by_polyak(
           max_learning_rate=max_learning_rate,
           f_min=f_min,
           eps=eps,
           variant=variant,
       ),
+      sgd(learning_rate=scaling),
   )
 
 
