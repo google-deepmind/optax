@@ -23,7 +23,7 @@ import numpy as np
 from optax.losses import _self_supervised
 
 
-class NtxentTest(absltest.TestCase):
+class NtxentTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -64,6 +64,39 @@ class NtxentTest(absltest.TestCase):
         self.exp_3,
         atol=1e-4,
     )
+
+  @parameterized.product(
+      labels=[(0, 0, 1, 1), (0, 0, 0, 1), (0, 0, 0, 0)],
+      temperature=[0.07, 0.001],
+      jit=[False, True],
+  )
+  def test_pairwise_reference(self, labels, temperature, jit):
+    embeddings = jnp.array([[1.0, 0.0], [0.5, 1.0], [-1.0, 0.0], [0.0, -1.0]])
+
+    def reference(x):
+      x = x / jnp.linalg.norm(x, axis=-1, keepdims=True)
+      logits = x @ x.T / temperature
+      losses = []
+      for i, label in enumerate(labels):
+        negatives = [k for k, other in enumerate(labels) if other != label]
+        for j, other in enumerate(labels):
+          if i != j and label == other:
+            candidates = logits[i, jnp.array([j] + negatives)]
+            losses.append(jax.nn.logsumexp(candidates - logits[i, j]))
+      return jnp.mean(jnp.stack(losses))
+
+    def loss(x):
+      return _self_supervised.ntxent(x, jnp.array(labels), temperature)
+
+    value_and_grad = jax.value_and_grad(loss)
+    if jit:
+      value_and_grad = jax.jit(value_and_grad)
+    actual_loss, actual_grad = value_and_grad(embeddings)
+    expected_loss, expected_grad = jax.value_and_grad(reference)(embeddings)
+    self.assertTrue(jnp.isfinite(actual_loss))
+    self.assertTrue(jnp.all(jnp.isfinite(actual_grad)))
+    np.testing.assert_allclose(actual_loss, expected_loss, rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-5, atol=1e-4)
 
 
 class TripletMarginLossTest(parameterized.TestCase):
