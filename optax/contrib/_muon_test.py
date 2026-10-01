@@ -67,6 +67,10 @@ def _setup_mixed_tensor_target_complex(dtype):
 
 class MuonTest(parameterized.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    self.enter_context(jax.default_matmul_precision('high'))
+
   @parameterized.named_parameters(
       {
           'testcase_name': '2d_tuple_axes',

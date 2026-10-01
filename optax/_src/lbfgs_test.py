@@ -472,7 +472,7 @@ class LBFGSTest(parameterized.TestCase):
     def fun(params):
       inputs, labels = data
       weights, bias = params
-      logits = jnp.dot(inputs, weights) + bias
+      logits = jnp.dot(inputs, weights, precision='high') + bias
       losses = _classification.softmax_cross_entropy_with_integer_labels(
           logits, labels
       )

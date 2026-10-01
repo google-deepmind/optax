@@ -38,9 +38,9 @@ class MLP(nn.Module):
   @nn.compact
   def __call__(self, x):
     for num_hidden in self.hidden_sizes:
-      x = nn.Dense(num_hidden)(x)
+      x = nn.Dense(num_hidden, precision='high')(x)
       x = nn.gelu(x)
-    return nn.Dense(self.num_outputs)(x)
+    return nn.Dense(self.num_outputs, precision='high')(x)
 
 
 class LinearAlgebraTest(parameterized.TestCase):

@@ -46,7 +46,16 @@ def _train(
 
   def loss_fun(params, batch):
     inputs, targets = batch
-    return jnp.mean(jnp.sum((inputs.dot(params) - targets) ** 2, -1))
+    return jnp.mean(
+        jnp.sum(
+            (
+                jnp.dot(inputs, params, precision=jax.lax.Precision.HIGH)
+                - targets
+            )
+            ** 2,
+            -1,
+        )
+    )
 
   data_key, param_key = jrd.split(jrd.key(0))
   full_data = [
