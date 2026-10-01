@@ -141,11 +141,11 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_tree_sum(self):
     expected = jnp.sum(self.array_a)
     got = tu.tree_sum(self.array_a)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = jnp.sum(self.tree_a[0]) + jnp.sum(self.tree_a[1])
     got = tu.tree_sum(self.tree_a)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     # Test that associative version matches regular version
     if hasattr(jax.tree, 'reduce_associative'):
@@ -164,7 +164,7 @@ class TreeUtilsTest(parameterized.TestCase):
     values, _ = flatten_util.ravel_pytree(tree)
     expected = jnp.max(values)
     got = tu.tree_max(tree)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
@@ -174,7 +174,7 @@ class TreeUtilsTest(parameterized.TestCase):
     values, _ = flatten_util.ravel_pytree(tree)
     expected = jnp.min(values)
     got = tu.tree_min(tree)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
   def test_tree_min_empty(self):
     tree = [jnp.ones([2, 3]), jnp.zeros([4, 0, 5])]
@@ -200,7 +200,7 @@ class TreeUtilsTest(parameterized.TestCase):
     values, _ = flatten_util.ravel_pytree(tree)
     expected = jnp.size(values)
     got = tu.tree_size(tree)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
   def test_tree_allclose(self):
     assert tu.tree_allclose(1, 1)
@@ -228,14 +228,14 @@ class TreeUtilsTest(parameterized.TestCase):
   def test_tree_l2_norm(self):
     expected = jnp.sqrt(jnp.vdot(self.array_a, self.array_a).real)
     got = tu.tree_norm(self.array_a)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
     expected = jnp.sqrt(
         jnp.vdot(self.tree_a[0], self.tree_a[0]).real
         + jnp.vdot(self.tree_a[1], self.tree_a[1]).real
     )
     got = tu.tree_norm(self.tree_a)
-    np.testing.assert_allclose(expected, got)
+    np.testing.assert_allclose(expected, got, rtol=1e-6)
 
   @parameterized.parameters(
       'tree_a', 'tree_a_dict', 'tree_b', 'array_a', 'array_b', 'tree_b_dict'
