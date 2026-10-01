@@ -244,6 +244,30 @@ class TransformTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
+  @parameterized.product(
+      scaler_constr=(transform.scale_by_rms, transform.scale_by_stddev),
+      eps_in_sqrt=(True, False),
+      bias_correction=(True, False),
+      array_eps=(True, False),
+  )
+  def test_rms_scalers_float16_zero_update(
+      self, scaler_constr, eps_in_sqrt, bias_correction, array_eps
+  ):
+    eps = jnp.asarray(1e-8, dtype=jnp.float16) if array_eps else 1e-8
+    scaler = scaler_constr(
+        eps=eps,
+        eps_in_sqrt=eps_in_sqrt,
+        bias_correction=bias_correction,
+    )
+    grads = jnp.zeros((3, 3), dtype=jnp.float16)
+    state = scaler.init(grads)
+
+    updates, _ = jax.jit(scaler.update)(grads, state)
+
+    self.assertEqual(updates.dtype, grads.dtype)
+    test_utils.assert_tree_all_finite(updates)
+    test_utils.assert_trees_all_equal(updates, grads)
+
 
 if __name__ == '__main__':
   absltest.main()
