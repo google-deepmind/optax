@@ -821,9 +821,17 @@ def ctc_loss_with_forward_probs(
   logalpha_phi_last = update_phi_score(logalpha_phi[-1], logalpha_emit[-1])
   logalpha_phi = logalpha_phi.at[-1].set(logalpha_phi_last)
 
+  # Probabilities cannot exceed 1.0 (log-probabilities cannot exceed 0.0). Due
+  # to float32 rounding in log_softmax and logaddexp, values can round slightly
+  # above zero for confident predictions. Clamp to maintain mathematical bounds.
+  logalpha_phi = jnp.minimum(logalpha_phi, 0.0)
+  logalpha_emit = jnp.minimum(logalpha_emit, 0.0)
+  logalpha_phi_last = logalpha_phi[-1]
+
   # extract per_seq_loss
   one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
   per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)  # pylint:disable=invalid-unary-operand-type
+  per_seq_loss = jnp.maximum(per_seq_loss, 0.0)
 
   return per_seq_loss, logalpha_phi, logalpha_emit
 
