@@ -266,7 +266,10 @@ def projection_l2_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   .. versionadded:: 0.2.4
   """
   squared_norm = optax.tree.norm(tree, squared=True)
-  factor = scale / jnp.sqrt(jnp.maximum(squared_norm, scale**2))
+  # A zero-radius ball contains only zero. Keep the denominator positive in
+  # that case so both the projection and its input derivatives remain finite.
+  denominator = jnp.where(scale == 0, 1, jnp.maximum(squared_norm, scale**2))
+  factor = scale / jnp.sqrt(denominator)
   return optax.tree.scale(factor, tree)
 
 
