@@ -105,6 +105,7 @@ class ConditionalityTest(parameterized.TestCase):
     updates, state = opt.update(grads, state, params)
     params = update.apply_updates(params, updates)
     self.assertTrue(bool(jnp.isnan(jax.tree.flatten(params)[0][0])))
+    self.assertEqual(0, int(getattr(state, 'notfinite_count')))
     self.assertEqual(5, int(getattr(state, 'total_notfinite')))
 
   def test_apply_if_finite_pmap(self):
@@ -150,6 +151,7 @@ class ConditionalityTest(parameterized.TestCase):
       self.assertEqual(step + 1, opt_state.notfinite_count.item())
     # Next param update with NaN is accepted since we reached maximum
     _, opt_state = fn_update(params, opt_state, two)
+    self.assertEqual(0, opt_state.notfinite_count.item())
     self.assertEqual(5, opt_state.total_notfinite.item())
 
 
