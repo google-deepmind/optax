@@ -136,26 +136,31 @@ def adopt(
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
 
+  .. note::
+    The first update step warms up the second moment estimate (``nu``),
+    so the objective may not decrease on the very first step. Convergence
+    becomes visible from the second step onwards.
+
   Examples:
     >>> import optax
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
-    >>> solver = optax.contrib.adopt(learning_rate=0.003)
+    >>> solver = optax.contrib.adopt(learning_rate=0.1)
     >>> params = jnp.array([1., 2., 3.])
     >>> print('Objective function: ', f(params))
     Objective function:  14.0
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
-    ...  grad = jax.grad(f)(params)
+    ...  value, grad = jax.value_and_grad(f)(params)
     ...  updates, opt_state = solver.update(grad, opt_state, params)
     ...  params = optax.apply_updates(params, updates)
-    ...  print('Objective function: {:.2E}'.format(f(params)))
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
-    Objective function: 1.40E+01
+    ...  print('Objective function: {:.4f}'.format(f(params)))
+    Objective function: 14.0000
+    Objective function: 13.8803
+    Objective function: 13.6551
+    Objective function: 13.3390
+    Objective function: 12.9465
 
   References:
     Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any beta2 with the
