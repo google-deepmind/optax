@@ -1198,7 +1198,9 @@ def scale_by_sm3(
   """
 
   def zeros_for_dim(p):
-    return [_zeros_like_axis(p, i) for i in range(p.ndim)]
+    # A scalar (0-d) leaf is treated as having one virtual axis so that the
+    # accumulator list is never empty.
+    return [_zeros_like_axis(p, i) for i in range(max(p.ndim, 1))]
 
   def init_fn(params):
     _reject_complex(params)
@@ -1210,7 +1212,7 @@ def scale_by_sm3(
     # Replaces a `shape` of [M, N, K] with 1 in all dimensions except for i.
     # For eg: i = 1 returns [1, N, 1].
     rank = len(shape)
-    return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
+    return [1] * axis + list(shape[axis : axis + 1]) + [1] * (rank - axis - 1)
 
   def _new_accum(g, v):
     coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
@@ -1233,7 +1235,8 @@ def scale_by_sm3(
 
     def f(g, v):
       return [
-          jnp.reshape(v[i], _expanded_shape(g.shape, i)) for i in range(g.ndim)
+          jnp.reshape(v[i], _expanded_shape(g.shape, i))
+          for i in range(max(g.ndim, 1))
       ]
 
     mu = jax.tree.map(f, updates, state.mu)
@@ -1243,7 +1246,9 @@ def scale_by_sm3(
     )
     up = jax.tree.map(lambda g, a: g * a, updates, accum_inv_sqrt)
     nu = optax.tree.update_moment(up, state.nu, b1, 1)
-    mu = jax.tree.map(lambda g: [_new_mu(g, i) for i in range(g.ndim)], accum)
+    mu = jax.tree.map(
+        lambda g: [_new_mu(g, i) for i in range(max(g.ndim, 1))], accum
+    )
 
     return nu, ScaleBySM3State(mu=mu, nu=nu)
 

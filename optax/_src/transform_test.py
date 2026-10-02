@@ -73,6 +73,31 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
+  def test_scale_by_sm3_scalar_params(self):
+    """sm3 must accept pytrees containing scalar (0-d) leaves.
+
+    The per-axis accumulator list used to be empty for a 0-d leaf, so the
+    first update raised IndexError, while every other transformation accepts
+    the same pytree.
+    """
+    params = {'matrix': jnp.ones((2, 3)), 'temperature': jnp.asarray(2.0)}
+    updates = jax.tree.map(lambda p: 0.5 * jnp.ones_like(p), params)
+
+    tx = transform.scale_by_sm3()
+    state = tx.init(params)
+    scaled, _ = tx.update(updates, state, params)
+    self.assertEqual(scaled['temperature'].shape, ())
+
+    # A scalar leaf must behave exactly like the same value as a 1-element
+    # vector, the natural degenerate case of the algorithm.
+    vec_params = {'temperature': jnp.asarray([2.0])}
+    vec_updates = {'temperature': jnp.asarray([0.5])}
+    vec_state = tx.init(vec_params)
+    vec_scaled, _ = tx.update(vec_updates, vec_state, vec_params)
+    test_utils.assert_trees_all_close(
+        scaled['temperature'], vec_scaled['temperature'][0], rtol=1e-6
+    )
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
