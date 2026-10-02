@@ -17,6 +17,7 @@
 from collections.abc import Callable
 import functools
 import inspect
+import typing
 from typing import Iterable, NamedTuple, Optional, Union
 import warnings
 
@@ -39,6 +40,68 @@ def _convert_floats(x, dtype):
     return jnp.asarray(x, dtype=dtype)
   # otherwise, pass through unchanged
   return x
+
+
+def _integer_params(signature: inspect.Signature) -> set[str]:
+  """Names of parameters declared as ``int`` or ``bool`` in a signature.
+
+  A parameter counts if it is annotated ``int``/``bool`` (optionally inside
+  ``Optional``/``Union``) or if its default value is an ``int`` or ``bool``.
+  """
+  names = set()
+  for name, param in signature.parameters.items():
+    annotation = param.annotation
+    candidates = typing.get_args(annotation) or (annotation,)
+    declared = any(c in (int, bool, 'int', 'bool') for c in candidates)
+    if declared or (
+        param.default is not param.empty and isinstance(param.default, int)
+    ):
+      names.add(name)
+  return names
+
+
+def _is_static_hyperparam(value) -> bool:
+  """Whether a hyperparameter must be kept static instead of injected.
+
+  Integer and boolean hyperparameters are used by inner factories to make
+  structural decisions, for example ``min_dim_size_to_factor`` in
+  :func:`optax.adafactor` or ``memory_size`` in :func:`optax.lbfgs`. Injecting
+  them turns them into traced values and the factory then fails with a
+  ``TracerBoolConversionError`` under :func:`jax.jit`.
+
+  This covers Python ``bool`` and ``int`` as well as zero-dimensional NumPy and
+  JAX values of integer or boolean dtype, which are passed for the same
+  purpose. Values with one or more dimensions are left dynamic, so a raw
+  ``uint32`` PRNG key from :func:`jax.random.PRNGKey` is unaffected.
+  """
+  # Note `bool` is a subclass of `int`.
+  if isinstance(value, int):
+    return True
+  dtype = getattr(value, 'dtype', None)
+  if dtype is None or getattr(value, 'ndim', None) != 0:
+    return False
+  return jnp.issubdtype(dtype, jnp.integer) or jnp.issubdtype(dtype, jnp.bool_)
+
+
+def _as_static_scalar(value):
+  """Return a static integer/boolean hyperparameter as a Python scalar.
+
+  Keeping such a value out of the injected hyperparameters is not enough on its
+  own. A ``jax.Array`` that a jitted function closes over is staged out as a
+  constant of the trace, so using one for structural control flow still raises
+  ``TracerBoolConversionError``. Converting it to a Python scalar makes it a
+  real compile-time constant. NumPy values already stay concrete under
+  :func:`jax.jit`; they are converted too so both behave the same.
+
+  A traced value cannot be made concrete. It is returned unchanged so the inner
+  factory reports the problem itself rather than this raising a less clear one.
+  """
+  if not hasattr(value, 'item'):
+    return value
+  try:
+    return value.item()
+  except jax.errors.ConcretizationTypeError:
+    return value
 
 
 class InjectHyperparamsState(NamedTuple):
@@ -116,10 +179,13 @@ def inject_hyperparams(
     static_args: a string or iterable of strings specifying which callable
       parameters are not schedules. inject_hyperparams treats all callables as
       schedules by default, so if a hyperparameter is a non-schedule callable,
-      you must specify that using this argument. Boolean and integer
-      hyperparameters are always treated as static (they are not injected),
-      since tracing them would break inner factories that use them for
-      structural control flow.
+      you must specify that using this argument. Boolean hyperparameters
+      are always static (they are not injected). So are integer values, and
+      zero-dimensional NumPy and JAX values of integer dtype, passed for a
+      parameter declared as ``int`` or ``bool`` (by annotation or default
+      value), since tracing them would break inner factories that use them for
+      structural control flow. An integer passed for a float parameter, such as
+      ``learning_rate=1``, is still injected.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
@@ -137,6 +203,7 @@ def inject_hyperparams(
       {static_args} if isinstance(static_args, str) else set(static_args)
   )
   inner_signature = inspect.signature(inner_factory)
+  integer_params = _integer_params(inner_signature)
 
   if not static_args.issubset(inner_signature.parameters):
     raise ValueError(
@@ -154,19 +221,18 @@ def inject_hyperparams(
 
     sched_hps, numeric_hps, other_hps = {}, {}, {}
     for name, value in bound_arguments.arguments.items():
-      # Python `bool`/`int` values are treated as static. Turning them into
-      # traced arrays would break inner factories that use them for structural
-      # control flow (e.g. `min_dim_size_to_factor` in `adafactor` or
-      # `memory_size` in `lbfgs`), causing a `TracerBoolConversionError` when
-      # the resulting transform is jitted. Note `bool` is a subclass of `int`.
-      if name in static_args or isinstance(value, int):
+      # Integer and boolean values of parameters declared as `int` or `bool`
+      # are static; see `_is_static_hyperparam`.
+      if name in static_args or isinstance(value, bool):
         other_hps[name] = value
+      elif name in integer_params and _is_static_hyperparam(value):
+        other_hps[name] = _as_static_scalar(value)
       elif isinstance(value, base.StatefulSchedule):
         sched_hps[name] = value
       elif callable(value):
         # pyrefly: ignore[bad-argument-type]
         sched_hps[name] = WrappedSchedule(value)
-      elif isinstance(value, (float, jax.Array, np.ndarray)):
+      elif isinstance(value, (int, float, jax.Array, np.ndarray)):
         numeric_hps[name] = value
       else:
         other_hps[name] = value
@@ -246,10 +312,13 @@ def inject_stateful_hyperparams(
     static_args: a string or iterable of strings specifying which callable
       parameters are not schedules. inject_hyperparams treats all callables as
       schedules by default, so if a hyperparameter is a non-schedule callable,
-      you must specify that using this argument. Boolean and integer
-      hyperparameters are always treated as static (they are not injected),
-      since tracing them would break inner factories that use them for
-      structural control flow.
+      you must specify that using this argument. Boolean hyperparameters
+      are always static (they are not injected). So are integer values, and
+      zero-dimensional NumPy and JAX values of integer dtype, passed for a
+      parameter declared as ``int`` or ``bool`` (by annotation or default
+      value), since tracing them would break inner factories that use them for
+      structural control flow. An integer passed for a float parameter, such as
+      ``learning_rate=1``, is still injected.
     hyperparam_dtype: Optional datatype override. If specified, all float
       hyperparameters will be cast to this type.
 
