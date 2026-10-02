@@ -963,6 +963,52 @@ class CTCTest(parameterized.TestCase):
           jnp.array(expected_loss), per_seq_loss[n], rtol=self._rtol
       )
 
+  def test_ctc_loss_nonnegative(self):
+    # Tests that highly confident alignments do not produce negative loss
+    # due to float32 precision rounding (fixes #1771).
+    logits = jnp.array([[[0.0, 17.0], [0.0, 17.0]]], dtype=jnp.float32)
+    logit_paddings = jnp.zeros((1, 2))
+    labels = jnp.array([[1]], dtype=jnp.int32)
+    label_paddings = jnp.zeros((1, 1))
+
+    ctc_loss_jit = jax.jit(
+        _classification.ctc_loss, static_argnames=['blank_id']
+    )
+    loss = ctc_loss_jit(
+        logits=logits,
+        logit_paddings=logit_paddings,
+        labels=labels,
+        label_paddings=label_paddings,
+        blank_id=0,
+    )
+    np.testing.assert_array_equal(loss >= 0.0, True)
+    np.testing.assert_allclose(loss, np.array([0.0], dtype=np.float32))
+
+    ctc_loss_fwd_jit = jax.jit(
+        _classification.ctc_loss_with_forward_probs,
+        static_argnames=['blank_id'],
+    )
+    loss_fwd, _, _ = ctc_loss_fwd_jit(
+        logits=logits,
+        logit_paddings=logit_paddings,
+        labels=labels,
+        label_paddings=label_paddings,
+        blank_id=0,
+    )
+    np.testing.assert_array_equal(loss_fwd >= 0.0, True)
+    np.testing.assert_allclose(loss_fwd, np.array([0.0], dtype=np.float32))
+
+    def loss_sum(lg):
+      return jnp.sum(
+          _classification.ctc_loss(
+              lg, logit_paddings, labels, label_paddings, blank_id=0
+          )
+      )
+
+    grad_fn = jax.jit(jax.grad(loss_sum))
+    grads = grad_fn(logits)
+    self.assertTrue(np.all(np.isfinite(grads)))
+
 
 class SigmoidFocalLossTest(parameterized.TestCase):
 

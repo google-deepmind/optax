@@ -824,6 +824,9 @@ def ctc_loss_with_forward_probs(
   # extract per_seq_loss
   one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
   per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)  # pylint:disable=invalid-unary-operand-type
+  # Mathematically CTC loss is nonnegative; clamp to zero to prevent negative
+  # losses caused by floating-point rounding errors.
+  per_seq_loss = jnp.maximum(per_seq_loss, 0.0)
 
   return per_seq_loss, logalpha_phi, logalpha_emit
 
