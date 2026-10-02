@@ -209,11 +209,16 @@ def sam(
     )
     adv_updates = jax.tree.map(lambda x: -x, adv_updates)
 
+    # With sync_period=1 every step is both the first and the last step of its
+    # period, so the outer optimizer must step from the current parameters
+    # rather than from the parameters cached at the previous step.
+    outer_params = params if sync_period == 1 else state.cache
+
     opt_updates, opt_state = optimizer.update(
-        updates, state.opt_state, state.cache
+        updates, state.opt_state, outer_params
     )
     opt_updates = jax.tree.map(
-        lambda c, p, u: c - p + u, state.cache, params, opt_updates
+        lambda c, p, u: c - p + u, outer_params, params, opt_updates
     )
 
     cache = pick_one(first_step, params, state.cache)
