@@ -42,6 +42,17 @@ def projection_non_negative(tree: Any) -> Any:
   return jax.tree.map(jax.nn.relu, tree)
 
 
+def _broadcast_bound_to_tree(bound: Any, tree: Any) -> Any:
+  """Broadcasts a scalar ``bound`` to the structure of ``tree``.
+
+  A bound that already matches ``tree``'s structure is returned unchanged, so
+  both a scalar and a matching tree are accepted.
+  """
+  if jax.tree.structure(bound) == jax.tree.structure(tree):
+    return bound
+  return jax.tree.map(lambda _: bound, tree)
+
+
 def projection_box(tree: Any, lower: Any, upper: Any) -> Any:
   r"""Projection onto box constraints.
 
@@ -62,6 +73,8 @@ def projection_box(tree: Any, lower: Any, upper: Any) -> Any:
   Returns:
     projected tree, with the same structure as ``tree``.
   """
+  lower = _broadcast_bound_to_tree(lower, tree)
+  upper = _broadcast_bound_to_tree(upper, tree)
   return jax.tree.map(jnp.clip, tree, lower, upper)
 
 

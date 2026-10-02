@@ -104,6 +104,13 @@ class ProjectionsTest(parameterized.TestCase):
           proj.projection_box(tree, lower_tree, upper_tree), expected
       )
 
+    with self.subTest('scalar bounds on a multi-leaf tree'):
+      tree = {'w': jnp.array([2.0, -1.0]), 'b': jnp.array(5.0)}
+      expected = {'w': jnp.array([1.0, 0.0]), 'b': jnp.array(1.0)}
+      test_utils.assert_trees_all_equal(
+          proj.projection_box(tree, 0.0, 1.0), expected
+      )
+
   def test_projection_hypercube(self):
     x = jnp.array([-1.0, 2.0, 0.5])
 
@@ -119,6 +126,13 @@ class ProjectionsTest(parameterized.TestCase):
       scales = jnp.ones(len(x)) * 0.8
       np.testing.assert_array_equal(
           proj.projection_hypercube(x, scales), expected
+      )
+
+    with self.subTest('multi-leaf tree with default scale'):
+      tree = {'w': jnp.array([2.0, -1.0]), 'b': jnp.array(5.0)}
+      expected = {'w': jnp.array([1.0, 0.0]), 'b': jnp.array(1.0)}
+      test_utils.assert_trees_all_equal(
+          proj.projection_hypercube(tree), expected
       )
 
   @parameterized.parameters(1.0, 0.8)
