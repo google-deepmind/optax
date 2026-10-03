@@ -637,6 +637,16 @@ class GeneralizedKLDivergenceTest(parameterized.TestCase):
     y = _classification.generalized_kl_divergence(self.log_ps[0], self.qs[0])
     np.testing.assert_allclose(x, y, atol=1e-4)
 
+  def test_gradient_with_zero_targets(self):
+    """Gradients are finite when a target probability is zero."""
+    # The second row of ``self.qs`` has a zero entry.
+    def loss_fn(log_ps, qs):
+      return jnp.sum(_classification.generalized_kl_divergence(log_ps, qs))
+
+    grads = jax.grad(loss_fn, argnums=(0, 1))(self.log_ps, self.qs)
+    self.assertTrue(jnp.all(jnp.isfinite(grads[0])))
+    self.assertTrue(jnp.all(jnp.isfinite(grads[1])))
+
 
 class PerceptronTest(parameterized.TestCase):
 
@@ -741,6 +751,36 @@ class KLDivergenceTest(parameterized.TestCase):
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
 
+  def test_zero_targets(self):
+    """Zero targets contribute nothing to the value or to the gradients."""
+    log_ps = jax.nn.log_softmax(jnp.array([0.5, 1.0, 2.0, -1.0]))
+    qs = jnp.array([0.0, 0.4, 0.6, 0.0])
+    expected = jnp.sum(qs[1:3] * (jnp.log(qs[1:3]) - log_ps[1:3]))
+    np.testing.assert_allclose(
+        _classification.kl_divergence(log_ps, qs), expected, atol=1e-5
+    )
+    grads = jax.grad(_classification.kl_divergence, argnums=(0, 1))(log_ps, qs)
+    np.testing.assert_allclose(grads[0], -qs, atol=1e-5)
+    # d/dq [q * (log(q) - log_p)] = log(q) + 1 - log_p where q > 0.
+    np.testing.assert_allclose(
+        grads[1][1:3], jnp.log(qs[1:3]) + 1.0 - log_ps[1:3], atol=1e-5
+    )
+    self.assertTrue(jnp.all(jnp.isfinite(grads[1])))
+
+  def test_zero_targets_and_zero_predictions(self):
+    """Entries masked out of both distributions contribute nothing."""
+    # Masking a class with a -inf logit gives it a zero probability and a
+    # -inf log probability.
+    log_ps = jax.nn.log_softmax(jnp.array([0.5, 1.0, 2.0, -jnp.inf]))
+    qs = jax.nn.softmax(jnp.array([0.2, 1.5, 1.0, -jnp.inf]))
+    expected = _classification.kl_divergence(log_ps[:3], qs[:3])
+    np.testing.assert_allclose(
+        _classification.kl_divergence(log_ps, qs), expected, atol=1e-5
+    )
+    grads = jax.grad(_classification.kl_divergence, argnums=(0, 1))(log_ps, qs)
+    self.assertTrue(jnp.all(jnp.isfinite(grads[0])))
+    self.assertTrue(jnp.all(jnp.isfinite(grads[1])))
+
 
 class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
 
@@ -800,6 +840,34 @@ class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
         np.moveaxis(targets, axis, -1),
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
+
+  def test_zero_targets(self):
+    """Targets with a -inf log probability contribute nothing."""
+    f = _classification.kl_divergence_with_log_targets
+    log_ps = jax.nn.log_softmax(jnp.array([0.5, 1.0, 2.0, -1.0]))
+    log_qs = jnp.log(jnp.array([0.0, 0.4, 0.6, 0.0]))
+    qs = jnp.exp(log_qs)
+    expected = jnp.sum(qs[1:3] * (log_qs[1:3] - log_ps[1:3]))
+    np.testing.assert_allclose(f(log_ps, log_qs), expected, atol=1e-5)
+    grads = jax.grad(f, argnums=(0, 1))(log_ps, log_qs)
+    np.testing.assert_allclose(grads[0], -qs, atol=1e-5)
+    # d/dl [exp(l) * (l - log_p)] = exp(l) * (l + 1 - log_p) where l is finite.
+    np.testing.assert_allclose(
+        grads[1][1:3], qs[1:3] * (log_qs[1:3] + 1.0 - log_ps[1:3]), atol=1e-5
+    )
+    self.assertTrue(jnp.all(jnp.isfinite(grads[1])))
+
+  def test_zero_targets_and_zero_predictions(self):
+    """Entries masked out of both distributions contribute nothing."""
+    f = _classification.kl_divergence_with_log_targets
+    log_ps = jax.nn.log_softmax(jnp.array([0.5, 1.0, 2.0, -jnp.inf]))
+    log_qs = jax.nn.log_softmax(jnp.array([0.2, 1.5, 1.0, -jnp.inf]))
+    np.testing.assert_allclose(
+        f(log_ps, log_qs), f(log_ps[:3], log_qs[:3]), atol=1e-5
+    )
+    grads = jax.grad(f, argnums=(0, 1))(log_ps, log_qs)
+    self.assertTrue(jnp.all(jnp.isfinite(grads[0])))
+    self.assertTrue(jnp.all(jnp.isfinite(grads[1])))
 
 
 def _lengths_to_paddings(
