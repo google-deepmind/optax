@@ -74,3 +74,5 @@ from optax.contrib._sophia import hutchinson_estimator_diag_hessian
 from optax.contrib._sophia import HutchinsonState
 from optax.contrib._sophia import sophia
 from optax.contrib._sophia import SophiaState
+from optax.contrib._spsa import spsa_estimator
+from optax.contrib._spsa import spsa_standard_schedule
