@@ -176,6 +176,10 @@ def cosine_similarity(
   utils.check_subdtype(targets, jnp.floating)
   a = predictions
   b = targets
+  if where is not None:
+    # Exclude masked values before nonlinear operations to keep gradients valid.
+    a = jnp.where(where, a, 0)
+    b = jnp.where(where, b, 0)
 
   # dot = (a * b).sum(axis=axis, where=where)
   # a_norm2 = jnp.square(a).sum(axis=axis, where=where)
