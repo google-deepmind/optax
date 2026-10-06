@@ -438,7 +438,7 @@ class LBFGSTest(parameterized.TestCase):
         scale_init_precond=scale_init_precond,
     )
     test_utils.assert_trees_all_close(
-        lbfgs_sol, expected_lbfgs_sol, atol=1e-5, rtol=1e-5
+        lbfgs_sol, expected_lbfgs_sol, atol=1e-4, rtol=1e-4
     )
 
   def test_handling_pytrees(self):

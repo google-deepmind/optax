@@ -344,6 +344,10 @@ class ContribTest(parameterized.TestCase):
       # TODO(vroulet): discuss adding support for reduce_on_plateau
       # so removing all assertions in its definition
       self.skipTest('reduce_on_plateau is not supported by inject_hyperparams.')
+    if opt_name == 'muon':
+      # Muon's Newton-Schulz matmuls are sensitive to BF16 matmul precision
+      # differences between static and injected hyperparameters on GPU.
+      self.enter_context(jax.default_matmul_precision('high'))
     if wrapper_name is None:
       factory = _get_opt_factory(opt_name)
       hparams = opt_kwargs
