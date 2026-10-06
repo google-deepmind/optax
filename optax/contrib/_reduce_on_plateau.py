@@ -58,7 +58,8 @@ def reduce_on_plateau(
     factor: Factor by which to reduce the learning rate. new_scale = scale *
       factor.
     patience: Number of iterations with no improvement after which learning rate
-      will be reduced.
+      will be reduced. With zero patience, the first non-improving value triggers
+      a reduction; establishing or improving the best value does not.
     rtol: Relative tolerance for measuring new optimum.
     atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
@@ -132,19 +133,18 @@ def reduce_on_plateau(
 
     # We're not in cooldown, so update the plateau count and scale as usual
     def not_in_cooldown():
-      new_plateau_count = jnp.where(
-          curr_plateau_count == patience, 0, curr_plateau_count
-      )
+      has_plateaued = curr_plateau_count == jnp.maximum(patience, 1)
+      new_plateau_count = jnp.where(has_plateaued, 0, curr_plateau_count)
       new_scale = jnp.maximum(
           jnp.where(
-              curr_plateau_count == patience,
+              has_plateaued,
               state.scale * factor,
               state.scale,
           ),
           min_scale,
       )
       new_cooldown_count = jnp.where(
-          curr_plateau_count == patience, cooldown, 0
+          has_plateaued, cooldown, 0
       ).astype(jnp.int32)
 
       return new_plateau_count, new_scale, new_cooldown_count
