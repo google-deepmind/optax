@@ -136,11 +136,22 @@ def scale_by_rms(
     else:
       count_inc = jnp.asarray(0)
       nu_hat = nu
-    if eps_in_sqrt:
-      scaling = jax.tree.map(lambda n: jax.lax.rsqrt(n + eps), nu_hat)
-    else:
-      scaling = jax.tree.map(lambda n: 1 / (jnp.sqrt(n) + eps), nu_hat)
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+    compute_dtype = jnp.float32
+    tiny = jnp.finfo(compute_dtype).tiny
+
+    def _rms_scale(n):
+      n32 = n.astype(compute_dtype)
+      if eps_in_sqrt:
+        return jax.lax.rsqrt(jnp.maximum(n32, tiny) + eps)
+      else:
+        return 1.0 / (jnp.sqrt(jnp.maximum(n32, tiny)) + eps)
+
+    scaling = jax.tree.map(_rms_scale, nu_hat)
+    updates = jax.tree.map(
+        lambda s, g: (s * g.astype(compute_dtype)).astype(g.dtype),
+        scaling,
+        updates,
+    )
     if bias_correction:
       new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
     else:
@@ -213,19 +224,24 @@ def scale_by_stddev(
       mu_hat = mu
       nu_hat = nu
 
-    if eps_in_sqrt:
-      scaling = jax.tree.map(
-          lambda m, n: jax.lax.rsqrt(n - abs_sq(m) + eps),
-          mu_hat,
-          nu_hat,
-      )
-    else:
-      scaling = jax.tree.map(
-          lambda m, n: 1 / (jnp.sqrt(n - abs_sq(m)) + eps),
-          mu_hat,
-          nu_hat,
-      )
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+    compute_dtype = jnp.float32
+    tiny = jnp.finfo(compute_dtype).tiny
+
+    def _stddev_scale(m, n):
+      m32 = m.astype(compute_dtype)
+      n32 = n.astype(compute_dtype)
+      var = jnp.maximum(n32 - abs_sq(m32), tiny)
+      if eps_in_sqrt:
+        return jax.lax.rsqrt(var + eps)
+      else:
+        return 1.0 / (jnp.sqrt(var) + eps)
+
+    scaling = jax.tree.map(_stddev_scale, mu_hat, nu_hat)
+    updates = jax.tree.map(
+        lambda s, g: (s * g.astype(compute_dtype)).astype(g.dtype),
+        scaling,
+        updates,
+    )
     if bias_correction:
       new_state = ScaleByRStdDevWithCountState(count=count_inc, mu=mu, nu=nu)
     else:

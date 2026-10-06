@@ -245,5 +245,63 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
 
+_RMS_FACTORIES = (transform.scale_by_rms, transform.scale_by_stddev)
+_RMS_TEST_CASES = [
+    dict(
+        testcase_name=(
+            f'_{fn.__name__}'
+            f'_eps_in_sqrt_{ei}'
+            f'_bias_correction_{bc}'
+            f'_eps_{et}'
+        ),
+        factory=fn,
+        eps_in_sqrt=ei,
+        bias_correction=bc,
+        eps_type=et,
+    )
+    for fn in _RMS_FACTORIES
+    for ei in (True, False)
+    for bc in (True, False)
+    for et in ('scalar', 'array_like')
+]
+
+
+class ScaleByRmsFloat16Test(parameterized.TestCase):
+  @parameterized.named_parameters(_RMS_TEST_CASES)
+  def test_zero_grad_float16_no_nan(
+      self, factory, eps_in_sqrt, bias_correction, eps_type
+  ):
+    """A zero float16 gradient must yield a finite, zero update."""
+    if eps_type == 'array_like':
+      # An ArrayLike eps that has already underflowed in float16.
+      eps = jnp.asarray(1e-8, dtype=jnp.float16)
+    else:
+      eps = 1e-8
+
+    tx = factory(
+        eps=eps, eps_in_sqrt=eps_in_sqrt, bias_correction=bias_correction
+    )
+    grads = jnp.zeros((4,), dtype=jnp.float16)
+    update_fn = jax.jit(tx.update)
+    updates, _ = update_fn(grads, tx.init(grads))
+
+    with self.subTest('no_nans'):
+      self.assertTrue(
+          jnp.all(jnp.isfinite(updates)),
+          msg=f'Got non-finite updates: {updates}',
+      )
+    with self.subTest('zero_output'):
+      self.assertTrue(
+          jnp.all(updates == jnp.zeros_like(grads)),
+          msg=f'Expected all-zero updates, got: {updates}',
+      )
+    with self.subTest('dtype_preserved'):
+      self.assertEqual(
+          updates.dtype,
+          jnp.float16,
+          msg=f'Expected float16 output dtype, got: {updates.dtype}',
+      )
+
+
 if __name__ == '__main__':
   absltest.main()
