@@ -150,10 +150,15 @@ def ranking_softmax_loss(
 
   # Apply weights to labels.
   if weights is not None:
+    if where is not None:
+      weights = jnp.where(where, weights, 0.)
     labels *= weights
 
   # Scales labels and logits to match the cross entropy loss.
   logits_log_softmax = jax.nn.log_softmax(logits, axis=-1)
+  if where is not None:
+    # Avoid undefined products on ignored entries in both loss and gradients.
+    logits_log_softmax = jnp.where(where, logits_log_softmax, 0.)
 
   # Computes per-element cross entropy.
   softmax_cross_entropy = labels * logits_log_softmax
