@@ -597,17 +597,15 @@ def scale_by_adadelta(
   def update_fn(updates, state, params=None):
     del params
     e_g = optax.tree.update_moment(updates, state.e_g, rho, 2)
-
-    def _adadelta_update(g, cur_e_g, prev_e_x):
-      # Compute in at least float32 so default eps=1e-6 does not underflow
-      # in float16 (which would make 0-gradient steps 0/0 = NaN).
-      dtype = jnp.promote_types(g.dtype, jnp.float32)
-      num = jnp.sqrt(jnp.astype(prev_e_x, dtype) + jnp.asarray(eps, dtype))
-      den = jnp.sqrt(jnp.astype(cur_e_g, dtype) + jnp.asarray(eps, dtype))
-      den = jnp.maximum(den, jnp.finfo(dtype).tiny)
-      return jnp.astype((num / den) * jnp.astype(g, dtype), g.dtype)
-
-    updates = jax.tree.map(_adadelta_update, updates, e_g, state.e_x)
+    updates = jax.tree.map(
+        lambda g, cur_e_g, prev_e_x: (
+            jnp.sqrt(prev_e_x + eps) / jnp.sqrt(cur_e_g + eps)
+        )
+        * g,
+        updates,
+        e_g,
+        state.e_x,
+    )
     e_x = optax.tree.update_moment(updates, state.e_x, rho, 2)
     return updates, ScaleByAdaDeltaState(e_g=e_g, e_x=e_x)
 
@@ -686,7 +684,7 @@ def scale_by_adan(
 
     denom = jax.tree.map(_stable_denom, n_hat)
     u = optax.tree.div(u, denom)
-    u = jax.tree.map(lambda uu, gg: jnp.astype(uu, gg.dtype), u, g)
+    u = optax.tree.cast_like(u, g)
 
     new_state = ScaleByAdanState(
         m=m,
