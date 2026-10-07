@@ -418,6 +418,13 @@ def softmax_cross_entropy_with_integer_labels(
   else:
     raise ValueError('Keyword argument \'axis\' must be of type \'int\' or '
                      f'\'tuple[int, ...]\' but actual type is {type(axis)}.')
+  # Subtract the maximum before computing both terms to avoid cancellation
+  # when the logits share a large offset. Fully masked rows need no shift.
+  logits_max = jnp.max(
+      logits, axis=axis, keepdims=True, where=where, initial=-jnp.inf)
+  logits_max = jax.lax.stop_gradient(
+      jnp.where(jnp.isfinite(logits_max), logits_max, 0.))
+  logits = logits - logits_max
   # This is like jnp.take_along_axis(jax.nn.log_softmax(...), ...) except that
   # we avoid subtracting the normalizer from all values, just from the values
   # for the correct labels.
