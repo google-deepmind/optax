@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import Literal, NamedTuple, Optional
+from typing import Literal, NamedTuple, Optional, Any
 
 import jax
 from jax import nn
@@ -92,7 +92,7 @@ class ScaleByRmsWithCountState(NamedTuple):
   nu: base.Updates
 
 
-def _safe_eps(x: jax.Array, eps: float) -> jax.Array:
+def _safe_eps(x: jax.Array, eps: Any) -> jax.Array:
   """Returns eps bounded by the minimum positive value for x's real dtype."""
   dtype = x.dtype
   if jnp.issubdtype(dtype, jnp.complexfloating):
