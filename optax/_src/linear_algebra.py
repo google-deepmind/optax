@@ -196,46 +196,34 @@ def matrix_inverse_pth_root(
   )
   ridge_epsilon = ridge_epsilon * jnp.maximum(max_ev, 1e-16)
 
-  def _unrolled_mat_pow_1(mat_m):
-    """Computes mat_m^1."""
-    return mat_m
-
-  def _unrolled_mat_pow_2(mat_m):
-    """Computes mat_m^2."""
-    return jnp.matmul(mat_m, mat_m, precision=precision)
-
-  def _unrolled_mat_pow_4(mat_m):
-    """Computes mat_m^4."""
-    mat_pow_2 = _unrolled_mat_pow_2(mat_m)
-    return jnp.matmul(mat_pow_2, mat_pow_2, precision=precision)
-
-  def _unrolled_mat_pow_8(mat_m):
-    """Computes mat_m^4."""
-    mat_pow_4 = _unrolled_mat_pow_4(mat_m)
-    return jnp.matmul(mat_pow_4, mat_pow_4, precision=precision)
-
   def mat_power(mat_m, p):
-    """Computes mat_m^p, for p == 1, 2, 4 or 8.
+    """Computes mat_m^p by exponentiation by squaring, for any positive p.
 
     Args:
       mat_m: a square matrix
-      p: a positive integer
+      p: a positive integer, may be traced
 
     Returns:
       mat_m^p
     """
-    # We unrolled the loop for performance reasons.
-    exponent = jnp.round(jnp.log2(p))
-    return lax.switch(
-        jnp.asarray(exponent, jnp.int32),
-        [
-            _unrolled_mat_pow_1,
-            _unrolled_mat_pow_2,
-            _unrolled_mat_pow_4,
-            _unrolled_mat_pow_8,
-        ],
-        (mat_m),
+
+    def _iter_condition(state):
+      i, _, _ = state
+      return i > 0
+
+    def _iter_body(state):
+      i, result, mat = state
+      result = jnp.where(
+          i % 2 == 1, jnp.matmul(mat, result, precision=precision), result
+      )
+      return i // 2, result, jnp.matmul(mat, mat, precision=precision)
+
+    _, result, _ = lax.while_loop(
+        _iter_condition,
+        _iter_body,
+        (jnp.asarray(p, jnp.int32), identity, mat_m),
     )
+    return result
 
   def _iter_condition(state):
     (i, unused_mat_m, unused_mat_h, unused_old_mat_h, error, run_step) = state
