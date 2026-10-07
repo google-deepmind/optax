@@ -19,6 +19,7 @@ repos:
     files: \.(py|md)$
   - id: trailing-whitespace
     files: \.(py|md|ipynb)$
+    exclude: ^(.github/notebook-reviews/.*\.md)$
   - id: debug-statements
     files: \.py$  # only include python files
   - id: mixed-line-ending  # remove CR
@@ -37,3 +38,13 @@ repos:
   rev: v0.9.10
   hooks:
   - id: ruff
+
+- repo: local
+  hooks:
+  - id: jupytext
+    name: Generate Markdown previews for notebooks
+    entry: bash -c 'for f in "$@"; do d=".github/notebook-reviews/$(dirname "$f")"; mkdir -p "$d"; jupytext --to md -o ".github/notebook-reviews/${f%.*}.md" "$f"; done' _
+    language: python
+    additional_dependencies: [jupytext==1.17.3]
+    exclude: ^docs/_build/
+    files: \.ipynb$
