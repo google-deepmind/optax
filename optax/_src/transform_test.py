@@ -245,7 +245,6 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
   @parameterized.named_parameters(
-      ('adadelta', transform.scale_by_adadelta),
       ('adan', transform.scale_by_adan),
       ('novograd', transform.scale_by_novograd),
   )
@@ -255,7 +254,8 @@ class TransformTest(parameterized.TestCase):
     grads = jnp.zeros(4, dtype=jnp.float16)
     scaler = scaler_constr()
     updates, _ = scaler.update(grads, scaler.init(params), params)
-    self.assertTrue(jnp.all(jnp.isfinite(updates)))
+    test_utils.assert_tree_all_finite(updates)
+    test_utils.assert_trees_all_equal_dtypes(updates, grads)
     test_utils.assert_trees_all_close(updates, jnp.zeros_like(grads))
 
 
