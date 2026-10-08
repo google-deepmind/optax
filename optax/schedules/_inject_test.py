@@ -201,6 +201,29 @@ class InjectHyperparamsTest(parameterized.TestCase):
     np.testing.assert_allclose(updates, -0.5 * jnp.ones((3,)))
 
   @parameterized.named_parameters(
+      ('adam_b1', alias.adam, 'b1', lambda: 0),
+      ('adam_eps', alias.adam, 'eps', lambda: jnp.asarray(1)),
+      ('sgd_momentum', alias.sgd, 'momentum', lambda: 0),
+  )
+  def test_integer_for_array_like_hyperparam_is_still_injected(
+      self, factory, name, make_value
+  ):
+    """An integer passed for an ``ArrayLike`` parameter is not made static.
+
+    ``ArrayLike`` has ``int`` and ``bool`` among its members together with
+    ``float``, so it does not declare an integer parameter.
+    """
+    optim = schedules.inject_hyperparams(factory)(
+        learning_rate=0.1, **{name: make_value()}
+    )
+    params = jnp.ones((3,))
+    state = optim.init(params)
+
+    self.assertIn(name, state.hyperparams)
+    state.hyperparams[name] = jnp.asarray(0.5)
+    jax.jit(optim.update)(jnp.ones((3,)), state, params)
+
+  @parameterized.named_parameters(
       ('python_int', lambda: 10),
       ('python_bool', lambda: True),
       ('numpy_scalar', lambda: np.int64(10)),

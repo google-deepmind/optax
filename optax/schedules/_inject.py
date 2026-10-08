@@ -47,12 +47,18 @@ def _integer_params(signature: inspect.Signature) -> set[str]:
 
   A parameter counts if it is annotated ``int``/``bool`` (optionally inside
   ``Optional``/``Union``) or if its default value is an ``int`` or ``bool``.
+  All non-``None`` members of the annotation must be ``int`` or ``bool``.
+  For example, ``jax.typing.ArrayLike`` includes ``int`` and ``bool`` but also
+  ``float``, so it does not declare an integer parameter.
   """
   names = set()
   for name, param in signature.parameters.items():
     annotation = param.annotation
     candidates = typing.get_args(annotation) or (annotation,)
-    declared = any(c in (int, bool, 'int', 'bool') for c in candidates)
+    candidates = [c for c in candidates if c not in (None, type(None))]
+    declared = bool(candidates) and all(
+        c in (int, bool, 'int', 'bool') for c in candidates
+    )
     if declared or (
         param.default is not param.empty and isinstance(param.default, int)
     ):
