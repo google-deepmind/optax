@@ -19,6 +19,7 @@ number of epochs, the learning rate is reduced by a factor of 'reduce_factor'.
 Optionally, a cooldown period can be specified during which the learning rate
 will not be reduced.
 """
+
 from typing import NamedTuple
 
 import jax
@@ -58,7 +59,8 @@ def reduce_on_plateau(
     factor: Factor by which to reduce the learning rate. new_scale = scale *
       factor.
     patience: Number of iterations with no improvement after which learning rate
-      will be reduced.
+      will be reduced. When patience=0, the learning rate is reduced on the
+      first non-improving iteration.
     rtol: Relative tolerance for measuring new optimum.
     atol: Absolute tolerance for measuring new optimum.
     cooldown: Number of iterations to wait before resuming normal operation
@@ -122,6 +124,9 @@ def reduce_on_plateau(
     curr_plateau_count = jnp.where(
         has_improved, 0, numerics.safe_increment(state.plateau_count)
     )
+    has_plateaued = jnp.logical_and(
+        has_improved == 0, curr_plateau_count >= patience
+    )
 
     # We're in cooldown, so reduce the counter and ignore any bad epochs
     def in_cooldown():
@@ -132,20 +137,18 @@ def reduce_on_plateau(
 
     # We're not in cooldown, so update the plateau count and scale as usual
     def not_in_cooldown():
-      new_plateau_count = jnp.where(
-          curr_plateau_count == patience, 0, curr_plateau_count
-      )
+      new_plateau_count = jnp.where(has_plateaued, 0, curr_plateau_count)
       new_scale = jnp.maximum(
           jnp.where(
-              curr_plateau_count == patience,
+              has_plateaued,
               state.scale * factor,
               state.scale,
           ),
           min_scale,
       )
-      new_cooldown_count = jnp.where(
-          curr_plateau_count == patience, cooldown, 0
-      ).astype(jnp.int32)
+      new_cooldown_count = jnp.where(has_plateaued, cooldown, 0).astype(
+          jnp.int32
+      )
 
       return new_plateau_count, new_scale, new_cooldown_count
 
