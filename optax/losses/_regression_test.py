@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from optax.losses import _regression
 
 
@@ -201,6 +202,116 @@ class CosineDistanceTest(parameterized.TestCase):
         np.moveaxis(targets, axis, -1),
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
+
+
+def _reference(first, second, mask):
+  a, b = np.asarray(first)[mask], np.asarray(second)[mask]
+  norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
+  cosine = np.dot(a, b) / (norm_a * norm_b)
+  grad_a = np.zeros_like(first)
+  grad_b = np.zeros_like(second)
+  grad_a[mask] = b / (norm_a * norm_b) - cosine * a / norm_a**2
+  grad_b[mask] = a / (norm_a * norm_b) - cosine * b / norm_b**2
+  return cosine, (grad_a, grad_b)
+
+
+class CosineMaskGradientTest(parameterized.TestCase):
+
+  @parameterized.product(
+      invalid=(np.nan, np.inf, -np.inf),
+      operand=('first', 'second', 'both'),
+      compiled=(False, True),
+  )
+  def test_excluded_values_have_zero_gradient_and_leave_valid_values_finite(
+      self, invalid, operand, compiled
+  ):
+    first = np.array([1.0, 5.0, 2.0], dtype=np.float32)
+    second = np.array([2.0, 3.0, 1.0], dtype=np.float32)
+    if operand in ('first', 'both'):
+      first[1] = invalid
+    if operand in ('second', 'both'):
+      second[1] = invalid
+    mask = np.array([True, False, True])
+    expected_value, expected_grads = _reference(first, second, mask)
+    function = jax.value_and_grad(
+        lambda a, b: optax.cosine_similarity(a, b, where=mask), argnums=(0, 1)
+    )
+    if compiled:
+      function = jax.jit(function)
+    value, grads = function(jnp.asarray(first), jnp.asarray(second))
+    np.testing.assert_allclose(value, expected_value, rtol=2e-6)
+    for actual, expected in zip(grads, expected_grads):
+      self.assertTrue(np.isfinite(actual).all())
+      np.testing.assert_allclose(actual, expected, rtol=2e-6, atol=1e-7)
+      self.assertEqual(float(actual[1]), 0.0)
+
+  @parameterized.parameters((-1,), (0,), (None,), ((0, 1),))
+  def test_axes_and_broadcast_masks_match_explicit_zero_filling(self, axis):
+    first = jnp.array([[1.0, np.nan, 2.0], [2.0, np.inf, 3.0]])
+    second = jnp.array([[2.0, 6.0, 1.0], [3.0, 8.0, 2.0]])
+    mask = jnp.array([[True, False, True]])
+    clean_first = jnp.where(mask, first, 0.0)
+    clean_second = jnp.where(mask, second, 0.0)
+    fn = lambda a, b: optax.cosine_similarity(
+        a, b, axis=axis, where=mask, epsilon=1e-5
+    ).sum()
+    expected_fn = lambda a, b: optax.cosine_similarity(
+        a, b, axis=axis, epsilon=1e-5
+    ).sum()
+    value, grads = jax.jit(jax.value_and_grad(fn, argnums=(0, 1)))(
+        first, second
+    )
+    expected, expected_grads = jax.value_and_grad(expected_fn, argnums=(0, 1))(
+        clean_first, clean_second
+    )
+    np.testing.assert_allclose(value, expected, rtol=2e-6)
+    for actual, reference in zip(grads, expected_grads):
+      np.testing.assert_allclose(
+          actual, jnp.where(mask, reference, 0.0), rtol=2e-6, atol=1e-7
+      )
+
+  def test_all_masked_inputs_respect_positive_epsilon(self):
+    values = jnp.array([np.nan, np.inf])
+    fn = lambda x: optax.cosine_distance(
+        x, x, where=jnp.array([False, False]), epsilon=1e-5
+    )
+    loss, grad = jax.jit(jax.value_and_grad(fn))(values)
+    self.assertEqual(float(loss), 1.0)
+    np.testing.assert_array_equal(grad, [0.0, 0.0])
+
+  def test_included_nonfinite_values_are_not_silently_removed(self):
+    first = jnp.array([1.0, jnp.nan, 2.0])
+    second = jnp.array([2.0, 3.0, 1.0])
+    for where in (
+        None,
+        jnp.array([True, True, True]),
+        jnp.array([False, True, True]),
+    ):
+      with self.subTest(where=where):
+        value = optax.cosine_similarity(first, second, where=where)
+        self.assertTrue(np.isnan(value))
+
+  def test_masked_targets_allow_a_real_sgd_update(self):
+    params = jnp.array([1.0, 7.0, 2.0], dtype=jnp.float32)
+    targets = jnp.array([2.0, np.nan, 1.0], dtype=jnp.float32)
+    mask = jnp.array([True, False, True])
+    objective = lambda p: optax.cosine_distance(p, targets, where=mask)
+    optimizer = optax.sgd(0.1)
+    state = optimizer.init(params)
+
+    @jax.jit
+    def step(p, s):
+      loss, grad = jax.value_and_grad(objective)(p)
+      updates, s = optimizer.update(grad, s, p)
+      return optax.apply_updates(p, updates), s, loss
+
+    initial_loss = objective(params)
+    for _ in range(5):
+      params, state, loss = step(params, state)
+      self.assertTrue(np.isfinite(params).all())
+      self.assertTrue(np.isfinite(loss))
+    self.assertLess(float(objective(params)), float(initial_loss))
+    self.assertEqual(float(params[1]), 7.0)
 
 
 if __name__ == '__main__':
