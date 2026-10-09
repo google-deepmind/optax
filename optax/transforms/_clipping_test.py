@@ -75,6 +75,23 @@ class ClippingTest(absltest.TestCase):
       updates_step, _ = clipper.update(self.per_step_updates, None)
       test_utils.assert_trees_all_close(updates, updates_step)
 
+  def test_clip_by_global_norm_zero_norm_zero_max_norm(self):
+    # 0 / 0 in the clip branch used to produce NaN updates when the global
+    # norm and max_norm were both zero (e.g. all-zero gradients under a
+    # schedule-driven max_norm that reaches zero).
+    clipper = _clipping.clip_by_global_norm(0.0)
+    zero_updates = jax.tree.map(jnp.zeros_like, self.per_step_updates)
+    updates, _ = clipper.update(zero_updates, None)
+    test_utils.assert_trees_all_close(updates, zero_updates)
+
+  def test_clip_by_global_norm_at_equality_is_identity(self):
+    # Clipping updates to exactly their own norm is a no-op: pins the
+    # boundary semantics of the g_norm <= max_norm comparison.
+    g_norm = optax.tree.norm(self.per_step_updates)
+    clipper = _clipping.clip_by_global_norm(g_norm)
+    updates, _ = clipper.update(self.per_step_updates, None)
+    test_utils.assert_trees_all_close(updates, self.per_step_updates)
+
   def test_adaptive_grad_clip_with_axis(self):
     """Test adaptive_grad_clip with custom axis parameter."""
 
