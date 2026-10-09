@@ -19,7 +19,8 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
+from optax._src import alias
+from optax._src import update
 from optax.losses import _regression
 
 
@@ -234,7 +235,8 @@ class CosineMaskGradientTest(parameterized.TestCase):
     mask = np.array([True, False, True])
     expected_value, expected_grads = _reference(first, second, mask)
     function = jax.value_and_grad(
-        lambda a, b: optax.cosine_similarity(a, b, where=mask), argnums=(0, 1)
+        lambda a, b: _regression.cosine_similarity(a, b, where=mask),
+        argnums=(0, 1),
     )
     if compiled:
       function = jax.jit(function)
@@ -252,10 +254,10 @@ class CosineMaskGradientTest(parameterized.TestCase):
     mask = jnp.array([[True, False, True]])
     clean_first = jnp.where(mask, first, 0.0)
     clean_second = jnp.where(mask, second, 0.0)
-    fn = lambda a, b: optax.cosine_similarity(
+    fn = lambda a, b: _regression.cosine_similarity(
         a, b, axis=axis, where=mask, epsilon=1e-5
     ).sum()
-    expected_fn = lambda a, b: optax.cosine_similarity(
+    expected_fn = lambda a, b: _regression.cosine_similarity(
         a, b, axis=axis, epsilon=1e-5
     ).sum()
     value, grads = jax.jit(jax.value_and_grad(fn, argnums=(0, 1)))(
@@ -272,7 +274,7 @@ class CosineMaskGradientTest(parameterized.TestCase):
 
   def test_all_masked_inputs_respect_positive_epsilon(self):
     values = jnp.array([np.nan, np.inf])
-    fn = lambda x: optax.cosine_distance(
+    fn = lambda x: _regression.cosine_distance(
         x, x, where=jnp.array([False, False]), epsilon=1e-5
     )
     loss, grad = jax.jit(jax.value_and_grad(fn))(values)
@@ -288,22 +290,22 @@ class CosineMaskGradientTest(parameterized.TestCase):
         jnp.array([False, True, True]),
     ):
       with self.subTest(where=where):
-        value = optax.cosine_similarity(first, second, where=where)
+        value = _regression.cosine_similarity(first, second, where=where)
         self.assertTrue(np.isnan(value))
 
   def test_masked_targets_allow_a_real_sgd_update(self):
     params = jnp.array([1.0, 7.0, 2.0], dtype=jnp.float32)
     targets = jnp.array([2.0, np.nan, 1.0], dtype=jnp.float32)
     mask = jnp.array([True, False, True])
-    objective = lambda p: optax.cosine_distance(p, targets, where=mask)
-    optimizer = optax.sgd(0.1)
+    objective = lambda p: _regression.cosine_distance(p, targets, where=mask)
+    optimizer = alias.sgd(0.1)
     state = optimizer.init(params)
 
     @jax.jit
     def step(p, s):
       loss, grad = jax.value_and_grad(objective)(p)
       updates, s = optimizer.update(grad, s, p)
-      return optax.apply_updates(p, updates), s, loss
+      return update.apply_updates(p, updates), s, loss
 
     initial_loss = objective(params)
     for _ in range(5):
