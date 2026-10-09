@@ -247,18 +247,18 @@ class TransformTest(parameterized.TestCase):
 
 _RMS_FACTORIES = (transform.scale_by_rms, transform.scale_by_stddev)
 _RMS_TEST_CASES = [
-    dict(
-        testcase_name=(
+    {
+        'testcase_name': (
             f'_{fn.__name__}'
             f'_eps_in_sqrt_{ei}'
             f'_bias_correction_{bc}'
             f'_eps_{et}'
         ),
-        factory=fn,
-        eps_in_sqrt=ei,
-        bias_correction=bc,
-        eps_type=et,
-    )
+        'factory': fn,
+        'eps_in_sqrt': ei,
+        'bias_correction': bc,
+        'eps_type': et,
+    }
     for fn in _RMS_FACTORIES
     for ei in (True, False)
     for bc in (True, False)
