@@ -163,10 +163,12 @@ def momo(
     # if denom is zero, take no step
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha, t1)
+    # Proximal weight decay step, see Lemma 3.1 of the paper: the new params
+    # are (params - tau * exp_avg) / (1 + alpha * weight_decay).
     p_update = jax.tree.map(
         # pyrefly: ignore[unsupported-operation]
-        lambda ea, p: -(alpha * weight_decay) / (1 + alpha * weight_decay) * p
-        - tau * ea,
+        lambda ea, p: -(alpha * weight_decay * p + tau * ea)
+        / (1 + alpha * weight_decay),
         exp_avg,
         params,
     )
@@ -339,12 +341,12 @@ def momo_adam(
     # if denom is zero, take no step
     t1 = jnp.where(exp_avg_norm <= jnp.finfo(float).eps, 0.0, t1)
     tau = jnp.minimum(alpha / bc1, t1)
+    # Proximal weight decay step, see Lemma 3.1 of the paper: the new params
+    # are (params - tau * exp_avg / precond) / (1 + alpha * weight_decay).
     p_update = jax.tree.map(
         # pyrefly: ignore[unsupported-operation]
-        lambda ea, prec, p: -(alpha * weight_decay)
-        / (1 + alpha * weight_decay)
-        * p
-        - tau * ea / prec,
+        lambda ea, prec, p: -(alpha * weight_decay * p + tau * ea / prec)
+        / (1 + alpha * weight_decay),
         exp_avg,
         precond,
         params,
