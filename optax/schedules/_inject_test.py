@@ -27,6 +27,7 @@ import numpy as np
 from optax import schedules
 from optax import transforms
 
+from optax._src import alias
 from optax._src import base
 from optax._src import test_utils
 from optax._src import transform
@@ -158,6 +159,117 @@ class InjectHyperparamsTest(parameterized.TestCase):
     _, state = jax.jit(optim.update)(grads, state)
 
     assert not set(state.hyperparams.keys()).intersection(set(static_args))
+
+  def test_integer_hyperparams_are_static(self):
+    """Integer hyperparameters are not injected (kept static)."""
+    optim = schedules.inject_hyperparams(alias.adafactor)(learning_rate=0.1)
+
+    params = jnp.ones((4, 4))
+    state = jax.jit(optim.init)(params)
+
+    # `min_dim_size_to_factor` is a structural int and must not be injected.
+    self.assertNotIn('min_dim_size_to_factor', state.hyperparams)
+    self.assertIn('learning_rate', state.hyperparams)
+
+  @parameterized.named_parameters(
+      ('adafactor', alias.adafactor),  # int `min_dim_size_to_factor`
+      ('lbfgs', alias.lbfgs),  # int `memory_size`
+  )
+  def test_jit_init_with_integer_hyperparams(self, opt_factory):
+    """Optimizers with integer hyperparams jit without `static_args` (#412)."""
+    optim = schedules.inject_hyperparams(opt_factory)(learning_rate=0.1)
+
+    params = jnp.ones((4, 4))
+    # Prior to treating ints as static this raised a TracerBoolConversionError.
+    jax.jit(optim.init)(params)
+
+  @parameterized.named_parameters(
+      ('python_int', lambda: 1),
+      ('jax_array', lambda: jnp.asarray(1)),
+  )
+  def test_integer_for_float_hyperparam_is_still_injected(self, make_value):
+    """An integer passed for a float parameter is not made static."""
+    optim = schedules.inject_hyperparams(alias.sgd)(
+        learning_rate=make_value()
+    )
+    params = jnp.ones((3,))
+    state = optim.init(params)
+
+    self.assertIn('learning_rate', state.hyperparams)
+    state.hyperparams['learning_rate'] = jnp.asarray(0.5)
+    updates, _ = optim.update(jnp.ones((3,)), state, params)
+    np.testing.assert_allclose(updates, -0.5 * jnp.ones((3,)))
+
+  @parameterized.named_parameters(
+      ('adam_b1', alias.adam, 'b1', lambda: 0),
+      ('adam_eps', alias.adam, 'eps', lambda: jnp.asarray(1)),
+      ('sgd_momentum', alias.sgd, 'momentum', lambda: 0),
+  )
+  def test_integer_for_array_like_hyperparam_is_still_injected(
+      self, factory, name, make_value
+  ):
+    """An integer passed for an ``ArrayLike`` parameter is not made static.
+
+    ``ArrayLike`` has ``int`` and ``bool`` among its members together with
+    ``float``, so it does not declare an integer parameter.
+    """
+    optim = schedules.inject_hyperparams(factory)(
+        learning_rate=0.1, **{name: make_value()}
+    )
+    params = jnp.ones((3,))
+    state = optim.init(params)
+
+    self.assertIn(name, state.hyperparams)
+    state.hyperparams[name] = jnp.asarray(0.5)
+    jax.jit(optim.update)(jnp.ones((3,)), state, params)
+
+  @parameterized.named_parameters(
+      ('python_int', lambda: 10),
+      ('python_bool', lambda: True),
+      ('numpy_scalar', lambda: np.int64(10)),
+      ('numpy_array', lambda: np.asarray(10)),
+      ('jax_array', lambda: jnp.asarray(10)),
+      ('jax_bool_array', lambda: jnp.asarray(True)),
+  )
+  def test_integer_scalars_of_any_type_are_static(self, make_value):
+    """Zero-dim integer/bool values are static, not just Python ints."""
+    optim = schedules.inject_hyperparams(transform.scale_by_lbfgs)(
+        memory_size=make_value()
+    )
+
+    params = {'w': jnp.ones((3,))}
+    state = optim.init(params)
+
+    self.assertNotIn('memory_size', state.hyperparams)
+    # A traced `memory_size` raises TracerBoolConversionError here. A static
+    # `jax.Array` is not enough on its own either, since one closed over by a
+    # jitted function is staged out as a constant of the trace.
+    jax.jit(lambda p, s: optim.update(p, s, p))(params, state)
+
+  @parameterized.named_parameters(
+      ('typed_key', lambda: random.key(0)),
+      ('raw_uint32_key', lambda: random.PRNGKey(0)),
+  )
+  def test_prng_keys_are_not_treated_as_static(self, make_key):
+    """A raw uint32 key has integer dtype but must stay injected."""
+
+    def random_noise_optimizer(key, scale):
+      def init_fn(params_like):
+        del params_like
+        return (key, scale)
+
+      def update_fn(updates, state, params=None):
+        del params
+        return updates, state
+
+      return base.GradientTransformation(init_fn, update_fn)
+
+    optim = schedules.inject_hyperparams(random_noise_optimizer)(
+        key=make_key(), scale=1e-3
+    )
+    state = optim.init({'w': jnp.ones((3,))})
+
+    self.assertIn('key', state.hyperparams)
 
   def test_prng_key_not_hyperparameter(self):
     """Check that random.key can be handled by :func:``inject_hyperparams``."""
