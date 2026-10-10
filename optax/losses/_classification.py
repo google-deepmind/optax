@@ -198,11 +198,19 @@ def _weighted_logsoftmax_jvp(primals, tangents):
   result = jnp.where(
       weights != 0.0, weights * logsoftmax_x, jnp.zeros_like(logsoftmax_x)
   )
+  # Apply the same ``0 * log(0) = 0`` convention as the primal to the
+  # ``weights_dot`` term. Entries where ``logsoftmax_x`` is ``-inf`` (e.g.
+  # ``x_i = -inf`` at a masked class) otherwise yield ``weights_dot * -inf``,
+  # which is ``nan`` even for a zero tangent direction. Substituting a finite
+  # value keeps the derivative correct wherever ``logsoftmax_x`` is finite.
+  safe_logsoftmax_x = jnp.where(
+      jnp.isneginf(logsoftmax_x), jnp.zeros_like(logsoftmax_x), logsoftmax_x
+  )
   out_tangents = (
       weights * x_dot
       - weights
       * jnp.sum(x_dot * jax.nn.softmax(x, axis=-1), axis=-1, keepdims=True)
-      + weights_dot * logsoftmax_x
+      + weights_dot * safe_logsoftmax_x
   )
   return result, out_tangents
 
