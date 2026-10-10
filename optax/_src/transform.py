@@ -136,11 +136,24 @@ def scale_by_rms(
     else:
       count_inc = jnp.asarray(0)
       nu_hat = nu
-    if eps_in_sqrt:
-      scaling = jax.tree.map(lambda n: jax.lax.rsqrt(n + eps), nu_hat)
-    else:
-      scaling = jax.tree.map(lambda n: 1 / (jnp.sqrt(n) + eps), nu_hat)
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+
+    def _scale(n):
+      safe_dtype = jnp.promote_types(n.dtype, jnp.float32)
+      safe_n = n.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      if eps_in_sqrt:
+        denominator = jnp.sqrt(safe_n + safe_eps)
+      else:
+        denominator = jnp.sqrt(safe_n) + safe_eps
+      denominator = jnp.maximum(
+          denominator, jnp.finfo(safe_dtype).tiny
+      )
+      return 1 / denominator
+
+    scaling = jax.tree.map(_scale, nu_hat)
+    updates = jax.tree.map(
+        lambda s, g: (s * g).astype(g.dtype), scaling, updates
+    )
     if bias_correction:
       new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
     else:
@@ -213,19 +226,25 @@ def scale_by_stddev(
       mu_hat = mu
       nu_hat = nu
 
-    if eps_in_sqrt:
-      scaling = jax.tree.map(
-          lambda m, n: jax.lax.rsqrt(n - abs_sq(m) + eps),
-          mu_hat,
-          nu_hat,
+    def _scale(m, n):
+      safe_dtype = jnp.promote_types(n.dtype, jnp.float32)
+      safe_m = m.astype(jnp.promote_types(m.dtype, jnp.float32))
+      safe_n = n.astype(safe_dtype)
+      safe_eps = jnp.asarray(eps, dtype=safe_dtype)
+      variance = jnp.maximum(safe_n - abs_sq(safe_m), 0)
+      if eps_in_sqrt:
+        denominator = jnp.sqrt(variance + safe_eps)
+      else:
+        denominator = jnp.sqrt(variance) + safe_eps
+      denominator = jnp.maximum(
+          denominator, jnp.finfo(safe_dtype).tiny
       )
-    else:
-      scaling = jax.tree.map(
-          lambda m, n: 1 / (jnp.sqrt(n - abs_sq(m)) + eps),
-          mu_hat,
-          nu_hat,
-      )
-    updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
+      return 1 / denominator
+
+    scaling = jax.tree.map(_scale, mu_hat, nu_hat)
+    updates = jax.tree.map(
+        lambda s, g: (s * g).astype(g.dtype), scaling, updates
+    )
     if bias_correction:
       new_state = ScaleByRStdDevWithCountState(count=count_inc, mu=mu, nu=nu)
     else:
