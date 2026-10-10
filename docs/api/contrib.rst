@@ -47,6 +47,8 @@ are not supported by the main library.
     ScheduleFreeState
     sophia
     SophiaState
+    spsa_estimator
+    spsa_standard_schedule
     split_real_and_imaginary
     SplitRealAndImaginaryState
     scale_by_ademamix
