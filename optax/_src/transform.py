@@ -621,9 +621,9 @@ class ScaleByAdanState(NamedTuple):
 
 
 def scale_by_adan(
-    b1: jax.typing.ArrayLike = 0.98,
-    b2: jax.typing.ArrayLike = 0.92,
-    b3: jax.typing.ArrayLike = 0.99,
+    b1: jax.typing.ArrayLike = 0.02,
+    b2: jax.typing.ArrayLike = 0.08,
+    b3: jax.typing.ArrayLike = 0.01,
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 0.0,
 ) -> base.GradientTransformation:
@@ -632,9 +632,14 @@ def scale_by_adan(
   See :func:`optax.adan` for more details.
 
   Args:
-    b1: Decay rate for the EWMA of gradients.
-    b2: Decay rate for the EWMA of differences of gradients.
-    b3: Decay rate for the EMWA of the algorithm's squared term.
+    b1: Weight given to the newest gradient in its EWMA (``beta_1`` in
+      :func:`optax.adan`). The average decays at rate ``1 - b1``.
+    b2: Weight given to the newest difference of gradients in its EWMA
+      (``beta_2`` in :func:`optax.adan`). The average decays at rate
+      ``1 - b2``.
+    b3: Weight given to the newest value of the squared term in its EWMA
+      (``beta_3`` in :func:`optax.adan`). The average decays at rate
+      ``1 - b3``.
     eps: Term added to the denominator to improve numerical stability.
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
@@ -662,16 +667,16 @@ def scale_by_adan(
         optax.tree.zeros_like(g),
         optax.tree.sub(g, state.g),
     )
-    m = optax.tree.update_moment(g, state.m, b1, 1)
-    v = optax.tree.update_moment(diff, state.v, b2, 1)
+    m = optax.tree.update_moment(g, state.m, 1 - b1, 1)
+    v = optax.tree.update_moment(diff, state.v, 1 - b2, 1)
 
     sq = optax.tree.add_scale(g, 1 - b2, diff)
-    n = optax.tree.update_moment_per_elem_norm(sq, state.n, b3, 2)
+    n = optax.tree.update_moment_per_elem_norm(sq, state.n, 1 - b3, 2)
 
     t = numerics.safe_increment(state.t)
-    m_hat = optax.tree.bias_correction(m, b1, t)
-    v_hat = optax.tree.bias_correction(v, b2, t)
-    n_hat = optax.tree.bias_correction(n, b3, t)
+    m_hat = optax.tree.bias_correction(m, 1 - b1, t)
+    v_hat = optax.tree.bias_correction(v, 1 - b2, t)
+    n_hat = optax.tree.bias_correction(n, 1 - b3, t)
 
     u = optax.tree.add_scale(m_hat, 1 - b2, v_hat)
     denom = jax.tree.map(lambda n_hat: jnp.sqrt(n_hat + eps_root) + eps, n_hat)
