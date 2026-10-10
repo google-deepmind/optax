@@ -15,7 +15,7 @@
 """Gradient transformations."""
 
 import functools
-from typing import Literal, NamedTuple, Optional
+from typing import Literal, NamedTuple, Optional, Any
 
 import jax
 from jax import nn
@@ -92,6 +92,16 @@ class ScaleByRmsWithCountState(NamedTuple):
   nu: base.Updates
 
 
+def _safe_eps(x: jax.Array, eps: Any) -> jax.Array:
+  """Returns eps bounded by the minimum positive value for x's real dtype."""
+  dtype = x.dtype
+  if jnp.issubdtype(dtype, jnp.complexfloating):
+    real_dtype = jnp.finfo(dtype).dtype
+  else:
+    real_dtype = dtype
+  return jnp.maximum(eps, jnp.finfo(real_dtype).tiny)
+
+
 def scale_by_rms(
     decay: jax.typing.ArrayLike = 0.9,
     eps: jax.typing.ArrayLike = 1e-8,
@@ -136,10 +146,15 @@ def scale_by_rms(
     else:
       count_inc = jnp.asarray(0)
       nu_hat = nu
-    if eps_in_sqrt:
-      scaling = jax.tree.map(lambda n: jax.lax.rsqrt(n + eps), nu_hat)
-    else:
-      scaling = jax.tree.map(lambda n: 1 / (jnp.sqrt(n) + eps), nu_hat)
+
+    def _rms_scale(g, n):
+      safe_eps = _safe_eps(g, eps)
+      if eps_in_sqrt:
+        return jax.lax.rsqrt(n + safe_eps)
+      else:
+        return 1.0 / (jnp.sqrt(n) + safe_eps)
+
+    scaling = jax.tree.map(_rms_scale, updates, nu_hat)
     updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
     if bias_correction:
       new_state = ScaleByRmsWithCountState(count=count_inc, nu=nu)
@@ -213,18 +228,15 @@ def scale_by_stddev(
       mu_hat = mu
       nu_hat = nu
 
-    if eps_in_sqrt:
-      scaling = jax.tree.map(
-          lambda m, n: jax.lax.rsqrt(n - abs_sq(m) + eps),
-          mu_hat,
-          nu_hat,
-      )
-    else:
-      scaling = jax.tree.map(
-          lambda m, n: 1 / (jnp.sqrt(n - abs_sq(m)) + eps),
-          mu_hat,
-          nu_hat,
-      )
+    def _stddev_scale(g, m, n):
+      safe_eps = _safe_eps(g, eps)
+      var = jnp.maximum(n - abs_sq(m), 0.0)
+      if eps_in_sqrt:
+        return jax.lax.rsqrt(var + safe_eps)
+      else:
+        return 1.0 / (jnp.sqrt(var) + safe_eps)
+
+    scaling = jax.tree.map(_stddev_scale, updates, mu_hat, nu_hat)
     updates = jax.tree.map(lambda s, g: s * g, scaling, updates)
     if bias_correction:
       new_state = ScaleByRStdDevWithCountState(count=count_inc, mu=mu, nu=nu)
