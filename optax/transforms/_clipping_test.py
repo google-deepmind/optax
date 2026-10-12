@@ -79,8 +79,8 @@ class ClippingTest(absltest.TestCase):
     clipper = _clipping.clip_by_global_norm(1.0)
 
     def clip_vector(x):
-      updates, _ = clipper.update({'w': x[:2], 'b': x[2:]}, None)
-      return jnp.concatenate([updates['w'], updates['b']])
+      updates, _ = clipper.update({"w": x[:2], "b": x[2:]}, None)
+      return jnp.concatenate([updates["w"], updates["b"]])
 
     for compile_fn in (lambda f: f, jax.jit):
       for derivative in (jax.jacfwd, jax.jacrev):
