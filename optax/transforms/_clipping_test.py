@@ -75,6 +75,58 @@ class ClippingTest(absltest.TestCase):
       updates_step, _ = clipper.update(self.per_step_updates, None)
       test_utils.assert_trees_all_close(updates, updates_step)
 
+  def test_clip_by_global_norm_zero_updates_jacobian(self):
+    clipper = _clipping.clip_by_global_norm(1.0)
+
+    def clip_vector(x):
+      updates, _ = clipper.update({'w': x[:2], 'b': x[2:]}, None)
+      return jnp.concatenate([updates['w'], updates['b']])
+
+    for compile_fn in (lambda f: f, jax.jit):
+      for derivative in (jax.jacfwd, jax.jacrev):
+        with self.subTest(
+            compiled=compile_fn is jax.jit, derivative=derivative
+        ):
+          actual = compile_fn(derivative(clip_vector))(jnp.zeros(3))
+          np.testing.assert_allclose(actual, jnp.eye(3), atol=0, rtol=0)
+
+  def test_clip_by_global_norm_nonzero_updates_jacobian(self):
+    clipper = _clipping.clip_by_global_norm(1.0)
+    clip_vector = lambda x: clipper.update(x, None)[0]
+    for x in (jnp.array([0.1, 0.2]), jnp.array([3.0, 4.0])):
+      norm = jnp.linalg.norm(x)
+      expected = (
+          jnp.eye(2)
+          if norm < 1.0
+          else jnp.eye(2) / norm - jnp.outer(x, x) / norm**3
+      )
+      for compile_fn in (lambda f: f, jax.jit):
+        with self.subTest(x=x, compiled=compile_fn is jax.jit):
+          np.testing.assert_allclose(
+              compile_fn(jax.jacrev(clip_vector))(x),
+              expected,
+              atol=1e-7,
+              rtol=1e-6,
+          )
+
+  def test_clip_by_global_norm_meta_gradient_at_stationary_point(self):
+    clipper = _clipping.clip_by_global_norm(1.0)
+    learning_rate = 0.1
+
+    def outer_loss(initial_params):
+      params = initial_params
+      for _ in range(3):
+        grads = jax.grad(lambda p: jnp.sum(p**2) / 2)(params)
+        updates, _ = clipper.update(grads, None)
+        params = params - learning_rate * updates
+      return jnp.sum((params - 1) ** 2)
+
+    expected = jnp.full(3, -2 * (1 - learning_rate) ** 3)
+    for compile_fn in (lambda f: f, jax.jit):
+      with self.subTest(compiled=compile_fn is jax.jit):
+        actual = compile_fn(jax.grad(outer_loss))(jnp.zeros(3))
+        np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-6)
+
   def test_adaptive_grad_clip_with_axis(self):
     """Test adaptive_grad_clip with custom axis parameter."""
 
