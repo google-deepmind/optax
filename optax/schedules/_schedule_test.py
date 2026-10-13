@@ -139,7 +139,6 @@ class PolynomialTest(absltest.TestCase):
         expected_vals, np.array(generated_vals), atol=1e-3
     )
 
-
   def test_fractional_power_end_value_under_jit(self):
     """The end of the schedule must be exactly end_value, not NaN, under jit."""
     for transition_steps in [3, 10, 1000]:
