@@ -785,8 +785,9 @@ def scale_by_yogi(
     eps: Term added to the denominator to improve numerical stability.
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    initial_accumulator_value: The starting value for accumulators. Only
-      positive values are allowed.
+    initial_accumulator_value: The starting value for the second moment
+      accumulator. Only positive values are allowed. The first moment always
+      starts at zero.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -794,7 +795,7 @@ def scale_by_yogi(
 
   def init_fn(params):
     # First moment
-    mu = optax.tree.full_like(params, initial_accumulator_value)
+    mu = optax.tree.zeros_like(params)
     # Second moment
     nu = optax.tree.full_like(params, initial_accumulator_value)
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)

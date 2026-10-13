@@ -258,6 +258,16 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_trees_all_equal_dtypes(updates, grads)
     test_utils.assert_trees_all_close(updates, jnp.zeros_like(grads))
 
+  def test_scale_by_yogi_zero_grads_give_zero_updates(self):
+    opt = transform.scale_by_yogi(initial_accumulator_value=1e-6)
+    params = jnp.ones(3)
+    state = opt.init(params)
+    test_utils.assert_trees_all_equal(state.mu, jnp.zeros(3))
+    test_utils.assert_trees_all_equal(state.nu, jnp.full(3, 1e-6))
+    for _ in range(3):
+      updates, state = opt.update(jnp.zeros(3), state)
+      test_utils.assert_trees_all_equal(updates, jnp.zeros(3))
+
 
 if __name__ == '__main__':
   absltest.main()
