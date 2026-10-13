@@ -161,6 +161,13 @@ def dadapt_adamw(
         numerator_weighted,
         count_inc,
     )
+    # Like the reference implementation, skip the step entirely (zero
+    # updates, unchanged state) while `grad_sum_l1` is zero, i.e. no non-zero
+    # gradient has been seen yet. Otherwise the estimate is 0 / 0 and the
+    # state stays NaN for the rest of training.
+    skip = grad_sum_l1 == 0
+    p_update = optax.tree.where(skip, optax.tree.zeros_like(p_update), p_update)
+    new_state = optax.tree.where(skip, state, new_state)
     return p_update, new_state
 
   # pyrefly: ignore[bad-argument-type]

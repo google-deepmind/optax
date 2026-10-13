@@ -563,5 +563,27 @@ class ContribTest(parameterized.TestCase):
       test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
 
+class ZeroGradientTest(parameterized.TestCase):
+
+  @parameterized.parameters('dadapt_adamw', 'prodigy')
+  def test_leading_zero_gradient_step_is_a_no_op(self, opt_name):
+    """All-zero gradients before any others must not make the state NaN."""
+    opt = getattr(contrib, opt_name)(learning_rate=1.0)
+    params = {'w': jnp.ones((3,)), 'b': jnp.ones((2,))}
+    grads = {'w': jnp.array([0.1, -0.2, 0.3]), 'b': jnp.array([0.05, -0.1])}
+    zeros = optax.tree.zeros_like(grads)
+
+    def run(grad_seq):
+      p, state = params, opt.init(params)
+      for g in grad_seq:
+        updates, state = jax.jit(opt.update)(g, state, p)
+        p = update.apply_updates(p, updates)
+      return p
+
+    test_utils.assert_trees_all_close(
+        run([zeros, grads, grads]), run([grads, grads])
+    )
+
+
 if __name__ == '__main__':
   absltest.main()
