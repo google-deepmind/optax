@@ -140,6 +140,22 @@ class PolynomialTest(absltest.TestCase):
     )
 
 
+  def test_fractional_power_end_value_under_jit(self):
+    """The end of the schedule must be exactly end_value, not NaN, under jit."""
+    for transition_steps in [3, 10, 1000]:
+      schedule_fn = jax.jit(
+          _schedule.polynomial_schedule(
+              init_value=3e-4,
+              end_value=0.0,
+              power=0.5,
+              transition_steps=transition_steps,
+          )
+      )
+      end = transition_steps
+      for count in [end, end + 1, 5 * end]:
+        np.testing.assert_array_equal(schedule_fn(count), 0.0)
+
+
 class PiecewiseConstantTest(absltest.TestCase):
 
   def test_positive(self):
