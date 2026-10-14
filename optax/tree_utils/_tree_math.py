@@ -274,7 +274,10 @@ def tree_real(tree: Any) -> Any:
 def _square(leaf):
   real = leaf.real
   imag = leaf.imag
-  if jnp.issubdtype(real.dtype, jnp.floating) and jnp.finfo(real.dtype).bits < 32:
+  if (
+      jnp.issubdtype(real.dtype, jnp.floating)
+      and jnp.finfo(real.dtype).bits < 32
+  ):
     real = real.astype(jnp.float32)
     imag = imag.astype(jnp.float32)
   return jnp.square(real) + jnp.square(imag)

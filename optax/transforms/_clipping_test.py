@@ -76,7 +76,8 @@ class ClippingTest(absltest.TestCase):
       test_utils.assert_trees_all_close(updates, updates_step)
 
   def test_clip_by_global_norm_float16(self):
-    """Test that float16 updates with large norms do not overflow or zero out."""
+    """Test that float16 updates with large norms do not overflow or zero out.
+    """
     tx = _clipping.clip_by_global_norm(1.0)
     for dtype in (jnp.float16, jnp.bfloat16):
       updates = jnp.array([300.0, 400.0], dtype=dtype)
