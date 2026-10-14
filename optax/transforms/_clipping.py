@@ -102,8 +102,11 @@ def clip_by_global_norm(
     trigger = jnp.squeeze(g_norm < max_norm)
     utils.check_rank(trigger, 0)  # A scalar.
 
+    safe_norm = jnp.where(trigger, max_norm, g_norm)
+
     def clip_fn(t):
-      return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
+      scale = (max_norm / safe_norm).astype(t.dtype)
+      return jax.lax.select(trigger, t, t * scale)
 
     updates = jax.tree.map(clip_fn, updates)
     return updates, state

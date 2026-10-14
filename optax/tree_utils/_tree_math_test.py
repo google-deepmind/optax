@@ -237,6 +237,14 @@ class TreeUtilsTest(parameterized.TestCase):
     got = tu.tree_norm(self.tree_a)
     np.testing.assert_allclose(expected, got)
 
+  def test_tree_norm_float16_large_values(self):
+    """Test that tree_norm does not overflow to infinity on float16 leaves."""
+    for dtype in (jnp.float16, jnp.bfloat16):
+      arr = jnp.array([300.0, 400.0], dtype=dtype)
+      norm = tu.tree_norm(arr)
+      self.assertTrue(jnp.isfinite(norm))
+      np.testing.assert_allclose(norm, 500.0, rtol=1e-3)
+
   @parameterized.parameters(
       'tree_a', 'tree_a_dict', 'tree_b', 'array_a', 'array_b', 'tree_b_dict'
   )
