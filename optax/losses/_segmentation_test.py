@@ -291,6 +291,33 @@ class DiceLossTest(parameterized.TestCase):
     # Should give similar results
     np.testing.assert_allclose(loss_2d, loss_3d, rtol=1e-5)
 
+  def test_binary_dice_loss_without_sigmoid(self):
+    """Binary (single-channel) inputs must work with apply_sigmoid=False.
+
+    When ``apply_sigmoid=False`` the caller passes probabilities directly. For
+    binary segmentation these are single-channel foreground probabilities that
+    do not sum to 1 along the (size-1) class axis, so the multi-class
+    sum-to-1 validation must not reject them. Passing probabilities with
+    ``apply_sigmoid=False`` should match passing the corresponding logits with
+    ``apply_sigmoid=True``.
+    """
+    logits = jax.random.normal(self.key, (2, 16, 16))
+    targets = jax.random.bernoulli(self.key, 0.3, (2, 16, 16)).astype(
+        jnp.float32
+    )
+    probs = jax.nn.sigmoid(logits)
+
+    loss_from_logits = _segmentation.binary_dice_loss(
+        logits, targets, apply_sigmoid=True
+    )
+    # This previously raised ValueError on valid probability inputs.
+    loss_from_probs = _segmentation.binary_dice_loss(
+        probs, targets, apply_sigmoid=False
+    )
+
+    self.assertTrue(jnp.isfinite(loss_from_probs).all())
+    np.testing.assert_allclose(loss_from_logits, loss_from_probs, rtol=1e-5)
+
   def test_multiclass_generalized_dice_loss(self):
     """Test the generalized dice loss with automatic weighting."""
     predictions = jax.random.normal(self.key, (4, 32, 32, 3))
