@@ -18,6 +18,7 @@
 # pylint: disable=g-inconsistent-quotes
 
 import functools
+import math
 import operator
 from typing import Any, Optional
 import jax
@@ -438,16 +439,27 @@ def tree_update_moment_per_elem_norm(updates, moments, decay, order):
   )
 
 
-@functools.partial(jax.jit, inline=True)
 def tree_bias_correction(moment, decay, count):
   """Performs bias correction. It becomes a no-op as count goes to infinity."""
+  if isinstance(decay, (int, float)) and 0 < decay < 1:
+    # A Python decay is known to double precision, which float32 rounds away:
+    # 0.999 becomes 0.99900001, so `1 - decay**count` at count 1 is 1.3e-5 off.
+    # Forming the log in Python and `1 - decay**count` as `-expm1(.)` keeps the
+    # correction to float32's rounding at every count. This reads `decay`
+    # before any trace, so it is not jitted itself.
+    bias_correction_ = -jnp.expm1(count * math.log(decay))
+  else:
+    bias_correction_ = 1 - decay**count
+  return _tree_divide_by_correction(moment, bias_correction_)
+
+
+@functools.partial(jax.jit, inline=True)
+def _tree_divide_by_correction(moment, bias_correction_):
   # The conversion to the data type of the moment ensures that bfloat16 remains
   # bfloat16 in the optimizer state. This conversion has to be done after
   # `bias_correction_` is calculated as calculating `decay**count` in low
   # precision can result in it being rounded to 1 and subsequently a
   # "division by zero" error.
-  bias_correction_ = 1 - decay**count
-
   # Perform division in the original precision.
   return jax.tree.map(lambda t: t / bias_correction_.astype(t.dtype), moment)
 
