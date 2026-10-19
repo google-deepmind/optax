@@ -437,6 +437,45 @@ class ContribTest(parameterized.TestCase):
     updates, _ = jax.jit(update_fn)(grads, state, params, **update_kwargs)
     self.assertEqual(updates.dtype, params.dtype)
 
+  @parameterized.parameters('bfloat16', 'float16', 'float64')
+  def test_hutchinson_estimator_mixed_dtypes(self, dtype):
+    with utils.x64_precision(dtype == 'float64'):
+      params = {
+          'weight': jnp.array([1.0, 2.0], dtype=jnp.float32),
+          'bias': jnp.array([3.0], dtype=dtype),
+      }
+
+      def objective(p):
+        return jnp.sum(p['weight'] ** 2) + 3 * jnp.sum(p['bias'] ** 2)
+
+      estimator = contrib.hutchinson_estimator_diag_hessian(jax.random.key(0))
+      update_fn = jax.jit(functools.partial(estimator.update, obj_fn=objective))
+      diagonal, _ = update_fn(None, estimator.init(params), params)
+      # Rademacher probes recover a diagonal Hessian exactly.
+      expected = {
+          'weight': jnp.full_like(params['weight'], 2),
+          'bias': jnp.full_like(params['bias'], 6),
+      }
+      test_utils.assert_trees_all_equal(diagonal, expected)
+      test_utils.assert_trees_all_equal_dtypes(diagonal, params)
+
+  def test_sophia_mixed_dtypes(self):
+    params = {
+        'weight': jnp.array([1.0, 2.0], dtype=jnp.float32),
+        'bias': jnp.array([3.0], dtype=jnp.bfloat16),
+    }
+    objective = lambda p: optax.tree.norm(p, squared=True)
+    opt = contrib.sophia(learning_rate=0.1)
+    state = opt.init(params)
+    update_fn = jax.jit(functools.partial(opt.update, obj_fn=objective))
+    for _ in range(2):
+      grads = jax.grad(objective)(params)
+      updates, state = update_fn(grads, state, params)
+      test_utils.assert_trees_all_equal_dtypes(updates, params)
+      for leaf in jax.tree.leaves(updates):
+        self.assertTrue(jnp.all(jnp.isfinite(leaf)))
+      params = update.apply_updates(params, updates)
+
   @parameterized.product(
       _MAIN_OPTIMIZERS_UNDER_TEST, dtype=('bfloat16', 'float32')
   )
