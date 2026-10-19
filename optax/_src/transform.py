@@ -674,8 +674,17 @@ def scale_by_adan(
     n_hat = optax.tree.bias_correction(n, b3, t)
 
     u = optax.tree.add_scale(m_hat, 1 - b2, v_hat)
-    denom = jax.tree.map(lambda n_hat: jnp.sqrt(n_hat + eps_root) + eps, n_hat)
+
+    def _stable_denom(n_hat):
+      dtype = jnp.promote_types(n_hat.dtype, jnp.float32)
+      den = jnp.sqrt(
+          jnp.astype(n_hat, dtype) + jnp.asarray(eps_root, dtype)
+      ) + jnp.asarray(eps, dtype)
+      return jnp.maximum(den, jnp.finfo(dtype).tiny)
+
+    denom = jax.tree.map(_stable_denom, n_hat)
     u = optax.tree.div(u, denom)
+    u = optax.tree.cast_like(u, g)
 
     new_state = ScaleByAdanState(
         m=m,
@@ -1295,7 +1304,14 @@ def scale_by_novograd(
     return jnp.linalg.norm(grads) ** 2
 
   def mu_addition(grads, params, nu):
-    return grads / (jnp.sqrt(nu + eps_root) + eps) + weight_decay * params
+    # Compute in at least float32 so default eps=1e-8 does not underflow
+    # in float16 (which would make 0-gradient steps 0/0 = NaN).
+    dtype = jnp.promote_types(grads.dtype, jnp.float32)
+    den = jnp.sqrt(jnp.astype(nu, dtype) + jnp.asarray(eps_root, dtype))
+    den = den + jnp.asarray(eps, dtype)
+    den = jnp.maximum(den, jnp.finfo(dtype).tiny)
+    scaled = jnp.astype(grads, dtype) / den
+    return jnp.astype(scaled, grads.dtype) + weight_decay * params
 
   def init_nu(grads, nu):
     return jax.tree.map(lambda g, n: nu_addition(g).astype(n.dtype), grads, nu)
