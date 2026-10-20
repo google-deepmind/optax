@@ -24,6 +24,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import numerics
+from optax._src import transform
 
 _ALL_ORDS = [None, np.inf, -np.inf, "fro", "nuc", 0, 1, 2, -2, -2, -1.5, 1.5]
 
@@ -130,6 +131,53 @@ class NumericsTest(parameterized.TestCase):
     # Test gradient is 0. in 0. when non zero min rms is used.
     g = drms_dx(float32_array(0.0), float32_array(3.0))
     np.testing.assert_array_equal(g, jnp.zeros_like(g))
+
+  @parameterized.product(
+      values=[[300.0, 400.0], [1e-5, 2e-5], [0.0, 0.0]],
+      min_rms=[0.0, 1e-3],
+      compiled=[False, True],
+  )
+  def test_safe_rms_float16_value_and_gradient(self, values, min_rms, compiled):
+    x = jnp.array(values, dtype=jnp.float16)
+    fn = jax.value_and_grad(
+        lambda x: numerics.safe_root_mean_squares(x, min_rms)
+    )
+    if compiled:
+      fn = jax.jit(fn)
+    value, gradient = fn(x)
+    reference = np.asarray(x, dtype=np.float64)
+    rms = np.sqrt(np.mean(reference**2))
+    expected_gradient = (
+        reference / (reference.size * rms)
+        if rms > min_rms else np.zeros_like(reference)
+    )
+    self.assertEqual(value.dtype, x.dtype)
+    self.assertEqual(gradient.dtype, x.dtype)
+    np.testing.assert_allclose(value, max(rms, min_rms), rtol=3e-3, atol=3e-8)
+    np.testing.assert_allclose(gradient, expected_gradient, rtol=3e-3)
+
+  @parameterized.parameters(jnp.bfloat16, jnp.float32, jnp.complex64)
+  def test_safe_rms_preserves_result_dtype(self, dtype):
+    x = jnp.array([3.0, 4.0], dtype=dtype)
+    result = jax.jit(numerics.safe_root_mean_squares)(x, 0.0)
+    self.assertEqual(result.dtype, jnp.real(x).dtype)
+    np.testing.assert_allclose(result, np.sqrt(12.5), rtol=1e-2)
+    result = jax.jit(numerics.safe_root_mean_squares)(
+        x, jnp.asarray(5.0, dtype=jnp.float32)
+    )
+    self.assertEqual(result.dtype, jnp.float32)
+    np.testing.assert_allclose(result, 5.0)
+
+  @parameterized.parameters(False, True)
+  def test_param_block_rms_float16(self, compiled):
+    params = jnp.array([300.0, 400.0], dtype=jnp.float16)
+    updates = jnp.full_like(params, 1e-3)
+    tx = transform.scale_by_param_block_rms()
+    update = jax.jit(tx.update) if compiled else tx.update
+    result, _ = update(updates, tx.init(params), params)
+    expected = np.asarray(updates, dtype=np.float64) * np.sqrt(125_000.0)
+    self.assertEqual(result.dtype, updates.dtype)
+    np.testing.assert_allclose(result, expected, rtol=3e-3)
 
   @parameterized.product(
       sq_fn=[lambda x: x**2, lambda x: x * x, jnp.square],

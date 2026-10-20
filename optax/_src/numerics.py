@@ -98,9 +98,15 @@ def safe_root_mean_squares(
   Returns:
     The safe RMS of the input vector, accounting for correct gradient.
   """
+  # Square low-precision inputs in at least float32 to avoid overflow or
+  # underflow before the mean is computed. Preserve the result dtype.
+  dtype = jnp.result_type(jnp.real(x), min_rms)
+  x = jnp.asarray(x, dtype=jnp.promote_types(jnp.asarray(x).dtype, jnp.float32))
   rms = jnp.sqrt(jnp.mean(abs_sq(x)))
   x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
-  return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
+  return jnp.where(
+      rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x)))
+  ).astype(dtype)
 
 
 def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:
