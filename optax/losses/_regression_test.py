@@ -216,6 +216,142 @@ def _reference(first, second, mask):
   return cosine, (grad_a, grad_b)
 
 
+class CosineLowPrecisionTest(parameterized.TestCase):
+
+  @parameterized.product(
+      dtype=(jnp.float16, jnp.bfloat16),
+      scale=(1e-5, 1.0, 100.0),
+      compiled=(False, True),
+      distance=(False, True),
+  )
+  def test_values_and_gradients_match_float64_reference(
+      self, dtype, scale, compiled, distance
+  ):
+    first = jnp.asarray(np.array([3.0, 4.0]) * scale, dtype=dtype)
+    second = jnp.asarray(np.array([4.0, 3.0]) * scale, dtype=dtype)
+    expected_value, expected_grads = _reference(
+        np.asarray(first, dtype=np.float64),
+        np.asarray(second, dtype=np.float64),
+        np.array([True, True]),
+    )
+    loss = (
+        _regression.cosine_distance
+        if distance
+        else _regression.cosine_similarity
+    )
+    function = jax.value_and_grad(loss, argnums=(0, 1))
+    if compiled:
+      function = jax.jit(function)
+    value, grads = function(first, second)
+    if distance:
+      expected_value = 1.0 - expected_value
+      expected_grads = tuple(-g for g in expected_grads)
+    self.assertEqual(value.dtype, dtype)
+    np.testing.assert_allclose(value, expected_value, rtol=0.002, atol=0.001)
+    for actual, expected in zip(grads, expected_grads):
+      self.assertEqual(actual.dtype, dtype)
+      self.assertTrue(np.isfinite(actual).all())
+      np.testing.assert_allclose(
+          np.asarray(actual, dtype=np.float64),
+          expected,
+          rtol=0.01,
+          atol=1e-7,
+      )
+
+  @parameterized.product(
+      dtype=(jnp.float16, jnp.bfloat16),
+      axis=(None, (0, 1), 0, -1),
+  )
+  def test_masks_axes_and_positive_epsilon(self, dtype, axis):
+    first = jnp.array(
+        [[300.0, np.nan, 400.0], [600.0, np.inf, 800.0]], dtype=dtype
+    )
+    second = jnp.array(
+        [[400.0, np.nan, 300.0], [800.0, np.inf, 600.0]], dtype=dtype
+    )
+    mask = jnp.array([[True, False, True]])
+    function = lambda a, b: _regression.cosine_similarity(
+        a, b, axis=axis, where=mask, epsilon=1e-4
+    ).sum()
+    value, grads = jax.jit(jax.value_and_grad(function, argnums=(0, 1)))(
+        first, second
+    )
+    expected, expected_grads = jax.value_and_grad(function, argnums=(0, 1))(
+        first.astype(jnp.float32), second.astype(jnp.float32)
+    )
+    self.assertEqual(value.dtype, dtype)
+    np.testing.assert_allclose(value, expected, rtol=0.002, atol=0.001)
+    for actual, reference in zip(grads, expected_grads):
+      self.assertTrue(np.isfinite(actual).all())
+      np.testing.assert_allclose(
+          np.asarray(actual, dtype=np.float64),
+          reference,
+          rtol=0.01,
+          atol=1e-7,
+      )
+      np.testing.assert_array_equal(actual[:, 1], [0.0, 0.0])
+
+  @parameterized.parameters(
+      (jnp.float16, jnp.float32),
+      (jnp.float32, jnp.float16),
+      (jnp.float16, jnp.bfloat16),
+  )
+  def test_mixed_input_dtypes(self, first_dtype, second_dtype):
+    first = jnp.array([300.0, 400.0], dtype=first_dtype)
+    second = jnp.array([400.0, 300.0], dtype=second_dtype)
+    value = jax.jit(_regression.cosine_similarity)(first, second)
+    self.assertEqual(value.dtype, jnp.result_type(first, second))
+    np.testing.assert_allclose(value, 0.96, rtol=0.002)
+
+  def test_low_precision_epsilon_does_not_underflow_before_clipping(self):
+    first = jnp.array([0.0, 0.0], dtype=jnp.float16)
+    second = jnp.array([1.0, 0.0], dtype=jnp.float16)
+    function = lambda x: _regression.cosine_similarity(x, second, epsilon=1e-8)
+    value, grad = jax.jit(jax.value_and_grad(function))(first)
+    self.assertEqual(value.dtype, jnp.float16)
+    self.assertEqual(float(value), 0.0)
+    np.testing.assert_allclose(grad, [1e4, 0.0])
+
+  @parameterized.parameters(
+      (jnp.float32, jnp.float32),
+      (jnp.float64, jnp.float64),
+      (jnp.float16, jnp.float32),
+      (jnp.float16, jnp.float64),
+  )
+  def test_preserves_wider_input_and_epsilon_dtypes(self, dtype, epsilon_dtype):
+    previous = jax.config.jax_enable_x64
+    self.addCleanup(jax.config.update, 'jax_enable_x64', previous)
+    jax.config.update('jax_enable_x64', True)
+    first = jnp.array([3.0, 4.0], dtype=dtype)
+    second = jnp.array([4.0, 3.0], dtype=dtype)
+    epsilon = jnp.array(1e-8, dtype=epsilon_dtype)
+    value = jax.jit(_regression.cosine_similarity)(
+        first, second, epsilon=epsilon
+    )
+    self.assertEqual(value.dtype, jnp.result_type(first, second, epsilon))
+    np.testing.assert_allclose(value, 0.96, rtol=1e-6)
+
+  def test_float16_parameters_take_real_sgd_steps(self):
+    params = jnp.array([300.0, 400.0], dtype=jnp.float16)
+    targets = jnp.array([400.0, 300.0], dtype=jnp.float16)
+    objective = lambda p: _regression.cosine_distance(p, targets)
+    optimizer = alias.sgd(1000.0)
+    state = optimizer.init(params)
+
+    @jax.jit
+    def step(p, s):
+      grad = jax.grad(objective)(p)
+      updates, s = optimizer.update(grad, s, p)
+      return update.apply_updates(p, updates), s
+
+    initial_loss = objective(params)
+    for _ in range(5):
+      params, state = step(params, state)
+      self.assertEqual(params.dtype, jnp.float16)
+      self.assertTrue(np.isfinite(params).all())
+    self.assertLess(float(objective(params)), float(initial_loss))
+
+
 class CosineMaskGradientTest(parameterized.TestCase):
 
   @parameterized.product(
