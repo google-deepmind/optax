@@ -15,7 +15,6 @@
 """Self supervised losses."""
 
 import jax
-from jax import lax
 import jax.numpy as jnp
 from optax._src import utils
 from optax.losses import _regression
@@ -103,26 +102,19 @@ def ntxent(
   labels1 = jnp.expand_dims(labels, axis=1)
   labels2 = jnp.expand_dims(labels, axis=0)
   matches = labels1 == labels2
-  diffs = matches ^ 1
-  matches = jnp.bool_(matches - jnp.eye(matches.shape[0]))  # no self cos
+  diffs = ~matches
+  matches &= ~jnp.eye(matches.shape[0], dtype=jnp.bool_)
 
-  # replace 0 with -inf
-  xcs_diffs = jnp.where(diffs == 1, xcs, -jnp.inf)
-  xcs_matches = jnp.where(matches == 1, xcs, -jnp.inf)
-
-  # shifting for numeric stability
-  comb = jnp.concatenate((xcs_diffs, xcs_matches), axis=-1)
-  xcs_max = jnp.max(comb, axis=1, keepdims=True)
-  xcs_shift_diffs = xcs_diffs - lax.stop_gradient(xcs_max)
-  xcs_shift_matches = xcs_matches - lax.stop_gradient(xcs_max)
-
-  # calc loss
-  numer = xcs_shift_matches
-  numer_exp = jnp.exp(xcs_shift_matches)
-  denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
-  denom += numer_exp
-  log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
+  # Compute each positive pair's denominator in log space to avoid exponential
+  # underflow at low temperatures. Rows without negatives need a finite input
+  # to logsumexp so its backward pass does not differentiate an all -inf row.
+  has_negatives = jnp.any(diffs, axis=1, keepdims=True)
+  negative_logits = jnp.where(diffs, xcs, -jnp.inf)
+  negative_logits = jnp.where(has_negatives, negative_logits, 0.0)
+  negative_logsumexp = jax.nn.logsumexp(negative_logits, axis=1, keepdims=True)
+  negative_logsumexp = jnp.where(has_negatives, negative_logsumexp, -jnp.inf)
+  pair_losses = jnp.logaddexp(0.0, negative_logsumexp - xcs)
+  loss = jnp.where(matches, pair_losses, 0.0).sum() / matches.sum()
 
   return loss
 
