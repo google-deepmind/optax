@@ -49,8 +49,10 @@ class ProjectionsTest(parameterized.TestCase):
     self.fns = {
         'l1': (proj.projection_l1_ball, partial(optax.tree.norm, ord=1)),
         'l2': (proj.projection_l2_ball, optax.tree.norm),
-        'linf': (proj.projection_linf_ball,
-                 partial(optax.tree.norm, ord='inf')),
+        'linf': (
+            proj.projection_linf_ball,
+            partial(optax.tree.norm, ord='inf'),
+        ),
     }
 
   def test_projection_non_negative(self):
@@ -245,6 +247,52 @@ class ProjectionsTest(parameterized.TestCase):
     y_actual = proj.projection_vector(x, a)
     y_expected = (33 / 25, 44 / 25)
     assert optax.tree.allclose(y_actual, y_expected)
+
+  @parameterized.product(
+      dtype=[jnp.complex64, jnp.complex128],
+      nested=[False, True],
+      jit=[False, True],
+  )
+  def test_projection_vector_complex(self, dtype, nested, jit):
+    self.addCleanup(jax.config.update, 'jax_enable_x64', jax.config.x64_enabled)
+    jax.config.update('jax_enable_x64', dtype == jnp.complex128)
+    a = jnp.array([1 + 2j, 3 - 1j, -2 + 1j], dtype=dtype)
+    x = jnp.array([2 - 1j, -1 + 3j, 4 + 2j], dtype=dtype)
+    tangent = jnp.array([1j, 2 + 1j, -1 - 2j], dtype=dtype)
+
+    def pack(value):
+      return {'first': value[:1], 'rest': (value[1:],)} if nested else value
+
+    def flatten(value):
+      return np.concatenate(
+          [np.asarray(leaf).ravel() for leaf in jax.tree.leaves(value)]
+      )
+
+    def reference(value):
+      coefficient = np.linalg.lstsq(np.asarray(a)[:, None], value, rcond=None)[
+          0
+      ][0]
+      return np.asarray(a) * coefficient
+
+    basis = pack(a)
+    project = partial(proj.projection_vector, a=basis)
+    if jit:
+      project = jax.jit(project)
+    actual, actual_tangent = jax.jvp(project, (pack(x),), (pack(tangent),))
+
+    self.assertEqual(jax.tree.structure(actual), jax.tree.structure(basis))
+    for leaf in jax.tree.leaves(actual):
+      self.assertEqual(leaf.dtype, dtype)
+    np.testing.assert_allclose(flatten(actual), reference(x), atol=1e-6)
+    np.testing.assert_allclose(
+        flatten(project(actual)), flatten(actual), atol=1e-6
+    )
+    np.testing.assert_allclose(
+        np.vdot(a, np.asarray(x) - flatten(actual)), 0, atol=1e-5
+    )
+    np.testing.assert_allclose(
+        flatten(actual_tangent), reference(tangent), atol=1e-6
+    )
 
   def test_projection_hyperplane(self):
     x = (1.0, 2.0)
