@@ -16,6 +16,8 @@
 
 """Tests of gradient transformations."""
 
+import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import jax
@@ -72,6 +74,50 @@ class TransformTest(parameterized.TestCase):
     )
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
+
+  @parameterized.named_parameters([
+      ('adam', transform.scale_by_adam),
+      ('amsgrad', transform.scale_by_amsgrad),
+      ('belief', transform.scale_by_belief),
+      (
+          'rms_eps_in_sqrt',
+          functools.partial(transform.scale_by_rms, eps_in_sqrt=True),
+      ),
+      (
+          'rms_eps_outside_sqrt',
+          functools.partial(transform.scale_by_rms, eps_in_sqrt=False),
+      ),
+      (
+          'stddev_eps_in_sqrt',
+          functools.partial(transform.scale_by_stddev, eps_in_sqrt=True),
+      ),
+      (
+          'stddev_eps_outside_sqrt',
+          functools.partial(transform.scale_by_stddev, eps_in_sqrt=False),
+      ),
+  ])
+  def test_no_nan_on_float16_zero_grad(self, scaler_constr):
+    """A zero-gradient float16 step must not produce NaN updates.
+
+    `eps` (and, where applicable, `eps_root`) default to values like `1e-8`,
+    which round to exactly 0.0 in float16 (whose smallest subnormal is
+    ~6e-8). That used to turn each of these transformations' `sqrt(v) + eps`
+    -style safety denominator into a hard 0, so `m / 0` (or `1 / 0`, then
+    `0 * grad`) produced NaN whenever the moment estimates were also 0, as
+    on this all-zero-gradient step. Every scaler here shares the same
+    underlying `... + eps` pattern and used to fail the same way.
+    """
+    params = jnp.array([1.0, -2.0, 0.5], dtype=jnp.float16)
+    zero_grads = jnp.zeros_like(params)
+    scaler = scaler_constr()
+    state = scaler.init(params)
+    for _ in range(3):
+      updates, state = scaler.update(zero_grads, state, params)
+      test_utils.assert_tree_all_finite(updates)
+      # The fix must not silently change this transformation's output dtype
+      # -- only the (still float16) NaN it used to produce.
+      test_utils.assert_trees_all_equal_dtypes(updates, zero_grads)
+      params = update.apply_updates(params, updates)
 
   def test_apply_every(self):
     # The frequency of the application of sgd
