@@ -234,6 +234,143 @@ def safe_softmax_cross_entropy(
   return -jnp.sum(weighted_logsoftmax(logits, labels), axis=-1)
 
 
+def _compute_cross_entropy_and_jvp(
+    logits: jax.Array,
+    labels: jax.Array,
+    logits_dot: jax.Array,
+    where: Optional[jax.Array] = None,
+) -> tuple[jax.Array, jax.Array]:
+  r"""Computes precision-stabilized integer-label cross-entropy and its JVP.
+
+  Given logits vector $z \in \mathbb{R}^K$ and target class index $t$,
+  standard cross-entropy is:
+  $$\text{loss} = \log \sum_{j=1}^K \exp(z_j) - z_t
+                = \log \left( \exp(z_t) + \sum_{j \ne t} \exp(z_j) \right) - z_t
+                = \log \left( 1 + \sum_{j \ne t} \exp(z_j - z_t) \right)
+                = \text{softplus}\left( \text{logsumexp}_{j \ne t}(z_j - z_t)
+                \right)$$
+
+  By factoring out $z_t$, we compute competitor log-sum-exp
+  $w = \text{logsumexp}_{j \ne t}(z_j - z_t)$ and evaluate $\text{loss} =
+  \text{log1p}(\exp(w))$.
+  This ensures numerical stability even when $z_t \gg z_j$ (high confidence).
+
+  The gradient with respect to logits $z$ is:
+  - For competitor classes $j \ne t$:
+    $$\frac{\partial \text{loss}}{\partial z_j} = \frac{\exp(z_j)}{\sum_k
+    \exp(z_k)} = \exp(z_j - (z_t + \text{loss}))$$
+  - For target class $t$:
+    $$\frac{\partial \text{loss}}{\partial z_t} = \frac{\exp(z_t)}{\sum_k
+    \exp(z_k)} - 1 = -\sum_{j \ne t} \frac{\partial \text{loss}}{\partial z_j} =
+    -\exp(w - \text{loss})$$
+
+  Evaluating the target gradient as $-\exp(w - \text{loss})$ avoids catastrophic
+  cancellation of the form $p_t - 1 = 1.0 - 1.0 = 0.0$ in reduced-precision
+  floating point formats (e.g. bfloat16, float16) when the model is highly
+  confident ($p_t \approx 1$).
+
+  Args:
+    logits: Unnormalized log probabilities, with shape `[..., num_classes]`.
+    labels: Target class integer indices, with shape `[...]`.
+    logits_dot: Tangent vector for `logits`, with shape `[..., num_classes]`.
+    where: Optional boolean mask, broadcastable to `[..., num_classes]`.
+
+  Returns:
+    A tuple of `(loss, loss_dot)` representing the primal output and tangent.
+  """
+  # 1. Extract target logit z_t and shift all logits: \Delta z_j = z_j - z_t
+  expanded_labels = jnp.expand_dims(labels, -1)
+  target_logits = jnp.take_along_axis(logits, expanded_labels, axis=-1)
+  shifted_logits = logits - target_logits
+
+  # 2. Competitor log-sum-exp: w = \log \sum_{j \ne t} \exp(z_j - z_t)
+  competitor_shifted_logits = jnp.put_along_axis(
+      shifted_logits, expanded_labels, -jnp.inf, axis=-1, inplace=False
+  )
+  log_sum_exp_competitors = jax.nn.logsumexp(
+      competitor_shifted_logits, axis=-1, keepdims=True, where=where
+  )
+
+  # 3. Cross-entropy loss: \text{loss} = \log(1 + \exp(w)) = \text{softplus}(w)
+  expanded_loss = jnp.logaddexp(log_sum_exp_competitors, 0.0)
+
+  # 4. Competitor gradients (j \ne t):
+  #    \partial \text{loss} / \partial z_j = \exp(z_j - (z_t + \text{loss}))
+  #    (with limit 1.0 as z_j -> +\infty)
+  log_normalizer_threshold = target_logits + expanded_loss
+  competitor_gradient = jnp.exp(logits - log_normalizer_threshold)
+  competitor_gradient = jnp.where(
+      jnp.isposinf(logits), 1.0, competitor_gradient
+  )
+
+  # 5. Target gradient (j = t):
+  #    \partial \text{loss} / \partial z_t = -\exp(w - \text{loss})
+  #    (avoids p_t - 1.0 cancellation; limit -1.0 as w -> +\infty)
+  target_gradient = jnp.where(
+      jnp.isposinf(log_sum_exp_competitors),
+      -1.0,
+      -jnp.exp(log_sum_exp_competitors - expanded_loss),
+  )
+
+  # 6. Combine gradients and apply mask if present
+  gradient = jnp.put_along_axis(
+      competitor_gradient,
+      expanded_labels,
+      target_gradient,
+      axis=-1,
+      inplace=False,
+  )
+  loss = expanded_loss.squeeze(-1)
+  if where is not None:
+    loss = jnp.where(jnp.any(where, axis=-1), loss, 0.0)
+    gradient = jnp.where(where, gradient, 0.0)
+
+  # 7. Directional derivative (JVP):
+  #    \dot{loss} = \sum_j (\partial loss / \partial z_j) \dot{z}_j
+  loss_dot = jnp.sum(gradient * logits_dot, axis=-1)
+  return loss, loss_dot
+
+
+@jax.custom_jvp
+def _cross_entropy_core(logits: jax.Array, labels: jax.Array) -> jax.Array:
+  loss, _ = _compute_cross_entropy_and_jvp(
+      logits, labels, jnp.zeros_like(logits)
+  )
+  return loss
+
+
+@_cross_entropy_core.defjvp
+def _cross_entropy_jvp(
+    primals: tuple[jax.Array, jax.Array],
+    tangents: tuple[jax.Array, jax.Array],
+) -> tuple[jax.Array, jax.Array]:
+  logits, labels = primals
+  logits_dot, _ = tangents
+  return _compute_cross_entropy_and_jvp(logits, labels, logits_dot)
+
+
+@jax.custom_jvp
+def _cross_entropy_masked_core(
+    logits: jax.Array,
+    labels: jax.Array,
+    where: jax.Array,
+) -> jax.Array:
+  loss, _ = _compute_cross_entropy_and_jvp(
+      logits, labels, jnp.zeros_like(logits), where=where
+  )
+  return loss
+
+
+@_cross_entropy_masked_core.defjvp
+def _cross_entropy_masked_jvp(
+    primals: tuple[jax.Array, jax.Array, jax.Array],
+    tangents: tuple[jax.Array, jax.Array, jax.Array],
+) -> tuple[jax.Array, jax.Array]:
+  logits, labels, where = primals
+  logits_dot, _, _ = tangents
+  return _compute_cross_entropy_and_jvp(logits, labels, logits_dot, where=where)
+
+
 def softmax_cross_entropy(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
@@ -418,17 +555,19 @@ def softmax_cross_entropy_with_integer_labels(
   else:
     raise ValueError('Keyword argument \'axis\' must be of type \'int\' or '
                      f'\'tuple[int, ...]\' but actual type is {type(axis)}.')
-  # This is like jnp.take_along_axis(jax.nn.log_softmax(...), ...) except that
-  # we avoid subtracting the normalizer from all values, just from the values
-  # for the correct labels.
-  label_logits = jnp.take_along_axis(
-      logits, jnp.expand_dims(labels, axis), axis=axis
-  ).take(0, axis=axis)
-  log_normalizers = jax.nn.logsumexp(logits, axis=axis, where=where)
-  out = log_normalizers - label_logits
-  if where is not None:
-    out = jnp.where(jnp.any(where, axis), out, 0.0)
-  return out
+  logits_arr = jnp.asarray(logits)
+  labels_arr = jnp.asarray(labels)
+  where_arr = jnp.asarray(where) if where is not None else None
+
+  if axis != logits_arr.ndim - 1:
+    logits_arr = jnp.moveaxis(logits_arr, axis, -1)
+    if where_arr is not None:
+      where_arr = jnp.moveaxis(where_arr, axis, -1)
+
+  if where_arr is None:
+    return _cross_entropy_core(logits_arr, labels_arr)
+  else:
+    return _cross_entropy_masked_core(logits_arr, labels_arr, where_arr)
 
 
 @functools.partial(
