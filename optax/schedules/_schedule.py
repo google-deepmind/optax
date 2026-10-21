@@ -499,9 +499,10 @@ def linear_onecycle_schedule(
     ``pct_final * transition_steps``. The learning rate decreases linearly from
     ``peak_value`` back to the initial ``peak_value/div_factor``.
   * *Phase 3*: For the remaining steps, the learning rate interpolates between
-    ``peak_value/div_factor`` and ``peak_value / final_div_factor``. If
-    ``final_div_factor`` is larger than ``div_factor``, this is a decreasing
-    phase.
+    ``peak_value / div_factor`` and
+    ``peak_value / (div_factor * final_div_factor)``, i.e. from ``init_value``
+    down to ``init_value / final_div_factor``. This is a decreasing phase
+    whenever ``final_div_factor > 1``.
 
   Args:
     transition_steps: Number of steps over which annealing takes place.
@@ -635,7 +636,8 @@ def warmup_cosine_decay_schedule(
       annealing is applied is ``decay_steps - warmup_steps``.
     end_value: End value of the scalar to be annealed.
     exponent: The default decay is ``0.5 * (1 + cos(pi t/T))``, where ``t`` is
-      the current timestep and ``T`` is ``decay_steps``. The exponent modifies
+      the number of steps since the end of warmup and ``T`` is
+      ``decay_steps - warmup_steps``. The exponent modifies
       this to be ``(0.5 * (1 + cos(pi * t/T))) ** exponent``. Defaults to 1.0.
 
   Returns:
