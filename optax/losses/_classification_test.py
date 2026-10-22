@@ -163,6 +163,25 @@ class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
         order=1,
     )
 
+  def test_forward_mode_gradient_finite_with_infinite_logits(self):
+    """Forward-mode differentiation must respect the ``0 log 0 = 0`` rule.
+
+    Rows with ``-inf`` logits at masked (zero-weight) classes previously made
+    the custom JVP of ``weighted_logsoftmax`` compute ``weights_dot * -inf``,
+    yielding ``nan`` tangents even for a zero tangent direction.
+    """
+    logits, labels = self.ys, self.ts
+    # A zero tangent direction must produce a finite (zero) output tangent.
+    _, out_tangents = jax.jvp(
+        _classification.weighted_logsoftmax,
+        (logits, labels),
+        (jnp.zeros_like(logits), jnp.zeros_like(labels)),
+    )
+    np.testing.assert_array_equal(out_tangents, np.zeros_like(out_tangents))
+    # Forward-mode Jacobian w.r.t. the logits must be free of NaNs.
+    jac = jax.jacfwd(_classification.safe_softmax_cross_entropy)(logits, labels)
+    self.assertFalse(np.any(np.isnan(jac)))
+
   def test_against_plain_implementation(self):
     """Tests against plain implementation which does not handle -inf."""
 
