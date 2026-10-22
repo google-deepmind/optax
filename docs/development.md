@@ -15,6 +15,10 @@ Some more details on contributing code are provided in the
 [CONTRIBUTING.md](https://github.com/google-deepmind/optax/blob/main/CONTRIBUTING.md)
 file in the source tree.
 
+For a worked example of implementing `init`, `update`, and a PyTree state, see
+{doc}`_collections/examples/custom_gradient_transformations`. The tutorial also
+shows how to compose the transformation into an optimizer and use it with JIT.
+
 **Need ideas?** If you would like to get started with contributing to Optax,
 but do not know what to start working on, check out our selection of
 [*good first issues*](https://github.com/google-deepmind/optax/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
