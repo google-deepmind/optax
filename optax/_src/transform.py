@@ -857,12 +857,20 @@ def scale_by_radam(
         * ro_inf
         / ((ro_inf - 4.0) * (ro_inf - 2.0) * ro)
     )
-    updates = jax.tree.map(
-        lambda m, v: r.astype(m.dtype) * m / (jnp.sqrt(v + eps_root) + eps),
-        mu_hat,
-        nu_hat,
-    )
-    return updates
+
+    def _update(m, v):
+      # `eps`/`eps_root` can silently round to zero when `v` is a low
+      # precision dtype like float16 (smallest subnormal ~6e-8). For a
+      # parameter that has only seen zero gradients the denominator then
+      # becomes exactly 0 once the rectifier turns on, and the update is a
+      # 0/0 NaN. Compute the denominator in at least float32 so the eps terms
+      # are preserved, then cast back to `m`'s dtype.
+      denom = jnp.sqrt(
+          v.astype(jnp.promote_types(v.dtype, jnp.float32)) + eps_root
+      ) + eps
+      return (r.astype(m.dtype) * m / denom).astype(m.dtype)
+
+    return jax.tree.map(_update, mu_hat, nu_hat)
 
   def init_fn(params):
     mu = optax.tree.zeros_like(params)  # First moment

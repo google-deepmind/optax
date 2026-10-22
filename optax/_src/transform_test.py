@@ -73,6 +73,22 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
+  def test_radam_no_nan_on_float16_zero_grad(self):
+    # `eps`/`eps_root` default to 1e-8/0.0, which round to exactly 0.0 in
+    # float16 (smallest subnormal ~6e-8). On a parameter that never sees a
+    # gradient both moments stay 0, so RAdam's `sqrt(v) + eps` denominator is
+    # a hard 0 and the update is 0/0 = NaN once the rectifier switches on
+    # (here around step 5).
+    params = jnp.array([1.0, -2.0, 0.5], dtype=jnp.float16)
+    zero_grads = jnp.zeros_like(params)
+    scaler = transform.scale_by_radam()
+    state = scaler.init(params)
+    for _ in range(10):
+      updates, state = scaler.update(zero_grads, state, params)
+      test_utils.assert_tree_all_finite(updates)
+      # The fix must not silently change the output dtype.
+      test_utils.assert_trees_all_equal_dtypes(updates, zero_grads)
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
