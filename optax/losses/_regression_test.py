@@ -130,6 +130,17 @@ class LogCoshTest(parameterized.TestCase):
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
 
 
+def _reference(first, second, mask):
+  a, b = np.asarray(first)[mask], np.asarray(second)[mask]
+  norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
+  cosine = np.dot(a, b) / (norm_a * norm_b)
+  grad_a = np.zeros_like(first)
+  grad_b = np.zeros_like(second)
+  grad_a[mask] = b / (norm_a * norm_b) - cosine * a / norm_a**2
+  grad_b[mask] = a / (norm_a * norm_b) - cosine * b / norm_b**2
+  return cosine, (grad_a, grad_b)
+
+
 class CosineDistanceTest(parameterized.TestCase):
 
   def setUp(self):
@@ -203,20 +214,6 @@ class CosineDistanceTest(parameterized.TestCase):
         np.moveaxis(targets, axis, -1),
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
-
-
-def _reference(first, second, mask):
-  a, b = np.asarray(first)[mask], np.asarray(second)[mask]
-  norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
-  cosine = np.dot(a, b) / (norm_a * norm_b)
-  grad_a = np.zeros_like(first)
-  grad_b = np.zeros_like(second)
-  grad_a[mask] = b / (norm_a * norm_b) - cosine * a / norm_a**2
-  grad_b[mask] = a / (norm_a * norm_b) - cosine * b / norm_b**2
-  return cosine, (grad_a, grad_b)
-
-
-class CosineMaskGradientTest(parameterized.TestCase):
 
   @parameterized.product(
       invalid=(np.nan, np.inf, -np.inf),
