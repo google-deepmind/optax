@@ -73,6 +73,39 @@ class TransformTest(parameterized.TestCase):
     test_utils.assert_tree_all_finite((params, updates, state))
     test_utils.assert_trees_all_equal_shapes(params, updates)
 
+  def test_adan_matches_documented_update(self):
+    # Reference implementation of the equations documented in `optax.adan`.
+    b1, b2, b3 = 0.02, 0.08, 0.01
+    eps, eps_root = 1e-8, 0.0
+    grads = [
+        jnp.array([0.5, -1.5, 2.0]),
+        jnp.array([0.3, -1.0, 2.5]),
+        jnp.array([-0.2, 0.7, 1.0]),
+    ]
+
+    tx = transform.scale_by_adan(
+        b1=b1, b2=b2, b3=b3, eps=eps, eps_root=eps_root
+    )
+    state = tx.init(grads[0])
+
+    m = jnp.zeros(3)
+    v = jnp.zeros(3)
+    n = jnp.zeros(3)
+    g_prev = jnp.zeros(3)
+    for step, g in enumerate(grads, start=1):
+      diff = jnp.zeros(3) if step == 1 else g - g_prev
+      m = (1 - b1) * m + b1 * g
+      v = (1 - b2) * v + b2 * diff
+      n = (1 - b3) * n + b3 * (g + (1 - b2) * diff) ** 2
+      m_hat = m / (1 - (1 - b1) ** step)
+      v_hat = v / (1 - (1 - b2) ** step)
+      n_hat = n / (1 - (1 - b3) ** step)
+      expected = (m_hat + (1 - b2) * v_hat) / (jnp.sqrt(n_hat + eps_root) + eps)
+      g_prev = g
+
+      updates, state = tx.update(g, state, None)
+      test_utils.assert_trees_all_close(updates, expected, atol=1e-4, rtol=1e-4)
+
   def test_apply_every(self):
     # The frequency of the application of sgd
     k = 4
