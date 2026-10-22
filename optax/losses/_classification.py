@@ -569,7 +569,8 @@ def kl_divergence(
     log_predictions: Probabilities of predicted distribution with shape [...,
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
-      Expected to be strictly positive.
+      Entries equal to zero contribute nothing to the divergence, following
+      the convention that ``0 log 0 = 0``.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
@@ -586,9 +587,16 @@ def kl_divergence(
   """
   utils.check_subdtype(log_predictions, jnp.floating)
   utils.check_subdtype(targets, jnp.floating)
-  loss = targets * (
-      jnp.where(targets == 0, 0, jnp.log(targets)) - log_predictions
-  )
+  # Entries with a zero target contribute 0 log 0 = 0. Both operands are
+  # replaced with safe values there so that the value and the gradients are
+  # finite: ``jnp.log`` has an infinite derivative at 0, which makes the
+  # gradient with respect to ``targets`` nan even inside the untaken branch of
+  # a ``jnp.where``, and ``0 * inf`` is nan when ``log_predictions`` is
+  # ``-inf`` at the same entry.
+  is_zero = targets == 0
+  safe_targets = jnp.where(is_zero, 1.0, targets)
+  safe_log_predictions = jnp.where(is_zero, 0.0, log_predictions)
+  loss = targets * (jnp.log(safe_targets) - safe_log_predictions)
   return jnp.sum(loss, axis=axis, where=where)
 
 
@@ -606,7 +614,9 @@ def kl_divergence_with_log_targets(
     log_predictions: Probabilities of predicted distribution with shape [...,
       dim]. Expected to be in the log-space to avoid underflow.
     log_targets: Probabilities of target distribution with shape [..., dim].
-      Expected to be in the log-space.
+      Expected to be in the log-space. Entries equal to ``-inf``, i.e. zero
+      target probabilities, contribute nothing to the divergence, following
+      the convention that ``0 log 0 = 0``.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
@@ -619,8 +629,14 @@ def kl_divergence_with_log_targets(
   """
   utils.check_subdtype(log_predictions, jnp.floating)
   utils.check_subdtype(log_targets, jnp.floating)
-  # pyrefly: ignore[unsupported-operation]
-  loss = jnp.exp(log_targets) * (log_targets - log_predictions)
+  # Entries with a zero target probability contribute 0 log 0 = 0. Both
+  # log-space operands are replaced with safe values there, since
+  # ``0 * (-inf - log_predictions)`` is nan.
+  targets = jnp.exp(log_targets)
+  is_zero = targets == 0
+  safe_log_targets = jnp.where(is_zero, 0.0, log_targets)
+  safe_log_predictions = jnp.where(is_zero, 0.0, log_predictions)
+  loss = targets * (safe_log_targets - safe_log_predictions)
   return jnp.sum(loss, axis=axis, where=where)
 
 
@@ -643,7 +659,8 @@ def generalized_kl_divergence(
     log_predictions: Probabilities of predicted distribution with shape [...,
       dim]. Expected to be in the log-space to avoid underflow.
     targets: Probabilities of target distribution with shape [..., dim].
-      Expected to be strictly positive.
+      Entries equal to zero contribute nothing to the ``x log x`` term,
+      following the convention that ``0 log 0 = 0``.
     axis: Axis or axes along which to compute.
     where: Elements to include in the computation.
 
