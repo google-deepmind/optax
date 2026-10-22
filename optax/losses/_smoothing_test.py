@@ -67,6 +67,25 @@ class SmoothLabelsTest(absltest.TestCase):
         atol=1e-4,
     )
 
+  def test_where(self):
+    labels = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]],
+        dtype=np.float32,
+    )
+    where = np.array(
+        [[True, True, False], [False, True, True], [False, False, False]]
+    )
+    expected = np.array(
+        [[0.95, 0.05, 0.0], [0.0, 0.95, 0.05], [0.0, 0.0, 0.0]],
+        dtype=np.float32,
+    )
+
+    actual = jax.jit(_smoothing.smooth_labels)(
+        labels, 0.1, where=where
+    )
+
+    np.testing.assert_allclose(actual, expected, atol=1e-4)
+
 
 if __name__ == '__main__':
   absltest.main()
