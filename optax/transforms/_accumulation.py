@@ -379,7 +379,11 @@ class MultiSteps:
               new_inner_state,
           ),
           acc_grads=jax.tree.map(
-              lambda ga: jnp.astype((1 - emit) * ga, self._accumulator_dtype),
+              # Multiplication by zero would retain NaNs from a rejected batch.
+              lambda ga: jnp.astype(
+                  jnp.where(emit, jnp.zeros_like(ga), ga),
+                  self._accumulator_dtype,
+              ),
               acc_grads,
           ),
           skip_state=skip_state,
