@@ -176,7 +176,9 @@ def projection_l1_sphere(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
     projected tree, with the same structure as ``tree``.
   """
   tree_abs = jax.tree.map(jnp.abs, tree)
-  tree_sign = jax.tree.map(jnp.sign, tree)
+  # Inside the ball every entry gets mass, zeros included, so a zero needs a
+  # sign of +1 rather than jnp.sign(0) = 0.
+  tree_sign = jax.tree.map(lambda x: jnp.where(x == 0, 1, jnp.sign(x)), tree)
   tree_abs_proj = projection_simplex(tree_abs, scale)
   return optax.tree.mul(tree_sign, tree_abs_proj)
 
