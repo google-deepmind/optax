@@ -77,145 +77,6 @@ class L2LossTest(parameterized.TestCase):
       )
 
 
-class HuberLossTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ys = np.array([-2.0, 0.5, 0.0, 0.5, 2.0, 4.0, 132.0])
-    self.ts = np.array([0.0, -0.5, 0.0, 1.0, 1.0, 2.0, 0.3])
-    # computed expected outputs manually.
-    self.exp = np.array([1.5, 0.5, 0.0, 0.125, 0.5, 1.5, 131.2])
-
-  def test_scalar(self):
-    np.testing.assert_allclose(
-        jax.jit(_regression.huber_loss)(self.ys[0], self.ts[0], delta=1.0),
-        self.exp[0],
-    )
-
-  def test_batched(self):
-    np.testing.assert_allclose(
-        jax.jit(_regression.huber_loss)(self.ys, self.ts, delta=1.0),
-        self.exp,
-    )
-
-
-# TODO(b/188419459): add test for grad and second order grad.
-class LogCoshTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    # Test large values for overflow
-    self.ys = jnp.array([500, -2.0, -1.0, 0.5, 1.0])
-    self.ts = jnp.array([-200, -1.5, 0.0, -1, 1.0])
-    # computed using tensorflow.keras.losses.log_cosh v2.4.1
-    self.exp = jnp.array([699.3068, 0.12011445, 0.4337809, 0.85544014, 0.0])
-    self.exp_ys_only = jnp.array(
-        [499.30685, 1.3250027, 0.4337809, 0.12011451, 0.43378082]
-    )
-
-  def test_scalar(self):
-    out = jax.jit(_regression.log_cosh)(self.ys[0], self.ts[0])
-    np.testing.assert_allclose(out, self.exp[0], atol=1e-5)
-
-  def test_batched(self):
-    out = jax.jit(_regression.log_cosh)(self.ys, self.ts)
-    np.testing.assert_allclose(out, self.exp, atol=1e-5)
-
-  def test_scalar_predictions_only(self):
-    out = jax.jit(_regression.log_cosh)(self.ys[0])
-    np.testing.assert_allclose(out, self.exp_ys_only[0], atol=1e-5)
-
-  def test_batched_predictions_only(self):
-    out = jax.jit(_regression.log_cosh)(self.ys)
-    np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
-
-
-class CosineDistanceTest(parameterized.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ys = np.array([[10.0, 1.0, -2.0], [1.0, 4.0, 0.2]], dtype=np.float32)
-    self.ts = np.array([[0.0, 1.2, 0.2], [1.0, -0.3, 0.0]], dtype=np.float32)
-    # distance computed expected output from `scipy 1.20`.
-    self.exp = np.array([0.9358251989, 1.0464068465], dtype=np.float32)
-
-  def test_scalar_distance(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        jax.jit(_regression.cosine_distance)(self.ys[0], self.ts[0]),
-        self.exp[0],
-        atol=1e-4,
-    )
-
-  def test_scalar_similarity(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        jax.jit(_regression.cosine_similarity)(self.ys[0], self.ts[0]),
-        1.0 - self.exp[0],
-        atol=1e-4,
-    )
-
-  def test_batched_distance(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        jax.jit(_regression.cosine_distance)(self.ys, self.ts),
-        self.exp,
-        atol=1e-4,
-    )
-
-  def test_batched_similarity(self):
-    """Tests for a full batch."""
-    np.testing.assert_allclose(
-        jax.jit(_regression.cosine_similarity)(self.ys, self.ts),
-        1.0 - self.exp,
-        atol=1e-4,
-    )
-
-  @parameterized.parameters({'size': 5}, {'size': 10})
-  def test_mask_distance(self, size):
-    preds = np.random.normal(size=size)
-    targets = np.random.normal(size=size)
-    mask = np.random.randint(2, size=size, dtype=bool)
-    x = _regression.cosine_distance(preds[mask], targets[mask])
-    y = _regression.cosine_distance(preds, targets, where=mask)
-    np.testing.assert_allclose(x, y, atol=1e-4)
-
-  @parameterized.parameters({'size': 5}, {'size': 10})
-  def test_mask_similarity(self, size):
-    preds = np.random.normal(size=size)
-    targets = np.random.normal(size=size)
-    mask = np.random.randint(2, size=size, dtype=bool)
-    x = _regression.cosine_similarity(preds[mask], targets[mask])
-    y = _regression.cosine_similarity(preds, targets, where=mask)
-    np.testing.assert_allclose(x, y, atol=1e-4)
-
-  @parameterized.parameters(
-      {'axis': 0, 'shape': [4, 5, 6]},
-      {'axis': 1, 'shape': [4, 5, 6]},
-      {'axis': 2, 'shape': [4, 5, 6]},
-  )
-  def test_axis(self, shape, axis):
-    preds = np.random.normal(size=shape)
-    targets = np.random.normal(size=shape)
-    x = _regression.cosine_similarity(preds, targets, axis=axis)
-    y = _regression.cosine_similarity(
-        np.moveaxis(preds, axis, -1),
-        np.moveaxis(targets, axis, -1),
-    )
-    np.testing.assert_allclose(x, y, atol=1e-4)
-
-
-def _reference(first, second, mask):
-  a, b = np.asarray(first)[mask], np.asarray(second)[mask]
-  norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
-  cosine = np.dot(a, b) / (norm_a * norm_b)
-  grad_a = np.zeros_like(first)
-  grad_b = np.zeros_like(second)
-  grad_a[mask] = b / (norm_a * norm_b) - cosine * a / norm_a**2
-  grad_b[mask] = a / (norm_a * norm_b) - cosine * b / norm_b**2
-  return cosine, (grad_a, grad_b)
-
-
 class CosineLowPrecisionTest(parameterized.TestCase):
 
   @parameterized.product(
@@ -352,7 +213,143 @@ class CosineLowPrecisionTest(parameterized.TestCase):
     self.assertLess(float(objective(params)), float(initial_loss))
 
 
-class CosineMaskGradientTest(parameterized.TestCase):
+class HuberLossTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([-2.0, 0.5, 0.0, 0.5, 2.0, 4.0, 132.0])
+    self.ts = np.array([0.0, -0.5, 0.0, 1.0, 1.0, 2.0, 0.3])
+    # computed expected outputs manually.
+    self.exp = np.array([1.5, 0.5, 0.0, 0.125, 0.5, 1.5, 131.2])
+
+  def test_scalar(self):
+    np.testing.assert_allclose(
+        jax.jit(_regression.huber_loss)(self.ys[0], self.ts[0], delta=1.0),
+        self.exp[0],
+    )
+
+  def test_batched(self):
+    np.testing.assert_allclose(
+        jax.jit(_regression.huber_loss)(self.ys, self.ts, delta=1.0),
+        self.exp,
+    )
+
+
+# TODO(b/188419459): add test for grad and second order grad.
+class LogCoshTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    # Test large values for overflow
+    self.ys = jnp.array([500, -2.0, -1.0, 0.5, 1.0])
+    self.ts = jnp.array([-200, -1.5, 0.0, -1, 1.0])
+    # computed using tensorflow.keras.losses.log_cosh v2.4.1
+    self.exp = jnp.array([699.3068, 0.12011445, 0.4337809, 0.85544014, 0.0])
+    self.exp_ys_only = jnp.array(
+        [499.30685, 1.3250027, 0.4337809, 0.12011451, 0.43378082]
+    )
+
+  def test_scalar(self):
+    out = jax.jit(_regression.log_cosh)(self.ys[0], self.ts[0])
+    np.testing.assert_allclose(out, self.exp[0], atol=1e-5)
+
+  def test_batched(self):
+    out = jax.jit(_regression.log_cosh)(self.ys, self.ts)
+    np.testing.assert_allclose(out, self.exp, atol=1e-5)
+
+  def test_scalar_predictions_only(self):
+    out = jax.jit(_regression.log_cosh)(self.ys[0])
+    np.testing.assert_allclose(out, self.exp_ys_only[0], atol=1e-5)
+
+  def test_batched_predictions_only(self):
+    out = jax.jit(_regression.log_cosh)(self.ys)
+    np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
+
+
+def _reference(first, second, mask):
+  a, b = np.asarray(first)[mask], np.asarray(second)[mask]
+  norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
+  cosine = np.dot(a, b) / (norm_a * norm_b)
+  grad_a = np.zeros_like(first)
+  grad_b = np.zeros_like(second)
+  grad_a[mask] = b / (norm_a * norm_b) - cosine * a / norm_a**2
+  grad_b[mask] = a / (norm_a * norm_b) - cosine * b / norm_b**2
+  return cosine, (grad_a, grad_b)
+
+
+class CosineDistanceTest(parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ys = np.array([[10.0, 1.0, -2.0], [1.0, 4.0, 0.2]], dtype=np.float32)
+    self.ts = np.array([[0.0, 1.2, 0.2], [1.0, -0.3, 0.0]], dtype=np.float32)
+    # distance computed expected output from `scipy 1.20`.
+    self.exp = np.array([0.9358251989, 1.0464068465], dtype=np.float32)
+
+  def test_scalar_distance(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        jax.jit(_regression.cosine_distance)(self.ys[0], self.ts[0]),
+        self.exp[0],
+        atol=1e-4,
+    )
+
+  def test_scalar_similarity(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        jax.jit(_regression.cosine_similarity)(self.ys[0], self.ts[0]),
+        1.0 - self.exp[0],
+        atol=1e-4,
+    )
+
+  def test_batched_distance(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        jax.jit(_regression.cosine_distance)(self.ys, self.ts),
+        self.exp,
+        atol=1e-4,
+    )
+
+  def test_batched_similarity(self):
+    """Tests for a full batch."""
+    np.testing.assert_allclose(
+        jax.jit(_regression.cosine_similarity)(self.ys, self.ts),
+        1.0 - self.exp,
+        atol=1e-4,
+    )
+
+  @parameterized.parameters({'size': 5}, {'size': 10})
+  def test_mask_distance(self, size):
+    preds = np.random.normal(size=size)
+    targets = np.random.normal(size=size)
+    mask = np.random.randint(2, size=size, dtype=bool)
+    x = _regression.cosine_distance(preds[mask], targets[mask])
+    y = _regression.cosine_distance(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y, atol=1e-4)
+
+  @parameterized.parameters({'size': 5}, {'size': 10})
+  def test_mask_similarity(self, size):
+    preds = np.random.normal(size=size)
+    targets = np.random.normal(size=size)
+    mask = np.random.randint(2, size=size, dtype=bool)
+    x = _regression.cosine_similarity(preds[mask], targets[mask])
+    y = _regression.cosine_similarity(preds, targets, where=mask)
+    np.testing.assert_allclose(x, y, atol=1e-4)
+
+  @parameterized.parameters(
+      {'axis': 0, 'shape': [4, 5, 6]},
+      {'axis': 1, 'shape': [4, 5, 6]},
+      {'axis': 2, 'shape': [4, 5, 6]},
+  )
+  def test_axis(self, shape, axis):
+    preds = np.random.normal(size=shape)
+    targets = np.random.normal(size=shape)
+    x = _regression.cosine_similarity(preds, targets, axis=axis)
+    y = _regression.cosine_similarity(
+        np.moveaxis(preds, axis, -1),
+        np.moveaxis(targets, axis, -1),
+    )
+    np.testing.assert_allclose(x, y, atol=1e-4)
 
   @parameterized.product(
       invalid=(np.nan, np.inf, -np.inf),

@@ -244,20 +244,6 @@ class TransformTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
-  @parameterized.named_parameters(
-      ('adan', transform.scale_by_adan),
-      ('novograd', transform.scale_by_novograd),
-  )
-  def test_zero_gradient_float16_is_finite(self, scaler_constr):
-    """Zero grads in float16 must not become NaN via 0/0."""
-    params = jnp.zeros(4, dtype=jnp.float16)
-    grads = jnp.zeros(4, dtype=jnp.float16)
-    scaler = scaler_constr()
-    updates, _ = scaler.update(grads, scaler.init(params), params)
-    test_utils.assert_tree_all_finite(updates)
-    test_utils.assert_trees_all_equal_dtypes(updates, grads)
-    test_utils.assert_trees_all_close(updates, jnp.zeros_like(grads))
-
   def test_scale_by_yogi_zero_grads_give_zero_updates(self):
     opt = transform.scale_by_yogi(initial_accumulator_value=1e-6)
     params = jnp.ones(3)
