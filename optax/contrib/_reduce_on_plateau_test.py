@@ -177,6 +177,97 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
     test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
 
+  @parameterized.parameters(False, True)
+  def test_learning_rate_reduced_with_zero_patience(self, enable_x64):
+    """Test that learning rate is reduced on the first plateau if patience=0."""
+
+    # Enable float64 if requested
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    # Transform with zero patience
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.1,
+        patience=0,
+        rtol=1e-4,
+        atol=0.0,
+        cooldown=self.cooldown,
+        accumulation_size=1,
+        min_scale=0.01,
+    )
+
+    # Initialize the state
+    state = transform.init(self.updates['params'])
+
+    # Test with improving metric
+    updates = self.updates
+    for value in [5.0, 4.0, 3.0]:
+      updates, state = transform.update(
+          updates=self.updates,
+          state=state,
+          value=jnp.asarray(value, dtype=float),
+      )
+
+    # Check that learning rate is not reduced
+    scale, best_value, plateau_count, cooldown_count, *_ = state
+    test_utils.assert_trees_all_close(scale, 1.0)
+    test_utils.assert_trees_all_close(best_value, 3.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, 0)
+    test_utils.assert_trees_all_close(updates, {'params': jnp.array(1.0)})
+
+    # One non-improving step
+    updates, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(3.0, dtype=float)
+    )
+
+    # Check that learning rate is reduced and cooldown starts
+    scale, best_value, plateau_count, cooldown_count, *_ = state
+    test_utils.assert_trees_all_close(scale, 0.1)
+    test_utils.assert_trees_all_close(best_value, 3.0)
+    test_utils.assert_trees_all_close(plateau_count, 0)
+    test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
+    test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
+
+  @parameterized.parameters(False, True)
+  def test_learning_rate_reduces_on_every_plateau_zero_patience_no_cooldown(
+      self, enable_x64
+  ):
+    """Test that each non-improving step reduces the scale if patience=0."""
+
+    # Enable float64 if requested
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    # Transform with zero patience and no cooldown
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.5,
+        patience=0,
+        rtol=1e-4,
+        atol=0.0,
+        cooldown=0,
+        accumulation_size=1,
+        min_scale=0.0,
+    )
+
+    # Initialize the state
+    state = transform.init(self.updates['params'])
+
+    # Improving, constant and worsening metric
+    metric = [5.0, 4.0, 4.0, 3.0, 3.0, 6.0, 7.0]
+    expected_scale = [1.0, 1.0, 0.5, 0.5, 0.25, 0.125, 0.0625]
+    for value, expected in zip(metric, expected_scale):
+      _, state = transform.update(
+          updates=self.updates,
+          state=state,
+          value=jnp.asarray(value, dtype=float),
+      )
+      scale, best_value, plateau_count, cooldown_count, *_ = state
+      test_utils.assert_trees_all_close(scale, expected)
+      test_utils.assert_trees_all_close(plateau_count, 0)
+      test_utils.assert_trees_all_close(cooldown_count, 0)
+
+    # Check that the best value was tracked across the stream
+    test_utils.assert_trees_all_close(best_value, 3.0)
+
 
 if __name__ == '__main__':
   absltest.main()
