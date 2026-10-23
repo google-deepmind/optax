@@ -105,6 +105,19 @@ class TripletMarginLossTest(parameterized.TestCase):
     )
     np.testing.assert_allclose(result, handmade_result, atol=1e-4)
 
+  @parameterized.parameters([1, 2, 3])
+  def test_norm_degree(self, norm_degree):
+    anchor = np.array([[0.0, 0.0], [1.0, 1.0]])
+    positive = np.array([[0.1, 0.1], [1.1, 1.1]])
+    negative = np.array([[1.0, 0.0], [0.0, 1.0]])
+    ap_distance = np.linalg.norm(anchor - positive, ord=norm_degree, axis=-1)
+    an_distance = np.linalg.norm(anchor - negative, ord=norm_degree, axis=-1)
+    expected = np.maximum(ap_distance - an_distance + 1.0, 0.0)
+    result = _self_supervised.triplet_margin_loss(
+        anchor, positive, negative, norm_degree=norm_degree, eps=0.0
+    )
+    np.testing.assert_allclose(result, expected, atol=1e-4)
+
   @parameterized.parameters([
       {
           'anchor': np.ones((2, 2)),
