@@ -49,6 +49,23 @@ def _setup_parabola(dtype):
 
 class SAMTest(parameterized.TestCase):
 
+  def test_normalize_zero_gradients(self):
+    params = {
+        'w': jnp.array([1.0, -2.0], dtype=jnp.float32),
+        'b': jnp.array(3.0, dtype=jnp.float32),
+    }
+    updates = jax.tree.map(jnp.zeros_like, params)
+
+    tx = _sam.normalize()
+    state = tx.init(params)
+    updates, state = tx.update(updates, state, params)
+
+    test_utils.assert_tree_all_finite(updates)
+    test_utils.assert_trees_all_equal(
+      updates, jax.tree.map(jnp.zeros_like, params)
+    )
+    test_utils.assert_trees_all_equal(state, tx.init(params))
+
   @parameterized.product(
       _BASE_OPTIMIZERS_UNDER_TEST,
       _ADVERSARIAL_OPTIMIZERS_UNDER_TEST,
