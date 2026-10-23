@@ -1540,10 +1540,14 @@ def scale_by_zoom_linesearch(
         learning_rate=jnp.asarray(1.0, dtype=val_dtype),
         value=jnp.asarray(jnp.inf, dtype=val_dtype),
         grad=optax.tree.zeros_like(params),
+        # Strongly typed, as the update returns them: a weakly typed init
+        # makes a jitted update compile again on its second call. The errors
+        # are in the values' dtype, and the step count in the default integer
+        # dtype of the line search's own counter.
         info=ZoomLinesearchInfo(
-            num_linesearch_steps=jnp.asarray(0),
-            decrease_error=jnp.asarray(jnp.inf),
-            curvature_error=jnp.asarray(jnp.inf),
+            num_linesearch_steps=jnp.asarray(0, dtype=jnp.result_type(int)),
+            decrease_error=jnp.asarray(jnp.inf, dtype=val_dtype),
+            curvature_error=jnp.asarray(jnp.inf, dtype=val_dtype),
         ),
     )
 

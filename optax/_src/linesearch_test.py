@@ -753,6 +753,35 @@ class ZoomLinesearchTest(parameterized.TestCase):
                                               value_fn=value_fn)[1],
                    lambda x: state, x)
 
+  @parameterized.parameters(
+      (jnp.float32, False), (jnp.float32, True), (jnp.float64, True)
+  )
+  def test_jitted_update_does_not_recompile(self, dtype, x64):
+    # lax.cond accepts a weakly typed branch against a strongly typed one, so
+    # test_dtype_stability cannot see a state whose types change on the first
+    # update; the jit cache does, and compiles the update a second time.
+    with utils.x64_precision(x64):
+      opt = _linesearch.scale_by_zoom_linesearch(max_linesearch_steps=15)
+      fn = lambda x: jnp.sum(x**2)
+
+      @jax.jit
+      def step(params, state):
+        value, grad = _linesearch.value_and_grad_from_state(fn)(
+            params, state=state
+        )
+        updates, state = opt.update(
+            grad, state, params, value=value, grad=grad, value_fn=fn
+        )
+        return update.apply_updates(params, updates), state
+
+      params = jnp.array([1.0, 2.0], dtype=dtype)
+      params, state = step(params, opt.init(params))
+      with test_utils.log_compilations() as compilation_logs:
+        step(params, state)
+      self.assertEmpty(
+          compilation_logs, 'zoom linesearch update recompiles on second call.'
+      )
+
   def test_value_and_grad_from_state(self):
     def fn(x):
       return jnp.sum(x**2)
