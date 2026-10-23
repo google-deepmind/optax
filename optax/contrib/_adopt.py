@@ -159,7 +159,7 @@ def adopt(
 
   References:
     Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any beta2 with the
-    Optimal Rate <https://arxiv.org/abs/2403.00855>`_, NeurIPS 2024
+    Optimal Rate <https://arxiv.org/abs/2411.02853>`_, NeurIPS 2024
   """
   return combine.chain(
       scale_by_adopt(

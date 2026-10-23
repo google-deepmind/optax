@@ -243,7 +243,17 @@ class TreeUtilsTest(parameterized.TestCase):
       arr = jnp.array([300.0, 400.0], dtype=dtype)
       norm = tu.tree_norm(arr)
       self.assertTrue(jnp.isfinite(norm))
+      self.assertEqual(norm.dtype, dtype)
       np.testing.assert_allclose(norm, 500.0, rtol=1e-3)
+
+  def test_tree_norm_python_scalars(self):
+    """Test that tree_norm works on trees with Python float/int scalars."""
+    tree = {'a': -1.0, 'b': {'c': (2.0,), 'd': 0.0}}
+    norm = tu.tree_norm(tree)
+    self.assertTrue(jnp.isfinite(norm))
+    np.testing.assert_allclose(norm, np.sqrt(5.0))
+    sqnorm = tu.tree_norm(tree, squared=True)
+    np.testing.assert_allclose(sqnorm, 5.0)
 
   @parameterized.parameters(
       'tree_a', 'tree_a_dict', 'tree_b', 'array_a', 'array_b', 'tree_b_dict'
