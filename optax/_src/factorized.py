@@ -167,7 +167,14 @@ def scale_by_factored_rms(
 
     def _update(grad, v_row, v_col, v, param, step):
       shape, dtype = param.shape, param.dtype
-      decay_rate_t = decay_rate_fn(step - step_offset, decay_rate)
+      # `count` starts at zero, so a positive `step_offset` leaves the
+      # local step negative until the offset is passed. The schedule
+      # then raises a non-positive base to a fractional power, giving
+      # -inf at zero and nan below it, and nan in `v` survives every
+      # later update, so the run never recovers.
+      decay_rate_t = decay_rate_fn(
+          jnp.maximum(step - step_offset, 0), decay_rate
+      )
 
       # Scaled by factorized second moment statistics.
       new_v_row = jnp.zeros((1,), dtype=dtype)
