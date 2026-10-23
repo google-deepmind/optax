@@ -142,7 +142,7 @@ def reduce_on_plateau(
               state.scale,
           ),
           min_scale,
-      )
+      ).astype(state.scale.dtype)
       new_cooldown_count = jnp.where(
           curr_plateau_count == patience, cooldown, 0
       ).astype(jnp.int32)
