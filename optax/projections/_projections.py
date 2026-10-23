@@ -364,3 +364,132 @@ def projection_halfspace(x: Any, a: Any, b: jax.typing.ArrayLike) -> Any:
   scalar = (b - optax.tree.vdot(x, a)) / optax.tree.vdot(a, a)
   scalar = jnp.clip(scalar, max=0)
   return optax.tree.add_scale(x, scalar, a)
+
+
+def projection_affine_set(
+    x: jax.typing.ArrayLike,
+    a: jax.typing.ArrayLike,
+    b: jax.typing.ArrayLike,
+) -> jax.Array:
+  r"""Projection onto an affine set.
+
+  Projects a vector ``x`` onto the affine set defined by a matrix ``a`` and a
+  vector ``b``.
+
+  .. math::
+
+    \operatorname{argmin}_y \|x - y\|_2^2 \quad \text{subject to} \quad
+    a y = b
+
+  The projection is computed in closed form,
+  :math:`y = x + a^\top (a a^\top)^{-1} (b - a x)`.
+
+  Args:
+    x: array of shape ``(n,)`` to project.
+    a: matrix of shape ``(m, n)``, with ``m <= n``, defining the affine set.
+      Must have linearly independent rows.
+    b: vector of shape ``(m,)`` defining the affine set.
+
+  Returns:
+    projected array, with the same shape as ``x``.
+
+  Example:
+
+    >>> import jax.numpy as jnp
+    >>> from optax import projections
+    >>> x = jnp.array([1.0, 2.0, 3.0])
+    >>> a = jnp.array([[1.0, 1.0, 1.0]])
+    >>> b = jnp.array([3.0])
+    >>> print(projections.projection_affine_set(x, a, b))
+    [0. 1. 2.]
+
+  .. versionadded:: 0.2.9
+  """
+  x = jnp.asarray(x)
+  a = jnp.asarray(a)
+  b = jnp.asarray(b)
+  return x + a.T @ jnp.linalg.solve(a @ a.T, b - a @ x)
+
+
+def projection_box_section(
+    x: jax.typing.ArrayLike,
+    lower: jax.typing.ArrayLike,
+    upper: jax.typing.ArrayLike,
+    w: jax.typing.ArrayLike,
+    c: jax.typing.ArrayLike,
+) -> jax.Array:
+  r"""Projection onto a section of a box.
+
+  Projects a vector ``x`` onto the intersection of a box (hyperrectangle)
+  and a hyperplane with positive coefficient vector ``w``.
+
+  .. math::
+
+    \operatorname{argmin}_y \|x - y\|_2^2 \quad \text{subject to} \quad
+    \text{lower} \le y \le \text{upper}, \langle w, y \rangle = c
+
+  The solution has the form :math:`y_i = \operatorname{clip}(x_i + \tau w_i,
+  \text{lower}_i, \text{upper}_i)`, where the scalar :math:`\tau` is the root
+  of a monotone function, found by bisection. The projection is
+  differentiable, via implicit differentiation of the root.
+
+  The constraint set is non-empty if and only if :math:`\langle w,
+  \text{lower} \rangle \le c \le \langle w, \text{upper} \rangle`; the result
+  is undefined otherwise.
+
+  Args:
+    x: array of shape ``(n,)`` to project.
+    lower: lower bound of the box, a scalar or an array broadcastable to the
+      shape of ``x``.
+    upper: upper bound of the box, a scalar or an array broadcastable to the
+      shape of ``x``.
+    w: weights of the hyperplane, an array with the same shape as ``x``. All
+      entries must be positive.
+    c: scalar defining the hyperplane.
+
+  Returns:
+    projected array, with the same shape as ``x``.
+
+  Example:
+
+    >>> import jax.numpy as jnp
+    >>> from optax import projections
+    >>> x = jnp.array([0.5, 1.5])
+    >>> w = jnp.array([1.0, 1.0])
+    >>> print(projections.projection_box_section(x, 0.0, 1.0, w, 1.0))
+    [0. 1.]
+
+  .. versionadded:: 0.2.9
+  """
+  x = jnp.asarray(x)
+  w = jnp.asarray(w)
+
+  def residual(tau):
+    # Monotonically non-decreasing in tau, since w > 0.
+    return jnp.dot(w, jnp.clip(x + tau * w, lower, upper)) - c
+
+  # For tau below (resp. above) the bracket, all coordinates of the candidate
+  # solution hit the lower (resp. upper) bound, so by feasibility the residual
+  # is non-positive (resp. non-negative) and the bracket contains a root.
+  bracket_low = jax.lax.stop_gradient(jnp.min((lower - x) / w))
+  bracket_high = jax.lax.stop_gradient(jnp.max((upper - x) / w))
+
+  def bisect(fun, init):
+    del init  # the root is bracketed by construction
+
+    def body_fun(_, bracket):
+      low, high = bracket
+      mid = 0.5 * (low + high)
+      go_left = fun(mid) >= 0
+      return jnp.where(go_left, low, mid), jnp.where(go_left, mid, high)
+
+    # 100 iterations narrow the bracket by a factor of 2**100, well below
+    # float64 resolution for any realistic input.
+    low, high = jax.lax.fori_loop(0, 100, body_fun, (bracket_low, bracket_high))
+    return 0.5 * (low + high)
+
+  def tangent_solve(g, y):
+    return y / g(1.0)
+
+  tau = jax.lax.custom_root(residual, 0.0, bisect, tangent_solve)
+  return jnp.clip(x + tau * w, lower, upper)
