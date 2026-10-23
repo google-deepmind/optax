@@ -335,6 +335,20 @@ class TreeUtilsTest(parameterized.TestCase):
             err_msg=f'failed with decay={decay}, count={count}',
         )
 
+  def test_bias_correction_matches_float64(self):
+    # A float32 run forms `1 - decay**count` to float32's rounding, whatever
+    # the decay's own float32 rounding: the correction of a Python decay is
+    # its float64 value's to a few float32 ulps.
+    m = jnp.ones((), jnp.float32)
+    for decay in (0.9, 0.99, 0.999, 0.9999):
+      for count in (1, 2, 10, 100, 1000, 10000):
+        corrected = tu.tree_bias_correction(m, decay, jnp.asarray(count))
+        expected = 1 / (1 - np.float64(decay) ** count)
+        np.testing.assert_allclose(
+            corrected, expected, rtol=4 * np.finfo(np.float32).eps,
+            err_msg=f'decay={decay}, count={count}',
+        )
+
   def test_empty_tree_reduce(self):
     for tree in [{}, (), [], None, {'key': [None, [None]]}]:
       self.assertEqual(tu.tree_sum(tree), 0)
