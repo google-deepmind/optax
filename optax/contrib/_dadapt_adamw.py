@@ -109,6 +109,7 @@ def dadapt_adamw(
     del extra_args
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    numerics.maybe_static_check_eps(eps, state.exp_avg_sq)
     count = state.count
     beta1, beta2 = betas
     sb2 = beta2 ** (0.5)

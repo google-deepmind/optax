@@ -373,7 +373,7 @@ class AccumulationTest(parameterized.TestCase):
       )
 
     # Iterate over parameter and update dtypes
-    dtypes = [jnp.float32, jnp.float16, jnp.bfloat16]
+    dtypes = [jnp.float32, jnp.bfloat16]
     for upd_dtype in dtypes:
       for param_dtype in dtypes:
         data = data.astype(param_dtype)

@@ -65,6 +65,7 @@ def scale_by_rss(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.sum_of_squares)
     sum_of_squares = jax.tree.map(
         lambda g, t: abs_sq(g) + t, updates, state.sum_of_squares
     )
@@ -129,6 +130,7 @@ def scale_by_rms(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
       count_inc = numerics.safe_increment(state.count)
@@ -202,6 +204,7 @@ def scale_by_stddev(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
     mu = optax.tree.update_moment(updates, state.mu, decay, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, decay, 2)
     if bias_correction:
@@ -280,6 +283,8 @@ def scale_by_adam(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -361,6 +366,8 @@ def scale_by_amsgrad(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -415,6 +422,7 @@ def scale_by_adamax(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
     count_inc = numerics.safe_increment(state.count)
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_infinity_moment(updates, state.nu, b2, eps)
@@ -596,6 +604,7 @@ def scale_by_adadelta(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.e_g)
     e_g = optax.tree.update_moment(updates, state.e_g, rho, 2)
     updates = jax.tree.map(
         lambda g, cur_e_g, prev_e_x: (
@@ -655,6 +664,8 @@ def scale_by_adan(
   def update_fn(updates, state, params=None):
     """Based on Algorithm 1 in https://arxiv.org/pdf/2208.06677v4#page=6."""
     del params
+    numerics.maybe_static_check_eps(eps, state.n)
+    numerics.maybe_static_check_eps(eps_root, state.n, name='eps_root')
     g = updates
 
     diff = optax.tree.where(
@@ -730,6 +741,8 @@ def scale_by_belief(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     prediction_error = optax.tree.sub(updates, mu)
     nu = optax.tree.update_moment_per_elem_norm(prediction_error, state.nu, b2,
@@ -793,6 +806,8 @@ def scale_by_yogi(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = jax.tree.map(
         lambda g, v: v - (1 - b2) * jnp.sign(v - abs_sq(g)) * abs_sq(g),
@@ -862,6 +877,8 @@ def scale_by_radam(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2, 2)
     count_inc = numerics.safe_increment(state.count)
@@ -1231,6 +1248,7 @@ def scale_by_sm3(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.mu)
 
     def f(g, v):
       return [
@@ -1319,6 +1337,8 @@ def scale_by_novograd(
     )
 
   def update_fn(updates, state, params):
+    numerics.maybe_static_check_eps(eps, state.nu)
+    numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     count_inc = numerics.safe_increment(state.count)
 
     nu = jax.lax.cond(count_inc == 1, init_nu, update_nu, updates, state.nu)

@@ -147,6 +147,7 @@ def scale_by_sophia(
   def update_fn(updates, state: SophiaState, params=None, **hess_fn_kwargs):
     if params is None:
       raise ValueError("params must be provided to sophia's update function.")
+    numerics.maybe_static_check_eps(eps, state.nu)
     count_inc = numerics.safe_int32_increment(state.count)
 
     grads = updates

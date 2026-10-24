@@ -296,6 +296,7 @@ def momo_adam(
     if value is None:
       raise ValueError("""You need to pass the latest loss value to Momo.
                        Use ``jax.value_and_grad`` for this.""")
+    numerics.maybe_static_check_eps(eps, state.exp_avg_sq)
     count = state.count
     count_inc = numerics.safe_increment(count)
     barf = b1 * state.barf + (1 - b1) * jnp.asarray(

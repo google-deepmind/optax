@@ -61,9 +61,7 @@ class ContribShardingTest(parameterized.TestCase):
     sharding = jax.sharding.NamedSharding(mesh, jax.P(None, 'x'))
 
     with jax.set_mesh(mesh):
-      params = jnp.zeros(
-          (2, 8, 4), dtype=jnp.float16, out_sharding=sharding
-      )
+      params = jnp.zeros((2, 8, 4), dtype=jnp.bfloat16, out_sharding=sharding)
 
       state = optimizer.init(params)
       _, state_after_update = optimizer.update(params, state, params)

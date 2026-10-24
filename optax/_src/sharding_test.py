@@ -77,7 +77,7 @@ class ShardingTest(parameterized.TestCase):
     sharding = jax.sharding.NamedSharding(mesh, jax.P(None, 'x'))
 
     with jax.set_mesh(mesh):
-      params = jnp.zeros((2, 8, 4), dtype=jnp.float16, out_sharding=sharding)
+      params = jnp.zeros((2, 8, 4), dtype=jnp.bfloat16, out_sharding=sharding)
 
       state0 = optimizer.init(params)
       _, state1 = optimizer.update(params, state0, params)
@@ -96,7 +96,7 @@ class ShardingTest(parameterized.TestCase):
     sharding = jax.sharding.NamedSharding(mesh, jax.P(None, 'x'))
 
     with jax.set_mesh(mesh):
-      params = jnp.zeros((2, 8, 4), dtype=jnp.float16, out_sharding=sharding)
+      params = jnp.zeros((2, 8, 4), dtype=jnp.bfloat16, out_sharding=sharding)
 
       state0 = optimizer.init(params)
       state1 = jax.jit(optimizer.init)(params)
