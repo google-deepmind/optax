@@ -242,8 +242,13 @@ def multiclass_generalized_dice_loss(
   utils.check_shapes_equal(predictions, targets)
 
   # Compute class frequencies for weighting
-  # pyrefly: ignore [missing-attribute]
-  class_frequencies = jnp.sum(targets, axis=tuple(range(targets.ndim - 1)))
+  # Integer and float16 counts can overflow when squared.
+  class_frequencies = jnp.sum(
+      targets,
+      # pyrefly: ignore [missing-attribute]
+      axis=tuple(range(targets.ndim - 1)),
+      dtype=jnp.result_type(targets, jnp.float32),
+  )
 
   # Compute weights as inverse of squared frequencies
   # Add small epsilon to avoid division by zero
