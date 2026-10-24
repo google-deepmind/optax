@@ -250,15 +250,7 @@ class AliasTest(parameterized.TestCase):
     # See also https://github.com/google-deepmind/optax/issues/412.
     opt_factory = _get_opt(self, opt_name)
     opt = opt_factory(**opt_kwargs)
-    if opt_name == 'adafactor':
-      # Adafactor wrapped in inject_hyperparams currently needs a static
-      # argument to be specified in order to be jittable. See issue
-      # https://github.com/google-deepmind/optax/issues/412.
-      opt_inject = _inject.inject_hyperparams(
-          opt_factory, static_args=('min_dim_size_to_factor',)
-      )(**opt_kwargs)
-    else:
-      opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
+    opt_inject = _inject.inject_hyperparams(opt_factory)(**opt_kwargs)
 
     params = [jnp.negative(jnp.ones((2, 3))), jnp.ones((2, 5, 2))]
     grads = [jnp.ones((2, 3)), jnp.negative(jnp.ones((2, 5, 2)))]
