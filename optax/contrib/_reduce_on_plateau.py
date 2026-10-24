@@ -94,6 +94,10 @@ def reduce_on_plateau(
     raise ValueError(
         f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
     )
+  if patience < 0:
+    raise ValueError(
+        f"patience must be non-negative, got patience = {patience}."
+    )
 
   def init_fn(params) -> ReduceLROnPlateauState:
     # Define state parameters with the lowest dtype of the parameters to avoid
@@ -132,19 +136,21 @@ def reduce_on_plateau(
 
     # We're not in cooldown, so update the plateau count and scale as usual
     def not_in_cooldown():
+      target_patience = jnp.maximum(1, patience)
+      is_plateau = curr_plateau_count >= target_patience
       new_plateau_count = jnp.where(
-          curr_plateau_count == patience, 0, curr_plateau_count
+          is_plateau, 0, curr_plateau_count
       )
       new_scale = jnp.maximum(
           jnp.where(
-              curr_plateau_count == patience,
+              is_plateau,
               state.scale * factor,
               state.scale,
           ),
           min_scale,
       )
       new_cooldown_count = jnp.where(
-          curr_plateau_count == patience, cooldown, 0
+          is_plateau, cooldown, 0
       ).astype(jnp.int32)
 
       return new_plateau_count, new_scale, new_cooldown_count
