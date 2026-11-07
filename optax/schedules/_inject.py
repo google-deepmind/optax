@@ -187,14 +187,27 @@ def inject_hyperparams(
     def update_fn(updates, state, params=None, **extra_args):
       dtype = hyperparam_dtype
       if dtype is None:
-        # pyrefly: ignore[bad-argument-type]
-        dtype = optax.tree.dtype(params, 'highest')
+        dtype = optax.tree.dtype(
+            updates if params is None else params, 'highest'
+        )
       hparams = {
           k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
       }
+
+      def _schedule_dtype(prev_value):
+        if (
+            hyperparam_dtype is None
+            and params is None
+            and isinstance(prev_value, jax.Array)
+            and jax.dtypes.issubdtype(prev_value.dtype, jnp.floating)
+        ):
+          return prev_value.dtype
+        return dtype
+
       hparams.update({
           k: _convert_floats(
-              f(state.hyperparams_states[k], **extra_args), dtype
+              f(state.hyperparams_states[k], **extra_args),
+              _schedule_dtype(hparams[k]),
           )
           for k, f in sched_hps.items()
       })
