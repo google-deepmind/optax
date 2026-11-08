@@ -142,6 +142,26 @@ class PolynomialTest(absltest.TestCase):
 
 class PiecewiseConstantTest(absltest.TestCase):
 
+  def test_unsigned_steps(self):
+    schedule_fn = jax.jit(
+        _schedule.piecewise_constant_schedule(
+            1.0, {3: 0.5, 6: 0.5, 2**32 - 1: 0.5}
+        )
+    )
+    steps = jnp.array([2, 3, 4, 5, 6, 7, 2**32 - 1], dtype=jnp.uint32)
+    np.testing.assert_allclose(
+        jax.vmap(schedule_fn)(steps), [1.0, 0.5, 0.5, 0.5, 0.25, 0.25, 0.125]
+    )
+
+  def test_unsigned_steps_with_out_of_range_boundaries(self):
+    schedule_fn = jax.jit(
+        _schedule.piecewise_constant_schedule(1.0, {-1: 0.5, 3: 0.5, 256: 0.5})
+    )
+    steps = jnp.array([0, 2, 3, 255], dtype=jnp.uint8)
+    np.testing.assert_allclose(
+        jax.vmap(schedule_fn)(steps), [0.5, 0.5, 0.25, 0.25]
+    )
+
   def test_positive(self):
     """Check piecewise constant schedule of positive values."""
     # Get schedule function.

@@ -239,9 +239,24 @@ def piecewise_constant_schedule(
 
   def schedule(count):
     v = init_value
-    if boundaries_and_scales is not None:
+    if boundaries_and_scales:
+      count_dtype = jnp.result_type(count)
+      max_count = (
+          jnp.iinfo(count_dtype).max
+          if jnp.issubdtype(count_dtype, jnp.unsignedinteger)
+          else None
+      )
       for threshold, scale in sorted(boundaries_and_scales.items()):
-        indicator = jnp.maximum(0.0, jnp.sign(threshold - count))
+        if max_count is not None:
+          # Compare without unsigned subtraction or wrapping the boundary.
+          threshold = int(threshold)
+          boundary = jnp.asarray(
+              min(max(threshold, 0), max_count), dtype=count_dtype
+          )
+          reached = (count >= boundary) & (threshold <= max_count)
+          indicator = jnp.where(reached, 0.0, 1.0)
+        else:
+          indicator = jnp.maximum(0.0, jnp.sign(threshold - count))
         v = v * indicator + (1 - indicator) * scale * v
     return v
 
