@@ -62,6 +62,15 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l1_sphere_analytical_derivatives(self, use_jit, forward):
+    # Mixed signs require sign changes in the off-diagonal Jacobian entries.
+    _check_projection_derivatives(
+        proj.projection_l1_sphere, [1.5, -1.2, 0.1], 2.0,
+        np.array([[0.5, 0.5, 0.], [0.5, 0.5, 0.], [0., 0., 0.]]),
+        np.array([0.5, -0.5, 0.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_simplex_analytical_derivatives(self, use_jit, forward):
     # The first two coordinates remain in the support; the third is inactive.
     _check_projection_derivatives(
