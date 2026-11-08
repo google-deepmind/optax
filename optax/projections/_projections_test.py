@@ -62,6 +62,13 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_linf_ball_analytical_derivatives(self, use_jit, forward):
+    _check_projection_derivatives(
+        proj.projection_linf_ball, [-2.0, 0.4, 3.0], 1.0,
+        np.diag([0., 1., 0.]), np.array([-1., 0., 1.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_l2_ball_analytical_derivatives(self, use_jit, forward):
     x = np.array([1., -2., 2.])
     for radius in (2., 4.):
