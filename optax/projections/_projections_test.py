@@ -62,6 +62,19 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_halfspace_analytical_derivatives(self, use_jit, forward):
+    a = np.array([1., 2., -2.])
+    for x, active in (([2., 1., -1.], True), ([-1., -1., 1.], False)):
+      with self.subTest(active=active):
+        jacobian = np.eye(3) - np.outer(a, a) / 9. if active else np.eye(3)
+        offset_gradient = a / 9. if active else np.zeros(3)
+        _check_projection_derivatives(
+            lambda tree, b: proj.projection_halfspace(
+                tree, _derivative_tree(a), b
+            ), x, 1.0, jacobian, offset_gradient, use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_hyperplane_analytical_derivatives(self, use_jit, forward):
     a = np.array([1., 2., -2.])
     _check_projection_derivatives(
