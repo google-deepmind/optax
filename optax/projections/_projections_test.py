@@ -62,6 +62,19 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_box_analytical_derivatives(self, use_jit, forward):
+    # Vary both bounds together; only clipped coordinates follow the bounds.
+    def project(tree, shift):
+      lower = _derivative_tree(jnp.array([-1., -1., -1.]) + shift)
+      upper = _derivative_tree(jnp.array([1., 1., 1.]) + shift)
+      return proj.projection_box(tree, lower, upper)
+
+    _check_projection_derivatives(
+        project, [-2.0, 0.4, 3.0], 0.0,
+        np.diag([0., 1., 0.]), np.array([1., 0., 1.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_non_negative_analytical_derivatives(self, use_jit, forward):
     _check_projection_derivatives(
         lambda tree, _: proj.projection_non_negative(tree),
