@@ -24,7 +24,45 @@ from optax import tree_utils as tu
 from optax._src import test_utils
 
 
+def _contract_tree(values):
+  return {'a': values[:2], 'b': (values[2], None)}
+
+
+def _contract_array(tree):
+  return jnp.concatenate((tree['a'], tree['b'][0][None]))
+
+
+def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
+  differentiate = jax.jacfwd if forward else jax.jacrev
+  derivative = differentiate(function, argnums=tuple(range(len(arguments))))
+  if use_jit:
+    derivative = jax.jit(derivative)
+  actual = derivative(*[jnp.asarray(x) for x in arguments])
+  for got, want in zip(actual, expected):
+    np.testing.assert_allclose(got, want, atol=2e-6, rtol=2e-6)
+
+
 class TreeUtilsTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l2_norm_analytical_derivatives(self, use_jit, forward):
+    x = jnp.array([1., -2., 2.])
+    for squared in (False, True):
+      with self.subTest(squared=squared):
+        def objective(values, squared=squared):
+          return tu.tree_norm(_contract_tree(values), squared=squared)
+
+        gradient = jax.grad(objective)
+        hessian = (jax.jacfwd if forward else jax.jacrev)(gradient)
+        if use_jit:
+          gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+        expected_gradient = 2 * np.asarray(x) if squared else np.asarray(x) / 3
+        expected_hessian = (
+            2 * np.eye(3) if squared
+            else (np.eye(3) - np.outer(x, x) / 9) / 3
+        )
+        np.testing.assert_allclose(gradient(x), expected_gradient, atol=2e-6)
+        np.testing.assert_allclose(hessian(x), expected_hessian, atol=2e-6)
 
   def setUp(self):
     super().setUp()
