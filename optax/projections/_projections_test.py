@@ -62,6 +62,17 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_hyperplane_analytical_derivatives(self, use_jit, forward):
+    a = np.array([1., 2., -2.])
+    _check_projection_derivatives(
+        lambda tree, b: proj.projection_hyperplane(
+            tree, _derivative_tree(a), b
+        ),
+        [2., 1., -1.], 1.0, np.eye(3) - np.outer(a, a) / 9., a / 9.,
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_vector_analytical_derivatives(self, use_jit, forward):
     a = np.array([1., 2., -2.])
     _check_projection_derivatives(
