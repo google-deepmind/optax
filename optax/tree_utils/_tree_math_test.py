@@ -45,6 +45,27 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_bias_correction_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    moments = np.array([0.5, -2., 1.])
+    decay = 0.7
+    for count in (1, 5, 20):
+      with self.subTest(count=count):
+        def function(m, d, count=count):
+          return _contract_array(tu.tree_bias_correction(
+              _contract_tree(m), d, jnp.asarray(count)
+          ))
+
+        denominator = 1 - decay ** count
+        _check_tree_jacobians(
+            function, (moments, decay),
+            (np.eye(3) / denominator,
+             moments * count * decay ** (count - 1) / denominator ** 2),
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_complex_moment_per_elem_norm_analytical_derivatives(
       self, use_jit, forward
   ):
