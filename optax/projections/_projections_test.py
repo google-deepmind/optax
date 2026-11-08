@@ -62,6 +62,20 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l2_ball_analytical_derivatives(self, use_jit, forward):
+    x = np.array([1., -2., 2.])
+    for radius in (2., 4.):
+      with self.subTest(radius=radius):
+        jacobian = (radius / 3.) * (np.eye(3) - np.outer(x, x) / 9.)
+        radius_gradient = x / 3.
+        if radius > 3.:
+          jacobian, radius_gradient = np.eye(3), np.zeros(3)
+        _check_projection_derivatives(
+            proj.projection_l2_ball, x, radius, jacobian, radius_gradient,
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_l2_sphere_analytical_derivatives(self, use_jit, forward):
     x = np.array([1., -2., 2.])
     # Normalization removes the radial component of each input tangent.
