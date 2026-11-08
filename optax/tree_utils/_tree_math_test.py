@@ -45,6 +45,26 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_update_moment_analytical_derivatives(self, use_jit, forward):
+    updates = np.array([1., -2., 3.])
+    moments = np.array([0.5, 2., 1.])
+    decay = 0.7
+    for order in (1, 2, 3):
+      with self.subTest(order=order):
+        def function(g, m, d, order=order):
+          return _contract_array(tu.tree_update_moment(
+              _contract_tree(g), _contract_tree(m), d, order
+          ))
+
+        expected = (
+            np.diag((1 - decay) * order * updates ** (order - 1)),
+            decay * np.eye(3), moments - updates ** order,
+        )
+        _check_tree_jacobians(
+            function, (updates, moments, decay), expected, use_jit, forward
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_linf_norm_analytical_derivatives(self, use_jit, forward):
     # The unique maximum is in a different leaf from the other entries.
     x = np.array([1., -2., -3.])
