@@ -45,6 +45,30 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_complex_moment_per_elem_norm_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    real = np.array([1., -2., 3.])
+    imag = np.array([2., 1., -1.])
+    moments = np.array([0.5, 2., 1.])
+    decay = 0.7
+    for order in (1, 2, 3, 4):
+      with self.subTest(order=order):
+        def function(r, i, m, d, order=order):
+          return _contract_array(tu.tree_update_moment_per_elem_norm(
+              _contract_tree(r + 1j * i), _contract_tree(m), d, order
+          ))
+
+        magnitude = np.hypot(real, imag)
+        factor = (1 - decay) * order * magnitude ** (order - 2)
+        _check_tree_jacobians(
+            function, (real, imag, moments, decay),
+            (np.diag(factor * real), np.diag(factor * imag),
+             decay * np.eye(3), moments - magnitude ** order),
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_update_infinity_moment_analytical_derivatives(
       self, use_jit, forward
   ):
