@@ -45,6 +45,26 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_update_infinity_moment_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    updates = np.array([-3., 0.1, 2.])
+    moments = np.array([1., 4., 1.])
+    # abs(g)+eps wins for entries 0 and 2; decay*m wins for entry 1.
+
+    def function(g, m, d, epsilon):
+      return _contract_array(tu.tree_update_infinity_moment(
+          _contract_tree(g), _contract_tree(m), d, epsilon
+      ))
+
+    _check_tree_jacobians(
+        function, (updates, moments, 0.5, 0.2),
+        (np.diag([-1., 0., 1.]), np.diag([0., 0.5, 0.]),
+         np.array([0., 4., 0.]), np.array([1., 0., 1.])),
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_update_moment_analytical_derivatives(self, use_jit, forward):
     updates = np.array([1., -2., 3.])
     moments = np.array([0.5, 2., 1.])
