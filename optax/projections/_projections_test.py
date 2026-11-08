@@ -34,7 +34,40 @@ def projection_simplex_jacobian(projection):
   return jnp.diag(support) - jnp.outer(support, support) / cardinality
 
 
+def _derivative_tree(values):
+  # Unequal leaf ranks and a None node catch lost cross-leaf dependencies.
+  return {'a': values[:2], 'b': (values[2], None)}
+
+
+def _derivative_array(tree):
+  return jnp.concatenate((tree['a'], tree['b'][0][None]))
+
+
+def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
+                                  use_jit, forward):
+  def flat_function(values, radius):
+    return _derivative_array(function(_derivative_tree(values), radius))
+
+  differentiate = jax.jacfwd if forward else jax.jacrev
+  derivative = differentiate(flat_function, argnums=(0, 1))
+  if use_jit:
+    derivative = jax.jit(derivative)
+  actual_x, actual_scale = derivative(jnp.asarray(x), jnp.asarray(scale))
+  np.testing.assert_allclose(actual_x, jacobian, atol=2e-6, rtol=2e-6)
+  np.testing.assert_allclose(
+      actual_scale, scale_gradient, atol=2e-6, rtol=2e-6
+  )
+
+
 class ProjectionsTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_non_negative_analytical_derivatives(self, use_jit, forward):
+    _check_projection_derivatives(
+        lambda tree, _: proj.projection_non_negative(tree),
+        [-2.0, 0.4, 3.0], 1.0, np.diag([0., 1., 1.]), np.zeros(3),
+        use_jit, forward,
+    )
 
   def setUp(self):
     super().setUp()
