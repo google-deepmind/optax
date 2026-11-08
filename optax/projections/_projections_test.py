@@ -62,6 +62,17 @@ def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
 class ProjectionsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_hypercube_analytical_derivatives(self, use_jit, forward):
+    x = jnp.array([-0.5, 0.4, 2.0])
+    differentiate = jax.jacfwd if forward else jax.jacrev
+    derivative = differentiate(proj.projection_hypercube, argnums=(0, 1))
+    if use_jit:
+      derivative = jax.jit(derivative)
+    actual_x, actual_scale = derivative(x, jnp.asarray(1.0))
+    np.testing.assert_allclose(actual_x, np.diag([0., 1., 0.]), atol=1e-6)
+    np.testing.assert_allclose(actual_scale, [0., 0., 1.], atol=1e-6)
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_box_analytical_derivatives(self, use_jit, forward):
     # Vary both bounds together; only clipped coordinates follow the bounds.
     def project(tree, shift):
