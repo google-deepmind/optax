@@ -45,6 +45,27 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_complex_vdot_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    # Real coordinates make the conjugate-linear first operand explicit.
+    x = np.array([1., -2., 3.])
+    y = np.array([2., 1., -1.])
+    a = np.array([0.5, 2., -1.])
+    b = np.array([-1., 0.5, 2.])
+
+    def function(xr, xi, yr, yi):
+      value = tu.tree_vdot(_contract_tree(xr + 1j * xi),
+                           _contract_tree(yr + 1j * yi))
+      return jnp.array([value.real, value.imag])
+
+    _check_tree_jacobians(
+        function, (x, y, a, b),
+        (np.stack([a, b]), np.stack([b, -a]),
+         np.stack([x, -y]), np.stack([y, x])), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_bias_correction_analytical_derivatives(
       self, use_jit, forward
   ):
