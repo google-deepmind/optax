@@ -45,6 +45,15 @@ def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
 class TreeUtilsTest(parameterized.TestCase):
 
   @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l1_norm_analytical_derivatives(self, use_jit, forward):
+    # Stay away from zero, where the L1 norm is not differentiable.
+    x = np.array([1., -2., 3.])
+    _check_tree_jacobians(
+        lambda v: tu.tree_norm(_contract_tree(v), ord=1),
+        (x,), (np.array([1., -1., 1.]),), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
   def test_l2_norm_analytical_derivatives(self, use_jit, forward):
     x = jnp.array([1., -2., 2.])
     for squared in (False, True):
