@@ -738,6 +738,19 @@ class OneCycleTest(parameterized.TestCase):
     expected_vals = [100.0, 550.0, 1000.0, 750.25, 250.75, 1.0, 1.0]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
+  def test_cosine_shared_final_boundary(self):
+    schedule_fn = jax.jit(
+        _schedule.cosine_onecycle_schedule(
+            transition_steps=2,
+            peak_value=8.0,
+            pct_start=1.0,
+            div_factor=2.0,
+            final_div_factor=4.0,
+        )
+    )
+    generated_vals = [schedule_fn(step) for step in range(4)]
+    np.testing.assert_allclose(generated_vals, [4.0, 2.5, 1.0, 1.0])
+
   def test_nonpositive_transition_steps(self):
     with self.assertRaisesRegex(ValueError, 'cosine onecycle'):
       _schedule.cosine_onecycle_schedule(transition_steps=0, peak_value=5.0)

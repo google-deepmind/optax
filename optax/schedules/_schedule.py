@@ -482,6 +482,16 @@ def piecewise_interpolate_schedule(
   return schedule
 
 
+def _combine_boundary_scales(
+    boundary_scales: Iterable[tuple[int, float]],
+) -> dict[int, float]:
+  # When phase boundaries share a step, apply every scale at that step.
+  combined = {}
+  for boundary, scale in boundary_scales:
+    combined[boundary] = combined.get(boundary, 1.0) * scale
+  return combined
+
+
 def linear_onecycle_schedule(
     transition_steps: int,
     peak_value: jax.typing.ArrayLike,  # float
@@ -530,17 +540,11 @@ def linear_onecycle_schedule(
         '`transition_steps`'
     )
 
-  # Multiple phase boundaries can round down to the same step. Apply all of
-  # their scales so that the value at that step reflects the last phase.
-  boundaries_and_scales = {}
-  for boundary, scale in (
+  boundaries_and_scales = _combine_boundary_scales((
       (int(pct_start * transition_steps), div_factor),
       (int(pct_final * transition_steps), 1.0 / div_factor),
       (transition_steps, 1.0 / final_div_factor),
-  ):
-    boundaries_and_scales[boundary] = (
-        boundaries_and_scales.get(boundary, 1.0) * scale
-    )
+  ))
 
   return piecewise_interpolate_schedule(
       'linear', peak_value / div_factor, boundaries_and_scales
@@ -589,13 +593,12 @@ def cosine_onecycle_schedule(
         '`transition_steps`'
     )
 
+  boundaries_and_scales = _combine_boundary_scales((
+      (int(pct_start * transition_steps), div_factor),
+      (int(transition_steps), 1.0 / (div_factor * final_div_factor)),
+  ))
   return piecewise_interpolate_schedule(
-      'cosine',
-      peak_value / div_factor,
-      {
-          int(pct_start * transition_steps): div_factor,
-          int(transition_steps): 1.0 / (div_factor * final_div_factor),
-      },
+      'cosine', peak_value / div_factor, boundaries_and_scales
   )
 
 
