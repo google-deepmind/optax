@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 from optax import tree
 from optax._src import base
-from optax._src import utils
+from optax._src import numerics
 from optax.transforms import _combining
 
 
@@ -550,7 +550,7 @@ def track_per_element_mean_and_variance_with_ema(
         variance_step,
         state.variance_grads_ema,
     )
-    new_count = utils.safe_int32_increment(state.count)
+    new_count = numerics.safe_increment(state.count)
     new_state = state._replace(
         count=new_count,
         mean_grads_ema=mean_grads_ema,
