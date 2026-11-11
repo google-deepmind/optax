@@ -54,6 +54,9 @@ from optax.contrib._muon import muon
 from optax.contrib._muon import MuonDimensionNumbers
 from optax.contrib._muon import MuonState
 from optax.contrib._muon import scale_by_muon
+from optax.contrib._muon import scale_by_scion
+from optax.contrib._muon import ScaleByScionsState
+from optax.contrib._muon import scion
 from optax.contrib._privacy import differentially_private_aggregate
 from optax.contrib._privacy import DifferentiallyPrivateAggregateState
 from optax.contrib._privacy import dpsgd
