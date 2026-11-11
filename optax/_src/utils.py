@@ -22,6 +22,7 @@ import jax.numpy as jnp
 import jax.scipy.stats.norm as multivariate_normal
 import numpy as np
 from optax._src import base
+from optax._src import numerics
 
 
 def tile_second_to_last_dim(a: jax.typing.ArrayLike) -> jax.Array:
@@ -230,3 +231,7 @@ def x64_precision(enable_x64_precision: bool = True):
 
 def parse_version(version_str):
   return tuple(int(i) for i in version_str.split('.') if i.isdigit())
+
+
+# TODO(b/183800387): remove legacy aliases.
+safe_int32_increment = numerics.safe_int32_increment
