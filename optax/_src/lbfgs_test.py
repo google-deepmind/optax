@@ -207,16 +207,28 @@ def _plain_lbfgs(
       else:
         identity_scale = jnp.vdot(dus[-1], dws[-1])
         identity_scale /= jnp.sum(dus[-1] ** 2)
+        identity_scale = jnp.where(
+            jnp.isnan(identity_scale), 1.0, identity_scale
+        )
     else:
       identity_scale = 1.0
 
-    direction = -_plain_preconditioning(dws, dus, g, identity_scale)
+    valid_pairs = [
+        (dw, du) for dw, du in zip(dws, dus) if jnp.vdot(dw, du) > 0.0
+    ]
+    valid_dws = [dw for dw, _ in valid_pairs]
+    valid_dus = [du for _, du in valid_pairs]
+    direction = -_plain_preconditioning(valid_dws, valid_dus, g, identity_scale)
     w_old, g_old = w, g
     w = w + stepsize * direction
     _, g = value_and_grad_fun(w)
 
-    dws.append(w - w_old)
-    dus.append(g - g_old)
+    dw = w - w_old
+    du = g - g_old
+    if jnp.vdot(dw, du) <= 0.0:
+      dw, du = jnp.zeros_like(dw), jnp.zeros_like(du)
+    dws.append(dw)
+    dus.append(du)
 
     if len(dws) > memory_size:
       dws = dws[1:]  # Pop left.
@@ -603,6 +615,33 @@ class LBFGSTest(parameterized.TestCase):
     opt = alias.lbfgs()
     sol, _ = _run_opt(opt, fun, init_params=jnp.ones(n), tol=tol)
     test_utils.assert_trees_all_close(sol, jnp.zeros(n), atol=tol, rtol=tol)
+
+  def test_lbfgs_skips_nonpositive_curvature_update(self):
+    def fun(x):
+      return jnp.sum(jnp.abs(100 - x**3))
+
+    opt = alias.lbfgs(
+        scale_init_precond=False,
+        linesearch=_linesearch.scale_by_backtracking_linesearch(
+            max_backtracking_steps=1000, slope_rtol=0.7
+        ),
+    )
+
+    params = jnp.ones(2)
+    state = opt.init(params)
+
+    for _ in range(3):
+      value, grad = jax.value_and_grad(fun)(params)
+      updates, state = opt.update(
+          grad, state, params, value=value, grad=grad, value_fn=fun
+      )
+      params = update.apply_updates(params, updates)
+
+    lbfgs_state = state[0]
+    self.assertTrue(bool(jnp.all(lbfgs_state.weights_memory >= 0.0)))
+    test_utils.assert_trees_all_close(
+        lbfgs_state.weights_memory[0], jnp.array(0.0)
+    )
 
   @parameterized.product(
       linesearch=[
