@@ -1282,7 +1282,7 @@ def scale_by_novograd(
     b2: jax.typing.ArrayLike = 0.25,
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 0.0,
-    weight_decay: base.ScalarOrSchedule = 0.0,
+    weight_decay: jax.typing.ArrayLike | base.Schedule = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
@@ -1369,7 +1369,8 @@ class ScaleByOptimisticGradientState(NamedTuple):
 
 
 def scale_by_optimistic_gradient(
-    alpha: base.ScalarOrSchedule = 1.0, beta: base.ScalarOrSchedule = 1.0
+    alpha: jax.typing.ArrayLike | base.Schedule = 1.0,
+    beta: jax.typing.ArrayLike | base.Schedule = 1.0,
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 

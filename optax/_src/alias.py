@@ -1756,12 +1756,8 @@ def optimistic_adam(
           mu_dtype=mu_dtype,
           nesterov=nesterov,
       ),
-      transform.scale_by_optimistic_gradient(
-          # pyrefly: ignore[bad-argument-type]
-          alpha=learning_rate,
-          # pyrefly: ignore[bad-argument-type]
-          beta=optimism,
-      ),
+      transform.scale_by_optimistic_gradient(alpha=learning_rate,
+                                             beta=optimism),
       transform.scale_by_learning_rate(1.0),  # flips the sign
   )
 
@@ -1883,7 +1879,6 @@ def optimistic_adam_v2(
           mu_dtype=mu_dtype,
           nesterov=nesterov,
       ),
-      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
       transform.scale_by_learning_rate(learning_rate),
   )
