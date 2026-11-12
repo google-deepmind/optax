@@ -41,6 +41,9 @@ from optax.contrib._galore import galore
 from optax.contrib._galore import GaLoreDimensionNumbers
 from optax.contrib._galore import GaLoreState
 from optax.contrib._galore import scale_by_galore
+from optax.contrib._lnb import lnb
+from optax.contrib._lnb import scale_by_lnb
+from optax.contrib._lnb import ScaleByLNBState
 from optax.contrib._madgrad import madgrad
 from optax.contrib._madgrad import MadgradState
 from optax.contrib._madgrad import scale_by_madgrad
