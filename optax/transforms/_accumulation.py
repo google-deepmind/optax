@@ -178,7 +178,7 @@ def skip_not_finite(
   """
   del gradient_step, params
   not_finite = jax.tree.map(lambda x: ~jnp.isfinite(x), updates)
-  num_not_finite = optax.tree.sum(not_finite)
+  num_not_finite = jnp.asarray(optax.tree.sum(not_finite))
   should_skip = num_not_finite > 0  # pyrefly: ignore[unsupported-operation]
   # pyrefly: ignore [bad-return]
   return should_skip, {

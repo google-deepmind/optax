@@ -26,6 +26,7 @@ from optax._src import transform
 from optax._src import update
 from optax.transforms import _accumulation
 from optax.transforms import _constraining
+from optax.transforms import _masking
 
 OPTIMIZERS_TO_TEST = [
     {'opt_name': 'adam', 'opt_kwargs': {'learning_rate': 0.1}},
@@ -336,6 +337,31 @@ class AccumulationTest(parameterized.TestCase):
       np.testing.assert_array_equal(
           params['a'], jnp.negative(jnp.full([], 2.0))
       )
+
+  @parameterized.parameters('partition', 'masked')
+  def test_multi_steps_skip_not_finite_inactive_group(self, composition):
+    params = {'w': jnp.array([1.0, -2.0])}
+    grads = {'w': jnp.array([2.0, -1.0])}
+    active = alias.sgd(0.1, momentum=0.9)
+    inactive = _accumulation.MultiSteps(
+        alias.sgd(0.1), 2,
+        should_skip_update_fn=_accumulation.skip_not_finite,
+    )
+    if composition == 'partition':
+      tx = combine.partition(
+          {'active': active, 'unused': inactive}, {'w': 'active'}
+      )
+    else:
+      tx = combine.chain(_masking.masked(inactive, {'w': False}), active)
+    state, reference_state = tx.init(params), active.init(params)
+    update_fn = jax.jit(tx.update)
+    for _ in range(3):
+      actual, state = update_fn(grads, state, params)
+      expected, reference_state = active.update(grads, reference_state, params)
+      np.testing.assert_allclose(
+          actual['w'], expected['w'], rtol=1e-6, atol=1e-7
+      )
+      params = update.apply_updates(params, actual)
 
   @parameterized.parameters(OPTIMIZERS_TO_TEST)
   def test_multi_steps_mixed_precision(self, opt_name, opt_kwargs):
