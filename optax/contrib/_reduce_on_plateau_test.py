@@ -18,6 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
+import numpy as np
 from optax._src import test_utils
 from optax.contrib import _reduce_on_plateau
 
@@ -176,6 +177,41 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(plateau_count, 0)
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
     test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
+
+  @parameterized.product(
+      param_dtype=(jnp.float16, jnp.bfloat16, jnp.float32),
+      min_scale_dtype=(np.float32, np.float64),
+      as_jax_array=(False, True),
+      use_jit=(False, True),
+  )
+  def test_array_min_scale_preserves_state_dtype(
+      self, param_dtype, min_scale_dtype, as_jax_array, use_jit
+  ):
+    jax.config.update('jax_enable_x64', True)
+    params = {'low': jnp.ones(2, param_dtype), 'high': jnp.ones(2, jnp.float64)}
+    min_scale = min_scale_dtype(0.25)
+    if as_jax_array:
+      min_scale = jnp.asarray(min_scale)
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.5,
+        patience=1,
+        cooldown=1,
+        accumulation_size=2,
+        min_scale=min_scale,
+    )
+    state = transform.init(params)
+    initial_dtypes = jax.tree.map(lambda x: x.dtype, state)
+    update = jax.jit(transform.update) if use_jit else transform.update
+    expected_scales = [
+        1., 1., 1., 0.5, 0.5, 0.5, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25
+    ]
+    for expected_scale in expected_scales:
+      updates, state = update(params, state, value=jnp.float64(1.))
+      self.assertEqual(jax.tree.map(lambda x: x.dtype, state), initial_dtypes)
+      self.assertEqual(float(state.scale), expected_scale)
+      for name, param in params.items():
+        self.assertEqual(updates[name].dtype, param.dtype)
+        np.testing.assert_allclose(updates[name], expected_scale)
 
 
 if __name__ == '__main__':
