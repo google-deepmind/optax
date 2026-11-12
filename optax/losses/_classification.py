@@ -145,14 +145,6 @@ def sparsemax_loss(
   return jax.nn.sparse_plus(jnp.where(labels, -logits, logits))
 
 
-@functools.partial(warn_deprecated_function, replacement='sparsemax_loss')
-def binary_sparsemax_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
-) -> jax.Array:
-  return sparsemax_loss(logits, labels)
-
-
 @jax.custom_jvp
 def weighted_logsoftmax(
     x: jax.typing.ArrayLike, weights: jax.typing.ArrayLike) -> jax.Array:
