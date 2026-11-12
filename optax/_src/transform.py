@@ -943,8 +943,11 @@ def scale_by_rprop(
 
   def update_fn(updates, state, params=None):
     del params
+    # Comparing signs directly avoids underflow in the gradient product.
     sign = jax.tree.map(
-        lambda g, prev_g: g * prev_g, updates, state.prev_updates
+        lambda g, prev_g: jnp.sign(g) * jnp.sign(prev_g),
+        updates,
+        state.prev_updates,
     )
     step_sizes = jax.tree.map(
         lambda s, step_size: jnp.where(
