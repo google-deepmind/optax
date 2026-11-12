@@ -20,6 +20,7 @@ from absl import logging
 import jax
 import jax.numpy as jnp
 from optax._src import base
+from optax._src import update
 
 
 class LookaheadState(NamedTuple):
@@ -139,9 +140,9 @@ def lookahead(
     sync_next = state.steps_since_sync == (sync_period - 1)
     updates = _lookahead_update(updates, sync_next, params, slow_step_size)
     if reset_state:
-      # Jittable way of resetting the fast optimizer state if parameters will be
-      # synchronized after this update step.
-      initial_state = fast_optimizer.init(params.fast)
+      # Reset at the synchronized parameters, including parameter-valued state.
+      synced_fast = update.apply_updates(params.fast, updates.fast)
+      initial_state = fast_optimizer.init(synced_fast)
       fast_state = jax.tree.map(
           lambda current, init: (1 - sync_next) * current + sync_next * init,
           fast_state,
