@@ -132,7 +132,8 @@ def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
 
   Args:
     tree: tree to project.
-    scale: value the projected tree should sum to (default: 1).
+    scale: nonnegative value the projected tree should sum to (default: 1).
+      A zero scale projects every input to a tree of zeros.
 
   Returns:
     projected tree, a tree with the same structure as ``tree``.
@@ -153,7 +154,11 @@ def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   .. versionadded:: 0.2.3
   """
   values, unravel_fn = flatten_util.ravel_pytree(tree)
-  new_values = scale * _projection_unit_simplex(values / scale)
+  # Keep the unit-simplex projection finite at zero scale, including its JVP.
+  zero_scale = jnp.asarray(scale) == 0
+  safe_scale = jnp.where(zero_scale, 1, scale)
+  safe_values = jnp.where(zero_scale, jnp.zeros_like(values), values)
+  new_values = scale * _projection_unit_simplex(safe_values / safe_scale)
   return unravel_fn(jnp.asarray(new_values))
 
 
