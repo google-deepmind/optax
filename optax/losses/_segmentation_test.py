@@ -312,6 +312,36 @@ class DiceLossTest(parameterized.TestCase):
     # Should be different from regular dice loss due to weighting
     self.assertFalse(jnp.allclose(gdl_loss, regular_loss))
 
+  @parameterized.product(
+      target_dtype=(jnp.bool_, jnp.int32, jnp.float16),
+      use_jit=(False, True),
+  )
+  def test_generalized_dice_large_class_counts(self, target_dtype, use_jit):
+    # Squaring 60,000 overflows int32 and float16, although the loss is bounded.
+    labels = (jnp.arange(90_000) >= 60_000).astype(jnp.int32)
+    targets = jax.nn.one_hot(labels, 2, dtype=target_dtype).reshape(
+        1, 300, 300, 2
+    )
+
+    def loss_fn(bias, labels):
+      logits = jnp.broadcast_to(jnp.stack((bias, -bias)), labels.shape)
+      return _segmentation.multiclass_generalized_dice_loss(logits, labels)
+
+    evaluate = jax.value_and_grad(loss_fn)
+    if use_jit:
+      evaluate = jax.jit(evaluate)
+    bias = jnp.array(0.0, dtype=jnp.float32)
+    loss, grad = evaluate(bias, targets)
+    reference_loss, reference_grad = evaluate(bias, targets.astype(jnp.float32))
+
+    # Ignoring negligible epsilon, normalized class weights are 1/5 and 4/5.
+    expected_loss = 0.2 * (22500 / 52501) + 0.8 * (22500 / 37501)
+    self.assertGreaterEqual(loss, 0.0)
+    self.assertLessEqual(loss, 1.0)
+    np.testing.assert_allclose(loss, expected_loss, rtol=1e-6)
+    np.testing.assert_allclose(loss, reference_loss, rtol=1e-6)
+    np.testing.assert_allclose(grad, reference_grad, rtol=1e-5)
+
   def test_edge_cases(self):
     """Test edge cases."""
     # All zeros target
