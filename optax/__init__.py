@@ -316,7 +316,7 @@ del _typing
 # pylint: enable=g-importing-member
 
 
-__version__ = "0.2.9"
+__version__ = "0.2.10.dev"
 
 __all__ = (
     "adabelief",
