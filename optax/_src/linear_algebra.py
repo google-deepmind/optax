@@ -299,6 +299,8 @@ def nnls(
     iters: int,
     unroll: Union[int, bool] = 1,
     L: Union[jax.typing.ArrayLike, None] = None,
+    *,
+    use_gram: bool = True,
 ) -> jax.Array:
   r"""Solves the non-negative least squares problem.
 
@@ -312,6 +314,14 @@ def nnls(
     iters: Number of iterations to run the algorithm for.
     unroll: Unroll parameter passed to `lax.scan`.
     L: An upper bound on the spectral radius of `A.mT @ A` (optional).
+    use_gram: Whether to form `A.mT @ A` for gradient evaluations (default:
+      `True`). Set to `False` for wide matrices to evaluate gradients through
+      `A` and `A.mT` without allocating an `(N, N)` matrix. If `L` is omitted,
+      a spectral bound is computed using the smaller of `A.mT @ A` and
+      `A @ A.mT`. The bound can differ from the default on wide matrices,
+      changing convergence speed and the finite-iteration result. Supply the
+      same `L` to compare the two recurrences. This option must be static
+      when using `jax.jit`.
 
   Returns:
     A solution vector of shape `(N,)` or matrix of shape `(N, K)`.
@@ -335,11 +345,22 @@ def nnls(
   assert b.ndim in (1, 2)
   assert b.shape[0] == A.shape[0]
 
-  Q = A.mT @ A
-  q = A.mT @ b
+  if use_gram:
+    Q = A.mT @ A
+    q = A.mT @ b
 
-  if L is None:
-    L = get_spectral_radius_upper_bound(Q)
+    def gradient(p):
+      return Q @ p - q
+
+    if L is None:
+      L = get_spectral_radius_upper_bound(Q)
+  else:
+    def gradient(p):
+      return A.mT @ (A @ p - b)
+
+    if L is None:
+      gram = A @ A.mT if A.shape[0] < A.shape[1] else A.mT @ A
+      L = get_spectral_radius_upper_bound(gram)
 
   L = jnp.where(L == 0, 1, L)  # avoid division by zero below
 
@@ -349,7 +370,7 @@ def nnls(
     cn = (1 + jnp.sqrt(1 + 4 * c ** 2)) / 2
     s = (c - 1) / cn
 
-    xn = (p - (Q @ p - q) / L).clip(0)
+    xn = (p - gradient(p) / L).clip(0)
     pn = xn + s * (xn - x)
 
     return (xn, pn, cn), None

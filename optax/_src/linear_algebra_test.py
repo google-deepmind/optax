@@ -15,6 +15,7 @@
 
 """Tests for linear_algebraic methods in `linear_algebra.py`."""
 
+import functools
 from typing import Iterable
 
 from absl.testing import absltest
@@ -27,6 +28,7 @@ import jax.numpy as jnp
 import numpy as np
 from optax._src import linear_algebra
 import optax.tree
+import scipy.optimize
 import scipy.stats
 
 
@@ -233,6 +235,89 @@ class LinearAlgebraTest(parameterized.TestCase):
 
       y = jnp.square(A @ x - b).sum(0)
       ys.append(y)
+
+  @parameterized.product(
+      shape=((3, 7), (7, 3)), rhs=((), (2,)),
+      iters=(0, 1, 12), use_jit=(False, True),
+  )
+  def test_nnls_factorized_fixed_bound(self, shape, rhs, iters, use_jit):
+    rng = np.random.default_rng(42)
+    a = jnp.asarray(rng.normal(size=shape), dtype=jnp.float32)
+    b = jnp.asarray(rng.normal(size=(shape[0], *rhs)), dtype=jnp.float32)
+    bound = jnp.linalg.norm(a.T @ a)
+    solve = functools.partial(linear_algebra.nnls, iters=iters, L=bound)
+    gram = functools.partial(solve, use_gram=True)
+    factorized = functools.partial(solve, use_gram=False)
+    if use_jit:
+      gram, factorized = jax.jit(gram), jax.jit(factorized)
+    np.testing.assert_allclose(
+        factorized(a, b), gram(a, b), rtol=2e-5, atol=2e-6
+    )
+
+  @parameterized.product(rhs=((), (2,)), zero=(False, True))
+  def test_nnls_factorized_rank_deficient(self, rhs, zero):
+    # Repeated columns make coefficients non-unique: compare residuals instead.
+    a = jnp.array([[1., 0., 1., 0.], [0., 1., 0., 1.]])
+    if zero:
+      a = jnp.zeros_like(a)
+    b = jnp.array([2., -1.])
+    if rhs:
+      b = jnp.stack([b, -b], axis=1)
+    result = jax.jit(functools.partial(
+        linear_algebra.nnls, iters=100, use_gram=False
+    ))(a, b)
+    rhs_columns = np.asarray(b).reshape(2, -1)
+    expected = np.stack([
+        scipy.optimize.nnls(np.asarray(a), column)[0]
+        for column in rhs_columns.T
+    ], axis=1).reshape(result.shape)
+    np.testing.assert_allclose(a @ result, a @ expected, atol=2e-5)
+    self.assertTrue(jnp.all(result >= 0))
+    gradient = a.T @ (a @ result - b)
+    np.testing.assert_allclose(jnp.minimum(result, gradient), 0., atol=2e-5)
+
+  @parameterized.product(dtype=(jnp.float32, jnp.bfloat16), unroll=(1, 2, True))
+  def test_nnls_factorized_dtype_and_unroll(self, dtype, unroll):
+    a = jnp.array([[1., 0., 1.], [0., 1., 0.]], dtype=dtype)
+    b = jnp.array([2., 3.], dtype=dtype)
+    result = linear_algebra.nnls(a, b, 20, unroll, use_gram=False)
+    self.assertEqual(result.dtype, dtype)
+    np.testing.assert_allclose(a @ result, b, atol=0.03)
+
+  def test_nnls_factorized_gradients(self):
+    a = jnp.array([[1., 0.2, 0.4], [0.3, 1., 0.2]])
+    b = jnp.array([2., 1.])
+
+    def objective(a, b, use_gram):
+      return jnp.sum(linear_algebra.nnls(a, b, 7, L=4., use_gram=use_gram))
+
+    gram = jax.jit(jax.grad(
+        functools.partial(objective, use_gram=True), (0, 1)
+    ))
+    factorized = jax.jit(jax.grad(
+        functools.partial(objective, use_gram=False), (0, 1)
+    ))
+    for actual, expected in zip(factorized(a, b), gram(a, b)):
+      np.testing.assert_allclose(actual, expected, rtol=2e-5, atol=2e-6)
+
+  @parameterized.parameters(None, 100.)
+  def test_nnls_factorized_avoids_wide_gram(self, bound):
+    # Inspect nested scan jaxprs too, so an N-by-N allocation cannot hide there.
+    a = jnp.ones((3, 17))
+    b = jnp.ones(3)
+    program = jax.make_jaxpr(functools.partial(
+        linear_algebra.nnls, iters=3, L=bound, use_gram=False
+    ))(a, b)
+
+    def check(jaxpr):
+      for equation in jaxpr.eqns:
+        for variable in equation.outvars:
+          self.assertNotEqual(getattr(variable.aval, 'shape', None), (17, 17))
+        for parameter in equation.params.values():
+          if hasattr(parameter, 'jaxpr'):
+            check(parameter.jaxpr)
+
+    check(program.jaxpr)
 
 
 if __name__ == '__main__':
