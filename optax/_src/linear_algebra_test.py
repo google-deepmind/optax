@@ -284,6 +284,22 @@ class LinearAlgebraTest(parameterized.TestCase):
     self.assertEqual(result.dtype, dtype)
     np.testing.assert_allclose(a @ result, b, atol=0.03)
 
+  @parameterized.parameters(False, True)
+  def test_nnls_factorized_correlated_columns(self, use_jit):
+    # Nearly collinear columns make coefficients poorly determined. Compare
+    # the objective and KKT conditions rather than individual coefficients.
+    a = jnp.array([[1., 0.999, 0.], [0., 0.02, 1.], [0.5, 0.5, 0.3]])
+    b = jnp.array([1.5, 0.7, 0.9])
+    solve = functools.partial(linear_algebra.nnls, iters=2000, use_gram=False)
+    if use_jit:
+      solve = jax.jit(solve)
+    x = solve(a, b)
+    _, reference_residual = scipy.optimize.nnls(np.asarray(a), np.asarray(b))
+    np.testing.assert_allclose(jnp.linalg.norm(a @ x - b), reference_residual,
+                               rtol=5e-3, atol=2e-4)
+    gradient = a.T @ (a @ x - b)
+    np.testing.assert_allclose(jnp.minimum(x, gradient), 0., atol=2e-4)
+
   def test_nnls_factorized_gradients(self):
     a = jnp.array([[1., 0.2, 0.4], [0.3, 1., 0.2]])
     b = jnp.array([2., 1.])
