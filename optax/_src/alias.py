@@ -2162,7 +2162,7 @@ def sgd(
 
 
 def sm3(
-    learning_rate: jax.typing.ArrayLike,
+    learning_rate: base.ScalarOrSchedule,
     momentum: jax.typing.ArrayLike = 0.9,
     eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformationExtraArgs:
@@ -2270,7 +2270,7 @@ def sm3(
   """
   return combine.chain(
       transform.scale_by_sm3(momentum, eps=eps),
-      transform.scale(-learning_rate),  # pyrefly: ignore[unsupported-operation]
+      transform.scale_by_learning_rate(learning_rate),
   )
 
 
