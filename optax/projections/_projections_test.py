@@ -34,7 +34,160 @@ def projection_simplex_jacobian(projection):
   return jnp.diag(support) - jnp.outer(support, support) / cardinality
 
 
+def _derivative_tree(values):
+  # Unequal leaf ranks and a None node catch lost cross-leaf dependencies.
+  return {'a': values[:2], 'b': (values[2], None)}
+
+
+def _derivative_array(tree):
+  return jnp.concatenate((tree['a'], tree['b'][0][None]))
+
+
+def _check_projection_derivatives(function, x, scale, jacobian, scale_gradient,
+                                  use_jit, forward):
+  def flat_function(values, radius):
+    return _derivative_array(function(_derivative_tree(values), radius))
+
+  differentiate = jax.jacfwd if forward else jax.jacrev
+  derivative = differentiate(flat_function, argnums=(0, 1))
+  if use_jit:
+    derivative = jax.jit(derivative)
+  actual_x, actual_scale = derivative(jnp.asarray(x), jnp.asarray(scale))
+  np.testing.assert_allclose(actual_x, jacobian, atol=2e-6, rtol=2e-6)
+  np.testing.assert_allclose(
+      actual_scale, scale_gradient, atol=2e-6, rtol=2e-6
+  )
+
+
 class ProjectionsTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_halfspace_analytical_derivatives(self, use_jit, forward):
+    a = np.array([1., 2., -2.])
+    for x, active in (([2., 1., -1.], True), ([-1., -1., 1.], False)):
+      with self.subTest(active=active):
+        jacobian = np.eye(3) - np.outer(a, a) / 9. if active else np.eye(3)
+        offset_gradient = a / 9. if active else np.zeros(3)
+        _check_projection_derivatives(
+            lambda tree, b: proj.projection_halfspace(
+                tree, _derivative_tree(a), b
+            ), x, 1.0, jacobian, offset_gradient, use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_hyperplane_analytical_derivatives(self, use_jit, forward):
+    a = np.array([1., 2., -2.])
+    _check_projection_derivatives(
+        lambda tree, b: proj.projection_hyperplane(
+            tree, _derivative_tree(a), b
+        ),
+        [2., 1., -1.], 1.0, np.eye(3) - np.outer(a, a) / 9., a / 9.,
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_vector_analytical_derivatives(self, use_jit, forward):
+    a = np.array([1., 2., -2.])
+    _check_projection_derivatives(
+        lambda tree, _: proj.projection_vector(tree, _derivative_tree(a)),
+        [2., 1., -1.], 1.0, np.outer(a, a) / 9., np.zeros(3),
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_linf_ball_analytical_derivatives(self, use_jit, forward):
+    _check_projection_derivatives(
+        proj.projection_linf_ball, [-2.0, 0.4, 3.0], 1.0,
+        np.diag([0., 1., 0.]), np.array([-1., 0., 1.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l2_ball_analytical_derivatives(self, use_jit, forward):
+    x = np.array([1., -2., 2.])
+    for radius in (2., 4.):
+      with self.subTest(radius=radius):
+        jacobian = (radius / 3.) * (np.eye(3) - np.outer(x, x) / 9.)
+        radius_gradient = x / 3.
+        if radius > 3.:
+          jacobian, radius_gradient = np.eye(3), np.zeros(3)
+        _check_projection_derivatives(
+            proj.projection_l2_ball, x, radius, jacobian, radius_gradient,
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l2_sphere_analytical_derivatives(self, use_jit, forward):
+    x = np.array([1., -2., 2.])
+    # Normalization removes the radial component of each input tangent.
+    jacobian = (2. / 3.) * (np.eye(3) - np.outer(x, x) / 9.)
+    _check_projection_derivatives(
+        proj.projection_l2_sphere, x, 2.0, jacobian, x / 3.,
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l1_ball_analytical_derivatives(self, use_jit, forward):
+    for x, jacobian, radius_gradient in (
+        ([0.1, -0.2, 0.3], np.eye(3), np.zeros(3)),
+        ([1.5, -1.2, 0.1],
+         np.array([[0.5, 0.5, 0.], [0.5, 0.5, 0.], [0., 0., 0.]]),
+         np.array([0.5, -0.5, 0.])),
+    ):
+      with self.subTest(x=x):
+        _check_projection_derivatives(
+            proj.projection_l1_ball, x, 2.0, jacobian, radius_gradient,
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l1_sphere_analytical_derivatives(self, use_jit, forward):
+    # Mixed signs require sign changes in the off-diagonal Jacobian entries.
+    _check_projection_derivatives(
+        proj.projection_l1_sphere, [1.5, -1.2, 0.1], 2.0,
+        np.array([[0.5, 0.5, 0.], [0.5, 0.5, 0.], [0., 0., 0.]]),
+        np.array([0.5, -0.5, 0.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_simplex_analytical_derivatives(self, use_jit, forward):
+    # The first two coordinates remain in the support; the third is inactive.
+    _check_projection_derivatives(
+        proj.projection_simplex, [1.5, 1.2, -0.5], 2.0,
+        np.array([[0.5, -0.5, 0.], [-0.5, 0.5, 0.], [0., 0., 0.]]),
+        np.array([0.5, 0.5, 0.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_hypercube_analytical_derivatives(self, use_jit, forward):
+    x = jnp.array([-0.5, 0.4, 2.0])
+    differentiate = jax.jacfwd if forward else jax.jacrev
+    derivative = differentiate(proj.projection_hypercube, argnums=(0, 1))
+    if use_jit:
+      derivative = jax.jit(derivative)
+    actual_x, actual_scale = derivative(x, jnp.asarray(1.0))
+    np.testing.assert_allclose(actual_x, np.diag([0., 1., 0.]), atol=1e-6)
+    np.testing.assert_allclose(actual_scale, [0., 0., 1.], atol=1e-6)
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_box_analytical_derivatives(self, use_jit, forward):
+    # Vary both bounds together; only clipped coordinates follow the bounds.
+    def project(tree, shift):
+      lower = _derivative_tree(jnp.array([-1., -1., -1.]) + shift)
+      upper = _derivative_tree(jnp.array([1., 1., 1.]) + shift)
+      return proj.projection_box(tree, lower, upper)
+
+    _check_projection_derivatives(
+        project, [-2.0, 0.4, 3.0], 0.0,
+        np.diag([0., 1., 0.]), np.array([1., 0., 1.]), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_non_negative_analytical_derivatives(self, use_jit, forward):
+    _check_projection_derivatives(
+        lambda tree, _: proj.projection_non_negative(tree),
+        [-2.0, 0.4, 3.0], 1.0, np.diag([0., 1., 1.]), np.zeros(3),
+        use_jit, forward,
+    )
 
   def setUp(self):
     super().setUp()
