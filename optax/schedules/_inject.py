@@ -168,6 +168,8 @@ def inject_hyperparams(
       dtype = hyperparam_dtype
       if dtype is None:
         dtype = optax.tree.dtype(params, 'highest')
+      # `_convert_floats` casts weak floats (e.g. Python floats) to strongly
+      # typed `jax.Array`s of `dtype`, while preserving strong `jax.Array`s.
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -185,19 +187,36 @@ def inject_hyperparams(
       )
 
     def update_fn(updates, state, params=None, **extra_args):
+      # Non-scheduled entries in `state.hyperparams` are already strongly typed
+      # `jax.Array`s from `init_fn` (so `_convert_floats` is a no-op), unless a
+      # user manually overwrote an entry in-place with a Python float between
+      # steps. In that case, fall back to `params` (or `updates` if `params` is
+      # `None`).
       dtype = hyperparam_dtype
       if dtype is None:
-        # pyrefly: ignore[bad-argument-type]
-        dtype = optax.tree.dtype(params, 'highest')
+        dtype = optax.tree.dtype(
+            updates if params is None else params, 'highest'
+        )
       hparams = {
-          k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
+          k: _convert_floats(v, dtype)
+          for k, v in state.hyperparams.items()
+          if k not in sched_hps
       }
-      hparams.update({
-          k: _convert_floats(
-              f(state.hyperparams_states[k], **extra_args), dtype
-          )
-          for k, f in sched_hps.items()
-      })
+      # Scheduled entries are recomputed at each step (often returning weak
+      # floats). Preserve the floating dtype established for each schedule in
+      # `init_fn` (`state.hyperparams[k].dtype`) so carry dtypes stay consistent
+      # across steps (e.g. inside `jax.lax.scan`), even when `params` is `None`
+      # or `updates` has a different dtype than `params`.
+      for k, f in sched_hps.items():
+        sched_dtype = dtype
+        prev_dtype = getattr(state.hyperparams[k], 'dtype', None)
+        if prev_dtype is not None and jax.dtypes.issubdtype(
+            prev_dtype, jnp.floating
+        ):
+          sched_dtype = prev_dtype
+        hparams[k] = _convert_floats(
+            f(state.hyperparams_states[k], **extra_args), sched_dtype
+        )
       hyperparams_states = {
           k: f.update(state.hyperparams_states[k], **extra_args)
           for k, f in sched_hps.items()
