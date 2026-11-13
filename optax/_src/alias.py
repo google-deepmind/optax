@@ -1320,11 +1320,10 @@ def lamb(
 
 def noisy_sgd(
     learning_rate: base.ScalarOrSchedule,
+    key: jax.typing.ArrayLike,
+    *,
     eta: jax.typing.ArrayLike = 0.01,
     gamma: jax.typing.ArrayLike = 0.55,
-    key: jax.typing.ArrayLike | None = None,  # int
-    *,
-    seed: int | None = None,  # deprecated
 ) -> base.GradientTransformationExtraArgs:
   r"""A variant of SGD with added noise.
 
@@ -1355,8 +1354,7 @@ def noisy_sgd(
     eta: Initial variance for the Gaussian noise added to gradients.
     gamma: A parameter controlling the annealing of noise over time ``t``, the
       variance decays according to ``(1+t)**(-gamma)``.
-    key: random generator key for noise generation.
-    seed: deprecated, use key instead.
+    key: random generator key for noise generation, e.g. ``jax.random.key(0)``.
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
@@ -1387,8 +1385,7 @@ def noisy_sgd(
     Networks <https://arxiv.org/abs/1511.06807>`_, 2015
   """
   return combine.chain(
-      # pyrefly: ignore[bad-argument-type]
-      transform.add_noise(eta, gamma, key, seed=seed),
+      transform.add_noise(eta, gamma, key),
       transform.scale_by_learning_rate(learning_rate),
   )
 
