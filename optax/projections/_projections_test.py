@@ -144,6 +144,55 @@ class ProjectionsTest(parameterized.TestCase):
         p, jnp.array([scale / 2, scale / 2, 0.0])
     )
 
+  @parameterized.product(
+      dtype=[jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64],
+      sign=[-1, 1],
+      jit=[False, True],
+  )
+  def test_projection_simplex_large_common_offset(self, dtype, sign, jit):
+    self.addCleanup(jax.config.update, 'jax_enable_x64', jax.config.x64_enabled)
+    jax.config.update('jax_enable_x64', dtype == jnp.float64)
+    offset = {
+        jnp.float16: 1000,
+        jnp.bfloat16: 1e37,
+        jnp.float32: 1e37,
+        jnp.float64: 1e300,
+    }[dtype]
+    values = jnp.full(128, sign * offset, dtype=dtype)
+    tangent = jnp.arange(128, dtype=dtype) / 128
+    project = (
+        jax.jit(proj.projection_simplex) if jit else proj.projection_simplex
+    )
+    actual = project(values)
+
+    # Every coordinate is active, so the exact projection is uniform and its
+    # derivative removes the mean. The offset must not affect either result.
+    np.testing.assert_allclose(actual, np.full(128, 1 / 128), atol=1e-6)
+    np.testing.assert_allclose(np.sum(actual), 1, atol=1e-6)
+    _, actual_tangent = jax.jvp(project, (values,), (tangent,))
+    self.assertEqual(actual_tangent.dtype, actual.dtype)
+    expected_tangent = np.asarray(tangent, dtype=np.float64)
+    expected_tangent = expected_tangent - expected_tangent.mean()
+    np.testing.assert_allclose(actual_tangent, expected_tangent, atol=1e-6)
+
+  @parameterized.product(nested=[False, True], jit=[False, True])
+  def test_projection_simplex_shifted_nonuniform(self, nested, jit):
+    values = jnp.array([0.25, 0.0, -4.0], dtype=jnp.float32)
+    offsets = jnp.array([0.0, 1e5, -1e5], dtype=jnp.float32)
+
+    def project(offset):
+      shifted = values + offset
+      data = {'a': shifted[:1], 'b': (shifted[1:],)} if nested else shifted
+      result = proj.projection_simplex(data, scale=2.0)
+      return jnp.concatenate([leaf.ravel() for leaf in jax.tree.leaves(result)])
+
+    batched = jax.vmap(project)
+    if jit:
+      batched = jax.jit(batched)
+    np.testing.assert_allclose(
+        batched(offsets), np.tile([1.125, 0.875, 0.0], (3, 1)), atol=1e-6
+    )
+
   def test_projection_simplex_jacobian(self):
     rng = np.random.RandomState(0)
 
