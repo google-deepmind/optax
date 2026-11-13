@@ -74,6 +74,7 @@ def scale_by_dog(
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
     params_dtype = optax.tree.dtype(params, "lowest")
+    scalar_dtype = jnp.promote_types(params_dtype, jnp.float32)
 
     if init_step_type == "distance":
       r_epsilon = init_step_value
@@ -89,8 +90,8 @@ def scale_by_dog(
     return DoGState(
         is_init_step=jnp.asarray(True),
         init_params=params,
-        max_dist=jnp.asarray(r_epsilon, dtype=params_dtype),
-        sum_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
+        max_dist=jnp.asarray(r_epsilon, dtype=scalar_dtype),
+        sum_sq_norm_grads=jnp.asarray(0.0, dtype=scalar_dtype),
     )
 
   def update_fn(
@@ -108,7 +109,10 @@ def scale_by_dog(
           state.is_init_step, init_step_value, learning_rate
       )
 
-    new_updates = optax.tree.scale(learning_rate, updates)
+    new_updates = jax.tree.map(
+        lambda u: jnp.asarray(learning_rate * u).astype(jnp.asarray(u).dtype),
+        updates,
+    )
     return new_updates, DoGState(
         is_init_step=jnp.asarray(False),
         init_params=state.init_params,
@@ -251,14 +255,15 @@ def scale_by_dowg(
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
     params_dtype = optax.tree.dtype(params, "lowest")
+    scalar_dtype = jnp.promote_types(params_dtype, jnp.float32)
     if init_estim_sq_dist is None:
       init_estim_sq_dist_ = eps
     else:
       init_estim_sq_dist_ = init_estim_sq_dist
     return DoWGState(
         init_params=params,
-        estim_sq_dist=jnp.asarray(init_estim_sq_dist_, dtype=params_dtype),
-        weighted_sq_norm_grads=jnp.asarray(0.0, dtype=params_dtype),
+        estim_sq_dist=jnp.asarray(init_estim_sq_dist_, dtype=scalar_dtype),
+        weighted_sq_norm_grads=jnp.asarray(0.0, dtype=scalar_dtype),
     )
 
   def update_fn(
@@ -274,7 +279,10 @@ def scale_by_dowg(
     )
     learning_rate = estim_sq_dist / (jnp.sqrt(weighted_sq_norm_grads) + eps)
 
-    new_updates = optax.tree.scale(learning_rate, updates)
+    new_updates = jax.tree.map(
+        lambda u: jnp.asarray(learning_rate * u).astype(jnp.asarray(u).dtype),
+        updates,
+    )
     return new_updates, state._replace(
         estim_sq_dist=estim_sq_dist,
         weighted_sq_norm_grads=weighted_sq_norm_grads,

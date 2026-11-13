@@ -129,6 +129,14 @@ def schedule_free(
   .. warning::
     The current implementation requires the parameter ``b1`` to be strictly
     positive.
+
+  .. warning::
+    ``x`` is not stored: it is recomputed from the parameters ``y`` and from
+    ``z`` at each step. With ``bfloat16`` parameters, small late changes of
+    ``y`` are rounded away, so ``z`` and
+    :func:`optax.contrib.schedule_free_eval_params` drift away from the optimum
+    as training continues, fastest with ``state_dtype=jnp.float32``. Keep the
+    parameters in ``float32`` if you evaluate at ``schedule_free_eval_params``.
   """
   base_optimizer = base.with_extra_args_support(base_optimizer)
 
@@ -137,6 +145,7 @@ def schedule_free(
     # dtype promotion of parameters resulting in a dtype mismatch between
     # parameters and updates.
     params_dtype = optax.tree.dtype(params, 'lowest')
+    scalar_dtype = jnp.promote_types(params_dtype, jnp.float32)
     if state_dtype is not None:
       z = optax.tree.cast(params, dtype=state_dtype)
     else:
@@ -146,9 +155,9 @@ def schedule_free(
     z = jax.tree.map(lambda t: t.copy(), z)
     return ScheduleFreeState(
         b1=jnp.asarray(b1, dtype=params_dtype),
-        weight_sum=jnp.zeros([], dtype=params_dtype),
+        weight_sum=jnp.zeros([], dtype=scalar_dtype),
         step_count=jnp.ones([], dtype=jnp.int32),
-        max_lr=jnp.zeros([], dtype=params_dtype),
+        max_lr=jnp.zeros([], dtype=scalar_dtype),
         base_optimizer_state=base_optimizer.init(params),
         z=z,
     )
@@ -193,21 +202,18 @@ def schedule_free(
 
     # Important: recompute x to both save memory and maintain accurate x seq
     # especially if y is modified by another transform wrapped on top.
-    prev_x = jax.tree.map(
-        lambda yi, zi: (yi - (1.0 - b1) * zi) / b1, params, state.z
-    )
+    def _update_leaf(yi, prev_zi, zi):
+      yi_arr = jnp.asarray(yi)
+      work_dtype = jnp.promote_types(yi_arr.dtype, ck.dtype)
+      yi_w = yi_arr.astype(work_dtype)
+      prev_zi_w = jnp.asarray(prev_zi, dtype=work_dtype)
+      zi_w = jnp.asarray(zi, dtype=work_dtype)
+      prev_xi = (yi_w - (1.0 - b1) * prev_zi_w) / b1
+      xi = (1.0 - ck) * prev_xi + ck * zi_w
+      new_yi = b1 * xi + (1.0 - b1) * zi_w
+      return (new_yi - yi_w).astype(yi_arr.dtype)
 
-    x = jax.tree.map(
-        lambda xi, zi: (1.0 - ck) * xi + ck * zi,
-        prev_x,
-        z,
-    )
-    new_params = jax.tree.map(
-        lambda xi, zi: b1 * xi + (1.0 - b1) * zi,
-        x,
-        z,
-    )
-    updates = jax.tree.map(lambda npi, pi: npi - pi, new_params, params)
+    updates = jax.tree.map(_update_leaf, params, state.z, z)
 
     next_state = ScheduleFreeState(
         b1=state.b1,

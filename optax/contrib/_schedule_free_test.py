@@ -23,6 +23,7 @@ from optax._src import alias
 from optax._src import numerics
 from optax._src import test_utils
 from optax._src import update
+from optax.contrib import _dog
 from optax.contrib import _schedule_free
 
 
@@ -153,6 +154,52 @@ class ScheduleFreeTest(parameterized.TestCase):
       else:
         expected_dtype = jax.dtypes.canonicalize_dtype(state_dtype)
       self.assertEqual(expected_dtype, getattr(state, 'z').dtype)
+
+  def test_bfloat16_running_sums_do_not_stall(self):
+    # bfloat16 sums of a constant term stop growing at 256-512 times the term,
+    # so after 1000 steps they would be about half of the exact value.
+    steps = 1000
+    params = jnp.ones((8,), dtype=jnp.bfloat16)
+    grads = jnp.full((8,), 0.01, dtype=jnp.bfloat16)
+
+    def final_state(opt):
+      state, _ = jax.lax.scan(
+          lambda s, _: (opt.update(grads, s, params)[1], None),
+          opt.init(params),
+          None,
+          length=steps,
+      )
+      return state
+
+    lr = 1e-3
+    sum_sq_grads = float(jnp.sum(grads**2)) * steps
+    cases = (
+        (
+            'schedule_free_sgd weight_sum',
+            _schedule_free.schedule_free_sgd(learning_rate=lr),
+            lambda s: s.weight_sum,
+            float(jnp.float32(lr) ** 2) * steps,
+        ),
+        (
+            'scale_by_dog sum_sq_norm_grads',
+            _dog.scale_by_dog(('heuristic', 1e-6)),
+            lambda s: s.sum_sq_norm_grads,
+            sum_sq_grads,
+        ),
+        (
+            'scale_by_dowg weighted_sq_norm_grads',
+            _dog.scale_by_dowg(init_estim_sq_dist=1.0),
+            lambda s: s.weighted_sq_norm_grads,
+            sum_sq_grads,
+        ),
+    )
+    for name, opt, get_sum, expected in cases:
+      with self.subTest(name):
+        running_sum = get_sum(final_state(opt))
+        self.assertEqual(running_sum.dtype, jnp.float32)
+        self.assertAlmostEqual(
+            float(running_sum), expected, delta=1e-3 * expected
+        )
 
 
 if __name__ == '__main__':
