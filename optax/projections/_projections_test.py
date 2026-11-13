@@ -121,6 +121,86 @@ class ProjectionsTest(parameterized.TestCase):
           proj.projection_hypercube(x, scales), expected
       )
 
+  @parameterized.product(
+      dtype=[jnp.float16, jnp.bfloat16, jnp.float32],
+      jit=[False, True],
+      values=[[2.0, -1.0, 3.0], [0.0, 0.0, 0.0]],
+  )
+  def test_projection_simplex_zero_scale(self, dtype, jit, values):
+    x = jnp.asarray(values, dtype=dtype)
+    project = (
+        jax.jit(proj.projection_simplex) if jit else proj.projection_simplex
+    )
+    actual = project(x, jnp.asarray(0.0, dtype=dtype))
+    np.testing.assert_array_equal(actual, jnp.zeros_like(x))
+    positive_scale = jnp.asarray(1.0, dtype=dtype)
+    self.assertEqual(
+        actual.dtype, proj.projection_simplex(x, positive_scale).dtype
+    )
+
+  @parameterized.product(jit=[False, True], large=[False, True])
+  def test_projection_simplex_zero_scale_derivatives(self, jit, large):
+    value = jnp.finfo(jnp.float32).max if large else 2.0
+    x = jnp.array([value, -value, 0.0], dtype=jnp.float32)
+
+    def project(x):
+      return proj.projection_simplex(x, scale=jnp.array(0.0))
+
+    if jit:
+      project = jax.jit(project)
+    np.testing.assert_array_equal(project(x), jnp.zeros_like(x))
+    np.testing.assert_array_equal(jax.jacfwd(project)(x), jnp.zeros((3, 3)))
+    np.testing.assert_array_equal(jax.jacrev(project)(x), jnp.zeros((3, 3)))
+
+  @parameterized.parameters(False, True)
+  def test_projection_simplex_zero_scale_vmap(self, jit):
+    x = jnp.tile(jnp.array([0.25, 0.0, -4.0]), (4, 1))
+    scales = jnp.array([0.0, 1.0, 0.0, 2.0])
+    project = jax.vmap(proj.projection_simplex)
+    if jit:
+      project = jax.jit(project)
+    expected = jnp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.625, 0.375, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.125, 0.875, 0.0],
+        ]
+    )
+    np.testing.assert_array_equal(project(x, scales), expected)
+    tangent = jnp.tile(jnp.array([1.0, 2.0, 3.0]), (4, 1))
+    expected_derivative = jnp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-0.5, 0.5, 0.0],
+            [0.0, 0.0, 0.0],
+            [-0.5, 0.5, 0.0],
+        ]
+    )
+    np.testing.assert_array_equal(
+        jax.jvp(lambda x: project(x, scales), (x,), (tangent,))[1],
+        expected_derivative,
+    )
+    np.testing.assert_array_equal(
+        jax.vjp(lambda x: project(x, scales), x)[1](tangent)[0],
+        expected_derivative,
+    )
+
+  @parameterized.product(
+      jit=[False, True],
+      project_fn=[
+          proj.projection_simplex,
+          proj.projection_l1_sphere,
+          proj.projection_l1_ball,
+      ],
+  )
+  def test_projection_zero_scale_pytree(self, jit, project_fn):
+    x = {'w': jnp.array([-2.5, 3.2]), 'b': (jnp.array(0.5),)}
+    project = jax.jit(project_fn) if jit else project_fn
+    test_utils.assert_trees_all_equal(
+        project(x, jnp.array(0.0)), jax.tree.map(jnp.zeros_like, x)
+    )
+
   @parameterized.parameters(1.0, 0.8)
   def test_projection_simplex_array(self, scale):
     rng = np.random.RandomState(0)
