@@ -76,6 +76,87 @@ class L2LossTest(parameterized.TestCase):
           self.ys, jnp.expand_dims(self.ts, axis=-1)
       )
 
+  @parameterized.product(
+      dtype=('float16', 'bfloat16', 'float32'),
+      use_jit=(False, True),
+      with_targets=(False, True),
+  )
+  def test_large_residual(self, dtype, use_jit, with_targets):
+    dtype = jnp.dtype(dtype)
+    if dtype == jnp.float16:
+      predictions = jnp.array([256, -256, 320, -320], dtype=dtype)
+      targets = jnp.array([16, -16, 16, -16], dtype=dtype)
+    else:
+      scale = 2.0**64
+      predictions = jnp.array(
+          [scale, -scale, 1.25 * scale, -1.25 * scale], dtype=dtype
+      )
+      targets = jnp.array(
+          [2.0**60, -(2.0**60), 2.0**60, -(2.0**60)], dtype=dtype
+      )
+    if not with_targets:
+      targets = None
+    # Use the stored input values to form an independent wider-precision oracle.
+    errors = np.asarray(predictions, dtype=np.float64)
+    if targets is not None:
+      errors = errors - np.asarray(targets, dtype=np.float64)
+    expected = 0.5 * errors**2
+    tolerance = float(jnp.finfo(dtype).eps)
+
+    def objective(predictions, targets):
+      # Scale before reducing so that the reduction cannot overflow.
+      return jnp.sum(_regression.l2_loss(predictions, targets) * 0.25)
+
+    loss = _regression.l2_loss
+    value_and_grad = jax.value_and_grad(objective)
+    if use_jit:
+      loss = jax.jit(loss)
+      value_and_grad = jax.jit(value_and_grad)
+    actual = loss(predictions, targets)
+    self.assertEqual(actual.dtype, dtype)
+    np.testing.assert_allclose(
+        np.asarray(actual, dtype=np.float64), expected, rtol=tolerance
+    )
+    value, gradient = value_and_grad(predictions, targets)
+    np.testing.assert_allclose(
+        np.asarray(value, dtype=np.float64), expected.mean(), rtol=tolerance
+    )
+    np.testing.assert_allclose(
+        np.asarray(gradient, dtype=np.float64), errors / 4, rtol=tolerance
+    )
+
+  @parameterized.parameters(False, True)
+  def test_input_compatibility(self, use_jit):
+    def legacy_loss(predictions, targets=None):
+      return 0.5 * _regression.squared_error(jnp.asarray(predictions), targets)
+
+    loss = _regression.l2_loss
+    if use_jit:
+      loss = jax.jit(loss)
+      legacy_loss = jax.jit(legacy_loss)
+    np.testing.assert_array_equal(loss([2.0, -4.0]), [2.0, 8.0])
+    np.testing.assert_array_equal(loss(2.0), 2.0)
+    predictions = jnp.array([2.0, -4.0], dtype=jnp.float16)
+    targets = jnp.array([1.0, -2.0], dtype=jnp.float32)
+    actual = loss(predictions, targets)
+    self.assertEqual(actual.dtype, jnp.float32)
+    np.testing.assert_array_equal(actual, [0.5, 2.0])
+    for dtype in [jnp.float16, jnp.bfloat16, jnp.float32]:
+      predictions = jnp.array([0.0, -0.0, 1.0, -(2**-10)], dtype=dtype)
+      actual = loss(predictions)
+      expected = legacy_loss(predictions)
+      self.assertEqual(actual.dtype, dtype)
+      np.testing.assert_array_equal(actual, expected)
+      np.testing.assert_array_equal(jnp.signbit(actual), jnp.signbit(expected))
+    predictions = jnp.array([np.inf, -np.inf, np.nan], dtype=jnp.float32)
+    np.testing.assert_allclose(
+        loss(predictions), legacy_loss(predictions), equal_nan=True
+    )
+    with self.assertRaises(ValueError):
+      loss(jnp.ones(2), jnp.ones((2, 1)))
+    with self.assertRaises(TypeError):
+      loss(jnp.array([1], dtype=jnp.int32))
+
 
 class HuberLossTest(parameterized.TestCase):
 
