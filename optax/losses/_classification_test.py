@@ -510,6 +510,109 @@ class HingeTest(parameterized.TestCase):
     result = _classification.multiclass_hinge_loss(scores, label)
     np.testing.assert_allclose(result, expected, atol=1e-4)
 
+  @parameterized.product(
+      dtype=(jnp.float16, jnp.float32), sign=(-1, 1), use_jit=(False, True)
+  )
+  def test_multi_class_common_offset(self, dtype, sign, use_jit):
+    offset = sign * (4096 if dtype == jnp.float16 else 2**26)
+    relative_scores = np.array([[0, 0, 0], [0, 8, 0], [8, 0, 0]])
+    scores = jnp.asarray(relative_scores + offset, dtype=dtype)
+    labels = jnp.zeros(3, dtype=jnp.int32)
+
+    # Compute margins independently in host float64 from stored input values.
+    expected = []
+    for row, label in zip(np.asarray(scores, dtype=np.float64), labels):
+      margins = [
+          1 + score - row[int(label)]
+          for category, score in enumerate(row)
+          if category != int(label)
+      ]
+      expected.append(max([0.0] + margins))
+    np.testing.assert_array_equal(expected, [1, 9, 0])
+    loss = _classification.multiclass_hinge_loss
+    if use_jit:
+      loss = jax.jit(loss)
+    result = loss(scores, labels)
+    np.testing.assert_array_equal(result, expected)
+    self.assertEqual(
+        result.dtype, jnp.result_type(dtype, jnp.asarray(0.0).dtype)
+    )
+    np.testing.assert_array_equal(
+        loss(jnp.asarray(relative_scores, dtype=dtype), labels), expected
+    )
+    np.testing.assert_array_equal(loss(scores[0], labels[0]), expected[0])
+    np.testing.assert_array_equal(jax.vmap(loss)(scores, labels), expected)
+    np.testing.assert_array_equal(
+        loss(jnp.broadcast_to(scores, (2, 3, 3)), labels),
+        np.broadcast_to(expected, (2, 3)),
+    )
+    np.testing.assert_array_equal(
+        loss(jnp.array([offset], dtype=dtype), jnp.array(0)), 0.0
+    )
+
+  @parameterized.product(sign=(-1, 1), use_jit=(False, True))
+  def test_multi_class_offset_gradient(self, sign, use_jit):
+    gradient = jax.grad(_classification.multiclass_hinge_loss)
+    if use_jit:
+      gradient = jax.jit(gradient)
+    offset = sign * 2**26
+    for relative_scores, expected in [
+        ([0, 0, 0], [-1, 0.5, 0.5]),
+        ([0, 8, 0], [-1, 1, 0]),
+        ([8, 0, 0], [0, 0, 0]),
+    ]:
+      scores = jnp.asarray(relative_scores, dtype=jnp.float32) + offset
+      np.testing.assert_allclose(
+          gradient(scores, jnp.array(0)), expected, atol=1e-6
+      )
+      np.testing.assert_allclose(
+          gradient(
+              jnp.asarray(relative_scores, dtype=jnp.float32), jnp.array(0)
+          ),
+          expected,
+          atol=1e-6,
+      )
+    # Keep JAX's equal-share subgradient at the zero-margin boundary.
+    np.testing.assert_allclose(
+        gradient(jnp.array([1.0, 0.0, 0.0]), jnp.array(0)),
+        [-2 / 3, 1 / 3, 1 / 3],
+        atol=1e-6,
+    )
+
+  @parameterized.parameters(False, True)
+  def test_multi_class_offset_compatibility(self, use_jit):
+    def legacy_loss(scores, labels):
+      one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
+      return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - (
+          _classification._dot_last_dim(scores, one_hot_labels)
+      )
+
+    loss = _classification.multiclass_hinge_loss
+    if use_jit:
+      loss = jax.jit(loss)
+      legacy_loss = jax.jit(legacy_loss)
+    largest = jnp.finfo(jnp.float32).max
+    np.testing.assert_array_equal(
+        loss(jnp.array([largest, -largest]), jnp.array(0)), 0.0
+    )
+    # Nonfinite results depend on JIT simplification; compare the old path.
+    for scores in [
+        [-np.inf, 0.0],
+        [0.0, -np.inf],
+        [np.inf, 0.0],
+        [np.nan, 0.0],
+    ]:
+      scores = jnp.asarray(scores, dtype=jnp.float32)
+      label = jnp.array(0)
+      np.testing.assert_allclose(
+          loss(scores, label), legacy_loss(scores, label), equal_nan=True
+      )
+    # Out-of-range labels keep the existing all-zero one-hot behavior.
+    for label in [-1, 3]:
+      np.testing.assert_array_equal(
+          loss(jnp.array([-1.0, 0.0, 2.0]), jnp.array(label)), 3.0
+      )
+
 
 class SparsemaxTest(parameterized.TestCase):
 

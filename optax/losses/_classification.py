@@ -455,8 +455,12 @@ def multiclass_hinge_loss(
   """
   # pyrefly: ignore [missing-attribute]
   one_hot_labels = jax.nn.one_hot(labels, scores.shape[-1])
-  return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - _dot_last_dim(
-      scores, one_hot_labels
+  label_scores = _dot_last_dim(scores, one_hot_labels)
+  # Subtract the target before adding the margin, keeping nonfinite behavior.
+  offset = jnp.where(jnp.isfinite(label_scores), label_scores, 0.0)
+  scores = scores - offset[..., None]
+  return jnp.max(scores + 1.0 - one_hot_labels, axis=-1) - (
+      label_scores - offset
   )
 
 
