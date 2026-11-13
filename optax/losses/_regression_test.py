@@ -125,6 +125,14 @@ class LogCoshTest(parameterized.TestCase):
     out = jax.jit(_regression.log_cosh)(self.ys[0])
     np.testing.assert_allclose(out, self.exp_ys_only[0], atol=1e-5)
 
+  @parameterized.named_parameters(
+      ('predictions_only', 1.0, None),
+      ('with_target', 2.0, 1.0),
+  )
+  def test_python_scalars(self, prediction, target):
+    loss = _regression.log_cosh(prediction, target)
+    np.testing.assert_allclose(loss, self.exp_ys_only[-1], atol=1e-6)
+
   def test_batched_predictions_only(self):
     out = jax.jit(_regression.log_cosh)(self.ys)
     np.testing.assert_allclose(out, self.exp_ys_only, atol=1e-5)
