@@ -206,7 +206,8 @@ def tree_max(tree: Any) -> jax.typing.ArrayLike:
     tree: pytree.
 
   Returns:
-    a scalar value.
+    a scalar value, with the dtype the leaves promote to. Zero-size leaves are
+    ignored; a tree without any element gives ``-inf``.
   """
   def f(array):
     if jnp.size(array) == 0:
@@ -214,7 +215,10 @@ def tree_max(tree: Any) -> jax.typing.ArrayLike:
     else:
       return jnp.max(array)
   maxes = jax.tree.map(f, tree)
-  return jax.tree.reduce(jnp.maximum, maxes, initializer=-float('inf'))
+  if not jax.tree.leaves(maxes):
+    return -float('inf')
+  # No float initializer: it would promote integer leaves to float32.
+  return jax.tree.reduce(jnp.maximum, maxes)
 
 
 def tree_min(tree: Any) -> jax.typing.ArrayLike:
@@ -224,7 +228,8 @@ def tree_min(tree: Any) -> jax.typing.ArrayLike:
     tree: pytree.
 
   Returns:
-    a scalar value.
+    a scalar value, with the dtype the leaves promote to. Zero-size leaves are
+    ignored; a tree without any element gives ``inf``.
   """
   def f(array):
     if jnp.size(array) == 0:
@@ -232,7 +237,10 @@ def tree_min(tree: Any) -> jax.typing.ArrayLike:
     else:
       return jnp.min(array)
   mins = jax.tree.map(f, tree)
-  return jax.tree.reduce(jnp.minimum, mins, initializer=float('inf'))
+  if not jax.tree.leaves(mins):
+    return float('inf')
+  # No float initializer: it would promote integer leaves to float32.
+  return jax.tree.reduce(jnp.minimum, mins)
 
 
 def tree_size(tree: Any) -> int:
@@ -295,7 +303,8 @@ def tree_norm(tree: Any,
   elif ord == 1:
     ret = tree_sum(jax.tree.map(jnp.abs, tree))
   elif ord == jnp.inf or ord in ('inf', 'infinity'):
-    ret = tree_max(jax.tree.map(jnp.abs, tree))
+    # tree_max gives -inf for a tree without elements; the norm there is 0.
+    ret = jnp.maximum(tree_max(jax.tree.map(jnp.abs, tree)), 0)
   else:
     raise ValueError(f'Unsupported ord: {ord}')
   return jnp.array(ret if not squared else _square(ret))
