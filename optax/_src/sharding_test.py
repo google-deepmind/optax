@@ -50,7 +50,7 @@ OPTIMIZERS = {
     'lion': optax.lion(1.0),
     'nadam': optax.nadam(1.0),
     'nadamw': optax.nadamw(1.0),
-    'noisy_sgd': optax.noisy_sgd(1.0),
+    'noisy_sgd': optax.noisy_sgd(1.0, 0),
     'novograd': optax.novograd(1.0),
     'optimistic_gradient_descent': optax.optimistic_gradient_descent(1.0),
     'radam': optax.radam(1.0),
