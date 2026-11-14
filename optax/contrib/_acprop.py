@@ -64,7 +64,7 @@ def scale_by_acprop(
     numerics.maybe_static_check_eps(eps, state.nu)
     numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     mu = optax.tree.update_moment(updates, state.mu, b1, 1)
-    prediction_error = jax.tree.map(lambda g, m: g - m, updates, state.mu)
+    prediction_error = jax.tree.map(lambda g, m: g - m, updates, mu)
     nu = optax.tree.update_moment_per_elem_norm(prediction_error, state.nu, b2,
                                                 2)
     nu = jax.tree.map(lambda v: v + eps_root, nu)
