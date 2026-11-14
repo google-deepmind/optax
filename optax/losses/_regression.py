@@ -135,7 +135,12 @@ def log_cosh(
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
   # pyrefly: ignore [missing-attribute, unsupported-operation]
-  return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+  large = jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
+  # Avoid cancellation near zero, and keep the inactive sinh branch bounded.
+  is_small = jnp.abs(errors) < 1
+  small_errors = jnp.where(is_small, errors, 0)
+  small_loss = jnp.log1p(2 * jnp.sinh(small_errors / 2) ** 2)
+  return jnp.where(is_small, small_loss, large)
 
 
 def cosine_similarity(
