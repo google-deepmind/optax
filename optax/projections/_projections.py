@@ -301,8 +301,10 @@ def projection_vector(x: Any, a: Any) -> Any:
 
   .. math::
 
-    \operatorname{proj}_a x = \frac{\langle x, a \rangle}{\langle a, a \rangle}
+    \operatorname{proj}_a x = \frac{\langle a, x \rangle}{\langle a, a \rangle}
     a
+
+  For complex inputs, the inner product conjugates its first argument.
 
   Args:
     x: tree to project.
@@ -311,7 +313,7 @@ def projection_vector(x: Any, a: Any) -> Any:
   Returns:
     tree with the same structure as ``x``.
   """
-  scalar = optax.tree.vdot(x, a) / optax.tree.vdot(a, a)
+  scalar = optax.tree.vdot(a, x) / optax.tree.vdot(a, a)
   return optax.tree.scale(scalar, a)
 
 
