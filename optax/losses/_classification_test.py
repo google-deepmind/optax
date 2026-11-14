@@ -102,6 +102,33 @@ class SoftmaxCrossEntropyTest(parameterized.TestCase):
 
 class SafeSoftmaxCrossEntropyTest(parameterized.TestCase):
 
+  @parameterized.parameters(False, True)
+  def test_weighted_logsoftmax_joint_directional_derivative(self, use_jit):
+    logits = jnp.array([0.3, -0.7, 1.2])
+    weights = jnp.array([0.0, 2.0, -1.0])
+    logit_direction = jnp.array([0.4, -0.2, 0.7])
+    weight_direction = jnp.array([0.1, -0.5, 0.3])
+    probabilities = np.exp(np.asarray(logits))
+    probabilities /= probabilities.sum()
+    log_probabilities = np.log(probabilities)
+    expected = np.asarray(weights) * (
+        np.asarray(logit_direction)
+        - np.dot(probabilities, np.asarray(logit_direction))
+    ) + np.asarray(weight_direction) * log_probabilities
+
+    def directional(values, coefficients):
+      return jax.jvp(
+          _classification.weighted_logsoftmax,
+          (values, coefficients),
+          (logit_direction, weight_direction),
+      )[1]
+
+    if use_jit:
+      directional = jax.jit(directional)
+    np.testing.assert_allclose(
+        directional(logits, weights), expected, atol=2e-6
+    )
+
   def setUp(self):
     super().setUp()
     self.ys = np.array(
@@ -292,6 +319,28 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
 
 class SigmoidCrossEntropyTest(parameterized.TestCase):
 
+  @parameterized.parameters(False, True)
+  def test_soft_label_gradient_and_curvature(self, use_jit):
+    logits = jnp.array([-8.0, -1.5, 0.25, 3.0, 8.0])
+    labels = jnp.array([0.1, 0.8, 0.4, 0.2, 0.9])
+    probabilities = 1 / (1 + np.exp(-np.asarray(logits)))
+
+    def objective(values):
+      return _classification.sigmoid_binary_cross_entropy(values, labels).sum()
+
+    gradient = jax.grad(objective)
+    hessian = jax.hessian(objective)
+    if use_jit:
+      gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+    np.testing.assert_allclose(
+        gradient(logits), probabilities - np.asarray(labels), atol=2e-6
+    )
+    np.testing.assert_allclose(
+        hessian(logits),
+        np.diag(probabilities * (1 - probabilities)),
+        atol=2e-6,
+    )
+
   @parameterized.parameters(
       {
           'preds': np.array([-1e09, -1e-09]),
@@ -352,6 +401,32 @@ class SigmoidCrossEntropyTest(parameterized.TestCase):
 
 
 class PolyLossTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), epsilon=(-0.5, 3.0))
+  def test_soft_label_gradient_identity(self, use_jit, epsilon):
+    logits = jnp.array([[0.3, -0.7, 1.2], [1.5, 0.2, -0.4]])
+    labels = jnp.array([[0.2, 0.5, 0.3], [0.6, 0.1, 0.3]])
+    probabilities = np.exp(np.asarray(logits))
+    probabilities /= probabilities.sum(axis=-1, keepdims=True)
+    target_probability = (probabilities * np.asarray(labels)).sum(
+        axis=-1, keepdims=True
+    )
+    expected = probabilities - np.asarray(labels)
+    expected -= epsilon * probabilities * (
+        np.asarray(labels) - target_probability
+    )
+
+    def objective(values):
+      return _classification.poly_loss_cross_entropy(
+          values, labels, epsilon=epsilon
+      ).sum()
+
+    gradient = jax.grad(objective)
+    if use_jit:
+      gradient = jax.jit(gradient)
+    actual = gradient(logits)
+    np.testing.assert_allclose(actual, expected, atol=2e-6)
+    np.testing.assert_allclose(actual.sum(axis=-1), 0, atol=2e-6)
 
   def setUp(self):
     super().setUp()
@@ -460,6 +535,33 @@ class PolyLossTest(parameterized.TestCase):
 
 class HingeTest(parameterized.TestCase):
 
+  @parameterized.parameters(False, True)
+  def test_multiclass_gradient_selects_violating_competitor(self, use_jit):
+    scores = jnp.array([[0.2, 1.7, -0.5], [3.0, 0.3, -1.0],
+                        [-2.0, 1.2, 0.5]])
+    labels = jnp.array([0, 0, 2])
+
+    def objective(values):
+      return _classification.multiclass_hinge_loss(values, labels).sum()
+
+    gradient = jax.grad(objective)
+    if use_jit:
+      gradient = jax.jit(gradient)
+    np.testing.assert_array_equal(
+        gradient(scores), [[-1, 1, 0], [0, 0, 0], [0, 1, -1]]
+    )
+
+  @parameterized.parameters(False, True)
+  def test_binary_gradient_on_both_sides_of_margin(self, use_jit):
+    scores = jnp.array([-2.0, -2.0, 0.25, 2.0, 2.0])
+    targets = jnp.array([1.0, -1.0, 1.0, 1.0, -1.0])
+    gradient = jax.grad(
+        lambda values: _classification.hinge_loss(values, targets).sum()
+    )
+    if use_jit:
+      gradient = jax.jit(gradient)
+    np.testing.assert_array_equal(gradient(scores), [-1, 0, -1, 0, 1])
+
   def test_binary(self):
     label = jnp.array(1)
     signed_label = jnp.array(2.0 * label - 1.0)
@@ -512,6 +614,23 @@ class HingeTest(parameterized.TestCase):
 
 
 class SparsemaxTest(parameterized.TestCase):
+
+  @parameterized.parameters(False, True)
+  def test_binary_gradient_and_curvature_across_support(self, use_jit):
+    logits = jnp.array([-2.0, -0.4, 0.3, 2.0])
+    labels = jnp.array([0, 1, 0, 1])
+
+    def objective(values):
+      return _classification.sparsemax_loss(values, labels).sum()
+
+    gradient = jax.grad(objective)
+    hessian = jax.hessian(objective)
+    if use_jit:
+      gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+    np.testing.assert_allclose(gradient(logits), [0, -0.7, 0.65, 0], atol=2e-6)
+    np.testing.assert_allclose(
+        hessian(logits), np.diag([0, 0.5, 0.5, 0]), atol=2e-6
+    )
 
   def test_binary(self):
     label = 1
@@ -574,6 +693,28 @@ class SparsemaxTest(parameterized.TestCase):
 
 
 class GeneralizedKLDivergenceTest(parameterized.TestCase):
+
+  @parameterized.parameters(False, True)
+  def test_unnormalized_gradient_and_curvature(self, use_jit):
+    log_predictions = jnp.array([-0.8, 0.4, 1.2])
+    targets = jnp.array([0.2, 1.3, 2.5])
+
+    def objective(values):
+      return _classification.generalized_kl_divergence(values, targets)
+
+    gradient = jax.grad(objective)
+    hessian = jax.hessian(objective)
+    if use_jit:
+      gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+    probabilities = np.exp(np.asarray(log_predictions))
+    np.testing.assert_allclose(
+        gradient(log_predictions),
+        probabilities - np.asarray(targets),
+        atol=2e-6,
+    )
+    np.testing.assert_allclose(
+        hessian(log_predictions), np.diag(probabilities), atol=2e-6
+    )
 
   def setUp(self):
     super().setUp()
@@ -640,6 +781,33 @@ class GeneralizedKLDivergenceTest(parameterized.TestCase):
 
 class PerceptronTest(parameterized.TestCase):
 
+  @parameterized.parameters(False, True)
+  def test_multiclass_gradient_matches_perceptron_update(self, use_jit):
+    scores = jnp.array([[0.2, 1.7, -0.5], [3.0, 0.3, -1.0],
+                        [-2.0, 1.2, 0.5]])
+    labels = jnp.array([0, 0, 2])
+
+    def objective(values):
+      return _classification.multiclass_perceptron_loss(values, labels).sum()
+
+    gradient = jax.grad(objective)
+    if use_jit:
+      gradient = jax.jit(gradient)
+    np.testing.assert_array_equal(
+        gradient(scores), [[-1, 1, 0], [0, 0, 0], [0, 1, -1]]
+    )
+
+  @parameterized.parameters(False, True)
+  def test_binary_gradient_updates_only_misclassified_scores(self, use_jit):
+    scores = jnp.array([-2.0, 2.0, -0.25, 0.25])
+    targets = jnp.array([1.0, 1.0, -1.0, -1.0])
+    gradient = jax.grad(
+        lambda values: _classification.perceptron_loss(values, targets).sum()
+    )
+    if use_jit:
+      gradient = jax.jit(gradient)
+    np.testing.assert_array_equal(gradient(scores), [-1, 0, 0, 1])
+
   def test_binary(self):
     label = jnp.array(1)
     signed_label = jnp.array(2.0 * label - 1.0)
@@ -690,6 +858,21 @@ class PerceptronTest(parameterized.TestCase):
 
 
 class KLDivergenceTest(parameterized.TestCase):
+
+  @parameterized.parameters(False, True)
+  def test_gradients_in_log_prediction_and_target_coordinates(self, use_jit):
+    log_predictions = jnp.array([-0.8, -1.4, -2.0])
+    targets = jnp.array([0.2, 0.3, 0.5])
+    gradient = jax.grad(_classification.kl_divergence, argnums=(0, 1))
+    if use_jit:
+      gradient = jax.jit(gradient)
+    predicted_gradient, target_gradient = gradient(log_predictions, targets)
+    np.testing.assert_allclose(predicted_gradient, -np.asarray(targets))
+    np.testing.assert_allclose(
+        target_gradient,
+        np.log(np.asarray(targets)) - np.asarray(log_predictions) + 1,
+        atol=2e-6,
+    )
 
   def setUp(self):
     super().setUp()
@@ -743,6 +926,24 @@ class KLDivergenceTest(parameterized.TestCase):
 
 
 class KLDivergenceWithLogTargetsTest(parameterized.TestCase):
+
+  @parameterized.parameters(False, True)
+  def test_gradients_in_both_log_probability_arguments(self, use_jit):
+    log_predictions = jnp.array([-0.8, -1.4, -2.0])
+    log_targets = jnp.array([-1.6, -1.2, -0.7])
+    gradient = jax.grad(
+        _classification.kl_divergence_with_log_targets, argnums=(0, 1)
+    )
+    if use_jit:
+      gradient = jax.jit(gradient)
+    predicted_gradient, target_gradient = gradient(log_predictions, log_targets)
+    probabilities = np.exp(np.asarray(log_targets))
+    np.testing.assert_allclose(predicted_gradient, -probabilities, atol=2e-6)
+    np.testing.assert_allclose(
+        target_gradient,
+        probabilities * (np.asarray(log_targets - log_predictions) + 1),
+        atol=2e-6,
+    )
 
   def setUp(self):
     super().setUp()
@@ -997,6 +1198,32 @@ class CTCTest(parameterized.TestCase):
 
 
 class SigmoidFocalLossTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), gamma=(0.5, 2.0))
+  def test_gradient_matches_analytical_focal_weight(self, use_jit, gamma):
+    logits = jnp.array([-3.0, -0.4, 0.7, 2.5])
+    labels = jnp.array([0.0, 1.0, 0.0, 1.0])
+    alpha = 0.3
+    scores, truth = np.asarray(logits), np.asarray(labels)
+    sign = 2 * truth - 1
+    probabilities = 1 / (1 + np.exp(-scores))
+    target_probabilities = 1 / (1 + np.exp(-sign * scores))
+    cross_entropy = np.logaddexp(0, -sign * scores)
+    weights = np.where(truth == 1, alpha, 1 - alpha)
+    expected = weights * (1 - target_probabilities)**gamma * (
+        probabilities - truth
+        - gamma * sign * target_probabilities * cross_entropy
+    )
+
+    def objective(values):
+      return _classification.sigmoid_focal_loss(
+          values, labels, alpha=alpha, gamma=gamma
+      ).sum()
+
+    gradient = jax.grad(objective)
+    if use_jit:
+      gradient = jax.jit(gradient)
+    np.testing.assert_allclose(gradient(logits), expected, atol=2e-6)
 
   def setUp(self):
     super().setUp()
