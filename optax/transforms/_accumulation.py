@@ -227,6 +227,7 @@ class MultiStepsState(NamedTuple):
     acc_grads: accumulated gradients over multiple mini-steps.
     skip_state: an arbitrarily py tree. This is only relevant when passing a
       `should_skip_update_fn` to `MultiSteps`.
+    last_step_skipped: whether the most recent mini-step was rejected.
   """
 
   mini_step: jax.typing.ArrayLike
@@ -234,6 +235,7 @@ class MultiStepsState(NamedTuple):
   inner_opt_state: Any
   acc_grads: Any
   skip_state: base.ArrayTree = ()
+  last_step_skipped: jax.typing.ArrayLike = False
 
 
 class MultiSteps:
@@ -276,8 +278,8 @@ class MultiSteps:
         multiple mini-steps are averaged. Otherwise, they are summed.
       should_skip_update_fn: if provided, this function is used to decide when
         to accept or reject the updates from a mini-step. When a mini-step is
-        rejected, the inner state of `MultiSteps` is not updated. In other
-        words, it is as if this mini-step never happened. For example:  * to
+        rejected, the counters, inner optimizer state and accumulated gradients
+        are not updated. For example:  * to
         ignore updates containing inf or NaN, do
         ``should_skip_update_fn=skip_not_finite``; * to ignore updates with a
         norm square larger then 42, do:
@@ -383,6 +385,7 @@ class MultiSteps:
               acc_grads,
           ),
           skip_state=skip_state,
+          last_step_skipped=jnp.array(False),
       )
       final_updates = jax.tree.map(lambda ga: emit * ga, final_updates)
       return final_updates, new_state
@@ -406,6 +409,7 @@ class MultiSteps:
           inner_opt_state=state.inner_opt_state,
           acc_grads=state.acc_grads,
           skip_state=skip_state,
+          last_step_skipped=jnp.array(True),
       )
       return zero_updates, multi_state_when_skip
 
@@ -417,8 +421,13 @@ class MultiSteps:
   def has_updated(
       self, state: Union[MultiStepsState, base.ArrayTree]
   ) -> jax.typing.ArrayLike:
+    """Whether the most recent mini-step emitted an inner optimizer update."""
     return jnp.logical_and(
-        getattr(state, 'mini_step') == 0, getattr(state, 'gradient_step') > 0
+        jnp.logical_and(
+            getattr(state, 'mini_step') == 0,
+            getattr(state, 'gradient_step') > 0,
+        ),
+        jnp.logical_not(getattr(state, 'last_step_skipped', False)),
     )
 
   def gradient_transformation(self) -> base.GradientTransformation:
