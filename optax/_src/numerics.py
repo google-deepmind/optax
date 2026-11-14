@@ -18,7 +18,7 @@ Note that complex numbers are also supported, see
 https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
 """
 
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import jax
 import jax.numpy as jnp
@@ -101,6 +101,49 @@ def safe_root_mean_squares(
   rms = jnp.sqrt(jnp.mean(abs_sq(x)))
   x = jnp.where(rms <= min_rms, jnp.ones_like(x), x)
   return jnp.where(rms <= min_rms, min_rms, jnp.sqrt(jnp.mean(abs_sq(x))))
+
+
+def maybe_static_check_eps(
+    eps: jax.typing.ArrayLike, tree: Any, name: str = 'eps'
+) -> None:
+  """Checks that a positive ``eps`` does not underflow when added to ``tree``.
+
+  Numerical-stability terms such as the ``eps`` of Adam are added to arrays of
+  the optimizer state. A positive ``eps`` smaller than the smallest normal
+  number (``jnp.finfo(dtype).tiny``) of the dtype it is added in is flushed to
+  zero on most backends, which silently removes the protection against division
+  by zero. For instance, the common default ``eps=1e-8`` is flushed to zero in
+  ``float16``, whose smallest normal number is ``2**-14 ~= 6.1e-5``.
+
+  A zero ``eps`` is allowed.
+
+  .. warning::
+    The check runs at trace time on concrete values only: traced values of
+    ``eps`` (e.g. hyperparameters injected with
+    :func:`optax.inject_hyperparams`) are not checked.
+
+  Args:
+    eps: numerical-stability term.
+    tree: pytree of arrays that ``eps`` is added to.
+    name: name of ``eps`` used in the error message.
+
+  Raises:
+    ValueError: if ``0 < eps < jnp.finfo(dtype).tiny``, where ``dtype`` is the
+      dtype of ``eps + leaf`` for a floating-point leaf of ``tree``.
+  """
+  if isinstance(eps, jax.core.Tracer):
+    return
+  eps_arr = np.asarray(eps)
+  for dtype in {jnp.result_type(eps, leaf) for leaf in jax.tree.leaves(tree)}:
+    if not jnp.issubdtype(dtype, jnp.inexact):
+      continue
+    tiny = jnp.finfo(dtype).tiny
+    if np.any((eps_arr > 0) & (eps_arr < tiny)):
+      raise ValueError(
+          f'{name}={eps} is smaller than the smallest normal {dtype} number'
+          f' ({tiny}) and would be flushed to zero. Use {name} >= {tiny} or a'
+          ' higher precision dtype for the optimizer state.'
+      )
 
 
 def safe_increment(count: jax.typing.ArrayLike) -> jax.Array:

@@ -74,6 +74,7 @@ def scale_by_madgrad(
   def update_fn(updates, state, params=None):
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    numerics.maybe_static_check_eps(eps, state.grad_sum_sq)
 
     count = state.count
     if callable(learning_rate):

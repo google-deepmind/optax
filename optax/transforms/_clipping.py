@@ -94,13 +94,16 @@ def clip_by_global_norm(
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm = optax.tree.norm(updates)
+    g_norm_squared = optax.tree.norm(updates, squared=True)
+    g_norm = jnp.sqrt(g_norm_squared)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analyzed how it affects backprop through update (e.g. meta-gradients)
     # g_norm = jnp.maximum(max_norm, g_norm)
     # updates = jax.tree.map(lambda t: (t / g_norm) * max_norm, updates)
     trigger = jnp.squeeze(g_norm < max_norm)
     utils.check_rank(trigger, 0)  # A scalar.
+    # Mask before sqrt and division to keep the unused clip branch's VJP finite.
+    g_norm = jnp.sqrt(jnp.where(trigger, 1.0, g_norm_squared))
 
     def clip_fn(t):
       return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)

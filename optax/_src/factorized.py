@@ -164,6 +164,7 @@ def scale_by_factored_rms(
     """Apply gradient transformation."""
     if params is None:
       raise ValueError(base.NO_PARAMS_MSG)
+    numerics.maybe_static_check_eps(epsilon, grads, name='epsilon')
 
     def _update(grad, v_row, v_col, v, param, step):
       shape, dtype = param.shape, param.dtype

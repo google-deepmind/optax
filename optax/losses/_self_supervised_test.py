@@ -65,6 +65,66 @@ class NtxentTest(absltest.TestCase):
         atol=1e-4,
     )
 
+  def test_small_temperature_tail_precision_and_finite_grad(self):
+    embeddings = jnp.array(
+        [[1.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [-1.0, 0.0]],
+        dtype=jnp.float32,
+    )
+    labels = jnp.array([0, 0, 1, 1])
+    loss, grad = jax.value_and_grad(_self_supervised.ntxent)(
+        embeddings, labels, 0.05
+    )
+    expected = float(np.log1p(2.0 * np.exp(-40.0)))
+    np.testing.assert_allclose(loss, expected, rtol=1e-5)
+    self.assertTrue(bool(jnp.all(jnp.isfinite(grad))))
+
+  def test_narrow_dtypes_small_temperature(self):
+    labels = jnp.array([0, 0, 1, 1])
+    loss_f32, grad_f32 = jax.value_and_grad(_self_supervised.ntxent)(
+        self.ys, labels, 0.03
+    )
+    for dtype in (jnp.bfloat16, jnp.float16):
+      emb = self.ys.astype(dtype)
+      loss, grad = jax.value_and_grad(_self_supervised.ntxent)(
+          emb, labels, 0.03
+      )
+      self.assertEqual(loss.dtype, dtype)
+      self.assertEqual(grad.dtype, dtype)
+      self.assertTrue(bool(jnp.all(jnp.isfinite(grad))))
+      np.testing.assert_allclose(
+          loss.astype(jnp.float32), loss_f32, rtol=2e-2, atol=2e-2
+      )
+      np.testing.assert_allclose(
+          grad.astype(jnp.float32), grad_f32, rtol=2e-2, atol=5e-2
+      )
+
+  def test_all_same_labels_zero_loss_and_grad(self):
+    labels = jnp.array([0, 0, 0, 0])
+    loss, grad = jax.value_and_grad(_self_supervised.ntxent)(self.ys, labels)
+    np.testing.assert_allclose(loss, 0.0, atol=0.0)
+    np.testing.assert_allclose(grad, jnp.zeros_like(self.ys), atol=0.0)
+
+  def test_multi_positive_groups_and_vmap(self):
+    embeddings = jnp.array([
+        [1.0, 0.2],
+        [0.9, 0.1],
+        [0.8, 0.3],
+        [-1.0, -0.2],
+        [-0.9, -0.1],
+        [0.0, 1.0],
+    ])
+    labels = jnp.array([0, 0, 0, 1, 1, 2])
+    loss, grad = jax.value_and_grad(_self_supervised.ntxent)(embeddings, labels)
+    self.assertTrue(bool(jnp.isfinite(loss)))
+    self.assertTrue(bool(jnp.all(jnp.isfinite(grad))))
+
+    batched_emb = jnp.stack([embeddings, embeddings * 0.5], axis=0)
+    batched_labels = jnp.stack([labels, labels], axis=0)
+    vmap_losses = jax.jit(jax.vmap(_self_supervised.ntxent, in_axes=(0, 0)))(
+        batched_emb, batched_labels
+    )
+    np.testing.assert_allclose(vmap_losses, jnp.array([loss, loss]), atol=1e-5)
+
 
 class TripletMarginLossTest(parameterized.TestCase):
 

@@ -85,16 +85,6 @@ def sigmoid_binary_cross_entropy(
   return -labels * log_p - (1.0 - labels) * log_not_p
 
 
-@functools.partial(
-    warn_deprecated_function, replacement='sigmoid_binary_cross_entropy'
-)
-def binary_logistic_loss(
-    logits: jax.typing.ArrayLike,
-    labels: jax.typing.ArrayLike,
-) -> jax.Array:
-  return sigmoid_binary_cross_entropy(logits, labels)
-
-
 def hinge_loss(
     predictor_outputs: jax.typing.ArrayLike, targets: jax.typing.ArrayLike
 ) -> jax.Array:

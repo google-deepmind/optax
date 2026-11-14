@@ -234,5 +234,4 @@ def parse_version(version_str):
 
 
 # TODO(b/183800387): remove legacy aliases.
-safe_norm = numerics.safe_norm
 safe_int32_increment = numerics.safe_int32_increment

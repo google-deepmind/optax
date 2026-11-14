@@ -472,7 +472,7 @@ class ContribTest(parameterized.TestCase):
 
   @parameterized.product(
       _ALL_OPTIMIZERS_UNDER_TEST,
-      dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64),
+      dtype=(jnp.bfloat16, jnp.float32, jnp.float64),
   )
   def test_state_shape_dtype_shard_stability(
       self, opt_name, opt_kwargs, wrapper_name, wrapper_kwargs, dtype):
@@ -486,8 +486,7 @@ class ContribTest(parameterized.TestCase):
       @jax.jit
       def step(params, state):
         value, updates = jax.value_and_grad(objective)(params)
-        value = value.astype(jnp.float16 if dtype != jnp.float16
-                             else jnp.bfloat16)  # confuse dtype intentionally
+        value = value.astype(jnp.float16)  # confuse dtype intentionally
         if opt_name in ['polyak_sgd', 'momo', 'momo_adam']:
           update_kwargs = {'value': value}
         elif opt_name == 'sophia':
@@ -561,6 +560,34 @@ class ContribTest(parameterized.TestCase):
         params_with_lr, state_with_lr = step(
             opt_with_lr, params_with_lr, state_with_lr)
       test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
+
+  @parameterized.named_parameters(
+      ('acprop', 'acprop', 'eps'),
+      ('acprop_eps_root', 'acprop', 'eps_root'),
+      ('ademamix', 'ademamix', 'eps'),
+      ('ademamix_eps_root', 'ademamix', 'eps_root'),
+      ('simplified_ademamix', 'simplified_ademamix', 'eps'),
+      ('simplified_ademamix_eps_root', 'simplified_ademamix', 'eps_root'),
+      ('adopt', 'adopt', 'eps'),
+      ('dadapt_adamw', 'dadapt_adamw', 'eps'),
+      ('madgrad', 'madgrad', 'eps'),
+      ('momo_adam', 'momo_adam', 'eps'),
+      ('sophia', 'sophia', 'eps'),
+  )
+  def test_eps_underflow_raises(self, opt_name, eps_name):
+    eps_kwargs = {'eps': 1e-3} | {eps_name: 1e-8}
+    opt = _get_opt_factory(opt_name)(learning_rate=1e-3, **eps_kwargs)
+    params, _, obj_fn = _setup_parabola(jnp.float16)
+    value, grads = jax.value_and_grad(obj_fn)(params)
+    if opt_name == 'momo_adam':
+      update_kwargs = {'value': value}
+    elif opt_name == 'sophia':
+      update_kwargs = {'obj_fn': obj_fn}
+    else:
+      update_kwargs = {}
+    state = opt.init(params)
+    with self.assertRaisesRegex(ValueError, f'{eps_name}=1e-08 is smaller'):
+      opt.update(grads, state, params, **update_kwargs)
 
 
 if __name__ == '__main__':

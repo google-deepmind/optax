@@ -24,6 +24,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from optax._src import numerics
+from optax._src import utils
 
 _ALL_ORDS = [None, np.inf, -np.inf, "fro", "nuc", 0, 1, 2, -2, -2, -1.5, 1.5]
 
@@ -34,6 +35,14 @@ def int32_array(i):
 
 def float32_array(i):
   return jnp.array(i, dtype=jnp.float32)
+
+
+def _np_array(dtype):
+  return functools.partial(np.asarray, dtype=dtype)
+
+
+def _jnp_array(dtype):
+  return functools.partial(jnp.asarray, dtype=dtype)
 
 
 def _invalid_ord_axis_inputs(ord_axis_keepdims):
@@ -169,6 +178,59 @@ class NumericsTest(parameterized.TestCase):
           _get_hlo_repr(sq_fn, x),
           _get_hlo_repr(numerics.abs_sq, x),
       )
+
+  # Subnormal eps values are built on the host since some backends flush
+  # subnormal device arrays to zero.
+  @parameterized.named_parameters(
+      ("python_float_float16", float, 1e-8, jnp.float16),
+      ("np_float16_float16", np.float16, 3e-5, jnp.float16),
+      ("python_float_bfloat16", float, 1e-39, jnp.bfloat16),
+      ("np_bfloat16_bfloat16", _np_array(jnp.bfloat16), 1e-39, jnp.bfloat16),
+      ("python_float_float32", float, 1e-39, jnp.float32),
+      ("np_float32_float32", np.float32, 1e-39, jnp.float32),
+      ("python_float_complex64", float, 1e-39, jnp.complex64),
+  )
+  def test_maybe_static_check_eps_raises_on_underflow(
+      self, eps_type, eps, dtype
+  ):
+    with self.assertRaisesRegex(ValueError, "smallest normal"):
+      numerics.maybe_static_check_eps(
+          eps_type(eps), {"a": jnp.zeros(3, dtype)}
+      )
+
+  @parameterized.named_parameters(
+      ("python_float", float),
+      ("np_float64", np.float64),
+  )
+  def test_maybe_static_check_eps_raises_on_float64_underflow(self, eps_type):
+    with utils.x64_precision():
+      with self.assertRaisesRegex(ValueError, "smallest normal"):
+        numerics.maybe_static_check_eps(
+            eps_type(1e-310), {"a": jnp.zeros(3, jnp.float64)}
+        )
+
+  @parameterized.named_parameters(
+      ("python_float_zero", float, 0.0, jnp.float16),
+      ("jnp_float16_zero", _jnp_array(jnp.float16), 0.0, jnp.float16),
+      ("python_float_normal_float16", float, 1e-4, jnp.float16),
+      ("jnp_float16_normal_float16", _jnp_array(jnp.float16), 1e-4,
+       jnp.float16),
+      ("python_float_float32", float, 1e-8, jnp.float32),
+      ("np_float32_promotes_float16", np.float32, 1e-8, jnp.float16),
+      ("jnp_float32_promotes_float16", _jnp_array(jnp.float32), 1e-8,
+       jnp.float16),
+      ("jnp_bfloat16_promotes_to_float32", _jnp_array(jnp.bfloat16), 1e-8,
+       jnp.float32),
+  )
+  def test_maybe_static_check_eps_accepts(self, eps_type, eps, dtype):
+    numerics.maybe_static_check_eps(eps_type(eps), {"a": jnp.zeros(3, dtype)})
+
+  def test_maybe_static_check_eps_skips_traced_eps(self):
+    jax.jit(
+        lambda eps: numerics.maybe_static_check_eps(
+            eps, jnp.zeros(3, jnp.float16)
+        )
+    )(1e-8)
 
 
 if __name__ == "__main__":

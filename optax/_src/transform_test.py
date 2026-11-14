@@ -16,6 +16,8 @@
 
 """Tests of gradient transformations."""
 
+import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import jax
@@ -243,6 +245,76 @@ class TransformTest(parameterized.TestCase):
       adam_params = update.apply_updates(adam_params, adam_updates)
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
+
+  def test_scale_by_yogi_zero_grads_give_zero_updates(self):
+    opt = transform.scale_by_yogi(initial_accumulator_value=1e-6)
+    params = jnp.ones(3)
+    state = opt.init(params)
+    test_utils.assert_trees_all_equal(state.mu, jnp.zeros(3))
+    test_utils.assert_trees_all_equal(state.nu, jnp.full(3, 1e-6))
+    for _ in range(3):
+      updates, state = opt.update(jnp.zeros(3), state)
+      test_utils.assert_trees_all_equal(updates, jnp.zeros(3))
+
+  @parameterized.named_parameters(
+      ('rss', transform.scale_by_rss),
+      ('rms', transform.scale_by_rms),
+      ('stddev', transform.scale_by_stddev),
+      ('adam', transform.scale_by_adam),
+      ('amsgrad', transform.scale_by_amsgrad),
+      ('adamax', transform.scale_by_adamax),
+      ('adadelta', transform.scale_by_adadelta),
+      ('adan', transform.scale_by_adan),
+      ('belief', transform.scale_by_belief),
+      ('yogi', transform.scale_by_yogi),
+      ('radam', transform.scale_by_radam),
+      ('sm3', transform.scale_by_sm3),
+      ('novograd', transform.scale_by_novograd),
+  )
+  def test_eps_underflow_raises(self, scaler_constr):
+    params = jnp.ones(4, dtype=jnp.float16)
+    scaler = scaler_constr(eps=1e-8)
+    state = scaler.init(params)
+    with self.assertRaisesRegex(ValueError, 'eps=1e-08 is smaller'):
+      jax.jit(scaler.update)(params, state, params)
+
+  @parameterized.named_parameters(
+      ('adam', transform.scale_by_adam),
+      ('amsgrad', transform.scale_by_amsgrad),
+      ('adan', transform.scale_by_adan),
+      ('belief', transform.scale_by_belief),
+      ('yogi', transform.scale_by_yogi),
+      ('radam', transform.scale_by_radam),
+      ('novograd', transform.scale_by_novograd),
+  )
+  def test_eps_root_underflow_raises(self, scaler_constr):
+    params = jnp.ones(4, dtype=jnp.float16)
+    scaler = scaler_constr(eps=1e-3, eps_root=1e-8)
+    state = scaler.init(params)
+    with self.assertRaisesRegex(ValueError, 'eps_root=1e-08 is smaller'):
+      jax.jit(scaler.update)(params, state, params)
+
+  @parameterized.named_parameters(
+      ('rss', transform.scale_by_rss),
+      ('rms', transform.scale_by_rms),
+      ('stddev', transform.scale_by_stddev),
+      ('adam', transform.scale_by_adam),
+      ('amsgrad', transform.scale_by_amsgrad),
+      ('adamax', transform.scale_by_adamax),
+      ('adadelta', transform.scale_by_adadelta),
+      ('adan', transform.scale_by_adan),
+      ('belief', functools.partial(transform.scale_by_belief, eps_root=0.0)),
+      ('yogi', transform.scale_by_yogi),
+      ('radam', transform.scale_by_radam),
+      ('sm3', transform.scale_by_sm3),
+      ('novograd', transform.scale_by_novograd),
+  )
+  def test_float16_normal_eps_zero_gradient(self, scaler_constr):
+    zeros = jnp.zeros(4, dtype=jnp.float16)
+    scaler = scaler_constr(eps=1e-4)
+    updates, _ = jax.jit(scaler.update)(zeros, scaler.init(zeros), zeros)
+    self.assertEqual(updates.dtype, jnp.float16)
+    test_utils.assert_tree_all_finite(updates)
 
 
 if __name__ == '__main__':

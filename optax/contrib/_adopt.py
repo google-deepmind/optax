@@ -66,6 +66,7 @@ def scale_by_adopt(
 
   def update_fn(updates, state, params=None):
     del params
+    numerics.maybe_static_check_eps(eps, state.nu)
     b2_ = jnp.where(state.count > 0, b2, 0)
     b1_ = jnp.where(state.count > 0, b1, 1)
     nu = optax.tree.update_moment_per_elem_norm(updates, state.nu, b2_, 2)
@@ -159,7 +160,7 @@ def adopt(
 
   References:
     Taniguchi et al, `ADOPT: Modified Adam Can Converge with Any beta2 with the
-    Optimal Rate <https://arxiv.org/abs/2403.00855>`_, NeurIPS 2024
+    Optimal Rate <https://arxiv.org/abs/2411.02853>`_, NeurIPS 2024
   """
   return combine.chain(
       scale_by_adopt(

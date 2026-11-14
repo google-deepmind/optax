@@ -15,10 +15,8 @@
 """Self supervised losses."""
 
 import jax
-from jax import lax
 import jax.numpy as jnp
 from optax._src import utils
-from optax.losses import _regression
 
 
 def ntxent(
@@ -79,52 +77,61 @@ def ntxent(
   .. versionadded:: 0.2.3
   """
   utils.check_subdtype(embeddings, jnp.floating)
-  # pyrefly: ignore [missing-attribute]
+  embeddings = jnp.asarray(embeddings)
+  labels = jnp.asarray(labels)
   if labels.shape[0] != embeddings.shape[0]:
     raise ValueError(
         'Labels and embeddings must have the same leading dimension, found'
-        # pyrefly: ignore [missing-attribute]
         f' {labels.shape[0]} for labels and {embeddings.shape[0]} for'
         ' embeddings.'
     )
 
+  out_dtype = jnp.result_type(embeddings, temperature)
+  acc_dtype = jnp.float64 if out_dtype == jnp.float64 else jnp.float32
+  n = labels.shape[0]
+
   # cosine similarity matrix
+  emb_acc = embeddings.astype(acc_dtype)
+  eps = jnp.asarray(jnp.finfo(acc_dtype).eps, dtype=acc_dtype)
+  norm2 = jnp.sum(jnp.square(emb_acc), axis=-1, keepdims=True)
+  u = emb_acc * jax.lax.rsqrt(jnp.maximum(norm2, eps))
+
+  inv_temp = jnp.asarray(1.0, dtype=acc_dtype) / jnp.asarray(
+      temperature, dtype=acc_dtype
+  )
+  matmul_precision = (
+      None
+      if embeddings.dtype in (jnp.bfloat16, jnp.float16)
+      else jax.lax.Precision.HIGHEST
+  )
   xcs = (
-      _regression.cosine_similarity(
-          embeddings[None, :, :],  # pyrefly: ignore[bad-index]
-          embeddings[:, None, :],  # pyrefly: ignore[bad-index]
-          # pyrefly: ignore [missing-attribute]
-          epsilon=jnp.finfo(embeddings.dtype).eps,
+      jnp.matmul(
+          u,
+          jnp.swapaxes(u, -1, -2),
+          precision=matmul_precision,
+          preferred_element_type=acc_dtype,
       )
-      / temperature
+      * inv_temp
   )
 
   # finding positive and negative pairs
-  labels1 = jnp.expand_dims(labels, axis=1)
-  labels2 = jnp.expand_dims(labels, axis=0)
-  matches = labels1 == labels2
-  diffs = matches ^ 1
-  matches = jnp.bool_(matches - jnp.eye(matches.shape[0]))  # no self cos
+  equal = labels[:, None] == labels[None, :]
+  diffs = ~equal
+  matches = equal & ~jnp.eye(n, dtype=bool)  # no self cos
 
-  # replace 0 with -inf
-  xcs_diffs = jnp.where(diffs == 1, xcs, -jnp.inf)
-  xcs_matches = jnp.where(matches == 1, xcs, -jnp.inf)
+  xcs_diffs = jnp.where(diffs, xcs, -jnp.inf)
+  m = jax.lax.stop_gradient(jnp.max(xcs_diffs, axis=-1, keepdims=True))
+  has_diffs = m > -jnp.inf
+  m_safe = jax.lax.stop_gradient(jnp.where(has_diffs, m, 0.0))
 
-  # shifting for numeric stability
-  comb = jnp.concatenate((xcs_diffs, xcs_matches), axis=-1)
-  xcs_max = jnp.max(comb, axis=1, keepdims=True)
-  xcs_shift_diffs = xcs_diffs - lax.stop_gradient(xcs_max)
-  xcs_shift_matches = xcs_matches - lax.stop_gradient(xcs_max)
+  sum_diffs = jnp.sum(jnp.exp(xcs_diffs - m_safe), axis=-1, keepdims=True)
+  log_sum_diffs = jnp.log(jnp.where(has_diffs, sum_diffs, 1.0))
 
-  # calc loss
-  numer = xcs_shift_matches
-  numer_exp = jnp.exp(xcs_shift_matches)
-  denom = jnp.sum(jnp.exp(xcs_shift_diffs), axis=1, keepdims=True)
-  denom += numer_exp
-  log_softm = numer - jnp.log(denom)
-  loss = -jnp.where(matches == 1, log_softm, 0.0).sum() / matches.sum()
-
-  return loss
+  active = matches & has_diffs
+  logits = jnp.where(active, (m_safe - xcs) + log_sum_diffs, 0.0)
+  pair_loss = jnp.where(active, jax.nn.softplus(logits), 0.0)
+  loss = jnp.sum(pair_loss) / jnp.sum(matches)
+  return loss.astype(out_dtype)
 
 
 def triplet_margin_loss(

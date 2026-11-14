@@ -2162,7 +2162,9 @@ def sgd(
 
 
 def sm3(
-    learning_rate: jax.typing.ArrayLike, momentum: jax.typing.ArrayLike = 0.9
+    learning_rate: jax.typing.ArrayLike,
+    momentum: jax.typing.ArrayLike = 0.9,
+    eps: jax.typing.ArrayLike = 1e-8,
 ) -> base.GradientTransformationExtraArgs:
   r"""The SM3 optimizer.
 
@@ -2236,6 +2238,7 @@ def sm3(
       iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
     momentum: Decay rate used by the momentum term (when it is not set to
       `None`, then momentum is not used at all).
+    eps: Term added to the denominator to improve numerical stability.
 
   Returns:
     The corresponding :class:`optax.GradientTransformationExtraArgs`.
@@ -2266,7 +2269,7 @@ def sm3(
     <https://arxiv.org/abs/1901.11150>`_, 2019
   """
   return combine.chain(
-      transform.scale_by_sm3(momentum),
+      transform.scale_by_sm3(momentum, eps=eps),
       transform.scale(-learning_rate),  # pyrefly: ignore[unsupported-operation]
   )
 

@@ -87,6 +87,13 @@ class FactorizedTest(parameterized.TestCase):
     updates, _ = jax.jit(opt.update)(grads, state, params)
     test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
+  def test_epsilon_underflow_raises(self):
+    opt = factorized.scale_by_factored_rms()
+    params = jnp.ones(2, dtype=jnp.float16)
+    state = opt.init(params)
+    with self.assertRaisesRegex(ValueError, 'epsilon=1e-30 is smaller'):
+      jax.jit(opt.update)(params, state, params)
+
 
 if __name__ == '__main__':
   absltest.main()

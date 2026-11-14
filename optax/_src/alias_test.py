@@ -342,8 +342,13 @@ class AliasTest(parameterized.TestCase):
 
   @parameterized.product(
       _OPTIMIZERS_UNDER_TEST,
-      dtype=(jnp.float16, jnp.bfloat16, jnp.float32, jnp.float64, jnp.complex64,
-             jnp.complex128),
+      dtype=(
+          jnp.bfloat16,
+          jnp.float32,
+          jnp.float64,
+          jnp.complex64,
+          jnp.complex128,
+      ),
   )
   def test_state_shape_dtype_shard_stability(self, opt_name, opt_kwargs, dtype):
     if dtype == jnp.complex128 and jax.default_backend() == 'tpu':
@@ -367,8 +372,7 @@ class AliasTest(parameterized.TestCase):
         # parameters
         # https://gist.github.com/wdphy16/118aef6fb5f82c49790d7678cf87da29
         updates = jax.tree.map(lambda x: x.conj(), updates)
-        value = value.astype(jnp.float16 if dtype != jnp.float16
-                             else jnp.float32)
+        value = value.astype(jnp.float16)
         if opt_name == 'polyak_sgd':
           update_kwargs = {'value': value}
         elif opt_name == 'lbfgs':
