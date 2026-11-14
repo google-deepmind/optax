@@ -84,10 +84,11 @@ def inject_hyperparams(
 
     >>> import optax
     >>> import jax.numpy as jnp
-    >>> # create a learning rate that increases linearly from 0.1 to 1.0
-    ... # over 100 iterations
+    >>> # Increase beta_1 linearly from 0.1 to 1.0 over 100 iterations.
     >>> linear_schedule = optax.piecewise_interpolate_schedule(
-    ...    'linear', init_value=0.1, boundaries_and_scales={100: 1.})
+    ...    'linear', init_value=0.1, boundaries_and_scales={100: 10.})
+    >>> float(linear_schedule(100))
+    1.0
     >>> scheduled_adam = optax.inject_hyperparams(optax.scale_by_adam)(
     ...     b1=linear_schedule, b2=0.99)
 

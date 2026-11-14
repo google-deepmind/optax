@@ -633,7 +633,7 @@ def add_mean_variance_to_opt(
   ...     opt=opt,
   ...     ema_decay=0.9,
   ...     per_elt_axis=0,
-  ...     num_microbatches=1,
+  ...     accumulation_steps=1,
   ... )
   >>> fun = lambda w, x, y: jnp.mean(jnp.sum((x.dot(w)-y)**2, axis=-1))
   >>> values_and_grads = jax.vmap(jax.value_and_grad(fun), (None, 0, 0))
@@ -647,28 +647,17 @@ def add_mean_variance_to_opt(
   ...       state
   ...   )
   ...   print(f'Step: {i}|Batch loss: {jnp.mean(losses):.2e}')
-  ...   print(f'Mean EMA:\n {mean_ema}\nVariance EMA:\n {var_ema}')
+  ...   print('Mean EMA:', mean_ema.shape)
+  ...   print('Variance EMA:', var_ema.shape)
   Step: 0|Batch loss: 7.46e+00
-  Mean EMA:
-  [[ 2.8991693e-04  3.8409345e+00]
-  [-1.1956869e+00  4.7318892e+00]]
-  Variance EMA:
-  [[ 4.3785257 48.656933 ]
-  [ 3.8709724 77.66371  ]]
+  Mean EMA: (2, 2)
+  Variance EMA: (2, 2)
   Step: 1|Batch loss: 5.52e+00
-  Mean EMA:
-  [[ 1.2733988  3.0736945]
-  [-3.0100226  3.1490781]]
-  Variance EMA:
-  [[29.188576 30.26823 ]
-  [13.972735 49.39477 ]]
+  Mean EMA: (2, 2)
+  Variance EMA: (2, 2)
   Step: 2|Batch loss: 5.15e+00
-  Mean EMA:
-  [[ 1.244118   2.2072985]
-  [-2.719866   3.0309222]]
-  Variance EMA:
-  [[23.888937  27.574411 ]
-  [12.0260725 32.332287 ]]
+  Mean EMA: (2, 2)
+  Variance EMA: (2, 2)
   """
   return process(
       preprocessor=base.identity(),

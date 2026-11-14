@@ -79,9 +79,10 @@ def base_hungarian_algorithm(cost_matrix):
     >>> i, j = optax.assignment.hungarian_algorithm(cost)
     >>> print("cost:", cost[i, j].sum())
     cost: 15
-    >>> print("i:", i)
+    >>> order = jnp.argsort(i)  # Sort the pairs by row for display.
+    >>> print("i:", i[order])
     i: [0 1 3]
-    >>> print("j:", j)
+    >>> print("j:", j[order])
     j: [0 2 1]
     >>> cost = jnp.array(
     ...  [
