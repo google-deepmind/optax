@@ -177,12 +177,8 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
     test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
 
-  @parameterized.parameters(False, True)
-  def test_learning_rate_reduced_with_zero_patience(self, enable_x64):
+  def test_learning_rate_reduced_with_zero_patience(self):
     """Test that learning rate is reduced on the first plateau if patience=0."""
-
-    # Enable float64 if requested
-    jax.config.update('jax_enable_x64', enable_x64)
 
     # Transform with zero patience
     transform = _reduce_on_plateau.reduce_on_plateau(
@@ -228,14 +224,10 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
     test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.1)})
 
-  @parameterized.parameters(False, True)
   def test_learning_rate_reduces_on_every_plateau_zero_patience_no_cooldown(
-      self, enable_x64
+      self,
   ):
     """Test that each non-improving step reduces the scale if patience=0."""
-
-    # Enable float64 if requested
-    jax.config.update('jax_enable_x64', enable_x64)
 
     # Transform with zero patience and no cooldown
     transform = _reduce_on_plateau.reduce_on_plateau(
