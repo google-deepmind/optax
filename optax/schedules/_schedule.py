@@ -139,7 +139,11 @@ def polynomial_schedule(
 
   def schedule(count):
     count = jnp.clip(count - transition_begin, 0, transition_steps)
-    frac = 1 - count / transition_steps
+    # Not `1 - count / transition_steps`: under jit, XLA can rewrite the
+    # division as a multiplication by the reciprocal, so at the end of the
+    # schedule `frac` comes out slightly negative and a fractional `power`
+    # turns it into NaN.
+    frac = (transition_steps - count) / transition_steps
     # pyrefly: ignore[unsupported-operation]
     return (init_value - end_value) * (frac**power) + end_value
 
