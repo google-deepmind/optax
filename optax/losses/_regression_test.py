@@ -79,6 +79,58 @@ class L2LossTest(parameterized.TestCase):
 
 class HuberLossTest(parameterized.TestCase):
 
+  @parameterized.product(
+      dtype=(jnp.float16, jnp.bfloat16, jnp.float32),
+      use_jit=(False, True),
+      linear=(False, True),
+      with_targets=(False, True),
+  )
+  def test_representable_loss_near_square_overflow(
+      self, dtype, use_jit, linear, with_targets
+  ):
+    scale = 256.0 if dtype == jnp.float16 else 2.0**64
+    predictions = jnp.asarray([scale, -scale], dtype=dtype)
+    targets = jnp.asarray([-scale / 4, scale / 4], dtype=dtype)
+    if not with_targets:
+      targets = None
+    delta = jnp.asarray(scale if linear else scale * 1.5, dtype=dtype)
+    if linear and targets is None:
+      predictions = predictions * 1.25
+    residual = np.asarray(predictions, dtype=np.float64)
+    if targets is not None:
+      residual -= np.asarray(targets, dtype=np.float64)
+    threshold = float(delta)
+    absolute = np.abs(residual)
+    expected = np.where(
+        absolute <= threshold,
+        0.5 * residual**2,
+        threshold * (absolute - 0.5 * threshold),
+    )
+
+    def objective(values):
+      return jnp.sum(_regression.huber_loss(values, targets, delta=delta) / 4)
+
+    loss = _regression.huber_loss
+    value_and_grad = jax.value_and_grad(objective)
+    if use_jit:
+      loss = jax.jit(loss)
+      value_and_grad = jax.jit(value_and_grad)
+    actual = loss(predictions, targets, delta=delta)
+    self.assertEqual(actual.dtype, dtype)
+    tolerance = float(jnp.finfo(dtype).eps)
+    np.testing.assert_allclose(
+        np.asarray(actual, dtype=np.float64), expected, rtol=tolerance
+    )
+    value, gradient = value_and_grad(predictions)
+    np.testing.assert_allclose(
+        np.asarray(value, dtype=np.float64), expected.sum() / 4, rtol=tolerance
+    )
+    np.testing.assert_allclose(
+        np.asarray(gradient, dtype=np.float64),
+        np.clip(residual, -threshold, threshold) / 4,
+        rtol=tolerance,
+    )
+
   def setUp(self):
     super().setUp()
     self.ys = np.array([-2.0, 0.5, 0.0, 0.5, 2.0, 4.0, 132.0])
