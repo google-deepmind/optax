@@ -20,6 +20,7 @@ import jax
 import jax.numpy as jnp
 from optax._src import test_utils
 from optax.contrib import _reduce_on_plateau
+from optax.schedules import _inject
 
 
 class ReduceLROnPlateauTest(parameterized.TestCase):
@@ -43,6 +44,69 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
   def tearDown(self):
     super().tearDown()
     jax.config.update('jax_enable_x64', False)
+
+  @parameterized.parameters('factor', 'rtol', 'atol')
+  def test_traced_hyperparameter(self, name):
+    state = _reduce_on_plateau.reduce_on_plateau().init(self.updates)
+    traces = []
+
+    @jax.jit
+    def step(hyperparam, state, value):
+      traces.append(None)
+      tx = _reduce_on_plateau.reduce_on_plateau(
+          patience=1, **{name: hyperparam}
+      )
+      return tx.update(self.updates, state, value=value)
+
+    for hyperparam, value in ((0.1, 1.0), (0.2, 1.0), (0.3, 0.9), (0.1, 0.5)):
+      tx = _reduce_on_plateau.reduce_on_plateau(
+          patience=1, **{name: hyperparam}
+      )
+      expected = tx.update(self.updates, state, value=value)
+      actual = step(jnp.asarray(hyperparam), state, jnp.asarray(value))
+      test_utils.assert_trees_all_close(actual, expected)
+      _, state = actual
+    self.assertLen(traces, 1)
+
+  def test_injected_hyperparameters(self):
+    tx = _inject.inject_hyperparams(_reduce_on_plateau.reduce_on_plateau)(
+        factor=lambda count: 0.5 / (count + 1), patience=1
+    )
+    state = tx.init(self.updates)
+    step = jax.jit(tx.update)
+    for count in range(3):
+      reference = _reduce_on_plateau.reduce_on_plateau(
+          factor=0.5 / (count + 1), patience=1
+      )
+      expected = reference.update(self.updates, state.inner_state, value=1.0)
+      updates, state = step(self.updates, state, value=jnp.asarray(1.0))
+      test_utils.assert_trees_all_close((updates, state.inner_state), expected)
+
+  @parameterized.parameters(
+      {'factor': 0.0},
+      {'factor': 1.0},
+      {'rtol': -0.1},
+      {'atol': -0.1},
+      {'rtol': 0.0, 'atol': 0.0},
+      {'rtol': 1.1},
+  )
+  def test_invalid_concrete_hyperparameter(self, **kwargs):
+    with self.assertRaises(ValueError):
+      _reduce_on_plateau.reduce_on_plateau(**kwargs)
+
+  @parameterized.parameters(('rtol', 'atol'), ('atol', 'rtol'))
+  def test_invalid_concrete_tolerance_with_traced_tolerance(
+      self, traced, invalid
+  ):
+    @jax.jit
+    def step(tolerance):
+      tx = _reduce_on_plateau.reduce_on_plateau(
+          **{traced: tolerance, invalid: -0.1}
+      )
+      return tx.update(self.updates, tx.init(self.updates), value=1.0)
+
+    with self.assertRaisesRegex(ValueError, 'must be non-negative'):
+      step(jnp.asarray(0.1))
 
   @parameterized.parameters(False, True)
   def test_learning_rate_reduced_after_cooldown_period_is_over(

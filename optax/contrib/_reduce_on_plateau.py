@@ -40,10 +40,10 @@ class ReduceLROnPlateauState(NamedTuple):
 
 
 def reduce_on_plateau(
-    factor: float = 0.1,
+    factor: float | jax.Array = 0.1,
     patience: jax.typing.ArrayLike = 10,
-    rtol: float = 1e-4,
-    atol: float = 0.0,
+    rtol: float | jax.Array = 1e-4,
+    atol: float | jax.Array = 0.0,
     cooldown: jax.typing.ArrayLike = 0,
     accumulation_size: jax.typing.ArrayLike = 1,
     min_scale: jax.typing.ArrayLike = 0.0,
@@ -53,6 +53,9 @@ def reduce_on_plateau(
   Models often benefit from reducing the learning rate once learning stagnates.
   This scheduler reads a metrics quantity and if no improvement is seen for
   a ``patience`` number of epochs, the learning rate is reduced.
+
+  Argument validation runs on concrete values only; traced hyperparameters
+  (for example, from :func:`optax.inject_hyperparams`) are not checked.
 
   Args:
     factor: Factor by which to reduce the learning rate. new_scale = scale *
@@ -75,22 +78,31 @@ def reduce_on_plateau(
   .. seealso::
     * :doc:`../../_collections/examples/contrib/reduce_on_plateau` example.
   """
-  if factor <= 0.0 or factor >= 1.0:
+  if not isinstance(factor, jax.core.Tracer) and (
+      factor <= 0.0 or factor >= 1.0
+  ):
     raise ValueError(
         f"Factor must be in the range (0, 1), got factor = {factor}."
     )
 
-  if rtol < 0.0 or atol < 0.0:
+  if (not isinstance(rtol, jax.core.Tracer) and rtol < 0.0) or (
+      not isinstance(atol, jax.core.Tracer) and atol < 0.0
+  ):
     raise ValueError(
         "Both rtol and atol must be non-negative, got "
         f"rtol = {rtol} and atol = {atol}."
     )
-  if rtol == 0.0 and atol == 0.0:
+  if (
+      not isinstance(rtol, jax.core.Tracer)
+      and not isinstance(atol, jax.core.Tracer)
+      and rtol == 0.0
+      and atol == 0.0
+  ):
     raise ValueError(
         "At least one of rtol or atol must be positive, got "
         f"rtol = {rtol} and atol = {atol}."
     )
-  if rtol > 1.0:
+  if not isinstance(rtol, jax.core.Tracer) and rtol > 1.0:
     raise ValueError(
         f"rtol must be less than or equal to 1.0, got rtol = {rtol}."
     )
