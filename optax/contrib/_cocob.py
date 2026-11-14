@@ -18,6 +18,7 @@ COCOB is a contributed optimizer implemented from Algorithm 2 of "Training Deep
 Networks without Learning Rates Through Coin Betting" by Francesco Orabona and
 Tatiana Tommasi.
 """
+
 from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union
 
@@ -86,9 +87,16 @@ def scale_by_cocob(
         lambda C, c: C - c, cumulative_grads, updates
     )
 
+    # Normalize by L before forming the betting fraction to avoid overflow.
     new_updates = jax.tree.map(
         lambda p, p0, C, L, G, R: (
-            -p + (p0 + C / (L * jnp.maximum(G + L, alpha * L)) * (L + R))
+            -p
+            + (
+                p0
+                + (C / L)
+                * jax.lax.reciprocal(jnp.maximum(G / L + 1, alpha))
+                * (1 + R / L)
+            )
         ),
         params,
         init_particles,
