@@ -234,6 +234,31 @@ class ProjectionsTest(parameterized.TestCase):
     assert not jnp.isnan(grad)
     assert grad == 1.0
 
+  @parameterized.product(zero_input=[False, True], jit=[False, True])
+  def test_projection_l2_ball_zero_radius(self, zero_input, jit):
+    x = {'w': jnp.array([3.0, -4.0]), 'b': jnp.array(2.0)}
+    if zero_input:
+      x = jax.tree.map(jnp.zeros_like, x)
+    projection = proj.projection_l2_ball
+    if jit:
+      projection = jax.jit(projection)
+    actual = projection(x, jnp.array(0.0))
+    test_utils.assert_trees_all_equal(
+        actual,
+        jax.tree.map(jnp.zeros_like, x),
+        err_msg='Zero-radius projection',
+    )
+
+  @parameterized.product(zero_input=[False, True], jit=[False, True])
+  def test_projection_l2_ball_zero_radius_grad(self, zero_input, jit):
+    x = jnp.zeros(2) if zero_input else jnp.array([3.0, -4.0])
+    jacobian = jax.jacrev(proj.projection_l2_ball, argnums=0)
+    if jit:
+      jacobian = jax.jit(jacobian)
+    np.testing.assert_array_equal(
+        jacobian(x, jnp.array(0.0)), jnp.zeros((2, 2))
+    )
+
   def test_projection_l1_ball_grad_at_zero(self):
     grad = jax.grad(proj.projection_l1_ball)(0.0)
     assert not jnp.isnan(grad)
