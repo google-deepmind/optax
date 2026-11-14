@@ -589,6 +589,37 @@ class ContribTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, f'{eps_name}=1e-08 is smaller'):
       opt.update(grads, state, params, **update_kwargs)
 
+  @parameterized.product(
+      use_schedule=[False, True], momentum=[0.0, 0.9], use_jit=[False, True],
+      gradient=[1e4, 1e20],
+  )
+  def test_madgrad_zero_learning_rate(
+      self, use_schedule, momentum, use_jit, gradient
+  ):
+    # A zero-rate warmup must not incorporate gradients into dual averages.
+    # Otherwise they also contaminate the first positive-rate update. Include
+    # a finite float32 gradient whose square would overflow before weighting.
+    learning_rate = (
+        (lambda count: jnp.where(count < 3, 0.0, 0.01)) if use_schedule else 0.0
+    )
+    opt = contrib.madgrad(learning_rate=learning_rate, momentum=momentum)
+    params = jnp.array(0.0)
+    state = opt.init(params)
+    update_fn = jax.jit(opt.update) if use_jit else opt.update
+    for _ in range(3):
+      updates, state = update_fn(jnp.array(gradient), state, params)
+      params = update.apply_updates(params, updates)
+      test_utils.assert_trees_all_close(params, jnp.array(0.0), atol=0.0)
+
+    if use_schedule:
+      updates, state = update_fn(jnp.array(1.0), state, params)
+      params = update.apply_updates(params, updates)
+      # At k=3 the MADGRAD weight is (lr + eps) * sqrt(k + 1).
+      # With no prior dual averages and g=1, z=-weight/(cbrt(weight)+eps).
+      weight = (0.01 + 1e-6) * 2
+      expected = -(1 - momentum) * weight / (weight ** (1 / 3) + 1e-6)
+      test_utils.assert_trees_all_close(params, jnp.array(expected), rtol=1e-6)
+
 
 if __name__ == '__main__':
   absltest.main()
