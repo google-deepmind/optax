@@ -20,6 +20,7 @@ import dataclasses
 import enum
 import functools
 import inspect
+import operator
 from typing import Any, Callable, Sequence, TypeAlias
 
 import jax
@@ -81,6 +82,16 @@ def _with_floating_check(fn: Function) -> Function:
   return wrapper
 
 
+def _canonicalize_axis(axis: int, ndim: int) -> int:
+  if 0 <= (axis := operator.index(axis)) < ndim:
+    return axis
+  elif -ndim <= axis < 0:
+    return axis + ndim
+  raise ValueError(
+      f'axis {axis} is out of bounds for array of dimension {ndim}'
+  )
+
+
 def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """Reshape batch axis of pytree leaves for use with microbatching.
 
@@ -100,7 +111,8 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """
 
   def reshape_leaf(x):
-    new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1 :]
+    ax = _canonicalize_axis(axis, x.ndim)
+    new_shape = x.shape[:ax] + (-1, microbatch_size) + x.shape[ax + 1 :]
     if utils.parse_version(jax.__version__) < utils.parse_version('0.7.0'):
       return x.reshape(new_shape, order='F')
 
@@ -112,14 +124,16 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
         '0.8.1'
     ), 'microbatching with explicit sharding requires jax version >= 0.8.1.'
     spec = sharding.spec
-    if len(spec) < axis:  # The batch axis is not sharded.
+    if len(spec.partitions) <= ax:  # The batch axis is not sharded.
       new_spec = spec
     else:
-      new_spec = jax.P(*spec[:axis], None, spec[axis], *spec[axis + 1 :])
+      new_spec = spec.update(
+          partitions=(*spec.partitions[:ax], None, *spec.partitions[ax:])
+      )
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
-    nshards = x.shape[axis] // local_shape[axis]
+    nshards = x.shape[ax] // local_shape[ax]
     if microbatch_size % nshards != 0:
       raise ValueError(f'{nshards=} must evenly divide {microbatch_size=}.')
 
@@ -225,11 +239,8 @@ def _get_out_sharding(x):
     return {}
   sharding = jax.typeof(x).sharding
   if sharding.mesh.are_all_axes_explicit:
-    if sharding.spec:
-      # The first axis is not sharded, so we simply drop it.
-      spec = jax.sharding.PartitionSpec(*sharding.spec[1:])
-    else:
-      spec = jax.sharding.PartitionSpec()
+    # The first axis is not sharded, so we simply drop it.
+    spec = sharding.spec.update(partitions=sharding.spec.partitions[1:])
     return {'out_sharding': jax.sharding.NamedSharding(sharding.mesh, spec)}
   return {}
 
@@ -337,7 +348,9 @@ def _reshape_all_args(
 
   batch_sizes = jax.tree.flatten(
       jax.tree.map(
-          lambda ax, subtree: jax.tree.map(lambda x: x.shape[ax], subtree),
+          lambda ax, subtree: jax.tree.map(
+              lambda x: x.shape[_canonicalize_axis(ax, x.ndim)], subtree
+          ),
           tuple(in_axes),
           tuple(batch_args),
       )
@@ -365,9 +378,10 @@ def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
   """Returns a function that takes the `index`-th element along the `axis`."""
 
   def fun(x):
-    if x.shape[axis] == 0:  # jnp.take doesn't work with zero axis size.
-      return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1 :])
-    return jnp.take(x, indices=index, axis=axis)
+    ax = _canonicalize_axis(axis, x.ndim)
+    if x.shape[ax] == 0:  # jnp.take doesn't work with zero axis size.
+      return jnp.empty_like(x, shape=x.shape[:ax] + x.shape[ax + 1 :])
+    return jnp.take(x, indices=index, axis=ax)
 
   return fun
 
@@ -511,9 +525,13 @@ def microbatch(
       input_args = list(reshaped_args)
       input_kwargs = dict(reshaped_kwargs)
       for i, ax in zip(argnums, in_axes):
-        input_args[i] = jax.tree.map(_take_fn(index, ax), input_args[i])
+        take_ax = ax if ax >= 0 else ax - 1
+        input_args[i] = jax.tree.map(_take_fn(index, take_ax), input_args[i])
       for i, ax in zip(argnames, in_axes[len(argnums) :]):
-        input_kwargs[i] = jax.tree.map(_take_fn(index, ax), input_kwargs[i])
+        take_ax = ax if ax >= 0 else ax - 1
+        input_kwargs[i] = jax.tree.map(
+            _take_fn(index, take_ax), input_kwargs[i]
+        )
       return fun(*input_args, **input_kwargs)
 
     @functools.partial(

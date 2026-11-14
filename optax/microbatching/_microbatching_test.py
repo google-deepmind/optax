@@ -23,8 +23,11 @@ from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import numpy as np
+from optax import microbatching as optax_microbatching
 from optax._src import test_utils
 import optax.microbatching._microbatching as microbatching
+
+os.environ.setdefault('XLA_FLAGS', '--xla_force_host_platform_device_count=4')
 
 
 def per_example_function(nonbatch_arg, batch_arg1, batch_arg2):
@@ -643,6 +646,173 @@ class CallingConventionTest(parameterized.TestCase):
     baseline, _ = mg(params, x)
     result, _ = call_fn(mg, params, x)
     test_utils.assert_trees_all_close(result, baseline)
+
+
+class NegativeAxisAndExplicitShardingTest(parameterized.TestCase):
+  """Tests for negative axes and explicit sharding PartitionSpecs."""
+
+  @parameterized.parameters((0, -3), (1, -2), (2, -1))
+  def test_reshape_batch_axis_negative_axis(self, pos_axis, neg_axis):
+    x = jnp.arange(4 * 6 * 8, dtype=jnp.float32).reshape(4, 6, 8)
+    expected = optax_microbatching.reshape_batch_axis(
+        x, microbatch_size=2, axis=pos_axis
+    )
+    actual = optax_microbatching.reshape_batch_axis(
+        x, microbatch_size=2, axis=neg_axis
+    )
+    test_utils.assert_trees_all_equal(actual, expected)
+
+  @parameterized.parameters(-4, 3)
+  def test_reshape_batch_axis_out_of_bounds_raises(self, bad_axis):
+    x = jnp.ones((4, 6, 8))
+    with self.assertRaises(ValueError):
+      optax_microbatching.reshape_batch_axis(
+          x, microbatch_size=2, axis=bad_axis
+      )
+
+  @parameterized.parameters(
+      optax_microbatching.AccumulationType.SUM,
+      optax_microbatching.AccumulationType.MEAN,
+      optax_microbatching.AccumulationType.RUNNING_MEAN,
+      optax_microbatching.AccumulationType.CONCAT,
+  )
+  def test_microbatch_negative_in_axes(self, acc):
+    a = jnp.arange(3 * 5 * 10, dtype=jnp.float32).reshape(3, 5, 10)
+    b = jnp.arange(3 * 10 * 5, dtype=jnp.float32).reshape(3, 10, 5)
+    c = jnp.arange(10 * 3 * 5, dtype=jnp.float32).reshape(10, 3, 5)
+
+    def fun(a, b, *, c):
+      return jnp.einsum('ijb,ibj,bij->ij', a, b, c)
+
+    pos_fn = optax_microbatching.microbatch(
+        fun,
+        argnums=(0, 1),
+        argnames='c',
+        microbatch_size=2,
+        in_axes=(2, 1, 0),
+        accumulator=acc,
+    )
+    neg_fn = optax_microbatching.microbatch(
+        fun,
+        argnums=(0, 1),
+        argnames='c',
+        microbatch_size=2,
+        in_axes=(-1, -2, -3),
+        accumulator=acc,
+    )
+    test_utils.assert_trees_all_close(
+        neg_fn(a, b, c=c), pos_fn(a, b, c=c), atol=1e-5, rtol=1e-5
+    )
+
+  def test_zero_batch_size_negative_in_axes(self):
+    m_fun = optax_microbatching.microbatch(
+        lambda x: jnp.sum(x, axis=-1),
+        argnums=0,
+        microbatch_size=2,
+        in_axes=-1,
+        accumulator=optax_microbatching.AccumulationType.SUM,
+    )
+    res = m_fun(jnp.zeros((4, 0)))
+    self.assertEqual(res.shape, (4,))
+    test_utils.assert_trees_all_close(res, jnp.zeros(4))
+
+  def test_micro_vmap_negative_in_axes(self):
+    x = jnp.arange(3 * 8, dtype=jnp.float32).reshape(3, 8)
+    y = jnp.arange(8 * 3, dtype=jnp.float32).reshape(8, 3)
+
+    def fun(u, v):
+      return u + 2.0 * v
+
+    expected = jax.vmap(fun, in_axes=(-1, -2))(x, y)
+    actual = optax_microbatching.micro_vmap(
+        fun, in_axes=(-1, -2), microbatch_size=2
+    )(x, y)
+    test_utils.assert_trees_all_close(actual, expected)
+
+  def test_explicit_sharding_negative_axis(self):
+    if microbatching.utils.parse_version(
+        jax.__version__
+    ) < microbatching.utils.parse_version('0.8.1'):
+      self.skipTest('Skipping explicit sharding test on jax < 0.8.1.')
+
+    specs = (jax.P(), jax.P('x'), jax.P(None, 'y'), jax.P('x', 'y'))
+    abstract_mesh = jax.sharding.AbstractMesh(
+        (2, 2),
+        ('x', 'y'),
+        axis_types=(jax.sharding.AxisType.Explicit,) * 2,
+    )
+    with jax.sharding.use_abstract_mesh(abstract_mesh):
+      for spec in specs:
+        sharding = jax.sharding.NamedSharding(abstract_mesh, spec)
+        sds = jax.ShapeDtypeStruct((4, 8), jnp.float32, sharding=sharding)
+        expected = jax.eval_shape(
+            functools.partial(
+                optax_microbatching.reshape_batch_axis,
+                microbatch_size=4,
+                axis=1,
+            ),
+            sds,
+        )
+        actual = jax.eval_shape(
+            functools.partial(
+                optax_microbatching.reshape_batch_axis,
+                microbatch_size=4,
+                axis=-1,
+            ),
+            sds,
+        )
+        self.assertEqual(actual, expected)
+
+    if jax.default_backend() == 'cpu' and len(jax.devices()) >= 4:
+      mesh = jax.make_mesh(
+          (2, 2),
+          ('x', 'y'),
+          axis_types=(jax.sharding.AxisType.Explicit,) * 2,
+      )
+      with jax.set_mesh(mesh):
+        for spec in specs:
+          sharding = jax.sharding.NamedSharding(mesh, spec)
+          data = jax.device_put(
+              jnp.arange(32, dtype=jnp.float32).reshape(4, 8), sharding
+          )
+          fun = lambda z: (z.T + 1.0, jnp.sum(z * 2.0, axis=-1))
+          mb_fun = optax_microbatching.microbatch(
+              fun,
+              argnums=0,
+              microbatch_size=4,
+              in_axes=-1,
+              accumulator=(
+                  optax_microbatching.AccumulationType.CONCAT,
+                  optax_microbatching.AccumulationType.SUM,
+              ),
+          )
+          actual = mb_fun(data)
+          expected = fun(data)
+          test_utils.assert_trees_all_equal(
+              jax.tree.map(jax.typeof, actual),
+              jax.tree.map(jax.typeof, expected),
+          )
+          test_utils.assert_trees_all_close(actual, expected)
+
+        w = jax.device_put(
+            jnp.arange(12, dtype=jnp.float32).reshape(4, 3), jax.P('x', None)
+        )
+        x = jax.device_put(
+            jnp.arange(32, dtype=jnp.float32).reshape(4, 8), jax.P('x', None)
+        )
+        unreduced_sum_fn = lambda z: jnp.einsum(
+            'fb,fk->k', z, w, out_sharding=jax.P(None, unreduced={'x'})
+        )
+        mb_unreduced_sum = optax_microbatching.microbatch(
+            unreduced_sum_fn,
+            argnums=0,
+            microbatch_size=4,
+            in_axes=-1,
+            accumulator=optax_microbatching.AccumulationType.SUM,
+        )
+        actual_sum = mb_unreduced_sum(x)
+        expected_sum = unreduced_sum_fn(x)
+        self.assertEqual(jax.typeof(actual_sum), jax.typeof(expected_sum))
 
 
 if __name__ == '__main__':
