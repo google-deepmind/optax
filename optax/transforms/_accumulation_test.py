@@ -149,6 +149,15 @@ class AccumulationTest(parameterized.TestCase):
       self.assertTrue(bool(skip_state['should_skip']))
       self.assertEqual(float(skip_state['norm_squared']), 121.0)
 
+    with self.subTest('test_at_the_maximum'):
+      # max_squared_norm is the largest squared norm that can be accepted.
+      should_skip, skip_state = _accumulation.skip_large_updates(
+          [jnp.array(10.0), jnp.zeros([])], step, None, 100.0
+      )
+      self.assertFalse(bool(should_skip))
+      self.assertFalse(bool(skip_state['should_skip']))
+      self.assertEqual(float(skip_state['norm_squared']), 100.0)
+
     with self.subTest('test_small'):
       should_skip, skip_state = _accumulation.skip_large_updates(
           [jnp.zeros([]), jnp.zeros([])], step, None, 100.0

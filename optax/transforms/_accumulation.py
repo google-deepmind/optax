@@ -211,7 +211,7 @@ def skip_large_updates(
   del gradient_step, params
   norm_sq = optax.tree.norm(updates, squared=True)
   # This will also return True if `norm_sq` is NaN.
-  should_skip = jnp.logical_not(norm_sq < max_squared_norm)
+  should_skip = jnp.logical_not(norm_sq <= max_squared_norm)
   return should_skip, {'should_skip': should_skip, 'norm_squared': norm_sq}
 
 
