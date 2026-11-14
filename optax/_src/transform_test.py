@@ -174,6 +174,36 @@ class TransformTest(parameterized.TestCase):
     with self.subTest('Check third update is correct'):
       test_utils.assert_trees_all_close(opt_grad_2, 2 * grad_2 - grad_1)
 
+  def test_scale_by_optimistic_gradient_with_schedules(self):
+    # alpha and beta change at every step: (alpha_t, beta_t) = (t + 1, 2 t + 1).
+    opt = transform.scale_by_optimistic_gradient(
+        alpha=lambda count: count + 1.0, beta=lambda count: 2.0 * count + 1.0
+    )
+    state = opt.init(jnp.asarray(10.0))
+
+    grad_0 = jnp.asarray(2.0)
+    opt_grad_0, state = jax.jit(opt.update)(grad_0, state)
+    grad_1 = jnp.asarray(3.0)
+    opt_grad_1, _ = jax.jit(opt.update)(grad_1, state)
+
+    # At the initial step the previous gradient is the current one.
+    test_utils.assert_trees_all_close(opt_grad_0, 2.0 * grad_0 - grad_0)
+    test_utils.assert_trees_all_close(
+        opt_grad_1, (2.0 + 3.0) * grad_1 - 3.0 * grad_0
+    )
+
+  def test_scale_by_novograd_with_weight_decay_schedule(self):
+    params = jnp.asarray([1.0, -2.0])
+    grads = jnp.asarray([0.5, 0.25])
+    schedule = lambda count: 0.1 * (count + 1)
+    scheduled = transform.scale_by_novograd(b1=0.0, weight_decay=schedule)
+    state = scheduled.init(params)
+    for step in range(3):
+      fixed = transform.scale_by_novograd(b1=0.0, weight_decay=schedule(step))
+      expected, _ = fixed.update(grads, state, params)
+      updates, state = jax.jit(scheduled.update)(grads, state, params)
+      test_utils.assert_trees_all_close(updates, expected)
+
   def test_lion_modes_variants(self):
     updates = jnp.array([0.2, -2.0, 0.5, -0.8])
     b1 = 0.5

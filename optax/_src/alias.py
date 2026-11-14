@@ -1565,7 +1565,6 @@ def novograd(
           b2=b2,
           eps=eps,
           eps_root=eps_root,
-          # pyrefly: ignore[bad-argument-type]
           weight_decay=weight_decay,
       ),
       transform.scale_by_learning_rate(learning_rate),
@@ -1634,7 +1633,6 @@ def optimistic_gradient_descent(
     :doc:`/_collections/examples/ogda_example`
   """
   return combine.chain(
-      # pyrefly: ignore[bad-argument-type]
       transform.scale_by_optimistic_gradient(alpha=alpha, beta=beta),
       transform.scale_by_learning_rate(learning_rate),
   )
