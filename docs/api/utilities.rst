@@ -61,6 +61,7 @@ Tree
     :toctree: generated/
 
     NamedTupleKey
+    abstract_init
     tree_add
     tree_add_scale
     tree_allclose
