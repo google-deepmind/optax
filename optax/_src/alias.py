@@ -967,7 +967,7 @@ def lion(
   :math:`\theta_t` the parameter vector at time :math:`t`.
 
   The ``init`` function of this optimizer initializes an internal state
-  :math:`S_0 := (m_0) = (0)`, representing the intial estimate for the
+  :math:`S_0 := (m_0) = (0)`, representing the initial estimate for the
   first moment. In practice these values are stored as pytrees
   containing all zeros, with the same shape as the model updates.
   At step :math:`t`, the ``update`` function of this optimizer takes as
@@ -2706,7 +2706,7 @@ def lbfgs(
   preconditioning matrix subject to some secant condition, see references
   for more details. Computing :math:`P_k u_k` can be done by a sequence of
   vector operations using past differences of parameters and gradients stored in
-  a memory bufffer.
+  a memory buffer.
 
   The present function just outputs the LBFGS direction :math:`P_k u_k`.
   It can be chained with a linesearch ensuring sufficient decrease and low
