@@ -888,7 +888,9 @@ def _get_children_with_path(
         ((*path, jax.tree_util.DictKey(key)), value)
         for key, value in node.items()
     ]
-  raise ValueError(f"Subtree must be a dict or a NamedTuple. Got {type(node)}")
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
@@ -912,7 +914,9 @@ def _set_children(node: Any, children_with_keys: dict[Any, Any]) -> Any:
     return node._replace(**children_with_keys)
   if isinstance(node, dict):
     return children_with_keys
-  raise ValueError(f"Subtree must be a dict or a NamedTuple. Got {type(node)}")
+  raise ValueError(
+      f"Subtree must be a dict or a NamedTuple. Got {type(node)}"
+  )
 
 
 def _get_key(key: _KeyEntry) -> Union[int, str]:

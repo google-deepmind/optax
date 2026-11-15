@@ -267,12 +267,10 @@ class StateUtilsTest(parameterized.TestCase):
       opt = transform.scale_by_adam()
       state = opt.init(params)
       found_values = _state_utils.tree_get_all_with_path(state, key)
-      expected_result = [
-          (
-              (_state_utils.NamedTupleKey('ScaleByAdamState', 'count'),),
-              jnp.array(0.0),
-          )
-      ]
+      expected_result = [(
+          (_state_utils.NamedTupleKey('ScaleByAdamState', 'count'),),
+          jnp.array(0.0),
+      )]
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with no value in state'):
@@ -332,12 +330,10 @@ class StateUtilsTest(parameterized.TestCase):
           filtering=lambda _, value: isinstance(value, float),
       )
       self.assertLen(found_values, 1)
-      expected_result = [
-          (
-              (jtu.DictKey(key='hparams'), jtu.DictKey(key='learning_rate')),
-              1.0,
-          )
-      ]
+      expected_result = [(
+          (jtu.DictKey(key='hparams'), jtu.DictKey(key='learning_rate')),
+          1.0,
+      )]
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test to get a subtree (here hyperparams_states)'):
@@ -348,19 +344,17 @@ class StateUtilsTest(parameterized.TestCase):
           'learning_rate',
           filtering=lambda _, value: isinstance(value, tuple),
       )
-      expected_result = [
+      expected_result = [(
           (
-              (
-                  _state_utils.NamedTupleKey(
-                      'InjectStatefulHyperparamsState', 'hyperparams_states'
-                  ),
-                  jtu.DictKey(key='learning_rate'),
+              _state_utils.NamedTupleKey(
+                  'InjectStatefulHyperparamsState', 'hyperparams_states'
               ),
-              _inject.WrappedScheduleState(
-                  count=jnp.array(0, dtype=jnp.dtype('int32'))
-              ),
-          )
-      ]
+              jtu.DictKey(key='learning_rate'),
+          ),
+          _inject.WrappedScheduleState(
+              count=jnp.array(0, dtype=jnp.dtype('int32'))
+          ),
+      )]
       self.assertEqual(found_values, expected_result)
 
     with self.subTest('Test with nested tree containing a key'):
@@ -408,7 +402,7 @@ class StateUtilsTest(parameterized.TestCase):
         return _state_utils.tree_get(
             state,
             'learning_rate',
-            filtering=lambda _, value: isinstance(value, jnp.ndarray),
+            filtering=lambda _, value: isinstance(value, jnp.ndarray)
         )
 
       for i in range(4):
@@ -458,7 +452,7 @@ class StateUtilsTest(parameterized.TestCase):
       )
       test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(noise_state),
-          _random.tree_unwrap_random_key_data(expected_result),
+          _random.tree_unwrap_random_key_data(expected_result)
       )
 
   def test_tree_set(self):
@@ -577,7 +571,7 @@ class StateUtilsTest(parameterized.TestCase):
       )
       test_utils.assert_trees_all_equal(
           _random.tree_unwrap_random_key_data(new_state),
-          _random.tree_unwrap_random_key_data(expected_result),
+          _random.tree_unwrap_random_key_data(expected_result)
       )
     with self.subTest('Test setting a state'):
       opt = combine.chain(
