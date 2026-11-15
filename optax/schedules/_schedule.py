@@ -19,6 +19,8 @@ instance, they may be used to anneal the learning rate used to update an agent's
 parameters or the exploration factor used to select actions.
 """
 
+import math
+import numbers
 from typing import Iterable, Optional
 
 from absl import logging
@@ -249,7 +251,12 @@ def piecewise_constant_schedule(
       for threshold, scale in sorted(boundaries_and_scales.items()):
         if max_count is not None:
           # Compare without unsigned subtraction or wrapping the boundary.
-          threshold = int(threshold)
+          # Round fractions up without losing precision for wide integers.
+          threshold = (
+              int(threshold)
+              if isinstance(threshold, numbers.Integral)
+              else math.ceil(threshold)
+          )
           boundary = jnp.asarray(
               min(max(threshold, 0), max_count), dtype=count_dtype
           )
