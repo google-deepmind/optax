@@ -19,7 +19,6 @@ from typing import Optional, TypedDict, cast
 from unittest import mock
 
 from absl.testing import absltest
-from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
@@ -103,7 +102,7 @@ def _sharded_sds(shape, mesh, spec, memory_kind=None, **kwargs):
   )
 
 
-class StateUtilsTest(parameterized.TestCase):
+class StateUtilsTest(absltest.TestCase):
 
   def test_dict_based_optimizers(self):
     """Test we can map over params also for optimizer states using dicts."""
@@ -615,44 +614,57 @@ class StateUtilsTest(parameterized.TestCase):
     self.assertEqual(from_tx.mu['w'].sharding, NamedSharding(mesh, P('x', 'y')))
     self.assertEqual(from_tx.count.sharding, NamedSharding(mesh, P()))
 
-  @parameterized.named_parameters(
-      ('auto_abstract_mesh', 'auto'),
-      ('explicit_abstract_mesh', 'explicit'),
-      ('hybrid_auto_explicit_abstract_mesh', 'hybrid'),
-      ('concrete_mesh', 'concrete'),
-  )
-  def test_abstract_init_mesh_types_and_axis_types_preserved(self, mesh_kind):
+  def test_abstract_init_mesh_types_and_axis_types_preserved(self):
     self._skip_if_sharding_unsupported()
+    concrete_mesh = _make_single_device_auto_mesh()
 
-    if mesh_kind == 'concrete':
-      mesh = _make_single_device_auto_mesh()
-      w_spec, b_spec = P(), P()
-    else:
-      axis_types_by_kind = {
-          'auto': (AxisType.Auto, AxisType.Auto),
-          'explicit': (AxisType.Explicit, AxisType.Explicit),
-          'hybrid': (AxisType.Auto, AxisType.Explicit),
-      }
-      mesh = jax.sharding.AbstractMesh(
-          (64, 16), ('x', 'y'), axis_types=axis_types_by_kind[mesh_kind]
+    def abstract_mesh(*axis_types):
+      return jax.sharding.AbstractMesh(
+          (64, 16), ('x', 'y'), axis_types=axis_types
       )
-      w_spec, b_spec = P('x', 'y'), P('y')
 
-    abstract_params = {
-        'w': _sharded_sds((128, 64), mesh, w_spec),
-        'b': _sharded_sds((64,), mesh, b_spec),
-    }
+    # (name, mesh, w_spec, b_spec)
+    cases = [
+        ('auto_abstract_mesh', abstract_mesh(AxisType.Auto, AxisType.Auto)),
+        (
+            'explicit_abstract_mesh',
+            abstract_mesh(AxisType.Explicit, AxisType.Explicit),
+        ),
+        (
+            'hybrid_auto_explicit_abstract_mesh',
+            abstract_mesh(AxisType.Auto, AxisType.Explicit),
+        ),
+        ('concrete_mesh', concrete_mesh),
+    ]
 
-    opt_state = _state_utils.abstract_init(alias.adamw(1e-3), abstract_params)
-    adam_state = opt_state[0]
+    for name, mesh in cases:
+      if mesh is concrete_mesh:
+        w_spec, b_spec = P(), P()
+      else:
+        w_spec, b_spec = P('x', 'y'), P('y')
 
-    for leaf in jax.tree.leaves(opt_state):
-      self.assertIsInstance(leaf, jax.ShapeDtypeStruct)
-      self.assertEqual(leaf.sharding.mesh, mesh)
+      with self.subTest(name):
+        abstract_params = {
+            'w': _sharded_sds((128, 64), mesh, w_spec),
+            'b': _sharded_sds((64,), mesh, b_spec),
+        }
 
-    self.assertEqual(adam_state.mu['w'].sharding, NamedSharding(mesh, w_spec))
-    self.assertEqual(adam_state.mu['b'].sharding, NamedSharding(mesh, b_spec))
-    self.assertEqual(adam_state.count.sharding, NamedSharding(mesh, P()))
+        opt_state = _state_utils.abstract_init(
+            alias.adamw(1e-3), abstract_params
+        )
+        adam_state = opt_state[0]
+
+        for leaf in jax.tree.leaves(opt_state):
+          self.assertIsInstance(leaf, jax.ShapeDtypeStruct)
+          self.assertEqual(leaf.sharding.mesh, mesh)
+
+        self.assertEqual(
+            adam_state.mu['w'].sharding, NamedSharding(mesh, w_spec)
+        )
+        self.assertEqual(
+            adam_state.mu['b'].sharding, NamedSharding(mesh, b_spec)
+        )
+        self.assertEqual(adam_state.count.sharding, NamedSharding(mesh, P()))
 
   def test_abstract_init_same_shape_mixed_dtype_weak_type_and_scalars(self):
     self._skip_if_sharding_unsupported()
