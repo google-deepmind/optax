@@ -663,6 +663,9 @@ def micro_grad(
     accumulator: (
         Accumulator | AccumulationType | AccumulatorTree
     ) = AccumulationType.SUM,
+    aux_accumulator: (
+        Accumulator | AccumulationType | AccumulatorTree
+    ) = AccumulationType.CONCAT,
     transform_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: x,
     # pyrefly: ignore[bad-function-definition]
     metrics_fn: Callable[[base.ArrayTree], base.ArrayTree] = lambda x: None,
@@ -725,6 +728,10 @@ def micro_grad(
       per-example gradients. See `microbatch` for more details.
     accumulator: Specifies how to combine or aggregate the transformed gradients
       across the batch axis.
+    aux_accumulator: How to combine the auxiliary output of `fun` when
+      `has_aux=True`. Defaults to keeping each example's output. For example,
+      use `AccumulationType.SUM` to accumulate expert routing counts across
+      microbatches, or a pytree of accumulators for different auxiliary outputs.
     transform_fn: A function to apply to per-example gradients before averaging.
     metrics_fn: A function to apply to per-example gradients before
       transforming. Will be returned on a per-example basis as part of the
@@ -737,8 +744,8 @@ def micro_grad(
   Returns:
     A function that computes the value and gradient of `fun`, averaging the
     results over microbatches and applying the `transform_fn` and `metrics_fn`
-    as described above. The auxiliary output (including values, metrics,
-    function aux) will all be returned on a per-example-basis.
+    as described above. Values and gradient metrics are returned per example.
+    Function aux is combined according to `aux_accumulator`.
   """
 
   if isinstance(batch_argnums, int):
@@ -767,7 +774,14 @@ def micro_grad(
   micro_fun = micro_vmap(
       grad_fn,
       in_axes=in_axes,  # pyrefly: ignore[bad-argument-type]
-      accumulator=(accumulator, AccumulationType.CONCAT),
+      accumulator=(
+          accumulator,
+          IndividualOutputs(
+              values=AccumulationType.CONCAT,
+              metrics=AccumulationType.CONCAT,
+              aux=aux_accumulator if has_aux else AccumulationType.CONCAT,
+          ),
+      ),
       microbatch_size=microbatch_size,
       num_real_microbatches=num_real_microbatches,
   )

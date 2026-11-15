@@ -338,6 +338,41 @@ class MicrobatchingTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(aux.metrics, expected_norms)
     self.assertIsNone(aux.aux)
 
+  @parameterized.parameters(None, 2)
+  def test_micro_grad_aux_accumulator(self, microbatch_size):
+    def loss(params, x):
+      logits = params * x
+      probs = jax.nn.softmax(logits)
+      top = jnp.argmax(logits)
+      counts = jax.nn.one_hot(top, x.size, dtype=jnp.int32)
+      return -jax.nn.log_softmax(logits)[0], (counts, probs, top)
+
+    accum = microbatching.AccumulationType
+    fn = microbatching.micro_grad(
+        loss,
+        has_aux=True,
+        keep_batch_dim=False,
+        microbatch_size=microbatch_size,
+        aux_accumulator=(accum.SUM, accum.MEAN, accum.CONCAT),
+        metrics_fn=jnp.linalg.norm,
+    )
+    params = jnp.array([0.5, -0.25, 1.0])
+    x = jnp.array(
+        [[1.0, 2.0, 3.0], [3.0, -2.0, 1.0], [2.0, -5.0, 1.0], [4.0, 1.0, 0.0]]
+    )
+    grad, out = jax.jit(fn)(params, x)
+    (values, (counts, probs, top)), grads = jax.vmap(
+        jax.value_and_grad(loss, has_aux=True), in_axes=(None, 0)
+    )(params, x)
+    test_utils.assert_trees_all_close(grad, grads.sum(axis=0))
+    test_utils.assert_trees_all_close(out.values, values)
+    test_utils.assert_trees_all_close(
+        out.metrics, jnp.linalg.norm(grads, axis=1)
+    )
+    test_utils.assert_trees_all_close(
+        out.aux, (counts.sum(0), probs.mean(0), top)
+    )
+
   def test_micro_grad_early_stopping(self):
     grad_fn = microbatching.micro_grad(
         lambda c, x: c * x.sum(), microbatch_size=4, num_real_microbatches=3
