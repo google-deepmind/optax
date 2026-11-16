@@ -119,7 +119,7 @@ class MonitoringTest(absltest.TestCase):
 
     state = opt.init(params)
     grads = jax.grad(f)(params)
-    updates, new_state = opt.update(grads, state)
+    _, new_state = opt.update(grads, state)
 
     self.assertEqual(
         jax.tree.structure(state),
