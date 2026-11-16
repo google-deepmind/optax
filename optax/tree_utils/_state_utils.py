@@ -91,6 +91,15 @@ class Initable(Protocol):
     """Calling the init for given parameters returns a fresh opt state."""
 
 
+def _to_explicit_mesh(
+    mesh: Union[jax.sharding.Mesh, jax.sharding.AbstractMesh],
+) -> jax.sharding.AbstractMesh:
+  """Returns an AbstractMesh with every axis set to AxisType.Explicit."""
+  abstract_mesh = mesh.abstract_mesh
+  explicit_axes = {axis: AxisType.Explicit for axis in abstract_mesh.axis_names}
+  return abstract_mesh.update_axis_types(explicit_axes)
+
+
 def _to_explicit_sharding(
     sharding: jax.sharding.Sharding,
 ) -> jax.sharding.Sharding:
@@ -99,11 +108,7 @@ def _to_explicit_sharding(
   if not isinstance(sharding, NamedSharding):
     return sharding
 
-  abstract_mesh = sharding.mesh.abstract_mesh
-  explicit_axes = {axis: AxisType.Explicit for axis in abstract_mesh.axis_names}
-  explicit_mesh = abstract_mesh.update_axis_types(explicit_axes)
-
-  return NamedSharding(explicit_mesh, sharding.spec)
+  return NamedSharding(_to_explicit_mesh(sharding.mesh), sharding.spec)
 
 
 def _canonical_spec(spec: P) -> P:
@@ -211,9 +216,7 @@ def abstract_init(
       named_shardings[0].memory_kind if len(mem_kinds) == 1 else None
   )
 
-  explicit_mesh = cast(
-      NamedSharding, _to_explicit_sharding(named_shardings[0])
-  ).mesh
+  explicit_mesh = _to_explicit_mesh(orig_mesh)
 
   explicit_params = jax.tree.map(_to_explicit_sds, abstract_params)
   with (
