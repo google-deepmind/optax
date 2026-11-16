@@ -217,6 +217,31 @@ class MuonTest(parameterized.TestCase):
           atol=2e-7)
 
   @parameterized.named_parameters(
+      ('stack_axis_0', 0, _muon.MuonDimensionNumbers(1, 2)),
+      ('stack_axis_1', 1, _muon.MuonDimensionNumbers(0, 2)),
+  )
+  @jax.default_matmul_precision('highest')
+  def test_adaptive_scales_batch_matrices_independently(self, axis, dim_nums):
+    # Stacking two (4, 3) matrices along a batch axis must give the same
+    # per-matrix adaptive update as optimizing them as separate leaves.
+    k1, k2 = jax.random.split(jax.random.key(0))
+    g0 = jax.random.normal(k1, (4, 3))
+    g1 = 10.0 * jax.random.normal(k2, (4, 3))
+    dn2d = _muon.MuonDimensionNumbers()
+    opt = _muon.scale_by_muon(
+        adaptive=True, weight_dimension_numbers={'a': dn2d, 'b': dn2d})
+    grads = {'a': g0, 'b': g1}
+    expected, _ = opt.update(grads, opt.init(grads))
+
+    opt = _muon.scale_by_muon(
+        adaptive=True, weight_dimension_numbers={'w': dim_nums})
+    grads = {'w': jnp.stack([g0, g1], axis=axis)}
+    updates, _ = opt.update(grads, opt.init(grads))
+    actual = {'a': jnp.take(updates['w'], 0, axis=axis),
+              'b': jnp.take(updates['w'], 1, axis=axis)}
+    test_utils.assert_trees_all_close(actual, expected, rtol=1e-5, atol=1e-5)
+
+  @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
   def test_dim_nums_combinations(self, preconditioning):
