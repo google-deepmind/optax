@@ -102,6 +102,39 @@ class MonitoringTest(absltest.TestCase):
             rtol=1e-5,
         )
 
+  def test_monitor_state_structure_stability(self):
+    """Tests that monitor preserves pytree state structure."""
+
+    def f(x):
+      return jnp.sum(x**2)
+
+    params = jnp.array([1.0, 2.0, 3.0])
+    opt = _combining.chain(
+        alias.sgd(0.1, momentum=0.9),
+        _monitoring.monitor({
+            'norm': tree.norm,
+            'norm_ema': _monitoring.measure_with_ema(tree.norm, decay=0.9),
+        }),
+    )
+
+    state = opt.init(params)
+    grads = jax.grad(f)(params)
+    updates, new_state = opt.update(grads, state)
+
+    self.assertEqual(
+        jax.tree.structure(state),
+        jax.tree.structure(new_state),
+    )
+
+    def step(carry, _):
+      p, s = carry
+      g = jax.grad(f)(p)
+      u, s = opt.update(g, s)
+      return (update.apply_updates(p, u), s), None
+
+    (final_p, _), _ = jax.lax.scan(step, (params, state), length=3)
+    self.assertEqual(final_p.shape, params.shape)
+
 
 if __name__ == '__main__':
   absltest.main()

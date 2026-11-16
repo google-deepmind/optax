@@ -154,7 +154,13 @@ def monitor(
     measure_states = []
     for measure_name in measure_names:
       # pyrefly: ignore [missing-attribute]
-      measure_states.append(measures[measure_name].init(params))
+      m_state = measures[measure_name].init(params)
+      measure_states.append(m_state)
+      try:
+        measurement, _ = measures[measure_name].update(params, m_state, params)
+        measurements[measure_name] = measurement
+      except TypeError:
+        pass
     return MonitorState(measurements, tuple(measure_states))
 
   def update(
