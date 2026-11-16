@@ -100,6 +100,12 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
   """
 
   def reshape_leaf(x):
+    if isinstance(x, jax.ShapeDtypeStruct):
+      group_dim = x.shape[axis] // microbatch_size
+      new_shape = (
+          x.shape[:axis] + (group_dim, microbatch_size) + x.shape[axis + 1 :]
+      )
+      return jax.ShapeDtypeStruct(new_shape, x.dtype)
     new_shape = x.shape[:axis] + (-1, microbatch_size) + x.shape[axis + 1 :]
     if utils.parse_version(jax.__version__) < utils.parse_version('0.7.0'):
       return x.reshape(new_shape, order='F')
@@ -343,13 +349,14 @@ def _reshape_all_args(
       )
   )[0]
 
-  if len(set(batch_sizes)) > 1:
+  is_tracer = any(isinstance(x, jax.core.Tracer) for x in batch_sizes)
+  if not is_tracer and len(set(batch_sizes)) > 1:
     raise ValueError(
         f'Batch Arguments must have equal-size batch axes, found {batch_sizes}.'
     )
 
   batch_size = list(batch_sizes)[0]
-  if batch_size % microbatch_size != 0:
+  if not is_tracer and batch_size % microbatch_size != 0:
     raise ValueError(f'{batch_size=} must be divisible by {microbatch_size=}.')
 
   for i, ax in zip(argnums, in_axes):
@@ -365,7 +372,9 @@ def _take_fn(index: int, axis: int) -> Callable[[jax.Array], jax.Array]:
   """Returns a function that takes the `index`-th element along the `axis`."""
 
   def fun(x):
-    if x.shape[axis] == 0:  # jnp.take doesn't work with zero axis size.
+    if isinstance(x, jax.ShapeDtypeStruct):
+      return jax.ShapeDtypeStruct(x.shape[:axis] + x.shape[axis + 1 :], x.dtype)
+    if not isinstance(x.shape[axis], jax.core.Tracer) and x.shape[axis] == 0:
       return jnp.empty_like(x, shape=x.shape[:axis] + x.shape[axis + 1 :])
     return jnp.take(x, indices=index, axis=axis)
 
@@ -526,7 +535,10 @@ def microbatch(
     early_stop = num_real_microbatches is not None
     loop_bound = num_real_microbatches if early_stop else num_microbatches
     init_carry = accumulator_.init(jax.eval_shape(f, 0))
-    if num_microbatches == 0:
+    if (
+        not isinstance(num_microbatches, jax.core.Tracer)
+        and num_microbatches == 0
+    ):
       return accumulator_.finalize(init_carry)
 
     answer = jax.lax.fori_loop(0, loop_bound, body_fun, init_carry)
