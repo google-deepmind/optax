@@ -157,6 +157,7 @@ def monitor(
       m_state = measures[measure_name].init(params)
       measure_states.append(m_state)
       try:
+        # pyrefly: ignore [missing-attribute]
         measurement, _ = measures[measure_name].update(params, m_state, params)
         measurements[measure_name] = measurement
       except TypeError:
