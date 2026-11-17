@@ -124,12 +124,12 @@ def reshape_batch_axis(tree: Any, microbatch_size: int, axis: int = 0) -> Any:
         '0.8.1'
     ), 'microbatching with explicit sharding requires jax version >= 0.8.1.'
     spec = sharding.spec
-    if len(spec) < ax:  # The batch axis is not sharded.
-      new_spec = spec
-    else:
-      # Split the batch axis into (None, spec[ax]) so each microbatch
-      # evaluation receives inputs with the original batch sharding.
-      new_spec = jax.P(*spec[:ax], None, spec[ax], *spec[ax + 1 :])
+    assert (
+        len(spec) == x.ndim
+    ), f'Expected sharding spec length {len(spec)} to match {x.ndim=}.'
+    # Split the batch axis into (None, spec[ax]) so each microbatch
+    # evaluation receives inputs with the original batch sharding.
+    new_spec = jax.P(*spec[:ax], None, spec[ax], *spec[ax + 1 :])
     out_sharding = jax.sharding.NamedSharding(sharding.mesh, new_spec)
 
     local_shape = sharding.shard_shape(x.shape)
