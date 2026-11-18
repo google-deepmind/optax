@@ -246,6 +246,40 @@ class TransformTest(parameterized.TestCase):
 
     test_utils.assert_trees_all_close(adam_params, rms_params)
 
+  @parameterized.product(
+      dtype_and_scale=((jnp.float16, 1e-4), (jnp.float32, 1e-35)),
+      use_jit=(False, True),
+  )
+  def test_rprop_invariant_to_loss_scaling(self, dtype_and_scale, use_jit):
+    dtype, loss_scale = dtype_and_scale
+    params = jnp.array([0.01, 0.02], dtype=dtype)
+    scaled_params = params
+    solver = alias.rprop(learning_rate=2e-4)
+    state = solver.init(params)
+    scaled_state = solver.init(scaled_params)
+    step = jax.jit(solver.update) if use_jit else solver.update
+    grad_fn = jax.grad(jnp.vdot)
+    for sign in (1.0, 1.0, -1.0, -1.0, 0.0, -1.0, -1.0):
+      slope = jnp.array([sign, -sign], dtype=dtype)
+      grads = grad_fn(params, slope)
+      scaled_grads = grad_fn(scaled_params, slope * loss_scale)
+      # Only the product of the normal inputs with a step can underflow.
+      self.assertTrue(
+          jnp.all(
+              (scaled_grads == 0)
+              | (jnp.abs(scaled_grads) >= jnp.finfo(dtype).tiny)
+          )
+      )
+      updates, state = step(grads, state, params)
+      scaled_updates, scaled_state = step(
+          scaled_grads, scaled_state, scaled_params
+      )
+      test_utils.assert_trees_all_equal(scaled_updates, updates)
+      test_utils.assert_trees_all_equal(scaled_state, state)
+      params = update.apply_updates(params, updates)
+      scaled_params = update.apply_updates(scaled_params, scaled_updates)
+      test_utils.assert_trees_all_equal(scaled_params, params)
+
   def test_scale_by_yogi_zero_grads_give_zero_updates(self):
     opt = transform.scale_by_yogi(initial_accumulator_value=1e-6)
     params = jnp.ones(3)
