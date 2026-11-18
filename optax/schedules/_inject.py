@@ -33,9 +33,13 @@ def _convert_floats(x, dtype):
   # if the x is already a strong dtype jax.Array, return unchanged
   if isinstance(x, jax.Array) and not getattr(x, 'weak_type', False):
     return x
-  # if x is of floating point type, cast to the specified dtype
+  # if x and target dtype are floating point types, cast to the specified dtype
   current_dtype = x.dtype if hasattr(x, 'dtype') else type(x)
-  if jax.dtypes.issubdtype(current_dtype, jnp.floating):
+  if (
+      dtype is not None
+      and jax.dtypes.issubdtype(current_dtype, jnp.floating)
+      and jax.dtypes.issubdtype(dtype, jnp.floating)
+  ):
     return jnp.asarray(x, dtype=dtype)
   # otherwise, pass through unchanged
   return x
@@ -168,6 +172,8 @@ def inject_hyperparams(
       dtype = hyperparam_dtype
       if dtype is None:
         dtype = optax.tree.dtype(params, 'highest')
+      # `_convert_floats` casts weak floats (e.g. Python floats) to strongly
+      # typed `jax.Array`s of `dtype`, while preserving strong `jax.Array`s.
       hparams = {
           k: jnp.asarray(_convert_floats(v, dtype))
           for k, v in numeric_hps.items()
@@ -185,16 +191,24 @@ def inject_hyperparams(
       )
 
     def update_fn(updates, state, params=None, **extra_args):
+      # Fallback dtype for non-scheduled entries manually overwritten with
+      # Python floats in `state.hyperparams` between steps.
       dtype = hyperparam_dtype
       if dtype is None:
-        # pyrefly: ignore[bad-argument-type]
-        dtype = optax.tree.dtype(params, 'highest')
+        dtype = optax.tree.dtype(
+            updates if params is None else params, 'highest'
+        )
       hparams = {
-          k: _convert_floats(v, dtype) for k, v in state.hyperparams.items()
+          k: _convert_floats(v, dtype)
+          for k, v in state.hyperparams.items()
+          if k not in sched_hps
       }
+      # Preserve each schedule's initialized dtype from `state.hyperparams` so
+      # carry dtypes remain consistent across steps (e.g. in `jax.lax.scan`).
       hparams.update({
           k: _convert_floats(
-              f(state.hyperparams_states[k], **extra_args), dtype
+              f(state.hyperparams_states[k], **extra_args),
+              getattr(state.hyperparams[k], 'dtype', dtype),
           )
           for k, f in sched_hps.items()
       })
