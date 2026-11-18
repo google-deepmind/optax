@@ -749,6 +749,8 @@ def ctc_loss_with_forward_probs(
         f' {batchsize_of_labels}.'
     )
 
+  # Padded frames are ignored, including when every padded logit is -inf.
+  logits = jnp.where(jnp.asarray(logit_paddings)[..., None] != 0, 0.0, logits)
   logprobs = jax.nn.log_softmax(logits)
   labellens = maxlabellen - jnp.sum(label_paddings, axis=1).astype(jnp.int32)
 
@@ -760,8 +762,15 @@ def ctc_loss_with_forward_probs(
   logprobs_phi = logprobs[:, :, blank_id : blank_id + 1]  # [B, T, 1]
   logprobs_phi = jnp.transpose(logprobs_phi, (1, 0, 2))  # [T, B, 1]
 
-  one_hot = jax.nn.one_hot(labels, num_classes=num_classes)  # [B, N, K]
-  logprobs_emit = jnp.einsum('btk,bnk->btn', logprobs, one_hot)
+  # Gather instead of multiplying by one-hot labels: an unrelated class with
+  # log-probability -inf would otherwise contribute 0 * -inf = NaN.
+  # Preserve the zero contribution of out-of-range labels used for padding.
+  label_indices = jnp.where(
+      jnp.asarray(labels) < 0, jnp.int32(num_classes), labels
+  )
+  logprobs_emit = jnp.take_along_axis(
+      logprobs, label_indices[:, None, :], axis=-1, fill_value=0.0
+  )  # [B, T, N]
   logprobs_emit = jnp.transpose(logprobs_emit, (1, 0, 2))  # [T, B, N]
 
   logalpha_phi_init = (
@@ -770,10 +779,18 @@ def ctc_loss_with_forward_probs(
   logalpha_phi_init = logalpha_phi_init.at[:, 0].set(0.0)
   logalpha_emit_init = jnp.ones((batchsize, maxlabellen)) * log_epsilon
 
+  def logaddexp(x, y):
+    # Unreachable states have zero probability and must not contribute NaN
+    # gradients through logaddexp(-inf, -inf) to reachable final states.
+    both_zero = jnp.isneginf(x) & jnp.isneginf(y)
+    x = jnp.where(both_zero, 0.0, x)
+    y = jnp.where(both_zero, 0.0, y)
+    return jnp.where(both_zero, -jnp.inf, jnp.logaddexp(x, y))
+
   def update_phi_score(phi, added_score):
     # Update `phi[:, 1:]`` with adding `added_score` in log space.
     return jnp.concatenate(
-        [phi[:, :1], jnp.logaddexp(phi[:, 1:], added_score)], axis=-1
+        [phi[:, :1], logaddexp(phi[:, 1:], added_score)], axis=-1
     )
 
   def loop_body(prev, x):
@@ -785,7 +802,7 @@ def ctc_loss_with_forward_probs(
     logprob_emit, logprob_phi, pad = x
 
     # phi-to-emit transition
-    next_emit = jnp.logaddexp(
+    next_emit = logaddexp(
         prev_phi[:, :-1] + logprob_emit, prev_emit + logprob_emit
     )
     # self-loop transition
@@ -796,8 +813,8 @@ def ctc_loss_with_forward_probs(
     )
 
     pad = pad.reshape((batchsize, 1))
-    next_emit = pad * prev_emit + (1.0 - pad) * next_emit
-    next_phi = pad * prev_phi_orig + (1.0 - pad) * next_phi
+    next_emit = jnp.where(pad != 0, prev_emit, next_emit)
+    next_phi = jnp.where(pad != 0, prev_phi_orig, next_phi)
 
     return (next_phi, next_emit), (next_phi, next_emit)
 
@@ -819,8 +836,9 @@ def ctc_loss_with_forward_probs(
   logalpha_phi_last = logalpha_phi[-1]
 
   # extract per_seq_loss
-  one_hot = jax.nn.one_hot(labellens, num_classes=maxlabellen + 1)  # [B, N+1]
-  per_seq_loss = -jnp.einsum('bn,bn->b', logalpha_phi_last, one_hot)  # pylint:disable=invalid-unary-operand-type
+  per_seq_loss = -jnp.take_along_axis(
+      logalpha_phi_last, labellens[:, None], axis=-1
+  ).squeeze(axis=-1)
   per_seq_loss = jnp.maximum(per_seq_loss, 0.0)
 
   return per_seq_loss, logalpha_phi, logalpha_emit

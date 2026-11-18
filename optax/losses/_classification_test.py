@@ -15,6 +15,7 @@
 """Tests for losses in `optax.losses._classification.py`."""
 
 import functools
+import itertools
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -829,6 +830,161 @@ class CTCTest(parameterized.TestCase):
     super().setUp()
     np.random.seed(1234)
     self._rtol = 5e-3 if jax.default_backend() != 'cpu' else 1e-6
+
+  @parameterized.product(
+      dtype=(jnp.float32, jnp.float64),
+      use_jit=(False, True),
+      blank_id=(0, 3),
+      mask=('none', 'unused', 'target', 'blank'),
+  )
+  def test_alignment_enumeration(
+      self, dtype, use_jit, blank_id, mask
+  ):
+    # Enumerate alignments independently of the forward recurrence, including
+    # repeated labels, an empty target, and different input/target paddings.
+    targets = [(1,), (1, 1), (1, 2), ()]
+    lengths = np.array([2, 4, 3, 2])
+    labels = np.full((4, 2), blank_id, dtype=np.int32)
+    for row, target in zip(labels, targets):
+      row[:len(target)] = target
+    label_paddings = _lengths_to_paddings(
+        np.array([len(target) for target in targets]), 2
+    )
+    logit_paddings = _lengths_to_paddings(lengths, 4)
+    logits = np.tile(
+        [[0.3, -0.2, 0.7, 0.1], [-0.1, 0.5, 0.2, -0.3],
+         [0.4, 0.1, -0.2, 0.3], [0.2, -0.3, 0.4, 0.5]], (4, 1, 1)
+    )
+    unused_class = 3 if blank_id == 0 else 0
+    if mask != 'none':
+      logits[:, :, unused_class] = -np.inf
+    if mask == 'target':
+      logits[:, 0, 1] = -np.inf
+    elif mask == 'blank':
+      logits[:3, 0, blank_id] = -np.inf
+    expected_losses = []
+    expected_grads = np.zeros_like(logits)
+    for b, (target, length) in enumerate(zip(targets, lengths)):
+      frame_logits = logits[b, :length]
+      exp_logits = np.exp(
+          frame_logits - frame_logits.max(axis=-1, keepdims=True)
+      )
+      probs = exp_logits / exp_logits.sum(axis=-1, keepdims=True)
+      paths = [
+          path for path in itertools.product(range(4), repeat=length)
+          if tuple(k for k, _ in itertools.groupby(path) if k != blank_id)
+          == target
+      ]
+      path_probs = np.array([
+          np.prod(probs[np.arange(length), path]) for path in paths
+      ])
+      total_prob = path_probs.sum()
+      self.assertGreater(total_prob, 0.0)
+      expected_losses.append(-np.log(total_prob))
+      expected_grads[b, :length] = probs
+      for path, prob in zip(paths, path_probs):
+        expected_grads[b, np.arange(length), path] -= prob / total_prob
+
+    def loss_fn(x):
+      losses = _classification.ctc_loss(
+          x, logit_paddings, labels, label_paddings, blank_id=blank_id
+      )
+      return jnp.sum(losses), losses
+
+    value_and_grad = jax.value_and_grad(loss_fn, has_aux=True)
+    if use_jit:
+      value_and_grad = jax.jit(value_and_grad)
+    self.addCleanup(
+        jax.config.update, 'jax_enable_x64', jax.config.jax_enable_x64
+    )
+    jax.config.update('jax_enable_x64', dtype == jnp.float64)
+    (_, actual_losses), actual_grads = value_and_grad(
+        jnp.asarray(logits, dtype=dtype)
+    )
+    self.assertEqual(actual_losses.dtype, dtype)
+    self.assertEqual(actual_grads.dtype, dtype)
+    np.testing.assert_allclose(actual_losses, expected_losses, rtol=self._rtol)
+    np.testing.assert_allclose(
+        actual_grads, expected_grads, rtol=self._rtol, atol=1e-7
+    )
+
+  @parameterized.product(padded_label=(-1, 0, 3, 4), use_jit=(False, True))
+  def test_unused_masked_class_invariance(self, padded_label, use_jit):
+    logits = jnp.array([[[0.3, -0.2, 0.7], [-0.1, 0.5, 0.2]]])
+
+    def loss_fn(x, labels):
+      return _classification.ctc_loss(
+          x, jnp.zeros((1, 2)), labels, jnp.array([[0.0, 1.0]])
+      ).sum()
+
+    value_and_grad = jax.value_and_grad(loss_fn)
+    if use_jit:
+      value_and_grad = jax.jit(value_and_grad)
+    expected_loss, expected_grad = value_and_grad(logits, jnp.array([[1, 0]]))
+    masked_logits = jnp.pad(
+        logits, ((0, 0), (0, 0), (0, 1)), constant_values=-jnp.inf
+    )
+    actual_loss, actual_grad = value_and_grad(
+        masked_logits, jnp.array([[1, padded_label]])
+    )
+    np.testing.assert_allclose(actual_loss, expected_loss, rtol=self._rtol)
+    np.testing.assert_allclose(
+        actual_grad[..., :3], expected_grad, rtol=self._rtol, atol=1e-7
+    )
+    np.testing.assert_array_equal(actual_grad[..., 3], 0.0)
+
+  @parameterized.product(
+      label_dtype=(jnp.int8, jnp.int16),
+      use_jit=(False, True),
+      at_boundary=(False, True),
+  )
+  def test_narrow_padding_label_indices(
+      self, label_dtype, use_jit, at_boundary
+  ):
+    # The out-of-bounds gather sentinel must not wrap to a valid class when
+    # the vocabulary size exceeds the label dtype's positive range.
+    num_classes = np.iinfo(label_dtype).max + int(at_boundary)
+    logits = jnp.zeros((1, 2, num_classes))
+    labels = jnp.array([[1, -1]], dtype=label_dtype)
+
+    def forward(x, y):
+      return _classification.ctc_loss_with_forward_probs(
+          x, jnp.zeros((1, 2)), y, jnp.array([[0.0, 1.0]])
+      )
+
+    if use_jit:
+      forward = jax.jit(forward)
+    expected = forward(logits, labels.astype(jnp.int32))
+    actual = forward(logits, labels)
+    # Check the exposed forward states too: padded target states do not
+    # necessarily affect the final loss, but must retain the same values.
+    for actual_array, expected_array in zip(actual, expected):
+      np.testing.assert_allclose(actual_array, expected_array, rtol=self._rtol)
+
+  @parameterized.parameters(False, True)
+  def test_all_masked_padded_frames(self, use_jit):
+    logits = jnp.array([[[0.3, -0.2], [-0.1, 0.5]]])
+
+    def loss_fn(x, paddings):
+      return _classification.ctc_loss(
+          x, paddings, jnp.array([[1]]), jnp.zeros((1, 1))
+      ).sum()
+
+    value_and_grad = jax.value_and_grad(loss_fn)
+    if use_jit:
+      value_and_grad = jax.jit(value_and_grad)
+    expected_loss, expected_grad = value_and_grad(logits, jnp.zeros((1, 2)))
+    padded_logits = jnp.pad(
+        logits, ((0, 0), (1, 1), (0, 0)), constant_values=-jnp.inf
+    )
+    actual_loss, actual_grad = value_and_grad(
+        padded_logits, jnp.array([[1.0, 0.0, 0.0, 1.0]])
+    )
+    np.testing.assert_allclose(actual_loss, expected_loss, rtol=self._rtol)
+    np.testing.assert_allclose(
+        actual_grad[:, 1:3], expected_grad, rtol=self._rtol, atol=1e-7
+    )
+    np.testing.assert_array_equal(actual_grad[:, [0, 3]], 0.0)
 
   def test_with_one_to_one_alignment(self):
     # when inputsteps and outputsteps are equal, no blank will be allowed.
