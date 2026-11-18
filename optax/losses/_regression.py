@@ -71,7 +71,13 @@ def l2_loss(
     by Bishop, but not "The Elements of Statistical Learning" by Tibshirani.
   """
   predictions = jnp.asarray(predictions)
-  return 0.5 * squared_error(predictions, targets)
+  utils.check_subdtype(predictions, jnp.floating)
+  if targets is not None:
+    utils.check_shapes_equal(predictions, targets)
+  # pyrefly: ignore[unsupported-operation]
+  errors = predictions - targets if targets is not None else predictions
+  # Scale before multiplying to avoid overflow in representable half-squares.
+  return (0.5 * errors) * errors
 
 
 def huber_loss(
