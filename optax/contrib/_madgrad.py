@@ -83,24 +83,29 @@ def scale_by_madgrad(
       lr = learning_rate
 
     # Ensure stability by adding eps to the learning rate, matching the
-    # official PyTorch implementation.
-    lr_stable = lr + eps
+    # official PyTorch implementation. Keep zero rates at zero so that
+    # disabled steps do not contribute to the dual averages.
+    lr_stable = jnp.where(lr == 0, 0.0, lr + eps)
 
     # lamb = lr * sqrt(k + 1)
     lamb = lr_stable * jnp.sqrt(count + 1)
+
+    # Apply the weight before squaring so finite gradients cannot overflow
+    # before a zero weight takes effect.
+    weighted_grads = jax.tree.map(lambda g: lamb * g, updates)
 
     # G_{k+1} = G_k + lamb * g_k^2
     # We cast the update term to the dtype of g to avoid implicit promotion
     # to float32 (e.g. when g is float16 but lamb is float32).
     grad_sum_sq = jax.tree.map(
-        lambda g_sq, g: g_sq + (lamb * (g ** 2)).astype(g.dtype),
-        state.grad_sum_sq, updates
+        lambda g_sq, g, wg: g_sq + (wg * g).astype(g.dtype),
+        state.grad_sum_sq, updates, weighted_grads
     )
 
     # s_{k+1} = s_k + lamb * g_k
     s = jax.tree.map(
-        lambda s_val, g: s_val + (lamb * g).astype(g.dtype),
-        state.s, updates
+        lambda s_val, g, wg: s_val + wg.astype(g.dtype),
+        state.s, updates, weighted_grads
     )
 
     # sigma_{k+1} = (G_{k+1})^(1/3) + eps
