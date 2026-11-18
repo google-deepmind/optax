@@ -70,6 +70,15 @@ build the documentation locally as follows:
    * `make html -C docs` (builds everything)
    * `make html-noplot -C docs` (faster, skips running examples)
 
+### Editing notebooks
+
+Notebook diffs are hard to review, so each notebook has a Markdown preview in
+`.github/notebook-reviews/` that is reviewed alongside it. A
+[pre-commit](https://pre-commit.com/) hook keeps the previews in sync: install
+it once with `pip install pre-commit && pre-commit install`, and every
+`git commit` will create or update the previews and add them to the same
+commit. To regenerate them manually, run `pre-commit run jupytext --all-files`.
+CI fails if a preview is missing or out of date.
 
 ### Running doctest
 You can add examples illustrating how to use the functions in docstrings. For
