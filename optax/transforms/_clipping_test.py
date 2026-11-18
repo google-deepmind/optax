@@ -184,6 +184,63 @@ class ClippingTest(absltest.TestCase):
     test_utils.assert_trees_all_close(
         unclipped[0], small_conv3d_grad, rtol=1e-6)
 
+  def test_adaptive_grad_clip_low_precision(self):
+    cases = (
+        ("large", [300.0, 400.0], [3.0, 4.0], 0.1),
+        ("small", [1e-4, 1e-4], [0.0, 0.0], 0.01),
+        ("small_scale", [30000.0, 40000.0], [0.0, 0.0], 0.001),
+    )
+    for dtype in (jnp.float16, jnp.bfloat16, jnp.float32):
+      for name, grad, param, clipping in cases:
+        grad = jnp.asarray(grad, dtype=dtype)
+        param = jnp.asarray(param, dtype=dtype)
+        tx = optax.adaptive_grad_clip(clipping)
+        reference_grad = np.asarray(grad, dtype=np.float64)
+        reference_param = np.asarray(param, dtype=np.float64)
+        max_norm = clipping * max(np.linalg.norm(reference_param), 1e-3)
+        expected = reference_grad * min(
+            1.0, max_norm / np.linalg.norm(reference_grad)
+        )
+        expected = np.asarray(expected, dtype=dtype)
+        for mode, update in (("eager", tx.update), ("jit", jax.jit(tx.update))):
+          with self.subTest(dtype=dtype, case=name, mode=mode):
+            actual, _ = update(grad, tx.init(grad), param)
+            self.assertEqual(actual.dtype, grad.dtype)
+            np.testing.assert_allclose(
+                np.asarray(actual, dtype=np.float64),
+                np.asarray(expected, dtype=np.float64),
+                rtol=0.01,
+                atol=6e-8 if dtype == jnp.float16 else 0.0,
+            )
+
+  def test_adaptive_grad_clip_unclipped_low_precision(self):
+    for dtype in (jnp.float16, jnp.bfloat16, jnp.float32, jnp.complex64):
+      param = jnp.asarray([3.0, 4.0], dtype=dtype)
+      tx = optax.adaptive_grad_clip(0.1)
+      for grad in (jnp.zeros_like(param), param * 0.01):
+        for update in (tx.update, jax.jit(tx.update)):
+          actual, _ = update(grad, tx.init(grad), param)
+          self.assertEqual(actual.dtype, grad.dtype)
+          np.testing.assert_array_equal(actual, grad)
+
+  def test_unitwise_norm_low_precision(self):
+    for dtype in (jnp.float16, jnp.bfloat16, jnp.float32, jnp.complex64):
+      for values in ([300.0, 400.0], [1e-4, 1e-4]):
+        x = jnp.asarray(values, dtype=dtype).reshape(2, 1)
+        expected = np.linalg.norm(np.asarray(x, dtype=np.complex128), axis=0)
+        expected = np.broadcast_to(expected, x.shape)
+        for axis in (None, 0, (0, 1)):
+          for norm in (
+              lambda x, axis=axis: _clipping.unitwise_norm(x, axis=axis),
+              jax.jit(
+                  lambda x, axis=axis: _clipping.unitwise_norm(x, axis=axis)
+              ),
+          ):
+            with self.subTest(dtype=dtype, values=values, axis=axis):
+              actual = norm(x)
+              self.assertEqual(actual.dtype, jnp.float32)
+              np.testing.assert_allclose(actual, expected, rtol=1e-6)
+
   def test_adaptive_grad_clip_default_axis_conv3d(self):
     """Test adaptive_grad_clip default axis for Conv3D parameters."""
 

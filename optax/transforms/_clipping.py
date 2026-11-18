@@ -274,8 +274,11 @@ def unitwise_norm(
 
   Returns:
     Array with the same shape as `x`, where each unit is replaced by its
-    L2 norm.
+    L2 norm. Low-precision floating inputs are promoted to float32.
   """
+  dtype = jnp.result_type(x)
+  if jnp.issubdtype(dtype, jnp.floating) and jnp.finfo(dtype).bits < 32:
+    x = jnp.asarray(x, dtype=jnp.float32)
   if axis is not None:
     # Use provided axes for reduction
     squared_norm = jnp.sum(numerics.abs_sq(x), axis=axis, keepdims=True)
@@ -348,8 +351,8 @@ def adaptive_grad_clip(
     # Maximum allowable norm.
     max_norm = jax.tree.map(lambda x: clipping * jnp.maximum(x, eps), p_norm)
     # If grad norm > clipping * param_norm, rescale.
-    updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
-    return updates, state
+    clipped_updates = jax.tree.map(unitwise_clip, g_norm, max_norm, updates)
+    return optax.tree.cast_like(clipped_updates, updates), state
 
   # pyrefly: ignore[bad-argument-type]
   return base.GradientTransformation(base.init_empty_state, update_fn)
