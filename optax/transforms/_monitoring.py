@@ -17,6 +17,7 @@
 from typing import Any, NamedTuple, Callable
 
 import jax
+import jax.numpy as jnp
 from optax._src import base
 from optax.transforms import _accumulation
 from optax.transforms import _combining
@@ -102,7 +103,9 @@ def monitor(
 
   Args:
     measures: A dictionary of measurement names to gradient transformations
-      capturing them.
+      capturing them. Measures requiring mandatory ``extra_args`` without
+      default values are not supported, as each measure is evaluated once during
+      ``init`` to infer the measurement pytree structure.
 
   Returns:
     A gradient transformation that captures measurements defined by the user.
@@ -156,12 +159,11 @@ def monitor(
       # pyrefly: ignore [missing-attribute]
       m_state = measures[measure_name].init(params)
       measure_states.append(m_state)
-      try:
-        # pyrefly: ignore [missing-attribute]
-        measurement, _ = measures[measure_name].update(params, m_state, params)
-        measurements[measure_name] = measurement
-      except TypeError:
-        pass
+      # pyrefly: ignore [missing-attribute]
+      measurement, _ = measures[measure_name].update(
+          params, m_state, params
+      )
+      measurements[measure_name] = jax.tree.map(jnp.zeros_like, measurement)
     return MonitorState(measurements, tuple(measure_states))
 
   def update(

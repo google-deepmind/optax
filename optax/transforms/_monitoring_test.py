@@ -16,6 +16,7 @@
 """Tests for monitoring and debugging in optax."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
 import jax
 import jax.numpy as jnp
@@ -23,12 +24,13 @@ import numpy as np
 from optax import tree
 from optax._src import alias
 from optax._src import update
+from optax._src import wrappers
 from optax.transforms import _clipping
 from optax.transforms import _combining
 from optax.transforms import _monitoring
 
 
-class MonitoringTest(absltest.TestCase):
+class MonitoringTest(parameterized.TestCase):
 
   def test_snapshot(self):
     """Tests that snapshot stores the correct values."""
@@ -102,13 +104,14 @@ class MonitoringTest(absltest.TestCase):
             rtol=1e-5,
         )
 
-  def test_monitor_state_structure_stability(self):
-    """Tests that monitor preserves pytree state structure."""
+  @parameterized.parameters(jnp.float32, jnp.bfloat16, jnp.float16)
+  def test_monitor_state_structure_stability(self, dtype):
+    """Tests monitor state stability, zero-init, and lax.scan equivalence."""
 
     def f(x):
       return jnp.sum(x**2)
 
-    params = jnp.array([1.0, 2.0, 3.0])
+    params = jnp.array([1.0, 2.0, 3.0], dtype=dtype)
     opt = _combining.chain(
         alias.sgd(0.1, momentum=0.9),
         _monitoring.monitor({
@@ -125,15 +128,106 @@ class MonitoringTest(absltest.TestCase):
         jax.tree.structure(state),
         jax.tree.structure(new_state),
     )
+    for init_leaf, upd_leaf in zip(
+        jax.tree.leaves(state), jax.tree.leaves(new_state)
+    ):
+      self.assertEqual(init_leaf.shape, upd_leaf.shape)
+      self.assertEqual(init_leaf.dtype, upd_leaf.dtype)
+      self.assertEqual(init_leaf.weak_type, upd_leaf.weak_type)
+
+    monitor_state = state[1]
+    self.assertEqual(float(monitor_state.measurements['norm']), 0.0)
+    self.assertEqual(float(monitor_state.measurements['norm_ema']), 0.0)
+    ema_state = monitor_state.measure_states[1][1]
+    self.assertEqual(int(ema_state.count), 0)
 
     def step(carry, _):
       p, s = carry
       g = jax.grad(f)(p)
       u, s = opt.update(g, s)
-      return (update.apply_updates(p, u), s), None
+      return (update.apply_updates(p, u), s), (
+          tree.get(s, 'norm'),
+          tree.get(s, 'norm_ema'),
+      )
 
-    (final_p, _), _ = jax.lax.scan(step, (params, state), length=3)
-    self.assertEqual(final_p.shape, params.shape)
+    (scan_p, _), (scan_norms, scan_emas) = jax.lax.scan(
+        step, (params, state), length=3
+    )
+
+    loop_p, loop_s = params, state
+    loop_norms, loop_emas = [], []
+    for _ in range(3):
+      g = jax.grad(f)(loop_p)
+      u, loop_s = opt.update(g, loop_s)
+      loop_p = update.apply_updates(loop_p, u)
+      loop_norms.append(tree.get(loop_s, 'norm'))
+      loop_emas.append(tree.get(loop_s, 'norm_ema'))
+
+    tol = 1e-2 if dtype in (jnp.bfloat16, jnp.float16) else 1e-5
+    np.testing.assert_allclose(
+        np.asarray(scan_p, dtype=np.float32),
+        np.asarray(loop_p, dtype=np.float32),
+        rtol=tol,
+    )
+    np.testing.assert_allclose(
+        np.asarray(scan_norms, dtype=np.float32),
+        np.asarray(jnp.stack(loop_norms), dtype=np.float32),
+        rtol=tol,
+    )
+    np.testing.assert_allclose(
+        np.asarray(scan_emas, dtype=np.float32),
+        np.asarray(jnp.stack(loop_emas), dtype=np.float32),
+        rtol=tol,
+    )
+
+  def test_monitor_wrappers_and_map_params(self):
+    """Tests monitor with apply_if_finite, MultiSteps, and tree.map_params."""
+    params = {'w': jnp.array([1.0, 2.0]), 'b': jnp.array([3.0])}
+    grads = jax.tree.map(lambda x: 2.0 * x, params)
+    opt = _combining.chain(
+        alias.sgd(0.1, momentum=0.9),
+        _monitoring.monitor({
+            'norm': tree.norm,
+            'norm_ema': _monitoring.measure_with_ema(tree.norm, decay=0.9),
+        }),
+    )
+
+    wrapped_finite = wrappers.apply_if_finite(opt, max_consecutive_errors=2)
+    wf_state = wrapped_finite.init(params)
+    _, wf_new_state = wrapped_finite.update(grads, wf_state)
+    self.assertEqual(
+        jax.tree.structure(wf_state), jax.tree.structure(wf_new_state)
+    )
+
+    multisteps = wrappers.MultiSteps(opt, every_k_schedule=2)
+    ms_state = multisteps.init(params)
+    _, ms_new_state = multisteps.update(grads, ms_state, params)
+    self.assertEqual(
+        jax.tree.structure(ms_state), jax.tree.structure(ms_new_state)
+    )
+
+    state = opt.init(params)
+    _, new_state = opt.update(grads, state)
+    mapped_state = tree.map_params(opt, lambda p: p * 2.0, new_state)
+    self.assertEqual(
+        jax.tree.structure(new_state), jax.tree.structure(mapped_state)
+    )
+
+  def test_monitor_zero_init_params_and_type_error(self):
+    """Tests zero-initialized params avoid NaNs and TypeErrors propagate."""
+    zero_params = jnp.zeros((3,), dtype=jnp.float32)
+    opt = _combining.chain(
+        alias.sgd(0.1),
+        _monitoring.monitor({'unit': lambda u: u / tree.norm(u)}),
+    )
+    state = opt.init(zero_params)
+    unit_init = state[1].measurements['unit']
+    self.assertTrue(bool(jnp.all(jnp.isfinite(unit_init))))
+    np.testing.assert_array_equal(unit_init, jnp.zeros_like(zero_params))
+
+    bad_opt = _monitoring.monitor({'bad': lambda u: u + 'not_an_array'})
+    with self.assertRaises(TypeError):
+      bad_opt.init(zero_params)
 
 
 if __name__ == '__main__':
