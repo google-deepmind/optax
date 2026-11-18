@@ -26,6 +26,7 @@ from optax._src import base
 from optax._src import lookahead
 from optax._src import test_utils
 from optax._src import update
+from optax.transforms import _conditionality
 import optax.tree
 
 
@@ -129,6 +130,127 @@ class LookaheadTest(parameterized.TestCase):
       )
 
     test_utils.assert_trees_all_close(fast_state, correct_state)
+    self.assertEqual(
+        jnp.asarray(fast_state.is_reset).dtype,
+        jnp.asarray(correct_state.is_reset).dtype,
+    )
+
+  @parameterized.product(reset_state=[False, True], sync_period=[1, 3])
+  def test_lookahead_apply_if_finite_scan(self, reset_state, sync_period):
+    fast_optimizer = _conditionality.apply_if_finite(
+        alias.sgd(0.1, momentum=0.9), max_consecutive_errors=2
+    )
+    optimizer = lookahead.lookahead(
+        fast_optimizer, sync_period, slow_step_size=0.5, reset_state=reset_state
+    )
+    initial_params = lookahead.LookaheadParams.init_synced(
+        jnp.array([1.0, -1.0])
+    )
+    grads = jnp.array(
+        [
+            [1.0, -1.0],
+            [jnp.nan, 0.0],
+            [2.0, 1.0],
+            [jnp.inf, 1.0],
+            [3.0, -2.0],
+            [4.0, 2.0],
+        ]
+    )
+
+    def step(carry, grad):
+      params, state = carry
+      updates, state = optimizer.update(grad, state, params)
+      params = update.apply_updates(params, updates)
+      return (params, state), (params, state)
+
+    _, (actual_params, actual_states) = jax.lax.scan(
+        step, (initial_params, optimizer.init(initial_params)), grads
+    )
+
+    # Reference the two Lookahead phases directly, without arithmetic selection
+    # of either parameters or state. Rejected gradients also exercise the bool
+    # flag and integer counters of the stock apply_if_finite wrapper.
+    fast_params = slow_params = initial_params.fast
+    fast_state = fast_optimizer.init(fast_params)
+    expected_params = []
+    expected_states = []
+    for i, grad in enumerate(grads):
+      updates, fast_state = fast_optimizer.update(grad, fast_state, fast_params)
+      next_fast_params = update.apply_updates(fast_params, updates)
+      if (i + 1) % sync_period == 0:
+        slow_params = slow_params + 0.5 * (next_fast_params - slow_params)
+        next_fast_params = slow_params
+        if reset_state:
+          fast_state = fast_optimizer.init(fast_params)
+      fast_params = next_fast_params
+      expected_params.append(
+          lookahead.LookaheadParams(fast_params, slow_params)
+      )
+      expected_states.append(fast_state)
+
+    expected_params = jax.tree.map(
+        lambda *leaves: jnp.stack(leaves), *expected_params
+    )
+    expected_states = jax.tree.map(
+        lambda *leaves: jnp.stack(leaves), *expected_states
+    )
+    test_utils.assert_trees_all_close(actual_params, expected_params)
+    test_utils.assert_trees_all_close(actual_states.fast_state, expected_states)
+    for actual, expected in zip(
+        jax.tree.leaves(actual_states.fast_state),
+        jax.tree.leaves(expected_states),
+    ):
+      self.assertEqual(actual.dtype, expected.dtype)
+
+  @parameterized.product(
+      sync_period=[1, 3],
+      state_values=[
+          (0.0, jnp.inf),
+          (0.0, jnp.nan),
+          (jnp.inf, 1.0),
+          (jnp.nan, 1.0),
+      ],
+  )
+  def test_lookahead_reset_selects_nonfinite_state(
+      self, sync_period, state_values
+  ):
+    initial_value, updated_value = state_values
+
+    def init_fn(params):
+      return {
+          'count': jnp.array(0, jnp.int32),
+          'value': jnp.full_like(params, initial_value),
+      }
+
+    def update_fn(updates, state, params=None):
+      return updates, {
+          'count': state['count'] + 1,
+          'value': jnp.full_like(state['value'], updated_value),
+      }
+
+    optimizer = lookahead.lookahead(
+        base.GradientTransformation(init_fn, update_fn),
+        sync_period=sync_period,
+        slow_step_size=0.5,
+        reset_state=True,
+    )
+    params = lookahead.LookaheadParams.init_synced(jnp.array([1.0, -1.0]))
+    state = optimizer.init(params)
+    step = jax.jit(optimizer.update)
+    for i in range(sync_period):
+      _, state = step(jnp.zeros_like(params.fast), state, params)
+      synced = i + 1 == sync_period
+      expected = {
+          'count': jnp.array(0 if synced else i + 1, jnp.int32),
+          'value': jnp.full_like(
+              params.fast, initial_value if synced else updated_value
+          ),
+      }
+      for actual, wanted in zip(
+          jax.tree.leaves(state.fast_state), jax.tree.leaves(expected)
+      ):
+        self.assertEqual(actual.dtype, wanted.dtype)
+        np.testing.assert_array_equal(actual, wanted)
 
   @parameterized.parameters(
       [1, 0.5, {'x': np.array(1.), 'y': np.array(-1.)}],
