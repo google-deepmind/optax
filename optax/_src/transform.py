@@ -1231,7 +1231,7 @@ def scale_by_sm3(
     return [1] * axis + [shape[axis]] + [1] * (rank - axis - 1)
 
   def _new_accum(g, v):
-    coeffs = ((1.0 - b2) if b2 != 1.0 else 1.0, b2)
+    coeffs = (jnp.where(b2 == 1.0, 1.0, 1.0 - b2), b2)
     if g.ndim < 2:
       return coeffs[0] * g**2 + coeffs[1] * v[0]
     else:
