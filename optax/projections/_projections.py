@@ -96,6 +96,9 @@ def _projection_unit_simplex(values: jax.typing.ArrayLike) -> jax.Array:
   s = 1
   # pyrefly: ignore [missing-attribute]
   n_features = values.shape[0]
+  # A common shift leaves the projection unchanged and avoids accumulating a
+  # large offset when computing the threshold.
+  values = values - jnp.max(values)
   u = jnp.sort(values)[::-1]
   cumsum_u = jnp.cumsum(u)
   ind = jnp.arange(n_features) + 1
@@ -111,6 +114,7 @@ def _projection_unit_simplex_jvp(
   (values,) = primals
   (values_dot,) = tangents
   primal_out = _projection_unit_simplex(values)
+  values_dot = jnp.asarray(values_dot, dtype=primal_out.dtype)
   supp = primal_out > 0
   card = jnp.count_nonzero(supp)
   tangent_out = supp * values_dot - (jnp.dot(supp, values_dot) / card) * supp
@@ -148,7 +152,7 @@ def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
       6.2
       >>> new_data = projections.projection_simplex(data)
       >>> print(tree.sum(new_data))
-      1.0000002
+      1.0
 
   .. versionadded:: 0.2.3
   """
@@ -208,7 +212,7 @@ def projection_l1_ball(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
       6.2
       >>> new_data = projections.projection_l1_ball(data)
       >>> print(tree.norm(new_data, ord=1))
-      1.0000002
+      1.0
 
   .. versionadded:: 0.2.4
   """
