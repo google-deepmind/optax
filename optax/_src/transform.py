@@ -1282,7 +1282,7 @@ def scale_by_novograd(
     b2: jax.typing.ArrayLike = 0.25,
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 0.0,
-    weight_decay: jax.typing.ArrayLike = 0.0,
+    weight_decay: jax.typing.ArrayLike | base.Schedule = 0.0,
     mu_dtype: Optional[jax.typing.DTypeLike] = None,
 ) -> base.GradientTransformation:
   """Computes NovoGrad updates.
@@ -1295,7 +1295,8 @@ def scale_by_novograd(
     eps: A term added to the denominator to improve numerical stability.
     eps_root: A term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
-    weight_decay: A scalar weight decay rate.
+    weight_decay: A scalar weight decay rate, or a schedule of it evaluated at
+      the current step count.
     mu_dtype: An optional `dtype` to be used for the first order accumulator; if
       `None` then the `dtype` is inferred from `params` and `updates`.
 
@@ -1313,7 +1314,7 @@ def scale_by_novograd(
   def nu_addition(grads):
     return jnp.linalg.norm(grads) ** 2
 
-  def mu_addition(grads, params, nu):
+  def mu_addition(grads, params, nu, weight_decay):
     return grads / (jnp.sqrt(nu + eps_root) + eps) + weight_decay * params
 
   def init_nu(grads, nu):
@@ -1323,12 +1324,16 @@ def scale_by_novograd(
     updates = jax.tree.map(nu_addition, grads)
     return optax.tree.update_moment(updates, nu, b2, 1)
 
-  def init_mu(grads, params, mu, nu):
+  def init_mu(grads, params, mu, nu, weight_decay):
     del mu
-    return jax.tree.map(mu_addition, grads, params, nu)
+    return jax.tree.map(
+        lambda g, p, n: mu_addition(g, p, n, weight_decay), grads, params, nu
+    )
 
-  def update_mu(grads, params, mu, nu):
-    updates = jax.tree.map(mu_addition, grads, params, nu)
+  def update_mu(grads, params, mu, nu, weight_decay):
+    updates = jax.tree.map(
+        lambda g, p, n: mu_addition(g, p, n, weight_decay), grads, params, nu
+    )
     return jax.tree.map(
         lambda m, u: None if m is None else b1 * m + u,
         mu,
@@ -1340,10 +1345,13 @@ def scale_by_novograd(
     numerics.maybe_static_check_eps(eps, state.nu)
     numerics.maybe_static_check_eps(eps_root, state.nu, name='eps_root')
     count_inc = numerics.safe_increment(state.count)
+    decay = (
+        weight_decay(state.count) if callable(weight_decay) else weight_decay
+    )
 
     nu = jax.lax.cond(count_inc == 1, init_nu, update_nu, updates, state.nu)
     mu = jax.lax.cond(
-        count_inc == 1, init_mu, update_mu, updates, params, state.mu, nu
+        count_inc == 1, init_mu, update_mu, updates, params, state.mu, nu, decay
     )
 
     mu = optax.tree.cast(mu, mu_dtype)
@@ -1357,10 +1365,12 @@ def scale_by_novograd(
 class ScaleByOptimisticGradientState(NamedTuple):
   is_initial_step: jax.typing.ArrayLike
   previous_gradient: base.Updates
+  count: jax.typing.ArrayLike = 0  # shape=(), dtype=jnp.int32.
 
 
 def scale_by_optimistic_gradient(
-    alpha: jax.typing.ArrayLike = 1.0, beta: jax.typing.ArrayLike = 1.0
+    alpha: jax.typing.ArrayLike | base.Schedule = 1.0,
+    beta: jax.typing.ArrayLike | base.Schedule = 1.0,
 ) -> base.GradientTransformation:
   """Compute generalized optimistic gradients.
 
@@ -1368,8 +1378,10 @@ def scale_by_optimistic_gradient(
   :func:`optax.optimistic_gradient_descent` for more details.
 
   Args:
-    alpha: Coefficient for generalized optimistic gradient descent.
-    beta: Coefficient for negative momentum.
+    alpha: Coefficient for generalized optimistic gradient descent, or a
+      schedule of it evaluated at the current step count.
+    beta: Coefficient for negative momentum, or a schedule of it evaluated at
+      the current step count.
 
   Returns:
     A :class:`optax.GradientTransformation` object.
@@ -1379,23 +1391,27 @@ def scale_by_optimistic_gradient(
     return ScaleByOptimisticGradientState(
         is_initial_step=jnp.array(True),
         previous_gradient=optax.tree.zeros_like(params),
+        count=jnp.zeros([], jnp.int32),
     )
 
   def update_fn(updates, state, params=None):
     del params
+    alpha_t = alpha(state.count) if callable(alpha) else alpha
+    beta_t = beta(state.count) if callable(beta) else beta
 
     def f(grad, prev_grad):
       # At the initial step, the previous gradient doesn't exist, so we use the
       # current gradient instead.
       # https://github.com/google-deepmind/optax/issues/1082
       prev_grad = jnp.where(state.is_initial_step, grad, prev_grad)
-      return (alpha + beta) * grad - beta * prev_grad
+      return (alpha_t + beta_t) * grad - beta_t * prev_grad
 
     new_updates = jax.tree.map(f, updates, state.previous_gradient)
 
     new_state = ScaleByOptimisticGradientState(
         is_initial_step=jnp.array(False),
         previous_gradient=updates,
+        count=numerics.safe_increment(state.count),
     )
 
     return new_updates, new_state
