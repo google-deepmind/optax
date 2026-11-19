@@ -21,9 +21,12 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
+import numpy as np
 from optax._src import alias
+from optax._src import combine
 from optax._src import numerics
 from optax._src import test_utils
+from optax._src import transform
 from optax._src import update
 from optax._src import utils
 from optax.schedules import _inject
@@ -430,6 +433,48 @@ class AliasTest(parameterized.TestCase):
     updates, _ = jax.jit(functools.partial(opt.update, **static_kwargs))(
         grads, state, params, **dyn_kwargs)
     test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
+
+
+class NoisySgdSignatureTest(absltest.TestCase):
+  """Tests for the noisy_sgd signature, see issue #1858."""
+
+  def test_key_is_required(self):
+    with self.assertRaises(TypeError):
+      alias.noisy_sgd(1e-2)  # missing required argument: 'key'
+
+  def test_eta_gamma_are_keyword_only(self):
+    with self.assertRaises(TypeError):
+      alias.noisy_sgd(1e-2, 0, 0.01)  # eta cannot be passed positionally
+    with self.assertRaises(TypeError):
+      alias.noisy_sgd(1e-2, 0, 0.01, 0.55)  # eta/gamma positional
+
+  def test_seed_is_removed(self):
+    with self.assertRaises(TypeError):
+      alias.noisy_sgd(1e-2, 0, seed=0)
+
+  def test_update_works_with_key(self):
+    opt = alias.noisy_sgd(1e-2, key=0)
+    params = jnp.array([1.0, 2.0, 3.0])
+    state = opt.init(params)
+    updates, state = opt.update(params, state, params)
+    self.assertEqual(updates.shape, params.shape)
+    # A second step advances the state without error.
+    updates, _ = opt.update(updates, state, params)
+    self.assertEqual(updates.shape, params.shape)
+
+  def test_kwargs_match_previous_updates(self):
+    # same seed and schedule produce identical updates as the previous
+    # signature: optax.noisy_sgd(lr, eta=..., gamma=..., key=...).
+    key = jax.random.key(7)
+    opt_new = alias.noisy_sgd(0.1, key=key, eta=0.02, gamma=0.5)
+    opt_ref = transform.add_noise(0.02, 0.5, key=key)
+    opt_ref = combine.chain(opt_ref, transform.scale_by_learning_rate(0.1))
+    params = jnp.array([1.0, 2.0, 3.0])
+    state_new, state_ref = opt_new.init(params), opt_ref.init(params)
+    grads = jnp.array([-0.5, 0.5, -1.0])
+    updates_new, _ = opt_new.update(grads, state_new, params)
+    updates_ref, _ = opt_ref.update(grads, state_ref, params)
+    np.testing.assert_allclose(updates_new, updates_ref, rtol=1e-6)
 
 
 if __name__ == '__main__':
