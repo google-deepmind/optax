@@ -16,16 +16,23 @@
 
 import dataclasses
 from typing import Optional, TypedDict, cast
+from unittest import mock
 
 from absl.testing import absltest
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
+from jax.sharding import AxisType
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 from optax._src import alias
 from optax._src import base
 from optax._src import combine
+from optax._src import factorized
 from optax._src import test_utils
 from optax._src import transform
+from optax._src import utils
+from optax._src import wrappers
 from optax.schedules import _inject
 from optax.schedules import _schedule
 from optax.tree_utils import _random
@@ -73,6 +80,26 @@ def _scale_by_adam_with_dicts():
     )
 
   return base.GradientTransformation(init, update)
+
+
+def _make_auto_mesh():
+  return jax.sharding.AbstractMesh(
+      (2, 4), ('x', 'y'), axis_types=(AxisType.Auto, AxisType.Auto)
+  )
+
+
+def _make_single_device_auto_mesh():
+  return jax.make_mesh((1,), ('x',), axis_types=(AxisType.Auto,))
+
+
+def _sharded_sds(shape, mesh, spec, memory_kind=None, **kwargs):
+  """A float32 ShapeDtypeStruct sharded as ``NamedSharding(mesh, spec)``."""
+  return jax.ShapeDtypeStruct(
+      shape,
+      jnp.float32,
+      sharding=NamedSharding(mesh, spec, memory_kind=memory_kind),
+      **kwargs,
+  )
 
 
 class StateUtilsTest(absltest.TestCase):
@@ -567,6 +594,463 @@ class StateUtilsTest(absltest.TestCase):
           ),
       )
       test_utils.assert_trees_all_equal(new_state, expected_result)
+
+  def _skip_if_sharding_unsupported(self):
+    if utils.parse_version(jax.__version__) < utils.parse_version('0.7.2'):
+      self.skipTest('Requires sharding-in-types support (JAX >= 0.7.2).')
+
+  def test_abstract_init_accepts_transform_and_init_callable(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 8), mesh, P('x', 'y')),
+    }
+
+    tx = transform.scale_by_adam()
+    from_tx = _state_utils.abstract_init(tx, abstract_params)
+    from_callable = _state_utils.abstract_init(tx.init, abstract_params)
+
+    self.assertEqual(from_tx, from_callable)
+    self.assertEqual(from_tx.mu['w'].sharding, NamedSharding(mesh, P('x', 'y')))
+    self.assertEqual(from_tx.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_mesh_types_and_axis_types_preserved(self):
+    self._skip_if_sharding_unsupported()
+    concrete_mesh = _make_single_device_auto_mesh()
+
+    def abstract_mesh(*axis_types):
+      return jax.sharding.AbstractMesh(
+          (64, 16), ('x', 'y'), axis_types=axis_types
+      )
+
+    # (name, mesh, w_spec, b_spec)
+    cases = [
+        ('auto_abstract_mesh', abstract_mesh(AxisType.Auto, AxisType.Auto)),
+        (
+            'explicit_abstract_mesh',
+            abstract_mesh(AxisType.Explicit, AxisType.Explicit),
+        ),
+        (
+            'hybrid_auto_explicit_abstract_mesh',
+            abstract_mesh(AxisType.Auto, AxisType.Explicit),
+        ),
+        ('concrete_mesh', concrete_mesh),
+    ]
+
+    for name, mesh in cases:
+      if mesh is concrete_mesh:
+        w_spec, b_spec = P(), P()
+      else:
+        w_spec, b_spec = P('x', 'y'), P('y')
+
+      with self.subTest(name):
+        abstract_params = {
+            'w': _sharded_sds((128, 64), mesh, w_spec),
+            'b': _sharded_sds((64,), mesh, b_spec),
+        }
+
+        opt_state = _state_utils.abstract_init(
+            alias.adamw(1e-3), abstract_params
+        )
+        adam_state = opt_state[0]
+
+        for leaf in jax.tree.leaves(opt_state):
+          self.assertIsInstance(leaf, jax.ShapeDtypeStruct)
+          self.assertEqual(leaf.sharding.mesh, mesh)
+
+        self.assertEqual(
+            adam_state.mu['w'].sharding, NamedSharding(mesh, w_spec)
+        )
+        self.assertEqual(
+            adam_state.mu['b'].sharding, NamedSharding(mesh, b_spec)
+        )
+        self.assertEqual(adam_state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_same_shape_mixed_dtype_weak_type_and_scalars(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 8), mesh, P('x', 'y'), weak_type=True),
+    }
+    opt = combine.chain(
+        transform.trace(decay=0.9),
+        transform.scale_by_adam(mu_dtype=jnp.bfloat16),
+        transform.add_decayed_weights(1e-2),
+        transform.scale_by_schedule(_schedule.linear_schedule(1e-2, 1e-4, 10)),
+    )
+
+    trace_state, adam_state, decay_state, sched_state = (
+        _state_utils.abstract_init(opt, abstract_params)
+    )
+
+    # Input weak_type=True is preserved through zeros_like(p) in trace.
+    self.assertTrue(trace_state.trace['w'].weak_type)
+    self.assertEqual(
+        trace_state.trace['w'].sharding, NamedSharding(mesh, P('x', 'y'))
+    )
+    # Explicit mu_dtype=bfloat16 clears weak_type while preserving sharding.
+    self.assertEqual(adam_state.mu['w'].dtype, jnp.bfloat16)
+    self.assertFalse(adam_state.mu['w'].weak_type)
+    self.assertEqual(adam_state.nu['w'].dtype, jnp.float32)
+    self.assertEqual(
+        adam_state.mu['w'].sharding, NamedSharding(mesh, P('x', 'y'))
+    )
+    self.assertEqual(
+        adam_state.nu['w'].sharding, NamedSharding(mesh, P('x', 'y'))
+    )
+    self.assertEqual(adam_state.count.dtype, jnp.int32)
+    self.assertEqual(adam_state.count.sharding, NamedSharding(mesh, P()))
+    self.assertEqual(decay_state, base.EmptyState())
+    self.assertEqual(sched_state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_reduced_axis_adafactor_and_sm3(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    # Shape (8, 2, 16) -> two largest dims are axis 2 (16) and axis 0 (8).
+    abstract_params = {
+        'kernel': _sharded_sds((8, 2, 16), mesh, P('x', None, 'y')),
+    }
+
+    with self.subTest('adafactor'):
+      factored_state = _state_utils.abstract_init(
+          factorized.scale_by_factored_rms(min_dim_size_to_factor=1),
+          abstract_params,
+      )
+      self.assertEqual(factored_state.v_row['kernel'].shape, (8, 2))
+      self.assertEqual(
+          factored_state.v_row['kernel'].sharding,
+          NamedSharding(mesh, P('x')),
+      )
+      self.assertEqual(factored_state.v_col['kernel'].shape, (2, 16))
+      self.assertEqual(
+          factored_state.v_col['kernel'].sharding,
+          NamedSharding(mesh, P(None, 'y')),
+      )
+      self.assertEqual(
+          factored_state.v['kernel'].sharding, NamedSharding(mesh, P())
+      )
+      self.assertEqual(factored_state.count.sharding, NamedSharding(mesh, P()))
+
+    with self.subTest('sm3'):
+      sm3_state = _state_utils.abstract_init(
+          transform.scale_by_sm3(), abstract_params
+      )
+      mu_list = sm3_state.mu['kernel']
+      self.assertLen(mu_list, 3)
+      self.assertEqual([m.shape for m in mu_list], [(8,), (2,), (16,)])
+      self.assertEqual(
+          [m.sharding for m in mu_list],
+          [
+              NamedSharding(mesh, P('x')),
+              NamedSharding(mesh, P()),
+              NamedSharding(mesh, P('y')),
+          ],
+      )
+      self.assertEqual(
+          sm3_state.nu['kernel'].sharding,
+          NamedSharding(mesh, P('x', None, 'y')),
+      )
+
+  def test_abstract_init_expanded_history_lbfgs(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 2, 8), mesh, P('x', None, 'y')),
+    }
+
+    lbfgs_state = _state_utils.abstract_init(
+        transform.scale_by_lbfgs(memory_size=5), abstract_params
+    )
+
+    self.assertEqual(lbfgs_state.diff_params_memory['w'].shape, (5, 4, 2, 8))
+    self.assertEqual(
+        lbfgs_state.diff_params_memory['w'].sharding,
+        NamedSharding(mesh, P(None, 'x', None, 'y')),
+    )
+    self.assertEqual(
+        lbfgs_state.diff_updates_memory['w'].sharding,
+        NamedSharding(mesh, P(None, 'x', None, 'y')),
+    )
+    self.assertEqual(
+        lbfgs_state.params['w'].sharding,
+        NamedSharding(mesh, P('x', None, 'y')),
+    )
+    self.assertEqual(lbfgs_state.weights_memory.shape, (5,))
+    self.assertEqual(
+        lbfgs_state.weights_memory.sharding, NamedSharding(mesh, P())
+    )
+    self.assertEqual(lbfgs_state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_random_prng_key_state(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 8), mesh, P('x', 'y')),
+    }
+
+    noise_state = _state_utils.abstract_init(
+        transform.add_noise(1.0, 0.9, key=0), abstract_params
+    )
+
+    self.assertIsInstance(noise_state.rng_key, jax.ShapeDtypeStruct)
+    self.assertEqual(noise_state.rng_key.sharding, NamedSharding(mesh, P()))
+    self.assertEqual(noise_state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_masked_partition_and_injected_hparams(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'matrix': _sharded_sds((4, 8), mesh, P('x', 'y')),
+        'bias': _sharded_sds((8,), mesh, P('y')),
+    }
+    partitioned = combine.partition(
+        transforms={
+            'dense': transform.trace(decay=0.9),
+            'other': transform.scale_by_adam(),
+        },
+        param_labels={'matrix': 'dense', 'bias': 'other'},
+    )
+    opt = _inject.inject_hyperparams(
+        lambda learning_rate: combine.chain(
+            partitioned, transform.scale_by_learning_rate(learning_rate)
+        )
+    )(learning_rate=_schedule.linear_schedule(1e-2, 1e-4, 10))
+
+    state = _state_utils.abstract_init(opt, abstract_params)
+    part_state = state.inner_state[0]
+    dense_trace = part_state.inner_states['dense'].inner_state.trace
+    other_adam = part_state.inner_states['other'].inner_state
+
+    self.assertEqual(
+        dense_trace['matrix'].sharding, NamedSharding(mesh, P('x', 'y'))
+    )
+    self.assertEqual(
+        other_adam.mu['bias'].sharding, NamedSharding(mesh, P('y'))
+    )
+    self.assertEqual(dense_trace['bias'], wrappers.MaskedNode())
+    self.assertEqual(other_adam.mu['matrix'], wrappers.MaskedNode())
+    self.assertEqual(
+        state.hyperparams['learning_rate'].sharding, NamedSharding(mesh, P())
+    )
+    self.assertEqual(
+        state.hyperparams_states['learning_rate'].count.sharding,
+        NamedSharding(mesh, P()),
+    )
+    self.assertEqual(state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_norm_and_auxiliary_array_in_init(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 8), mesh, P('x', 'y')),
+    }
+
+    def custom_init(params):
+      sq_norm = sum(jnp.sum(p**2) for p in jax.tree.leaves(params))
+      return {
+          'init_norm': jnp.sqrt(sq_norm),
+          'scaled_params': jax.tree.map(lambda p: 2.0 * p, params),
+          'coeffs': jnp.asarray([1.0, -0.5, 0.25], dtype=jnp.float32),
+      }
+
+    state = _state_utils.abstract_init(custom_init, abstract_params)
+
+    self.assertEqual(state['init_norm'].shape, ())
+    self.assertEqual(state['init_norm'].sharding, NamedSharding(mesh, P()))
+    self.assertEqual(
+        state['scaled_params']['w'].sharding,
+        NamedSharding(mesh, P('x', 'y')),
+    )
+    self.assertEqual(state['coeffs'].shape, (3,))
+    self.assertEqual(state['coeffs'].sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_concrete_array_inputs_return_abstract_sds(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_single_device_auto_mesh()
+    sharding = NamedSharding(mesh, P())
+    concrete_params = {
+        'w': jax.device_put(jnp.ones((4, 8), jnp.float32), sharding),
+        'b': jax.device_put(jnp.zeros((8,), jnp.float32), sharding),
+    }
+
+    opt_state = _state_utils.abstract_init(alias.adamw(1e-3), concrete_params)
+
+    for leaf in jax.tree.leaves(opt_state):
+      self.assertIsInstance(leaf, jax.ShapeDtypeStruct)
+      self.assertNotIsInstance(leaf, jax.Array)
+      self.assertEqual(leaf.sharding, sharding)
+
+  def test_abstract_init_matches_jit_init_materialization(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_single_device_auto_mesh()
+    sharding = NamedSharding(mesh, P())
+    abstract_params = {
+        'w': jax.ShapeDtypeStruct((4, 8), jnp.float32, sharding=sharding),
+        'b': jax.ShapeDtypeStruct((8,), jnp.float32, sharding=sharding),
+    }
+    concrete_params = {
+        'w': jax.device_put(jnp.ones((4, 8), jnp.float32), sharding),
+        'b': jax.device_put(jnp.zeros((8,), jnp.float32), sharding),
+    }
+    opt = _inject.inject_hyperparams(alias.adamw)(learning_rate=1e-3)
+
+    abstract_state = _state_utils.abstract_init(opt, abstract_params)
+    out_shardings = jax.tree.map(lambda x: x.sharding, abstract_state)
+    materialized = jax.jit(opt.init, out_shardings=out_shardings)(
+        concrete_params
+    )
+    materialized_sds = jax.tree.map(
+        lambda x: jax.ShapeDtypeStruct(
+            x.shape,
+            x.dtype,
+            sharding=x.sharding,
+            weak_type=jax.typeof(x).weak_type,
+        ),
+        materialized,
+    )
+
+    self.assertEqual(abstract_state, materialized_sds)
+
+  def test_abstract_init_outer_mesh_isolation_and_restoration(self):
+    self._skip_if_sharding_unsupported()
+    inner_mesh = _make_auto_mesh()
+    outer_mesh = jax.make_mesh((1,), ('dp',), axis_types=(AxisType.Explicit,))
+    abstract_params = {
+        'w': _sharded_sds((4, 8), inner_mesh, P('x', 'y')),
+    }
+
+    with jax.set_mesh(outer_mesh):
+      opt_state = _state_utils.abstract_init(
+          transform.scale_by_adam(), abstract_params
+      )
+      self.assertEqual(jax.sharding.get_mesh(), outer_mesh)
+      self.assertEqual(
+          jax.sharding.get_abstract_mesh(), outer_mesh.abstract_mesh
+      )
+
+      def failing_init(params):
+        del params
+        raise RuntimeError('boom')
+
+      with self.assertRaisesRegex(RuntimeError, 'boom'):
+        _state_utils.abstract_init(failing_init, abstract_params)
+      self.assertEqual(jax.sharding.get_mesh(), outer_mesh)
+      self.assertEqual(
+          jax.sharding.get_abstract_mesh(), outer_mesh.abstract_mesh
+      )
+
+    self.assertEqual(
+        opt_state.mu['w'].sharding, NamedSharding(inner_mesh, P('x', 'y'))
+    )
+    self.assertEqual(opt_state.count.sharding, NamedSharding(inner_mesh, P()))
+
+  def test_abstract_init_partially_sharded_and_multi_mesh_error(self):
+    self._skip_if_sharding_unsupported()
+    mesh_a = _make_auto_mesh()
+    mesh_b = jax.sharding.AbstractMesh(
+        (4,), ('c',), axis_types=(AxisType.Auto,)
+    )
+
+    with self.subTest('partially_sharded_replicates_unsharded_leaves'):
+      partial_params = {
+          'sharded': _sharded_sds((4, 8), mesh_a, P('x', 'y')),
+          'unsharded': jax.ShapeDtypeStruct((4,), jnp.float32),
+      }
+      state = _state_utils.abstract_init(
+          transform.scale_by_adam(), partial_params
+      )
+      self.assertEqual(
+          state.mu['sharded'].sharding, NamedSharding(mesh_a, P('x', 'y'))
+      )
+      self.assertEqual(
+          state.mu['unsharded'].sharding, NamedSharding(mesh_a, P())
+      )
+      self.assertEqual(state.count.sharding, NamedSharding(mesh_a, P()))
+
+    with self.subTest('raises_on_multiple_distinct_meshes'):
+      multi_params = {
+          'enc': _sharded_sds((4, 8), mesh_a, P('x', 'y')),
+          'dec': _sharded_sds((8,), mesh_b, P('c')),
+      }
+      with self.assertRaisesRegex(ValueError, 'share the same mesh'):
+        _state_utils.abstract_init(transform.scale_by_adam(), multi_params)
+
+  def test_abstract_init_unsharded_single_device_and_empty_tree(self):
+    opt = transform.scale_by_adam()
+
+    with self.subTest('unsharded_sds'):
+      unsharded = {'w': jax.ShapeDtypeStruct((4, 8), jnp.float32)}
+      state = _state_utils.abstract_init(opt, unsharded)
+      self.assertIsNone(state.mu['w'].sharding)
+      self.assertIsNone(state.count.sharding)
+
+    with self.subTest('single_device_sharding'):
+      single_dev = jax.sharding.SingleDeviceSharding(jax.devices()[0])
+      single_params = {
+          'w': jax.ShapeDtypeStruct((4, 8), jnp.float32, sharding=single_dev)
+      }
+      state = _state_utils.abstract_init(opt, single_params)
+      self.assertIsInstance(state.mu['w'], jax.ShapeDtypeStruct)
+      self.assertIsNone(state.count.sharding)
+
+    with self.subTest('empty_pytree'):
+      state = _state_utils.abstract_init(opt, {})
+      self.assertEqual(state.mu, {})
+      self.assertEqual(state.nu, {})
+      self.assertIsNone(state.count.sharding)
+
+  def test_abstract_init_memory_kind_handling(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+
+    with self.subTest('uniform_pinned_host'):
+      pinned_params = {
+          'w': _sharded_sds(
+              (4, 8), mesh, P('x', 'y'), memory_kind='pinned_host'
+          )
+      }
+      opt = combine.chain(
+          transform.add_noise(1.0, 0.9, key=0), transform.scale_by_adam()
+      )
+      noise_state, adam_state = _state_utils.abstract_init(opt, pinned_params)
+      self.assertEqual(
+          adam_state.mu['w'].sharding,
+          NamedSharding(mesh, P('x', 'y'), memory_kind='pinned_host'),
+      )
+      self.assertEqual(
+          adam_state.count.sharding,
+          NamedSharding(mesh, P(), memory_kind='pinned_host'),
+      )
+      self.assertEqual(
+          noise_state.rng_key.sharding,
+          NamedSharding(mesh, P(), memory_kind='pinned_host'),
+      )
+
+    with self.subTest('mixed_pinned_host_and_device_on_same_mesh'):
+      mixed_params = {
+          'embed': _sharded_sds(
+              (4, 8), mesh, P('x', 'y'), memory_kind='pinned_host'
+          ),
+          'mlp': _sharded_sds((4, 8), mesh, P('x', 'y'), memory_kind='device'),
+      }
+      state = _state_utils.abstract_init(
+          transform.scale_by_adam(), mixed_params
+      )
+      self.assertEqual(
+          state.mu['mlp'].sharding, NamedSharding(mesh, P('x', 'y'))
+      )
+      self.assertEqual(state.count.sharding, NamedSharding(mesh, P()))
+
+  def test_abstract_init_older_jax_version_raises(self):
+    self._skip_if_sharding_unsupported()
+    mesh = _make_auto_mesh()
+    abstract_params = {
+        'w': _sharded_sds((4, 8), mesh, P('x', 'y')),
+    }
+
+    self.enterContext(mock.patch.object(jax, '__version__', '0.5.3'))
+    with self.assertRaisesRegex(NotImplementedError, 'requires jax>=0.7.2'):
+      _state_utils.abstract_init(transform.scale_by_adam(), abstract_params)
 
 
 def _fake_params():
