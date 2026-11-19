@@ -461,6 +461,32 @@ class CosineDecayTest(absltest.TestCase):
     np.testing.assert_allclose(output, 975.52826)
 
 
+class WarmupConstantTest(absltest.TestCase):
+
+  def test_warmup_then_constant(self):
+    schedule_fn = jax.jit(
+        _schedule.warmup_constant_schedule(
+            init_value=0.0, peak_value=1.0, warmup_steps=4
+        )
+    )
+    np.testing.assert_allclose(
+        [schedule_fn(count) for count in range(6)],
+        [0.0, 0.25, 0.5, 0.75, 1.0, 1.0],
+    )
+
+  def test_zero_warmup_steps_starts_at_peak(self):
+    # Matches warmup_cosine_decay_schedule and warmup_exponential_decay_schedule
+    # with warmup_steps=0, which start at peak_value.
+    schedule_fn = jax.jit(
+        _schedule.warmup_constant_schedule(
+            init_value=0.0, peak_value=1e-3, warmup_steps=0
+        )
+    )
+    np.testing.assert_allclose(
+        [schedule_fn(count) for count in range(3)], [1e-3] * 3
+    )
+
+
 class WarmupCosineDecayTest(parameterized.TestCase):
 
   @parameterized.named_parameters(

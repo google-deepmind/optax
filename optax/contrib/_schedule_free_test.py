@@ -63,6 +63,16 @@ class ScheduleFreeTest(parameterized.TestCase):
         initial_params,
     )
 
+  def test_zero_warmup_steps_trains(self):
+    # warmup_steps=0 means no warmup; it must not freeze the learning rate at 0.
+    opt = _schedule_free.schedule_free_sgd(learning_rate=0.1, warmup_steps=0)
+    params = jnp.array([1.0, -1.0])
+    state = opt.init(params)
+    for _ in range(3):
+      updates, state = opt.update(jnp.ones_like(params), state, params)
+      params = update.apply_updates(params, updates)
+    self.assertFalse(bool(jnp.allclose(params, jnp.array([1.0, -1.0]))))
+
   def test_schedule_free_adamw(self):
 
     initial_params = jnp.array([1.0, 2.0])
