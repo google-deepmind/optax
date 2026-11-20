@@ -70,6 +70,9 @@ from optax.contrib._schedule_free import schedule_free_adamw
 from optax.contrib._schedule_free import schedule_free_eval_params
 from optax.contrib._schedule_free import schedule_free_sgd
 from optax.contrib._schedule_free import ScheduleFreeState
+from optax.contrib._soap import scale_by_soap
+from optax.contrib._soap import ScaleBySOAPState
+from optax.contrib._soap import soap
 from optax.contrib._sophia import hutchinson_estimator_diag_hessian
 from optax.contrib._sophia import HutchinsonState
 from optax.contrib._sophia import sophia
