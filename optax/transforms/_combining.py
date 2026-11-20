@@ -16,6 +16,7 @@
 
 import collections
 from collections.abc import Callable, Hashable, Mapping
+import functools
 from typing import NamedTuple, Union
 
 import jax
@@ -23,6 +24,7 @@ from optax._src import base
 from optax._src import wrappers
 
 
+@functools.lru_cache(maxsize=None)
 def chain(
     *args: base.GradientTransformation,
 ) -> base.GradientTransformationExtraArgs:

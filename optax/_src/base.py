@@ -15,6 +15,7 @@
 """Base interfaces and datatypes."""
 
 from collections.abc import Callable
+import functools
 from typing import (Any, Iterable, Mapping, NamedTuple, Optional, Protocol,
                     Sequence, Union, runtime_checkable)
 
@@ -226,6 +227,7 @@ def init_empty_state(params: Params) -> EmptyState:
   return EmptyState()
 
 
+@functools.lru_cache(maxsize=None)
 def identity() -> GradientTransformation:
   """Stateless identity transformation that leaves input gradients untouched.
 
@@ -246,6 +248,7 @@ def identity() -> GradientTransformation:
   return GradientTransformation(init_empty_state, update_fn)
 
 
+@functools.lru_cache(maxsize=None)
 def set_to_zero() -> GradientTransformation:
   """Stateless transformation that maps input gradients to zero.
 
@@ -273,6 +276,7 @@ def set_to_zero() -> GradientTransformation:
   return GradientTransformation(init_empty_state, update_fn)
 
 
+@functools.lru_cache(maxsize=None)
 def stateless(
     f: Callable[[Updates, Optional[Params]], Updates],
 ) -> GradientTransformation:
@@ -296,6 +300,7 @@ def stateless(
   return GradientTransformation(init_empty_state, update_fn)
 
 
+@functools.lru_cache(maxsize=None)
 def stateless_with_tree_map(
     f: Callable[[jax.typing.ArrayLike, Optional[jax.typing.ArrayLike]],
                 jax.typing.ArrayLike],
@@ -326,6 +331,7 @@ def stateless_with_tree_map(
   return GradientTransformation(init_empty_state, update_fn)
 
 
+@functools.lru_cache(maxsize=None)
 def with_extra_args_support(
     tx: GradientTransformation,
 ) -> GradientTransformationExtraArgs:
