@@ -149,6 +149,54 @@ class LookaheadTest(parameterized.TestCase):
     )
     test_utils.assert_trees_all_close(final_params.slow, correct_result)
 
+  @parameterized.product(
+      sync_period=[1, 3], reset_state=[False, True], compiled=[False, True]
+  )
+  def test_reset_uses_synchronized_params(
+      self, sync_period, reset_state, compiled
+  ):
+    fast_optimizer = optax.contrib.madgrad(0.1, momentum=0.5)
+    optimizer = optax.lookahead(
+        fast_optimizer,
+        sync_period,
+        slow_step_size=0.5,
+        reset_state=reset_state,
+    )
+    params = optax.LookaheadParams.init_synced(
+        jnp.array([1.0, -2.0], dtype=jnp.float32)
+    )
+    state = optimizer.init(params)
+    expected_fast = expected_slow = params.fast
+    expected_state = fast_optimizer.init(expected_fast)
+    step = jax.jit(optimizer.update) if compiled else optimizer.update
+    target = jnp.array([0.2, -0.3], dtype=jnp.float32)
+    grad_fn = jax.grad(lambda x: 0.5 * jnp.sum((x - target) ** 2))
+
+    for i in range(3 * sync_period):
+      fast_updates, expected_state = fast_optimizer.update(
+          grad_fn(expected_fast), expected_state, expected_fast
+      )
+      expected_fast = update.apply_updates(expected_fast, fast_updates)
+      if (i + 1) % sync_period == 0:
+        expected_slow += 0.5 * (expected_fast - expected_slow)
+        expected_fast = expected_slow
+        if reset_state:
+          # Restart the fast optimizer at the actual synchronized parameters.
+          expected_state = fast_optimizer.init(expected_fast)
+
+      updates, state = step(grad_fn(params.fast), state, params)
+      params = update.apply_updates(params, updates)
+      test_utils.assert_trees_all_close(
+          params,
+          optax.LookaheadParams(expected_fast, expected_slow),
+          rtol=5e-6,
+          atol=5e-6,
+      )
+
+    test_utils.assert_trees_all_close(
+        state.fast_state, expected_state, rtol=5e-6, atol=5e-6
+    )
+
 
 if __name__ == '__main__':
   absltest.main()
