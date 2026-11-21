@@ -16,8 +16,9 @@
 """Experimental optax modules."""
 
 from . import _aggregating as aggregating
-
+from . import _sharding as sharding
 
 __all__ = [
     'aggregating',
+    'sharding',
 ]
