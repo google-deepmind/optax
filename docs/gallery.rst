@@ -18,6 +18,22 @@
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a custom gradient transformation.">
+
+.. only:: html
+
+  .. image:: /images/favicon.svg
+     :alt: Creating a custom gradient transformation.
+
+  :doc:`_collections/examples/custom_gradient_transformations`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Creating a custom gradient transformation.</div>
+    </div>
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Gradient Accumulation.">
 
 .. only:: html
