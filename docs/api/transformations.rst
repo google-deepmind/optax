@@ -7,7 +7,6 @@ Transformations
     :toctree: generated/
 
     adaptive_grad_clip
-    AdaptiveGradClipState
     add_decayed_weights
     AddDecayedWeightsState
     add_noise
