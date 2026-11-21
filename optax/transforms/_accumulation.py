@@ -384,7 +384,9 @@ class MultiSteps:
           ),
           skip_state=skip_state,
       )
-      final_updates = jax.tree.map(lambda ga: emit * ga, final_updates)
+      final_updates = jax.tree.map(
+          lambda ga: jnp.where(emit, ga, jnp.zeros_like(ga)), final_updates
+      )
       return final_updates, new_state
 
     def _skip_update(updates, state, params):
