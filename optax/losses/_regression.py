@@ -134,7 +134,7 @@ def log_cosh(
   # pyrefly: ignore[unsupported-operation]
   errors = (predictions - targets) if (targets is not None) else predictions
   # log(cosh(x)) = log((exp(x) + exp(-x))/2) = log(exp(x) + exp(-x)) - log(2)
-  # pyrefly: ignore [missing-attribute, unsupported-operation]
+  errors = jnp.asarray(errors)
   return jnp.logaddexp(errors, -errors) - jnp.log(2.0).astype(errors.dtype)
 
 
