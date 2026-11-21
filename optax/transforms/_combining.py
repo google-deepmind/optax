@@ -236,8 +236,8 @@ def partition(
       >>> param_labels = ('generator', 'discriminator')
 
       >>> tx = optax.partition(
-      >>>     {'generator': optax.adam(0.1), 'discriminator': optax.adam(0.5)},
-      >>>     param_labels)
+      ...     {'generator': optax.adam(0.1), 'discriminator': optax.adam(0.5)},
+      ...     param_labels)
 
     If you would like to not optimize some parameters, you may wrap
     :func:`optax.partition` with :func:`optax.masked`.
