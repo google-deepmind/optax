@@ -289,6 +289,66 @@ class SoftmaxCrossEntropyWithIntegerLabelsTest(parameterized.TestCase):
     actual = fn(logits, labels, axis)
     np.testing.assert_allclose(actual, desired)
 
+  @parameterized.parameters([jnp.float16, jnp.bfloat16, jnp.float32])
+  def test_high_confidence_gradient(self, dtype):
+    """Verifies that winning element gradient survives high confidence."""
+    margin = 10.0 if dtype == jnp.float16 else 30.0
+    relative_tolerance = 0.05 if dtype == jnp.bfloat16 else 1e-2
+    logits = jnp.array([margin, 0.0], dtype=dtype)
+    labels = jnp.array(0, dtype=jnp.int32)
+
+    loss_fn = lambda logits_input: (
+        _classification.softmax_cross_entropy_with_integer_labels(
+            logits_input, labels
+        )
+    )
+    loss, gradient = jax.value_and_grad(loss_fn)(logits)
+
+    self.assertFalse(jnp.isnan(loss))
+    self.assertGreater(loss, 0.0)
+    self.assertLess(gradient[0], 0.0)
+    self.assertGreater(gradient[1], 0.0)
+    np.testing.assert_allclose(gradient[0] + gradient[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(
+        gradient[1], np.exp(-margin), rtol=relative_tolerance
+    )
+
+  def test_multiclass_high_confidence_gradient(self):
+    """Verifies multiclass zero-sum gradient preservation under high margin."""
+    margin = 30.0
+    num_classes = 5
+    target_index = 2
+    logits = (
+        jnp.zeros(num_classes, dtype=jnp.float32).at[target_index].set(margin)
+    )
+    labels = jnp.array(target_index, dtype=jnp.int32)
+
+    loss_fn = lambda logits_input: (
+        _classification.softmax_cross_entropy_with_integer_labels(
+            logits_input, labels
+        )
+    )
+    loss, gradient = jax.value_and_grad(loss_fn)(logits)
+
+    self.assertFalse(jnp.isnan(loss))
+    self.assertGreater(loss, 0.0)
+    self.assertLess(gradient[target_index], 0.0)
+    expected_other = float(
+        np.exp(-margin) / (1.0 + (num_classes - 1) * np.exp(-margin))
+    )
+    expected_target = -(num_classes - 1) * expected_other
+
+    for class_index in range(num_classes):
+      if class_index == target_index:
+        np.testing.assert_allclose(
+            gradient[class_index], expected_target, rtol=1e-2
+        )
+      else:
+        np.testing.assert_allclose(
+            gradient[class_index], expected_other, rtol=1e-2
+        )
+    np.testing.assert_allclose(jnp.sum(gradient), 0.0, atol=1e-5)
+
 
 class SigmoidCrossEntropyTest(parameterized.TestCase):
 
