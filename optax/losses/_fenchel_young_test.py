@@ -33,6 +33,33 @@ def one_hot_argmax(inputs: jnp.ndarray) -> jnp.ndarray:
 
 class FenchelYoungTest(absltest.TestCase):
 
+  def test_quadratic_max_function_batched_gradient_and_curvature(self):
+    scores = jnp.array([[[0.2, -0.4], [1.3, 0.5]],
+                        [[-0.7, 0.8], [0.1, 1.4]]])
+    targets = jnp.array([[[0.5, 0.1], [0.3, 0.7]],
+                         [[0.2, 0.4], [0.6, 0.9]]])
+    loss = _fenchel_young.make_fenchel_young_loss(
+        lambda vector: jnp.vdot(vector, vector) / 2
+    )
+
+    def objective(values):
+      return loss(values, targets).sum()
+
+    for use_jit in (False, True):
+      with self.subTest(use_jit=use_jit):
+        gradient = jax.grad(objective)
+        hessian = jax.hessian(objective)
+        if use_jit:
+          gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+        test_utils.assert_trees_all_close(
+            gradient(scores), scores - targets, atol=2e-6
+        )
+        test_utils.assert_trees_all_close(
+            hessian(scores).reshape(scores.size, scores.size),
+            jnp.eye(scores.size),
+            atol=2e-6,
+        )
+
   def test_fenchel_young_reg(self):
     # Checks the behavior of the Fenchel-Young loss.
     fy_loss = jax.jit(_fenchel_young.make_fenchel_young_loss(logsumexp))
