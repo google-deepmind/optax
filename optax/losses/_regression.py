@@ -106,7 +106,8 @@ def huber_loss(
   quadratic = jnp.minimum(abs_errors, delta)
   # Same as max(abs_x - delta, 0) but avoids potentially doubling gradient.
   linear = abs_errors - quadratic
-  return 0.5 * quadratic**2 + delta * linear
+  # Scale before multiplying so representable half-squares do not overflow.
+  return (0.5 * quadratic) * quadratic + delta * linear
 
 
 def log_cosh(
