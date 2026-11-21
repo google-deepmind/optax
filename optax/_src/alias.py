@@ -826,9 +826,9 @@ nadamw.__doc__ = (
 
 def adan(
     learning_rate: base.ScalarOrSchedule,
-    b1: jax.typing.ArrayLike = 0.98,
-    b2: jax.typing.ArrayLike = 0.92,
-    b3: jax.typing.ArrayLike = 0.99,
+    b1: jax.typing.ArrayLike = 0.02,
+    b2: jax.typing.ArrayLike = 0.08,
+    b3: jax.typing.ArrayLike = 0.01,
     eps: jax.typing.ArrayLike = 1e-8,
     eps_root: jax.typing.ArrayLike = 1e-8,
     weight_decay: base.ScalarOrSchedule = 0.0,
@@ -888,9 +888,14 @@ def adan(
 
   Args:
     learning_rate: this is a fixed global scaling factor.
-    b1: Decay rate for the EWMA of gradients.
-    b2: Decay rate for the EWMA of differences of gradients.
-    b3: Decay rate for the EMWA of the algorithm's squared term.
+    b1: Weight given to the newest gradient in its EWMA, that is
+      :math:`\beta_1` above. The average decays at rate ``1 - b1``.
+    b2: Weight given to the newest difference of gradients in its EWMA,
+      that is :math:`\beta_2` above. The average decays at rate
+      ``1 - b2``.
+    b3: Weight given to the newest value of the squared term in its EWMA,
+      that is :math:`\beta_3` above. The average decays at rate
+      ``1 - b3``.
     eps: Term added to the denominator to improve numerical stability.
     eps_root: Term added to the denominator inside the square-root to improve
       numerical stability when backpropagating gradients through the rescaling.
@@ -921,8 +926,8 @@ def adan(
     Objective function: 1.28E+01
     Objective function: 1.17E+01
     Objective function: 1.07E+01
-    Objective function: 9.68E+00
-    Objective function: 8.76E+00
+    Objective function: 9.69E+00
+    Objective function: 8.77E+00
 
   References:
     Xie et al, `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing
