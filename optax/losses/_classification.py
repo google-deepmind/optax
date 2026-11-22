@@ -484,6 +484,7 @@ def multiclass_perceptron_loss(
   return jnp.max(scores, axis=-1) - _dot_last_dim(scores, one_hot_labels)
 
 
+@functools.partial(jax.jit, static_argnames=('axis',), inline=True)
 def poly_loss_cross_entropy(
     logits: jax.typing.ArrayLike,
     labels: jax.typing.ArrayLike,
@@ -521,7 +522,8 @@ def poly_loss_cross_entropy(
       - It is also recommended to adjust this value based on the task, e.g. by
       using grid search.
     axis: Axis or axes along which to compute.
-    where: Elements to include in the computation.
+    where: Mask of included elements, broadcastable to the logits. A mask
+      shaped like the reduced loss selects whole examples.
 
   Returns:
     Poly loss between each prediction and the corresponding target
@@ -536,12 +538,63 @@ def poly_loss_cross_entropy(
   """
   utils.check_subdtype(logits, jnp.floating)
   utils.check_subdtype(labels, jnp.floating)
-  p = jax.nn.softmax(logits, axis=axis, where=where)
-  one_minus_pt = jnp.sum(labels * (1 - p), axis=axis, where=where)
-  cross_entropy = softmax_cross_entropy(
-      logits=logits, labels=labels, axis=axis, where=where
+  out_dtype = jnp.result_type(logits, labels, epsilon)
+  acc_dtype = (
+      jnp.float64 if out_dtype in (jnp.float64, jnp.complex128) else jnp.float32
   )
-  return cross_entropy + epsilon * one_minus_pt
+  logits = jnp.asarray(logits, acc_dtype)
+  labels = jnp.asarray(labels, acc_dtype)
+  if where is not None:
+    where = jnp.asarray(where)
+    if axis is not None and 0 < where.ndim < logits.ndim:
+      axes = canonicalize_axes(
+          axis if isinstance(axis, tuple) else (axis,), logits.ndim
+      )
+      batch_shape = tuple(
+          n for i, n in enumerate(logits.shape) if i not in axes
+      )
+      if where.shape == batch_shape:
+        where = jnp.expand_dims(where, axes)
+  largest = jnp.max(logits, axis, where=where, initial=-jnp.inf, keepdims=True)
+  shifted = logits - jax.lax.stop_gradient(largest)
+  if where is not None:
+    shifted = jnp.where(where, shifted, 0.)
+    labels = jnp.where(where, labels, 0.)
+  weights = jnp.exp(shifted)
+  total = jnp.sum(weights, axis, where=where, keepdims=True)
+  total = jnp.where(total == 0, 1., total)  # Empty or fully masked slice.
+
+  # At most one included class can be this confident. Sum the other
+  # probabilities to recover its q = 1-p even when p rounds to one.
+  at_max = shifted == 0
+  confident = at_max & (total < 1 + 1 / 16)
+  normalizer = jnp.squeeze(total, axis=axis)
+  tail = jnp.sum(jnp.where(at_max, 0., weights), axis) / normalizer
+  top_label = jnp.sum(jnp.where(confident, labels, 0.), axis)
+  other_labels = jnp.where(confident, 0., labels)
+  # Factor the shared normalizer out of the other classes' weighted sums.
+  other_mass = jnp.sum(other_labels, axis)
+  other_ce = (
+      other_mass * jnp.log(normalizer) - jnp.sum(other_labels * shifted, axis)
+  )
+  other_one_minus_pt = (
+      other_mass - jnp.sum(other_labels * weights, axis) / normalizer
+  )
+
+  # Write Poly-1 as [-log(1-q) - q] + (1+epsilon)*q. For the confident
+  # class q < 1/16, so the series sum(q**k/k, k >= 2) also has an accurate
+  # derivative. Truncating at degree n loses a fraction q**(n-1) of it.
+  degree = 14 if acc_dtype == jnp.float64 else 7
+  series = 1 / degree
+  for k in range(degree - 1, 1, -1):
+    series = 1 / k + tail * series
+  eps_dtype = (
+      out_dtype if jnp.issubdtype(out_dtype, jnp.complexfloating) else acc_dtype
+  )
+  epsilon = jnp.asarray(epsilon, eps_dtype)
+  loss = other_ce + epsilon * other_one_minus_pt
+  loss = loss + (top_label * tail) * ((epsilon + 1) + tail * series)
+  return loss.astype(out_dtype)
 
 
 def kl_divergence(

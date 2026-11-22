@@ -364,6 +364,66 @@ class PolyLossTest(parameterized.TestCase):
     # see page 10 here https://arxiv.org/pdf/2204.12511.pdf for more
 
   @parameterized.parameters(
+      (jnp.float8_e5m2, 1.0),
+      (jnp.bfloat16, 4.0),
+      (jnp.bfloat16, 6.0),
+      (jnp.float16, 4.25),
+      (jnp.float32, 10.0),
+      (jnp.float32, 20.0),
+  )
+  def test_confident_prediction_keeps_loss_and_gradient(self, dtype, margin):
+    logits = jnp.array([margin, 0], dtype=dtype)
+    labels = jnp.array([1, 0], dtype=dtype)
+    loss = functools.partial(
+        _classification.poly_loss_cross_entropy, labels=labels, epsilon=-1.0
+    )
+    value, grad = jax.jit(jax.value_and_grad(loss))(logits)
+    q = 1 / (1 + np.exp(margin))
+    expected_loss = np.log1p(np.exp(-margin)) - q
+    rtol = max(2 * float(jnp.finfo(dtype).eps), 2e-6)
+    self.assertEqual(value.dtype, dtype)
+    np.testing.assert_allclose(value, expected_loss, rtol=rtol, atol=0)
+    np.testing.assert_allclose(grad, [-q**2, q**2], rtol=rtol, atol=0)
+
+  def test_masked_soft_labels_and_traced_epsilon(self):
+    logits = jnp.array([[[7, 0], [-1, 80]], [[3, 2], [1, 0]]], jnp.bfloat16)
+    labels = jnp.array(
+        [[[0.999, 0.001], [0, 0]], [[0, 1], [0, 0]]], dtype=jnp.float32
+    )
+    mask = jnp.array([[[1, 1], [1, 0]], [[0, 0], [0, 0]]], dtype=bool)
+    eps = jnp.array([-0.999, 0.5], dtype=jnp.float32)
+
+    def loss(x, y, e):
+      return _classification.poly_loss_cross_entropy(
+          x, y, epsilon=e, axis=(1, 2), where=mask
+      ).sum()
+
+    value, (dx, dy, de) = jax.jit(jax.value_and_grad(loss, (0, 1, 2)))(
+        logits, labels, eps
+    )
+    x = np.array([7., 0., -1.])
+    y = np.asarray(labels[0], dtype=np.float64).ravel()[:3]
+    p = np.exp(x) / np.sum(np.exp(x))
+    e = float(eps[0])
+    per_class = -np.log(p) + e * (1 - p)
+    expected_dx = p * y.sum() - y + e * p * (p @ y - y)
+    self.assertEqual(value.dtype, labels.dtype)
+    np.testing.assert_allclose(value, y @ per_class, rtol=2e-6)
+    np.testing.assert_allclose(dx[0].ravel()[:3], expected_dx, rtol=0.008)
+    np.testing.assert_allclose(dy[0].ravel()[:3], per_class, rtol=2e-5)
+    np.testing.assert_allclose(de, [y @ (1 - p), 0.], rtol=2e-6)
+    for gradient in (dx, dy):
+      np.testing.assert_array_equal(np.asarray(gradient)[~np.asarray(mask)], 0.)
+
+  def test_confident_predictions_with_per_example_mask(self):
+    logits = jnp.array([[6., 0.], [3., 0.]], dtype=jnp.bfloat16)
+    labels = jnp.array([1., 0.], dtype=jnp.bfloat16)
+    loss = functools.partial(_classification.poly_loss_cross_entropy,
+                             labels=labels, epsilon=-1.)
+    result = loss(logits, where=jnp.array([True, False]))
+    np.testing.assert_array_equal(result, [loss(logits[0]), 0.])
+
+  @parameterized.parameters(
       {'eps': 2, 'expected': 4.5317},
       {'eps': 1, 'expected': 3.7153},
       {'eps': -1, 'expected': 2.0827},
