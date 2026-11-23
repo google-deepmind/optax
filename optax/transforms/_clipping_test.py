@@ -140,10 +140,10 @@ class ClippingTest(absltest.TestCase):
   def test_clip_by_global_norm_python_scalars(self):
     """Test that clip_by_global_norm works with Python float scalars."""
     tx = _clipping.clip_by_global_norm(1.0)
-    updates = {'w': 300.0, 'b': 400.0}
+    updates = {"w": 300.0, "b": 400.0}
     clipped, _ = tx.update(updates, tx.init(updates))
-    self.assertAlmostEqual(clipped['w'], 0.6, places=5)
-    self.assertAlmostEqual(clipped['b'], 0.8, places=5)
+    self.assertAlmostEqual(clipped["w"], 0.6, places=5)
+    self.assertAlmostEqual(clipped["b"], 0.8, places=5)
 
   def test_adaptive_grad_clip_with_axis(self):
     """Test adaptive_grad_clip with custom axis parameter."""

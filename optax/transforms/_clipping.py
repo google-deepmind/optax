@@ -96,7 +96,7 @@ def clip_by_global_norm(
     del params
 
     def _promote_leaf(t):
-      dtype = getattr(t, 'dtype', None)
+      dtype = getattr(t, "dtype", None)
       if (
           dtype is not None
           and jnp.issubdtype(dtype, jnp.floating)
@@ -118,7 +118,7 @@ def clip_by_global_norm(
     g_norm = jnp.sqrt(jnp.where(trigger, 1.0, g_norm_squared))
 
     def clip_fn(t):
-      dtype = getattr(t, 'dtype', None)
+      dtype = getattr(t, "dtype", None)
       if (
           dtype is not None
           and jnp.issubdtype(dtype, jnp.floating)
