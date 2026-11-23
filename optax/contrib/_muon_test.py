@@ -381,6 +381,26 @@ class MuonTest(parameterized.TestCase):
       self.assertLess(max_s, 2.0, msg=f'Max singular value {max_s} too high')
       self.assertGreater(min_s, 0.1, msg=f'Min singular value {min_s} too low')
 
+  @parameterized.named_parameters(
+      ('tree', {'w': True, 'b': False}),
+      ('callable', lambda p: jax.tree.map(lambda x: x.ndim > 1, p)),
+  )
+  def test_weight_decay_mask_applies_to_adam_branch(self, mask):
+    """The mask also covers the leaves that muon routes to the Adam branch."""
+    params = {'w': jnp.ones((4, 4)), 'b': jnp.ones((4,))}
+    grads = jax.tree.map(jnp.zeros_like, params)
+    opt = _muon.muon(
+        learning_rate=0.1,
+        weight_decay=0.1,
+        adam_weight_decay=0.1,
+        weight_decay_mask=mask,
+    )
+    updates, _ = opt.update(grads, opt.init(params), params)
+    # The masked bias is not decayed, the weight matrix still is.
+    np.testing.assert_allclose(updates['b'], jnp.zeros((4,)), atol=1e-7)
+    np.testing.assert_allclose(
+        updates['w'], -0.01 * jnp.ones((4, 4)), rtol=1e-6)
+
   def test_aol_numerical_difference(self):
     """Ensures that AOL=True produces different updates than Standard Muon."""
     params = {'w': jnp.eye(8) * 2.0}
