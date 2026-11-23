@@ -271,8 +271,28 @@ def tree_real(tree: Any) -> Any:
   return jax.tree.map(jnp.real, tree)
 
 
-def _square(leaf):
-  return jnp.square(leaf.real) + jnp.square(leaf.imag)
+def _tree_norm_target_dtype(tree: Any) -> jax.typing.DTypeLike:
+  leaves = jax.tree.leaves(tree)
+  if not leaves:
+    return jnp.float32
+  target_dtype = jnp.empty((), dtype=jnp.result_type(*leaves)).real.dtype
+  if not jnp.issubdtype(target_dtype, jnp.floating):
+    return jnp.float32
+  return target_dtype
+
+
+def _square(leaf, acc_dtype=jnp.float32):
+  real = leaf.real
+  imag = leaf.imag
+  dtype = getattr(real, 'dtype', None)
+  if (
+      dtype is not None
+      and jnp.issubdtype(dtype, jnp.floating)
+      and jnp.finfo(dtype).bits < 32
+  ):
+    real = real.astype(acc_dtype)
+    imag = imag.astype(acc_dtype)
+  return jnp.square(real) + jnp.square(imag)
 
 
 def tree_norm(tree: Any,
@@ -288,17 +308,22 @@ def tree_norm(tree: Any,
   Returns:
     a scalar value.
   """
+  target_dtype = _tree_norm_target_dtype(tree)
+  acc_dtype = jnp.promote_types(target_dtype, jnp.float32)
+
   if ord is None or ord == 2:
-    squared_tree = jax.tree.map(_square, tree)
+    squared_tree = jax.tree.map(lambda l: _square(l, acc_dtype), tree)
     sqnorm = tree_sum(squared_tree)
-    return jnp.array(sqnorm if squared else jnp.sqrt(sqnorm))
+    ret = sqnorm if squared else jnp.sqrt(sqnorm)
   elif ord == 1:
     ret = tree_sum(jax.tree.map(jnp.abs, tree))
+    ret = ret if not squared else jnp.square(jnp.asarray(ret, dtype=acc_dtype))
   elif ord == jnp.inf or ord in ('inf', 'infinity'):
     ret = tree_max(jax.tree.map(jnp.abs, tree))
+    ret = ret if not squared else jnp.square(jnp.asarray(ret, dtype=acc_dtype))
   else:
     raise ValueError(f'Unsupported ord: {ord}')
-  return jnp.array(ret if not squared else _square(ret))
+  return jnp.asarray(ret).astype(target_dtype)
 
 
 def tree_batch_shape(

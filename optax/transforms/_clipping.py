@@ -94,7 +94,19 @@ def clip_by_global_norm(
 
   def update_fn(updates, state, params=None):
     del params
-    g_norm_squared = optax.tree.norm(updates, squared=True)
+
+    def _promote_leaf(t):
+      dtype = getattr(t, 'dtype', None)
+      if (
+          dtype is not None
+          and jnp.issubdtype(dtype, jnp.floating)
+          and jnp.finfo(dtype).bits < 32
+      ):
+        return t.astype(jnp.float32)
+      return t
+
+    promoted_updates = jax.tree.map(_promote_leaf, updates)
+    g_norm_squared = optax.tree.norm(promoted_updates, squared=True)
     g_norm = jnp.sqrt(g_norm_squared)
     # TODO(b/163995078): revert back to the following (faster) implementation
     # once analyzed how it affects backprop through update (e.g. meta-gradients)
@@ -106,7 +118,19 @@ def clip_by_global_norm(
     g_norm = jnp.sqrt(jnp.where(trigger, 1.0, g_norm_squared))
 
     def clip_fn(t):
-      return jax.lax.select(trigger, t, (t / g_norm.astype(t.dtype)) * max_norm)
+      dtype = getattr(t, 'dtype', None)
+      if (
+          dtype is not None
+          and jnp.issubdtype(dtype, jnp.floating)
+          and jnp.finfo(dtype).bits < 32
+      ):
+        scaled = (t.astype(jnp.float32) / g_norm) * max_norm
+        scaled = scaled.astype(dtype)
+      elif dtype is not None:
+        scaled = (t / g_norm.astype(dtype)) * max_norm
+      else:
+        scaled = (t / g_norm) * max_norm
+      return jax.lax.select(trigger, t, scaled)
 
     updates = jax.tree.map(clip_fn, updates)
     return updates, state
