@@ -79,8 +79,9 @@ def scale_by_ademamix(
     eps_root: A small constant applied to denominator inside the square root (as
       in RMSProp), to avoid dividing by zero when rescaling. This is needed for
       instance when computing (meta-)gradients through Adam.
-    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
-      `None` then the `dtype` is inferred from `params` and `updates`.
+    mu_dtype: Optional `dtype` to be used for the fast EMA (the first order
+      accumulator); if `None` then the `dtype` is inferred from `params` and
+      `updates`. The slow EMA and the second moment keep the `params` dtype.
 
   Returns:
     The corresponding `GradientTransformation`.
@@ -90,8 +91,10 @@ def scale_by_ademamix(
 
   def init_fn(params) -> ScaleByAdemamixState:
     m1 = optax.tree.zeros_like(params, dtype=mu_dtype)  # fast EMA
-    m2 = optax.tree.zeros_like(params, dtype=mu_dtype)  # slow EMA
-    nu = optax.tree.zeros_like(params, dtype=mu_dtype)  # second moment estimate
+    # The slow EMA (b3 close to 1) and the second moment keep the params dtype:
+    # a low precision `mu_dtype` would round their small increments away.
+    m2 = optax.tree.zeros_like(params)  # slow EMA
+    nu = optax.tree.zeros_like(params)  # second moment estimate
     return ScaleByAdemamixState(
         count=jnp.zeros([], jnp.int32),
         count_m2=jnp.zeros([], jnp.int32),
@@ -125,6 +128,7 @@ def scale_by_ademamix(
         m2,
         nu_hat,
     )
+    m1 = optax.tree.cast(m1, mu_dtype)
     return updates, ScaleByAdemamixState(
         count=count_inc, count_m2=count_m2_inc, m1=m1, m2=m2, nu=nu
     )
