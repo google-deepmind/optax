@@ -508,9 +508,19 @@ def scale_by_muon(
     if adaptive:
       # Scale the orthogonalized updates by the dual norm of the original
       # updates. See https://arxiv.org/abs/2409.20325 for the derivation.
+      # Batch axes are scaled independently, like the orthogonalization.
+      def _scale_by_dual_norm(x, y, dim_num):
+        if dim_num is None:
+          dim_num = MuonDimensionNumbers()
+        reduction_axes, output_axes = _normalize_axes(x, dim_num)
+        dual_norm = jnp.sum(
+            x.conj() * y, axis=reduction_axes + output_axes, keepdims=True
+        )
+        return dual_norm * y
+
       updates = jax.tree.map(
-          lambda x, y: jnp.sum(x.conj() * y) * y, mu_hat, updates
-      )
+          _scale_by_dual_norm, mu_hat, updates, resolved_weight_dim_nums,
+          is_leaf=_is_weight_dim_nums)
 
     mu = optax.tree.cast(mu, mu_dtype)
     return updates, MuonState(
