@@ -24,7 +24,169 @@ from optax import tree_utils as tu
 from optax._src import test_utils
 
 
+def _contract_tree(values):
+  return {'a': values[:2], 'b': (values[2], None)}
+
+
+def _contract_array(tree):
+  return jnp.concatenate((tree['a'], tree['b'][0][None]))
+
+
+def _check_tree_jacobians(function, arguments, expected, use_jit, forward):
+  differentiate = jax.jacfwd if forward else jax.jacrev
+  derivative = differentiate(function, argnums=tuple(range(len(arguments))))
+  if use_jit:
+    derivative = jax.jit(derivative)
+  actual = derivative(*[jnp.asarray(x) for x in arguments])
+  for got, want in zip(actual, expected):
+    np.testing.assert_allclose(got, want, atol=2e-6, rtol=2e-6)
+
+
 class TreeUtilsTest(parameterized.TestCase):
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_complex_vdot_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    # Real coordinates make the conjugate-linear first operand explicit.
+    x = np.array([1., -2., 3.])
+    y = np.array([2., 1., -1.])
+    a = np.array([0.5, 2., -1.])
+    b = np.array([-1., 0.5, 2.])
+
+    def function(xr, xi, yr, yi):
+      value = tu.tree_vdot(_contract_tree(xr + 1j * xi),
+                           _contract_tree(yr + 1j * yi))
+      return jnp.array([value.real, value.imag])
+
+    _check_tree_jacobians(
+        function, (x, y, a, b),
+        (np.stack([a, b]), np.stack([b, -a]),
+         np.stack([x, -y]), np.stack([y, x])), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_bias_correction_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    moments = np.array([0.5, -2., 1.])
+    decay = 0.7
+    for count in (1, 5, 20):
+      with self.subTest(count=count):
+        def function(m, d, count=count):
+          return _contract_array(tu.tree_bias_correction(
+              _contract_tree(m), d, jnp.asarray(count)
+          ))
+
+        denominator = 1 - decay ** count
+        _check_tree_jacobians(
+            function, (moments, decay),
+            (np.eye(3) / denominator,
+             moments * count * decay ** (count - 1) / denominator ** 2),
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_complex_moment_per_elem_norm_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    real = np.array([1., -2., 3.])
+    imag = np.array([2., 1., -1.])
+    moments = np.array([0.5, 2., 1.])
+    decay = 0.7
+    for order in (1, 2, 3, 4):
+      with self.subTest(order=order):
+        def function(r, i, m, d, order=order):
+          return _contract_array(tu.tree_update_moment_per_elem_norm(
+              _contract_tree(r + 1j * i), _contract_tree(m), d, order
+          ))
+
+        magnitude = np.hypot(real, imag)
+        factor = (1 - decay) * order * magnitude ** (order - 2)
+        _check_tree_jacobians(
+            function, (real, imag, moments, decay),
+            (np.diag(factor * real), np.diag(factor * imag),
+             decay * np.eye(3), moments - magnitude ** order),
+            use_jit, forward,
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_update_infinity_moment_analytical_derivatives(
+      self, use_jit, forward
+  ):
+    updates = np.array([-3., 0.1, 2.])
+    moments = np.array([1., 4., 1.])
+    # abs(g)+eps wins for entries 0 and 2; decay*m wins for entry 1.
+
+    def function(g, m, d, epsilon):
+      return _contract_array(tu.tree_update_infinity_moment(
+          _contract_tree(g), _contract_tree(m), d, epsilon
+      ))
+
+    _check_tree_jacobians(
+        function, (updates, moments, 0.5, 0.2),
+        (np.diag([-1., 0., 1.]), np.diag([0., 0.5, 0.]),
+         np.array([0., 4., 0.]), np.array([1., 0., 1.])),
+        use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_update_moment_analytical_derivatives(self, use_jit, forward):
+    updates = np.array([1., -2., 3.])
+    moments = np.array([0.5, 2., 1.])
+    decay = 0.7
+    for order in (1, 2, 3):
+      with self.subTest(order=order):
+        def function(g, m, d, order=order):
+          return _contract_array(tu.tree_update_moment(
+              _contract_tree(g), _contract_tree(m), d, order
+          ))
+
+        expected = (
+            np.diag((1 - decay) * order * updates ** (order - 1)),
+            decay * np.eye(3), moments - updates ** order,
+        )
+        _check_tree_jacobians(
+            function, (updates, moments, decay), expected, use_jit, forward
+        )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_linf_norm_analytical_derivatives(self, use_jit, forward):
+    # The unique maximum is in a different leaf from the other entries.
+    x = np.array([1., -2., -3.])
+    _check_tree_jacobians(
+        lambda v: tu.tree_norm(_contract_tree(v), ord='inf'),
+        (x,), (np.array([0., 0., -1.]),), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l1_norm_analytical_derivatives(self, use_jit, forward):
+    # Stay away from zero, where the L1 norm is not differentiable.
+    x = np.array([1., -2., 3.])
+    _check_tree_jacobians(
+        lambda v: tu.tree_norm(_contract_tree(v), ord=1),
+        (x,), (np.array([1., -1., 1.]),), use_jit, forward,
+    )
+
+  @parameterized.product(use_jit=(False, True), forward=(False, True))
+  def test_l2_norm_analytical_derivatives(self, use_jit, forward):
+    x = jnp.array([1., -2., 2.])
+    for squared in (False, True):
+      with self.subTest(squared=squared):
+        def objective(values, squared=squared):
+          return tu.tree_norm(_contract_tree(values), squared=squared)
+
+        gradient = jax.grad(objective)
+        hessian = (jax.jacfwd if forward else jax.jacrev)(gradient)
+        if use_jit:
+          gradient, hessian = jax.jit(gradient), jax.jit(hessian)
+        expected_gradient = 2 * np.asarray(x) if squared else np.asarray(x) / 3
+        expected_hessian = (
+            2 * np.eye(3) if squared
+            else (np.eye(3) - np.outer(x, x) / 9) / 3
+        )
+        np.testing.assert_allclose(gradient(x), expected_gradient, atol=2e-6)
+        np.testing.assert_allclose(hessian(x), expected_hessian, atol=2e-6)
 
   def setUp(self):
     super().setUp()
