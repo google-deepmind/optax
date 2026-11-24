@@ -192,6 +192,23 @@ class TreeUtilsTest(parameterized.TestCase):
     got = which(tree)
     assert expected == got
 
+  @parameterized.product(
+      dtype=('int8', 'uint8', 'int32'),
+      which=(tu.tree_min, tu.tree_max),
+  )
+  def test_tree_max_min_keep_integer_dtype(self, dtype, which):
+    tree = {'a': jnp.array([3, 7], dtype), 'b': jnp.zeros(0, dtype)}
+    got = jax.jit(which)(tree)
+    self.assertEqual(got.dtype, jnp.dtype(dtype))
+    self.assertEqual(got, 3 if which is tu.tree_min else 7)
+
+  @parameterized.parameters(tu.tree_min, tu.tree_max)
+  def test_tree_max_min_exact_above_float32_precision(self, which):
+    # 2**24 + 1 is the smallest positive integer float32 cannot represent.
+    value = 2**24 + 1
+    got = which({'a': jnp.array([value], jnp.int32)})
+    self.assertEqual(int(got), value)
+
   @parameterized.parameters(
       'array_a', 'tree_a', 'tree_a_dict', 'tree_b', 'tree_b_dict'
   )
@@ -256,6 +273,19 @@ class TreeUtilsTest(parameterized.TestCase):
     expected = jnp.max(jnp.abs(values))
     got = tu.tree_norm(tree, ord=jnp.inf)
     np.testing.assert_allclose(expected, got, atol=1e-4)
+
+  @parameterized.product(
+      tree=({}, [jnp.zeros(0)], {'a': jnp.zeros((2, 0)), 'b': None}),
+      squared=(False, True),
+  )
+  def test_tree_linf_norm_empty(self, tree, squared):
+    # Matches ord=1 and ord=2, which give 0 for a tree without elements.
+    got = tu.tree_norm(tree, ord=jnp.inf, squared=squared)
+    self.assertEqual(got, 0.0)
+
+  def test_tree_linf_norm_nan(self):
+    got = tu.tree_norm([jnp.array([1.0, jnp.nan])], ord=jnp.inf)
+    self.assertTrue(jnp.isnan(got))
 
   def test_tree_zeros_like(self):
     expected = jnp.zeros_like(self.array_a)
