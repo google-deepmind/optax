@@ -14,6 +14,8 @@
 # ==============================================================================
 """Tests for methods in `optax.transforms._accumulation.py`."""
 
+import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import flax
@@ -336,6 +338,98 @@ class AccumulationTest(parameterized.TestCase):
       np.testing.assert_array_equal(
           params['a'], jnp.negative(jnp.full([], 2.0))
       )
+
+  @parameterized.product(
+      k_steps=(1, 2),
+      use_jit=(False, True),
+      skip_kind=('not_finite', 'large', 'custom'),
+  )
+  def test_multi_steps_has_updated_after_skip(
+      self, k_steps, use_jit, skip_kind
+  ):
+    if skip_kind == 'not_finite':
+      skip_fn = _accumulation.skip_not_finite
+      rejected_grad = jnp.array([jnp.nan])
+    elif skip_kind == 'large':
+      skip_fn = functools.partial(
+          _accumulation.skip_large_updates, max_squared_norm=4.0
+      )
+      rejected_grad = jnp.array([3.0])
+    else:
+      # A custom skip_state need not expose the skip decision.
+      def skip_fn(updates, gradient_step, params):
+        del gradient_step, params
+        return jnp.any(updates < 0), ()
+
+      rejected_grad = jnp.array([-1.0])
+
+    ms_opt = _accumulation.MultiSteps(
+        alias.adam(0.1), k_steps, should_skip_update_fn=skip_fn
+    )
+    params = jnp.array([0.0])
+    state = ms_opt.init(params)
+    opt_update = jax.jit(ms_opt.update) if use_jit else ms_opt.update
+    has_updated = jax.jit(ms_opt.has_updated) if use_jit else ms_opt.has_updated
+    self.assertFalse(has_updated(state))
+
+    def accept(state, mini_step):
+      updates, state = opt_update(jnp.ones_like(params), state, params)
+      self.assertEqual(bool(has_updated(state)), mini_step == k_steps - 1)
+      return updates, state
+
+    def reject(state):
+      for _ in range(2):
+        previous = state
+        updates, state = opt_update(rejected_grad, state, params)
+        np.testing.assert_array_equal(updates, jnp.zeros_like(params))
+        self.assertFalse(has_updated(state))
+        jax.tree.map(
+            np.testing.assert_array_equal,
+            (
+                state.mini_step,
+                state.gradient_step,
+                state.inner_opt_state,
+                state.acc_grads,
+            ),
+            (
+                previous.mini_step,
+                previous.gradient_step,
+                previous.inner_opt_state,
+                previous.acc_grads,
+            ),
+        )
+      return state
+
+    # Rejection at initialization, directly after emission, and (for k=2)
+    # during partial accumulation must all leave the emission flag false.
+    state = reject(state)
+    for _ in range(2):
+      for mini_step in range(k_steps):
+        if mini_step:
+          state = reject(state)
+        _, state = accept(state, mini_step)
+      state = reject(state)
+    self.assertEqual(int(state.gradient_step), 2)
+
+  def test_multi_steps_skip_state_serialization(self):
+    ms_opt = _accumulation.MultiSteps(
+        alias.sgd(0.1),
+        1,
+        should_skip_update_fn=_accumulation.skip_not_finite,
+    )
+    params = jnp.array([0.0])
+    initial = ms_opt.init(params)
+    _, emitted = ms_opt.update(jnp.ones_like(params), initial, params)
+    _, skipped = ms_opt.update(jnp.array([jnp.nan]), emitted, params)
+    for state, expected in [
+        (initial, False),
+        (emitted, True),
+        (skipped, False),
+    ]:
+      restored = flax.serialization.from_bytes(
+          initial, flax.serialization.to_bytes(state)
+      )
+      self.assertEqual(bool(ms_opt.has_updated(restored)), expected)
 
   @parameterized.parameters(OPTIMIZERS_TO_TEST)
   def test_multi_steps_mixed_precision(self, opt_name, opt_kwargs):
