@@ -585,7 +585,9 @@ def muon(
     weight_decay_mask: A tree with same structure as (or a prefix of) the params
       PyTree, or a Callable that returns such a pytree given the params/updates.
       The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the weight decay to, and `False` for those you want to skip.
+      apply the weight decay to, and `False` for those you want to skip. The
+      mask applies to both the Muon and the Adam (`adam_weight_decay`) weight
+      decay.
     mu_dtype: Data type of the momentum accumulator.
     nesterov: Whether to use Nesterov momentum.
     adaptive: Whether to scale the updates by the dual norm of the
@@ -726,6 +728,7 @@ def muon(
               eps_root=adam_eps_root,
               # pyrefly: ignore[bad-argument-type]
               weight_decay=adam_weight_decay,
+              mask=weight_decay_mask,
               mu_dtype=mu_dtype,
               nesterov=nesterov,
           ),
