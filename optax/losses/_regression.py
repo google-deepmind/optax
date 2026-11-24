@@ -174,8 +174,12 @@ def cosine_similarity(
   """
   utils.check_subdtype(predictions, jnp.floating)
   utils.check_subdtype(targets, jnp.floating)
-  a = predictions
-  b = targets
+  dtype = jnp.result_type(predictions, targets, epsilon)
+  # Squaring float16 values can overflow or underflow even when the cosine
+  # and its gradients are representable. Normalize in at least float32.
+  computation_dtype = jnp.promote_types(dtype, jnp.float32)
+  a = jnp.asarray(predictions, dtype=computation_dtype)
+  b = jnp.asarray(targets, dtype=computation_dtype)
   if where is not None:
     # Exclude masked values before nonlinear operations to keep gradients valid.
     a = jnp.where(where, a, 0)
@@ -193,7 +197,7 @@ def cosine_similarity(
   a_unit = a / a_norm
   b_unit = b / b_norm
   # pyrefly: ignore[no-matching-overload]
-  return (a_unit * b_unit).sum(axis=axis, where=where)
+  return (a_unit * b_unit).sum(axis=axis, where=where).astype(dtype)
 
 
 def cosine_distance(
