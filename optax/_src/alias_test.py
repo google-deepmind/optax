@@ -431,6 +431,21 @@ class AliasTest(parameterized.TestCase):
         grads, state, params, **dyn_kwargs)
     test_utils.assert_trees_all_equal(updates, jnp.zeros_like(grads))
 
+  def test_sm3_accepts_learning_rate_schedule(self):
+    schedule = lambda count: 0.1 / (1.0 + count)
+    params = jnp.array([1.0, -2.0, 3.0])
+    grads = jnp.array([0.5, 0.25, -1.0])
+    opt = alias.sm3(schedule)
+    state = opt.init(params)
+    ref = alias.sm3(0.1)
+    ref_state = ref.init(params)
+    for step in range(3):
+      updates, state = opt.update(grads, state, params)
+      ref_updates, ref_state = ref.update(grads, ref_state, params)
+      test_utils.assert_trees_all_close(
+          updates, ref_updates / (1.0 + step), rtol=1e-6
+      )
+
 
 if __name__ == '__main__':
   absltest.main()
