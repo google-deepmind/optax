@@ -143,7 +143,7 @@ def lookahead(
       # synchronized after this update step.
       initial_state = fast_optimizer.init(params.fast)
       fast_state = jax.tree.map(
-          lambda current, init: (1 - sync_next) * current + sync_next * init,
+          lambda current, init: jnp.where(sync_next, init, current),
           fast_state,
           initial_state,
       )
