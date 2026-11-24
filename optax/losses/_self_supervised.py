@@ -185,7 +185,7 @@ def triplet_margin_loss(
   positive_distance = jnp.power(
       jnp.power(
           # pyrefly: ignore[unsupported-operation]
-          anchors - positives,
+          jnp.abs(anchors - positives),
           norm_degree,
       ).sum(axis)
       + eps,
@@ -194,7 +194,7 @@ def triplet_margin_loss(
   negative_distance = jnp.power(
       jnp.power(
           # pyrefly: ignore[unsupported-operation]
-          anchors - negatives,
+          jnp.abs(anchors - negatives),
           norm_degree,
       ).sum(axis)
       + eps,
