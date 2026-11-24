@@ -196,6 +196,15 @@ class ProjectionsTest(parameterized.TestCase):
     p = proj.projection_l1_sphere(x, scale)
     np.testing.assert_almost_equal(optax.tree.norm(p, ord=1), scale, decimal=4)
 
+  def test_projection_l1_sphere_inside_with_zeros(self):
+    # Inside the ball, every entry moves out by -tau = (scale - |x|_1) / n.
+    x = jnp.array([0.1, 0.0, -0.2])
+    tau = (0.3 - 1.0) / 3
+    expected = jnp.array([0.1 - tau, -tau, -0.2 + tau])
+    p = proj.projection_l1_sphere(x, 1.0)
+    np.testing.assert_array_almost_equal(p, expected)
+    np.testing.assert_almost_equal(optax.tree.norm(p, ord=1), 1.0)
+
   @parameterized.product(
       data_key=['array_1d', 'array_2d', 'tree'], scale=[1.0, 3.21]
   )
