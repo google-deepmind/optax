@@ -147,6 +147,24 @@ class MuonTest(parameterized.TestCase):
     state = opt.init(params)
     _, _ = opt.update(params, state, params=params)
 
+  def test_scale_by_muon_defaults_to_matrices_for_a_params_tree(self):
+    key_w, key_v = jax.random.split(jax.random.key(0))
+    params = {
+        'w': jax.random.normal(key_w, (4, 3)),
+        'v': jax.random.normal(key_v, (3, 2)),
+    }
+    explicit = jax.tree.map(
+        lambda _: _muon.MuonDimensionNumbers(reduction_axis=0, output_axis=1),
+        params,
+    )
+    updates = {}
+    for dim_nums in (None, explicit):
+      opt = _muon.scale_by_muon(weight_dimension_numbers=dim_nums)
+      updates[dim_nums is None], _ = opt.update(
+          params, opt.init(params), params
+      )
+    test_utils.assert_trees_all_close(updates[True], updates[False])
+
   @parameterized.named_parameters(
       ('frobenius', 'frobenius'), ('aol', 'aol'), ('schatten', 'schatten')
   )
