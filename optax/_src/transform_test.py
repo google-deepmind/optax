@@ -27,6 +27,7 @@ from optax._src import combine
 from optax._src import test_utils
 from optax._src import transform
 from optax._src import update
+from optax.schedules import _inject
 import optax.tree
 
 STEPS = 50
@@ -255,6 +256,43 @@ class TransformTest(parameterized.TestCase):
     for _ in range(3):
       updates, state = opt.update(jnp.zeros(3), state)
       test_utils.assert_trees_all_equal(updates, jnp.zeros(3))
+
+  def test_sm3_traced_decay(self):
+    grads = {
+        'matrix': jnp.arange(1.0, 7.0).reshape(3, 2),
+        'vector': jnp.ones(3),
+    }
+    state = transform.scale_by_sm3().init(grads)
+    traces = []
+
+    @jax.jit
+    def step(b2, state):
+      traces.append(None)
+      return transform.scale_by_sm3(b2=b2).update(grads, state)
+
+    for b2 in (0.9, 1.0, 0.0, 0.5):
+      expected = transform.scale_by_sm3(b2=b2).update(grads, state)
+      actual = step(jnp.asarray(b2), state)
+      test_utils.assert_trees_all_close(actual, expected)
+      _, state = actual
+    self.assertLen(traces, 1)
+
+  def test_sm3_injected_decay(self):
+    grads = {
+        'matrix': jnp.arange(1.0, 7.0).reshape(3, 2),
+        'vector': jnp.ones(3),
+    }
+    tx = _inject.inject_hyperparams(transform.scale_by_sm3)(
+        b2=lambda count: 1.0 / (count + 1)
+    )
+    state = tx.init(grads)
+    step = jax.jit(tx.update)
+    for count in range(3):
+      expected = transform.scale_by_sm3(b2=1.0 / (count + 1)).update(
+          grads, state.inner_state
+      )
+      updates, state = step(grads, state)
+      test_utils.assert_trees_all_close((updates, state.inner_state), expected)
 
   @parameterized.named_parameters(
       ('rss', transform.scale_by_rss),
