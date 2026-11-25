@@ -603,12 +603,17 @@ def warmup_constant_schedule(
   Args:
     init_value: Initial value for the scalar to be annealed.
     peak_value: Peak value for scalar to be annealed at end of warmup.
-    warmup_steps: Positive integer, the length of the linear warmup.
+    warmup_steps: Non-negative integer, the length of the linear warmup. With
+      ``0`` there is no warmup and the schedule is ``peak_value`` from the first
+      step, as for :func:`optax.schedules.warmup_cosine_decay_schedule`.
 
   Returns:
     schedule
       A function that maps step counts to values
   """
+  if warmup_steps == 0:
+    # linear_schedule with transition_steps=0 would stay at init_value forever.
+    return constant_schedule(peak_value)
   return linear_schedule(
       init_value=init_value,
       end_value=peak_value,
