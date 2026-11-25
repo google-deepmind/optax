@@ -83,6 +83,19 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(plateau_count, 0)
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown - 1)
 
+  def test_bfloat16_params_do_not_round_away_improvements(self):
+    """A loss improving 0.1% per step (10x rtol) is never a plateau."""
+    transform = _reduce_on_plateau.reduce_on_plateau(patience=2, rtol=1e-4)
+    params = jnp.ones(2, jnp.bfloat16)
+    state = transform.init(params)
+    self.assertEqual(state.best_value.dtype, jnp.float32)
+    self.assertEqual(state.avg_value.dtype, jnp.float32)
+    for i in range(20):
+      _, state = transform.update(
+          updates=params, state=state, value=jnp.asarray(0.999**i, jnp.float32)
+      )
+    test_utils.assert_trees_all_close(state.scale, 1.0)
+
   @parameterized.parameters(False, True)
   def test_learning_rate_is_not_reduced(self, enable_x64):
     """Test that plateau_count resets after a new best_value is found."""

@@ -101,13 +101,17 @@ def reduce_on_plateau(
     # parameters and updates.
     lowest_params_dtype = optax.tree.dtype(params, "lowest")
     highest_params_dtype = optax.tree.dtype(params, "highest")
+    # The monitored metric is kept in at least float32: with bfloat16 parameters
+    # an improvement larger than rtol could otherwise round to the same value
+    # and be read as a plateau.
+    metric_dtype = jnp.promote_types(highest_params_dtype, jnp.float32)
     return ReduceLROnPlateauState(
-        best_value=jnp.asarray(float("inf"), dtype=highest_params_dtype),
+        best_value=jnp.asarray(float("inf"), dtype=metric_dtype),
         plateau_count=jnp.asarray(0, jnp.int32),
         scale=jnp.asarray(1.0, dtype=lowest_params_dtype),
         cooldown_count=jnp.asarray(0, jnp.int32),
         count=jnp.asarray(0, jnp.int32),
-        avg_value=jnp.asarray(0.0, highest_params_dtype),
+        avg_value=jnp.asarray(0.0, metric_dtype),
     )
 
   def _update_scale(state):
