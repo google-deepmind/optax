@@ -162,7 +162,6 @@ from optax.contrib import dpsgd as _deprecated_dpsgd
 # TODO(mtthss): remove aliases after updates.
 microbatch = microbatching.microbatch
 adaptive_grad_clip = transforms.adaptive_grad_clip
-AdaptiveGradClipState = EmptyState
 clip = transforms.clip
 clip_by_block_rms = transforms.clip_by_block_rms
 clip_by_global_norm = transforms.clip_by_global_norm
@@ -329,7 +328,6 @@ __all__ = (
     "adamw",
     "adan",
     "adaptive_grad_clip",
-    "AdaptiveGradClipState",
     "add_decayed_weights",
     "add_noise",
     "AddDecayedWeightsState",
