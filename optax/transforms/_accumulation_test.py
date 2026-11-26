@@ -212,6 +212,54 @@ class AccumulationTest(parameterized.TestCase):
         self.assertTrue(ms_opt.has_updated(opt_state))
       params = new_params
 
+  @parameterized.product(jit=(False, True), use_grad_mean=(False, True))
+  def test_multi_steps_discards_overflowed_updates(self, jit, use_grad_mean):
+    params = {'a': jnp.zeros(1, dtype=jnp.float16)}
+    grads = {'a': jnp.full(1, 40000.0, dtype=jnp.float16)}
+    ms_opt = _accumulation.MultiSteps(
+        alias.sgd(2.0), 2, use_grad_mean=use_grad_mean,
+        accumulator_dtype=jnp.float32,
+    )
+    opt_update = jax.jit(ms_opt.update) if jit else ms_opt.update
+    state = ms_opt.init(params)
+
+    # The finite microgradient overflows inside SGD, but this step must emit
+    # zeros. The next microgradient cancels it before the actual update.
+    updates, state = opt_update(grads, state, params)
+    np.testing.assert_array_equal(updates['a'], jnp.zeros_like(params['a']))
+    self.assertEqual(updates['a'].dtype, params['a'].dtype)
+    self.assertFalse(ms_opt.has_updated(state))
+    self.assertEqual(state.acc_grads['a'].dtype, jnp.float32)
+    np.testing.assert_array_equal(state.acc_grads['a'], 40000.0)
+    new_params = update.apply_updates(params, updates)
+    np.testing.assert_array_equal(new_params['a'], params['a'])
+
+    updates, state = opt_update(
+        jax.tree.map(jnp.negative, grads), state, new_params
+    )
+    np.testing.assert_array_equal(updates['a'], jnp.zeros_like(params['a']))
+    self.assertEqual(updates['a'].dtype, params['a'].dtype)
+    self.assertTrue(ms_opt.has_updated(state))
+    np.testing.assert_array_equal(state.acc_grads['a'], jnp.zeros(1))
+    np.testing.assert_array_equal(
+        update.apply_updates(new_params, updates)['a'], params['a']
+    )
+
+  @parameterized.product(jit=(False, True), value=(np.nan, np.inf, -np.inf))
+  def test_multi_steps_masks_nonfinite_updates_until_emission(self, jit, value):
+    params = jnp.zeros(2)
+    ms_opt = _accumulation.MultiSteps(alias.sgd(1.0), 2, use_grad_mean=False)
+    opt_update = jax.jit(ms_opt.update) if jit else ms_opt.update
+    state = ms_opt.init(params)
+    updates, state = opt_update(jnp.full_like(params, value), state, params)
+    np.testing.assert_array_equal(updates, jnp.zeros_like(params))
+    self.assertFalse(ms_opt.has_updated(state))
+
+    # Masking accumulation steps must not sanitize an emitted update.
+    updates, state = opt_update(jnp.zeros_like(params), state, params)
+    np.testing.assert_array_equal(updates, jnp.full_like(params, -value))
+    self.assertTrue(ms_opt.has_updated(state))
+
   def test_multi_steps_every_k_schedule(self):
     # Test a non-trivial schedule which varies over time.
     ms_opt = _accumulation.MultiSteps(
