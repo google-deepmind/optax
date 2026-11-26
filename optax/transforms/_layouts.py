@@ -40,11 +40,15 @@ def flatten(
   def _flatten(params):
     """Flattens and concatenates all tensors in params to a single vector."""
     params, _ = jax.tree.flatten(params)
+    if not params:
+      return jnp.zeros((0,))
     return jnp.concatenate([jnp.reshape(param, [-1]) for param in params])
 
   def _unflatten(updates, flat):
     """Extracts tensors from flat, using the structure and shapes of params."""
     updates_flat, treedef = jax.tree.flatten(updates)
+    if not updates_flat:
+      return updates
     offsets = []
     for update in updates_flat:
       size = np.size(update)
