@@ -561,6 +561,22 @@ class ContribTest(parameterized.TestCase):
             opt_with_lr, params_with_lr, state_with_lr)
       test_utils.assert_trees_all_close(params_with_schedule, params_with_lr)
 
+  def test_ademamix_mu_dtype_only_sets_the_fast_ema(self):
+    params = {'w': jnp.ones((3,), jnp.float32)}
+    grads = jax.tree.map(jnp.ones_like, params)
+    opt = contrib.scale_by_ademamix(mu_dtype=jnp.bfloat16)
+
+    def step(state, _):
+      _, state = opt.update(grads, state, params)
+      return state, None
+
+    # A state that changes dtype after one update cannot be a scan carry.
+    state, _ = jax.lax.scan(step, opt.init(params), None, length=2)
+
+    self.assertEqual(state.m1['w'].dtype, jnp.bfloat16)
+    self.assertEqual(state.m2['w'].dtype, jnp.float32)
+    self.assertEqual(state.nu['w'].dtype, jnp.float32)
+
   @parameterized.named_parameters(
       ('acprop', 'acprop', 'eps'),
       ('acprop_eps_root', 'acprop', 'eps_root'),
