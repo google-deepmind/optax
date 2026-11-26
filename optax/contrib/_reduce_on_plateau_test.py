@@ -177,6 +177,106 @@ class ReduceLROnPlateauTest(parameterized.TestCase):
     test_utils.assert_trees_all_close(cooldown_count, self.cooldown)
     test_utils.assert_trees_all_close(updates, {'params': jnp.array(0.01)})
 
+  @parameterized.parameters(False, True)
+  def test_zero_patience_learning_rate_reduced_on_plateau(self, enable_x64):
+    """Test zero patience preserves scale on improvement and reduces on plateau.
+    """
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.5,
+        patience=0,
+        rtol=1e-4,
+        atol=0.0,
+    )
+    state = transform.init(self.updates['params'])
+
+    scales = []
+    for value in [5.0, 4.0, 4.0, 3.0, 3.0]:
+      _, state = transform.update(
+          updates=self.updates,
+          state=state,
+          value=jnp.asarray(value, dtype=float),
+      )
+      scales.append(float(state.scale))
+
+    expected_scales = [1.0, 1.0, 0.5, 0.5, 0.25]
+    test_utils.assert_trees_all_close(scales, expected_scales)
+
+  @parameterized.parameters(False, True)
+  def test_zero_patience_with_cooldown(self, enable_x64):
+    """Test that zero patience respects cooldown periods."""
+    jax.config.update('jax_enable_x64', enable_x64)
+
+    cooldown = 2
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.1,
+        patience=0,
+        rtol=1e-4,
+        atol=0.0,
+        cooldown=cooldown,
+    )
+    state = transform.init(self.updates['params'])
+
+    # Step 1: initial value establishes best_value, scale remains 1.0
+    _, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
+    test_utils.assert_trees_all_close(state.scale, 1.0)
+    test_utils.assert_trees_all_close(state.cooldown_count, 0)
+
+    # Step 2: non-improving metric triggers reduction with patience=0
+    _, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
+    test_utils.assert_trees_all_close(state.scale, 0.1)
+    test_utils.assert_trees_all_close(state.cooldown_count, cooldown)
+
+    # Step 3: in cooldown (cooldown_count = 2 -> 1), scale remains 0.1
+    _, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
+    test_utils.assert_trees_all_close(state.scale, 0.1)
+    test_utils.assert_trees_all_close(state.cooldown_count, 1)
+
+    # Step 4: in cooldown (cooldown_count = 1 -> 0), scale remains 0.1
+    _, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
+    test_utils.assert_trees_all_close(state.scale, 0.1)
+    test_utils.assert_trees_all_close(state.cooldown_count, 0)
+
+    # Step 5: cooldown finished, non-improving metric triggers reduction again
+    _, state = transform.update(
+        updates=self.updates, state=state, value=jnp.asarray(1.0, dtype=float)
+    )
+    test_utils.assert_trees_all_close(state.scale, 0.01)
+    test_utils.assert_trees_all_close(state.cooldown_count, cooldown)
+
+  def test_zero_patience_jit(self):
+    """Test that reduce_on_plateau with patience=0 works under jax.jit."""
+    transform = _reduce_on_plateau.reduce_on_plateau(
+        factor=0.5,
+        patience=0,
+    )
+    state = transform.init(self.updates['params'])
+
+    @jax.jit
+    def step(updates, state, value):
+      return transform.update(updates=updates, state=state, value=value)
+
+    scales = []
+    for val in [2.0, 2.0, 1.0, 1.0]:
+      _, state = step(self.updates, state, jnp.asarray(val, dtype=jnp.float32))
+      scales.append(float(state.scale))
+
+    test_utils.assert_trees_all_close(scales, [1.0, 0.5, 0.5, 0.25])
+
+  def test_negative_patience_raises_error(self):
+    """Test that negative patience raises ValueError."""
+    with self.assertRaises(ValueError):
+      _reduce_on_plateau.reduce_on_plateau(patience=-1)
+
 
 if __name__ == '__main__':
   absltest.main()
