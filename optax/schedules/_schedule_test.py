@@ -672,7 +672,7 @@ class PiecewiseInterpolateTest(absltest.TestCase):
     self.assertAlmostEqual(sched(5), 78.0)  # 26.0 * 3.0
 
 
-class OneCycleTest(absltest.TestCase):
+class OneCycleTest(parameterized.TestCase):
 
   def test_linear(self):
     schedule_fn = jax.jit(
@@ -703,6 +703,26 @@ class OneCycleTest(absltest.TestCase):
     ]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
 
+  @parameterized.named_parameters(
+      ('one_step', 1, 0.3, 0.85, [4.0, 1.0, 1.0]),
+      ('shared_interior_step', 4, 0.3, 0.4, [4.0, 4.0, 3.0, 2.0, 1.0, 1.0]),
+  )
+  def test_linear_shared_boundaries(
+      self, transition_steps, pct_start, pct_final, expected_vals
+  ):
+    schedule_fn = jax.jit(
+        _schedule.linear_onecycle_schedule(
+            transition_steps=transition_steps,
+            peak_value=8.0,
+            pct_start=pct_start,
+            pct_final=pct_final,
+            div_factor=2.0,
+            final_div_factor=4.0,
+        )
+    )
+    generated_vals = [schedule_fn(step) for step in range(len(expected_vals))]
+    np.testing.assert_allclose(generated_vals, expected_vals)
+
   def test_cosine(self):
     schedule_fn = jax.jit(
         _schedule.cosine_onecycle_schedule(
@@ -717,6 +737,19 @@ class OneCycleTest(absltest.TestCase):
     generated_vals = [schedule_fn(step) for step in range(7)]
     expected_vals = [100.0, 550.0, 1000.0, 750.25, 250.75, 1.0, 1.0]
     np.testing.assert_allclose(generated_vals, expected_vals, atol=1e-3)
+
+  def test_cosine_shared_final_boundary(self):
+    schedule_fn = jax.jit(
+        _schedule.cosine_onecycle_schedule(
+            transition_steps=2,
+            peak_value=8.0,
+            pct_start=1.0,
+            div_factor=2.0,
+            final_div_factor=4.0,
+        )
+    )
+    generated_vals = [schedule_fn(step) for step in range(4)]
+    np.testing.assert_allclose(generated_vals, [4.0, 2.5, 1.0, 1.0])
 
   def test_nonpositive_transition_steps(self):
     with self.assertRaisesRegex(ValueError, 'cosine onecycle'):
