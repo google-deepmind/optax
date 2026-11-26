@@ -25,6 +25,7 @@ from optax._src import combine
 from optax._src import transform
 from optax._src import update
 from optax.transforms import _accumulation
+from optax.transforms import _conditionality
 from optax.transforms import _constraining
 
 OPTIMIZERS_TO_TEST = [
@@ -407,6 +408,90 @@ class AccumulationTest(parameterized.TestCase):
                 f' Got ({get_dtypes(params)}) vs ({get_dtypes(new_params)}).'
             )
             params = new_params
+
+
+class MultiStepsAccumulatorResetTest(parameterized.TestCase):
+
+  @parameterized.product(
+      bad_value=(np.nan, np.inf, -np.inf),
+      use_grad_mean=(False, True),
+      compiled=(False, True),
+  )
+  def test_recovery_after_inner_optimizer_rejects_batch(
+      self, bad_value, use_grad_mean, compiled
+  ):
+    params = {'w': jnp.array([3.0, -2.0])}
+    ms_opt = _accumulation.MultiSteps(
+        _conditionality.apply_if_finite(alias.sgd(1.0), 10),
+        2,
+        use_grad_mean=use_grad_mean,
+    )
+    state = ms_opt.init(params)
+    update_fn = jax.jit(ms_opt.update) if compiled else ms_opt.update
+    for grads in [jnp.zeros(2), jnp.array([bad_value, 1.0])]:
+      updates, state = update_fn({'w': grads}, state, params)
+      np.testing.assert_array_equal(updates['w'], jnp.zeros(2))
+      params = update.apply_updates(params, updates)
+
+    self.assertEqual(int(state.mini_step), 0)
+    self.assertEqual(int(state.gradient_step), 1)
+    self.assertEqual(int(state.inner_opt_state.total_notfinite), 1)
+    np.testing.assert_array_equal(state.acc_grads['w'], jnp.zeros(2))
+
+    first = jnp.array([2.0, 4.0])
+    second = jnp.array([4.0, 8.0])
+    updates, state = update_fn({'w': first}, state, params)
+    np.testing.assert_array_equal(updates['w'], jnp.zeros(2))
+    updates, state = update_fn({'w': second}, state, params)
+    expected = -(first + second) / (2 if use_grad_mean else 1)
+    np.testing.assert_array_equal(updates['w'], expected)
+    self.assertEqual(int(state.gradient_step), 2)
+    self.assertEqual(int(state.inner_opt_state.total_notfinite), 1)
+    self.assertEqual(int(state.inner_opt_state.notfinite_count), 0)
+    np.testing.assert_array_equal(state.acc_grads['w'], jnp.zeros(2))
+
+  @parameterized.product(
+      bad_value=(np.nan, np.inf, -np.inf), use_grad_mean=(False, True)
+  )
+  def test_emitted_nonfinite_update_is_not_silently_discarded(
+      self, bad_value, use_grad_mean
+  ):
+    params = jnp.array([1.0, 2.0])
+    ms_opt = _accumulation.MultiSteps(
+        alias.sgd(1.0), 1, use_grad_mean=use_grad_mean
+    )
+    grads = jnp.array([bad_value, 3.0])
+    updates, state = jax.jit(ms_opt.update)(grads, ms_opt.init(params), params)
+    np.testing.assert_array_equal(updates, -grads)
+    np.testing.assert_array_equal(state.acc_grads, jnp.zeros_like(params))
+    self.assertEqual(int(state.gradient_step), 1)
+
+  @parameterized.product(use_grad_mean=(False, True), compiled=(False, True))
+  def test_rejected_ministep_preserves_partial_accumulation(
+      self, use_grad_mean, compiled
+  ):
+    params = jnp.array([3.0, -2.0])
+    ms_opt = _accumulation.MultiSteps(
+        alias.sgd(1.0),
+        2,
+        use_grad_mean=use_grad_mean,
+        should_skip_update_fn=_accumulation.skip_not_finite,
+    )
+    update_fn = jax.jit(ms_opt.update) if compiled else ms_opt.update
+    first = jnp.array([2.0, 4.0])
+    _, state = update_fn(first, ms_opt.init(params), params)
+    updates, skipped_state = update_fn(jnp.array([np.nan, 1.0]), state, params)
+    np.testing.assert_array_equal(updates, jnp.zeros_like(params))
+    np.testing.assert_array_equal(skipped_state.acc_grads, state.acc_grads)
+    self.assertEqual(int(skipped_state.mini_step), 1)
+    self.assertEqual(int(skipped_state.gradient_step), 0)
+    self.assertEqual(int(skipped_state.skip_state['num_not_finite']), 1)
+    second = jnp.array([4.0, 8.0])
+    updates, state = update_fn(second, skipped_state, params)
+    np.testing.assert_array_equal(
+        updates, -(first + second) / (2 if use_grad_mean else 1)
+    )
+    np.testing.assert_array_equal(state.acc_grads, jnp.zeros_like(params))
 
 
 if __name__ == '__main__':
