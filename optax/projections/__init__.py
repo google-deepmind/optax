@@ -17,7 +17,9 @@
 
 # pylint: disable=g-importing-member
 
+from optax.projections._projections import projection_affine_set
 from optax.projections._projections import projection_box
+from optax.projections._projections import projection_box_section
 from optax.projections._projections import projection_halfspace
 from optax.projections._projections import projection_hypercube
 from optax.projections._projections import projection_hyperplane
