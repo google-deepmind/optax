@@ -528,12 +528,19 @@ def poly_loss_cross_entropy(
   """
   utils.check_subdtype(logits, jnp.floating)
   utils.check_subdtype(labels, jnp.floating)
-  p = jax.nn.softmax(logits, axis=axis, where=where)
-  one_minus_pt = jnp.sum(labels * (1 - p), axis=axis, where=where)
+  dtype = jnp.result_type(logits, labels)
+  compute_dtype = jnp.float32 if jnp.finfo(dtype).bits < 32 else dtype
+  logits_comp = logits.astype(compute_dtype)
+  labels_comp = labels.astype(compute_dtype)
+
+  p = jax.nn.softmax(logits_comp, axis=axis, where=where)
+  one_minus_pt = jnp.sum(labels_comp * (1 - p), axis=axis, where=where)
   cross_entropy = softmax_cross_entropy(
-      logits=logits, labels=labels, axis=axis, where=where
+      logits=logits_comp, labels=labels_comp, axis=axis, where=where
   )
-  return cross_entropy + epsilon * one_minus_pt
+  loss = cross_entropy + epsilon * one_minus_pt
+  loss = jnp.maximum(loss, 0.0)
+  return loss.astype(dtype)
 
 
 def kl_divergence(

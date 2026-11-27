@@ -457,6 +457,25 @@ class PolyLossTest(parameterized.TestCase):
     )
     np.testing.assert_allclose(x, y, atol=1e-4)
 
+  @parameterized.parameters(
+      {'margin': 4.0, 'dtype': jnp.bfloat16},
+      {'margin': 6.0, 'dtype': jnp.bfloat16},
+      {'margin': 10.0, 'dtype': jnp.float32},
+  )
+  def test_poly_loss_negative_epsilon_non_negative(self, margin, dtype):
+    labels = jnp.array([1, 0], dtype=dtype)
+    logits = jnp.array([margin, 0], dtype=dtype)
+
+    def loss_fn(z):
+      return _classification.poly_loss_cross_entropy(z, labels, epsilon=-1.0)
+
+    val, grad = jax.jit(jax.value_and_grad(loss_fn))(logits)
+    self.assertGreaterEqual(float(val), 0.0)
+    self.assertEqual(val.dtype, dtype)
+    if margin == 4.0:
+      self.assertLess(grad[0], 0.0)
+      self.assertGreater(grad[1], 0.0)
+
 
 class HingeTest(parameterized.TestCase):
 
