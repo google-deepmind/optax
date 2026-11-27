@@ -153,7 +153,14 @@ def projection_simplex(tree: Any, scale: jax.typing.ArrayLike = 1) -> Any:
   .. versionadded:: 0.2.3
   """
   values, unravel_fn = flatten_util.ravel_pytree(tree)
-  new_values = scale * _projection_unit_simplex(values / scale)
+  scale_arr = jnp.asarray(scale)
+  safe_scale = jnp.where(scale_arr <= 0, 1.0, scale_arr)
+  scaled_values = values / safe_scale
+  new_values = jnp.where(
+      scale_arr <= 0,
+      jnp.zeros_like(values),
+      safe_scale * _projection_unit_simplex(scaled_values),
+  )
   return unravel_fn(jnp.asarray(new_values))
 
 
