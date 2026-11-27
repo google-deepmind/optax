@@ -144,6 +144,32 @@ class ProjectionsTest(parameterized.TestCase):
         p, jnp.array([scale / 2, scale / 2, 0.0])
     )
 
+  def test_projection_simplex_zero_scale(self):
+    x = jnp.array([2.0, -1.0, 3.0])
+    p = proj.projection_simplex(x, scale=0.0)
+    np.testing.assert_array_equal(p, jnp.zeros_like(x))
+
+    # Test under JIT and gradient
+    jit_p = jax.jit(proj.projection_simplex)(x, 0.0)
+    np.testing.assert_array_equal(jit_p, jnp.zeros_like(x))
+
+    jac = jax.jacrev(proj.projection_simplex)(x, 0.0)
+    np.testing.assert_array_equal(jac, jnp.zeros((len(x), len(x))))
+
+    # Test with pytree
+    pytree = {'w': jnp.array([2.5, 3.2]), 'b': 0.5}
+    zero_pytree = proj.projection_simplex(pytree, scale=0.0)
+    test_utils.assert_trees_all_equal(
+        zero_pytree, {'w': jnp.zeros((2,)), 'b': jnp.zeros(())}
+    )
+
+    # Test l1 sphere and ball at zero scale
+    p_l1_sphere = proj.projection_l1_sphere(x, scale=0.0)
+    np.testing.assert_array_equal(p_l1_sphere, jnp.zeros_like(x))
+
+    p_l1_ball = proj.projection_l1_ball(x, scale=0.0)
+    np.testing.assert_array_equal(p_l1_ball, jnp.zeros_like(x))
+
   def test_projection_simplex_jacobian(self):
     rng = np.random.RandomState(0)
 
