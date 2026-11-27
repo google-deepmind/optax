@@ -21,7 +21,11 @@ import typing
 from typing import Any, Optional, Protocol, Tuple, Union, cast
 
 import jax
+from jax.sharding import AxisType
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 from optax._src import base
+from optax._src import utils
 
 
 @jax.tree_util.register_pytree_node_class
@@ -85,6 +89,169 @@ class Initable(Protocol):
 
   def init(self, params: base.Params) -> base.OptState:
     """Calling the init for given parameters returns a fresh opt state."""
+
+
+def _to_explicit_mesh(
+    mesh: Union[jax.sharding.Mesh, jax.sharding.AbstractMesh],
+) -> jax.sharding.AbstractMesh:
+  """Returns an AbstractMesh with every axis set to AxisType.Explicit."""
+  abstract_mesh = mesh.abstract_mesh
+  explicit_axes = {axis: AxisType.Explicit for axis in abstract_mesh.axis_names}
+  return abstract_mesh.update_axis_types(explicit_axes)
+
+
+def _to_explicit_sharding(
+    sharding: jax.sharding.Sharding,
+) -> jax.sharding.Sharding:
+  """Converts NamedSharding mesh axes to AxisType.Explicit for eval_shape."""
+
+  if not isinstance(sharding, NamedSharding):
+    return sharding
+
+  return NamedSharding(_to_explicit_mesh(sharding.mesh), sharding.spec)
+
+
+def _canonical_spec(spec: P) -> P:
+  """Drops trailing ``None`` entries so replicated specs compare as ``P()``.
+
+  ``jax.eval_shape`` pads specs to the array rank (e.g. ``P(None, None)``),
+  whereas arrays produced by ``jax.jit`` carry the spec as written by the user
+  (e.g. ``P()``). Both are equivalent, but ``NamedSharding.__eq__`` compares
+  specs structurally, so we normalize to the shortest equivalent form.
+  """
+  partitions = tuple(spec)
+  while partitions and partitions[-1] is None:
+    partitions = partitions[:-1]
+  return spec.update(partitions=partitions)
+
+
+def _to_explicit_sds(leaf: Any) -> Any:
+  """Converts an Array or ShapeDtypeStruct leaf to an Explicit-sharded SDS."""
+  if not hasattr(leaf, "shape") or not hasattr(leaf, "dtype"):
+    return leaf
+
+  sharding = getattr(leaf, "sharding", None)
+  weak_type = getattr(leaf, "weak_type", False)
+
+  if sharding is None:
+    return jax.ShapeDtypeStruct(leaf.shape, leaf.dtype, weak_type=weak_type)
+
+  return jax.ShapeDtypeStruct(
+      leaf.shape,
+      leaf.dtype,
+      sharding=_to_explicit_sharding(sharding),
+      weak_type=weak_type,
+  )
+
+
+def abstract_init(
+    initable: Union[
+        Callable[[base.Params], base.OptState],
+        Initable,
+    ],
+    abstract_params: base.PyTree,
+) -> base.OptState:
+  """Evaluates the abstract shape, dtype, and sharding of an optimizer state.
+
+  Unlike ``jax.eval_shape(optimizer.init, abstract_params)``, which drops
+  ``NamedSharding`` backed by ``AxisType.Auto`` meshes, this function
+  temporarily promotes mesh axes to ``AxisType.Explicit`` during abstract
+  evaluation and restores the caller's original mesh on the output
+  ``ShapeDtypeStruct`` leaves. Scalar or auxiliary state leaves (such as
+  step counters ``count``) are assigned a replicated
+  ``NamedSharding(mesh, PartitionSpec())`` when at least one ``NamedSharding``
+  is present on ``abstract_params``.
+
+  Args:
+    initable: A callable taking parameters and returning an optimizer state, or
+      an object with an `init` attribute having the same function.
+    abstract_params: A PyTree of :class:`jax.ShapeDtypeStruct` or
+      :class:`jax.Array` objects carrying
+      :class:`jax.sharding.NamedSharding` specifications.
+
+  Returns:
+    An abstract ``opt_state`` PyTree of :class:`jax.ShapeDtypeStruct` leaves
+    with inferred ``.sharding`` attributes bound to the original mesh.
+
+  Raises:
+    ValueError: If ``abstract_params`` contains ``NamedSharding`` leaves backed
+      by more than one distinct mesh.
+    NotImplementedError: If ``abstract_params`` contains ``NamedSharding``
+      leaves and ``jax<0.7.2`` is installed.
+
+  .. versionadded:: 0.2.10
+  """
+  init_fn = (
+      cast(Initable, initable).init
+      if isinstance(initable, Initable)
+      else initable
+  )
+
+  input_leaves = jax.tree.leaves(abstract_params)
+  named_shardings = [
+      sharding
+      for leaf in input_leaves
+      if isinstance(sharding := getattr(leaf, "sharding", None), NamedSharding)
+  ]
+  if not named_shardings:
+    return jax.eval_shape(init_fn, abstract_params)
+
+  if utils.parse_version(jax.__version__) < utils.parse_version("0.7.2"):
+    raise NotImplementedError(
+        "Sharding inference in `optax.abstract_init` requires jax>=0.7.2; "
+        f"got jax=={jax.__version__}."
+    )
+
+  unique_meshes = {s.mesh for s in named_shardings}
+  if len(unique_meshes) > 1:
+    raise ValueError(
+        "All NamedShardings in `abstract_params` must share the same mesh; "
+        f"got {len(unique_meshes)} distinct meshes."
+    )
+
+  orig_mesh = named_shardings[0].mesh
+  mem_kinds = {s.memory_kind for s in named_shardings}
+
+  orig_mem_kind = (
+      named_shardings[0].memory_kind if len(mem_kinds) == 1 else None
+  )
+
+  explicit_mesh = _to_explicit_mesh(orig_mesh)
+
+  explicit_params = jax.tree.map(_to_explicit_sds, abstract_params)
+  with (
+      jax.set_mesh(None),
+      jax.sharding.use_abstract_mesh(explicit_mesh),
+  ):
+    explicit_opt_state = jax.eval_shape(init_fn, explicit_params)
+
+  def _restore_mesh(leaf: Any) -> Any:
+    if not isinstance(leaf, jax.ShapeDtypeStruct):
+      return leaf
+    sharding = leaf.sharding
+
+    if isinstance(sharding, NamedSharding):
+      mem_kind = orig_mem_kind or sharding.memory_kind
+      return jax.ShapeDtypeStruct(
+          leaf.shape,
+          leaf.dtype,
+          sharding=NamedSharding(
+              orig_mesh, _canonical_spec(sharding.spec), memory_kind=mem_kind
+          ),
+          weak_type=leaf.weak_type,
+      )
+
+    if sharding is None:
+      return jax.ShapeDtypeStruct(
+          leaf.shape,
+          leaf.dtype,
+          sharding=NamedSharding(orig_mesh, P(), memory_kind=orig_mem_kind),
+          weak_type=leaf.weak_type,
+      )
+
+    return leaf
+
+  return jax.tree.map(_restore_mesh, explicit_opt_state)
 
 
 def tree_map_params(
