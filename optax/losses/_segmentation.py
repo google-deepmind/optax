@@ -151,8 +151,11 @@ def dice_loss(
     targets = targets[..., None]  # pyrefly: ignore[bad-index]
   utils.check_shapes_equal(predictions, targets)
 
-  # Input validation for probability distributions
-  if not apply_softmax:
+  # Input validation for probability distributions. This only applies to the
+  # multi-class case: a single-channel prediction (shape ``[..., 1]``, used for
+  # binary segmentation) is a per-pixel foreground probability, not a
+  # categorical distribution, so it need not sum to 1 along the class axis.
+  if not apply_softmax and jnp.shape(predictions)[-1] > 1:
     # Tolerance for numerical stability
     pred_sums = jnp.sum(predictions, axis=-1)
     if not jnp.allclose(pred_sums, 1.0, rtol=1e-5):
