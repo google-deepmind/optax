@@ -26,6 +26,7 @@ are not supported by the main library.
     dpsgd
     galore
     GaLoreState
+    lnb
     madgrad
     MadgradState
     mechanize
@@ -51,10 +52,12 @@ are not supported by the main library.
     SplitRealAndImaginaryState
     scale_by_ademamix
     ScaleByAdemamixState
+    ScaleByLNBState
     scale_by_simplified_ademamix
     ScaleBySimplifiedAdEMAMixState
     scale_by_adopt
     scale_by_acprop
+    scale_by_lnb
     scale_by_madgrad
     scale_by_muon
     hutchinson_estimator_diag_hessian
