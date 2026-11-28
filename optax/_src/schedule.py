@@ -22,7 +22,7 @@ parameters or the exploration factor used to select actions.
 from optax import schedules
 
 
-# TODO(mtthss): remove schedules alises from flat namespaces after user updates.
+# TODO(mtthss): remove schedules aliases from flat namespaces after user updates.
 constant_schedule = schedules.constant_schedule
 cosine_decay_schedule = schedules.cosine_decay_schedule
 cosine_onecycle_schedule = schedules.cosine_onecycle_schedule

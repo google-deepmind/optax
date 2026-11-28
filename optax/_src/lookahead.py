@@ -165,7 +165,7 @@ def _lookahead_update(
 
   Args:
     updates: Updates returned by the fast optimizer.
-    sync_next: Wether fast and slow parameters should be synchronized after the
+    sync_next: Whether fast and slow parameters should be synchronized after the
       fast optimizer step.
     params: Current fast and slow parameters as `LookaheadParams` object.
     slow_step_size: Step size of the slow optimizer.
