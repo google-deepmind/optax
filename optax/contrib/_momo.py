@@ -77,6 +77,7 @@ def momo(
 
   Examples:
     >>> from optax import contrib
+    >>> import optax
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
@@ -87,13 +88,15 @@ def momo(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
+    ...  updates, opt_state = solver.update(
+    ...      grad, opt_state, params, value=value)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: ', f(params))
     Objective function:  3.5
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
+    Objective function:  3.3182135
+    Objective function:  3.1418593
+    Objective function:  2.9713087
+    Objective function:  2.8068557
 
   References:
     Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
@@ -242,6 +245,7 @@ def momo_adam(
 
   Examples:
     >>> from optax import contrib
+    >>> import optax
     >>> import jax
     >>> import jax.numpy as jnp
     >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
@@ -252,13 +256,15 @@ def momo_adam(
     >>> opt_state = solver.init(params)
     >>> for _ in range(5):
     ...  value, grad = jax.value_and_grad(f)(params)
-    ...  params, opt_state = solver.update(grad, opt_state, params, value=value)
+    ...  updates, opt_state = solver.update(
+    ...      grad, opt_state, params, value=value)
+    ...  params = optax.apply_updates(params, updates)
     ...  print('Objective function: ', f(params))
-    Objective function:  0.00029999594
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
-    Objective function:  0.0
+    Objective function:  13.8803
+    Objective function:  13.761217
+    Objective function:  13.642761
+    Objective function:  13.5249405
+    Objective function:  13.407766
 
   References:
     Schaipp et al., `MoMo: Momentum Models for Adaptive Learning Rates
